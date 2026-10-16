@@ -29,7 +29,7 @@ export function Topbar() {
             <div className="file-breadcrumb">
                 <button className="crumb-link" id="crumb-home" title="Back to all files">Workspace</button>
                 <span className="crumb-slash">/</span>
-                <button id="file-name" title="Rename document">Forma · Product design</button>
+                <button id="file-name" title="Rename document">Untitled</button>
                 <span className="file-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
                 <span className="save-indicator" id="save-indicator"><i></i> Saved locally</span>
             </div>

@@ -2962,7 +2962,6 @@ document.addEventListener('change', e => {
 const lib = { index: [], fileId: null, view: 'recent', search: '', open: false };
 const TEMPLATES = [
     { id: 'blank', name: 'Design file', note: 'Start from an empty canvas' },
-    { id: 'forma', name: 'Forma · Product design', note: 'Sample project with a design system' },
     { id: 'phone', name: 'Mobile app', frame: ['iPhone 16', 393, 852], note: 'iPhone 16 frame' },
     { id: 'desktop', name: 'Landing page', frame: ['Desktop', 1440, 1024], note: 'Desktop frame' },
     { id: 'slides', name: 'Presentation', frame: ['Slide 16:9', 1920, 1080], note: '16:9 slide' },
@@ -3025,15 +3024,31 @@ async function libBoot() {
         json = legacy;
     }
     if (!json) {
+        // The remembered file is gone: reopen the most recent file that still exists. Index entries without any stored
+        // content are leftovers and are dropped, so reloading never piles up new empty files.
+        const live = [];
+        for (const m of [...lib.index].sort((a, b) => (b.opened || 0) - (a.opened || 0))) {
+            if (m.trashed)
+                continue;
+            const stored = await kvGet('file:' + m.id);
+            if (stored) {
+                live.push(m);
+                if (!json) {
+                    json = stored;
+                    lib.fileId = m.id;
+                }
+            }
+        }
+        lib.index = lib.index.filter(m => m.trashed || live.includes(m));
+    }
+    if (!json) {
         lib.fileId = uid();
         const now = Date.now();
-        lib.index.unshift({ id: lib.fileId, name: 'Forma · Product design', created: now, updated: now, opened: now, thumb: null });
+        lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     }
     return json;
 }
 function templateData(id) {
-    if (id === 'forma')
-        return makeStarter();
     const t = TEMPLATES.find(x => x.id === id) || TEMPLATES[0], p = { id: uid(), name: 'Page 1', nodes: [] };
     if (t.frame)
         p.nodes.push(node('frame', { name: t.frame[0], x: 0, y: 0, w: t.frame[1], h: t.frame[2], fill: '#ffffff', clip: true }));
@@ -3415,7 +3430,7 @@ function renderHome() {
     }
     else {
         const list = live.filter(match).sort(lib.view === 'recent' ? (a, b) => (b.opened || b.updated) - (a.opened || a.updated) : (a, b) => b.updated - a.updated);
-        const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-new="forma"><span class="hc-ico">${homeIcon('recent')}</span><b>Sample project</b><small>Forma design system</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
+        const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
         main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
     home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">L</span><div><b>Local workspace</b><small>Saved in the data folder</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
@@ -4869,147 +4884,8 @@ class History {
 }
 function defaultTokens() { return { colors: [], typography: [] }; }
 function makeStarter() {
-    const p = { id: uid(), name: 'Design exploration', nodes: [] }, ds = { id: uid(), name: 'Design system', nodes: [] }, play = { id: uid(), name: 'Playground', nodes: [] };
-    let page = p;
-    const add = (type, props) => { const n = node(type, props); page.nodes.push(n); return n; };
-    const rect = (parent, x, y, w, h, fill, radius = 0, name = 'Surface', extra = {}) => add('rect', { parentId: parent?.id || null, x, y, w, h, fill, radius, name, ...extra });
-    const text = (parent, x, y, w, h, str, size = 14, fill = '#282431', weight = 400, extra = {}) => add('text', { parentId: parent?.id || null, x, y, w, h, text: str, fontSize: size, fill, fontWeight: weight, name: str.length > 28 ? str.slice(0, 27) + '…' : str, lineHeight: 1.3, ...extra });
-    const ellipse = (parent, x, y, w, h, fill, extra = {}) => add('ellipse', { parentId: parent?.id || null, x, y, w, h, fill, name: 'Ellipse', ...extra });
-    const ln = (parent, x, y, w, h, stroke = '#e9e6ee', sw = 1) => add('line', { parentId: parent?.id || null, x, y, w, h, fill: 'none', stroke, strokeWidth: sw, name: 'Divider' });
-    const dash = add('frame', { x: 0, y: 0, w: 1000, h: 720, fill: '#faf9fc', radius: 12, name: '01 · Workspace / Desktop', shadow: true, shadowOpacity: .24, shadowBlur: 24, shadowY: 12 });
-    const side = add('frame', { parentId: dash.id, x: 0, y: 0, w: 184, h: 720, fill: '#ffffff', name: 'Navigation', clip: false });
-    text(side, 28, 30, 26, 35, '◒', 30, '#0058CA', 700);
-    text(side, 62, 34, 99, 30, 'forma', 24, '#282431', 650, { letterSpacing: -1.2 });
-    rect(side, 18, 95, 148, 37, '#f5f3f8', 7, 'Workspace switcher');
-    rect(side, 27, 103, 20, 20, '#e3edfb', 5);
-    text(side, 31, 105, 17, 18, 'S', 12, '#0058CA', 650);
-    text(side, 55, 106, 93, 20, 'Studio workspace', 10, '#5d566a', 500);
-    text(side, 150, 106, 10, 17, '⌄', 12, '#81778c');
-    text(side, 27, 159, 125, 15, 'WORKSPACE', 8, '#a29aaa', 550, { letterSpacing: 1.3 });
-    const nav = [['▦', 'Overview', true], ['□', 'My projects', false], ['◷', 'Schedule', false], ['▤', 'All tasks', false], ['◇', 'Team members', false]];
-    nav.forEach(([icon, label, active], i) => {
-        if (active)
-            rect(side, 15, 185 + i * 42, 154, 35, '#e3edfb', 7, label + ' active');
-        text(side, 28, 194 + i * 42, 20, 20, icon, 14, active ? '#0058CA' : '#a399af', 500);
-        text(side, 57, 195 + i * 42, 103, 18, label, 10, active ? '#0058CA' : '#77707f', active ? 600 : 400);
-        if (label === 'All tasks') {
-            rect(side, 140, 197 + i * 42, 17, 15, '#f0edf4', 4);
-            text(side, 145, 199 + i * 42, 12, 13, '8', 8, '#8d829b', 500);
-        }
-    });
-    ln(side, 24, 415, 136, 0);
-    text(side, 27, 440, 110, 18, 'FAVORITES', 8, '#a29aaa', 550, { letterSpacing: 1.2 });
-    text(side, 29, 475, 137, 20, '●     Website redesign', 10, '#5b8fc9');
-    text(side, 29, 509, 137, 20, '●     Mobile experience', 10, '#89a897');
-    rect(side, 19, 593, 146, 68, '#f4f8fd', 9, 'Upgrade card');
-    text(side, 31, 605, 126, 20, 'Room for more ideas.', 10, '#4f6275', 600);
-    text(side, 31, 629, 126, 20, 'Explore Forma Pro   ↗', 9, '#0d63c9', 500);
-    ellipse(side, 25, 679, 25, 25, '#e9d8c9');
-    text(side, 31, 684, 17, 18, 'JD', 8, '#8c6958', 600);
-    text(side, 59, 680, 97, 18, 'Jamie Davis', 10, '#4c425b', 500);
-    text(side, 59, 695, 90, 13, 'Personal account', 7, '#aaa0b2');
-    ln(dash, 184, 0, 0, 720, '#ece9f1');
-    text(dash, 219, 31, 150, 24, 'Overview', 15, '#40394c', 600);
-    text(dash, 744, 36, 148, 19, '⌕    Search anything…', 10, '#a89faf');
-    ellipse(dash, 930, 28, 28, 28, '#e6eefb');
-    text(dash, 939, 35, 16, 17, '✧', 12, '#4a7cb5');
-    ln(dash, 184, 79, 816, 0, '#ebe8f0');
-    text(dash, 219, 105, 465, 38, 'Good morning, Jamie', 27, '#302937', 600, { letterSpacing: -.8 });
-    text(dash, 220, 149, 493, 25, "Let’s make space for your best work.", 11, '#9a91a3');
-    rect(dash, 811, 114, 152, 32, '#ffffff', 6, 'Date', { stroke: '#e9e4ef', strokeWidth: 1 });
-    text(dash, 824, 123, 136, 20, '▦   Monday, September 7', 9, '#83788f');
-    const hero = add('frame', { parentId: dash.id, x: 219, y: 191, w: 464, h: 158, fill: '#dceafb', radius: 11, name: 'Your ideas. In motion.', clip: true });
-    text(hero, 25, 20, 240, 18, 'A LITTLE FOCUS GOES A LONG WAY', 7.5, '#7aa2cc', 600, { letterSpacing: .9 });
-    text(hero, 25, 47, 289, 36, 'Your ideas. In motion.', 24, '#2c5a90', 600, { letterSpacing: -.6 });
-    text(hero, 25, 84, 273, 20, 'Turn today’s inspiration into tomorrow’s great work.', 9, '#7d9dc2');
-    rect(hero, 25, 113, 112, 28, '#0058CA', 6, 'Explore projects');
-    text(hero, 40, 121, 93, 15, 'Explore projects   ↗', 8, '#ffffff', 500);
-    ellipse(hero, 336, 28, 158, 158, '#b9d4f2', { name: 'Decorative orb' });
-    ellipse(hero, 363, 51, 101, 101, '#d2e3f9');
-    ellipse(hero, 389, 77, 48, 48, '#eff5fd');
-    rect(hero, 324, 32, 66, 14, '#dceafb', 5, 'Orbit cut', { rotation: -38 });
-    rect(hero, 352, 129, 88, 16, '#dceafb', 7, 'Orbit cut', { rotation: -38 });
-    const progress = add('frame', { parentId: dash.id, x: 699, y: 191, w: 265, h: 158, fill: '#ffffff', radius: 11, name: 'Weekly progress' });
-    text(progress, 18, 19, 192, 24, 'Your weekly progress', 11, '#615469', 600);
-    text(progress, 18, 49, 114, 48, '82%', 34, '#4f425b', 600, { letterSpacing: -1.5 });
-    text(progress, 19, 96, 113, 18, '↑  12% from last week', 8, '#80a18d');
-    text(progress, 19, 129, 163, 19, 'You’re finding your rhythm. Nice work.', 8, '#aaa0b1');
-    ellipse(progress, 168, 56, 69, 69, 'none', { stroke: '#e6eef8', strokeWidth: 8, name: 'Progress track' });
-    add('path', { parentId: progress.id, x: 168, y: 56, w: 69, h: 69, points: [{ x: 34.5, y: 0 }, { x: 63, y: 14 }, { x: 69, y: 43 }, { x: 49, y: 65 }, { x: 20, y: 67 }, { x: 1, y: 44 }], closed: false, stroke: '#5b9cf0', strokeWidth: 8, fill: 'none', name: 'Progress arc' });
-    text(progress, 186, 78, 44, 23, '✦', 24, '#3d7fcd', 600);
-    text(dash, 220, 379, 309, 29, 'Your projects', 17, '#4b4057', 600, { letterSpacing: -.3 });
-    text(dash, 874, 384, 97, 20, 'View all projects  →', 9, '#8ea5c2');
-    const cards = [{ x: 219, bg: '#e6eefb', dot: '#5b9cf0', name: 'Website redesign', tag: 'Design', pct: 72, people: '#c9d8e8', desc: 'A fresh perspective for a familiar brand.' }, { x: 471, bg: '#eaf1ec', dot: '#87a691', name: 'Mobile experience', tag: 'Product', pct: 48, people: '#c8d6ce', desc: 'Small screen. Big possibilities.' }, { x: 723, bg: '#f6efe7', dot: '#c4a47f', name: 'Brand foundations', tag: 'Strategy', pct: 91, people: '#e1c6b4', desc: 'Everything that makes us, us.' }];
-    cards.forEach((c, i) => { const frame = add('frame', { parentId: dash.id, x: c.x, y: 420, w: 241, h: 170, fill: '#ffffff', radius: 10, name: c.name, stroke: '#eeeaf2', strokeWidth: 1 }); rect(frame, 15, 16, 31, 31, c.bg, 8, 'Project icon'); text(frame, 25, 22, 24, 25, ['✳', '▦', '◇'][i], 17, c.dot); text(frame, 208, 18, 20, 19, '···', 12, '#aca1b7'); text(frame, 16, 61, 210, 24, c.name, 13, '#5f526c', 600); text(frame, 16, 88, 218, 21, c.desc, 8, '#ab9fb5'); rect(frame, 16, 117, 208, 4, '#f3eff6', 2, 'Progress track'); rect(frame, 16, 117, 208 * c.pct / 100, 4, c.dot, 2, 'Progress'); ellipse(frame, 17, 140, 17, 17, c.people); ellipse(frame, 30, 140, 17, 17, '#e8e0ed', { stroke: '#ffffff', strokeWidth: 2 }); ellipse(frame, 43, 140, 17, 17, '#d9d0e4', { stroke: '#ffffff', strokeWidth: 2 }); text(frame, 182, 141, 44, 14, `${c.pct}% done`, 8, '#9d8eaa'); });
-    text(dash, 220, 618, 276, 25, 'A little momentum', 16, '#554760', 600, { letterSpacing: -.4 });
-    text(dash, 819, 623, 150, 18, 'Your most recent activity', 8, '#b0a3bb');
-    rect(dash, 220, 656, 743, 43, '#ffffff', 8, 'Activity');
-    ellipse(dash, 235, 667, 22, 22, '#e2e9f0');
-    text(dash, 242, 672, 15, 15, 'A', 8, '#5a7fa8', 500);
-    text(dash, 269, 670, 463, 19, 'Alex added new explorations to Website redesign', 10, '#8b7b99');
-    text(dash, 882, 672, 72, 16, '2 min ago', 8, '#b5a9bf');
-    const mob = add('frame', { x: 1064, y: 0, w: 310, h: 670, fill: '#22202c', radius: 28, name: '02 · Focus / Mobile', shadow: true, shadowOpacity: .28, shadowBlur: 22, shadowY: 12 });
-    text(mob, 24, 19, 55, 24, '9:41', 12, '#faf8fd', 600);
-    rect(mob, 230, 25, 12, 7, '#d6d0e2', 2);
-    rect(mob, 248, 22, 15, 10, 'none', 2, 'Battery', { stroke: '#d6d0e2', strokeWidth: 1 });
-    rect(mob, 250, 24, 10, 6, '#d6d0e2', 1);
-    text(mob, 24, 66, 202, 23, 'forma', 22, '#f0eafb', 600, { letterSpacing: -1 });
-    ellipse(mob, 258, 66, 27, 27, '#393341');
-    text(mob, 266, 72, 16, 18, '✧', 13, '#a0bdd0');
-    text(mob, 24, 127, 260, 78, 'Find your\nflow state.', 35, '#f6f1ff', 500, { letterSpacing: -1.4, lineHeight: 1.1 });
-    text(mob, 25, 221, 260, 24, 'Less noise. More of what matters.', 11, '#9d91ad');
-    const focus = add('frame', { parentId: mob.id, x: 20, y: 268, w: 270, h: 211, fill: '#7fb0e3', fill2: '#4a86c8', fillType: 'linear', gradientAngle: 140, radius: 17, name: 'Focus session' });
-    text(focus, 19, 17, 214, 20, 'YOUR DAILY MOMENT', 8, '#eaf2fb', 600, { letterSpacing: 1 });
-    ellipse(focus, 91, 47, 89, 89, 'none', { stroke: '#b6d2ef', strokeWidth: 2 });
-    ellipse(focus, 99, 55, 73, 73, 'none', { stroke: '#d2e4f7', strokeWidth: 1 });
-    text(focus, 104, 76, 100, 41, '25:00', 29, '#ffffff', 400, { letterSpacing: -1.2 });
-    text(focus, 104, 113, 90, 14, 'MINUTES OF FOCUS', 5.4, '#eaf2fb', 600, { letterSpacing: .7 });
-    rect(focus, 20, 158, 230, 36, '#f0f6fd', 9, 'Start session');
-    text(focus, 88, 169, 123, 19, 'Start a session   ↗', 10, '#3a74b0', 600);
-    text(mob, 24, 511, 234, 24, 'Make a little progress', 14, '#e4dbf0', 500);
-    rect(mob, 23, 549, 124, 53, '#2d2836', 10);
-    rect(mob, 160, 549, 127, 53, '#2d2836', 10);
-    text(mob, 36, 559, 104, 22, '4.5 hours', 16, '#dcd1ea', 500);
-    text(mob, 37, 583, 97, 13, 'FOCUSED THIS WEEK', 6, '#857591', 550, { letterSpacing: .5 });
-    text(mob, 174, 559, 102, 22, '7 day streak', 16, '#dcd1ea', 500);
-    text(mob, 175, 583, 103, 13, 'LOOK AT YOU GO', 6, '#857591', 550, { letterSpacing: .5 });
-    text(mob, 43, 627, 35, 27, '◒', 21, '#7fb0e3');
-    text(mob, 143, 629, 35, 27, '▦', 19, '#70637f');
-    text(mob, 241, 629, 35, 27, '◷', 19, '#70637f');
-    rect(mob, 116, 659, 78, 3, '#736681', 2);
-    text(null, 0, 785, 600, 40, 'The little details, considered.', 22, '#a89ab8', 500, { letterSpacing: -.6 });
-    text(null, 0, 825, 800, 22, 'A calm foundation. An expressive personality. A design system that gives ideas room to grow.', 10, '#736a80');
-    const tokens = add('frame', { x: 0, y: 883, w: 466, h: 162, fill: '#f8f6fc', radius: 10, name: '03 · Color palette' });
-    text(tokens, 23, 20, 300, 20, 'A softer kind of bold', 12, '#6d7f94', 600);
-    const sw = ['#0058CA', '#7fb0e3', '#dceafb', '#c7e0d3', '#edcfb7', '#2b2535'];
-    sw.forEach((c, i) => { rect(tokens, 23 + i * 72, 57, 60, 60, c, 9, 'Color ' + c); text(tokens, 23 + i * 72, 130, 65, 15, c.toUpperCase(), 7, '#a8b6c6', 500); });
-    const types = add('frame', { x: 491, y: 883, w: 395, h: 162, fill: '#e3edfb', radius: 10, name: '04 · Typography' });
-    text(types, 22, 18, 310, 20, 'TYPE THAT SETS THE TONE', 7, '#8fa9c6', 600, { letterSpacing: 1 });
-    text(types, 22, 53, 341, 57, 'Room to create.', 32, '#2f6198', 500, { letterSpacing: -1.1 });
-    text(types, 23, 124, 354, 19, 'Inter   /   Regular · Medium · Semibold', 9, '#8ba7c6');
-    const buttonFrame = add('frame', { x: 911, y: 883, w: 463, h: 162, fill: '#f7f5fb', radius: 10, name: '05 · Building blocks' });
-    text(buttonFrame, 22, 20, 392, 20, 'Small pieces. Endless possibilities.', 12, '#7f8ea3', 500);
-    rect(buttonFrame, 22, 62, 137, 36, '#0058CA', 7, 'Primary button');
-    text(buttonFrame, 48, 74, 106, 20, 'Create something  ↗', 9, '#ffffff', 500);
-    rect(buttonFrame, 176, 62, 124, 36, '#dceafb', 7, 'Secondary button');
-    text(buttonFrame, 200, 74, 93, 20, 'Take a look   →', 9, '#2f6198', 500);
-    rect(buttonFrame, 317, 62, 121, 36, '#ffffff', 7, 'Ghost button', { stroke: '#dde7f0', strokeWidth: 1 });
-    text(buttonFrame, 341, 74, 90, 20, 'Maybe later', 9, '#5c7fa6', 500);
-    rect(buttonFrame, 23, 118, 69, 22, '#dceafb', 11, 'Design tag');
-    text(buttonFrame, 39, 124, 54, 15, '●  Design', 8, '#3d7fcd');
-    rect(buttonFrame, 107, 118, 85, 22, '#e5ede7', 11, 'Progress tag');
-    text(buttonFrame, 120, 124, 74, 15, '●  In progress', 8, '#9bb7a5');
-    rect(buttonFrame, 207, 118, 88, 22, '#f0e6dc', 11, 'Priority tag');
-    text(buttonFrame, 222, 124, 70, 15, '●  High priority', 8, '#c3a07f');
-    page = ds;
-    const system = add('frame', { x: 0, y: 0, w: 1100, h: 850, fill: '#faf8fd', name: 'Forma / Design foundations', radius: 12 });
-    text(system, 60, 58, 980, 75, 'Designed to give ideas room.', 46, '#3f4c5c', 500, { letterSpacing: -1.6 });
-    text(system, 62, 149, 870, 30, 'Our visual language is calm, considered, and quietly expressive.', 17, '#8b99a8');
-    text(system, 63, 235, 800, 30, '01 / Color foundations', 21, '#64748a', 500);
-    defaultTokens().colors.forEach((c, i) => { rect(system, 63 + i * 164, 291, 143, 108, c.value, 12, c.name); text(system, 63 + i * 164, 418, 158, 23, c.name, 11, '#74879c', 500); text(system, 63 + i * 164, 445, 143, 20, c.value.toUpperCase(), 10, '#a3b1c0'); });
-    text(system, 63, 515, 800, 30, '02 / Typographic scale', 21, '#64748a', 500);
-    defaultTokens().typography.forEach((t, i) => { text(system, 64, 576 + i * 62, 270, 28, t.name, 11, '#9db0c2'); text(system, 360, 564 + i * 62, 680, 57, 'Make something meaningful.', t.size, '#4c6478', t.weight, { lineHeight: t.lineHeight, letterSpacing: t.size > 30 ? -1 : 0 }); });
-    return { format: 'midas', version: 1, name: 'Forma · Product design', pageId: p.id, pages: [p, ds, play], tokens: defaultTokens(), assets: {} };
+    const p = { id: uid(), name: 'Page 1', nodes: [] };
+    return { format: 'midas', version: 1, name: 'Untitled', pageId: p.id, pages: [p], tokens: defaultTokens(), assets: {}, variables: { collections: [], items: [] } };
 }
 
 
