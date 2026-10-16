@@ -1357,11 +1357,11 @@ function sizeFieldHtml(n, axis) {
         const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
         const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
         const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
-        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${bound ? varBindButton(dim) : ''}</div>`;
+        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${varBindButton(dim)}</div>`;
     }
     const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
     const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
-    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${bound ? varBindButton(dim) : ''}</div>`;
+    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${varBindButton(dim)}</div>`;
 }
 const MM_ICON = {
     min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
