@@ -5653,7 +5653,8 @@ class Renderer {
         const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0);
         this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
         let count = 0, clipN = 0;
-        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .5, 4) * quality;
+        // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
+        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .5, 32) * quality;
         const push = (s, n, clipId, shadow = false) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
@@ -7349,7 +7350,8 @@ function drawOverlay() {
         const n = doc.get(state.pathEdit), s = n && doc.world(n.id);
         if (n && s) {
             const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), m = multiply(s.matrix, [sx, 0, 0, sy, 0, 0]);
-            drawPen(c, n.points, m, accent, null, n.closed);
+            for (const sub of pathContours(n))
+                drawPen(c, sub.points, m, accent, null, sub.closed);
         }
     }
     if (options.rulers)
@@ -7496,17 +7498,21 @@ function pathHandleAt(screen) {
     if (!n)
         return null;
     const s = doc.world(n.id), sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), m = multiply(s.matrix, [sx, 0, 0, sy, 0, 0]);
-    for (let i = 0; i < n.points.length; i++) {
-        const a = n.points[i];
-        for (const key of ['in', 'out', 'anchor']) {
-            const p = key === 'anchor' ? a : a[key];
-            if (!p)
-                continue;
-            const w = point(m, p.x, p.y), sp = worldToScreen(w.x, w.y);
-            if (Math.hypot(sp.x - screen.x, sp.y - screen.y) < 7)
-                return { index: i, key, matrix: m };
-        }
-    }
+    // Anchors win over Bézier handles so a handle sitting on its anchor can never block dragging the point.
+    const subs = pathContours(n);
+    for (const keys of [['anchor'], ['in', 'out']])
+        for (let ci = 0; ci < subs.length; ci++)
+            for (let i = 0; i < subs[ci].points.length; i++) {
+                const a = subs[ci].points[i];
+                for (const key of keys) {
+                    const p = key === 'anchor' ? a : a[key];
+                    if (!p)
+                        continue;
+                    const w = point(m, p.x, p.y), sp = worldToScreen(w.x, w.y);
+                    if (Math.hypot(sp.x - screen.x, sp.y - screen.y) < 7)
+                        return { contour: ci, index: i, key, matrix: m };
+                }
+            }
     return null;
 }
 function saveOriginals(roots) {
@@ -7798,7 +7804,8 @@ function pointerMove(e) {
         return;
     }
     if (g.kind === 'path-edit') {
-        const n = doc.get(g.id), q = point(inverse(g.handle.matrix), w.x, w.y), a = n.points[g.handle.index], orig = g.original.points[g.handle.index];
+        const n = doc.get(g.id), q = point(inverse(g.handle.matrix), w.x, w.y), ci = g.handle.contour || 0;
+        const a = pathContours(n)[ci].points[g.handle.index], orig = pathContours(g.original)[ci].points[g.handle.index];
         if (g.handle.key === 'anchor') {
             const dx = q.x - orig.x, dy = q.y - orig.y;
             a.x = q.x;
@@ -8169,20 +8176,36 @@ function pathCurveBounds(points, closed) {
     }
     return { minX, minY, maxX, maxY };
 }
+// All sub-paths of a vector layer: the main points plus any extra contours (imported Figma vectors, boolean results).
+function pathContours(n) {
+    return [{ points: n.points || [], closed: n.closed }, ...(n.contours || []).map(c => ({ points: c.points || [], closed: c.closed !== false }))];
+}
 function normalizePath(n) {
     if (!n?.points?.length)
         return;
-    const { minX, minY, maxX, maxY } = pathCurveBounds(n.points, n.closed);
-    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), matrix = localMatrix(n), tl = point(matrix, minX * sx, minY * sy);
-    for (const p of n.points) {
-        p.x = (p.x - minX) * sx;
-        p.y = (p.y - minY) * sy;
-        for (const key of ['in', 'out'])
-            if (p[key]) {
-                p[key].x = (p[key].x - minX) * sx;
-                p[key].y = (p[key].y - minY) * sy;
-            }
+    // Every sub-path of the vector counts: the box wraps all of them.
+    const subs = pathContours(n);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const c of subs) {
+        if (!c.points?.length)
+            continue;
+        const b = pathCurveBounds(c.points, c.closed);
+        minX = Math.min(minX, b.minX);
+        minY = Math.min(minY, b.minY);
+        maxX = Math.max(maxX, b.maxX);
+        maxY = Math.max(maxY, b.maxY);
     }
+    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), matrix = localMatrix(n), tl = point(matrix, minX * sx, minY * sy);
+    for (const c of subs)
+        for (const p of c.points || []) {
+            p.x = (p.x - minX) * sx;
+            p.y = (p.y - minY) * sy;
+            for (const key of ['in', 'out'])
+                if (p[key]) {
+                    p[key].x = (p[key].x - minX) * sx;
+                    p[key].y = (p[key].y - minY) * sy;
+                }
+        }
     n.w = Math.max(.1, (maxX - minX) * sx);
     n.h = Math.max(.1, (maxY - minY) * sy);
     n.pathW = n.w;
@@ -11127,10 +11150,15 @@ async function figToMidas(file, onProgress, abortSignal) {
             const chain = (list, closed) => {
                 const pts = [];
                 let at = null;
-                for (const si of list) {
+                // Segments are stored in any direction: the first one must run towards the vertex it shares with the next one.
+                const valid = list.filter(si => segs[si] && verts[segs[si].a] && verts[segs[si].b]);
+                if (valid.length > 1) {
+                    const s0 = segs[valid[0]], s1 = segs[valid[1]], shares = v => v === s1.a || v === s1.b;
+                    // `at` = the vertex the first segment starts from (the end it does not share with the next one)
+                    at = shares(s0.a) && !shares(s0.b) ? s0.b : s0.a;
+                }
+                for (const si of valid) {
                     const s = segs[si];
-                    if (!s || !verts[s.a] || !verts[s.b])
-                        continue;
                     const fwd = at === null ? true : s.a === at || s.b !== at;
                     const [from, tFrom, to, tTo] = fwd ? [s.a, s.ta, s.b, s.tb] : [s.b, s.tb, s.a, s.ta];
                     if (!pts.length)
@@ -11299,7 +11327,19 @@ async function figToMidas(file, onProgress, abortSignal) {
                 geo = geometrySubs(f.strokeGeometry);
                 strokeOnly = !!geo;
             }
+            if (!geo && f.type !== 'VECTOR') {
+                // No baked geometry on the clipboard: rebuild a star / polygon from its parameters so it stays an editable path.
+                const w = Math.max(1, f.size?.x || 1), h = Math.max(1, f.size?.y || 1), star = f.type === 'STAR';
+                const count = Math.max(3, Math.round(f.pointCount || (star ? 5 : 3))), inner = star ? f.starInnerScale ?? .382 : 1;
+                const pts = [];
+                for (let i = 0; i < (star ? count * 2 : count); i++) {
+                    const a = -Math.PI / 2 + i * Math.PI / (star ? count : count / 2), r = star && i % 2 ? inner : 1;
+                    pts.push({ x: w / 2 + Math.cos(a) * r * w / 2, y: h / 2 + Math.sin(a) * r * h / 2 });
+                }
+                geo = { subs: [{ pts, closed: true }], evenodd: false };
+            }
             if (!geo) {
+                console.warn('[Figma import] vector without readable geometry', f.name, Object.keys(f));
                 note('a vector shape had no readable geometry');
                 n.type = 'rect';
                 applyFills(n, f);
