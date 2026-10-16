@@ -42,6 +42,7 @@ function node(type, props = {}) { return { id: uid(), type, name: type[0].toUppe
 // ===== autolayout engine =====
 function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none'; }
 function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
+const lyPadsBase = lyPads;
 function lyGap(n) { return n.gap ?? 16; }
 function sizingOf(n, axis) {
     const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
@@ -64,6 +65,20 @@ function runLayout(d) {
     }
     const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
     const parentOf = n => d.get(n.parentId);
+    // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
+    // frame's own inner stroke pushes its content in, like Figma.
+    const strokeOut = c => !strokeIsOn(c) ? 0 : c.strokeAlign === 'inside' ? 0 : c.strokeAlign === 'outside' ? (c.strokeWidth || 0) : (c.strokeWidth || 0) / 2;
+    const strokeIn = n => !strokeIsOn(n) ? 0 : n.strokeAlign === 'outside' ? 0 : n.strokeAlign === 'inside' ? (n.strokeWidth || 0) : (n.strokeWidth || 0) / 2;
+    const ext = c => parentOf(c)?.strokesIncluded ? strokeOut(c) : 0;
+    const lyPads = n => {
+        const P = lyPadsBase(n);
+        if (!n.strokesIncluded)
+            return P;
+        const s = strokeIn(n);
+        return { t: P.t + s, r: P.r + s, b: P.b + s, l: P.l + s };
+    };
+    // First-line baseline of a layer, measured from its top (non-text layers sit on their bottom edge).
+    const baselineOf = c => c.type === 'text' ? ((c.fontSize || 16) * (c.lineHeight || 1.2) - (c.fontSize || 16)) / 2 + (c.fontSize || 16) * .8 : c.h;
     const inFlow = c => c.visible !== false && c.layoutPositioning !== 'absolute';
     const eff = (n, axis) => {
         let v = sizingOf(n, axis);
@@ -82,7 +97,7 @@ function runLayout(d) {
         const lines = [];
         let line = [], run = 0;
         for (const c of fl) {
-            const cs = horiz ? c.w : c.h;
+            const cs = sizeOn(c, horiz ? 'h' : 'v');
             if (line.length && run + gap + cs > inner + .001) {
                 lines.push(line);
                 line = [];
@@ -95,7 +110,7 @@ function runLayout(d) {
             lines.push(line);
         return lines;
     };
-    const sizeOn = (c, axis) => axis === 'h' ? c.w : c.h;
+    const sizeOn = (c, axis) => (axis === 'h' ? c.w : c.h) + 2 * ext(c);
     // Grid tracks: column width / row height = largest child in that column / row.
     const gridCols = n => Math.max(1, Math.round(n.gridCols || 2));
     const gridTracks = (n, fl) => {
@@ -219,7 +234,7 @@ function runLayout(d) {
                     const gapUse = n.gapAuto ? 0 : gap, fixedTot = fl.reduce((s, c) => s + (sizingOf(c, axis) === 'fill' ? 0 : sizeOn(c, axis)), 0);
                     const share = Math.max(0, (inner - fixedTot - gapUse * Math.max(0, fl.length - 1)) / fills.length);
                     for (const c of fills)
-                        assign(c, axis, share);
+                        assign(c, axis, Math.max(0, share - 2 * ext(c)));
                 }
             }
             else if (!prim) {
@@ -266,7 +281,7 @@ function runLayout(d) {
         }
         const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow);
         const innerW = Math.max(0, n.w - P.l - P.r), innerH = Math.max(0, n.h - P.t - P.b), innerP = horiz ? innerW : innerH, innerC = horiz ? innerH : innerW;
-        const prim = c => horiz ? c.w : c.h, crossOf = c => horiz ? c.h : c.w;
+        const prim = c => (horiz ? c.w : c.h) + 2 * ext(c), crossOf = c => (horiz ? c.h : c.w) + 2 * ext(c);
         const lines = wrap ? breakLines(fl, innerP, gap, horiz) : [fl];
         const pAlign = n.primaryAlign || 'start', cAlign = n.counterAlign || n.layoutAlign || 'start', between = !!n.gapAuto;
         let crossAt = 0;
@@ -274,18 +289,29 @@ function runLayout(d) {
             const k = line.length, gapUse = between ? 0 : gap, lineCross = wrap ? Math.max(0, ...line.map(crossOf)) : innerC;
             const used = line.reduce((s, c) => s + prim(c), 0);
             let g = gapUse, off = 0;
-            if (between && k > 1)
-                g = Math.max(0, (innerP - used) / (k - 1));
+            // Auto gap: Between (edges flush), Evenly (equal space everywhere), Around (half space at the edges).
+            const mode = n.gapMode || 'between', free = Math.max(0, innerP - used);
+            if (between && mode === 'evenly' && k)
+                off = g = free / (k + 1);
+            else if (between && mode === 'around' && k) {
+                g = free / k;
+                off = g / 2;
+            }
+            else if (between && k > 1)
+                g = Math.max(0, free / (k - 1));
             else {
                 const total = used + gapUse * Math.max(0, k - 1);
                 off = pAlign === 'center' ? (innerP - total) / 2 : pAlign === 'end' ? innerP - total : 0;
             }
             let at = off;
+            // Align text baseline (horizontal only): every layer's first baseline lines up with the lowest one.
+            const baseline = horiz && n.alignBaseline ? Math.max(0, ...line.map(c => baselineOf(c) + ext(c))) : null;
             for (const c of line) {
-                const cs = crossOf(c), co = cAlign === 'center' ? (lineCross - cs) / 2 : cAlign === 'end' ? lineCross - cs : 0;
+                const cs = crossOf(c), e = ext(c);
+                const co = baseline !== null ? baseline - baselineOf(c) - e : cAlign === 'center' ? (lineCross - cs) / 2 : cAlign === 'end' ? lineCross - cs : 0;
                 if (!c._drag) {
-                    if (horiz) { c.x = P.l + at; c.y = P.t + crossAt + co; }
-                    else { c.x = P.l + crossAt + co; c.y = P.t + at; }
+                    if (horiz) { c.x = P.l + at + e; c.y = P.t + crossAt + co + e; }
+                    else { c.x = P.l + crossAt + co + e; c.y = P.t + at + e; }
                 }
                 at += prim(c) + g;
             }
@@ -423,10 +449,82 @@ function autoLayoutControls(n) {
     const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
     const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }));
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
-    return `<div class="field-label"><span>Alignment &amp; gap</span></div>
+    return `<div class="field-label"><span>Alignment &amp; gap</span><button class="icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
 <div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: 'Row gap' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: wrap && !horiz ? 'Gap between columns' : 'Gap between rows' }) : ''}`}</div></div>
 <div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding">▢</button></div>${padFields}`;
 }
+// ----- auto layout settings (strokes in layout, canvas stacking, text baseline, auto spacing) -----
+let lyPop = null;
+function closeLayoutSettings() {
+    if (!lyPop)
+        return;
+    lyPop.el.remove();
+    document.removeEventListener('pointerdown', lyPop.away, true);
+    lyPop = null;
+}
+function renderLayoutSettings() {
+    const n = selected().find(isAutoLayout);
+    if (!lyPop || !n) {
+        closeLayoutSettings();
+        return;
+    }
+    const horiz = n.layout === 'horizontal', auto = !!n.gapAuto && n.layout !== 'grid';
+    const sel = (key, value, opts, disabled = false) => `<select data-ly-set="${key}" ${disabled ? 'disabled' : ''}>${opts.map(([v, l]) => `<option value="${v}" ${String(value) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    lyPop.el.innerHTML = `<div class="pp-head"><span>Auto layout settings</span><button class="icon-button small" data-ly-close aria-label="Close">${icon('close', 14)}</button></div>
+<div class="pp-row"><label>Strokes</label>${sel('strokesIncluded', !!n.strokesIncluded, [['false', 'Excluded'], ['true', 'Included']])}</div>
+<div class="pp-row"><label>Canvas stacking</label>${sel('layoutReverseZ', !!n.layoutReverseZ, [['false', 'Last on top'], ['true', 'First on top']])}</div>
+<div class="pp-row ${horiz ? '' : 'off'}"><label>Align text baseline</label><div class="ly-seg"><button data-ly-baseline="false" class="${!n.alignBaseline ? 'on' : ''}" ${horiz ? '' : 'disabled'} aria-label="Off">—</button><button data-ly-baseline="true" class="${n.alignBaseline ? 'on' : ''}" ${horiz ? '' : 'disabled'} aria-label="On">${icon('check', 13)}</button></div></div>
+<div class="pp-row ${auto ? '' : 'off'}"><label>Auto spacing</label>${sel('gapMode', n.gapMode || 'between', [['between', 'Between'], ['evenly', 'Evenly'], ['around', 'Around']], !auto)}</div>`;
+}
+function setLayoutSetting(key, value) {
+    transaction('Auto layout settings', () => {
+        for (const n of selected().filter(isAutoLayout)) {
+            if (value === false || value === 'between' && key === 'gapMode')
+                delete n[key];
+            else
+                n[key] = value;
+            doc.touch(n);
+        }
+    });
+    renderLayoutSettings();
+}
+function openLayoutSettings(anchor) {
+    if (lyPop) {
+        closeLayoutSettings();
+        return;
+    }
+    const el = document.createElement('div');
+    el.className = 'prop-pop ly-pop';
+    document.body.appendChild(el);
+    lyPop = { el, away: ev => { if (!el.contains(ev.target) && !ev.target.closest('[data-ly-settings]'))
+            closeLayoutSettings(); } };
+    document.addEventListener('pointerdown', lyPop.away, true);
+    renderLayoutSettings();
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
+    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
+    el.addEventListener('change', e => {
+        const t = e.target.closest('[data-ly-set]');
+        if (t)
+            setLayoutSetting(t.dataset.lySet, t.value === 'true' ? true : t.value === 'false' ? false : t.value);
+    });
+    el.addEventListener('click', e => {
+        if (e.target.closest('[data-ly-close]'))
+            closeLayoutSettings();
+        const b = e.target.closest('[data-ly-baseline]');
+        if (b && !b.disabled)
+            setLayoutSetting('alignBaseline', b.dataset.lyBaseline === 'true');
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeLayoutSettings();
+    } });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('#inspector [data-ly-settings]');
+    if (b)
+        openLayoutSettings(b);
+});
 const TX_ICONS = {
     'auto-w': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M6.5 8h6.5M10.8 5.8 13 8l-2.2 2.2"/></svg>',
     'auto-h': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M13 3v10M6.5 6h3M6.5 8.5h3M6.5 11h3"/></svg>',
@@ -856,27 +954,99 @@ function aliasReaches(item, targetId, depth = 0) {
     return false;
 }
 function closeVarPicker() { document.getElementById('var-picker')?.remove(); }
+// ----- shared variable list (Figma-style): search, collection filter, list / grid, collection → group hierarchy -----
+const VPK = { coll: '', view: 'list' };
+function varListHead(q, searchAttrs = '', types = []) {
+    const store = varStore(), grid = VPK.view === 'grid', canGrid = types.length && types.every(t => t === 'color');
+    if (VPK.coll && !varColl(VPK.coll))
+        VPK.coll = '';
+    return `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search ${searchAttrs} placeholder="Search" value="${esc(q)}" spellcheck="false" autocomplete="off" aria-label="Search variables"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Collection"><option value="">All libraries</option>${store.collections.map(c => `<option value="${c.id}" ${VPK.coll === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label>${canGrid ? `<button class="icon-button small" data-vpk-view title="${grid ? 'List view' : 'Grid view'}" aria-label="Toggle grid view">${icon(grid ? 'layers' : 'grid', 14)}</button>` : ''}</div></div>`;
+}
+function varListHtml({ types, filter = () => true, q = '', current = null, attr = 'data-pick', limit = 400 }) {
+    const store = varStore(), ql = q.trim().toLowerCase(), grid = VPK.view === 'grid' && types.every(t => t === 'color');
+    let html = '', shown = 0, hidden = 0;
+    for (const c of store.collections) {
+        if (VPK.coll && c.id !== VPK.coll)
+            continue;
+        const items = store.items.filter(i => i.collectionId === c.id && types.includes(i.type) && filter(i) && (!ql || i.name.toLowerCase().includes(ql)));
+        if (!items.length)
+            continue;
+        html += `<div class="vpk-coll">${esc(c.name)}</div>`;
+        const groups = new Map();
+        for (const i of items) {
+            const g = i.name.split('/').slice(0, -1).join('/');
+            (groups.get(g) || groups.set(g, []).get(g)).push(i);
+        }
+        for (const [g, list] of groups) {
+            if (g)
+                html += `<div class="vpk-group">${esc(g.split('/').join(' / '))}</div>`;
+            let row = '';
+            for (const i of list) {
+                if (shown >= limit) {
+                    hidden++;
+                    continue;
+                }
+                shown++;
+                const val = varDisplayValue(i), leaf = i.name.split('/').pop();
+                if (grid) {
+                    row += `<button class="vpk-sw ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}" style="background:${esc(safeColor(String(val)))}"></button>`;
+                    continue;
+                }
+                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(safeColor(String(val)))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
+                const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : String(val ?? '');
+                row += `<button class="vp-item vpk-item ${g ? 'in-group' : ''} ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}">${sw}<span class="vp-name">${esc(leaf)}</span><span class="vp-val">${esc(shownVal)}</span>${i.id === current ? icon('check', 12) : ''}</button>`;
+            }
+            if (row)
+                html += grid ? `<div class="vpk-grid">${row}</div>` : row;
+        }
+    }
+    if (hidden)
+        html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
+    return html || `<div class="vp-empty">No variables${ql ? ' match your search' : ' yet. Create some in the Variables window'}.</div>`;
+}
 function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null }) {
     closeVarPicker();
-    const store = varStore(), pop = document.createElement('div');
+    const pop = document.createElement('div'), want = types || [type];
     pop.id = 'var-picker';
     pop.className = 'var-picker';
-    const render = q => {
-        const groups = store.collections.map(c => {
-            const items = store.items.filter(i => i.collectionId === c.id && (types ? types.includes(i.type) : i.type === type) && varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude)) && i.name.toLowerCase().includes(q));
-            return items.length ? `<div class="vp-group">${esc(c.name)}</div>${items.map(i => { const val = varDisplayValue(i); const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`; return `<button class="vp-item ${i.id === current ? 'on' : ''}" data-pick="${i.id}">${sw}<span class="vp-name">${esc(i.name)}</span><span class="vp-val">${i.type === 'color' ? '' : esc(i.type === 'effect' ? fxSummary(val) : String(val ?? ''))}</span></button>`; }).join('')}` : '';
-        }).join('');
-        pop.querySelector('.vp-list').innerHTML = groups || `<div class="vp-empty">No ${type} variables${q ? ' match' : ' yet'}. Open the Variables window to create one.</div>`;
+    let q = '', limit = 400;
+    const filter = i => varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude));
+    const render = () => { pop.querySelector('.vp-list').innerHTML = varListHtml({ types: want, filter, q, current, limit }); };
+    const build = () => {
+        pop.innerHTML = `${varListHead(q, '', want)}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
+        render();
     };
-    pop.innerHTML = `<input class="vp-search" placeholder="Search variables" aria-label="Search variables" spellcheck="false"><div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
+    build();
     document.body.appendChild(pop);
-    render('');
-    const r = anchor.getBoundingClientRect(), w = 250;
+    const r = anchor.getBoundingClientRect(), w = 280;
     pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
-    pop.style.top = Math.max(8, Math.min(innerHeight - 340, r.top - 4)) + 'px';
-    const search = pop.querySelector('.vp-search');
-    search.focus();
-    search.addEventListener('input', () => render(search.value.trim().toLowerCase()));
+    pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
+    pop.querySelector('[data-vpk-search]').focus();
+    pop.addEventListener('input', e => {
+        if (!e.target.matches('[data-vpk-search]'))
+            return;
+        q = e.target.value;
+        limit = 400;
+        render();
+    });
+    pop.addEventListener('change', e => {
+        if (!e.target.matches('[data-vpk-coll]'))
+            return;
+        VPK.coll = e.target.value;
+        render();
+    });
+    pop.addEventListener('click', e => {
+        if (e.target.closest('[data-vpk-view]')) {
+            VPK.view = VPK.view === 'grid' ? 'list' : 'grid';
+            build();
+            return;
+        }
+        if (e.target.closest('[data-vpk-more]')) {
+            limit += 400;
+            render();
+            return;
+        }
+    });
     pop.addEventListener('click', e => {
         const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]');
         if (e.target.closest('[data-pick-create]')) {
@@ -1216,12 +1386,13 @@ function openPopMenu(anchor, items) {
     const el = document.createElement('div');
     el.className = 'stp stp-menu';
     el.style.width = '220px';
-    el.innerHTML = items.map((it, i) => it === '-' ? '<div class="menu-divider"></div>' : it.header ? `<div class="pm-header">${esc(it.header)}</div>` : `<button data-pm="${i}" ${it.disabled ? 'disabled' : ''}>${it.icon ? `<span class="pm-icon">${it.icon}</span>` : `<span class="chk">${it.checked ? '✓' : ''}</span>`}${esc(it.label)}</button>`).join('');
+    el.innerHTML = items.map((it, i) => it === '-' ? '<div class="menu-divider"></div>' : it.header ? `<div class="pm-header">${esc(it.header)}</div>` : `<button data-pm="${i}" ${it.disabled ? 'disabled' : ''}>${it.checked !== undefined || !it.icon ? `<span class="chk">${it.checked ? '✓' : ''}</span>` : ''}${it.icon ? `<span class="pm-icon">${it.icon}</span>` : ''}<span class="pm-label">${esc(it.label)}</span>${it.count !== undefined && it.count !== '' ? `<span class="pm-count">${esc(String(it.count))}</span>` : ''}</button>`).join('');
     document.body.appendChild(el);
     const a = anchor.getBoundingClientRect();
     el.style.left = Math.max(8, Math.min(a.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8)) + 'px';
     el.style.top = Math.max(8, Math.min(a.bottom + 6, window.innerHeight - el.offsetHeight - 8)) + 'px';
-    popMenu = { el, items, anchor };
+    // born: the click that opened the menu is still bubbling to the document listener below; it must not close it.
+    popMenu = { el, items, anchor, born: performance.now() };
 }
 function pickVariableFor(anchor, prop) {
     openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
@@ -1280,7 +1451,7 @@ document.addEventListener('click', e => {
             it.run?.();
             return;
         }
-        if (!had.el.contains(e.target))
+        if (!had.el.contains(e.target) && e.timeStamp >= had.born)
             closePopMenu();
     }
     let el;
@@ -1575,8 +1746,8 @@ function vwTx(label, fn, rerender = true) {
     history.begin(label);
     fn();
     doc.touch();
-    history.commit();
-    saveSoon();
+    if (history.commit())
+        saveSoon();
     invalidate();
     if (rerender)
         renderVarsWindow();
@@ -2269,11 +2440,13 @@ function getFills(n) {
         return [{ type: 'linear', color: n.fill, color2: n.fill2 || '#ffffff', angle: n.gradientAngle ?? 90, opacity: n.fillOpacity ?? 1, visible: true }];
     return [{ type: 'solid', color: n.fill, opacity: n.fillOpacity ?? 1, visible: true }];
 }
+// Gradients the GPU quad shader can't draw itself (it only knows a centred 2-colour linear ramp).
+function isRichGradient(f) { return f.type === 'radial' || f.type === 'angular' || f.type === 'diamond' || f.type === 'linear' && (f.stops?.length > 2 || !!f.handles); }
 function needsRasterFill(n) {
     if (['text', 'group', 'image'].includes(n.type))
         return false;
     const f = getFills(n).filter(x => x.visible !== false);
-    return f.length > 1 || (f.length === 1 && f[0].type === 'image');
+    return f.length > 1 || (f.length === 1 && (f[0].type === 'image' || isRichGradient(f[0])));
 }
 function materializeFills(n) {
     if (!Array.isArray(n.fills)) {
@@ -2336,9 +2509,60 @@ function imageFillPattern(ctx, f, n) {
     }
     return p;
 }
+// Stops for a gradient fill. The first / last stop follow color / color2, so editing those in the fill picker still works.
+function gradientStops(f) {
+    const s = Array.isArray(f.stops) && f.stops.length >= 2 ? f.stops.map(x => ({ ...x })) : [{ pos: 0, color: f.color || '#d9d9d9' }, { pos: 1, color: f.color2 || '#ffffff' }];
+    s.sort((a, b) => a.pos - b.pos);
+    if (f.color)
+        s[0].color = f.color;
+    if (f.color2)
+        s[s.length - 1].color = f.color2;
+    return s;
+}
+const gradientCache = new Map();
+// Radial / angular / diamond (and linear with explicit handles or many stops) are painted once into a small
+// offscreen canvas in layer space and used as a pattern; gradients are smooth, so 512 px is plenty.
+function gradientPattern(ctx, f, n) {
+    const w = Math.max(1, n.w), h = Math.max(1, n.h), res = Math.min(512, Math.max(16, Math.ceil(Math.max(w, h))));
+    const cw = Math.max(1, Math.round(res * w / Math.max(w, h))), ch = Math.max(1, Math.round(res * h / Math.max(w, h)));
+    const key = JSON.stringify([f.type, gradientStops(f), f.handles, f.angle, cw, ch]);
+    let canvas = gradientCache.get(key);
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const g = canvas.getContext('2d'), stops = gradientStops(f), H = f.handles;
+        g.scale(cw, ch); // draw in 0–1 layer space
+        const add = gr => { for (const s of stops)
+            gr.addColorStop(s.pos, s.color); return gr; };
+        if (f.type === 'linear') {
+            const a = H?.a || { x: 0, y: .5 }, b = H?.b || { x: 1, y: .5 };
+            g.fillStyle = add(g.createLinearGradient(a.x, a.y, b.x, b.y));
+            g.fillRect(0, 0, 1, 1);
+        }
+        else {
+            const c = H?.a || { x: .5, y: .5 }, bx = H?.b || { x: 1, y: .5 }, by = H?.c || { x: .5, y: 1 };
+            // Map the unit circle onto the gradient's ellipse (its axes can be rotated and skewed).
+            g.transform(bx.x - c.x, bx.y - c.y, by.x - c.x, by.y - c.y, c.x, c.y);
+            if (f.type === 'angular' && g.createConicGradient)
+                g.fillStyle = add(g.createConicGradient(0, 0, 0));
+            else
+                g.fillStyle = add(g.createRadialGradient(0, 0, 0, 0, 0, f.type === 'diamond' ? 1.2 : 1));
+            g.fillRect(-1000, -1000, 2000, 2000);
+        }
+        if (gradientCache.size > 128)
+            gradientCache.delete(gradientCache.keys().next().value);
+        gradientCache.set(key, canvas);
+    }
+    const p = ctx.createPattern(canvas, 'no-repeat');
+    p?.setTransform(new DOMMatrix().scale(w / cw, h / ch));
+    return p;
+}
 function fillPaint(ctx, f, n) {
     if (f.type === 'solid')
         return f.color && f.color !== 'none' ? f.color : null;
+    if (isRichGradient(f))
+        return gradientPattern(ctx, f, n);
     if (f.type === 'linear') {
         const r = (f.angle ?? 90) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
         const g = ctx.createLinearGradient(n.w / 2 - c * len / 2, n.h / 2 - s * len / 2, n.w / 2 + c * len / 2, n.h / 2 + s * len / 2);
@@ -2363,7 +2587,7 @@ function paintFills(ctx, n, path, alpha = 1, afterFirst = null) {
             continue;
         ctx.fillStyle = paint;
         ctx.globalAlpha = alpha * (f.opacity ?? 1);
-        ctx.fill(path);
+        ctx.fill(path, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
         if (first) {
             first = false;
             afterFirst?.();
@@ -2873,6 +3097,7 @@ async function loadIntoEditor(data, id) {
     history.redoStack = [];
     doc.data = data;
     doc.refresh();
+    markPagesSaved();
     state.selection.clear();
     state.expanded.clear();
     state.expandedPages.clear();
@@ -2901,7 +3126,8 @@ async function libOpen(id) {
         return;
     }
     if (id !== lib.fileId) {
-        await save();
+        if (state.dirty)
+            await save();
         let data = await projectStorage.loadProject(id);
         if (!data) {
             toast('This file could not be found.');
@@ -2921,10 +3147,12 @@ async function libOpen(id) {
     hideHome();
 }
 async function libNew(templateId = 'blank', { stay = false } = {}) {
-    await save();
+    if (state.dirty)
+        await save();
     const data = templateData(templateId), id = uid(), now = Date.now();
     lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null });
     await loadIntoEditor(data, id);
+    savedPageSigs.clear(); // a new file: every page still has to be written
     await save();
     if (!stay)
         hideHome();
@@ -2951,7 +3179,8 @@ async function libImportFile(file) {
         }
         else
             data = DocumentModel.parse(await file.text());
-        await save();
+        if (state.dirty)
+            await save();
         const id = uid(), now = Date.now();
         lib.index.unshift({ id, name: data.name || 'Imported file', created: now, updated: now, opened: now, thumb: null });
         toast('Saving project to local storage…');
@@ -3193,7 +3422,11 @@ async function showHome({ thumb = true } = {}) {
         const m = lib.index.find(x => x.id === lib.fileId), t = m ? await makeThumb() : null;
         if (m && t)
             m.thumb = t;
-        await save();
+        // The thumbnail lives in the file index; the document itself is only written if it has unsaved edits.
+        if (state.dirty)
+            await save();
+        else
+            await libSaveIndex();
     }
     const home = ensureHome();
     lib.open = true;
@@ -3289,7 +3522,7 @@ function paintDropShadow(ctx, n, path, e) {
         ctx.scale(Math.max(.001, (n.w + 2 * sp) / n.w), Math.max(.001, (n.h + 2 * sp) / n.h));
         ctx.translate(-n.w / 2, -n.h / 2);
     }
-    ctx.fill(path);
+    ctx.fill(path, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
     if (sp > 0) {
         ctx.lineWidth = sp * 2;
         ctx.lineJoin = 'round';
@@ -3738,8 +3971,10 @@ function hsvToRgb(h, s, v) {
 }
 const hsvHex = ({ h, s, v }) => rgbToHex(...hsvToRgb(h, s, v));
 function swatchBg(f, hidden) {
-    if (f.type === 'linear')
-        return `linear-gradient(90deg, ${esc(f.color || '#d9d9d9')}, ${esc(f.color2 || '#ffffff')})`;
+    if (['linear', 'radial', 'angular', 'diamond'].includes(f.type)) {
+        const stops = gradientStops(f).map(s => `${esc(s.color)} ${Math.round(s.pos * 100)}%`).join(', ');
+        return f.type === 'linear' ? `linear-gradient(90deg, ${stops})` : f.type === 'angular' ? `conic-gradient(${stops})` : `radial-gradient(circle, ${stops})`;
+    }
     const [r, g, b] = hexToRgb(f.color || '#d9d9d9'), a = hidden ? 0 : (f.opacity ?? 1);
     return `linear-gradient(rgba(${r},${g},${b},${a}), rgba(${r},${g},${b},${a})), var(--checker-sm)`;
 }
@@ -3754,7 +3989,7 @@ function fillRow(n, f, i, simple) {
         field = `<div class="fr-field ${bound ? 'bound' : ''}"><input class="fr-hex-in" data-fill-hex="${i}" value="${esc(bound ? bound.name : col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Fill color: hex or variable name">${bound ? `<button class="fr-detach" data-var-detach="fills.${i}" title="Detach variable" aria-label="Detach variable">${VAR_ICON}</button>` : ''}</div>`;
     }
     else
-        field = `<button class="fr-field static" data-fill-open="${i}">${f.type === 'linear' ? 'Linear gradient' : 'Image'}</button>`;
+        field = `<button class="fr-field static" data-fill-open="${i}">${({ linear: 'Linear gradient', radial: 'Radial gradient', angular: 'Angular gradient', diamond: 'Diamond gradient' })[f.type] || 'Image'}</button>`;
     const opacity = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
     const ops = simple ? '' : `<button class="icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
     const grip = simple ? '' : `<span class="fr-grip" data-fill-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>`;
@@ -3951,8 +4186,8 @@ function renderFillPicker() {
     const { h, s, v } = FP.hsv, a = f.opacity ?? 1;
     let body = '';
     if (FP.tab === 'libs') {
-        const groups = colorVariableGroups(FP.search);
-        body = `<input class="vp-search pk-search" data-pk-search placeholder="Search variables" value="${esc(FP.search)}" spellcheck="false"><div class="pk-libs">${groups.length ? groups.map(g => `<div class="vp-group">${esc(g.c.name)}</div>${g.items.map(x => `<button class="vp-item" data-pk-var="${x.id}"><i class="vw-sw" style="background:${esc(String(varDisplayValue(x) ?? '#000'))}"></i><span class="vp-name">${esc(x.name)}</span></button>`).join('')}`).join('') : '<div class="vp-empty">No color variables yet. Create some in the Variables window.</div>'}</div>`;
+        const cur = activeNode()?.vars?.[`fills.${FP.i}`] || null;
+        body = `<div class="pk-libwrap">${varListHead(FP.search, 'data-pk-search', ['color'])}<div class="pk-libs">${varListHtml({ types: ['color'], filter: v => varInScope(v, 'fill'), q: FP.search, current: cur, attr: 'data-pk-var', limit: FP.libLimit || 400 })}</div></div>`;
     }
     else if (f.type === 'image')
         body = `<div class="pk-pad"><button class="wide-button full-width" data-fill-image-pick="${FP.i}">Replace image</button><select class="full-width" data-fill-idx="${FP.i}" data-fill-key="mode" aria-label="Image mode" style="margin-top:8px"><option value="fill" ${(f.mode || 'fill') === 'fill' ? 'selected' : ''}>Fill</option><option value="fit" ${f.mode === 'fit' ? 'selected' : ''}>Fit</option><option value="tile" ${f.mode === 'tile' ? 'selected' : ''}>Tile</option></select>${f.mode === 'tile' ? `<label class="field" style="margin-top:8px"><span>⤢</span><input type="number" min="5" max="1000" value="${fmt((f.scale || 1) * 100)}" data-fill-idx="${FP.i}" data-fill-key="scale" aria-label="Tile scale"><i class="unit">%</i></label>` : ''}</div>`;
@@ -4067,9 +4302,26 @@ function wireFillPicker(el) {
                 renderFillPicker();
             } }).catch(() => { });
     });
+    el.addEventListener('change', e => {
+        if (e.target.matches('[data-vpk-coll]')) {
+            VPK.coll = e.target.value;
+            renderFillPicker();
+        }
+    });
+    el.addEventListener('click', e => {
+        if (e.target.closest('[data-vpk-view]')) {
+            VPK.view = VPK.view === 'grid' ? 'list' : 'grid';
+            renderFillPicker();
+        }
+        else if (e.target.closest('[data-vpk-more]')) {
+            FP.libLimit = (FP.libLimit || 400) + 400;
+            renderFillPicker();
+        }
+    });
     el.addEventListener('input', e => {
         if (e.target.matches('[data-pk-search]')) {
             FP.search = e.target.value;
+            FP.libLimit = 400;
             const pos = e.target.selectionStart;
             renderFillPicker();
             const s = el.querySelector('[data-pk-search]');
@@ -4421,7 +4673,9 @@ class DocumentModel {
                 return;
             // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
             let clips = parentClips;
-            for (const n of byParent.get(pid) || []) {
+            // Auto layout "Canvas stacking: First on top" paints the children in reverse order (layer order is unchanged).
+            const kidsOf = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
+            for (const n of pn?.layoutReverseZ && isAutoLayout(pn) ? [...kidsOf].reverse() : kidsOf) {
                 if (visited.has(n.id))
                     continue;
                 visited.add(n.id);
@@ -4434,8 +4688,9 @@ class DocumentModel {
                 if (n.booleanOp || boolInside.has(pid))
                     boolInside.add(n.id);
                 walk(n.id, mat, o, next, hide, lock, depth + 1);
-                if (n.isMask && n.visible && n.type !== 'group')
-                    clips = [...parentClips, { mask: n, matrix: mat, inverse: inverse(mat), w: n.w, h: n.h }];
+                if (n.isMask && n.visible)
+                    // radius/radii let the GPU path approximate the mask with its rounded box (or ellipse) on huge scenes.
+                    clips = [...parentClips, { mask: n, matrix: mat, inverse: inverse(mat), w: n.w, h: n.h, radius: n.type === 'ellipse' ? Math.min(n.w, n.h) / 2 : n.radius || 0, radii: n.type === 'ellipse' ? null : cornerRadii(n) }];
             }
         };
         walk(null, identity(), 1, [], false, false, 0);
@@ -5073,29 +5328,28 @@ function pathFor(n) {
         if (!pts.length)
             return p;
         const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1);
-        p.moveTo(pts[0].x * sx, pts[0].y * sy);
-        for (let i = 1; i < pts.length; i++) {
-            const a = pts[i - 1], b = pts[i];
-            if (a.out || b.in)
-                p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
-            else
-                p.lineTo(b.x * sx, b.y * sy);
-        }
-        if (n.closed) {
-            const a = pts.at(-1), b = pts[0];
-            if (a.out || b.in)
-                p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
-            p.closePath();
-        }
-        for (const c of n.contours || []) {
-            const cp = c.points;
-            if (!cp?.length)
-                continue;
-            p.moveTo(cp[0].x * sx, cp[0].y * sy);
-            for (let i = 1; i < cp.length; i++)
-                p.lineTo(cp[i].x * sx, cp[i].y * sy);
-            p.closePath();
-        }
+        // One path can hold several sub-paths (an icon's outer shape, its holes, separate strokes):
+        // the main points plus `contours`, each with its own curves and open / closed state.
+        const trace = (list, closed) => {
+            if (!list?.length)
+                return;
+            p.moveTo(list[0].x * sx, list[0].y * sy);
+            const seg = (a, b) => {
+                if (a.out || b.in)
+                    p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
+                else
+                    p.lineTo(b.x * sx, b.y * sy);
+            };
+            for (let i = 1; i < list.length; i++)
+                seg(list[i - 1], list[i]);
+            if (closed) {
+                seg(list.at(-1), list[0]);
+                p.closePath();
+            }
+        };
+        trace(pts, n.closed);
+        for (const c of n.contours || [])
+            trace(c.points, c.closed !== false);
     }
     else
         p.roundRect(0, 0, Math.max(0, n.w), Math.max(0, n.h), hasRadii(n) ? cornerRadii(n) : Math.max(0, Math.min(n.radius || 0, n.w / 2, n.h / 2)));
@@ -5333,7 +5587,8 @@ class Renderer {
         this.visibleCount = scene.length;
         // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
         // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
-        const fxRoute = this.backend === 'WebGPU' && scene.length <= 250 && scene.some(s => hasComplexFx(s.node) || s.clips.some(c => c.mask));
+        // Masks need the 2D painter (alpha masking); it is allowed on much larger scenes than other complex effects.
+        const fxRoute = this.backend === 'WebGPU' && (scene.length <= 250 && scene.some(s => hasComplexFx(s.node)) || scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask)));
         this.toggleFx(fxRoute);
         if (fxRoute) {
             try {
@@ -5464,8 +5719,34 @@ class Renderer {
         const skip = new Set();
         for (const s of scene) {
             const n = s.node;
-            if (skip.has(n.id) || n.type === 'group' || n.isMask || s.boolChild || s.hidden || n.id === this.skipId)
+            if (skip.has(n.id) || n.type === 'group' || n.isMask && !opts.paintMasks || s.boolChild || s.hidden || n.id === this.skipId)
                 continue;
+            // Figma-style alpha mask: the layers a mask covers are painted on their own canvas, then only the pixels
+            // where the mask (its fills, gradients, images, text and children) is opaque are kept.
+            const mc = s.clips.find(c => c.mask && !opts.maskDone?.has(c));
+            if (mc) {
+                const group = scene.filter(x => x.clips.includes(mc));
+                for (const x of group)
+                    skip.add(x.node.id);
+                const t0 = ctx.getTransform(), w = ctx.canvas.width, h = ctx.canvas.height;
+                const off = newCanvas(w, h), oc = off.getContext('2d');
+                oc.setTransform(t0);
+                this.paintScene(oc, group, { ...opts, maskDone: new Set([...(opts.maskDone || []), mc]) });
+                const ids = new Set([mc.mask.id, ...this.doc.descendants(mc.mask.id).map(d => d.id)]);
+                const maskItems = this.doc.scene().filter(x => ids.has(x.node.id) && !x.hidden);
+                const mk = newCanvas(w, h), mctx = mk.getContext('2d');
+                mctx.setTransform(t0);
+                this.paintScene(mctx, maskItems, { ...opts, paintMasks: true, maskDone: new Set([...(opts.maskDone || []), mc]) });
+                oc.setTransform(1, 0, 0, 1, 0, 0);
+                oc.globalCompositeOperation = 'destination-in';
+                oc.drawImage(mk, 0, 0);
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.globalAlpha = 1;
+                ctx.drawImage(off, 0, 0);
+                ctx.restore();
+                continue;
+            }
             const fx = getEffects(n).filter(e => e.visible !== false && !(opts.ignoreBlur === n.id && e.type === 'layerBlur'));
             const lblur = fx.find(e => e.type === 'layerBlur');
             if (lblur) {
@@ -5490,6 +5771,8 @@ class Renderer {
                 try {
                     let path = new Path2D();
                     const cw = Math.max(0.1, c.w || 0), ch = Math.max(0.1, c.h || 0);
+                    if (c.mask && opts.maskDone?.has(c))
+                        continue; // handled as an alpha mask by the caller
                     if (c.mask)
                         path = pathFor(c.mask);
                     else {
@@ -5794,6 +6077,21 @@ function saveOptions() {
     }
     catch { }
 }
+// Per-page change detection: a page is written when its layer count or any layer's version changed since it was
+// last saved, so edits that land on other pages (replace all, instances updated from their main component,
+// fetched images, duplicated pages) are saved too — without rewriting every page of a large file each time.
+const savedPageSigs = new Map();
+function pageSig(p) {
+    let s = 0;
+    for (const n of p.nodes)
+        s += (n.version || 0) + 1;
+    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}`;
+}
+function markPagesSaved() {
+    savedPageSigs.clear();
+    for (const p of doc.data.pages)
+        savedPageSigs.set(p.id, pageSig(p));
+}
 function saveSoon() { state.dirty = true; $('#save-indicator').innerHTML = '<i></i> Saving locally'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
 let savingInProgress = false;
 let saveQueued = false;
@@ -5816,7 +6114,11 @@ async function save() {
             m = { id: lib.fileId, name: doc.data.name, created: now, updated: now, opened: now, thumb: null };
             lib.index.unshift(m);
         }
-        await projectStorage.saveActivePage(lib.fileId, doc.data, doc.page);
+        const changedPages = doc.data.pages.filter(p => p === doc.page || savedPageSigs.get(p.id) !== pageSig(p));
+        for (const p of changedPages)
+            await projectStorage.saveActivePage(lib.fileId, doc.data, p);
+        for (const p of changedPages)
+            savedPageSigs.set(p.id, pageSig(p));
         m.name = doc.data.name;
         m.updated = Date.now();
         await libSaveIndex();
@@ -5946,8 +6248,11 @@ function changed({ ui = true, commit = false } = {}) {
         markSelectedOverrides();
         applyAllLayouts();
         syncComponents();
-        history.commit();
-        saveSoon();
+        // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
+        // a gesture that didn't move anything, setting a value to what it already was).
+        const hadPending = !!history.pending;
+        if (history.commit() || !hadPending)
+            saveSoon();
     }
     if (ui)
         refreshUI();
@@ -6039,7 +6344,6 @@ function switchPage(id) {
     else
         fit();
     refreshUI();
-    saveSoon();
     invalidate();
 }
 // ----- pages: nesting folders, dividers, drag reordering -----
@@ -6178,7 +6482,7 @@ function renderLayers() {
     $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
     $('#layers-heading').classList.toggle('hidden', pluginsMode);
     if (pluginsMode) {
-        for (const id of ['#pages-heading', '#page-list', '#layer-tree', '#assets-panel', '#layer-search'])
+        for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layer-tree', '#assets-panel', '#layer-search-box', '#search-results'])
             $(id).classList.add('hidden');
         renderPlugins();
         return;
@@ -6186,8 +6490,11 @@ function renderLayers() {
     const assetsMode = state.leftTab === 'assets';
     $('#pages-heading').classList.toggle('hidden', assetsMode);
     $('#page-list').classList.toggle('hidden', assetsMode);
-    if (assetsMode)
-        $('#layer-search').classList.add('hidden');
+    $('#pages-split').classList.toggle('hidden', assetsMode);
+    if (assetsMode) {
+        $('#layer-search-box').classList.add('hidden');
+        $('#search-results').classList.add('hidden');
+    }
     $('#layer-count').textContent = assetsMode ? '' : doc.nodes.length;
     $('#tree-heading').textContent = assetsMode ? 'Components' : 'Layers';
     $('#layer-tree').classList.toggle('hidden', assetsMode);
@@ -6196,7 +6503,17 @@ function renderLayers() {
         renderAssets();
         return;
     }
-    const q = $('#search-layers').value.trim().toLowerCase();
+    // While a search is open with a query, the results list takes the place of pages and layers.
+    const searching = !$('#layer-search-box').classList.contains('hidden') && $('#search-layers').value.trim() !== '';
+    for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layers-heading'])
+        $(id).classList.toggle('hidden', searching);
+    $('#layer-tree').classList.toggle('hidden', searching);
+    $('#search-results').classList.toggle('hidden', !searching);
+    if (searching) {
+        renderSearchResults();
+        return;
+    }
+    const q = '';
     // The top-level ancestor of a nested selection sticks under the "Layers" heading while its subtree scrolls.
     const stickyRoots = new Set();
     for (const id of state.selection) {
@@ -6547,10 +6864,10 @@ function copySelection() {
     navigator.clipboard?.writeText(JSON.stringify(state.clipboard)).catch(() => { });
     toast(`${roots.length} layer${roots.length > 1 ? 's' : ''} copied`);
 }
-async function pasteSelection() {
+async function pasteSelection(clipText) {
     let payload = state.clipboard;
     try {
-        const str = await navigator.clipboard.readText();
+        const str = clipText ?? await navigator.clipboard.readText();
         if (str) {
             try {
                 const parsed = JSON.parse(str);
@@ -6642,6 +6959,7 @@ function groupSelection(asFrame = false, autoLayout = false) {
             n.parentId = g.id;
             doc.touch(n);
         }
+        doc.refresh(); // re-index parents so children(g) sees the moved layers
         if (autoLayout) {
             g.fill = 'none';
             g.clip = false;
@@ -7158,7 +7476,7 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             hit = ((p.x - n.w / 2) / (n.w / 2 + tol)) ** 2 + ((p.y - n.h / 2) / (n.h / 2 + tol)) ** 2 <= 1;
         else if (n.type === 'path' || n.type === 'line') {
             hitCtx.lineWidth = Math.max(n.strokeWidth, 8 / state.camera.zoom);
-            hit = n.fill !== 'none' && hitCtx.isPointInPath(pathFor(n), p.x, p.y) || hitCtx.isPointInStroke(pathFor(n), p.x, p.y);
+            hit = n.fill !== 'none' && hitCtx.isPointInPath(pathFor(n), p.x, p.y, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero') || hitCtx.isPointInStroke(pathFor(n), p.x, p.y);
         }
         else
             hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
@@ -8034,8 +8352,8 @@ function flattenPathOf(n) {
     const seg = (a, b) => {
         if (a.out || b.in) {
             const p0 = { x: a.x * sx, y: a.y * sy }, p1 = { x: (a.out?.x ?? a.x) * sx, y: (a.out?.y ?? a.y) * sy }, p2 = { x: (b.in?.x ?? b.x) * sx, y: (b.in?.y ?? b.y) * sy }, p3 = { x: b.x * sx, y: b.y * sy };
-            for (let i = 1; i <= 12; i++) {
-                const t = i / 12, u = 1 - t;
+            for (let i = 1; i <= 24; i++) {
+                const t = i / 24, u = 1 - t;
                 out.push({ x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y });
             }
         }
@@ -8056,8 +8374,8 @@ function nodePolys(n) {
     let ring = null;
     if (n.type === 'ellipse') {
         ring = [];
-        for (let i = 0; i < 72; i++) {
-            const a = i / 72 * Math.PI * 2;
+        for (let i = 0; i < 128; i++) {
+            const a = i / 128 * Math.PI * 2;
             ring.push(tp(n.w / 2 + Math.cos(a) * n.w / 2, n.h / 2 + Math.sin(a) * n.h / 2));
         }
     }
@@ -8151,7 +8469,14 @@ function refreshBooleans() {
         if (!kids.length)
             continue;
         const sig = JSON.stringify(kids.map(k => [doc.world(k.id).matrix.map(v => Math.round(v * 1000)), k.w, k.h, k.type, k.points, k.contours, k.closed])) + b.booleanOp;
-        if (boolSignatures.get(b.id) === sig)
+        const prev = boolSignatures.get(b.id);
+        // First sighting (file just opened / imported): trust the stored shape — for Figma imports it is Figma's own exact
+        // result — and only recompute once an operand actually changes.
+        if (prev === undefined) {
+            boolSignatures.set(b.id, sig);
+            continue;
+        }
+        if (prev === sig)
             continue;
         const polys = kids.map(nodePolys);
         if (polys.some(p => !p))
@@ -8249,25 +8574,34 @@ function useAsMask() {
         toast('Select a layer to use as a mask.');
         return;
     }
-    if (roots.length === 1) {
+    // Selecting a mask again and using "Use as mask" turns it back into a normal layer.
+    if (roots.length === 1 && roots[0].isMask) {
         const n = roots[0];
-        transaction(n.isMask ? 'Remove mask' : 'Use as mask', () => { n.isMask = !n.isMask; doc.touch(n); });
+        transaction('Remove mask', () => { n.isMask = false; doc.touch(n); });
         return;
     }
-    // Several layers: wrap them in a "Mask group" and let the bottom-most one mask the rest.
+    // Like Figma: the selection is wrapped in a "Mask group" and its bottom-most layer becomes the mask, so the
+    // layers above it — and anything added to the group later, above it — only show inside the mask's shape.
+    // One layer works too: it becomes the mask of an otherwise empty Mask group, ready for content.
+    const undoDepth = history.undoStack.length;
     groupSelection();
     const g = activeNode();
-    if (!g)
+    if (!g || !roots.every(r => r.parentId === g.id))
         return;
     transaction('Use as mask', () => {
         g.name = 'Mask group';
-        const bottom = doc.children(g.id)[0];
+        doc.refresh(); // the parent index is stale right after grouping
+        const bottom = doc.nodes.find(n => n.parentId === g.id);
         if (bottom) {
             bottom.isMask = true;
             doc.touch(bottom);
         }
         doc.touch(g);
     });
+    // Group + mask is a single step for undo, as in Figma.
+    if (history.undoStack.length === undoDepth + 2)
+        history.undoStack.splice(undoDepth + 1, 1);
+    select([g.id]);
 }
 // Right-click menu on the canvas and layer list keeps the full command set.
 function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an?.isInstance) {
@@ -8366,7 +8700,7 @@ function inspectCSS() {
     $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast('CSS copied')).catch(() => toast('Clipboard blocked. Select the code to copy it.'));
 }
 function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Midas field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup', '⇧⌘G'], ['Commands', '⌘K'], ['Rename layer', '⌘R / double-click'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], [`Nudge ${options.nudge}px`, 'Arrow keys'], [`Nudge ${options.bigNudge}px`, 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
-function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Nudge</h3><div class="property-grid"><label class="field" title="Arrow keys"><span>Nudge</span><input type="number" min="0.01" step="any" data-option-num="nudge" value="${options.nudge}" aria-label="Nudge amount"><i class="unit">px</i></label><label class="field" title="Shift + arrow keys"><span>Big</span><input type="number" min="0.01" step="any" data-option-num="bigNudge" value="${options.bigNudge}" aria-label="Big nudge amount"><i class="unit">px</i></label></div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Midas draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
+function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Nudge</h3><div class="property-grid"><label class="field" title="Arrow keys"><span>Nudge</span><input type="number" min="0.01" step="any" data-option-num="nudge" value="${options.nudge}" aria-label="Nudge amount"><i class="unit">px</i></label><label class="field" title="Shift + arrow keys"><span>Big</span><input type="number" min="0.01" step="any" data-option-num="bigNudge" value="${options.bigNudge}" aria-label="Big nudge amount"><i class="unit">px</i></label></div><h3>Figma</h3><p class="small-label">Personal access token used to fetch images when you paste from Figma. Stored only in this browser and sent only to api.figma.com.</p><div class="figma-token-row"><label class="field"><span>${icon('lock', 12)}</span><input type="password" id="settings-figma-token" placeholder="${figmaToken() ? 'Saved — type to replace' : 'figd_…'}" autocomplete="off" spellcheck="false" aria-label="Figma personal access token"></label>${figmaToken() ? '<button class="wide-button" id="settings-figma-clear">Remove</button>' : ''}</div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Midas draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
 function toggleTheme() { options.theme = options.theme === 'dark' ? 'light' : 'dark'; delete options.canvasColor; $('#canvas-world').style.backgroundColor = ''; document.documentElement.dataset.theme = options.theme; saveOptions(); refreshUI(); invalidate(); }
 function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .midas document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Midas file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Midas files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
 function newFile() { libNew('blank'); }
@@ -10259,9 +10593,93 @@ async function figToMidas(file, onProgress, abortSignal) {
     const rep = { pages: 0, layers: 0, notes: new Map(), skipped: new Map() };
     const note = (k) => rep.notes.set(k, (rep.notes.get(k) || 0) + 1);
     const skip = (t) => rep.skipped.set(t, (rep.skipped.get(t) || 0) + 1);
-    const assets = {}, assetByHash = new Map();
+    // Images not carried in the data (always the case for clipboard pastes) keep their fill with an asset id that has no bytes yet;
+    // missingImages maps the Figma image hash to that id so the bytes can be fetched later (see fetchFigmaImages).
+    const assets = {}, assetByHash = new Map(), missingImages = new Map();
     const hex2 = v => Math.max(0, Math.min(255, Math.round((v ?? 0) * 255))).toString(16).padStart(2, '0');
     const hexOf = (c, withAlpha = false) => !c ? '#000000' : '#' + hex2(c.r) + hex2(c.g) + hex2(c.b) + (withAlpha && (c.a ?? 1) < 1 ? hex2(c.a) : '');
+    // ---- variables: VARIABLE_SET → collection (with modes), VARIABLE → variable (per-mode values, aliases) ----
+    const varCollections = [], varItems = [], varByGuid = new Map(), modeByGuid = new Map(), collByGuid = new Map();
+    const vkey = v => v?.guid ? gkey(v.guid) : null;
+    for (const nc of fig.values()) {
+        if (nc.type !== 'VARIABLE_SET')
+            continue;
+        const c = { id: uid(), name: (nc.name || 'Collection').trim(), modes: [] };
+        const modes = [...(nc.variableSetModes || [])].sort((a, b) => String(a.sortPosition ?? '') < String(b.sortPosition ?? '') ? -1 : 1);
+        for (const m of modes) {
+            const id = uid();
+            modeByGuid.set(gkey(m.id), id);
+            c.modes.push({ id, name: m.name || `Mode ${c.modes.length + 1}` });
+        }
+        if (!c.modes.length)
+            c.modes.push({ id: uid(), name: 'Mode 1' });
+        collByGuid.set(gkey(nc.guid), c);
+        varCollections.push(c);
+    }
+    const VTYPE = { COLOR: 'color', FLOAT: 'number', STRING: 'string', BOOLEAN: 'boolean' };
+    const varSources = [];
+    for (const nc of fig.values()) {
+        if (nc.type !== 'VARIABLE')
+            continue;
+        const coll = collByGuid.get(vkey(nc.variableSetID)), type = VTYPE[nc.variableResolvedType];
+        if (!coll) {
+            note('variable from a library outside this file');
+            continue;
+        }
+        if (!type) {
+            note(`${String(nc.variableResolvedType).toLowerCase()} variable not supported`);
+            continue;
+        }
+        const item = { id: uid(), name: (nc.name || 'Variable').trim(), type, collectionId: coll.id, values: {} };
+        if (nc.description)
+            item.description = nc.description;
+        if (nc.isHidden || nc.hiddenFromPublishing)
+            item.hidden = true;
+        varByGuid.set(gkey(nc.guid), item.id);
+        varItems.push(item);
+        varSources.push([item, nc]);
+    }
+    const varValueOf = (vd, type) => {
+        const v = vd?.value;
+        if (!v)
+            return undefined;
+        if (v.alias) {
+            const id = varByGuid.get(vkey(v.alias));
+            return id ? { alias: id } : undefined;
+        }
+        if (type === 'color' && v.colorValue)
+            return hexOf(v.colorValue, true).toLowerCase();
+        if (type === 'number' && Number.isFinite(v.floatValue))
+            return v.floatValue;
+        if (type === 'string' && typeof v.textValue === 'string')
+            return v.textValue;
+        if (type === 'boolean' && typeof v.boolValue === 'boolean')
+            return v.boolValue;
+        return undefined;
+    };
+    for (const [item, nc] of varSources)
+        for (const e of nc.variableDataValues?.entries || []) {
+            const mode = modeByGuid.get(gkey(e.modeID)), val = varValueOf(e.variableData, item.type);
+            if (mode && val !== undefined)
+                item.values[mode] = val;
+        }
+    // The variable a paint / field is bound to (only variables defined in this file).
+    const varFor = vd => vd?.value?.alias ? varByGuid.get(vkey(vd.value.alias)) || null : null;
+    const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
+    const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
+    const applyVarBindings = (n, f) => {
+        for (const e of f.variableConsumptionMap?.entries || []) {
+            const prop = VAR_FIELD[e.variableField], id = varFor(e.variableData);
+            if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
+                (n.vars ||= {})[prop] = id;
+        }
+        // Explicit mode per collection ("Appearance → mode" in Figma).
+        for (const e of f.variableModeBySetMap?.entries || []) {
+            const c = collByGuid.get(vkey(e.variableSetID)), mode = modeByGuid.get(gkey(e.variableModeID));
+            if (c && mode)
+                (n.varModes ||= {})[c.id] = mode;
+        }
+    };
     const imageAsset = hash => {
         if (!hash || !hash.length)
             return null;
@@ -10271,7 +10689,10 @@ async function figToMidas(file, onProgress, abortSignal) {
         const bytes = images.get(hx);
         if (!bytes) {
             note('image missing from the file');
-            return null;
+            const id = uid();
+            assetByHash.set(hx, id);
+            missingImages.set(hx, id);
+            return id;
         }
         const mime = bytes[0] === 0x89 ? 'image/png' : bytes[0] === 0xff ? 'image/jpeg' : bytes[0] === 0x47 ? 'image/gif' : bytes[0] === 0x52 ? 'image/webp' : 'image/png';
         let bin = '';
@@ -10300,19 +10721,22 @@ async function figToMidas(file, onProgress, abortSignal) {
                 continue;
             const vis = p.visible !== false, op = Math.round((p.opacity ?? 1) * 1000) / 1000;
             if (p.type === 'SOLID')
-                out.push({ type: 'solid', color: hexOf(p.color), opacity: Math.round(op * (p.color?.a ?? 1) * 1000) / 1000, visible: vis });
+                out.push({ type: 'solid', color: hexOf(p.color), opacity: Math.round(op * (p.color?.a ?? 1) * 1000) / 1000, visible: vis, varId: varFor(p.colorVar) });
             else if (p.type === 'IMAGE') {
                 const id = imageAsset(p.image?.hash);
                 if (id)
                     out.push({ type: 'image', image: id, mode: p.imageScaleMode === 'FIT' ? 'fit' : p.imageScaleMode === 'TILE' ? 'tile' : 'fill', scale: 1, opacity: op, visible: vis });
             }
             else if (/^GRADIENT_/.test(p.type) && p.stops?.length) {
+                // Every stop is kept, and the gradient's own handles (in 0–1 layer space) so radial,
+                // angular and diamond gradients keep their centre, radii and rotation.
                 const first = p.stops[0], last = p.stops[p.stops.length - 1];
-                if (p.type !== 'GRADIENT_LINEAR')
-                    note(`${p.type.slice(9).toLowerCase()} gradient approximated as linear`);
-                else if (p.stops.length > 2)
-                    note('gradient with more than 2 stops reduced to 2');
-                out.push({ type: 'linear', color: hexOf(first.color, true), color2: hexOf(last.color, true), angle: p.type === 'GRADIENT_LINEAR' ? gradientAngle(p, w, h) : 90, opacity: op, visible: vis });
+                const kind = { GRADIENT_LINEAR: 'linear', GRADIENT_RADIAL: 'radial', GRADIENT_ANGULAR: 'angular', GRADIENT_DIAMOND: 'diamond' }[p.type] || 'linear';
+                const stops = p.stops.map(s => ({ pos: Math.max(0, Math.min(1, s.position ?? 0)), color: hexOf(s.color, true) }));
+                const t = p.transform, det = t ? t.m00 * t.m11 - t.m01 * t.m10 : 0;
+                const inv = (x, y) => det ? { x: (t.m11 * (x - t.m02) - t.m01 * (y - t.m12)) / det, y: (-t.m10 * (x - t.m02) + t.m00 * (y - t.m12)) / det } : { x, y };
+                const handles = kind === 'linear' ? { a: inv(0, .5), b: inv(1, .5) } : { a: inv(.5, .5), b: inv(1, .5), c: inv(.5, 1) };
+                out.push({ type: kind, color: hexOf(first.color, true), color2: hexOf(last.color, true), angle: kind === 'linear' ? gradientAngle(p, w, h) : 90, stops, handles, opacity: op, visible: vis, varId: null });
             }
             else
                 note(`${String(p.type).toLowerCase()} fill not supported`);
@@ -10324,11 +10748,18 @@ async function figToMidas(file, onProgress, abortSignal) {
     const applyFills = (n, f) => {
         const fills = convertPaints(f.fillPaints, n.w, n.h);
         if (n.type === 'text') {
-            const s = fills.find(x => x.type === 'solid' && x.visible !== false) || fills.find(x => x.type === 'linear');
-            n.fill = s ? (s.type === 'solid' ? s.color : s.color) : '#000000';
+            const s = fills.find(x => x.type === 'solid' && x.visible !== false) || fills.find(x => x.type !== 'image');
+            n.fill = s ? s.color : '#000000';
             n.fillOpacity = s ? s.opacity : 1;
+            if (s?.varId)
+                (n.vars ||= {}).fill = s.varId;
             return;
         }
+        fills.forEach((x, i) => {
+            if (x.varId)
+                (n.vars ||= {})[`fills.${i}`] = x.varId;
+            delete x.varId;
+        });
         n.fills = fills;
         syncLegacyFill(n);
     };
@@ -10342,6 +10773,8 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (sp.type !== 'SOLID')
             note('gradient stroke approximated by a solid color');
         n.stroke = sp.type === 'SOLID' ? hexOf(sp.color) : hexOf(sp.stops?.[0]?.color);
+        if (varFor(sp.colorVar))
+            (n.vars ||= {}).stroke = varFor(sp.colorVar);
         n.strokeOpacity = Math.round((sp.opacity ?? 1) * (sp.type === 'SOLID' ? sp.color?.a ?? 1 : 1) * 1000) / 1000;
         n.strokeWidth = weight;
         n.strokeAlign = { INSIDE: 'inside', OUTSIDE: 'outside' }[f.strokeAlign] || 'center';
@@ -10492,6 +10925,15 @@ async function figToMidas(file, onProgress, abortSignal) {
         n.primaryAlign = just === 'CENTER' ? 'center' : just === 'MAX' ? 'end' : 'start';
         if (just === 'SPACE_BETWEEN' || just === 'SPACE_EVENLY')
             n.gapAuto = true;
+        if (just === 'SPACE_EVENLY')
+            n.gapMode = 'evenly';
+        // Auto layout settings
+        if (f.strokesIncludedInLayout)
+            n.strokesIncluded = true;
+        if (f.stackReverseZIndex)
+            n.layoutReverseZ = true;
+        if (f.stackCounterAlignItems === 'BASELINE' && horiz)
+            n.alignBaseline = true;
         const ca = f.stackCounterAlignItems || 'MIN';
         n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
         const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
@@ -10530,10 +10972,24 @@ async function figToMidas(file, onProgress, abortSignal) {
         let cur = null, i = 0;
         while (i < blob.length) {
             const c = blob[i++];
-            if (c === 0 || c === 3) {
-                // 0: Separator / subpath end, 3: ClosePath (0 parameters)
+            if (c === 0) {
+                // 0: ClosePath
                 if (cur)
                     cur.closed = true;
+            }
+            else if (c === 3) {
+                // 3: Quadratic Bézier (4 floats: cpx, cpy, endx, endy) — stored as the equivalent cubic
+                if (i + 16 > blob.length)
+                    break;
+                const qx = dv.getFloat32(i, true), qy = dv.getFloat32(i + 4, true), ex = dv.getFloat32(i + 8, true), ey = dv.getFloat32(i + 12, true);
+                i += 16;
+                if (!cur || !cur.pts.length) {
+                    cur = { pts: [{ x: 0, y: 0 }], closed: false };
+                    subs.push(cur);
+                }
+                const last = cur.pts[cur.pts.length - 1];
+                last.out = { x: last.x + 2 / 3 * (qx - last.x), y: last.y + 2 / 3 * (qy - last.y) };
+                cur.pts.push({ x: ex, y: ey, in: { x: ex + 2 / 3 * (qx - ex), y: ey + 2 / 3 * (qy - ey) } });
             }
             else if (c === 1) {
                 // 1: MoveTo (2 floats: x, y)
@@ -10622,6 +11078,130 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         return out;
     };
+    // Vector network blob (the editable form of a vector):
+    //   u32 vertexCount, u32 segmentCount, u32 regionCount
+    //   vertex  = u32 style, f32 x, f32 y
+    //   segment = u32 style, u32 start, f32 dx, f32 dy, u32 end, f32 dx, f32 dy   (tangents relative to their vertex)
+    //   region  = u32 style|winding, u32 loopCount, loops: u32 count, u32 segmentIndex × count
+    // Regions become closed (filled) paths; segments outside any region become open (stroked) paths.
+    // Returns { subs: [{ pts, closed }], evenodd } in layer-size coordinates, or null.
+    const networkSubs = f => {
+        const blob = blobs[f.vectorData?.vectorNetworkBlob];
+        if (!blob?.length || blob.length < 12)
+            return null;
+        const dv = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+        const u32 = o => dv.getUint32(o, true), f32 = o => dv.getFloat32(o, true);
+        try {
+            const nv = u32(0), ns = u32(4), nr = u32(8);
+            let o = 12;
+            const verts = [];
+            for (let i = 0; i < nv; i++, o += 12)
+                verts.push({ x: f32(o + 4), y: f32(o + 8) });
+            const segs = [];
+            for (let i = 0; i < ns; i++, o += 28)
+                segs.push({ a: u32(o + 4), ta: { x: f32(o + 8), y: f32(o + 12) }, b: u32(o + 16), tb: { x: f32(o + 20), y: f32(o + 24) } });
+            const loops = [], used = new Set();
+            let evenodd = false;
+            for (let r = 0; r < nr; r++) {
+                // low bit: 1 = non-zero winding, 0 = even-odd
+                if (!(u32(o) & 1))
+                    evenodd = true;
+                o += 4;
+                const nl = u32(o);
+                o += 4;
+                for (let l = 0; l < nl; l++) {
+                    const cnt = u32(o);
+                    o += 4;
+                    const idx = [];
+                    for (let k = 0; k < cnt; k++, o += 4)
+                        idx.push(u32(o));
+                    idx.forEach(i => used.add(i));
+                    loops.push(idx);
+                }
+            }
+            // Scale from the network's normalized space to the layer size.
+            const ns2 = f.vectorData.normalizedSize, sx = (f.size?.x || 1) / (ns2?.x || f.size?.x || 1), sy = (f.size?.y || 1) / (ns2?.y || f.size?.y || 1);
+            const P = v => ({ x: verts[v].x * sx, y: verts[v].y * sy }), T = (v, t) => ({ x: (verts[v].x + t.x) * sx, y: (verts[v].y + t.y) * sy });
+            const nonZero = t => Math.abs(t.x) > 1e-6 || Math.abs(t.y) > 1e-6;
+            // Walk segments in order, flipping any that run against the direction of travel.
+            const chain = (list, closed) => {
+                const pts = [];
+                let at = null;
+                for (const si of list) {
+                    const s = segs[si];
+                    if (!s || !verts[s.a] || !verts[s.b])
+                        continue;
+                    const fwd = at === null ? true : s.a === at || s.b !== at;
+                    const [from, tFrom, to, tTo] = fwd ? [s.a, s.ta, s.b, s.tb] : [s.b, s.tb, s.a, s.ta];
+                    if (!pts.length)
+                        pts.push(P(from));
+                    const last = pts[pts.length - 1];
+                    if (nonZero(tFrom))
+                        last.out = T(from, tFrom);
+                    const next = P(to);
+                    if (nonZero(tTo))
+                        next.in = T(to, tTo);
+                    pts.push(next);
+                    at = to;
+                }
+                if (closed && pts.length > 2) {
+                    const a = pts[0], z = pts[pts.length - 1];
+                    if (Math.hypot(a.x - z.x, a.y - z.y) < .001) {
+                        if (z.in)
+                            a.in = z.in;
+                        pts.pop();
+                    }
+                }
+                return pts;
+            };
+            const out = loops.map(l => chain(l, true)).filter(p => p.length > 2).map(pts => ({ pts, closed: true }));
+            // Remaining segments: join end-to-end into open polylines.
+            const free = segs.map((_, i) => i).filter(i => !used.has(i));
+            while (free.length) {
+                const run = [free.shift()];
+                let end = segs[run[0]].b, grew = true;
+                while (grew) {
+                    grew = false;
+                    const k = free.findIndex(i => segs[i].a === end || segs[i].b === end);
+                    if (k >= 0) {
+                        const i = free.splice(k, 1)[0];
+                        end = segs[i].a === end ? segs[i].b : segs[i].a;
+                        run.push(i);
+                        grew = true;
+                    }
+                }
+                const pts = chain(run, false);
+                if (pts.length > 1)
+                    out.push({ pts, closed: false });
+            }
+            return out.length ? { subs: out, evenodd } : null;
+        }
+        catch {
+            return null;
+        }
+    };
+    // Sub-paths of baked geometry (fillGeometry / strokeGeometry), in layer-size coordinates.
+    const geometrySubs = paths => {
+        const out = [];
+        let evenodd = false;
+        for (const g of paths || []) {
+            if (g.commandsBlob === undefined || !blobs[g.commandsBlob]?.length)
+                continue;
+            if (g.windingRule === 'EVENODD' || g.windingRule === 'ODD')
+                evenodd = true;
+            try {
+                for (const sp of readCommands(blobs[g.commandsBlob])) {
+                    const pts = (sp.pts || []).filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y));
+                    if (pts.length > 1)
+                        out.push({ pts, closed: !!sp.closed });
+                }
+            }
+            catch {
+                note('a vector shape could not be decoded');
+            }
+        }
+        return out.length ? { subs: out, evenodd } : null;
+    };
     // ---- node conversion ----
     const idMap = new Map(), figOfMidas = new Map(), midasById = new Map(), childrenOf = new Map(), pending = [], linked = [];
     const FRAMEISH = new Set(['FRAME', 'SECTION', 'SYMBOL', 'INSTANCE', 'SLIDE', 'SLIDE_ROW', 'SLIDE_GRID', 'WEBPAGE', 'RESPONSIVE_SET', 'TABLE', 'TABLE_CELL']);
@@ -10644,7 +11224,26 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (isBool) {
             const opMap = { UNION: 'union', 0: 'union', INTERSECT: 'intersect', 1: 'intersect', SUBTRACT: 'subtract', 2: 'subtract', XOR: 'exclude', EXCLUDE: 'exclude', 3: 'exclude' };
             n.booleanOp = opMap[f.booleanOperation] || 'union';
-            n.fill = 'none';
+            // Figma bakes the boolean result into fillGeometry: use it as the shape (exact curves), with the group's own fills.
+            applyFills(n, f);
+            const subs = [];
+            for (const g of f.fillGeometry || [])
+                if (g.commandsBlob !== undefined && blobs[g.commandsBlob]?.length)
+                    try {
+                        subs.push(...readCommands(blobs[g.commandsBlob]));
+                    }
+                    catch { }
+            const rings = subs.map(sp => (sp.pts || []).filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y))).filter(p => p.length > 1);
+            if (rings.length) {
+                n.points = rings[0];
+                n.closed = true;
+                if (rings.length > 1)
+                    n.contours = rings.slice(1).map(points => ({ points, closed: true }));
+                n.pathW = Math.max(1, f.size?.x || n.w || 1);
+                n.pathH = Math.max(1, f.size?.y || n.h || 1);
+            }
+            else
+                n.points = [];
         }
         if (f.mask)
             n.isMask = true;
@@ -10662,7 +11261,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.layoutSizingH = n.autoW ? 'hug' : 'fixed';
             n.layoutSizingV = f.textAutoResize === 'NONE' || f.textAutoResize === undefined && !n.autoW ? 'fixed' : 'hug';
         }
-        else if (type === 'group' || isBool)
+        else if (type === 'group')
             n.fill = 'none';
         if (type !== 'group' && type !== 'text') {
             applyRadius(n, f);
@@ -10679,6 +11278,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             applyEffects(n, f);
         }
         applyChildLayout(n, f, pf);
+        applyVarBindings(n, f);
         if (f.type === 'SYMBOL')
             n.component = true;
         if (f.isStateGroup)
@@ -10689,42 +11289,49 @@ async function figToMidas(file, onProgress, abortSignal) {
         out.push(n);
         rep.layers++;
         if (vector) {
-            // build path nodes from the geometry blobs, inside the group created above
-            const fillParts = pathNodes(f, f.fillGeometry, { name: 'Shape' }, false), strokeParts = pathNodes(f, f.strokeGeometry, { name: 'Outline' }, true);
-            const fills = convertPaints(f.fillPaints, n.w, n.h), strokeFill = (f.strokePaints || []).find(p => p.visible !== false && p.type === 'SOLID');
-            const parts = [];
-            for (const p of fillParts) {
-                p.fills = fills;
-                syncLegacyFill(p);
-                parts.push(p);
+            // A Figma VECTOR stays one "Vector" path layer, like in Figma: every sub-path (outer shape, holes,
+            // separate strokes) lives in the same node and the vector's own fills and strokes are drawn on it.
+            // The editable vector network is preferred (true open/closed paths, real strokes); baked geometry is the fallback.
+            const net = networkSubs(f), fillGeo = net ? null : geometrySubs(f.fillGeometry);
+            let geo = net || fillGeo, strokeOnly = false;
+            if (!geo) {
+                // Stroke-only vector with no fill geometry: use the outlined stroke as the shape, filled with the stroke paint.
+                geo = geometrySubs(f.strokeGeometry);
+                strokeOnly = !!geo;
             }
-            for (const p of strokeParts) {
-                if (!strokeFill)
-                    continue;
-                p.fills = [{ type: 'solid', color: hexOf(strokeFill.color), opacity: Math.round((strokeFill.opacity ?? 1) * (strokeFill.color?.a ?? 1) * 1000) / 1000, visible: true }];
-                syncLegacyFill(p);
-                parts.push(p);
-            }
-            if (!parts.length) {
+            if (!geo) {
                 note('a vector shape had no readable geometry');
                 n.type = 'rect';
                 applyFills(n, f);
                 n.fill = n.fill === 'none' ? '#d9d9d9' : n.fill;
+                applyStroke(n, f);
             }
-            else if (parts.length === 1) {
-                // a single shape replaces the wrapper group
-                Object.assign(parts[0], { id: n.id, name: n.name, parentId: n.parentId, x: n.x, y: n.y, w: n.w, h: n.h, rotation: n.rotation, flipX: n.flipX, opacity: n.opacity, visible: n.visible, locked: n.locked });
-                applyEffects(parts[0], f);
-                out[out.length - 1] = parts[0];
-                midasById.set(n.id, parts[0]);
-            }
-            else
-                for (const p of parts) {
-                    p.parentId = n.id;
-                    p.id = uid();
-                    out.push(p);
-                    rep.layers++;
+            else {
+                const [first, ...rest] = geo.subs;
+                Object.assign(n, { type: 'path', points: first.pts, closed: first.closed, pathW: Math.max(1, f.size?.x || n.w || 1), pathH: Math.max(1, f.size?.y || n.h || 1) });
+                if (rest.length)
+                    n.contours = rest.map(s => ({ points: s.pts, closed: s.closed }));
+                if (geo.evenodd)
+                    n.fillRule = 'evenodd';
+                if (strokeOnly) {
+                    const sp = (f.strokePaints || []).find(p => p.visible !== false && p.type === 'SOLID');
+                    n.fills = sp ? [{ type: 'solid', color: hexOf(sp.color), opacity: Math.round((sp.opacity ?? 1) * (sp.color?.a ?? 1) * 1000) / 1000, visible: true }] : [];
+                    if (sp && varFor(sp.colorVar))
+                        (n.vars ||= {})['fills.0'] = varFor(sp.colorVar);
+                    syncLegacyFill(n);
+                    n.strokeWidth = 0;
                 }
+                else {
+                    // Fills only paint closed regions (Figma ignores fills on open paths).
+                    applyFills(n, f);
+                    if (!geo.subs.some(s => s.closed)) {
+                        n.fills = [];
+                        syncLegacyFill(n);
+                    }
+                    applyStroke(n, f);
+                }
+                applyEffects(n, f);
+            }
         }
         return n;
     };
@@ -10802,6 +11409,31 @@ async function figToMidas(file, onProgress, abortSignal) {
             await new Promise(r => setTimeout(r, 0));
         const symKey = gkey(f.symbolData?.symbolID), srcId = idMap.get(symKey), src = srcId && midasById.get(srcId);
         if (!src || !src.component) {
+            // The main component is not on an imported page — typically a library component Figma keeps on its
+            // hidden "Internal Only Canvas" (icon sets!). Its layers are still in the file: copy them into this
+            // instance, scaled to the instance's size, so the instance shows what Figma shows.
+            const symF = fig.get(symKey), page = owner.get(n.id);
+            if (symF && page) {
+                const before = page.nodes.length;
+                for (const c of kids.get(symKey) || [])
+                    walk(c, n, symF, page.nodes);
+                const added = page.nodes.slice(before), sx = n.w / (symF.size?.x || n.w || 1), sy = n.h / (symF.size?.y || n.h || 1);
+                for (const c of added) {
+                    owner.set(c.id, page);
+                    if (Math.abs(sx - 1) > 1e-3 || Math.abs(sy - 1) > 1e-3) {
+                        c.x *= sx;
+                        c.y *= sy;
+                        c.w *= sx;
+                        c.h *= sy;
+                        if (c.type === 'text')
+                            c.fontSize *= Math.min(sx, sy);
+                        if (c.strokeWidth)
+                            c.strokeWidth *= Math.min(sx, sy);
+                    }
+                }
+                note('instance of a library component: its layers were copied in');
+                continue;
+            }
             note('instance of a component that is not in this file (shown as an empty frame)');
             continue;
         }
@@ -10919,9 +11551,11 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.version = 0;
         }
     const name = (meta?.file_name || file.name.replace(/\.fig$/i, '') || 'Figma import').toString().slice(0, 120);
-    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes })), tokens: defaultTokens(), assets, variables: { collections: [], items: [] } };
+    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes })), tokens: defaultTokens(), assets, variables: { collections: varCollections, items: varItems } };
+    if (varItems.length)
+        note(`imported ${varItems.length} variable${varItems.length === 1 ? '' : 's'} in ${varCollections.length} collection${varCollections.length === 1 ? '' : 's'}`);
     const notes = [...rep.notes].map(([k, v]) => v > 1 ? `${v}× ${k}` : k), skipped = [...rep.skipped].map(([k, v]) => `${v}× ${k.toLowerCase().replace(/_/g, ' ')}`);
-    return { data, report: { pages: rep.pages, layers: rep.layers, notes, skipped } };
+    return { data, missingImages, report: { pages: rep.pages, layers: rep.layers, notes, skipped } };
 }
 
 // ===== Google Fonts (all families) =====
@@ -12152,6 +12786,11 @@ document.addEventListener('click', e => {
             const n = doc.get(id);
             if (n) {
                 select([id]);
+                // Double-click on the name renames; on the icon (or anywhere else in the row) it zooms the canvas to the layer.
+                if (!e.target.closest('.layer-name')) {
+                    fit([id]);
+                    return;
+                }
                 const span = document.querySelector(`[data-layer="${id}"] .layer-name`);
                 if (span)
                     inlineRename(span, n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
@@ -12401,16 +13040,315 @@ $('#command-button').onclick = commandPalette;
 $('#profile').onclick = () => toast('Your local workspace. No account, presence simulation, or cloud upload.');
 $('#canvas-status').onclick = () => toast('Saved to the data folder on this computer. Export a .midas copy to share it.');
 $('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');
-$('#search-button').onclick = () => {
-    $('#layer-search').classList.toggle('hidden');
-    if (!$('#layer-search').classList.contains('hidden'))
-        $('#search-layers').focus();
-    else {
-        $('#search-layers').value = '';
-        renderLayers();
+// ===== find & replace (Figma-style) =====
+// Searches layer names and text content, on this page by default or across all pages. Results are grouped by
+// top-level frame (this page) or by page (all pages); clicking one switches page if needed and zooms to it.
+const SR = { scope: 'page', type: 'all', mode: 'find', matchCase: false, whole: false, active: 0, collapsed: new Set(), cache: null };
+const SR_KINDS = [['all', 'All', 'layers'], ['text', 'Text', 'text'], ['frame', 'Frame / Group', 'frame'], ['component', 'Component', 'component'], ['instance', 'Instance', 'instance'], ['image', 'Image', 'image'], ['shape', 'Shape', 'rect'], ['other', 'Other', null]];
+function srKind(n) {
+    if (n.type === 'text')
+        return 'text';
+    if (n.isInstance)
+        return 'instance';
+    if (n.component || n.componentSet)
+        return 'component';
+    if (n.type === 'image' || n.type === 'rect' && isImageLike(n))
+        return 'image';
+    if (n.type === 'frame' || n.type === 'group')
+        return 'frame';
+    if (['rect', 'ellipse', 'line', 'path'].includes(n.type))
+        return 'shape';
+    return 'other';
+}
+function srRegex(q, global = false) {
+    const body = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(SR.whole ? `(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])` : body, (global ? 'g' : '') + (SR.matchCase ? '' : 'i') + 'u');
+}
+function srCompute() {
+    const q = $('#search-layers').value.trim();
+    const key = [q, SR.scope, SR.type, SR.matchCase, SR.whole, doc.revision, doc.data.pageId, doc.data.pages.length].join('|');
+    if (SR.cache?.key === key)
+        return SR.cache;
+    const re = srRegex(q), pages = SR.scope === 'all' ? doc.data.pages : [doc.page], counts = Object.fromEntries(SR_KINDS.map(([k]) => [k, 0]));
+    const results = [], pageHits = [];
+    for (const p of pages) {
+        if (re.test(p.name))
+            pageHits.push(p);
+        const byId = new Map(p.nodes.map(n => [n.id, n]));
+        for (const n of p.nodes) {
+            const inName = re.test(n.name || ''), inText = n.type === 'text' && re.test(n.text || '');
+            if (!inName && !inText)
+                continue;
+            const kind = srKind(n);
+            counts.all++;
+            counts[kind]++;
+            if (SR.type !== 'all' && kind !== SR.type)
+                continue;
+            let top = n;
+            while (top.parentId && byId.get(top.parentId))
+                top = byId.get(top.parentId);
+            results.push({ page: p, node: n, kind, field: inText && !inName ? 'text' : 'name', group: SR.scope === 'all' ? p.id : top.id, groupName: SR.scope === 'all' ? p.name : top.name });
+        }
     }
+    SR.active = Math.min(SR.active, Math.max(0, results.length - 1));
+    return SR.cache = { key, q, results, pageHits, counts };
+}
+function srHighlight(text, q) {
+    const s = String(text ?? ''), re = srRegex(q, true);
+    let out = '', last = 0;
+    for (const m of s.matchAll(re)) {
+        out += esc(s.slice(last, m.index)) + `<mark>${esc(m[0])}</mark>`;
+        last = m.index + m[0].length;
+        if (out.length > 4000)
+            break;
+    }
+    return out + esc(s.slice(last));
+}
+function srSnippet(text, q) {
+    // A short window of the text content around the first match.
+    const s = String(text ?? '').replace(/\s+/g, ' '), m = srRegex(q).exec(s);
+    if (!m)
+        return srHighlight(s.slice(0, 80), q);
+    const from = Math.max(0, m.index - 24);
+    return (from ? '…' : '') + srHighlight(s.slice(from, m.index + m[0].length + 48), q);
+}
+function renderSearchResults() {
+    const box = $('#search-results'), { q, results, pageHits } = srCompute();
+    const LIMIT = 1000, scopeLabel = SR.scope === 'all' ? 'All pages' : 'This page';
+    const countLabel = results.length ? `${results.length.toLocaleString()} result${results.length === 1 ? '' : 's'}` : SR.scope === 'all' ? 'No results' : 'No results on this page';
+    let html = `<div class="sr-head"><span>${countLabel} · </span><button class="sr-scope" data-sr-scope>${scopeLabel}${icon('chevronDown', 10)}</button><span class="sr-nav"><button class="icon-button small" data-sr-step="-1" title="Previous result (Shift+Enter)" aria-label="Previous result">${icon('chevronDown', 12)}</button><button class="icon-button small" data-sr-step="1" title="Next result (Enter)" aria-label="Next result">${icon('chevronDown', 12)}</button></span></div>`;
+    if (pageHits.length) {
+        const open = !SR.collapsed.has('__pages');
+        html += `<div class="sr-group" data-sr-toggle="__pages">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<b>Pages</b><span>${pageHits.length}</span></div>`;
+        if (open)
+            html += pageHits.map(p => `<div class="sr-row sr-page ${p.id === doc.page.id ? 'current' : ''}" data-sr-page="${p.id}">${icon('page', 13)}<div class="sr-text"><div class="sr-name">${srHighlight(p.name, q)}</div></div></div>`).join('');
+    }
+    let lastGroup = null, shown = 0;
+    results.forEach((r, i) => {
+        if (shown >= LIMIT)
+            return;
+        if (r.group !== lastGroup) {
+            lastGroup = r.group;
+            const open = !SR.collapsed.has(r.group), count = results.filter(x => x.group === r.group).length;
+            html += `<div class="sr-group" data-sr-toggle="${esc(r.group)}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<b>${esc(r.groupName)}</b><span>${count}</span></div>`;
+        }
+        if (SR.collapsed.has(r.group))
+            return;
+        shown++;
+        const n = r.node, ic = n.isInstance ? 'instance' : n.component || n.componentSet ? 'component' : r.kind === 'image' ? 'image' : n.type;
+        html += `<div class="sr-row ${i === SR.active ? 'active' : ''} ${r.kind}" data-sr="${i}" role="option" aria-selected="${i === SR.active}"><span class="sr-icon">${icon(ic, 13)}</span><div class="sr-text"><div class="sr-name">${r.field === 'name' ? srHighlight(n.name, q) : esc(n.name)}</div>${n.type === 'text' && r.field === 'text' ? `<div class="sr-sub">${srSnippet(n.text, q)}</div>` : ''}</div></div>`;
+    });
+    if (results.length > LIMIT)
+        html += `<div class="sr-note">Showing the first ${LIMIT.toLocaleString()} results. Refine the search to see the rest.</div>`;
+    if (SR.scope === 'page' && doc.data.pages.length > 1)
+        html += `<button class="sr-other" data-sr-all>See results on other pages</button>`;
+    box.innerHTML = html;
+    box.querySelector('.sr-row.active')?.scrollIntoView({ block: 'nearest' });
+    srUpdateReplaceButtons();
+}
+// Bring a result into view: switch to its page, select it and zoom the canvas to it.
+function focusSearchResult(i) {
+    const r = srCompute().results[i];
+    if (!r)
+        return;
+    SR.active = i;
+    if (r.page.id !== doc.page.id)
+        switchPage(r.page.id);
+    if (!doc.get(r.node.id))
+        return;
+    select([r.node.id]);
+    fit([r.node.id]);
+    renderLayers();
+}
+function srStep(d) {
+    const { results } = srCompute();
+    if (!results.length)
+        return;
+    focusSearchResult((SR.active + d + results.length) % results.length);
+}
+function openSearch() {
+    $('#layer-search-box').classList.remove('hidden');
+    $('#search-layers').focus();
+    $('#search-layers').select();
+    renderLayers();
+}
+function closeSearch() {
+    $('#layer-search-box').classList.add('hidden');
+    $('#search-layers').value = '';
+    SR.cache = null;
+    renderLayers();
+}
+function srUpdateReplaceButtons() {
+    const has = $('#search-layers').value.trim() !== '' && srCompute().results.length > 0;
+    $('#replace-one').disabled = !has;
+    $('#replace-all').disabled = !has;
+}
+function setSearchMode(mode) {
+    SR.mode = mode;
+    $('#search-replace').classList.toggle('hidden', mode !== 'replace');
+    if (mode !== 'replace')
+        return;
+    // Like Figma: switching to Replace selects the first result so Replace acts on something visible.
+    if ($('#search-layers').value.trim() && srCompute().results.length)
+        focusSearchResult(0);
+    srUpdateReplaceButtons();
+    $('#replace-layers').focus();
+}
+// Replace inside a text layer. Styled text keeps its spans when every match sits inside one span;
+// a match that crosses a style boundary takes the style of the first span it touches.
+function replaceInText(n, re, rep) {
+    const next = String(n.text ?? '').replace(re, () => rep);
+    if (next === n.text)
+        return false;
+    if (Array.isArray(n.spans) && n.spans.length > 1 && n.spans.map(s => s.text || '').join('') === n.text) {
+        const bounds = [];
+        let at = 0;
+        for (const s of n.spans) {
+            bounds.push([at, at + (s.text || '').length]);
+            at += (s.text || '').length;
+        }
+        const matches = [...String(n.text).matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))];
+        const inOne = matches.every(m => bounds.some(([a, b]) => m.index >= a && m.index + m[0].length <= b));
+        if (inOne)
+            n.spans = n.spans.map(s => ({ ...s, text: String(s.text || '').replace(re, () => rep) }));
+        else {
+            // Rebuild: each span keeps its own text outside matches; replaced text joins the span the match started in.
+            let cursor = 0;
+            const out = n.spans.map(s => ({ ...s, text: '' })), spanAt = i => Math.max(0, bounds.findIndex(([a, b]) => i >= a && i < b));
+            for (const m of matches) {
+                for (let i = cursor; i < m.index; i++)
+                    out[spanAt(i)].text += n.text[i];
+                out[spanAt(m.index)].text += rep;
+                cursor = m.index + m[0].length;
+            }
+            for (let i = cursor; i < n.text.length; i++)
+                out[spanAt(i)].text += n.text[i];
+            n.spans = out.filter(s => s.text.length);
+            if (n.spans.length < 2)
+                delete n.spans;
+        }
+    }
+    else if (n.spans)
+        delete n.spans;
+    n.text = next;
+    if (n.type === 'text')
+        n.autoW ? hugText(n) : n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+    return true;
+}
+function srReplace(all) {
+    const { q, results } = srCompute(), rep = $('#replace-layers').value;
+    const list = all ? results : results.slice(SR.active, SR.active + 1);
+    if (!q || !list.length)
+        return;
+    let changedCount = 0;
+    transaction(all ? 'Replace all' : 'Replace', () => {
+        for (const r of list) {
+            const n = r.node, re = srRegex(q, true);
+            let changedHere = false;
+            if (r.field === 'text' || n.type === 'text' && re.test(n.text || ''))
+                changedHere = replaceInText(n, srRegex(q, true), rep);
+            else {
+                const next = String(n.name ?? '').replace(srRegex(q, true), () => rep);
+                if (next !== n.name) {
+                    n.name = next;
+                    changedHere = true;
+                }
+            }
+            if (!changedHere)
+                continue;
+            n.version = (n.version || 0) + 1;
+            if (n.sourceId) {
+                n.overrides ||= {};
+                for (const k of ['text', 'spans', 'name', 'w', 'h'])
+                    if (n[k] !== undefined)
+                        n.overrides[k] = structuredClone(n[k]);
+            }
+            changedCount++;
+        }
+        doc.touch();
+    });
+    SR.cache = null;
+    toast(changedCount ? `Replaced in ${changedCount} layer${changedCount === 1 ? '' : 's'}.` : 'Nothing to replace.');
+    renderLayers();
+    // Single replace moves on to the next match, like Figma.
+    if (!all && srCompute().results.length)
+        focusSearchResult(Math.min(SR.active, srCompute().results.length - 1));
+    srUpdateReplaceButtons();
+}
+$('#search-button').onclick = () => $('#layer-search-box').classList.contains('hidden') ? openSearch() : closeSearch();
+$('#search-close').onclick = closeSearch;
+$('#search-layers').oninput = () => {
+    SR.active = 0;
+    clearTimeout(SR.timer);
+    // Searching every page of a large file is debounced; the current page answers instantly.
+    SR.timer = setTimeout(renderLayers, SR.scope === 'all' ? 160 : 0);
 };
-$('#search-layers').oninput = renderLayers;
+$('#search-layers').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        srStep(e.shiftKey ? -1 : 1);
+    }
+    else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSearch();
+    }
+});
+$('#replace-layers').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        srReplace(e.metaKey || e.ctrlKey);
+    }
+    else if (e.key === 'Escape')
+        setSearchMode('find');
+});
+$('#replace-one').onclick = () => srReplace(false);
+$('#replace-all').onclick = () => srReplace(true);
+$('#search-options').onclick = e => {
+    const { counts } = $('#search-layers').value.trim() ? srCompute() : { counts: {} };
+    const pick = fn => () => { fn(); SR.cache = null; renderLayers(); };
+    openPopMenu(e.currentTarget, [
+        { label: 'Find', checked: SR.mode === 'find', run: () => setSearchMode('find') },
+        { label: 'Replace', checked: SR.mode === 'replace', run: () => setSearchMode('replace') },
+        '-',
+        ...SR_KINDS.map(([k, label, ic]) => ({ label, checked: SR.type === k, icon: ic ? icon(ic, 14) : '<span class="pm-dots">···</span>', count: counts[k] || '', run: pick(() => { SR.type = k; }) })),
+        '-',
+        { label: 'Match case', checked: SR.matchCase, run: pick(() => { SR.matchCase = !SR.matchCase; }) },
+        { label: 'Whole words', checked: SR.whole, run: pick(() => { SR.whole = !SR.whole; }) },
+    ]);
+};
+$('#search-results').addEventListener('click', e => {
+    const t = e.target;
+    const scope = t.closest('[data-sr-scope]');
+    if (scope) {
+        const set = s => () => { SR.scope = s; SR.cache = null; SR.active = 0; renderLayers(); };
+        openPopMenu(scope, [{ label: 'This page', checked: SR.scope === 'page', run: set('page') }, { label: 'All pages', checked: SR.scope === 'all', run: set('all') }]);
+        return;
+    }
+    const step = t.closest('[data-sr-step]');
+    if (step)
+        return srStep(+step.dataset.srStep);
+    const tog = t.closest('[data-sr-toggle]');
+    if (tog) {
+        const k = tog.dataset.srToggle;
+        SR.collapsed.has(k) ? SR.collapsed.delete(k) : SR.collapsed.add(k);
+        renderSearchResults();
+        return;
+    }
+    if (t.closest('[data-sr-all]')) {
+        SR.scope = 'all';
+        SR.cache = null;
+        renderLayers();
+        return;
+    }
+    const pg = t.closest('[data-sr-page]');
+    if (pg) {
+        switchPage(pg.dataset.srPage);
+        return;
+    }
+    const row = t.closest('[data-sr]');
+    if (row)
+        focusSearchResult(+row.dataset.sr);
+});
 $('#zoom-in').onclick = () => zoomAt(1.25);
 $('#zoom-out').onclick = () => zoomAt(.8);
 $('#zoom-value').onclick = e => showMenu([{ label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 150);
@@ -12547,6 +13485,233 @@ $('#text-editor').addEventListener('keydown', e => {
         finishText();
     }
 });
+document.addEventListener('change', e => {
+    if (e.target.id !== 'settings-figma-token' || !e.target.value.trim())
+        return;
+    setFigmaToken(e.target.value.trim());
+    e.target.value = '';
+    e.target.placeholder = 'Saved — type to replace';
+    toast('Figma token saved on this device.');
+});
+document.addEventListener('click', e => {
+    if (e.target.id !== 'settings-figma-clear')
+        return;
+    setFigmaToken('');
+    e.target.remove();
+    const input = document.getElementById('settings-figma-token');
+    if (input)
+        input.placeholder = 'figd_…';
+    toast('Figma token removed.');
+});
+// ===== images for Figma pastes =====
+// Figma's clipboard carries image *hashes*, not bytes: Figma itself pulls them from its servers. Midas does the
+// same through the REST API — GET /v1/files/:key/images maps every image hash in the file to a download URL —
+// using the file key from the clipboard's (figmeta) marker and the user's personal access token.
+const FIGMA_TOKEN_KEY = 'midas-figma-token';
+function figmaToken() {
+    try {
+        return localStore.getItem(FIGMA_TOKEN_KEY) || '';
+    }
+    catch {
+        return '';
+    }
+}
+function setFigmaToken(token) {
+    try {
+        token ? localStore.setItem(FIGMA_TOKEN_KEY, token) : localStore.removeItem(FIGMA_TOKEN_KEY);
+    }
+    catch { }
+}
+function figmaFileKeyOf(html) {
+    const m = /\(figmeta\)([\s\S]*?)\(\/figmeta\)/.exec(html);
+    if (!m)
+        return null;
+    try {
+        const meta = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(m[1].replace(/\s+/g, '')), c => c.charCodeAt(0))));
+        return meta.fileKey || null;
+    }
+    catch {
+        return null;
+    }
+}
+async function bytesToDataUrl(buf) {
+    const b = new Uint8Array(buf);
+    const mime = b[0] === 0x89 ? 'image/png' : b[0] === 0xff ? 'image/jpeg' : b[0] === 0x47 ? 'image/gif' : b[0] === 0x52 ? 'image/webp' : b[0] === 0x3c ? 'image/svg+xml' : 'image/png';
+    return await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(new Blob([b], { type: mime })); });
+}
+async function fetchFigmaImages(fileKey, missing, token) {
+    const res = await fetch(`https://api.figma.com/v1/files/${encodeURIComponent(fileKey)}/images`, { headers: { 'X-Figma-Token': token } });
+    if (res.status === 401 || res.status === 403)
+        throw Object.assign(new Error(res.status === 401 ? 'Figma says the token is invalid or expired. Paste again to enter a new one.' : 'Figma refused the token. It needs the “File content: read” scope and access to the file you copied from.'), { badToken: true });
+    if (res.status === 404)
+        throw new Error('Figma could not find the source file with this token. Is it shared with this account?');
+    if (!res.ok)
+        throw new Error(`Figma API error ${res.status}.`);
+    const urls = (await res.json())?.meta?.images || {};
+    const jobs = [...missing], loaded = new Set();
+    let failed = 0;
+    // A few downloads at a time keeps large pastes from flooding the network.
+    const worker = async () => {
+        for (let job = jobs.shift(); job; job = jobs.shift()) {
+            const [hash, id] = job, url = urls[hash];
+            if (!url) {
+                failed++;
+                continue;
+            }
+            try {
+                const r = await fetch(url);
+                if (!r.ok)
+                    throw new Error(String(r.status));
+                doc.data.assets[id] = await bytesToDataUrl(await r.arrayBuffer());
+                loaded.add(id);
+            }
+            catch {
+                failed++;
+            }
+        }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    if (loaded.size) {
+        // Drop placeholders and raster caches so every layer using these images repaints with the real pixels.
+        for (const id of loaded) {
+            renderer.images.images.delete(id);
+            renderer.images.pending.delete(id);
+        }
+        patternCache.clear();
+        renderer.atlas?.reset();
+        renderer.cache?.clear();
+        for (const p of doc.data.pages)
+            for (const n of p.nodes)
+                if (getFills(n).some(f => loaded.has(f.image)))
+                    n.version = (n.version || 0) + 1;
+        doc.touch();
+        saveSoon();
+        invalidate();
+    }
+    return { loaded: loaded.size, failed };
+}
+// Ask for a personal access token (only when one is needed), then fetch the images of a paste.
+function resolveFigmaPasteImages(fileKey, missing) {
+    if (!missing?.size)
+        return;
+    if (!fileKey) {
+        toast('Images could not be fetched: the clipboard did not say which Figma file they came from.');
+        return;
+    }
+    const run = async token => {
+        toast(`Fetching ${missing.size} image${missing.size === 1 ? '' : 's'} from Figma…`);
+        try {
+            const { loaded, failed } = await fetchFigmaImages(fileKey, missing, token);
+            toast(failed ? `Fetched ${loaded} image${loaded === 1 ? '' : 's'} from Figma; ${failed} could not be downloaded.` : `Fetched ${loaded} image${loaded === 1 ? '' : 's'} from Figma.`);
+        }
+        catch (err) {
+            console.error('[Figma images]', err);
+            if (err.badToken)
+                setFigmaToken('');
+            toast(err instanceof TypeError ? 'Could not reach Figma (network or browser blocked the request).' : err.message);
+        }
+    };
+    const saved = figmaToken();
+    if (saved) {
+        run(saved);
+        return;
+    }
+    modal(`${modalHeader('Bring the images along')}<p>Figma only puts image references on the clipboard. Midas can download them from Figma with your <b>personal access token</b>.</p><p class="small-label">Create one in Figma → Settings → Security → Personal access tokens, with the “File content: read” scope. It is sent only to api.figma.com.</p><label class="field" style="margin:12px 0 8px"><span>${icon('lock', 12)}</span><input type="password" id="figma-token-input" placeholder="figd_…" autocomplete="off" spellcheck="false" aria-label="Figma personal access token"></label><label class="checkbox-row"><input type="checkbox" id="figma-token-remember" checked>Remember on this device</label><div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="wide-button" id="figma-token-skip">Skip</button><button class="wide-button primary" id="figma-token-go">Fetch images</button></div>`);
+    const input = $('#figma-token-input'), go = () => {
+        const token = input.value.trim();
+        if (!token) {
+            input.focus();
+            return;
+        }
+        if ($('#figma-token-remember').checked)
+            setFigmaToken(token);
+        closeModal();
+        run(token);
+    };
+    input.focus();
+    input.addEventListener('keydown', e => { if (e.key === 'Enter')
+        go(); });
+    $('#figma-token-go').onclick = go;
+    $('#figma-token-skip').onclick = () => closeModal();
+}
+// ===== paste from Figma =====
+// Figma's "Copy" puts an HTML snippet on the clipboard whose (figma)…(/figma) comment holds the copied
+// nodes as base64 fig-kiwi — the same binary as a .fig file's canvas, so the .fig importer reads it.
+async function pasteFromFigma(html) {
+    const m = /\(figma\)([\s\S]*?)\(\/figma\)/.exec(html);
+    if (!m)
+        return false;
+    let data, report, missing;
+    try {
+        const raw = atob(m[1].replace(/\s+/g, '')), bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++)
+            bytes[i] = raw.charCodeAt(i);
+        const res = await figToMidas(new File([bytes], 'clipboard.fig'));
+        report = res.report;
+        missing = res.missingImages;
+        data = DocumentModel.parse(res.data);
+    }
+    catch (err) {
+        console.error('[Figma paste]', err);
+        toast('Could not read what was copied from Figma: ' + (err.message || err));
+        return true;
+    }
+    const nodes = data.pages.flatMap(p => p.nodes);
+    if (!nodes.length) {
+        toast('Nothing to paste from Figma.');
+        return true;
+    }
+    const ids = new Map(nodes.map(n => [n.id, uid()]));
+    const roots = nodes.filter(n => !n.parentId || !ids.has(n.parentId));
+    // Centre the pasted layers in the current view, keeping their layout relative to each other.
+    const minX = Math.min(...roots.map(n => n.x)), minY = Math.min(...roots.map(n => n.y));
+    const maxX = Math.max(...roots.map(n => n.x + n.w)), maxY = Math.max(...roots.map(n => n.y + n.h));
+    const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2), dx = Math.round(c.x - (minX + maxX) / 2), dy = Math.round(c.y - (minY + maxY) / 2);
+    const added = [];
+    transaction('Paste from Figma', () => {
+        Object.assign(doc.data.assets, data.assets || {});
+        for (const src of nodes) {
+            const n = structuredClone(src);
+            n.id = ids.get(src.id);
+            n.parentId = src.parentId && ids.has(src.parentId) ? ids.get(src.parentId) : null;
+            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+                if (n[k] && ids.has(n[k]))
+                    n[k] = ids.get(n[k]);
+            if (!n.parentId) {
+                n.x += dx;
+                n.y += dy;
+                added.push(n.id);
+            }
+            doc.add(n);
+        }
+        doc.refresh();
+    });
+    select(added);
+    toast(`Pasted ${nodes.length} layer${nodes.length === 1 ? '' : 's'} from Figma.`);
+    // Image fills arrive as references only; fetch their bytes from Figma (asks for a token the first time).
+    resolveFigmaPasteImages(figmaFileKeyOf(html), missing);
+    return true;
+}
+// Ctrl/⌘+V on the canvas arrives here (the keydown handler leaves it to the browser).
+document.addEventListener('paste', e => {
+    const t = e.target;
+    if (isInput(t) || t.closest?.('#text-editor, #vars-window, .modal, .prop-pop, .plugin-editor'))
+        return;
+    if (lib.open) // the file browser is showing, not the canvas
+        return;
+    const cd = e.clipboardData, html = cd?.getData('text/html') || '';
+    e.preventDefault();
+    if (html.includes('(figma)')) {
+        pasteFromFigma(html);
+        return;
+    }
+    const image = [...(cd?.files || [])].find(f => f.type.startsWith('image/'));
+    if (image) {
+        importImage(image);
+        return;
+    }
+    pasteSelection(cd?.getData('text/plain') ?? '');
+});
 $('#text-editor').addEventListener('paste', e => {
     e.preventDefault();
     const t = e.clipboardData.getData('text/plain');
@@ -12607,6 +13772,41 @@ $('#text-editor').addEventListener('blur', () => setTimeout(() => {
     if ((state.editing || state.pendingText) && !$('#text-editor').contains(document.activeElement))
         finishText();
 }, 0));
+// Drag the bar under the page list to trade height between the Pages and Layers panels.
+(function pagesSplitter() {
+    const panel = $('#left-panel'), list = $('#page-list'), bar = $('#pages-split');
+    if (!panel || !list || !bar)
+        return;
+    const apply = h => panel.style.setProperty('--pages-h', Math.round(h) + 'px');
+    try {
+        const saved = JSON.parse(localStore.getItem('midas-sidebars') || '{}');
+        if (saved.pages)
+            apply(saved.pages);
+    }
+    catch { }
+    bar.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        bar.setPointerCapture(e.pointerId);
+        bar.classList.add('on');
+        const sy = e.clientY, h0 = list.getBoundingClientRect().height;
+        // Leave room for the layers heading and a few layer rows below.
+        const max = () => Math.max(60, panel.getBoundingClientRect().height - 220);
+        const move = ev => apply(Math.max(40, Math.min(max(), h0 + ev.clientY - sy)));
+        const up = () => {
+            bar.classList.remove('on');
+            bar.removeEventListener('pointermove', move);
+            bar.removeEventListener('pointerup', up);
+            try {
+                const saved = JSON.parse(localStore.getItem('midas-sidebars') || '{}');
+                saved.pages = Math.round(list.getBoundingClientRect().height);
+                localStore.setItem('midas-sidebars', JSON.stringify(saved));
+            }
+            catch { }
+        };
+        bar.addEventListener('pointermove', move);
+        bar.addEventListener('pointerup', up);
+    });
+})();
 (function sidebarResizers() {
     try {
         const saved = JSON.parse(localStore.getItem('midas-sidebars') || '{}');
@@ -12741,7 +13941,7 @@ document.addEventListener('keydown', e => {
         }
     }
     if (cmd) {
-        const handled = ['z', 'y', 'c', 'v', 'x', 'd', 'a', 'g', 'k', 's', 'o', 'n', 'r', 'b', 'i', 'u', 'l', 'h'].includes(key);
+        const handled = ['z', 'y', 'c', 'x', 'd', 'a', 'g', 'k', 's', 'o', 'n', 'r', 'b', 'i', 'u', 'l', 'h'].includes(key);
         if (handled)
             e.preventDefault();
         if (key === 'z') {
@@ -12757,7 +13957,7 @@ document.addEventListener('keydown', e => {
             return;
         }
         if (key === 'v') {
-            pasteSelection();
+            // Let the browser fire a paste event: it carries the full clipboard (Figma HTML, images), see onPaste.
             return;
         }
         if (key === 'x') {
@@ -12779,6 +13979,11 @@ document.addEventListener('keydown', e => {
         }
         if (key === 'k') {
             e.altKey ? makeComponent() : e.shiftKey ? $('#image-input').click() : commandPalette();
+            return;
+        }
+        if (key === 'f' && !e.shiftKey && !e.altKey) {
+            e.preventDefault();
+            openSearch();
             return;
         }
         if (key === 's') {
@@ -13010,6 +14215,8 @@ else
     fit();
 if (options.canvasColor)
     $('#canvas-world').style.backgroundColor = options.canvasColor;
+if (initial)
+    markPagesSaved(); // everything on disk matches what was just loaded; a fresh starter document still has to be written
 refreshUI();
 invalidate();
 if (!initial)

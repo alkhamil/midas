@@ -66,11 +66,26 @@ export function LeftPanel() {
         <aside className="left-panel" id="left-panel" aria-label="Pages and layers">
             <div className="left-heading">
                 <span id="left-heading-title" title="Double-click to rename">Design file</span>
-                <button className="icon-button small" id="search-button" title="Search layers" aria-label="Search layers" data-icon="search"></button>
             </div>
-            <div className="layer-search hidden" id="layer-search"><span data-icon="search"></span><input id="search-layers" placeholder="Find a layer…" aria-label="Find a layer" /></div>
-            <div className="pages-heading" id="pages-heading"><span>Pages</span><button className="icon-button small" id="add-page" title="Add page" aria-label="Add page" data-icon="plus"></button></div>
+            <div className="layer-search-box hidden" id="layer-search-box">
+                <div className="layer-search" id="layer-search">
+                    <span data-icon="search"></span>
+                    <input id="search-layers" placeholder="Find…" aria-label="Find layers and text" autoComplete="off" spellCheck="false" />
+                    <button className="icon-button small" id="search-options" title="Search options" aria-label="Search options" data-icon="sliders"></button>
+                    <button className="icon-button small" id="search-close" title="Close search (Esc)" aria-label="Close search" data-icon="close"></button>
+                </div>
+                <div className="search-replace hidden" id="search-replace">
+                    <label className="replace-field"><span data-icon="arrowRight"></span><input id="replace-layers" placeholder="Replace with…" aria-label="Replace with" autoComplete="off" spellCheck="false" /></label>
+                    <div className="replace-actions">
+                        <button className="wide-button" id="replace-one" title="Replace the selected result (Enter)">Replace</button>
+                        <button className="wide-button" id="replace-all" title="Replace every result (Ctrl+Enter)">Replace all</button>
+                    </div>
+                </div>
+            </div>
+            <div id="search-results" className="search-results hidden" role="listbox" aria-label="Search results"></div>
+            <div className="pages-heading" id="pages-heading"><span>Pages</span><span className="pages-actions"><button className="icon-button small" id="search-button" title="Find layers (Ctrl+F)" aria-label="Find layers" data-icon="search"></button><button className="icon-button small" id="add-page" title="Add page" aria-label="Add page" data-icon="plus"></button></span></div>
             <div id="page-list" className="page-list"></div>
+            <div className="pages-split" id="pages-split" role="separator" aria-orientation="horizontal" aria-label="Resize pages panel" title="Drag to resize"></div>
             <div className="layers-heading" id="layers-heading"><span id="tree-heading">Layers</span><span className="muted" id="layer-count"></span></div>
             <div id="layer-tree" className="layer-tree" role="tree" aria-label="Layers"></div>
             <div id="assets-panel" className="assets-panel hidden"></div>
