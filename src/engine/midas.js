@@ -5588,7 +5588,9 @@ class Renderer {
         // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
         // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
         // Masks need the 2D painter (alpha masking); it is allowed on much larger scenes than other complex effects.
-        const fxRoute = this.backend === 'WebGPU' && (scene.length <= 250 && scene.some(s => hasComplexFx(s.node)) || scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask)));
+        // Vectors zoomed past what the raster atlas can hold would turn soft: the 2D painter draws them as true curves.
+        const pxScale = camera.zoom * this.dpr, tooBig = s => (s.node.type === 'path' || s.node.type === 'line') && Math.max(s.node.w, s.node.h) * pxScale > this.atlas.size - 8;
+        const fxRoute = this.backend === 'WebGPU' && (scene.length <= 250 && scene.some(s => hasComplexFx(s.node)) || scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask)) || scene.length <= 2000 && scene.some(tooBig));
         this.toggleFx(fxRoute);
         if (fxRoute) {
             try {
@@ -6315,7 +6317,7 @@ function fit(ids = null) {
     state.camera.y = 67 - b.y * state.camera.zoom;
     invalidate();
 }
-function zoomAt(factor, x = area.clientWidth / 2, y = area.clientHeight / 2) { const w = screenToWorld(x, y); state.camera.zoom = clamp(state.camera.zoom * factor, .02, 64); state.camera.x = x - w.x * state.camera.zoom; state.camera.y = y - w.y * state.camera.zoom; invalidate(); }
+function zoomAt(factor, x = area.clientWidth / 2, y = area.clientHeight / 2) { const w = screenToWorld(x, y); state.camera.zoom = clamp(state.camera.zoom * factor, .02, 256); state.camera.x = x - w.x * state.camera.zoom; state.camera.y = y - w.y * state.camera.zoom; invalidate(); }
 function setTool(tool) {
     finishText();
     if (state.pen.length)
@@ -7750,7 +7752,7 @@ function pointerMove(e) {
         state.pointers.set(e.pointerId, p);
     if (state.pinch && state.pointers.size >= 2) {
         const [a, b] = [...state.pointers.values()], center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, pinch = state.pinch, ratio = Math.hypot(a.x - b.x, a.y - b.y) / Math.max(1, pinch.distance);
-        state.camera.zoom = clamp(pinch.camera.zoom * ratio, .02, 64);
+        state.camera.zoom = clamp(pinch.camera.zoom * ratio, .02, 256);
         state.camera.x = center.x - (pinch.center.x - pinch.camera.x) / pinch.camera.zoom * state.camera.zoom;
         state.camera.y = center.y - (pinch.center.y - pinch.camera.y) / pinch.camera.zoom * state.camera.zoom;
         invalidate();
