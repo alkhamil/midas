@@ -102,6 +102,7 @@ export function LeftPanel() {
 const TOOLS = [
     ['select', 'Move (V)', 'Move', 'cursor'],
     ['frame', 'Frame (F)', 'Frame', 'frame'],
+    ['section', 'Section (⇧S)', 'Section', 'section'],
     null,
     ['rect', 'Rectangle (R)', 'Rectangle', 'rect'],
     ['ellipse', 'Ellipse (O)', 'Ellipse', 'ellipse'],

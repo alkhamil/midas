@@ -2272,7 +2272,7 @@ body.vw-reordering, body.vw-reordering * { cursor: grabbing !important; user-sel
 .fill-row > .var-btn { position: static; transform: none; opacity: 0; margin-left: 4px; flex: none }
 .field-label .var-btn { position: static; transform: none; margin-left: auto }
 .var-chip-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px }
-.var-chip { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent-bg); color: var(--text); cursor: pointer; font-size: 11.5px; text-align: left }
+.var-chip { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border-radius: 6px; border: 0; background: var(--accent-bg); color: var(--accent); cursor: pointer; font-size: 12px; text-align: left }
 .var-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .var-x { width: 24px; height: 28px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; border-radius: 6px }
 .var-x:hover { background: var(--hover); color: var(--danger) }
@@ -2593,6 +2593,8 @@ select.vw-text { cursor: pointer }
 .cmp-combo-btn:hover { color: var(--text) }
 /* ===== shared variable list (Figma-style picker) ===== */
 .var-picker { display: flex; flex-direction: column; width: 280px; max-height: min(520px, calc(100vh - 16px)); overflow: hidden }
+.var-picker .vp-list { display: block; gap: 0 }
+.vpk-item { height: 28px }
 .var-picker .vp-list, .pk-libs { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 8px }
 .pk-libwrap { display: flex; flex-direction: column; max-height: 420px; min-height: 0 }
 .vpk-head { flex: none; display: grid; gap: 8px; padding: 10px 10px 6px; border-bottom: 1px solid var(--border-soft) }
@@ -2605,8 +2607,8 @@ select.vw-text { cursor: pointer }
 .vpk-lib select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: inherit; font: inherit; padding: 0; min-width: 0; max-width: 160px; cursor: pointer; text-overflow: ellipsis }
 .vpk-lib select:focus { outline: 0 }
 .vpk-lib svg { flex: none; color: var(--muted); pointer-events: none }
-.vpk-coll { padding: 12px 8px 6px; font-size: 12px; font-weight: 600; color: var(--text) }
-.vpk-group { padding: 8px 8px 4px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary) }
+.vpk-coll { padding: 8px 8px 2px; font-size: 12px; font-weight: 600; color: var(--text) }
+.vpk-group { padding: 6px 8px 2px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary) }
 .vpk-item.in-group { padding-left: 14px }
 .vpk-item svg { color: var(--accent); flex: none }
 .vpk-grid { display: grid; grid-template-columns: repeat(auto-fill, 24px); gap: 6px; padding: 4px 8px 8px }
@@ -2689,3 +2691,30 @@ select.vw-text { cursor: pointer }
 #page-loading .pl-box { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; box-shadow: 0 8px 28px rgba(0, 0, 0, .25) }
 #page-loading .pl-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: pl-rot .7s linear infinite }
 @keyframes pl-rot { to { transform: rotate(360deg) } }
+
+.tx-set-row { display: flex; justify-content: flex-end }
+.tp-pop .segmented button { min-width: 32px }
+
+.font-field-row.bound .font-field { color: var(--accent) }
+
+.canvas-rename { position: absolute; z-index: 30; height: 22px; min-width: 120px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--panel); color: var(--text); font-size: 11px; outline: 0 }
+
+.hf { position: relative }
+.hf-check { position: absolute; z-index: 2; top: 9px; left: 9px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); opacity: 0; transition: opacity .1s; cursor: pointer }
+.hf:hover .hf-check, .hf-check.on, .home-grid:has(.hf-check.on) .hf-check { opacity: 1 }
+.hf-check input, .home-bulk input { accent-color: var(--accent); margin: 0; width: 14px; height: 14px; cursor: pointer }
+.home-bulk { display: flex; align-items: center; gap: 14px; height: 32px; margin: -4px 0 12px; font-size: 12.5px; color: var(--text-secondary) }
+.home-bulk label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer }
+.home-link.danger { color: var(--danger) }
+
+.lib-box { display: grid; gap: 8px; padding: 0 0 12px; margin-bottom: 8px; border-bottom: 1px solid var(--border-soft, var(--border)) }
+.lib-head { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px }
+.lib-publish { height: 32px; font-size: 12px; justify-content: center; gap: 6px }
+.lib-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: var(--field) }
+.lib-info { flex: 1; min-width: 0; display: grid }
+.lib-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lib-info small { color: var(--muted); font-size: 10.5px }
+.lib-row .cmp-btn.on { background: var(--accent-bg); color: var(--accent) }
+.lib-group { margin-bottom: 8px }
+.lib-group-head { display: flex; align-items: center; gap: 6px; width: 100%; height: 28px; border: 0; background: transparent; color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0 2px }
+.lib-group-head small { margin-left: auto; color: var(--muted); font-weight: 400 }

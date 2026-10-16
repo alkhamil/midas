@@ -704,7 +704,7 @@ document.addEventListener('change', e => {
 // ===== variables =====
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
-function bindTypes(prop) { if (String(prop).startsWith('vprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop]; return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
+function bindTypes(prop) { if (String(prop).startsWith('vprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
     const n = activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
@@ -916,12 +916,12 @@ function cleanVariables(v) {
     for (const c of v.collections) {
         if (typeof c?.id !== 'string' || !Array.isArray(c.modes) || !c.modes.length)
             continue;
-        out.collections.push({ id: c.id, name: String(c.name ?? 'Collection'), modes: c.modes.filter(m => typeof m?.id === 'string').map(m => ({ id: m.id, name: String(m.name ?? 'Mode') })), groups: Array.isArray(c.groups) ? c.groups.map(String) : [] });
+        out.collections.push({ id: c.id, name: String(c.name ?? 'Collection'), modes: c.modes.filter(m => typeof m?.id === 'string').map(m => ({ id: m.id, name: String(m.name ?? 'Mode') })), groups: Array.isArray(c.groups) ? c.groups.map(String) : [], ...(typeof c.libId === 'string' ? { libId: c.libId } : {}) });
     }
     const ids = new Set(out.collections.map(c => c.id));
     for (const i of v.items)
         if (typeof i?.id === 'string' && ids.has(i.collectionId) && types.has(i.type) && i.values && typeof i.values === 'object')
-            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), hidden: !!i.hidden, scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
+            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
     return out.collections.every(c => c.modes.length) ? out : { collections: [], items: [] };
 }
 function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
@@ -934,7 +934,7 @@ function varChip(prop, v) {
     const val = varDisplayValue(v, activeNode());
     const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
-    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="var-x" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
 function varRow(label, prop) {
     const v = boundVar(prop);
@@ -1083,6 +1083,8 @@ function bindVariable(prop, id) {
             if (/^fills\./.test(prop))
                 materializeFills(n);
             n.vars = { ...(n.vars || {}), [prop]: id };
+            if (prop === 'stroke' && !(n.strokeWidth > 0))
+                n.strokeWidth = 1;
             if (prop === 'w')
                 n.layoutSizingH = 'fixed';
             if (prop === 'h')
@@ -1103,16 +1105,39 @@ function detachVariable(prop) {
         }
     });
 }
+// The picker opens on pointerdown: the inspector can re-render between pointerdown and click (autosave, binding refresh),
+// which used to swallow the click and leave the apply-variable icon dead until the next try.
+let varBindDownAt = 0;
+document.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !e.target.closest?.('[data-var-bind]') || e.target.closest('#var-picker'))
+        return;
+    varBindDownAt = performance.now();
+    handleVarClick(e);
+}, true);
 document.addEventListener('click', e => {
+    if (performance.now() - varBindDownAt < 700 && e.target.closest?.('[data-var-bind]'))
+        return;
+    handleVarClick(e);
+});
+function handleVarClick(e) {
     const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
     if (bind) {
-        const prop = bind.dataset.varBind, cur = boundVarId(prop);
-        openVarPicker(bind, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+        let prop = bind.dataset.varBind;
+        const rect = bind.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
+        // The Fill header icon targets the top fill row (fills.0), which is where the hex field shows the bound variable.
+        if (prop === 'fill') {
+            const an = activeNode();
+            if (an && !getFills(an).length && an.type !== 'text')
+                addFill();
+            prop = 'fills.0';
+        }
+        const cur = boundVarId(prop);
+        openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
         return;
     }
     if (det)
         detachVariable(det.dataset.varDetach);
-});
+}
 document.addEventListener('change', e => {
     const el = e.target;
     if (el.matches?.('[data-var-mode]')) {
@@ -1335,6 +1360,103 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && strokePop)
     closeStrokePop();
     e.stopPropagation();
 } }, true);
+
+// ----- text settings popover: case, direction, decoration, lists, truncation, max lines -----
+const TX_VALIGN_ICONS = {
+    top: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 2.5h11"/><rect x="5" y="5" width="6" height="8" rx="1"/></svg>',
+    center: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 8h2M11.5 8h2"/><rect x="5" y="3.5" width="6" height="9" rx="1"/></svg>',
+    bottom: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 13.5h11"/><rect x="5" y="3" width="6" height="8" rx="1"/></svg>'
+};
+function textSettingsActive(n) { return (n.textCase && n.textCase !== 'none') || (n.direction && n.direction !== 'auto') || n.textTruncate || (n.textWrap && n.textWrap !== 'default') || n.textList === 'bullet' || n.textList === 'number' || n.textDecoration === 'line-through'; }
+let textPop = null;
+function closeTextPop() { textPop?.el.remove(); textPop = null; }
+function textSettingsHtml(n) {
+    const row = (label, body) => `<div class="stp-row"><span>${label}</span>${body}</div>`;
+    const sel = (prop, cur, opts) => `<select data-tp="${prop}" aria-label="${prop}">${opts.map(([v, l]) => `<option value="${v}" ${String(cur) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    const list = n.textList || 'none', strike = n.textDecoration === 'line-through';
+    let h = `<div class="stp-head"><b>Text settings</b><button class="icon-button small" data-tp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    h += row('Case', sel('textCase', n.textCase || 'none', [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']]));
+    h += row('Direction', sel('direction', n.direction || 'auto', [['auto', 'Automatic'], ['ltr', 'Left to right'], ['rtl', 'Right to left']]));
+    h += row('List', `<div class="segmented">${[['none', 'None', icon('close', 14)], ['bullet', 'Bulleted list', '•'], ['number', 'Numbered list', '1.']].map(([v, t, g]) => `<button data-tp-list="${v}" class="${list === v ? 'active' : ''}" title="${t}" aria-label="${t}">${g}</button>`).join('')}</div>`);
+    h += row('Strikethrough', `<div class="segmented"><button data-tp-deco="line-through" class="${strike ? 'active' : ''}" title="Strikethrough" aria-label="Strikethrough"><span style="text-decoration:line-through;font-size:13px">S</span></button></div>`);
+    h += row('Wrap', sel('textWrap', n.textWrap || 'default', [['default', 'Default'], ['balance', 'Balance'], ['pretty', 'Beauty']]));
+    h += row('Truncate text', `<div class="segmented"><button data-tp-trunc class="${n.textTruncate ? 'active' : ''}" aria-pressed="${!!n.textTruncate}" title="Cut off text that does not fit and end it with …">${n.textTruncate ? 'On' : 'Off'}</button></div>`);
+    if (n.textTruncate)
+        h += row('Max lines', `<input type="number" min="1" max="999" step="1" data-tp="maxLines" value="${n.maxLines || 1}" aria-label="Max lines">`);
+    return h;
+}
+function refreshTextPop() {
+    if (!textPop)
+        return;
+    const n = activeNode();
+    if (!n || n.type !== 'text') {
+        closeTextPop();
+        return;
+    }
+    textPop.el.innerHTML = textSettingsHtml(n);
+}
+function openTextPop(anchor) {
+    const n = activeNode();
+    if (!n || n.type !== 'text')
+        return;
+    const same = !!textPop;
+    closeTextPop();
+    if (same)
+        return;
+    const el = document.createElement('div');
+    el.className = 'stp tp-pop';
+    el.innerHTML = textSettingsHtml(n);
+    document.body.appendChild(el);
+    const a = anchor.getBoundingClientRect(), insp = $('#inspector').getBoundingClientRect();
+    el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
+    el.style.top = Math.max(8, Math.min(a.top - 40, window.innerHeight - el.offsetHeight - 8)) + 'px';
+    textPop = { el };
+}
+document.addEventListener('click', e => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-text-settings]'))) {
+        openTextPop(el);
+        return;
+    }
+    if (!textPop || !textPop.el.contains(t))
+        return;
+    if (t.closest('[data-tp-close]'))
+        closeTextPop();
+    else if ((el = t.closest('[data-tp-list]'))) {
+        setProperty('textList', el.dataset.tpList === 'none' ? undefined : el.dataset.tpList);
+        refreshTextPop();
+    }
+    else if ((el = t.closest('[data-tp-deco]'))) {
+        const cur = activeNode()?.textDecoration;
+        setProperty('textDecoration', cur === el.dataset.tpDeco ? 'none' : el.dataset.tpDeco);
+        refreshTextPop();
+    }
+    else if (t.closest('[data-tp-trunc]')) {
+        setProperty('textTruncate', !activeNode()?.textTruncate);
+        refreshTextPop();
+    }
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (textPop && el.matches?.('[data-tp]')) {
+        setProperty(el.dataset.tp, el.type === 'number' ? Math.max(1, Math.floor(+el.value) || 1) : el.value);
+        refreshTextPop();
+    }
+});
+document.addEventListener('pointerdown', e => {
+    if (textPop && !textPop.el.contains(e.target) && !e.target.closest('[data-text-settings]'))
+        closeTextPop();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPop) {
+    closeTextPop();
+    e.stopPropagation();
+} }, true);
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-text-valign]');
+    if (b)
+        setProperty('textAlignV', b.dataset.textValign);
+});
 
 // ===== W/H sizing dropdown, min/max, gap dropdown =====
 const CHEV_SVG = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg>';
@@ -2959,7 +3081,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== home / file library =====
-const lib = { index: [], fileId: null, view: 'recent', search: '', open: false };
+const lib = { index: [], fileId: null, view: 'recent', search: '', open: false, sel: new Set() };
 const TEMPLATES = [
     { id: 'blank', name: 'Design file', note: 'Start from an empty canvas' },
     { id: 'phone', name: 'Mobile app', frame: ['iPhone 16', 393, 852], note: 'iPhone 16 frame' },
@@ -3069,6 +3191,19 @@ async function libBoot() {
         const now = Date.now();
         lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     }
+    // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
+    // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
+    const seen = new Set(), tidy = [];
+    for (const m of lib.index) {
+        if (seen.has(m.id))
+            continue;
+        seen.add(m.id);
+        if (m.id !== lib.fileId && !m.trashed && m.id !== 'design-system' && !(await hasStored(m.id)))
+            continue;
+        tidy.push(m);
+    }
+    lib.index = tidy;
+    libSaveIndex().catch(() => { });
     return json;
 }
 function templateData(id) {
@@ -3354,8 +3489,32 @@ function ensureHome() {
         const t = e.target;
         let el;
         document.getElementById('home-menu')?.remove();
-        if ((el = t.closest('[data-home-view]'))) {
+        if (t.closest('.hf-check') || t.closest('[data-hf-all]') || t.closest('.home-bulk label')) {
+            // Checkbox clicks only change the selection; the card underneath must not open.
+            const box = t.closest('[data-hf-check]') || (t.closest('.hf-check') || t.closest('.home-bulk label'))?.querySelector('input');
+            if (t.tagName !== 'INPUT')
+                return;
+            e.stopPropagation();
+            if (box?.dataset.hfCheck) {
+                if (box.checked)
+                    lib.sel.add(box.dataset.hfCheck);
+                else
+                    lib.sel.delete(box.dataset.hfCheck);
+            }
+            else if (box?.matches('[data-hf-all]')) {
+                const shown = homeShown();
+                if (box.checked)
+                    shown.forEach(m => lib.sel.add(m.id));
+                else
+                    shown.forEach(m => lib.sel.delete(m.id));
+            }
+            renderHome();
+        }
+        else if (t.closest('[data-hf-bulk-delete]'))
+            bulkDelete();
+        else if ((el = t.closest('[data-home-view]'))) {
             lib.view = el.dataset.homeView;
+            lib.sel.clear();
             renderHome();
         }
         else if ((el = t.closest('[data-home-new]')))
@@ -3436,9 +3595,47 @@ function openFileMenu(anchor, id) {
             libDelete(id);
     });
 }
+// The files the current Home view lists (after search), used by select-all.
+function homeShown() {
+    const q = lib.search.trim().toLowerCase(), match = m => !q || (m.name || '').toLowerCase().includes(q);
+    return lib.view === 'trash' ? lib.index.filter(m => m.trashed && match(m)) : lib.view === 'templates' ? [] : lib.index.filter(m => !m.trashed && match(m));
+}
+async function bulkDelete() {
+    const ids = [...lib.sel].filter(id => lib.index.some(m => m.id === id));
+    if (!ids.length)
+        return;
+    const inTrash = lib.view === 'trash';
+    if (inTrash && !confirm(`Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}? This can't be undone.`))
+        return;
+    if (inTrash) {
+        for (const id of ids) {
+            if (id === lib.fileId)
+                await libNew('blank', { stay: true });
+            await projectStorage.deleteProject(id);
+        }
+        lib.index = lib.index.filter(m => !ids.includes(m.id));
+    }
+    else
+        for (const id of ids) {
+            const m = lib.index.find(x => x.id === id);
+            if (m)
+                m.trashed = Date.now();
+        }
+    lib.sel.clear();
+    await libSaveIndex();
+    renderHome();
+    toast(inTrash ? 'Files deleted.' : `Moved ${ids.length} file${ids.length > 1 ? 's' : ''} to Trash.`);
+}
+function bulkBar() {
+    const shown = homeShown();
+    if (!shown.length)
+        return '';
+    const n = shown.filter(m => lib.sel.has(m.id)).length;
+    return `<div class="home-bulk"><label><input type="checkbox" data-hf-all ${n === shown.length ? 'checked' : ''} data-partial="${n > 0 && n < shown.length}" aria-label="Select all files"><span>${n ? `${n} selected` : 'Select all'}</span></label>${n ? `<button class="home-link danger" data-hf-bulk-delete>Delete${lib.view === 'trash' ? ' permanently' : ''}</button>` : ''}</div>`;
+}
 function fileCard(m) {
     const initial = esc((m.name || '?').trim()[0]?.toUpperCase() || '?');
-    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0"><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div><button class="hf-menu" data-hf-menu="${m.id}" aria-label="File options" title="More">···</button></div></div>`;
+    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div><button class="hf-menu" data-hf-menu="${m.id}" aria-label="File options" title="More">···</button></div></div>`;
 }
 function renderHome() {
     const home = ensureHome();
@@ -3450,14 +3647,15 @@ function renderHome() {
         main = `<h2>Templates</h2><div class="home-grid">${TEMPLATES.filter(t => !q || t.name.toLowerCase().includes(q)).map(t => `<div class="hf tpl" data-home-new="${t.id}" tabindex="0"><div class="hf-thumb tpl-thumb"><i style="aspect-ratio:${t.frame ? t.frame[1] + '/' + t.frame[2] : '4/3'}"></i></div><div class="hf-meta"><div class="hf-text"><div class="hf-name">${esc(t.name)}</div><div class="hf-sub">${esc(t.note)}</div></div></div></div>`).join('')}</div>`;
     else if (lib.view === 'trash') {
         const list = trash.filter(match).sort((a, b) => b.trashed - a.trashed);
-        main = `<div class="home-row"><h2>Trash</h2>${trash.length ? '<button class="home-link" data-home-empty-trash>Empty trash</button>' : ''}</div>${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : '<div class="home-empty">Trash is empty. Deleted files stay here until you remove them.</div>'}`;
+        main = `<div class="home-row"><h2>Trash</h2>${trash.length ? '<button class="home-link" data-home-empty-trash>Empty trash</button>' : ''}</div>${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : '<div class="home-empty">Trash is empty. Deleted files stay here until you remove them.</div>'}`;
     }
     else {
         const list = live.filter(match).sort(lib.view === 'recent' ? (a, b) => (b.opened || b.updated) - (a.opened || a.updated) : (a, b) => b.updated - a.updated);
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
-        main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
+        main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
     home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">L</span><div><b>Local workspace</b><small>Saved in the data folder</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+    home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
 }
 async function showHome({ thumb = true } = {}) {
     finishText();
@@ -3514,6 +3712,8 @@ function hasComplexFx(n) {
     if (n.type === 'group' || !Array.isArray(n.effects))
         return false;
     const e = n.effects.filter(x => x.visible !== false);
+    if (n.type === 'text')
+        return e.length > 0; // text shadows follow the glyphs, which only the 2D painter can do
     return e.length > 0 && !(e.length === 1 && e[0].type === 'drop' && !e[0].spread);
 }
 function syncLegacyShadow(n) {
@@ -3670,7 +3870,7 @@ function addEffect(type) {
             if (n.type === 'group')
                 continue;
             const list = materializeEffects(n);
-            list.push(fxDefaults(n.type === 'text' ? 'layerBlur' : (typeof type === 'string' ? type : 'drop')));
+            list.push(fxDefaults(typeof type === 'string' ? type : 'drop'));
             syncLegacyShadow(n);
             doc.touch(n);
         }
@@ -3789,7 +3989,7 @@ function guideAt(p) {
             return g;
     return null;
 }
-function toolCursor() { return state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
+function toolCursor() { return state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
 function rulerCursor(p) {
     if (!options.rulers)
         return '';
@@ -3865,6 +4065,29 @@ function dropTargetFor(g, n) {
     if (cur && isAutoLayout(cur) && n.layoutPositioning !== 'absolute' && g.lastWorld && insideNodeBox(cur, g.lastWorld))
         return cur;
     return g.dropTarget || null;
+}
+// A frame (or section) drawn around existing layers adopts every sibling whose bounds sit fully inside it.
+function nestNodesInside(frame) {
+    const box = doc.world(frame.id) && doc.bounds([frame.id]);
+    if (!box || box.w < 2 || box.h < 2)
+        return;
+    const eps = .5, skip = new Set([frame.id, ...doc.ancestors(frame).map(a => a.id)]);
+    const kids = doc.children(frame.parentId || null).filter(c => {
+        if (skip.has(c.id) || c.locked || c.isSection && !frame.isSection)
+            return false;
+        const b = doc.bounds([c.id]);
+        return b && b.x >= box.x - eps && b.y >= box.y - eps && b.x + b.w <= box.x + box.w + eps && b.y + b.h <= box.y + box.h + eps;
+    });
+    if (!kids.length)
+        return;
+    const mats = new Map(kids.map(k => [k.id, doc.world(k.id).matrix]));
+    for (const k of kids)
+        reparentNode(k, frame, mats.get(k.id));
+    doc.nodes.splice(doc.nodes.indexOf(frame), 1);
+    doc.nodes.push(frame);
+    doc.refresh();
+    doc.touch(frame);
+    select([frame.id]);
 }
 function reparentNode(n, target, worldMatrix) {
     const m = worldMatrix || doc.world(n.id).matrix, inv = target ? doc.world(target.id).inverse : identity();
@@ -4434,7 +4657,7 @@ function openEffectMenu(anchor) {
     const n = activeNode();
     if (!n || n.type === 'group')
         return;
-    const types = n.type === 'text' ? FX_TYPES.filter(t => t[0] === 'layerBlur') : [FX_TYPES[1], FX_TYPES[0], FX_TYPES[2], FX_TYPES[3], FX_TYPES[4]];
+    const types = n.type === 'text' ? FX_TYPES.filter(t => t[0] !== 'glass') : [FX_TYPES[1], FX_TYPES[0], FX_TYPES[2], FX_TYPES[3], FX_TYPES[4]];
     const menu = document.createElement('div');
     menu.id = 'fx-menu';
     menu.className = 'fx-menu';
@@ -4518,7 +4741,7 @@ function renderFxWindow() {
         closeFxWindow();
         return;
     }
-    const i = FXW.i, types = n.type === 'text' ? FX_TYPES.filter(t => t[0] === 'layerBlur') : FX_TYPES;
+    const i = FXW.i, types = n.type === 'text' ? FX_TYPES.filter(t => t[0] !== 'glass') : FX_TYPES;
     const f = (key, label, value, o = {}) => `<label class="field fxw-f" title="${esc(o.title || label)}"><span>${label}</span><input type="number" step="${o.step || 1}" ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${fmt(value ?? 0)}" data-fx-idx="${i}" data-fx-key="${key}" aria-label="${esc(o.title || label)}"></label>`;
     const row = (label, ...cells) => `<div class="fxw-row"><span class="fxw-l">${label}</span><div class="fxw-c">${cells.join('')}</div></div>`;
     let body = '';
@@ -4925,6 +5148,11 @@ function displayText(n) {
         t = t.toLocaleLowerCase();
     if (n.textCase === 'title')
         t = t.replace(/\p{L}[\p{L}\p{M}]*/gu, s => s[0].toLocaleUpperCase() + s.slice(1).toLocaleLowerCase());
+    // Bulleted / numbered lists mark every non-empty paragraph.
+    if (n.textList === 'bullet' || n.textList === 'number') {
+        let k = 0;
+        t = t.split('\n').map(line => line.trim() ? (n.textList === 'bullet' ? '•  ' : `${++k}.  `) + line : line).join('\n');
+    }
     return t;
 }
 const measureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
@@ -4932,40 +5160,86 @@ function layoutText(n, ctx = measureCanvas.getContext('2d')) {
     ctx.font = fontSpec(n);
     ctx.letterSpacing = `${n.letterSpacing || 0}px`;
     const max = n.autoW ? 1e9 : Math.max(1, n.w), lines = [];
-    for (const paragraph of displayText(n).split('\n')) {
-        if (!paragraph) {
-            lines.push('');
-            continue;
-        }
-        const words = paragraph.match(/\s+|\S+/gu) || [];
+    const segmenter = globalThis.Intl?.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+    const wrapPara = (paragraph, width) => {
+        const out = [], words = paragraph.match(/\s+|\S+/gu) || [];
         let line = '';
         for (let word of words) {
-            if (ctx.measureText(line + word).width <= max) {
+            if (ctx.measureText(line + word).width <= width) {
                 line += word;
                 continue;
             }
             if (line.trim()) {
-                lines.push(line.trimEnd());
+                out.push(line.trimEnd());
                 line = '';
             }
             word = word.trimStart();
-            if (ctx.measureText(word).width <= max) {
+            if (ctx.measureText(word).width <= width) {
                 line = word;
                 continue;
             }
-            const segments = globalThis.Intl?.Segmenter ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(word)].map(s => s.segment) : Array.from(word);
+            const segments = segmenter ? [...segmenter.segment(word)].map(s => s.segment) : Array.from(word);
             for (const ch of segments) {
-                if (line && ctx.measureText(line + ch).width > max) {
-                    lines.push(line);
+                if (line && ctx.measureText(line + ch).width > width) {
+                    out.push(line);
                     line = '';
                 }
                 line += ch;
             }
         }
-        lines.push(line.trimEnd());
+        out.push(line.trimEnd());
+        return out;
+    };
+    // Wrap models: "balance" evens out the line lengths, "pretty" avoids a lone word on the last line.
+    const wrapModel = n.autoW ? 'default' : n.textWrap || 'default';
+    for (const paragraph of displayText(n).split('\n')) {
+        if (!paragraph) {
+            lines.push('');
+            continue;
+        }
+        let res = wrapPara(paragraph, max);
+        if (wrapModel !== 'default' && res.length > 1) {
+            if (wrapModel === 'balance') {
+                let lo = max * .3, hi = max, best = res;
+                for (let k = 0; k < 10; k++) {
+                    const mid = (lo + hi) / 2, t = wrapPara(paragraph, mid);
+                    if (t.length === res.length) {
+                        best = t;
+                        hi = mid;
+                    }
+                    else
+                        lo = mid;
+                }
+                res = best;
+            }
+            else if (!/\s/.test(res.at(-1).trim())) {
+                for (let w = max - 4; w > max * .6; w -= 4) {
+                    const t = wrapPara(paragraph, w);
+                    if (t.length > res.length)
+                        break;
+                    res = t;
+                    if (/\s/.test(t.at(-1).trim()))
+                        break;
+                }
+            }
+        }
+        lines.push(...res);
     }
     const lh = (n.fontSize || 16) * (n.lineHeight || 1.35), ascent = (n.fontSize || 16) * .82;
-    return { lines, lineHeight: lh, height: Math.max(lh, lines.length * lh), baseline: (lh - (n.fontSize || 16)) / 2 + ascent };
+    // Truncate (with Max lines, default 1) cuts the text and end the
+    // last visible line with an ellipsis, even when only a single character did not fit.
+    const limit = n.textTruncate ? Math.max(1, Math.floor(+n.maxLines) || 1) : Infinity;
+    if (lines.length > limit) {
+        lines.length = limit;
+        let last = lines[limit - 1].trimEnd();
+        while (last && ctx.measureText(last + '…').width > max)
+            last = Array.from(last).slice(0, -1).join('').trimEnd();
+        lines[limit - 1] = last + '…';
+    }
+    const contentH = Math.max(lh, lines.length * lh);
+    // Vertical alignment only matters when the box is taller than its text.
+    const free = Math.max(0, (n.h || 0) - contentH), dy = n.textAlignV === 'center' ? free / 2 : n.textAlignV === 'bottom' ? free : 0;
+    return { lines, lineHeight: lh, height: contentH, baseline: (lh - (n.fontSize || 16)) / 2 + ascent + dy };
 }
 function fontSpecSpan(s, base) {
     const style = s.fontStyle || base.fontStyle || 'normal';
@@ -5495,7 +5769,7 @@ class Renderer {
         // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
         // Masks need the 2D painter (alpha masking); it is allowed on much larger scenes than other complex effects.
         // Vectors zoomed past what the raster atlas can hold would turn soft: the 2D painter draws them as true curves.
-        const pxScale = camera.zoom * this.dpr, tooBig = s => (s.node.type === 'path' || s.node.type === 'line') && Math.max(s.node.w, s.node.h) * pxScale > this.atlas.size - 8;
+        const pxScale = camera.zoom * this.dpr, tooBig = s => (s.node.type === 'path' || s.node.type === 'line' || s.node.type === 'text') && (Math.max(s.node.w, s.node.h) * pxScale > this.atlas.size - 8 || s.node.type === 'text' && pxScale > 24);
         const fxRoute = this.backend === 'WebGPU' && (scene.length <= 250 && scene.some(s => hasComplexFx(s.node)) || scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask)) || scene.length <= 2000 && scene.some(tooBig));
         this.toggleFx(fxRoute);
         if (fxRoute) {
@@ -5697,24 +5971,48 @@ class Renderer {
             ctx.globalAlpha = s.opacity;
             const path = pathFor(n);
             if (n.type === 'text') {
-                const tr = ctx.getTransform(), desired = clamp(2 ** Math.ceil(Math.log2(Math.hypot(tr.a, tr.b))), .5, 4), scale = Math.min(desired, 4096 / Math.max(n.w, n.h, 1)), key = n.id + ':' + scale;
-                let entry = this.cache.get(key);
-                if (!entry || entry.version !== n.version) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = Math.max(1, Math.ceil(n.w * scale));
-                    canvas.height = Math.max(1, Math.ceil(n.h * scale));
-                    const tc = canvas.getContext('2d');
-                    tc.scale(scale, scale);
-                    tc.beginPath();
-                    tc.rect(0, 0, n.w, n.h);
-                    tc.clip();
-                    paintText(tc, n);
-                    entry = { version: n.version, canvas };
-                    if (this.cache.size >= 512)
-                        this.cache.delete(this.cache.keys().next().value);
-                    this.cache.set(key, entry);
+                const tr = ctx.getTransform(), ss = Math.hypot(tr.a, tr.b), fxT = fx.filter(e => e.type === 'drop' || e.type === 'inner');
+                if (ss > 4) {
+                    // Zoomed far past the bitmap cache: draw real glyphs so the text stays sharp at any zoom.
+                    for (const e of fxT)
+                        if (e.type === 'drop')
+                            this.textShadow(ctx, n, null, e, ss, true);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(0, 0, n.w, n.h);
+                    ctx.clip();
+                    paintText(ctx, n);
+                    ctx.restore();
+                    for (const e of fxT)
+                        if (e.type === 'inner')
+                            this.textShadow(ctx, n, null, e, ss, false);
                 }
-                ctx.drawImage(entry.canvas, 0, 0, n.w, n.h);
+                else {
+                    const desired = clamp(2 ** Math.ceil(Math.log2(ss)), .5, 4), scale = Math.min(desired, 4096 / Math.max(n.w, n.h, 1)), key = n.id + ':' + scale;
+                    let entry = this.cache.get(key);
+                    if (!entry || entry.version !== n.version) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.ceil(n.w * scale));
+                        canvas.height = Math.max(1, Math.ceil(n.h * scale));
+                        const tc = canvas.getContext('2d');
+                        tc.scale(scale, scale);
+                        tc.beginPath();
+                        tc.rect(0, 0, n.w, n.h);
+                        tc.clip();
+                        paintText(tc, n);
+                        entry = { version: n.version, canvas, scale };
+                        if (this.cache.size >= 512)
+                            this.cache.delete(this.cache.keys().next().value);
+                        this.cache.set(key, entry);
+                    }
+                    for (const e of fxT)
+                        if (e.type === 'drop')
+                            this.textShadow(ctx, n, entry, e, ss, true);
+                    ctx.drawImage(entry.canvas, 0, 0, n.w, n.h);
+                    for (const e of fxT)
+                        if (e.type === 'inner')
+                            this.textShadow(ctx, n, entry, e, ss, false);
+                }
             }
             else if (n.type === 'image') {
                 const image = this.images.get(n.assetId);
@@ -5750,6 +6048,47 @@ class Renderer {
             ctx.restore();
         }
     }
+    // Drop / inner shadows for text follow the glyph shapes. `entry` is the cached bitmap; without it (vector mode at extreme
+    // zoom) a bitmap of the text is rendered on the fly at a capped resolution, which is plenty for a soft shadow.
+    textShadow(ctx, n, entry, e, ss, drop) {
+        let src = entry?.canvas, sc = entry?.scale || 1;
+        if (!src) {
+            sc = Math.min(4, 2048 / Math.max(n.w, n.h, 1));
+            src = document.createElement('canvas');
+            src.width = Math.max(1, Math.ceil(n.w * sc));
+            src.height = Math.max(1, Math.ceil(n.h * sc));
+            const tc = src.getContext('2d');
+            tc.scale(sc, sc);
+            paintText(tc, n);
+        }
+        const blurPx = Math.max(0, e.blur || 0), color = rgbaOf(e.color, e.opacity ?? .25);
+        if (drop) {
+            ctx.save();
+            const t = ctx.getTransform(), off = 20000;
+            // Same trick as box shadows: the caster lands off-canvas, only its shadow is visible.
+            ctx.setTransform(t.a, t.b, t.c, t.d, t.e - off, t.f);
+            ctx.shadowColor = color;
+            ctx.shadowBlur = blurPx * ss;
+            ctx.shadowOffsetX = (e.x || 0) * ss + off;
+            ctx.shadowOffsetY = (e.y || 0) * ss;
+            ctx.drawImage(src, 0, 0, n.w, n.h);
+            ctx.restore();
+            return;
+        }
+        const w = src.width, h = src.height, tmp = document.createElement('canvas');
+        tmp.width = w;
+        tmp.height = h;
+        const c = tmp.getContext('2d');
+        c.fillStyle = color;
+        c.fillRect(0, 0, w, h);
+        c.globalCompositeOperation = 'destination-out';
+        c.filter = `blur(${blurPx * sc / 2}px)`;
+        c.drawImage(src, (e.x || 0) * sc, (e.y || 0) * sc);
+        c.filter = 'none';
+        c.globalCompositeOperation = 'destination-in';
+        c.drawImage(src, 0, 0);
+        ctx.drawImage(tmp, 0, 0, n.w, n.h);
+    }
     async exportCanvas(ids, scale = 2) {
         await this.images.ready();
         const included = new Set();
@@ -5781,6 +6120,7 @@ class Renderer {
 const paths = {
     cursor: 'M5 3l14 9-7 1-3 7Z', frame: 'M8 3v18M16 3v18M3 8h18M3 16h18', rect: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z', ellipse: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z', line: 'M4 20 20 4', pen: 'm12 3 8 8-5 9-11 1 1-11ZM12 3l-7 7 7 7 8-6M4 21l7-8M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', text: 'M4 5h16M12 5v15M8 20h8', hand: 'M7 11V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v7l1-2a1.7 1.7 0 0 1 3 1l-3 7c-1 3-9 4-12 0l-5-6c-1-2 1-4 3-2l3 3', image: 'M4 4h16v16H4ZM4 15l5-5 5 6 3-3 3 3M16 8h.01', sparkles: 'm12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8ZM20 2v4M18 4h4', panel: 'M4 4h16v16H4ZM9 4v16', play: 'm8 4 12 8-12 8Z', search: 'M15.5 9.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM14 14l6 6', plus: 'M12 5v14M5 12h14', minus: 'M5 12h14', close: 'm6 6 12 12M6 18 18 6', arrowUpRight: 'M6 18 18 6M6 6h12v12', arrowLeft: 'M20 12H4m6-6-6 6 6 6', arrowRight: 'M4 12h16m-6-6 6 6-6 6', collapse: 'm8 4 4 4 4-4M8 20l4-4 4 4M5 12h14', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0', eyeOff: 'M3 3l18 18M10 5c6-1 12 7 12 7s-1 2-4 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 3-1 4-1M10 10l4 4', lock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0v4', unlock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0', sun: 'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5', moon: 'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z', sliders: 'M4 7h6M14 7h6M4 17h10M18 17h2M10 4v6M14 14v6', help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16h.01', page: 'M6 3h8l4 4v14H6ZM14 3v5h4', folder: 'M3 7a2 2 0 0 1 2-2h4.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', check: 'm5 12 4 4L19 6', chevron: 'm9 5 7 7-7 7', group: 'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 8h8v8H8Z', component: 'm12 2 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Zm-12 0 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Z', instance: 'm12 3 9 9-9 9-9-9Z', variant: 'm12 3 9 9-9 9-9-9ZM12 8l4 4-4 4-4-4Z', download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5', upload: 'M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5', copy: 'M9 8h11v13H9ZM15 8V3H4v13h5', undo: 'M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12', redo: 'm16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12', alignLeft: 'M4 3v18M8 6h12v4H8ZM8 14h8v4H8Z', alignCenter: 'M12 3v18M5 6h14v4H5ZM8 14h8v4H8Z', alignRight: 'M20 3v18M4 6h12v4H4ZM8 14h8v4H8Z', alignTop: 'M3 4h18M6 8h4v12H6ZM14 8h4v8h-4Z', alignMiddle: 'M3 12h18M6 5h4v14H6ZM14 8h4v8h-4Z', alignBottom: 'M3 20h18M6 4h4v12H6ZM14 8h4v8h-4Z', distributeH: 'M3 4v16M21 4v16M7 7h3v10H7ZM14 7h3v10h-3Z', distributeV: 'M4 3h16M4 21h16M7 7h10v3H7ZM7 14h10v3H7Z', textLeft: 'M4 5h16M4 10h11M4 15h16M4 20h11', textCenter: 'M4 5h16M7 10h10M4 15h16M7 20h10', textRight: 'M4 5h16M9 10h11M4 15h16M9 20h11', bold: 'M6 4h7a4 4 0 0 1 0 8H6ZM6 12h8a4 4 0 0 1 0 8H6Z', italic: 'M11 4h9M4 20h9M15 4 9 20', underline: 'M6 3v8a6 6 0 0 0 12 0V3M4 21h16', radius: 'M5 20v-9a6 6 0 0 1 6-6h9', rotate: 'M20 7V2l-4 4M20 7a9 9 0 1 0 1 8', opacity: 'M12 3S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12-7-12ZM12 3v19', grid: 'M3 3h18v18H3ZM9 3v18M15 3v18M3 9h18M3 15h18', code: 'm8 5-7 7 7 7m8-14 7 7-7 7M14 3l-4 18', trash: 'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7', link: 'm9 14 6-6M9 7l2-2a5 5 0 0 1 7 7l-2 2M15 17l-2 2a5 5 0 0 1-7-7l2-2', layers: 'm12 3 10 6-10 6L2 9Zm-10 11 10 6 10-6', chevronDown: 'm6 9 6 6 6-6', checkSquare: 'M4 4h16v16H4Zm3 8 3 3 7-7'
 };
+paths.section = 'M3 4.5h8M3 4.5v15h18v-15h-4M3 9h18';
 paths.mask = 'M4 4h16v16H4ZM12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8';
 paths.chevronRight = 'M9 6l6 6-6 6';
 function icon(name, size = 18) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.rect}"/></svg>`; }
@@ -6305,7 +6645,7 @@ function setTool(tool) {
     state.pathEdit = null;
     renderInspector();
     $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
-    overlay.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : ['rect', 'frame', 'ellipse', 'line', 'pen'].includes(tool) ? 'crosshair' : 'default';
+    overlay.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(tool) ? 'crosshair' : 'default';
     $('#canvas-hint').textContent = tool === 'pen' ? 'Click to add points · Drag for Bézier handles · Enter to finish · Click first point to close' : tool === 'text' ? 'Click to add text · Double-click existing text to edit' : 'Space to pan · ⌘/Ctrl scroll to zoom · ? for shortcuts';
     invalidate();
 }
@@ -6557,7 +6897,7 @@ function renderLayers() {
             const children = doc.children(n.id), hasChildren = children.length > 0, open = state.expanded.has(n.id) || !!q;
             if (depth === 0)
                 html += '<div class="layer-group">';
-            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${n.component || n.isInstance || n.componentSet ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${n.booleanOp ? MENU_ICONS[n.booleanOp] : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
+            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${n.component || n.isInstance || n.componentSet ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
             if (hasChildren && open)
                 walk(n.id, depth + 1);
             if (depth === 0)
@@ -6611,7 +6951,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -6621,7 +6961,8 @@ function renderInspector() {
         html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
         html += section('Appearance', `${appearanceTopHtml(n)}${varRow('Visibility', 'visible')}${varCollectionsHtml(n)}`, varCollectionsButton(n));
         if (ns.every(x => x.type === 'text')) {
-            html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div></div>${selectField('textCase', n.textCase, [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']])}${selectField('direction', n.direction || 'auto', [['auto', 'Automatic direction'], ['ltr', 'Left to right'], ['rtl', 'Right to left']])}<div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
+            const vAlign = n.textAlignV || 'top';
+            html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented">${[['top', 'Align top'], ['center', 'Align middle'], ['bottom', 'Align bottom']].map(([a, t]) => `<button data-text-valign="${a}" class="${vAlign === a ? 'active' : ''}" title="${t}" aria-label="${t}">${TX_VALIGN_ICONS[a]}</button>`).join('')}</div></div><div class="property-grid"><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div><div class="tx-set-row"><button class="wh-lock ${textSettingsActive(n) ? 'active' : ''}" data-text-settings title="Text settings" aria-label="Text settings">${icon('sliders', 14)}</button></div></div><div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
         }
         if (n.type !== 'group')
             html += fillsSection(n);
@@ -6800,9 +7141,11 @@ function setProperty(prop, value, { live = false } = {}) {
             n.autoW = false;
         if (n.type === 'text' && prop === 'w' && textModeOf(n) === 'auto-h')
             n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
-        if (n.type === 'text' && ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'fontStyle', 'textCase'].includes(prop)) {
+        if (n.type === 'text' && ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'fontStyle', 'textCase', 'maxLines', 'textList', 'textTruncate', 'textWrap'].includes(prop)) {
             if (n.autoW)
                 hugText(n);
+            else if (textModeOf(n) === 'auto-h' || prop === 'maxLines' || prop === 'textTruncate')
+                n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
             else
                 n.h = Math.max(n.h, layoutText(n).height);
         }
@@ -7286,6 +7629,68 @@ function inComponentTree(n) {
             return true;
     return false;
 }
+// Alt + hover: red distance guides between the selection and the hovered layer, like Figma's measurements.
+function drawMeasure(c) {
+    if (!state.altDown || !state.hover || state.gesture || state.editing || !state.selection.size || state.selection.has(state.hover))
+        return;
+    const A = doc.bounds([...state.selection]), B = doc.bounds([state.hover]);
+    if (!A || !B)
+        return;
+    const red = '#f24822', z = state.camera.zoom, sx = v => worldToScreen(v, 0).x, sy = v => worldToScreen(0, v).y;
+    const ho = doc.world(state.hover);
+    if (ho)
+        outline(c, { matrix: ho.matrix, w: ho.node.w, h: ho.node.h }, red, 1);
+    const ar = { l: A.x, r: A.x + A.w, t: A.y, b: A.y + A.h }, br = { l: B.x, r: B.x + B.w, t: B.y, b: B.y + B.h };
+    const mid = (a0, a1, b0, b1) => { const lo = Math.max(a0, b0), hi = Math.min(a1, b1); return lo < hi ? (lo + hi) / 2 : (a0 + a1) / 2; };
+    const segs = [];
+    // each segment: axis, from, to (world), cross position (world)
+    const addAxis = (axis, a0, a1, b0, b1, cross) => {
+        if (a1 <= b0)
+            segs.push([axis, a1, b0, cross]);
+        else if (b1 <= a0)
+            segs.push([axis, b1, a0, cross]);
+        else {
+            if (Math.abs(a0 - b0) > .01)
+                segs.push([axis, Math.min(a0, b0), Math.max(a0, b0), cross]);
+            if (Math.abs(a1 - b1) > .01)
+                segs.push([axis, Math.min(a1, b1), Math.max(a1, b1), cross]);
+        }
+    };
+    addAxis('x', ar.l, ar.r, br.l, br.r, mid(ar.t, ar.b, br.t, br.b));
+    addAxis('y', ar.t, ar.b, br.t, br.b, mid(ar.l, ar.r, br.l, br.r));
+    c.save();
+    c.strokeStyle = red;
+    c.fillStyle = red;
+    c.lineWidth = 1;
+    c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    for (const [axis, f, t, cross] of segs) {
+        const x0 = axis === 'x' ? sx(f) : sx(cross), y0 = axis === 'x' ? sy(cross) : sy(f), x1 = axis === 'x' ? sx(t) : x0, y1 = axis === 'x' ? y0 : sy(t);
+        c.beginPath();
+        c.moveTo(x0, y0);
+        c.lineTo(x1, y1);
+        if (axis === 'x') {
+            c.moveTo(x0, y0 - 3);
+            c.lineTo(x0, y0 + 3);
+            c.moveTo(x1, y1 - 3);
+            c.lineTo(x1, y1 + 3);
+        }
+        else {
+            c.moveTo(x0 - 3, y0);
+            c.lineTo(x0 + 3, y0);
+            c.moveTo(x1 - 3, y1);
+            c.lineTo(x1 + 3, y1);
+        }
+        c.stroke();
+        const label = fmt(Math.round((t - f) * 100) / 100), tw = c.measureText(label).width, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        c.beginPath();
+        c.roundRect(cx - tw / 2 - 5, cy - 8, tw + 10, 16, 4);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.fillText(label, cx - tw / 2, cy + 3.5);
+        c.fillStyle = red;
+    }
+    c.restore();
+}
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -7296,9 +7701,10 @@ function drawOverlay() {
     const accent = selNodes.length && selNodes.every(inComponentTree) ? COMPONENT_PURPLE : blue;
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     for (const s of doc.scene()) {
-        if (s.node.type !== 'frame' || s.node.parentId)
+        if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
             continue;
         const p = worldToScreen(s.box.x, s.box.y);
+        c.font = `${s.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
         c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
@@ -7346,6 +7752,7 @@ function drawOverlay() {
         c.fillStyle = '#ffffff';
         c.fillText(label, p.x - tw / 2, p.y + 7);
     }
+    drawMeasure(c);
     if (state.marquee) {
         const m = state.marquee;
         c.strokeStyle = accent;
@@ -7491,6 +7898,10 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
         if (world.x < s.box.x - tol || world.x > s.box.x + s.box.w + tol ||
             world.y < s.box.y - tol || world.y > s.box.y + s.box.h + tol)
             continue;
+        // A top-level frame or section that already holds layers is only picked through its label or the layers panel,
+        // so clicking its empty area no longer grabs (and drags) the whole frame.
+        if (!framesOnly && !deep && n.type === 'frame' && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
+            continue;
         let clipped = false;
         for (const clip of s.clips) {
             const q = point(clip.inverse, world.x, world.y);
@@ -7556,8 +7967,9 @@ function saveOriginals(roots) {
 function frameLabelHit(p) {
     octx.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     for (const sc of doc.scene()) {
-        if (sc.node.type !== 'frame' || sc.node.parentId || sc.locked)
+        if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked)
             continue;
+        octx.font = `${sc.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width;
         if (p.x >= q.x - 3 && p.x <= q.x + w + 6 && p.y >= q.y - 26 && p.y <= q.y - 2)
             return sc.node;
@@ -7660,10 +8072,14 @@ function pointerDown(e) {
         refocusText();
         return;
     }
-    if (['rect', 'ellipse', 'frame', 'line'].includes(state.tool)) {
+    if (['rect', 'ellipse', 'frame', 'section', 'line'].includes(state.tool)) {
         history.begin('Draw ' + state.tool);
-        const parent = hitTest(w, { framesOnly: true }), inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = state.tool;
-        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), fill: type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
+        const isSection = state.tool === 'section';
+        // A section is the outermost container, so it is always created at the top level of the page.
+        const under = hitTest(w, { framesOnly: true }),
+            // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
+            parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
+        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
         state.selection = new Set([n.id]);
         state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
         refreshUI();
@@ -7805,7 +8221,11 @@ function pointerMove(e) {
             return;
         }
         if (state.tool === 'select') {
-            const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey });
+            if (!!e.altKey !== !!state.altDown) {
+                state.altDown = !!e.altKey;
+                invalidate();
+            }
+            const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
             overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', n: 'ns-resize', ne: 'nesw-resize', e: 'ew-resize', se: 'nwse-resize', s: 'ns-resize', sw: 'nesw-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
@@ -7858,12 +8278,26 @@ function pointerMove(e) {
         state.marquee = { x: Math.min(g.start.x, p.x), y: Math.min(g.start.y, p.y), w: Math.abs(p.x - g.start.x), h: Math.abs(p.y - g.start.y) };
         const tl = screenToWorld(state.marquee.x, state.marquee.y), b = { ...tl, w: state.marquee.w / state.camera.zoom, h: state.marquee.h / state.camera.zoom };
         state.selection = new Set(g.old);
-        for (const s of doc.scene()) {
-            if (s.locked || !g.deep && s.node.parentId)
-                continue;
-            if (s.box.x >= b.x && s.box.y >= b.y && s.box.x + s.box.w <= b.x + b.w && s.box.y + s.box.h <= b.y + b.h)
-                state.selection.add(s.node.id);
-        }
+        // Figma-style: a frame the marquee fully encloses is selected as one; a frame it only overlaps is entered, so its
+        // children can be picked whether the drag started inside or outside that frame. Other layers are picked on touch.
+        const boxes = new Map(doc.scene().map(s => [s.node.id, s]));
+        const visit = parent => {
+            for (const n of doc.children(parent)) {
+                const s = boxes.get(n.id);
+                if (!s || s.locked || !n.visible)
+                    continue;
+                const hit = s.box.x < b.x + b.w && s.box.x + s.box.w > b.x && s.box.y < b.y + b.h && s.box.y + s.box.h > b.y;
+                if (!hit)
+                    continue;
+                const enclosed = s.box.x >= b.x && s.box.y >= b.y && s.box.x + s.box.w <= b.x + b.w && s.box.y + s.box.h <= b.y + b.h;
+                const container = n.type === 'frame' && !n.isInstance && !n.component && doc.children(n.id).length > 0;
+                if (container && (!enclosed || g.deep))
+                    visit(n.id);
+                else if (!container || enclosed)
+                    state.selection.add(n.id);
+            }
+        };
+        visit(null);
         renderLayers();
         renderInspector();
         invalidate();
@@ -8133,6 +8567,8 @@ function pointerUp(e) {
             n.h = n.type === 'frame' ? 300 : n.type === 'line' ? 0.1 : 100;
             doc.touch(n);
         }
+        if (n && n.type === 'frame')
+            nestNodesInside(n);
         setTool('select');
     }
     if (g.kind === 'path-edit') {
@@ -9504,6 +9940,248 @@ async function ensureThumb(n) {
     }
     catch { }
 }
+// ===== libraries: publish this file, use another file's components and variable collections =====
+// A published library is a snapshot kept in storage (library:<fileId>) plus an entry in the shared "libraries" list.
+// Files that add a library get its variable collections (tagged with libId) and can place its components: the main
+// component is copied once into a "Library · name" page of the file (every copied layer remembers its origin in
+// libRef), and placed components are ordinary instances of that copy. Updating a library re-syncs those copies in place.
+const LIBS = { published: [], snaps: new Map(), use: null, useFile: null, open: new Set() };
+async function libsLoad(force = false) {
+    if (!force && LIBS.useFile === lib.fileId && Date.now() - (LIBS.at || 0) < 1500)
+        return;
+    LIBS.at = Date.now();
+    try {
+        const idx = JSON.parse(await kvGet('libraries') || '[]');
+        LIBS.published = Array.isArray(idx) ? idx.filter(x => x && typeof x.id === 'string') : [];
+    }
+    catch {
+        LIBS.published = [];
+    }
+    if (LIBS.useFile !== lib.fileId) {
+        try {
+            const u = JSON.parse(await kvGet('libuse:' + lib.fileId) || '[]');
+            LIBS.use = Array.isArray(u) ? u : [];
+        }
+        catch {
+            LIBS.use = [];
+        }
+        LIBS.useFile = lib.fileId;
+    }
+}
+async function libSnap(id, fresh = false) {
+    if (!fresh && LIBS.snaps.has(id))
+        return LIBS.snaps.get(id);
+    let snap = null;
+    try {
+        snap = JSON.parse(await kvGet('library:' + id) || 'null');
+    }
+    catch { }
+    if (snap)
+        LIBS.snaps.set(id, snap);
+    return snap;
+}
+function subtreeOf(rootId) {
+    const nodes = allNodes(), kids = new Map();
+    for (const n of nodes)
+        if (n.parentId)
+            (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
+    const out = [], root = nodes.find(n => n.id === rootId);
+    if (!root)
+        return out;
+    const stack = [root];
+    while (stack.length) {
+        const n = stack.pop();
+        out.push(n);
+        stack.push(...(kids.get(n.id) || []));
+    }
+    return out;
+}
+async function publishLibrary() {
+    const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
+    const vars = cleanVariables(structuredClone(doc.data.variables));
+    vars.collections = vars.collections.filter(c => !c.libId);
+    vars.items = vars.items.filter(i => !i.libId && vars.collections.some(c => c.id === i.collectionId));
+    if (!roots.length && !vars.items.length) {
+        toast('Create a component or a variable first, then publish.');
+        return;
+    }
+    await libsLoad(true);
+    const prev = LIBS.published.find(x => x.id === lib.fileId), version = (prev?.version || 0) + 1;
+    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, nodes: subtreeOf(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
+            c.parentId = null; return c; }) }));
+    const snap = { id: lib.fileId, name: doc.data.name, version, updated: Date.now(), components, variables: vars };
+    try {
+        await kvPut('library:' + lib.fileId, JSON.stringify(snap));
+        LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), { id: lib.fileId, name: doc.data.name, version, updated: snap.updated, components: components.length, variables: vars.items.length }];
+        await kvPut('libraries', JSON.stringify(LIBS.published));
+    }
+    catch {
+        toast('Could not publish: browser storage is full.');
+        return;
+    }
+    LIBS.snaps.set(lib.fileId, snap);
+    toast(`Published “${doc.data.name}” as library v${version}: ${components.length} component${components.length === 1 ? '' : 's'}, ${vars.items.length} variable${vars.items.length === 1 ? '' : 's'}.`);
+    renderAssets();
+}
+function libSyncVariables(snap) {
+    const store = varStore();
+    store.collections = store.collections.filter(c => c.libId !== snap.id);
+    store.items = store.items.filter(i => i.libId !== snap.id);
+    for (const c of snap.variables?.collections || [])
+        store.collections.push({ ...structuredClone(c), libId: snap.id });
+    for (const i of snap.variables?.items || [])
+        store.items.push({ ...structuredClone(i), libId: snap.id });
+}
+async function libUse(id, on) {
+    await libsLoad(true);
+    if (on) {
+        const snap = await libSnap(id, true);
+        if (!snap) {
+            toast('That library is no longer available.');
+            return;
+        }
+        if (!LIBS.use.some(u => u.id === id))
+            LIBS.use.push({ id, name: snap.name, version: snap.version });
+        transaction('Add library', () => { libSyncVariables(snap); doc.refresh(); });
+        toast(`Library “${snap.name}” added. Its variables are available and its components are in Assets.`);
+    }
+    else {
+        LIBS.use = LIBS.use.filter(u => u.id !== id);
+        toast('Library removed. Components and variables already used in this file stay.');
+    }
+    await kvPut('libuse:' + lib.fileId, JSON.stringify(LIBS.use));
+    renderAssets();
+    renderInspector();
+}
+// Copy (or refresh) the main components of a library into this file. Layers are matched by libRef so ids, and with
+// them existing instances, survive an update.
+function libImportComponents(snap, onlyIds = null) {
+    const name = `Library · ${snap.name}`;
+    let page = doc.data.pages.find(p => p.name === name);
+    if (!page) {
+        page = { id: uid(), name, nodes: [] };
+        doc.data.pages.push(page);
+    }
+    const byRef = new Map(page.nodes.filter(n => n.libRef).map(n => [n.libRef, n]));
+    let y = page.nodes.filter(n => !n.parentId).reduce((m, n) => Math.max(m, n.y + n.h), -80) + 80;
+    const idFor = new Map();
+    for (const c of snap.components)
+        for (const n of c.nodes)
+            idFor.set(n.id, byRef.get(`${snap.id}:${n.id}`)?.id || uid());
+    const map = v => idFor.get(v) ?? v;
+    for (const c of snap.components) {
+        if (onlyIds && !onlyIds.has(c.id))
+            continue;
+        const keep = new Set();
+        for (const src of c.nodes) {
+            const ref = `${snap.id}:${src.id}`, existing = byRef.get(ref), n = structuredClone(src);
+            n.id = map(src.id);
+            n.parentId = src.parentId ? map(src.parentId) : null;
+            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+                if (n[k] != null)
+                    n[k] = map(n[k]);
+            if (Array.isArray(n.exposedNested))
+                n.exposedNested = n.exposedNested.map(map);
+            n.libRef = ref;
+            n.libVersion = snap.version;
+            if (!n.parentId && !existing) {
+                n.x = 0;
+                n.y = y;
+                y += n.h + 80;
+            }
+            else if (!n.parentId && existing) {
+                n.x = existing.x;
+                n.y = existing.y;
+            }
+            keep.add(n.id);
+            if (existing)
+                Object.assign(existing, n, { version: (existing.version || 0) + 1 });
+            else {
+                n.version = 0;
+                page.nodes.push(n);
+            }
+        }
+        // Layers that no longer exist in the library disappear from the copy.
+        page.nodes = page.nodes.filter(n => !(n.libRef?.startsWith(snap.id + ':') && c.nodes.some(o => map(o.id) === n.id) === false && byRef.has(n.libRef) && isInLibComp(n, c, snap, map) && !keep.has(n.id)));
+    }
+    doc.refresh();
+    return page;
+}
+function isInLibComp(n, c, snap, map) {
+    // an old layer belongs to component `c` when walking up its parents reaches c's root copy
+    const root = map(c.id), nodes = new Map(allNodes().map(x => [x.id, x]));
+    let cur = n, guard = 0;
+    while (cur && guard++ < 100) {
+        if (cur.id === root)
+            return true;
+        cur = nodes.get(cur.parentId);
+    }
+    return false;
+}
+async function libInstantiate(libId, compId, at = null) {
+    const snap = await libSnap(libId);
+    const entry = snap?.components.find(c => c.id === compId);
+    if (!entry) {
+        toast('This library component is no longer available.');
+        return;
+    }
+    let page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`), root = page?.nodes.find(n => n.libRef === `${libId}:${compId}`);
+    if (!root) {
+        transaction('Import library component', () => { page = libImportComponents(snap, new Set([compId])); });
+        root = page.nodes.find(n => n.libRef === `${libId}:${compId}`);
+    }
+    const main = root.componentSet ? page.nodes.find(n => n.parentId === root.id && n.component) : root;
+    if (main)
+        instantiate(main.id, at);
+}
+async function libUpdate(libId) {
+    const snap = await libSnap(libId, true);
+    if (!snap)
+        return;
+    transaction('Update library', () => {
+        libSyncVariables(snap);
+        const page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`);
+        if (page)
+            libImportComponents(snap, new Set(page.nodes.filter(n => n.libRef && !n.parentId).map(n => n.libRef.slice(libId.length + 1))));
+        for (const n of allNodes())
+            if (n.libRef?.startsWith(libId + ':'))
+                doc.touch(n);
+    });
+    const u = LIBS.use.find(x => x.id === libId);
+    if (u) {
+        u.version = snap.version;
+        u.name = snap.name;
+    }
+    await kvPut('libuse:' + lib.fileId, JSON.stringify(LIBS.use));
+    toast(`Library “${snap.name}” updated to v${snap.version}.`);
+    renderAssets();
+    renderInspector();
+}
+function libPanelHtml() {
+    const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
+    const used = new Set(LIBS.use.map(u => u.id));
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (v${mine.version})` : 'Publish as library'}</button>${mine ? `<p class="small-label">Published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    h += `<div class="lib-head"><b>Libraries</b></div>`;
+    h += others.length ? others.map(l => {
+        const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;
+        return `<div class="lib-row"><div class="lib-info"><span class="lib-name" title="${esc(l.name)}">${esc(l.name)}</span><small>v${l.version} · ${l.components} comp · ${l.variables} var</small></div>${stale ? `<button class="cmp-btn" data-lib-update="${l.id}">Update</button>` : ''}<button class="cmp-btn ${used.has(l.id) ? 'on' : ''}" data-lib-toggle="${l.id}">${used.has(l.id) ? 'Remove' : 'Add'}</button></div>`;
+    }).join('') : '<p class="small-label">No other published libraries yet. Publish another file to see it here.</p>';
+    return h + '</div>';
+}
+function libComponentsHtml() {
+    let h = '';
+    for (const u of LIBS.use) {
+        const snap = LIBS.snaps.get(u.id);
+        if (!snap)
+            continue;
+        const open = !LIBS.open.has(u.id);
+        h += `<div class="lib-group"><button class="lib-group-head" data-lib-fold="${u.id}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>${esc(snap.name)}</span><small>${snap.components.length}</small></button>`;
+        if (open)
+            h += snap.components.map(c => { const root = c.nodes.find(n => n.id === c.id); return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview"><div class="asset-button" style="background:${safeColor(root?.fill)}">${esc(c.name)}</div></div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
+        h += '</div>';
+    }
+    return h;
+}
 function renderAssets() {
     const nodes = allNodes(), entries = [];
     for (const c of nodes.filter(n => n.component))
@@ -9514,7 +10192,13 @@ function renderAssets() {
         if (vs.length)
             entries.push({ comp: vs[0], name: set.name, variants: vs.length, instances: vs.reduce((t, v) => t + instancesOf(v.id).length, 0), target: set.id });
     }
-    const head = `<div class="asset-head"><button class="wide-button asset-create" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
+    libsLoad().then(() => Promise.all(LIBS.use.map(u => libSnap(u.id)))).then(() => {
+        const panel = $('#assets-panel'), box = panel?.querySelector('.lib-slot');
+        if (box)
+            box.innerHTML = libPanelHtml() + libComponentsHtml();
+    });
+    const head = `<div class="asset-head"><button class="wide-button asset-create" data-cmp="create">${icon('component', 14)} Create component</button></div><div class="lib-slot">${LIBS.useFile === lib.fileId ? libPanelHtml() + libComponentsHtml() : ''}</div>`;
+    entries.splice(0, entries.length, ...entries.filter(en => !en.comp.libRef));
     if (!entries.length) {
         $('#assets-panel').innerHTML = head + `<p class="small-label">No components yet. Select a layer and click “Create component” (⌥⌘K). Instances you place stay linked to the main component.</p>`;
         return;
@@ -13454,7 +14138,40 @@ $('#layer-tree').addEventListener('drop', e => {
         select([id]);
     });
 });
+$('#assets-panel').addEventListener('click', e => {
+    let el;
+    if (e.target.closest('[data-lib-publish]'))
+        publishLibrary();
+    else if ((el = e.target.closest('[data-lib-toggle]')))
+        libUse(el.dataset.libToggle, !LIBS.use.some(u => u.id === el.dataset.libToggle));
+    else if ((el = e.target.closest('[data-lib-update]')))
+        libUpdate(el.dataset.libUpdate);
+    else if ((el = e.target.closest('[data-lib-fold]'))) {
+        if (LIBS.open.has(el.dataset.libFold))
+            LIBS.open.delete(el.dataset.libFold);
+        else
+            LIBS.open.add(el.dataset.libFold);
+        renderAssets();
+    }
+    else if ((el = e.target.closest('[data-lib-comp]')) && !e.detail) {
+        const [lid, cid] = el.dataset.libComp.split(':');
+        libInstantiate(lid, cid);
+    }
+});
+$('#assets-panel').addEventListener('dblclick', e => {
+    const el = e.target.closest('[data-lib-comp]');
+    if (el) {
+        const [lid, cid] = el.dataset.libComp.split(':');
+        libInstantiate(lid, cid);
+    }
+});
 $('#assets-panel').addEventListener('dragstart', e => {
+    const lc = e.target.closest('[data-lib-comp]');
+    if (lc) {
+        e.dataTransfer.setData('application/x-midas-libcomp', lc.dataset.libComp);
+        e.dataTransfer.effectAllowed = 'copy';
+        return;
+    }
     const card = e.target.closest('[data-component]');
     if (!card)
         return;
@@ -13831,7 +14548,48 @@ overlay.addEventListener('pointerleave', () => {
     if (!state.gesture)
         invalidate();
 });
+function renameOnCanvas(n) {
+    const sc = doc.scene().find(x => x.node.id === n.id);
+    if (!sc)
+        return;
+    const q = worldToScreen(sc.box.x, sc.box.y), input = document.createElement('input');
+    input.className = 'canvas-rename';
+    input.value = n.name;
+    input.spellcheck = false;
+    input.style.left = Math.max(0, q.x - 4) + 'px';
+    input.style.top = Math.max(0, q.y - 28) + 'px';
+    area.appendChild(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = ok => {
+        if (done)
+            return;
+        done = true;
+        const v = input.value.trim();
+        input.remove();
+        if (ok && v && v !== n.name)
+            transaction('Rename layer', () => { n.name = v; doc.touch(n); });
+        overlay.focus({ preventScroll: true });
+    };
+    input.addEventListener('keydown', ev => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter')
+            finish(true);
+        else if (ev.key === 'Escape')
+            finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+    for (const t of ['pointerdown', 'mousedown', 'click', 'dblclick'])
+        input.addEventListener(t, ev => ev.stopPropagation());
+}
 overlay.addEventListener('dblclick', e => {
+    const labelHit = state.tool === 'select' ? frameLabelHit(eventPoint(e)) : null;
+    if (labelHit) {
+        select([labelHit.id]);
+        renameOnCanvas(labelHit);
+        return;
+    }
     const hit = hitTest(eventWorld(e), { deep: true });
     if (state.tool === 'pen') {
         finishPen(false);
@@ -13868,6 +14626,19 @@ $('#layer-tree').addEventListener('contextmenu', e => {
         layerContextMenu(e.clientX, e.clientY);
     }
 });
+window.addEventListener('keydown', e => {
+    if (e.key === 'Alt' && !state.altDown) {
+        state.altDown = true;
+        invalidate();
+    }
+});
+window.addEventListener('keyup', e => {
+    if (e.key === 'Alt' && state.altDown) {
+        state.altDown = false;
+        invalidate();
+    }
+});
+window.addEventListener('blur', () => { state.altDown = false; });
 window.addEventListener('keydown', e => { if (e.key === 'Control' || e.key === 'Meta')
     state.ctrlDown = true; });
 window.addEventListener('keyup', e => { if (e.key === 'Control' || e.key === 'Meta')
@@ -13898,12 +14669,19 @@ area.addEventListener('wheel', e => {
     }
 }, { passive: false });
 area.addEventListener('dragover', e => {
-    if ([...e.dataTransfer.types].includes('Files') || [...e.dataTransfer.types].includes('application/x-midas-component'))
+    if ([...e.dataTransfer.types].includes('Files') || [...e.dataTransfer.types].includes('application/x-midas-component') || [...e.dataTransfer.types].includes('application/x-midas-libcomp'))
         e.preventDefault();
     if ([...e.dataTransfer.types].includes('Files'))
         e.dataTransfer.dropEffect = 'copy';
 });
 area.addEventListener('drop', e => {
+    const libComp = e.dataTransfer.getData('application/x-midas-libcomp');
+    if (libComp) {
+        e.preventDefault();
+        const [lid, cid] = libComp.split(':');
+        libInstantiate(lid, cid, eventWorld(e));
+        return;
+    }
     const compId = e.dataTransfer.getData('application/x-midas-component');
     if (compId) {
         e.preventDefault();
@@ -14505,6 +15283,14 @@ document.addEventListener('keydown', e => {
             finishPen();
         else if (activeNode()?.type === 'text')
             startText(activeNode(), true);
+        else if (state.selection.size) {
+            // Enter dives into the selected frame / group: its children (siblings of each other) get selected.
+            const kids = selected().flatMap(n => doc.children(n.id)).filter(c => !c.locked && c.visible !== false);
+            if (kids.length) {
+                e.preventDefault();
+                select(kids.map(c => c.id));
+            }
+        }
         return;
     }
     if (e.key === '?' || e.key === '/') {
@@ -14557,6 +15343,11 @@ document.addEventListener('keydown', e => {
     }
     if (!cmd && !e.altKey) {
         const tools = { v: 'select', f: 'frame', r: 'rect', o: 'ellipse', l: 'line', p: 'pen', t: 'text', h: 'hand' };
+        if (e.shiftKey && key === 's') {
+            e.preventDefault();
+            setTool('section');
+            return;
+        }
         if (tools[key]) {
             e.preventDefault();
             setTool(tools[key]);
