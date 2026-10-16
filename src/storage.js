@@ -105,6 +105,34 @@ export const kv = {
         }
     },
 
+    // All stored keys that start with `prefix` (IndexedDB plus the localStorage mirror).
+    async keys(prefix = '') {
+        const out = new Set();
+        try {
+            const db = await getDB();
+            if (db) {
+                await ensureMigrated(db);
+                const list = await new Promise((resolve) => {
+                    const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAllKeys();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                });
+                for (const k of list) if (typeof k === 'string' && k.startsWith(prefix)) out.add(k);
+            }
+        } catch (e) {
+            console.warn('Failed to list IndexedDB keys:', e);
+        }
+        try {
+            if (typeof localStorage !== 'undefined') {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith(KV_PREFIX + prefix)) out.add(k.slice(KV_PREFIX.length));
+                }
+            }
+        } catch { }
+        return [...out];
+    },
+
     async put(key, value) {
         let savedInIdb = false;
         try {

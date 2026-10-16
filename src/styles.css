@@ -2678,3 +2678,14 @@ select.vw-text { cursor: pointer }
 .sz-field.var-bound-num .sz-mode { margin-right: 22px }
 .font-field-row.bound .font-field { background: var(--accent-bg) }
 .font-field-row.bound .var-btn { opacity: 1; color: var(--accent); right: 6px }
+.swap-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font-size: 12px; cursor: pointer; text-align: left }
+.swap-btn:hover { background: var(--hover) }
+.swap-btn i { display: grid; place-items: center; flex: none; color: var(--accent) }
+.swap-btn span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.swap-btn svg:last-child { flex: none; color: var(--muted) }
+.vpk-item .vc-glyph { display: grid; place-items: center; width: 14px; flex: none; color: var(--accent) }
+#page-loading { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--bg, #1a1a1d) 70%, transparent); backdrop-filter: blur(2px) }
+#page-loading.on { display: flex }
+#page-loading .pl-box { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; box-shadow: 0 8px 28px rgba(0, 0, 0, .25) }
+#page-loading .pl-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: pl-rot .7s linear infinite }
+@keyframes pl-rot { to { transform: rotate(360deg) } }

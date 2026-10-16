@@ -3000,10 +3000,35 @@ async function libBoot() {
     catch {
         lib.index = [];
     }
+    // Projects are stored page by page (file:<id>:meta + pages); the oldest ones as a single file:<id> blob.
+    const hasStored = async id => !!(await kvGet('file:' + id + ':meta') || await kvGet('file:' + id));
+    const loadStored = async id => { try {
+        return await projectStorage.loadProject(id);
+    }
+    catch {
+        return null;
+    } };
+    // Files that exist in storage but fell out of the index (an interrupted save, an earlier cleanup) come back.
+    try {
+        const known = new Set(lib.index.map(m => m.id));
+        for (const k of await kv.keys('file:')) {
+            const m = /^file:([^:]+):meta$/.exec(k);
+            if (!m || known.has(m[1]))
+                continue;
+            let meta = null;
+            try {
+                meta = JSON.parse(await kvGet(k));
+            }
+            catch { }
+            known.add(m[1]);
+            lib.index.push({ id: m[1], name: String(meta?.name || 'Recovered file'), created: Date.now(), updated: Date.now(), opened: 0, thumb: null });
+        }
+    }
+    catch { }
     const last = await kvGet('last');
     let json = null;
     if (last && lib.index.some(m => m.id === last && !m.trashed)) {
-        json = await kvGet('file:' + last);
+        json = await loadStored(last);
         if (json)
             lib.fileId = last;
     }
@@ -3024,22 +3049,20 @@ async function libBoot() {
         json = legacy;
     }
     if (!json) {
-        // The remembered file is gone: reopen the most recent file that still exists. Index entries without any stored
-        // content are leftovers and are dropped, so reloading never piles up new empty files.
-        const live = [];
+        // The remembered file is gone: reopen the most recent one that still has content, and drop index entries
+        // that never got any, so reloading does not pile up empty files.
+        const keep = [];
         for (const m of [...lib.index].sort((a, b) => (b.opened || 0) - (a.opened || 0))) {
-            if (m.trashed)
-                continue;
-            const stored = await kvGet('file:' + m.id);
-            if (stored) {
-                live.push(m);
-                if (!json) {
-                    json = stored;
-                    lib.fileId = m.id;
+            if (m.trashed || await hasStored(m.id)) {
+                keep.push(m);
+                if (!json && !m.trashed) {
+                    json = await loadStored(m.id);
+                    if (json)
+                        lib.fileId = m.id;
                 }
             }
         }
-        lib.index = lib.index.filter(m => m.trashed || live.includes(m));
+        lib.index = lib.index.filter(m => keep.includes(m));
     }
     if (!json) {
         lib.fileId = uid();
@@ -3118,6 +3141,7 @@ async function loadIntoEditor(data, id) {
     history.redoStack = [];
     doc.data = data;
     doc.refresh();
+    syncComponents(true); // build the layers of instances that arrive without them (Figma imports)
     markPagesSaved();
     state.selection.clear();
     state.expanded.clear();
@@ -6071,7 +6095,8 @@ function syncComponents(activeOnly = true) {
             if (!src)
                 continue;
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
-            const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : [])]);
+            // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
+            const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of Object.entries(src)) {
@@ -6127,8 +6152,9 @@ function constrainInstanceLayers(pages) {
                 const dx = p.w - ps.w, dy = p.h - ps.h, fx = p.w / (ps.w || 1), fy = p.h / (ps.h || 1);
                 const auto = p.type === 'frame' && isAutoLayout(p), grp = p.type === 'group' || p.booleanOp;
                 for (const c of kidsOf.get(p.id) || []) {
-                    const cs = c.sourceId && all.get(c.sourceId);
-                    if (!cs || c.swapOf)
+                    // A swapped nested instance keeps the size, position and constraints of its slot (the layer it replaced).
+                    const cs = (c.swapOf || c.sourceId) && all.get(c.swapOf || c.sourceId);
+                    if (!cs)
                         continue;
                     if (!(auto && c.layoutPositioning !== 'absolute')) {
                         const g = { x: cs.x, y: cs.y, w: cs.w, h: cs.h };
@@ -6284,11 +6310,47 @@ function setTool(tool) {
     invalidate();
 }
 function getSelectionBounds() { return doc.bounds([...state.selection]); }
+// Opening a page from the UI shows a loading state first: big pages take a moment to build, and the overlay is
+// painted before the (synchronous) switch starts.
+function showPageLoading(name) {
+    let el = document.getElementById('page-loading');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'page-loading';
+        el.setAttribute('role', 'status');
+        el.innerHTML = '<div class="pl-box"><i class="pl-spin"></i><span></span></div>';
+        area.appendChild(el);
+    }
+    el.querySelector('span').textContent = `Opening ${String(name || 'page').trim()}…`;
+    el.classList.add('on');
+}
+function hidePageLoading() { document.getElementById('page-loading')?.classList.remove('on'); }
+function switchPageWithLoading(id) {
+    const target = doc.data.pages.find(p => p.id === id);
+    if (!target || id === doc.page.id)
+        return;
+    showPageLoading(target.name);
+    let done = false;
+    const go = () => {
+        if (done)
+            return;
+        done = true;
+        try {
+            switchPage(id);
+        }
+        finally {
+            hidePageLoading();
+        }
+    };
+    requestAnimationFrame(() => setTimeout(go, 0)); // after the overlay has been painted
+    setTimeout(go, 80); // a throttled (background) tab never runs animation frames
+}
 function switchPage(id) {
     finishText();
     state.pageViews.set(doc.page.id, { camera: { ...state.camera }, selection: [...state.selection] });
     doc.data.pageId = id;
     doc.refresh();
+    syncComponents(true); // instances that were imported or edited elsewhere get their layers when the page opens
     state.selection.clear();
     state.pathEdit = null;
     state.pen = [];
@@ -10034,6 +10096,117 @@ function bindLayer(holder, p, layerId) {
         p.def = chainComponent(n)?.id || null;
     doc.touch(n);
 }
+// Instance-swap picker: the same searchable, grouped list as the variable picker (page ≙ library, name path ≙ group).
+function swapEntries() {
+    const out = [];
+    for (const p of doc.data.pages)
+        for (const c of p.nodes) {
+            if (!c.component)
+                continue;
+            const set = parentSetOf(c);
+            let group, leaf;
+            if (set) {
+                group = set.name;
+                leaf = c.name;
+            }
+            else {
+                const parts = c.name.split('/').map(s => s.trim());
+                leaf = parts.pop();
+                group = parts.join(' / ');
+            }
+            out.push({ id: c.id, page: p.name.trim() || 'Page', group, leaf });
+        }
+    return out;
+}
+const SWP = { page: '' };
+function openSwapPicker(anchor, { current = null, onPick }) {
+    closeVarPicker();
+    const pop = document.createElement('div'), entries = swapEntries(), pages = [...new Set(entries.map(e => e.page))];
+    pop.id = 'var-picker';
+    pop.className = 'var-picker';
+    let q = '', limit = 300;
+    if (SWP.page && !pages.includes(SWP.page))
+        SWP.page = '';
+    const list = () => {
+        const ql = q.trim().toLowerCase();
+        let html = '', shown = 0, hidden = 0, lastPage = null, lastGroup = null;
+        for (const e of entries) {
+            if (SWP.page && e.page !== SWP.page)
+                continue;
+            if (ql && !(e.group + ' ' + e.leaf).toLowerCase().includes(ql))
+                continue;
+            if (shown >= limit) {
+                hidden++;
+                continue;
+            }
+            shown++;
+            if (e.page !== lastPage) {
+                html += `<div class="vpk-coll">${esc(e.page)}</div>`;
+                lastPage = e.page;
+                lastGroup = null;
+            }
+            if (e.group && e.group !== lastGroup) {
+                html += `<div class="vpk-group">${esc(e.group)}</div>`;
+                lastGroup = e.group;
+            }
+            else if (!e.group)
+                lastGroup = null;
+            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e.id === current ? 'on' : ''}" data-pick="${e.id}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><i class="vc-glyph">${CPROP_ICON.instance}</i><span class="vp-name">${esc(e.leaf)}</span>${e.id === current ? icon('check', 12) : ''}</button>`;
+        }
+        if (hidden)
+            html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
+        pop.querySelector('.vp-list').innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+    };
+    pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Page"><option value="">All pages</option>${pages.map(p => `<option value="${esc(p)}" ${SWP.page === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
+    list();
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect(), w = 280;
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
+    pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
+    pop.querySelector('[data-vpk-search]').focus();
+    pop.querySelector('.vp-item.on')?.scrollIntoView({ block: 'center' });
+    pop.addEventListener('input', e => {
+        if (e.target.matches('[data-vpk-search]')) {
+            q = e.target.value;
+            limit = 300;
+            list();
+        }
+    });
+    pop.addEventListener('change', e => {
+        if (e.target.matches('[data-swp-page]')) {
+            SWP.page = e.target.value;
+            limit = 300;
+            list();
+        }
+    });
+    pop.addEventListener('click', e => {
+        if (e.target.closest('[data-vpk-more]')) {
+            limit += 300;
+            list();
+            return;
+        }
+        const b = e.target.closest('[data-pick]');
+        if (b) {
+            closeVarPicker();
+            onPick(b.dataset.pick);
+        }
+    });
+    pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVarPicker(); } });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!document.body.contains(pop)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!pop.contains(ev.target)) {
+            closeVarPicker();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+function swapButtonHtml(attrs, compId) {
+    const c = compId && allNodes().find(n => n.id === compId), set = c && parentSetOf(c), label = c ? (set ? `${set.name} / ${c.name}` : c.name) : 'Choose component';
+    return `<button class="swap-btn" ${attrs} title="${esc(label)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(label)}</span>${CHEV_SVG}</button>`;
+}
 function swappableComponents() {
     const out = [];
     for (const p of doc.data.pages) {
@@ -10307,7 +10480,7 @@ function renderCpropPop() {
     else if (p.type === 'boolean')
         def = `<select data-cp-def aria-label="Default value"><option value="true" ${p.def !== false ? 'selected' : ''}>True</option><option value="false" ${p.def === false ? 'selected' : ''}>False</option></select>`;
     else if (p.type === 'instance')
-        def = `<select data-cp-def aria-label="Default value">${swappableComponents().map(c => `<option value="${c.id}" ${p.def === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>`;
+        def = swapButtonHtml('data-swap-def', p.def);
     const layerLabel = { text: 'Text layer', boolean: 'Layer', instance: 'Instance', slot: 'Slot frame' }[p.type];
     pp.el.innerHTML = head(`${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
         `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
@@ -10325,7 +10498,7 @@ function instancePropsHtml(owner, holder) {
         if (p.type === 'boolean')
             return `<label class="vsw"><input type="checkbox" role="switch" data-iprop="${p.id}" ${attrs} ${v !== false ? 'checked' : ''} aria-label="${esc(p.name)}"></label><span class="vsw-spacer"></span>`;
         if (p.type === 'instance')
-            return `<select data-iprop="${p.id}" ${attrs} aria-label="${esc(p.name)}">${swappableComponents().map(c => `<option value="${c.id}" ${v === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>`;
+            return swapButtonHtml(`data-swap-iprop="${p.id}" ${attrs}`, v);
         const page = pageOfNode(owner.id), slot = page && pageTree(page, owner.id).find(y => y.propBind?.slot === p.id);
         return `<span class="cmp-slot">${CPROP_ICON.slot}${esc(slot?.name || 'Slot')} · drop layers in</span>`;
     };
@@ -10371,6 +10544,18 @@ document.addEventListener('click', e => {
     const b = e.target.closest('#inspector [data-select-layer]');
     if (b)
         select([b.dataset.selectLayer]);
+    const sw = e.target.closest('[data-swap-iprop]'), sd = e.target.closest('[data-swap-def]');
+    if (sw) {
+        const owner = sw.dataset.owner ? allNodes().find(n => n.id === sw.dataset.owner) : activeNode(), pid = sw.dataset.swapIprop;
+        const p = owner && findCprop(propHolderOf(chainComponent(owner)), pid);
+        if (p)
+            openSwapPicker(sw, { current: instancePropValue(owner, p), onPick: id => setInstanceProp(owner, pid, id) });
+    }
+    else if (sd && cpropPop) {
+        const holder = allNodes().find(n => n.id === cpropPop.holderId), p = holder && findCprop(holder, cpropPop.pid);
+        if (p)
+            openSwapPicker(sd, { current: p.def, onPick: id => { setPropDefault(holder, p.id, id); renderCpropPop(); } });
+    }
 });
 // Swap an instance to another variant of the same component set (position is kept, overrides are reset).
 function swapVariant(inst, prop, value) {
@@ -11750,6 +11935,38 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (src && src.component && src.id !== n.id)
             linkPair(n, src, true);
     }
+    // A width / height bound to a variable is re-resolved from the variable's mode every time the document opens.
+    // Where the size Figma stored differs from that value (Figma keeps the size it laid out), keep Figma's size
+    // and leave that dimension unbound instead of silently resizing the layer.
+    if (varItems.length) {
+        const nodeById = new Map(pages.flatMap(p => p.nodes).map(n => [n.id, n]));
+        const resolver = { data: { variables: { collections: varCollections, items: varItems } }, get: id => nodeById.get(id) };
+        const itemById = new Map(varItems.map(i => [i.id, i]));
+        let unbound = 0;
+        for (const n of nodeById.values()) {
+            if (!n.vars)
+                continue;
+            let changed = false;
+            for (const dim of ['w', 'h']) {
+                const item = itemById.get(n.vars[dim]);
+                if (!item)
+                    continue;
+                const val = varValue(resolver, item, n);
+                if (typeof val === 'number' && Number.isFinite(val) && Math.abs(val - n[dim]) > .01) {
+                    delete n.vars[dim];
+                    unbound++;
+                    changed = true;
+                }
+            }
+            if (!Object.keys(n.vars).length)
+                delete n.vars;
+            // Instances copy `vars` from their main component unless it is an override.
+            if (changed && n.sourceId)
+                (n.overrides ||= {}).vars = n.vars ? structuredClone(n.vars) : {};
+        }
+        if (unbound)
+            note(`${unbound} width / height variable binding${unbound === 1 ? '' : 's'} differ from the size Figma stored; kept Figma's size`);
+    }
     // ---- sanitize + assemble ----
     for (const p of pages)
         for (const n of p.nodes) {
@@ -12968,7 +13185,7 @@ document.addEventListener('click', e => {
                 if (pageIsFolder(p))
                     togglePageExpand(p.id);
                 else if (p.id !== doc.page.id)
-                    switchPage(p.id);
+                    switchPageWithLoading(p.id);
             }
         }, 410);
         return;
@@ -13571,7 +13788,7 @@ $('#search-results').addEventListener('click', e => {
     }
     const pg = t.closest('[data-sr-page]');
     if (pg) {
-        switchPage(pg.dataset.srPage);
+        switchPageWithLoading(pg.dataset.srPage);
         return;
     }
     const row = t.closest('[data-sr]');
