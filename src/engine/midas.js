@@ -9456,7 +9456,8 @@ function syncInstanceStructure(activeOnly = true) {
                 if (bySource.has(s.id))
                     continue;
                 const parent = s.parentId === src.id ? root : bySource.get(s.parentId);
-                if (!parent || parent.swapOf)
+                // A swapped nested instance is skipped while its outer instance syncs, but it builds its own layers when it is the root.
+                if (!parent || parent !== root && parent.swapOf)
                     continue;
                 const c = structuredClone(s);
                 c.id = uid();
@@ -11321,6 +11322,26 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         return out.length ? { subs: out, evenodd } : null;
     };
+    // ---- component properties (text / boolean / instance swap / slot) ----
+    // Definitions sit on the component set (or a standalone component). Variants repeat them as nameless aliases
+    // that point at the set's definition through parentPropDefId; layers reference a definition by id (componentPropRefs)
+    // and instances carry the chosen values (componentPropAssignments).
+    const CPROP_TYPES = { TEXT: 'text', BOOL: 'boolean', INSTANCE_SWAP: 'instance', SLOT: 'slot' };
+    const defInfo = new Map(); // figma def id -> { pid, name, type }
+    for (const nc of fig.values())
+        for (const d of nc.componentPropDefs || [])
+            if (d.name && CPROP_TYPES[d.type] && d.id)
+                defInfo.set(gkey(d.id), { pid: uid(), name: d.name, type: CPROP_TYPES[d.type] });
+    for (const nc of fig.values())
+        for (const d of nc.componentPropDefs || []) {
+            const parent = d.parentPropDefId && defInfo.get(gkey(d.parentPropDefId));
+            if (!d.name && parent && d.id)
+                defInfo.set(gkey(d.id), parent);
+        }
+    const PROP_FIELD = { VISIBLE: 'visible', TEXT_DATA: 'text', OVERRIDDEN_SYMBOL_ID: 'swap', SLOT_CONTENT_ID: 'slot' };
+    const NONE_GUID = 4294967295;
+    const realGuid = g => g && g.sessionID !== NONE_GUID ? g : null;
+    const swapDefaults = [], walkedFigs = [];
     // ---- node conversion ----
     const idMap = new Map(), figOfMidas = new Map(), midasById = new Map(), childrenOf = new Map(), pending = [], linked = [];
     const FRAMEISH = new Set(['FRAME', 'SECTION', 'SYMBOL', 'INSTANCE', 'SLIDE', 'SLIDE_ROW', 'SLIDE_GRID', 'WEBPAGE', 'RESPONSIVE_SET', 'TABLE', 'TABLE_CELL']);
@@ -11402,6 +11423,31 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.component = true;
         if (f.isStateGroup)
             n.componentSet = true;
+        // Property definitions live on the set, or on a component that is not part of one.
+        if (f.componentPropDefs?.length && (f.isStateGroup || f.type === 'SYMBOL' && !fig.get(gkey(f.parentIndex?.guid))?.isStateGroup)) {
+            const props = [];
+            for (const d of f.componentPropDefs) {
+                const info = d.name && defInfo.get(gkey(d.id));
+                if (!info)
+                    continue;
+                const p = { id: info.pid, name: info.name, type: info.type, def: null };
+                if (info.type === 'text')
+                    p.def = d.initialValue?.textValue?.characters ?? '';
+                else if (info.type === 'boolean')
+                    p.def = d.initialValue?.boolValue !== false;
+                else if (info.type === 'instance')
+                    swapDefaults.push({ p, guid: realGuid(d.initialValue?.guidValue) });
+                props.push(p);
+            }
+            if (props.length)
+                n.cprops = props;
+        }
+        for (const r of f.componentPropRefs || []) {
+            const info = defInfo.get(gkey(r.defID)), field = PROP_FIELD[r.componentPropNodeField];
+            if (info && field)
+                (n.propBind ||= {})[field] = info.pid;
+        }
+        walkedFigs.push(f);
         idMap.set(k, n.id);
         figOfMidas.set(n.id, f);
         midasById.set(n.id, n);
@@ -11506,6 +11552,61 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (ci % 2 === 0)
             await new Promise(r => setTimeout(r, 0));
     }
+    // ---- library components ----
+    // Components of a library live on Figma's hidden "Internal Only Canvas" (icon wrappers, base buttons, …).
+    // Every one that is used (by an instance, an instance-swap default or a chosen swap value) becomes a real main
+    // component on an extra page, so its instances stay instances with their properties instead of being flattened.
+    const canvasOf = f => { let x = f, i = 0; while (x && x.type !== 'CANVAS' && i++ < 300)
+        x = fig.get(gkey(x.parentIndex?.guid)); return x; };
+    const isInternal = f => { const c = canvasOf(f); return !!c && (c.internalOnly || c.name === 'Internal Only Canvas'); };
+    const lib = { id: uid(), name: 'Library components', nodes: [], canvas: null }, libPos = { x: 0, y: 0, rowH: 0 };
+    const wantSymbol = guid => {
+        const g = realGuid(guid), key = g && gkey(g);
+        if (!key || idMap.has(key))
+            return;
+        const sf = fig.get(key);
+        if (!sf || sf.type !== 'SYMBOL' || !isInternal(sf))
+            return;
+        const parent = fig.get(gkey(sf.parentIndex?.guid)), top = parent?.isStateGroup ? parent : sf;
+        if (idMap.has(gkey(top.guid)))
+            return;
+        const before = lib.nodes.length;
+        walk(top, null, null, lib.nodes);
+        const root = lib.nodes[before];
+        if (!root)
+            return;
+        if (libPos.x > 6000) {
+            libPos.x = 0;
+            libPos.y += libPos.rowH + 80;
+            libPos.rowH = 0;
+        }
+        root.x = libPos.x;
+        root.y = libPos.y;
+        libPos.x += root.w + 80;
+        libPos.rowH = Math.max(libPos.rowH, root.h);
+    };
+    for (let i = 0; i < walkedFigs.length; i++) {
+        const f = walkedFigs[i];
+        if (f.type === 'INSTANCE')
+            wantSymbol(f.symbolData?.symbolID);
+        for (const ov of f.symbolData?.symbolOverrides || [])
+            wantSymbol(ov.overriddenSymbolID);
+        for (const a of f.componentPropAssignments || [])
+            wantSymbol(a.value?.guidValue || a.varValue?.value?.symbolIdValue?.guid);
+        for (const d of f.componentPropDefs || [])
+            if (d.type === 'INSTANCE_SWAP')
+                wantSymbol(d.initialValue?.guidValue);
+    }
+    if (lib.nodes.length) {
+        pages.push(lib);
+        rep.pages++;
+    }
+    // Instance-swap defaults point at main components.
+    for (const { p, guid } of swapDefaults) {
+        const id = guid && idMap.get(gkey(guid));
+        if (id && midasById.get(id)?.component)
+            p.def = id;
+    }
     // ---- component sets: variant properties from "Prop=Value, Prop2=Value" names ----
     const allMidas = pages.flatMap(p => p.nodes);
     const byParent = new Map();
@@ -11592,6 +11693,51 @@ async function figToMidas(file, onProgress, abortSignal) {
             constrainImported(c, before.w, before.h, kidsOfParent);
         }
     };
+    // Property values chosen on an instance (text / boolean / instance swap).
+    const assignProps = (n, f) => {
+        for (const a of f.componentPropAssignments || []) {
+            const info = defInfo.get(gkey(a.defID));
+            if (!info)
+                continue;
+            let v;
+            if (info.type === 'text')
+                v = a.value?.textValue?.characters;
+            else if (info.type === 'boolean')
+                v = a.value?.boolValue;
+            else if (info.type === 'instance') {
+                const g = realGuid(a.value?.guidValue || a.varValue?.value?.symbolIdValue?.guid), id = g && idMap.get(gkey(g));
+                v = id && midasById.get(id)?.component ? id : undefined;
+            }
+            if (v !== undefined)
+                (n.propValues ||= {})[info.pid] = v;
+        }
+    };
+    // Replace a nested instance (a copy made from its main component) with an instance of another component.
+    // Its own layers are dropped; they are rebuilt from the new component when the document syncs.
+    const swapClone = (page, y, targetId, clones) => {
+        const target = midasById.get(targetId);
+        if (!target?.component || y.sourceId === targetId)
+            return;
+        const byPar = new Map();
+        for (const c of clones.values())
+            (byPar.get(c.parentId) || byPar.set(c.parentId, []).get(c.parentId)).push(c);
+        const gone = new Set(), q = [y.id];
+        while (q.length)
+            for (const c of byPar.get(q.shift()) || []) {
+                gone.add(c.id);
+                q.push(c.id);
+            }
+        if (gone.size) {
+            page.nodes = page.nodes.filter(x => !gone.has(x.id));
+            for (const [k, c] of clones)
+                if (gone.has(c.id))
+                    clones.delete(k);
+        }
+        y.swapOf = y.swapOf || y.sourceId;
+        y.sourceId = targetId;
+        y.isInstance = true;
+        y.overrides = {};
+    };
     let instCount = 0;
     for (const { f, n } of pending) {
         if (++instCount % 50 === 0)
@@ -11657,6 +11803,11 @@ async function figToMidas(file, onProgress, abortSignal) {
                 (kidsOfClone.get(c.parentId) || kidsOfClone.set(c.parentId, []).get(c.parentId)).push(c);
             constrainImported(n, src.w, src.h, kidsOfClone);
         }
+        assignProps(n, f);
+        for (const [pid, val] of Object.entries(n.propValues || {}))
+            for (const y of [...clones.values()])
+                if (y.propBind?.swap === pid)
+                    swapClone(page, y, val, clones);
         for (const ov of f.symbolData?.symbolOverrides || []) {
             const guids = ov.guidPath?.guids || [];
             if (!guids.length)
@@ -11674,6 +11825,11 @@ async function figToMidas(file, onProgress, abortSignal) {
             }
             if (!c)
                 continue;
+            const swapTo = ov.overriddenSymbolID && idMap.get(gkey(ov.overriddenSymbolID));
+            if (swapTo) {
+                swapClone(page, c, swapTo, clones);
+                continue;
+            }
             const before = { ...c };
             if (ov.textData?.characters !== undefined)
                 c.text = ov.textData.characters;
@@ -11713,6 +11869,7 @@ async function figToMidas(file, onProgress, abortSignal) {
                 linkPair(c, b[i], false); });
     };
     for (const { f, n } of linked) {
+        assignProps(n, f);
         const src = midasById.get(idMap.get(gkey(f.symbolData?.symbolID)));
         if (src && src.component && src.id !== n.id)
             linkPair(n, src, true);
