@@ -1,0 +1,13024 @@
+// Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
+import { kv, settings as localStore, projectStorage } from '../storage.js';
+
+
+// ===== document.js =====
+/** Midas document model. Coordinates are local to the parent; affine transforms compose top-down. */
+const uid = () => globalThis.crypto?.randomUUID?.() || `v${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+const identity = () => [1, 0, 0, 1, 0, 0];
+const multiply = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+const inverse = m => {
+    const d = m[0] * m[3] - m[1] * m[2];
+    if (Math.abs(d) < 1e-12)
+        return identity();
+    return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d, (m[2] * m[5] - m[3] * m[4]) / d, (m[1] * m[4] - m[0] * m[5]) / d];
+};
+const point = (m, x, y) => ({ x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] });
+function localMatrix(n) { const r = (n.rotation || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), fx = n.flipX ? -1 : 1, fy = n.flipY ? -1 : 1, cx = n.w / 2, cy = n.h / 2, a = c * fx, b = s * fx, c2 = -s * fy, d = c * fy; return [a, b, c2, d, n.x + cx - (a * cx + c2 * cy), n.y + cy - (b * cx + d * cy)]; }
+function boxOf(m, w, h) { const p = [point(m, 0, 0), point(m, w, 0), point(m, w, h), point(m, 0, h)]; const xs = p.map(v => v.x), ys = p.map(v => v.y); return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }; }
+function union(boxes) {
+    if (!boxes.length)
+        return null;
+    let x = Infinity, y = Infinity, r = -Infinity, b = -Infinity;
+    for (const q of boxes) {
+        x = Math.min(x, q.x);
+        y = Math.min(y, q.y);
+        r = Math.max(r, q.x + q.w);
+        b = Math.max(b, q.y + q.h);
+    }
+    return { x, y, w: r - x, h: b - y };
+}
+const intersects = (a, b) => a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+function color(c, opacity = 1) {
+    if (!c || c === 'none')
+        return [0, 0, 0, 0];
+    let hex = c.replace('#', '');
+    if (hex.length === 3)
+        hex = hex.split('').map(x => x + x).join('');
+    return [parseInt(hex.slice(0, 2), 16) / 255 || 0, parseInt(hex.slice(2, 4), 16) / 255 || 0, parseInt(hex.slice(4, 6), 16) / 255 || 0, (hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1) * opacity];
+}
+function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, shadow: false, shadowColor: '#000000', shadowOpacity: .16, shadowBlur: 20, shadowX: 0, shadowY: 6, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44 } : {}), ...(type === 'frame' ? { fill: '#ffffff', w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fill: 'none' } : {}), ...props }; }
+// ===== autolayout engine =====
+function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none'; }
+function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
+function lyGap(n) { return n.gap ?? 16; }
+function sizingOf(n, axis) {
+    const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
+    if (v)
+        return v;
+    if (n.type === 'text')
+        return axis === 'h' ? (n.autoW ? 'hug' : 'fixed') : 'hug';
+    return 'fixed';
+}
+function runLayout(d) {
+    const nodes = d.nodes;
+    if (!nodes.some(n => n.minW != null || n.maxW != null || n.minH != null || n.maxH != null || isAutoLayout(n) || n.layoutSizingH === 'fill' || n.layoutSizingV === 'fill' || (n.type === 'frame' && (n.layoutSizingH === 'hug' || n.layoutSizingV === 'hug'))))
+        return;
+    const kids = new Map();
+    for (const n of nodes) {
+        const k = n.parentId && d.get(n.parentId) ? n.parentId : null;
+        if (!kids.has(k))
+            kids.set(k, []);
+        kids.get(k).push(n);
+    }
+    const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
+    const parentOf = n => d.get(n.parentId);
+    const inFlow = c => c.visible !== false && c.layoutPositioning !== 'absolute';
+    const eff = (n, axis) => {
+        let v = sizingOf(n, axis);
+        const p = parentOf(n), inFrame = !!p && p.type === 'frame' && n.layoutPositioning !== 'absolute';
+        if (v === 'fill' && !inFrame)
+            v = 'fixed';
+        if (v === 'fill')
+            v = (axis === 'h' ? n._fw : n._fh) ? 'fixed' : 'hug';
+        if (v === 'hug' && !(n.type === 'text' || n.type === 'frame'))
+            v = 'fixed';
+        if (v === 'hug' && isAutoLayout(n) && n.layoutWrap && n.layout !== 'grid' && ((n.layout === 'horizontal') === (axis === 'h')))
+            v = 'fixed';
+        return v;
+    };
+    const breakLines = (fl, inner, gap, horiz = true) => {
+        const lines = [];
+        let line = [], run = 0;
+        for (const c of fl) {
+            const cs = horiz ? c.w : c.h;
+            if (line.length && run + gap + cs > inner + .001) {
+                lines.push(line);
+                line = [];
+                run = 0;
+            }
+            run += (line.length ? gap : 0) + cs;
+            line.push(c);
+        }
+        if (line.length)
+            lines.push(line);
+        return lines;
+    };
+    const sizeOn = (c, axis) => axis === 'h' ? c.w : c.h;
+    // Grid tracks: column width / row height = largest child in that column / row.
+    const gridCols = n => Math.max(1, Math.round(n.gridCols || 2));
+    const gridTracks = (n, fl) => {
+        const cols = gridCols(n), colW = Array(cols).fill(0), rowH = [];
+        fl.forEach((c, i) => {
+            const ci = i % cols, ri = Math.floor(i / cols);
+            colW[ci] = Math.max(colW[ci], c.w);
+            rowH[ri] = Math.max(rowH[ri] || 0, c.h);
+        });
+        return { cols, colW, rowH };
+    };
+    // Phase "up": resolve hug sizes bottom-up on one axis (fill children count as their natural size).
+    const up0 = (n, axis) => {
+        const ch = kids.get(n.id) || [];
+        for (const c of ch)
+            up(c, axis);
+        if (n.type === 'text') {
+            const tp = parentOf(n);
+            if (!tp || tp.type !== 'frame' || n.layoutPositioning === 'absolute' || (!isAutoLayout(tp) && !n.layoutSizingH && !n.layoutSizingV))
+                return;
+            if (axis === 'h') {
+                if (eff(n, 'h') === 'hug') {
+                    const h0 = n.h;
+                    n.autoW = true;
+                    hugText(n);
+                    n.h = h0;
+                }
+                else
+                    n.autoW = false;
+            }
+            else if (eff(n, 'v') === 'hug')
+                n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+            return;
+        }
+        if (n.type === 'frame' && !isAutoLayout(n)) {
+            if (eff(n, axis) === 'hug') {
+                const extent = Math.max(1, ...ch.filter(inFlow).map(c => axis === 'h' ? c.x + c.w : c.y + c.h));
+                if (axis === 'h')
+                    n.w = extent;
+                else
+                    n.h = extent;
+            }
+            return;
+        }
+        if (!isAutoLayout(n) || eff(n, axis) !== 'hug')
+            return;
+        if (n.layout === 'grid') {
+            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const total = axis === 'h'
+                ? T.colW.reduce((s, v) => s + v, 0) + gap * Math.max(0, Math.min(T.cols, fl.length) - 1) + P.l + P.r
+                : T.rowH.reduce((s, v) => s + v, 0) + gapC * Math.max(0, T.rowH.length - 1) + P.t + P.b;
+            if (axis === 'h')
+                n.w = Math.max(1, total);
+            else
+                n.h = Math.max(1, total);
+            return;
+        }
+        const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), fl = ch.filter(inFlow);
+        const prim = (axis === 'h') === horiz, pad = axis === 'h' ? P.l + P.r : P.t + P.b;
+        let total;
+        if (prim)
+            total = fl.reduce((s, c) => s + sizeOn(c, axis), 0) + gap * Math.max(0, fl.length - 1);
+        else if (wrap) {
+            const lines = breakLines(fl, Math.max(0, horiz ? n.w - P.l - P.r : n.h - P.t - P.b), gap, horiz);
+            total = lines.reduce((s, l) => s + Math.max(0, ...l.map(c => sizeOn(c, axis))), 0) + (n.gapCross ?? gap) * Math.max(0, lines.length - 1);
+        }
+        else
+            total = Math.max(0, ...fl.map(c => sizeOn(c, axis)));
+        total += pad;
+        if (axis === 'h')
+            n.w = total;
+        else
+            n.h = total;
+    };
+    const up = (n, axis) => {
+        up0(n, axis);
+        const d = axis === 'h' ? 'w' : 'h', v = clampMM(n, d, n[d]);
+        if (v !== n[d])
+            n[d] = v;
+    };
+    // Phase "down": hand out Fill sizes top-down on one axis.
+    const assign = (c, axis, v) => {
+        v = clampMM(c, axis === 'h' ? 'w' : 'h', v);
+        if (axis === 'h') {
+            c.w = v;
+            c._fw = true;
+            if (c.type === 'text')
+                c.autoW = false;
+        }
+        else {
+            c.h = v;
+            c._fh = true;
+        }
+    };
+    const down = (n, axis) => {
+        const ch = kids.get(n.id) || [];
+        if (isAutoLayout(n) && n.layout === 'grid') {
+            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), cols = gridCols(n);
+            if (axis === 'h') {
+                const share = Math.max(0, (Math.max(0, n.w - P.l - P.r) - gap * (cols - 1)) / cols);
+                for (const c of fl)
+                    if (sizingOf(c, 'h') === 'fill')
+                        assign(c, 'h', share);
+            }
+            else {
+                const rows = [];
+                fl.forEach((c, i) => { (rows[Math.floor(i / cols)] ||= []).push(c); });
+                const nat = rows.map(r => Math.max(0, ...r.map(c => sizingOf(c, 'v') === 'fill' ? 0 : c.h)));
+                const natTot = nat.reduce((s, v) => s + v, 0), extra = rows.length ? Math.max(0, (Math.max(0, n.h - P.t - P.b) - natTot - gapC * (rows.length - 1)) / rows.length) : 0;
+                rows.forEach((r, ri) => { for (const c of r)
+                    if (sizingOf(c, 'v') === 'fill')
+                        assign(c, 'v', Math.max(nat[ri], extra)); });
+            }
+        }
+        else if (isAutoLayout(n)) {
+            const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), fl = ch.filter(inFlow);
+            const prim = (axis === 'h') === horiz, inner = axis === 'h' ? Math.max(0, n.w - P.l - P.r) : Math.max(0, n.h - P.t - P.b);
+            if (prim && !wrap) {
+                const fills = fl.filter(c => sizingOf(c, axis) === 'fill');
+                if (fills.length) {
+                    const gapUse = n.gapAuto ? 0 : gap, fixedTot = fl.reduce((s, c) => s + (sizingOf(c, axis) === 'fill' ? 0 : sizeOn(c, axis)), 0);
+                    const share = Math.max(0, (inner - fixedTot - gapUse * Math.max(0, fl.length - 1)) / fills.length);
+                    for (const c of fills)
+                        assign(c, axis, share);
+                }
+            }
+            else if (!prim) {
+                const lines = wrap ? breakLines(fl, Math.max(0, horiz ? n.w - P.l - P.r : n.h - P.t - P.b), gap, horiz) : [fl];
+                for (const line of lines) {
+                    const lineCross = wrap ? Math.max(0, ...line.map(c => sizeOn(c, axis))) : inner;
+                    for (const c of line)
+                        if (sizingOf(c, axis) === 'fill')
+                            assign(c, axis, lineCross);
+                }
+            }
+        }
+        else if (n.type === 'frame') {
+            for (const c of ch.filter(inFlow))
+                if (sizingOf(c, axis) === 'fill') {
+                    assign(c, axis, axis === 'h' ? n.w : n.h);
+                    if (axis === 'h')
+                        c.x = 0;
+                    else
+                        c.y = 0;
+                }
+        }
+        for (const c of ch)
+            down(c, axis);
+    };
+    const place = (n, ch) => {
+        if (n.layout === 'grid') {
+            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const colX = [], rowY = [];
+            let ax = 0, ay = 0;
+            T.colW.forEach((w, i) => { colX[i] = ax; ax += w + gap; });
+            T.rowH.forEach((h, i) => { rowY[i] = ay; ay += h + gapC; });
+            const hA = n.primaryAlign || 'start', vA = n.counterAlign || n.layoutAlign || 'start';
+            fl.forEach((c, i) => {
+                const ci = i % T.cols, ri = Math.floor(i / T.cols);
+                const ox = hA === 'center' ? (T.colW[ci] - c.w) / 2 : hA === 'end' ? T.colW[ci] - c.w : 0;
+                const oy = vA === 'center' ? (T.rowH[ri] - c.h) / 2 : vA === 'end' ? T.rowH[ri] - c.h : 0;
+                if (!c._drag) {
+                    c.x = P.l + colX[ci] + ox;
+                    c.y = P.t + rowY[ri] + oy;
+                }
+            });
+            return;
+        }
+        const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow);
+        const innerW = Math.max(0, n.w - P.l - P.r), innerH = Math.max(0, n.h - P.t - P.b), innerP = horiz ? innerW : innerH, innerC = horiz ? innerH : innerW;
+        const prim = c => horiz ? c.w : c.h, crossOf = c => horiz ? c.h : c.w;
+        const lines = wrap ? breakLines(fl, innerP, gap, horiz) : [fl];
+        const pAlign = n.primaryAlign || 'start', cAlign = n.counterAlign || n.layoutAlign || 'start', between = !!n.gapAuto;
+        let crossAt = 0;
+        for (const line of lines) {
+            const k = line.length, gapUse = between ? 0 : gap, lineCross = wrap ? Math.max(0, ...line.map(crossOf)) : innerC;
+            const used = line.reduce((s, c) => s + prim(c), 0);
+            let g = gapUse, off = 0;
+            if (between && k > 1)
+                g = Math.max(0, (innerP - used) / (k - 1));
+            else {
+                const total = used + gapUse * Math.max(0, k - 1);
+                off = pAlign === 'center' ? (innerP - total) / 2 : pAlign === 'end' ? innerP - total : 0;
+            }
+            let at = off;
+            for (const c of line) {
+                const cs = crossOf(c), co = cAlign === 'center' ? (lineCross - cs) / 2 : cAlign === 'end' ? lineCross - cs : 0;
+                if (!c._drag) {
+                    if (horiz) { c.x = P.l + at; c.y = P.t + crossAt + co; }
+                    else { c.x = P.l + crossAt + co; c.y = P.t + at; }
+                }
+                at += prim(c) + g;
+            }
+            crossAt += lineCross + gapC;
+        }
+    };
+    const arrange = n => {
+        const ch = kids.get(n.id) || [];
+        if (isAutoLayout(n))
+            place(n, ch);
+        for (const c of ch)
+            arrange(c);
+    };
+    const roots = kids.get(null) || [];
+    for (const axis of ['h', 'v']) {
+        for (const r of roots)
+            up(r, axis);
+        for (const r of roots)
+            down(r, axis);
+    }
+    for (const r of roots)
+        arrange(r);
+    for (const n of nodes) {
+        delete n._fw;
+        delete n._fh;
+    }
+    for (const [n, b] of before) {
+        const a = [n.x, n.y, n.w, n.h, n.autoW];
+        if (a.some((v, i) => v !== b[i] && !(typeof v === 'number' && Math.abs(v - b[i]) < 1e-7)))
+            d.touch(n);
+    }
+}
+
+// ===== auto layout: UI + commands =====
+function enableAutoLayout(f, forceDir = null, opts = {}) {
+    const kids = doc.nodes.filter(c => c.parentId === f.id && c.visible !== false);
+    let dir = 'horizontal';
+    if (kids.length > 1) {
+        const spread = a => Math.max(...a) - Math.min(...a);
+        dir = spread(kids.map(c => c.y + c.h / 2)) > spread(kids.map(c => c.x + c.w / 2)) ? 'vertical' : 'horizontal';
+    }
+    if (forceDir && forceDir !== 'grid')
+        dir = forceDir;
+    const horiz = dir !== 'vertical';
+    const nudge = Math.max(0, Math.round(+options.bigNudge || 0));
+    let gap = nudge, pad = opts.pad != null ? { t: opts.pad, r: opts.pad, b: opts.pad, l: opts.pad } : (kids.length ? { t: 0, r: 0, b: 0, l: 0 } : { t: nudge, r: nudge, b: nudge, l: nudge });
+    if (kids.length) {
+        const sorted = [...kids].sort((a, b) => horiz ? a.x - b.x : a.y - b.y), slots = kids.map(c => doc.nodes.indexOf(c)).sort((a, b) => a - b);
+        sorted.forEach((c, i) => { doc.nodes[slots[i]] = c; });
+        const gaps = [];
+        for (let i = 1; i < sorted.length; i++) {
+            const p = sorted[i - 1], c = sorted[i];
+            gaps.push(horiz ? c.x - (p.x + p.w) : c.y - (p.y + p.h));
+        }
+        if (gaps.length && !opts.gapFromNudge)
+            gap = Math.max(0, Math.round(gaps.reduce((s, v) => s + v, 0) / gaps.length));
+        const minX = Math.min(...kids.map(c => c.x)), minY = Math.min(...kids.map(c => c.y)), maxX = Math.max(...kids.map(c => c.x + c.w)), maxY = Math.max(...kids.map(c => c.y + c.h));
+        if (opts.pad == null) {
+            // Converting a frame: keep padding symmetric per axis, using the smaller side of each pair.
+            const h = Math.max(0, Math.round(Math.min(minX, f.w - maxX))), v = Math.max(0, Math.round(Math.min(minY, f.h - maxY)));
+            pad = { l: h, r: h, t: v, b: v };
+        }
+    }
+    Object.assign(f, { layout: dir, gap, padding: pad.l, padL: pad.l, padT: pad.t, padR: pad.r, padB: pad.b, primaryAlign: 'start', counterAlign: 'start', gapAuto: false, layoutWrap: false, gridCols: f.gridCols || 2, layoutSizingH: kids.length ? 'hug' : 'fixed', layoutSizingV: kids.length ? 'hug' : 'fixed' });
+    doc.refresh();
+    doc.touch(f);
+}
+function addAutoLayout() {
+    const roots = selectedRoots();
+    if (!roots.length) {
+        toast('Select a frame or layers first to add auto layout.');
+        return;
+    }
+    if (roots.length === 1 && roots[0].type === 'frame' && !isAutoLayout(roots[0])) {
+        transaction('Add auto layout', () => enableAutoLayout(roots[0]));
+        return;
+    }
+    groupSelection(true, true);
+}
+function removeAutoLayout() {
+    transaction('Remove auto layout', () => { for (const f of selectedRoots().filter(isAutoLayout)) { f.layout = 'none'; f.layoutWrap = false; if (sizingOf(f, 'h') === 'hug')
+        f.layoutSizingH = 'fixed'; if (sizingOf(f, 'v') === 'hug')
+        f.layoutSizingV = 'fixed'; doc.touch(f); } });
+}
+function reorderDrag(n) {
+    const p = doc.get(n.parentId);
+    if (!isAutoLayout(p))
+        return;
+    const horiz = p.layout === 'horizontal', wrap = !!p.layoutWrap || p.layout === 'grid';
+    const sibs = doc.nodes.filter(s => s.parentId === p.id && s !== n && s.visible !== false && s.layoutPositioning !== 'absolute');
+    if (!sibs.length)
+        return;
+    const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+    let index;
+    if (wrap) {
+        let best = 0, bd = Infinity;
+        sibs.forEach((s, i) => { const d = Math.hypot(s.x + s.w / 2 - cx, s.y + s.h / 2 - cy); if (d < bd) { bd = d; best = i; } });
+        const s = sibs[best];
+        index = cx > s.x + s.w / 2 ? best + 1 : best;
+    }
+    else
+        index = sibs.filter(s => horiz ? s.x + s.w / 2 < cx : s.y + s.h / 2 < cy).length;
+    const target = sibs[index];
+    const cur = doc.nodes.indexOf(n);
+    doc.nodes.splice(cur, 1);
+    const at = target ? doc.nodes.indexOf(target) : doc.nodes.indexOf(sibs[sibs.length - 1]) + 1;
+    doc.nodes.splice(at, 0, n);
+}
+function sizingSelect(n, axis) {
+    const p = doc.get(n.parentId), inAuto = p?.type === 'frame' && n.layoutPositioning !== 'absolute';
+    const opts = [['fixed', 'Fixed']];
+    if (n.type === 'text' || n.type === 'frame')
+        opts.push(['hug', 'Hug']);
+    if (inAuto)
+        opts.push(['fill', 'Fill']);
+    let cur = sizingOf(n, axis);
+    if (!opts.some(o => o[0] === cur))
+        cur = 'fixed';
+    return selectField(axis === 'h' ? 'layoutSizingH' : 'layoutSizingV', cur, opts);
+}
+function autoLayoutControls(n) {
+    if (!isAutoLayout(n))
+        return '';
+    const grid = n.layout === 'grid', horiz = n.layout !== 'vertical', wrap = !grid && !!n.layoutWrap, P = lyPads(n), aligns = ['start', 'center', 'end'];
+    const pA = n.primaryAlign || 'start', cA = n.counterAlign || n.layoutAlign || 'start', between = !grid && !!n.gapAuto;
+    const cells = [];
+    for (let r = 0; r < 3; r++)
+        for (let c = 0; c < 3; c++) {
+            const pi = horiz ? c : r, ci = horiz ? r : c;
+            const on = aligns[ci] === cA && (between || aligns[pi] === pA);
+            cells.push(`<button class="ly-cell ${on ? 'on' : ''}" data-ly-cell="${pi},${ci}" aria-label="Align ${aligns[pi]} / ${aligns[ci]}"><i></i></button>`);
+        }
+    const individual = state.padSides || P.l !== P.r || P.t !== P.b;
+    const padFields = individual ? `<div class="property-grid">${field('L', 'padL', P.l, { min: 0 })}${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
+    const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
+    const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }));
+    const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
+    return `<div class="field-label"><span>Alignment &amp; gap</span></div>
+<div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: 'Row gap' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: wrap && !horiz ? 'Gap between columns' : 'Gap between rows' }) : ''}`}</div></div>
+<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding">▢</button></div>${padFields}`;
+}
+const TX_ICONS = {
+    'auto-w': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M6.5 8h6.5M10.8 5.8 13 8l-2.2 2.2"/></svg>',
+    'auto-h': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M13 3v10M6.5 6h3M6.5 8.5h3M6.5 11h3"/></svg>',
+    'fixed': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg>'
+};
+const TX_TITLES = { 'auto-w': 'Auto width', 'auto-h': 'Auto height', 'fixed': 'Fixed size' };
+function textModeOf(n) {
+    if (n.autoW)
+        return 'auto-w';
+    const v = sizingOf(n, 'v');
+    return v === 'hug' ? 'auto-h' : 'fixed';
+}
+function setTextMode(mode) {
+    const ts = selected().filter(n => n.type === 'text');
+    if (!ts.length)
+        return;
+    transaction('Text resizing', () => {
+        for (const n of ts) {
+            const keepFill = sizingOf(n, 'h') === 'fill';
+            if (mode === 'auto-w') {
+                n.autoW = true;
+                n.layoutSizingH = 'hug';
+                n.layoutSizingV = 'hug';
+                hugText(n);
+            }
+            else if (mode === 'auto-h') {
+                n.autoW = false;
+                n.layoutSizingH = keepFill ? 'fill' : 'fixed';
+                n.layoutSizingV = 'hug';
+                n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+            }
+            else {
+                n.autoW = false;
+                n.layoutSizingH = keepFill ? 'fill' : 'fixed';
+                n.layoutSizingV = 'fixed';
+            }
+            if (n.sourceId) {
+                n.overrides ||= {};
+                n.overrides.w = n.w;
+                n.overrides.h = n.h;
+            }
+            doc.touch(n);
+        }
+    });
+}
+const LY_ICONS = {
+    freeform: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx="1"/></svg>',
+    vertical: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5v11M2.8 11.3 5 13.5l2.2-2.2"/><path d="M10 3.5h3M10 7h3M10 10.5h3" /></svg>',
+    horizontal: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5h11M11.3 2.8 13.5 5l-2.2 2.2"/><path d="M3.5 10v3M7 10v3M10.5 10v3"/></svg>',
+    grid: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><rect x="2.5" y="2.5" width="4.2" height="4.2" rx="1"/><rect x="9.3" y="2.5" width="4.2" height="4.2" rx="1"/><rect x="2.5" y="9.3" width="4.2" height="4.2" rx="1"/><rect x="9.3" y="9.3" width="4.2" height="4.2" rx="1"/></svg>',
+    wrap: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h9a2.5 2.5 0 0 1 0 5H4"/><path d="m6 7.2-2.5 2.3L6 11.8"/><path d="M2.5 13h4" opacity=".0"/></svg>',
+    autoLayout: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M6 6v4M10 6v4"/></svg>',
+    lock: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>',
+    unlock: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 4.8-.9"/></svg>'
+};
+function layoutModeOf(n) { return isAutoLayout(n) ? n.layout : 'freeform'; }
+function layoutSectionHtml(n) {
+    const p = doc.get(n.parentId), inAuto = isAutoLayout(p), mode = layoutModeOf(n);
+    let h = '';
+    if (n.type === 'text') {
+        const tm = textModeOf(n);
+        h += `<div class="ly-modes"><div class="segmented ly-dir tx-modes">${['auto-w', 'auto-h', 'fixed'].map(m => `<button data-text-mode="${m}" class="${tm === m ? 'active' : ''}" title="${TX_TITLES[m]}" aria-label="${TX_TITLES[m]}">${TX_ICONS[m]}</button>`).join('')}</div></div>`;
+        h += `<div class="wh-row">${sizeFieldHtml(n, 'h')}${sizeFieldHtml(n, 'v')}<button class="wh-lock ${n.lockRatio ? 'active' : ''}" data-lock-ratio title="${n.lockRatio ? 'Unlock proportions' : 'Lock proportions'}" aria-label="Lock aspect ratio" aria-pressed="${!!n.lockRatio}">${n.lockRatio ? LY_ICONS.lock : LY_ICONS.unlock}</button></div>`;
+        h += minMaxHtml(n);
+        return h;
+    }
+    if (!inAuto || n.type === 'frame') {
+        const btn = (m, title) => `<button data-ly-mode=\"${m}\" class=\"${mode === m ? 'active' : ''}\" title=\"${title}\" aria-label=\"${title}\">${LY_ICONS[m]}</button>`;
+        const canWrap = mode === 'horizontal' || mode === 'vertical';
+        h += `<div class=\"ly-modes\"><div class=\"segmented ly-dir\">${btn('freeform', 'Freeform')}${btn('vertical', 'Vertical layout')}${btn('horizontal', 'Horizontal layout')}${btn('grid', 'Grid layout')}</div>${canWrap ? `<button class=\"icon-button ${n.layoutWrap ? 'active' : ''}\" data-ly-wrap title=\"Wrap\" aria-label=\"Wrap\">${LY_ICONS.wrap}</button>` : ''}</div>`;
+    }
+    h += `<div class=\"wh-row\">${sizeFieldHtml(n, 'h')}${sizeFieldHtml(n, 'v')}<button class=\"wh-lock ${n.lockRatio ? 'active' : ''}\" data-lock-ratio title=\"${n.lockRatio ? 'Unlock proportions' : 'Lock proportions'}\" aria-label=\"Lock aspect ratio\" aria-pressed=\"${!!n.lockRatio}\">${n.lockRatio ? LY_ICONS.lock : LY_ICONS.unlock}</button></div>`;
+    h += minMaxHtml(n);
+    if (n.type === 'frame' && isAutoLayout(n))
+        h += `<div class=\"ly-block\">${autoLayoutControls(n)}</div>`;
+    if (['frame', 'group'].includes(n.type))
+        h += `<label class=\"checkbox-row\"><input type=\"checkbox\" data-prop=\"clip\" ${n.clip ? 'checked' : ''} ${n.type === 'group' ? 'disabled' : ''}>Clip content</label>`;
+    return h;
+}
+// Pick a layout mode from the icon row: anything but freeform switches auto layout on.
+function setLayoutMode(mode) {
+    const roots = selectedRoots();
+    if (!roots.length) {
+        toast('Select a frame or layers first to add auto layout.');
+        return;
+    }
+    if (mode === 'freeform') {
+        removeAutoLayout();
+        return;
+    }
+    if (roots.length === 1 && roots[0].type === 'frame') {
+        transaction('Layout mode', () => {
+            const f = roots[0];
+            if (!isAutoLayout(f))
+                enableAutoLayout(f, mode);
+            f.layout = mode;
+            if (mode === 'grid')
+                f.layoutWrap = false;
+            doc.touch(f);
+        });
+        return;
+    }
+    groupSelection(true, true);
+    lyEach('Layout mode', f => { f.layout = mode; if (mode === 'grid')
+        f.layoutWrap = false; });
+}
+function lyEach(label, fn) {
+    transaction(label, () => { for (const f of selected().filter(isAutoLayout)) { fn(f); doc.touch(f); } });
+}
+document.addEventListener('click', e => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-text-mode]'))) {
+        setTextMode(el.dataset.textMode);
+        return;
+    }
+    if ((el = t.closest('[data-ly-mode]'))) {
+        setLayoutMode(el.dataset.lyMode);
+        return;
+    }
+    if ((el = t.closest('[data-ly-wrap]')) && !el.disabled) {
+        lyEach('Wrap layout', f => { if (f.layout === 'horizontal' || f.layout === 'vertical') {
+            f.layoutWrap = !f.layoutWrap;
+            const primAxis = f.layout === 'horizontal' ? 'h' : 'v';
+            if (f.layoutWrap && sizingOf(f, primAxis) === 'hug') {
+                if (primAxis === 'h')
+                    f.layoutSizingH = 'fixed';
+                else
+                    f.layoutSizingV = 'fixed';
+            }
+        } });
+        return;
+    }
+    if ((el = t.closest('[data-lock-ratio]'))) {
+        transaction('Lock proportions', () => { const on = !activeNode()?.lockRatio; for (const n of selected()) {
+            if (on)
+                n.lockRatio = true;
+            else
+                delete n.lockRatio;
+            doc.touch(n);
+        } });
+        return;
+    }
+    if ((el = t.closest('[data-ly-cell]'))) {
+        const [pi, ci] = el.dataset.lyCell.split(',').map(Number), a = ['start', 'center', 'end'];
+        lyEach('Align items', f => { if (!f.gapAuto)
+            f.primaryAlign = a[pi]; f.counterAlign = a[ci]; });
+        return;
+    }
+    if ((el = t.closest('[data-ly-gap-auto]'))) {
+        lyEach('Auto gap', f => { f.gapAuto = !f.gapAuto; });
+        return;
+    }
+    if ((el = t.closest('[data-ly-pad-sides]'))) {
+        const n = activeNode();
+        if (n) {
+            const P = lyPads(n), individual = state.padSides || P.l !== P.r || P.t !== P.b;
+            if (individual) {
+                state.padSides = false;
+                lyEach('Padding', f => { const q = lyPads(f); f.padL = f.padR = q.l; f.padT = f.padB = q.t; });
+            }
+            else {
+                state.padSides = true;
+                renderInspector();
+            }
+        }
+        return;
+    }
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches?.('[data-ly-abs]')) {
+        transaction('Absolute position', () => { for (const n of selected()) { n.layoutPositioning = el.checked ? 'absolute' : 'auto'; doc.touch(n); } });
+    }
+});
+
+// ===== variables =====
+const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
+const VAR_BIND_ALT = { fontWeight: ['number'] };
+function bindTypes(prop) { if (String(prop).startsWith('vprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop]; return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
+const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
+function vpropType(name) {
+    const n = activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
+    if (!set)
+        return null;
+    return binaryPair(variantValues(set, name)) ? 'boolean' : 'string';
+}
+function bindType(prop) { if (String(prop).startsWith('vprop:'))
+    return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
+function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
+function varItem(id) { return varStore().items.find(i => i.id === id); }
+function varColl(id) { return varStore().collections.find(c => c.id === id); }
+function nodeMode(d, n, coll) {
+    let cur = n, guard = 0;
+    while (cur && guard++ < 200) {
+        const m = cur.varModes?.[coll.id];
+        if (m && coll.modes.some(x => x.id === m))
+            return m;
+        cur = d.get(cur.parentId);
+    }
+    return coll.modes[0]?.id;
+}
+function varValue(d, item, node, depth = 0) {
+    const store = d.data.variables, coll = store?.collections.find(c => c.id === item.collectionId);
+    if (!coll || !coll.modes.length)
+        return undefined;
+    const mode = node ? nodeMode(d, node, coll) : coll.modes[0].id;
+    let v = item.values[mode];
+    if (v === undefined)
+        v = item.values[coll.modes[0].id];
+    if (v && typeof v === 'object' && v.alias) {
+        const t = store.items.find(i => i.id === v.alias);
+        if (!t || t.type !== item.type || depth > 20)
+            return undefined;
+        const target = varValue(d, t, node, depth + 1);
+        // A color alias can carry its own opacity, multiplied onto the aliased color.
+        if (item.type === 'color' && typeof target === 'string' && v.opacity != null && v.opacity < 100) {
+            const { rgb, alpha } = vwSplitColor(target);
+            return vwJoinColor(rgb, alpha * v.opacity / 100);
+        }
+        return target;
+    }
+    return v;
+}
+function writeBound(n, prop, val, type) {
+    const fm = /^fills\.(\d+)$/.exec(prop);
+    if (fm) {
+        const fl = Array.isArray(n.fills) ? n.fills[+fm[1]] : null;
+        if (!fl || fl.type === 'image' || fl.color === String(val))
+            return false;
+        fl.color = String(val);
+        syncLegacyFill(n);
+        return true;
+    }
+    const set = (k, v) => { if (n[k] === v)
+        return false; n[k] = v; return true; };
+    if (prop === 'effects') {
+        if (!Array.isArray(val) || n.type === 'group' || (Array.isArray(n.effects) && JSON.stringify(n.effects) === JSON.stringify(val)))
+            return false;
+        n.effects = structuredClone(val);
+        syncLegacyShadow(n);
+        return true;
+    }
+    if (prop === 'fontWeight') {
+        const str = String(val).trim();
+        let w = str !== '' && Number.isFinite(+str) ? +str : /thin|hairline/i.test(str) ? 100 : /extra.?light|ultra.?light/i.test(str) ? 200 : /light/i.test(str) ? 300 : /semi.?bold|demi/i.test(str) ? 600 : /extra.?bold|ultra.?bold/i.test(str) ? 800 : /black|heavy/i.test(str) ? 900 : /bold/i.test(str) ? 700 : /medium/i.test(str) ? 500 : 400;
+        w = clamp(Math.round(w / 100) * 100, 100, 900);
+        let ch = set('fontWeight', w);
+        if (/italic|oblique/i.test(str) && n.fontStyle !== 'italic')
+            ch = set('fontStyle', 'italic') || ch;
+        return ch;
+    }
+    if (type === 'number') {
+        let v = +val;
+        if (!Number.isFinite(v))
+            return false;
+        if (prop === 'opacity')
+            return set('opacity', clamp(v / 100, 0, 1));
+        // Line height variables are always pixels (like Figma); percentages can only be typed into the field.
+        if (prop === 'lineHeight')
+            return set('lineHeight', clamp(v / (n.fontSize || 16), .05, 20));
+        if (['rTL', 'rTR', 'rBR', 'rBL'].includes(prop)) {
+            if (!hasRadii(n))
+                return false;
+            const idx = { rTL: 0, rTR: 1, rBR: 2, rBL: 3 }[prop], r = [...n.radii];
+            v = Math.max(0, v);
+            if (r[idx] === v)
+                return false;
+            r[idx] = v;
+            n.radii = r;
+            return true;
+        }
+        if (prop === 'radius' && hasRadii(n)) {
+            v = Math.max(0, v);
+            n.radii = [v, v, v, v];
+        }
+        if (prop === 'padH') {
+            v = Math.max(0, v);
+            const a = set('padL', v), b = set('padR', v);
+            return a || b;
+        }
+        if (prop === 'padV') {
+            v = Math.max(0, v);
+            const a = set('padT', v), b = set('padB', v);
+            return a || b;
+        }
+        if (prop === 'w' || prop === 'h')
+            v = Math.max(.1, v);
+        else if (prop === 'fontSize')
+            v = clamp(v, 1, 512);
+        else if (prop !== 'letterSpacing')
+            v = Math.max(0, v);
+        return set(prop, v);
+    }
+    if (type === 'boolean')
+        return set('visible', !!val);
+    if (type === 'string') {
+        const changedText = set(prop, String(val));
+        if (changedText && n.type === 'text' && n.autoW)
+            hugText(n);
+        return changedText;
+    }
+    return set(prop, String(val));
+}
+let varSwapQueued = false;
+function applyVpropBinding(d, n, name, item) {
+    const src = componentById(n.sourceId), set = src && parentSetOf(src);
+    if (!set)
+        return false;
+    const val = varValue(d, item, n), vals = variantValues(set, name);
+    let want;
+    if (item.type === 'boolean') {
+        const bp = binaryPair(vals);
+        if (!bp)
+            return false;
+        want = val ? bp.t : bp.f;
+    }
+    else
+        want = vals.find(v => String(v).toLowerCase() === String(val).toLowerCase());
+    if (want === undefined || src.variant?.[name] === want)
+        return false;
+    const wanted = { ...(src.variant || {}), [name]: want }, target = setVariants(set).find(x => Object.entries(wanted).every(([k, v]) => x.variant?.[k] === v));
+    if (!target)
+        return false;
+    n.sourceId = target.id;
+    n.overrides = {};
+    if (!varSwapQueued) {
+        varSwapQueued = true;
+        queueMicrotask(() => { varSwapQueued = false; syncComponents(); invalidate(); });
+    }
+    return true;
+}
+function applyVariables(d) {
+    const store = d.data.variables;
+    if (!store || !d.nodes.some(n => n.vars))
+        return;
+    const items = new Map(store.items.map(i => [i.id, i])), touched = new Set(), remeasure = new Set();
+    for (const n of d.nodes) {
+        if (!n.vars)
+            continue;
+        for (const [prop, id] of Object.entries(n.vars)) {
+            if (prop.startsWith('vprop:')) {
+                const vi = items.get(id);
+                if (!vi) {
+                    delete n.vars[prop];
+                    touched.add(n);
+                }
+                else if (n.isInstance && applyVpropBinding(d, n, prop.slice(6), vi))
+                    touched.add(n);
+                continue;
+            }
+            const item = items.get(id);
+            if (!item || !bindType(prop)) {
+                delete n.vars[prop];
+                touched.add(n);
+                continue;
+            }
+            const val = varValue(d, item, n);
+            if (val === undefined || val === null)
+                continue;
+            if (writeBound(n, prop, val, item.type)) {
+                touched.add(n);
+                if (n.type === 'text' && ['fontSize', 'lineHeight', 'fontWeight', 'letterSpacing', 'fontFamily'].includes(prop))
+                    remeasure.add(n);
+            }
+        }
+        if (!Object.keys(n.vars).length)
+            delete n.vars;
+    }
+    for (const n of remeasure) {
+        if (n.autoW)
+            hugText(n);
+        else if (n.layoutSizingV === 'hug')
+            n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+        else
+            n.h = Math.max(n.h, layoutText(n).height);
+    }
+    for (const n of touched)
+        d.touch(n);
+}
+function cleanVariables(v) {
+    const out = { collections: [], items: [] };
+    if (!v || !Array.isArray(v.collections) || !Array.isArray(v.items))
+        return out;
+    const types = new Set(VAR_TYPES.map(t => t[0]));
+    for (const c of v.collections) {
+        if (typeof c?.id !== 'string' || !Array.isArray(c.modes) || !c.modes.length)
+            continue;
+        out.collections.push({ id: c.id, name: String(c.name ?? 'Collection'), modes: c.modes.filter(m => typeof m?.id === 'string').map(m => ({ id: m.id, name: String(m.name ?? 'Mode') })), groups: Array.isArray(c.groups) ? c.groups.map(String) : [] });
+    }
+    const ids = new Set(out.collections.map(c => c.id));
+    for (const i of v.items)
+        if (typeof i?.id === 'string' && ids.has(i.collectionId) && types.has(i.type) && i.values && typeof i.values === 'object')
+            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), hidden: !!i.hidden, scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
+    return out.collections.every(c => c.modes.length) ? out : { collections: [], items: [] };
+}
+function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
+function varDisplayValue(item, node = null) { return varValue(doc, item, node); }
+function boundVarId(prop) { return activeNode()?.vars?.[prop]; }
+function boundVar(prop) { const id = boundVarId(prop); return id ? varItem(id) : null; }
+const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5" cy="5" r="2.6"/><circle cx="11" cy="5" r="2.6"/><circle cx="5" cy="11" r="2.6"/><circle cx="11" cy="11" r="2.6"/></svg>';
+function varBindButton(prop) { return bindType(prop) ? `<button class="var-btn" data-var-bind="${prop}" title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
+function varChip(prop, v) {
+    const val = varDisplayValue(v, activeNode());
+    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
+    const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
+    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="var-x" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+}
+function varRow(label, prop) {
+    const v = boundVar(prop);
+    return `<div class="field-label"><span>${label}</span>${v ? '' : varBindButton(prop)}</div>${v ? varChip(prop, v) : ''}`;
+}
+function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
+function varOwnerOf(item) { return varColl(item.collectionId); }
+function aliasReaches(item, targetId, depth = 0) {
+    if (depth > 20)
+        return true;
+    for (const val of Object.values(item.values)) {
+        if (val && typeof val === 'object' && val.alias) {
+            if (val.alias === targetId)
+                return true;
+            const t = varItem(val.alias);
+            if (t && aliasReaches(t, targetId, depth + 1))
+                return true;
+        }
+    }
+    return false;
+}
+function closeVarPicker() { document.getElementById('var-picker')?.remove(); }
+function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null }) {
+    closeVarPicker();
+    const store = varStore(), pop = document.createElement('div');
+    pop.id = 'var-picker';
+    pop.className = 'var-picker';
+    const render = q => {
+        const groups = store.collections.map(c => {
+            const items = store.items.filter(i => i.collectionId === c.id && (types ? types.includes(i.type) : i.type === type) && varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude)) && i.name.toLowerCase().includes(q));
+            return items.length ? `<div class="vp-group">${esc(c.name)}</div>${items.map(i => { const val = varDisplayValue(i); const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`; return `<button class="vp-item ${i.id === current ? 'on' : ''}" data-pick="${i.id}">${sw}<span class="vp-name">${esc(i.name)}</span><span class="vp-val">${i.type === 'color' ? '' : esc(i.type === 'effect' ? fxSummary(val) : String(val ?? ''))}</span></button>`; }).join('')}` : '';
+        }).join('');
+        pop.querySelector('.vp-list').innerHTML = groups || `<div class="vp-empty">No ${type} variables${q ? ' match' : ' yet'}. Open the Variables window to create one.</div>`;
+    };
+    pop.innerHTML = `<input class="vp-search" placeholder="Search variables" aria-label="Search variables" spellcheck="false"><div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
+    document.body.appendChild(pop);
+    render('');
+    const r = anchor.getBoundingClientRect(), w = 250;
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
+    pop.style.top = Math.max(8, Math.min(innerHeight - 340, r.top - 4)) + 'px';
+    const search = pop.querySelector('.vp-search');
+    search.focus();
+    search.addEventListener('input', () => render(search.value.trim().toLowerCase()));
+    pop.addEventListener('click', e => {
+        const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]');
+        if (e.target.closest('[data-pick-create]')) {
+            closeVarPicker();
+            onCreate();
+        }
+        else if (b) {
+            closeVarPicker();
+            onPick(b.dataset.pick);
+        }
+        else if (d) {
+            closeVarPicker();
+            onDetach();
+        }
+    });
+    pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVarPicker(); } });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!document.body.contains(pop)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!pop.contains(ev.target)) {
+            closeVarPicker();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+function bindVariable(prop, id) {
+    transaction('Apply variable', () => {
+        for (const n of selected()) {
+            if (/^fills\./.test(prop))
+                materializeFills(n);
+            n.vars = { ...(n.vars || {}), [prop]: id };
+            if (prop === 'w')
+                n.layoutSizingH = 'fixed';
+            if (prop === 'h')
+                n.layoutSizingV = 'fixed';
+            doc.touch(n);
+        }
+    });
+}
+function detachVariable(prop) {
+    transaction('Detach variable', () => {
+        for (const n of selected()) {
+            if (n.vars) {
+                delete n.vars[prop];
+                if (!Object.keys(n.vars).length)
+                    delete n.vars;
+            }
+            doc.touch(n);
+        }
+    });
+}
+document.addEventListener('click', e => {
+    const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
+    if (bind) {
+        const prop = bind.dataset.varBind, cur = boundVarId(prop);
+        openVarPicker(bind, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+        return;
+    }
+    if (det)
+        detachVariable(det.dataset.varDetach);
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches?.('[data-var-mode]')) {
+        transaction('Set variable mode', () => {
+            for (const n of selected()) {
+                n.varModes = { ...(n.varModes || {}) };
+                if (el.value)
+                    n.varModes[el.dataset.varMode] = el.value;
+                else
+                    delete n.varModes[el.dataset.varMode];
+                if (!Object.keys(n.varModes).length)
+                    delete n.varModes;
+                doc.touch(n);
+            }
+        });
+    }
+});
+// ===== appearance: independent corners =====
+const CORNER_ICON = {
+    tl: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 13V8a5 5 0 0 1 5-5h5"/></svg>',
+    tr: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 3h5a5 5 0 0 1 5 5v5"/></svg>',
+    bl: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 3v5a5 5 0 0 0 5 5h5"/></svg>',
+    br: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M13 3v5a5 5 0 0 1-5 5H3"/></svg>'
+};
+const CORNER_TOGGLE_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2.5 6V4.5a2 2 0 0 1 2-2H6M10 2.5h1.5a2 2 0 0 1 2 2V6M13.5 10v1.5a2 2 0 0 1-2 2H10M6 13.5H4.5a2 2 0 0 1-2-2V10"/></svg>';
+function appearanceTopHtml(n) {
+    const rl = RECT_LIKE.includes(n.type), indep = hasRadii(n), r = indep ? n.radii : null;
+    const op = field(icon('opacity', 12), 'opacity', n.opacity * 100, { unit: '%', min: 0, max: 100 });
+    const rad = indep && !r.every(v => v === r[0])
+        ? fieldBase(icon('radius', 12), 'radius', 0, { min: 0, title: 'Corner radius' }).replace(/value="[^"]*"/, 'value="" placeholder="Mixed"')
+        : field(icon('radius', 12), 'radius', indep ? r[0] : n.radius, { min: 0, title: 'Corner radius' });
+    let h = `<div class="rad-grid">${op}${rad}${rl ? `<button class="wh-lock ${indep ? 'active' : ''}" data-corners-toggle title="Independent corners" aria-label="Independent corners" aria-pressed="${indep}">${CORNER_TOGGLE_ICON}</button>` : '<span></span>'}</div>`;
+    if (indep)
+        h += `<div class="rad-grid rad-sub">${field(CORNER_ICON.tl, 'rTL', r[0], { min: 0, title: 'Top left radius' })}${field(CORNER_ICON.tr, 'rTR', r[1], { min: 0, title: 'Top right radius' })}<span></span>${field(CORNER_ICON.bl, 'rBL', r[3], { min: 0, title: 'Bottom left radius' })}${field(CORNER_ICON.br, 'rBR', r[2], { min: 0, title: 'Bottom right radius' })}<span></span></div>`;
+    return h;
+}
+document.addEventListener('click', e => {
+    if (e.target.closest('[data-corners-toggle]')) {
+        transaction('Independent corners', () => { for (const n of selected().filter(x => RECT_LIKE.includes(x.type))) {
+            if (hasRadii(n)) {
+                n.radius = n.radii[0];
+                delete n.radii;
+            }
+            else {
+                const r = n.radius || 0;
+                n.radii = [r, r, r, r];
+            }
+            doc.touch(n);
+        } });
+    }
+});
+// ===== stroke section (laid out like Fill) =====
+const STROKE_SIDES = [['all', 'All'], ['top', 'Top'], ['bottom', 'Bottom'], ['left', 'Left'], ['right', 'Right'], ['custom', 'Custom']];
+const STROKE_ICON = {
+    sides: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><rect x="5.5" y="5.5" width="5" height="5" rx=".6" opacity=".55"/></svg>',
+    miter: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="butt"><path d="M4 14V4h10"/></svg>',
+    bevel: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 14V6l2-2h8"/></svg>',
+    round: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 14V8a4 4 0 0 1 4-4h6"/></svg>'
+};
+function strokeSectionHtml(n) {
+    const on = n.strokeWidth > 0, rl = RECT_LIKE.includes(n.type), closed = strokeClosed(n);
+    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="stroke" title="Apply variable" aria-label="Apply variable to stroke">${VAR_ICON}</button>`;
+    const head = on ? `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button></div>` : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="toggleStroke" title="Add stroke" aria-label="Add stroke">${icon('plus', 14)}</button></div>`;
+    if (!on)
+        return section('Stroke', '', head);
+    const col = n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', bound = boundVar('stroke'), hidden = n.strokeVisible === false, so = n.strokeOpacity ?? 1;
+    const sw = `<label class="fr-sw st-sw" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Stroke color"><input type="color" data-prop="stroke" value="${safeColor(col)}" aria-label="Stroke color"></label>`;
+    const hex = bound
+        ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-detach="stroke" title="Detach variable" aria-label="Detach variable">${VAR_ICON}</button></div>`
+        : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
+    const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
+    const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
+    const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
+    const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
+    const widthPart = mode === 'custom' ? '<span class="small-label">Per side</span>' : field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
+    let h = `<div class="fr fr2 ${hidden ? 'off' : ''}">${sw}${hex}${op}${ops}</div>`;
+    h += `<div class="st-row">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
+    if (mode === 'custom') {
+        const s = strokeSideWidths(n);
+        h += `<div class="property-grid st-custom">${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}</div>`;
+    }
+    return section('Stroke', h, head);
+}
+const STROKE_PROPS = ['strokeAlign', 'strokeJoin', 'strokeStyle', 'strokeDash', 'strokeGap', 'strokeMiter', 'strokeCap', 'strokeSides', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeOpacity', 'strokeVisible'];
+function toggleStroke() {
+    transaction('Toggle stroke', () => { for (const n of selected()) {
+        if (n.type === 'group')
+            continue;
+        if (n.strokeWidth > 0) {
+            n.strokeWidth = 0;
+            for (const k of STROKE_PROPS)
+                delete n[k];
+        }
+        else {
+            n.strokeWidth = 1;
+            if (!n.stroke || n.stroke === 'none')
+                n.stroke = '#000000';
+            n.strokeAlign = strokeClosed(n) ? 'inside' : 'center';
+            n.strokeJoin = RECT_LIKE.includes(n.type) ? 'miter' : 'round';
+            n.strokeCap = RECT_LIKE.includes(n.type) ? 'butt' : 'round';
+        }
+        doc.touch(n);
+    } });
+}
+// ----- stroke popovers: settings + sides -----
+let strokePop = null;
+function closeStrokePop() { strokePop?.el.remove(); strokePop = null; }
+function strokeSettingsHtml(n) {
+    const style = n.strokeStyle || 'solid', join = n.strokeJoin || 'round', closed = strokeClosed(n), open = !closed;
+    const row = (label, body) => `<div class="stp-row"><span>${label}</span>${body}</div>`;
+    let h = `<div class="stp-head"><b>Stroke settings</b><button class="icon-button small" data-stp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    h += row('Style', `<select data-stp="strokeStyle" aria-label="Stroke style">${[['solid', 'Solid'], ['dash', 'Dash'], ['dot', 'Dots']].map(([v, l]) => `<option value="${v}" ${style === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
+    if (style === 'dash')
+        h += row('Dash', `<input type="number" min="0" step="1" data-stp="strokeDash" value="${fmt(n.strokeDash ?? 10)}" aria-label="Dash length">`) + row('Gap', `<input type="number" min="0" step="1" data-stp="strokeGap" value="${fmt(n.strokeGap ?? 10)}" aria-label="Dash gap">`);
+    if (n.type !== 'ellipse') {
+        h += row('Join', `<div class="segmented stp-join">${['miter', 'bevel', 'round'].map(j => `<button data-stp-join="${j}" class="${join === j ? 'active' : ''}" title="${j[0].toUpperCase() + j.slice(1)} join" aria-label="${j} join">${STROKE_ICON[j]}</button>`).join('')}</div>`);
+        h += row('Miter angle', `<input type="number" min="1" max="180" step="any" data-stp="strokeMiter" value="${fmt(n.strokeMiter ?? 28.96)}" ${join === 'miter' ? '' : 'disabled'} aria-label="Miter angle">`);
+    }
+    if (open)
+        h += row('Cap', `<select data-stp="strokeCap" aria-label="Line cap">${[['butt', 'None'], ['round', 'Round'], ['square', 'Square']].map(([v, l]) => `<option value="${v}" ${(n.strokeCap || 'round') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
+    return h;
+}
+function strokeSidesHtml(n) {
+    const cur = n.strokeSides || 'all';
+    return STROKE_SIDES.map(([v, l]) => `${v === 'custom' ? '<div class="menu-divider"></div>' : ''}<button data-st-side="${v}" class="${cur === v ? 'on' : ''}"><span class="chk">${cur === v ? '✓' : ''}</span>${l}</button>`).join('');
+}
+function openStrokePop(kind, anchor) {
+    const n = activeNode();
+    if (!n)
+        return;
+    const same = strokePop && strokePop.kind === kind;
+    closeStrokePop();
+    if (same)
+        return;
+    const el = document.createElement('div');
+    el.className = `stp ${kind === 'sides' ? 'stp-menu' : ''}`;
+    el.innerHTML = kind === 'sides' ? strokeSidesHtml(n) : strokeSettingsHtml(n);
+    document.body.appendChild(el);
+    const a = anchor.getBoundingClientRect(), insp = $('#inspector').getBoundingClientRect();
+    if (kind === 'sides') {
+        el.style.left = Math.max(8, Math.min(a.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8)) + 'px';
+        el.style.top = Math.min(a.bottom + 6, window.innerHeight - el.offsetHeight - 8) + 'px';
+    }
+    else {
+        el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
+        el.style.top = Math.max(8, Math.min(a.top - 40, window.innerHeight - el.offsetHeight - 8)) + 'px';
+    }
+    strokePop = { kind, el };
+}
+function refreshStrokePop() {
+    const n = activeNode();
+    if (!strokePop)
+        return;
+    if (!n || !strokeIsOn(n)) {
+        closeStrokePop();
+        return;
+    }
+    strokePop.el.innerHTML = strokePop.kind === 'sides' ? strokeSidesHtml(n) : strokeSettingsHtml(n);
+}
+document.addEventListener('click', e => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-st-settings]'))) {
+        openStrokePop('settings', el);
+        return;
+    }
+    if ((el = t.closest('[data-st-sides]'))) {
+        openStrokePop('sides', el);
+        return;
+    }
+    if (t.closest('[data-st-visible]')) {
+        transaction('Toggle stroke visibility', () => { const hide = activeNode()?.strokeVisible !== false; for (const n of selected()) {
+            if (hide)
+                n.strokeVisible = false;
+            else
+                delete n.strokeVisible;
+            doc.touch(n);
+        } });
+        return;
+    }
+    if (strokePop && t.closest('[data-stp-close]')) {
+        closeStrokePop();
+        return;
+    }
+    if (strokePop && (el = t.closest('[data-stp-join]'))) {
+        setProperty('strokeJoin', el.dataset.stpJoin);
+        refreshStrokePop();
+        return;
+    }
+    if (strokePop && (el = t.closest('[data-st-side]'))) {
+        const v = el.dataset.stSide;
+        transaction('Stroke sides', () => { for (const n of selected()) {
+            n.strokeSides = v;
+            if (v === 'custom') {
+                const w = n.strokeWidth || 0;
+                n.strokeT ??= w;
+                n.strokeR ??= w;
+                n.strokeB ??= w;
+                n.strokeL ??= w;
+            }
+            if (v === 'all')
+                delete n.strokeSides;
+            doc.touch(n);
+        } });
+        closeStrokePop();
+        return;
+    }
+    if (strokePop && !strokePop.el.contains(t))
+        closeStrokePop();
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (strokePop && el.matches?.('[data-stp]')) {
+        const prop = el.dataset.stp;
+        setProperty(prop, el.type === 'number' ? +el.value : el.value);
+        refreshStrokePop();
+    }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && strokePop) {
+    closeStrokePop();
+    e.stopPropagation();
+} }, true);
+
+// ===== W/H sizing dropdown, min/max, gap dropdown =====
+const CHEV_SVG = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg>';
+function clampMM(n, dim, v) {
+    const lo = dim === 'w' ? n.minW : n.minH, hi = dim === 'w' ? n.maxW : n.maxH;
+    if (lo != null)
+        v = Math.max(v, lo);
+    if (hi != null)
+        v = Math.min(v, hi);
+    return v;
+}
+function sizeModeOf(n, axis) {
+    const p = doc.get(n.parentId), inAuto = p?.type === 'frame' && n.layoutPositioning !== 'absolute';
+    let mode = sizingOf(n, axis);
+    if ((mode === 'hug' && !(n.type === 'text' || n.type === 'frame')) || (mode === 'fill' && !inAuto))
+        mode = 'fixed';
+    return { mode, canHug: n.type === 'text' || n.type === 'frame', canFill: inAuto };
+}
+function sizeFieldHtml(n, axis) {
+    const dim = axis === 'h' ? 'w' : 'h', label = axis === 'h' ? 'W' : 'H', { mode } = sizeModeOf(n, axis), bound = boundVar(dim), word = axis === 'h' ? 'Width' : 'Height';
+    if (n.type === 'text') {
+        const tm = textModeOf(n), p = doc.get(n.parentId), inAuto = p?.type === 'frame' && n.layoutPositioning !== 'absolute';
+        const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
+        const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
+        const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
+        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${bound ? varBindButton(dim) : ''}</div>`;
+    }
+    const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
+    const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
+    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${bound ? varBindButton(dim) : ''}</div>`;
+}
+const MM_ICON = {
+    min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
+    max: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5v11M13.5 2.5v11M5.5 8h5M7.3 6.2 5.5 8l1.8 1.8M8.7 6.2 10.5 8l-1.8 1.8"/></svg>'
+};
+function mmCell(n, k) {
+    if (n[k] == null)
+        return '<span></span>';
+    const word = (k.startsWith('min') ? 'Min ' : 'Max ') + (k.endsWith('W') ? 'width' : 'height');
+    return field(`<span class="mm-ico ${k.endsWith('H') ? 'v' : ''}">${MM_ICON[k.startsWith('min') ? 'min' : 'max']}</span>`, k, n[k], { min: 0, title: word });
+}
+function minMaxHtml(n) {
+    const rows = [['minW', 'minH'], ['maxW', 'maxH']].filter(([a, b]) => n[a] != null || n[b] != null);
+    if (!rows.length)
+        return '';
+    return `<div class="mm-grid">${rows.map(([a, b]) => `${mmCell(n, a)}${mmCell(n, b)}<span></span>`).join('')}</div>`;
+}
+let popMenu = null;
+function closePopMenu() { popMenu?.el.remove(); popMenu = null; }
+function openPopMenu(anchor, items) {
+    closePopMenu();
+    const el = document.createElement('div');
+    el.className = 'stp stp-menu';
+    el.style.width = '220px';
+    el.innerHTML = items.map((it, i) => it === '-' ? '<div class="menu-divider"></div>' : it.header ? `<div class="pm-header">${esc(it.header)}</div>` : `<button data-pm="${i}" ${it.disabled ? 'disabled' : ''}>${it.icon ? `<span class="pm-icon">${it.icon}</span>` : `<span class="chk">${it.checked ? '✓' : ''}</span>`}${esc(it.label)}</button>`).join('');
+    document.body.appendChild(el);
+    const a = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(a.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8)) + 'px';
+    el.style.top = Math.max(8, Math.min(a.bottom + 6, window.innerHeight - el.offsetHeight - 8)) + 'px';
+    popMenu = { el, items, anchor };
+}
+function pickVariableFor(anchor, prop) {
+    openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+}
+function openSizeMenu(anchor, axis) {
+    const n = activeNode();
+    if (!n)
+        return;
+    const dim = axis === 'h' ? 'w' : 'h', Word = axis === 'h' ? 'width' : 'height', mn = axis === 'h' ? 'minW' : 'minH', mx = axis === 'h' ? 'maxW' : 'maxH', sz = axis === 'h' ? 'layoutSizingH' : 'layoutSizingV';
+    const { mode, canHug, canFill } = sizeModeOf(n, axis), bound = !!boundVar(dim);
+    const setKeys = (label, fn) => () => transaction(label, () => { for (const x of selected()) {
+        fn(x);
+        doc.touch(x);
+    } });
+    const toggle = key => setKeys('Min / max size', x => { if (x[key] != null)
+        delete x[key];
+    else
+        x[key] = Math.round(x[dim]); });
+    const items = [{ label: `Fixed ${Word} (${fmt(n[dim])})`, checked: mode === 'fixed', run: () => setProperty(sz, 'fixed') }];
+    if (canHug)
+        items.push({ label: 'Hug contents', checked: mode === 'hug', run: () => setProperty(sz, 'hug') });
+    if (canFill)
+        items.push({ label: 'Fill container', checked: mode === 'fill', run: () => setProperty(sz, 'fill') });
+    items.push('-', { label: n[mn] != null ? `Min ${Word}: ${fmt(n[mn])}` : `Add min ${Word}…`, checked: n[mn] != null, run: toggle(mn) }, { label: n[mx] != null ? `Max ${Word}: ${fmt(n[mx])}` : `Add max ${Word}…`, checked: n[mx] != null, run: toggle(mx) });
+    if (n[mn] != null || n[mx] != null)
+        items.push('-', { label: 'Remove min and max', run: setKeys('Remove min / max', x => { delete x[mn]; delete x[mx]; if (x.vars) {
+                delete x.vars[mn];
+                delete x.vars[mx];
+            } }) });
+    items.push('-', { label: bound ? 'Change variable…' : 'Apply variable…', run: () => pickVariableFor(anchor, dim) });
+    openPopMenu(anchor, items);
+}
+function openGapMenu(anchor) {
+    const n = activeNode();
+    if (!n || !isAutoLayout(n))
+        return;
+    const grid = n.layout === 'grid', auto = !grid && !!n.gapAuto, gap = n.gap ?? 16;
+    const setGap = v => lyEach('Gap', f => { f.gap = v; f.gapAuto = false; if (f.vars) {
+        delete f.vars.gap;
+        if (!Object.keys(f.vars).length)
+            delete f.vars;
+    } });
+    const items = [{ label: '4', checked: !auto && gap === 4, run: () => setGap(4) }];
+    if (!grid)
+        items.push({ label: 'Auto', checked: auto, run: () => lyEach('Auto gap', f => { f.gapAuto = true; }) });
+    items.push('-', { label: boundVar('gap') ? 'Change variable…' : 'Apply variable…', run: () => pickVariableFor(anchor, 'gap') });
+    openPopMenu(anchor, items);
+}
+document.addEventListener('click', e => {
+    const had = popMenu;
+    if (had) {
+        const b = e.target.closest('[data-pm]');
+        if (b && had.el.contains(b)) {
+            const it = had.items[+b.dataset.pm];
+            closePopMenu();
+            it.run?.();
+            return;
+        }
+        if (!had.el.contains(e.target))
+            closePopMenu();
+    }
+    let el;
+    if ((el = e.target.closest('[data-size-menu]'))) {
+        e.preventDefault();
+        if (!(had && had.anchor === el))
+            openSizeMenu(el, el.dataset.sizeMenu);
+        return;
+    }
+    if ((el = e.target.closest('[data-gap-menu]'))) {
+        e.preventDefault();
+        if (!(had && had.anchor === el))
+            openGapMenu(el);
+        return;
+    }
+    if ((el = e.target.closest('[data-mm-remove]'))) {
+        const k = el.dataset.mmRemove;
+        transaction('Remove min / max', () => { for (const n of selected()) {
+            delete n[k];
+            if (n.vars?.[k])
+                delete n.vars[k];
+            doc.touch(n);
+        } });
+    }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && popMenu)
+    closePopMenu(); }, true);
+
+let collMenu = null;
+function closeCollMenu() {
+    if (!collMenu)
+        return;
+    collMenu.sub?.remove();
+    collMenu.el.remove();
+    document.removeEventListener('pointerdown', collMenu.away, true);
+    collMenu = null;
+}
+function openCollMenu(anchor) {
+    closeCollMenu();
+    const store = varStore(), n = activeNode();
+    if (!n)
+        return;
+    const el = document.createElement('div');
+    el.className = 'coll-menu';
+    el.innerHTML = `<div class="cm-head">Created in this file</div>` + relevantCollections(n).map(c => `<button class="cm-item" data-cm="${c.id}"><span>${esc(c.name)}</span><i>${icon('chevronRight', 12)}</i></button>`).join('');
+    document.body.appendChild(el);
+    const a = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, a.right - el.offsetWidth) + 'px';
+    el.style.top = Math.min(a.bottom + 6, innerHeight - el.offsetHeight - 8) + 'px';
+    const away = ev => { if (!el.contains(ev.target) && !collMenu?.sub?.contains(ev.target) && !anchor.contains(ev.target))
+        closeCollMenu(); };
+    document.addEventListener('pointerdown', away, true);
+    collMenu = { el, anchor, sub: null, away };
+    const pick = (cid, modeId) => {
+        transaction('Set variable mode', () => {
+            for (const x of selected()) {
+                const next = { ...(x.varModes || {}) };
+                if (modeId === null)
+                    delete next[cid];
+                else
+                    next[cid] = modeId;
+                if (Object.keys(next).length)
+                    x.varModes = next;
+                else
+                    delete x.varModes;
+                doc.touch(x);
+            }
+        });
+        closeCollMenu();
+    };
+    const openSub = btn => {
+        const c = varColl(btn.dataset.cm);
+        if (!c)
+            return;
+        collMenu.sub?.remove();
+        el.querySelectorAll('.cm-item').forEach(b => b.classList.toggle('on', b === btn));
+        const explicit = n.varModes?.[c.id], parent = doc.get(n.parentId), inh = parent ? nodeMode(doc, parent, c) : c.modes[0]?.id, inhName = c.modes.find(m => m.id === inh)?.name || c.modes[0]?.name;
+        const sub = document.createElement('div');
+        sub.className = 'coll-menu coll-sub';
+        sub.innerHTML = `<button class="cm-item" data-cm-mode=""><span class="chk">${explicit === undefined ? '✓' : ''}</span><span>Auto (${esc(inhName)})</span></button><div class="menu-divider"></div><div class="cm-head">Mode</div>` + c.modes.map(m => `<button class="cm-item" data-cm-mode="${m.id}"><span class="chk">${explicit === m.id ? '✓' : ''}</span><span>${esc(m.name)}</span></button>`).join('');
+        document.body.appendChild(sub);
+        const r = el.getBoundingClientRect(), br = btn.getBoundingClientRect();
+        sub.style.left = (r.left - sub.offsetWidth - 4 >= 8 ? r.left - sub.offsetWidth - 4 : r.right + 4) + 'px';
+        sub.style.top = Math.min(br.top, innerHeight - sub.offsetHeight - 8) + 'px';
+        sub.addEventListener('click', ev => { const mb = ev.target.closest('[data-cm-mode]'); if (mb)
+            pick(c.id, mb.dataset.cmMode || null); });
+        collMenu.sub = sub;
+    };
+    el.addEventListener('pointerover', ev => { const b = ev.target.closest('[data-cm]'); if (b && !b.classList.contains('on'))
+        openSub(b); });
+    el.addEventListener('click', ev => { const b = ev.target.closest('[data-cm]'); if (b)
+        openSub(b); });
+}
+// Variable collections connected to a frame/group: each one pins the mode used by this layer and its children.
+function relevantCollections(n) {
+    const store = varStore(), ids = new Set();
+    const take = x => { for (const vid of Object.values(x.vars || {})) {
+        const it = typeof vid === 'string' && store.items.find(i => i.id === vid);
+        if (it)
+            ids.add(it.collectionId);
+    } };
+    if (n) {
+        take(n);
+        for (const a of doc.ancestors(n))
+            take(a);
+        for (const d of doc.descendants(n.id))
+            take(d);
+    }
+    return store.collections.filter(c => ids.has(c.id) || n?.varModes?.[c.id] !== undefined);
+}
+function varCollectionsHtml(n) {
+    const store = varStore(), linked = store.collections.filter(c => n.varModes && n.varModes[c.id] !== undefined);
+    let h = '';
+    if (linked.length)
+        h += `<div class=\"vm-list\">${linked.map(c => `<div class=\"vm-row\"><div class=\"vm-name\" title=\"${esc(c.name)}\">${VAR_ICON}<span>${esc(c.name)}</span></div><select class=\"full-width\" data-var-mode=\"${c.id}\" aria-label=\"Mode for ${esc(c.name)}\">${c.modes.map(m => `<option value=\"${m.id}\" ${n.varModes[c.id] === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select><button class=\"icon-button small vm-del\" data-var-mode-del=\"${c.id}\" title=\"Remove\" aria-label=\"Remove ${esc(c.name)}\">${icon('minus', 12)}</button></div>`).join('')}</div>`;
+    return h;
+}
+function varCollectionsButton(n) {
+    if (!relevantCollections(n).length)
+        return '';
+    return `<button class=\"icon-button small ${state.varCollMenu ? 'active' : ''}\" data-var-coll-toggle title=\"Connect variable collection\" aria-label=\"Connect variable collection\">${VAR_ICON}</button>`;
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-var-coll-toggle]'))) {
+        if (!varStore().collections.length) {
+            state.varCollMenu = false;
+            toggleVarsWindow();
+            return;
+        }
+        if (collMenu && collMenu.anchor === el)
+            closeCollMenu();
+        else
+            openCollMenu(el);
+        return;
+    }
+    if ((el = e.target.closest('[data-var-mode-add]'))) {
+        const cid = el.dataset.varModeAdd, coll = varColl(cid);
+        if (!coll)
+            return;
+        transaction('Connect variable collection', () => {
+            for (const n of selected()) {
+                n.varModes = { ...(n.varModes || {}), [cid]: nodeMode(doc, n, coll) || coll.modes[0].id };
+                doc.touch(n);
+            }
+        });
+        state.varCollMenu = false;
+        renderInspector();
+        return;
+    }
+    if ((el = e.target.closest('[data-var-mode-del]'))) {
+        const cid = el.dataset.varModeDel;
+        transaction('Disconnect variable collection', () => {
+            for (const n of selected()) {
+                if (!n.varModes)
+                    continue;
+                n.varModes = { ...n.varModes };
+                delete n.varModes[cid];
+                if (!Object.keys(n.varModes).length)
+                    delete n.varModes;
+                doc.touch(n);
+            }
+        });
+        return;
+    }
+});
+// ----- Variables window -----
+const vw = { open: false, coll: null, search: '', collapsed: new Set(), menu: false, group: '', full: true, geom: null };
+function ensureVarCollection() {
+    const s = varStore();
+    if (!s.collections.length)
+        s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
+    if (!varColl(vw.coll))
+        vw.coll = s.collections[0].id;
+}
+function toggleVarsWindow(force) {
+    let win = document.getElementById('vars-window');
+    const open = force ?? !vw.open;
+    if (!win) {
+        win = document.createElement('section');
+        win.id = 'vars-window';
+        win.className = 'vars-window hidden';
+        win.setAttribute('role', 'dialog');
+        win.setAttribute('aria-label', 'Variables');
+        document.body.appendChild(win);
+        const area = document.getElementById('canvas-area').getBoundingClientRect();
+        win.style.left = Math.max(12, area.left + 24) + 'px';
+        win.style.top = Math.max(60, innerHeight - 440) + 'px';
+        wireVarsWindow(win);
+    }
+    vw.open = open;
+    win.classList.toggle('hidden', !open);
+    if (open) {
+        ensureVarCollection();
+        renderVarsWindow();
+        applyVwMode(win);
+    }
+    else
+        closeVarDetails();
+    closeVarPicker();
+    syncRail();
+}
+function varsRows(coll) {
+    const q = vw.search.trim().toLowerCase();
+    const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!q || i.name.toLowerCase().includes(q)));
+    const split = i => { const p = i.name.split('/').map(s => s.trim()); return { group: p.slice(0, -1).join('/'), leaf: p[p.length - 1] }; };
+    const order = [];
+    for (const i of items) {
+        const g = split(i).group;
+        if (!order.includes(g))
+            order.push(g);
+    }
+    const groupRank = vwGroupsOf(coll);
+    order.sort((a, b) => (a === '') !== (b === '') ? (a === '' ? -1 : 1) : groupRank.indexOf(a) - groupRank.indexOf(b));
+    return order.map(g => ({ group: g, items: items.filter(i => split(i).group === g).map(i => ({ item: i, leaf: split(i).leaf })) }));
+}
+function vwCols(coll) { return `${vw.nameW || 220}px ${coll.modes.map(m => (vw.modeW?.[m.id] || 220) + 'px').join(' ')} 76px`; }
+function vwCell(item, coll, mode) {
+    const raw = item.values[mode.id], key = `${item.id}|${mode.id}`;
+    const alias = raw && typeof raw === 'object' && raw.alias ? varItem(raw.alias) : null;
+    const aliasBtn = `<button class="vw-alias-btn" data-vw-alias="${key}" title="Apply variable alias" aria-label="Create alias">${VAR_ICON}</button>`;
+    if (alias) {
+        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(item.type)}</i>`;
+        // Clicking the chip opens the picker to swap the aliased variable without detaching first.
+        const op = raw.opacity ?? 100, alpha = item.type === 'color' ? `<label class="vw-alpha ${op < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${op}" data-vw="${key}" data-vwt="alias-alpha" aria-label="Opacity"><span>%</span></label>` : '';
+        return `<div class="vw-cell"><div class="vw-aliaschip"><button class="vw-alias-pick" data-vw-alias="${key}" title="Change variable">${sw}<span>${esc(alias.name)}</span></button><button data-vw-unalias="${key}" title="Detach alias" aria-label="Detach alias">${icon('close', 12)}</button></div>${alpha}</div>`;
+    }
+    const v = raw === undefined ? varDefault(item.type) : raw;
+    if (item.type === 'effect')
+        return `<div class="vw-cell"><button class="vw-fx" data-vw-fx="${key}" title="Edit effect">${esc(fxSummary(v))}</button>${aliasBtn}</div>`;
+    if (item.type === 'color') {
+        const { rgb, alpha } = vwSplitColor(v);
+        return `<div class="vw-cell"><label class="vw-sw big" style="background:${vwJoinColor(rgb, alpha)}"><input type="color" value="${rgb}" data-vw="${key}" data-vwt="color" aria-label="Color"></label><input class="vw-text" type="text" value="${esc(rgb.slice(1).toUpperCase())}" data-vw="${key}" data-vwt="hex" spellcheck="false" aria-label="Hex"><label class="vw-alpha ${alpha < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${alpha}" data-vw="${key}" data-vwt="alpha" aria-label="Opacity"><span>%</span></label>${aliasBtn}</div>`;
+    }
+    if (item.type === 'number')
+        return `<div class="vw-cell"><input class="vw-text" type="number" step="any" value="${esc(v)}" data-vw="${key}" data-vwt="number" aria-label="Number">${aliasBtn}</div>`;
+    if (item.type === 'boolean')
+        return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="boolean" aria-label="Boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>${aliasBtn}</div>`;
+    return `<div class="vw-cell"><input class="vw-text" type="text" value="${esc(v)}" data-vw="${key}" data-vwt="string" spellcheck="false" aria-label="String">${aliasBtn}</div>`;
+}
+function renderVarsWindow() {
+    const win = document.getElementById('vars-window');
+    if (!win || !vw.open)
+        return;
+    ensureVarCollection();
+    const store = varStore(), coll = varColl(vw.coll), cols = 'grid-template-columns: ' + vwCols(coll);
+    const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
+    const head = `<div class="vw-row vw-head-row" style="${cols}"><div class="vw-hcell">Name<span class="vw-colres" data-vw-colres="name"></span></div>${coll.modes.map(m => `<div class="vw-hcell mode" data-vw-mode-cell="${m.id}" title="${coll.modes.length > 1 ? 'Drag to reorder' : ''}"><span class="vw-colres" data-vw-colres="${m.id}"></span><input class="vw-mode-name" value="${esc(m.name)}" data-vw-mode-name="${m.id}" spellcheck="false" aria-label="Mode name"><span class="vw-actions"><button class="vw-mini" data-vw-dup-mode="${m.id}" title="Duplicate mode" aria-label="Duplicate mode">${icon('copy', 12)}</button>${coll.modes.length > 1 ? `<button class="vw-mini" data-vw-del-mode="${m.id}" title="Delete mode" aria-label="Delete mode">${icon('close', 12)}</button>` : ''}</span></div>`).join('')}<div class="vw-hcell"><button class="vw-mini add" data-vw-add-mode title="Add mode" aria-label="Add mode">+</button></div></div>`;
+    const groups = varsRows(coll);
+    let body = '';
+    for (const g of groups) {
+        const hidden = g.group && vw.collapsed.has(g.group);
+        if (g.group)
+            body += `<div class="vw-group" data-vw-group="${esc(g.group)}"><span class="vw-caret">${hidden ? icon('chevronRight', 10) : icon('chevronDown', 10)}</span>${esc(g.group)}</div>`;
+        if (hidden)
+            continue;
+        for (const { item, leaf } of g.items)
+            body += `<div class="vw-row" style="${cols}"><div class="vw-name ${g.group ? 'indent' : ''}"><i class="vc-glyph t-${item.type}">${varGlyph(item.type)}</i><input class="vw-name-input" value="${esc(g.group ? leaf : item.name)}" data-full="${esc(item.name)}" data-short="${esc(g.group ? leaf : item.name)}" data-vw-name="${item.id}" spellcheck="false" aria-label="Variable name" title="${esc(leaf)}"></div>${coll.modes.map(m => vwCell(item, coll, m)).join('')}<div class="vw-rowact"><button class="vw-mini" data-vw-detail="${item.id}" title="Details and scope" aria-label="Variable details and scope">${icon('sliders', 12)}</button><button class="vw-mini" data-vw-dup="${item.id}" title="Duplicate" aria-label="Duplicate variable">${icon('copy', 12)}</button><button class="vw-mini" data-vw-del="${item.id}" title="Delete" aria-label="Delete variable">${icon('close', 12)}</button></div></div>`;
+    }
+    if (!body)
+        body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
+    const allGroups = vwGroupsOf(coll), inGroupCount = g => store.items.filter(i => i.collectionId === coll.id && (!g || i.name.startsWith(g + '/'))).length;
+    const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
+    const fullIcon = vw.full ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 6.5l4-4M6.5 9.5l-4 4"/></svg>' : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9.5 6.5M2.5 13.5l4-4"/></svg>';
+    // Re-rendering replaces the lists; keep where the user had scrolled them (e.g. after Create variable).
+    const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
+    win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
+<div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
+<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+    for (const [s, top] of scrolls) {
+        const el = win.querySelector(s);
+        if (el)
+            el.scrollTop = top;
+    }
+}
+function vwRenameGroup(coll, old, nn) {
+    nn = nn.replace(/\s*\/\s*/g, '/');
+    const move = g => g === old ? nn : g.startsWith(old + '/') ? nn + g.slice(old.length) : g;
+    coll.groups = (coll.groups || []).map(move);
+    if (coll.groupOrder)
+        coll.groupOrder = coll.groupOrder.map(move);
+    for (const i of varStore().items)
+        if (i.collectionId === coll.id && i.name.startsWith(old + '/'))
+            i.name = nn + i.name.slice(old.length);
+    if (vw.group === old)
+        vw.group = nn;
+    else if (vw.group.startsWith(old + '/'))
+        vw.group = nn + vw.group.slice(old.length);
+}
+function vwTx(label, fn, rerender = true) {
+    finishText();
+    history.begin(label);
+    fn();
+    doc.touch();
+    history.commit();
+    saveSoon();
+    invalidate();
+    if (rerender)
+        renderVarsWindow();
+    renderInspector();
+}
+function uniqueVarName(coll, base, skipId = null) {
+    const names = new Set(varStore().items.filter(i => i.collectionId === coll.id && i.id !== skipId).map(i => i.name));
+    if (!names.has(base))
+        return base;
+    let n = 2;
+    while (names.has(`${base} ${n}`))
+        n++;
+    return `${base} ${n}`;
+}
+// Color variables keep their opacity in the hex itself (#rrggbbaa) when it is below 100%.
+function vwSplitColor(v) {
+    let h = safeColor(String(v)).slice(1);
+    if (h.length === 3 || h.length === 4)
+        h = h.split('').map(c => c + c).join('');
+    return { rgb: '#' + h.slice(0, 6).padEnd(6, '0').toLowerCase(), alpha: h.length === 8 ? Math.round(parseInt(h.slice(6, 8), 16) / 255 * 100) : 100 };
+}
+function vwJoinColor(rgb, alpha) {
+    const a = Math.max(0, Math.min(100, Math.round(+alpha)));
+    return Number.isFinite(a) && a < 100 ? rgb + Math.round(a / 100 * 255).toString(16).padStart(2, '0') : rgb;
+}
+function vwRawColor(key) { const [id, modeId] = key.split('|'), raw = varItem(id)?.values[modeId]; return typeof raw === 'string' ? raw : '#000000'; }
+// New rgb from a picker or hex field, keeping the variable's current opacity (unless the hex carries its own).
+function vwWithAlpha(key, rgb) { return rgb.length === 9 ? rgb.toLowerCase() : vwJoinColor(rgb.toLowerCase(), vwSplitColor(vwRawColor(key)).alpha); }
+function vwSetValue(key, val, live) {
+    const [itemId, modeId] = key.split('|'), item = varItem(itemId);
+    if (!item)
+        return;
+    if (!history.pending)
+        history.begin('Edit variable');
+    item.values[modeId] = val;
+    doc.touch();
+    invalidate();
+    if (!live) {
+        history.commit();
+        saveSoon();
+        renderVarsWindow();
+        renderInspector();
+    }
+}
+function wireVarsWindow(win) {
+    win.addEventListener('input', e => {
+        const el = e.target;
+        if (el.matches('[data-vw-search]')) {
+            vw.search = el.value;
+            const pos = el.selectionStart;
+            renderVarsWindow();
+            const s = win.querySelector('[data-vw-search]');
+            s?.focus();
+            s?.setSelectionRange(pos, pos);
+            return;
+        }
+        const key = el.dataset?.vw;
+        if (!key)
+            return;
+        if (el.dataset.vwt === 'color') {
+            const v = vwWithAlpha(key, el.value);
+            el.parentElement.style.background = v;
+            vwSetValue(key, v, true);
+        }
+        else if (el.dataset.vwt === 'alpha' && Number.isFinite(el.valueAsNumber)) {
+            const v = vwJoinColor(vwSplitColor(vwRawColor(key)).rgb, el.valueAsNumber);
+            el.closest('.vw-cell')?.querySelector('.vw-sw')?.style.setProperty('background', v);
+            vwSetValue(key, v, true);
+        }
+        else if (el.dataset.vwt === 'number' && Number.isFinite(el.valueAsNumber))
+            vwSetValue(key, el.valueAsNumber, true);
+        else if (el.dataset.vwt === 'string')
+            vwSetValue(key, el.value, true);
+    });
+    win.addEventListener('change', e => {
+        const el = e.target;
+        const key = el.dataset?.vw;
+        if (key) {
+            const t = el.dataset.vwt;
+            if (t === 'color')
+                vwSetValue(key, vwWithAlpha(key, el.value), false);
+            else if (t === 'alias-alpha') {
+                const [id, modeId] = key.split('|'), raw = varItem(id)?.values[modeId];
+                if (raw && typeof raw === 'object' && raw.alias) {
+                    const op = Math.max(0, Math.min(100, Math.round(Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : 100)));
+                    const next = { alias: raw.alias };
+                    if (op < 100)
+                        next.opacity = op;
+                    vwSetValue(key, next, false);
+                }
+            }
+            else if (t === 'alpha')
+                vwSetValue(key, vwJoinColor(vwSplitColor(vwRawColor(key)).rgb, Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : 100), false);
+            else if (t === 'hex') {
+                let v = el.value.trim();
+                if (!v.startsWith('#'))
+                    v = '#' + v;
+                if (/^#([\da-f]{3}|[\da-f]{6}|[\da-f]{8})$/i.test(v)) {
+                    if (v.length === 4)
+                        v = '#' + v.slice(1).split('').map(c => c + c).join('');
+                    vwSetValue(key, vwWithAlpha(key, v), false);
+                }
+                else {
+                    toast('Enter a 3-, 6- or 8-digit hex color.');
+                    renderVarsWindow();
+                }
+            }
+            else if (t === 'number')
+                vwSetValue(key, Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : 0, false);
+            else if (t === 'boolean')
+                vwSetValue(key, el.value === 'true', false);
+            else
+                vwSetValue(key, el.value, false);
+            return;
+        }
+        if (el.dataset.vwName) {
+            const coll = varColl(vw.coll), item = varItem(el.dataset.vwName);
+            const name = el.value.trim().replace(/\s*\/\s*/g, '/') || item.name;
+            vwTx('Rename variable', () => { item.name = uniqueVarName(coll, name, item.id); });
+        }
+        else if (el.dataset.vwModeName) {
+            const m = varColl(vw.coll).modes.find(x => x.id === el.dataset.vwModeName);
+            vwTx('Rename mode', () => { m.name = el.value.trim() || m.name; });
+        }
+        else if (el.dataset.vwCollName) {
+            const c = varColl(el.dataset.vwCollName);
+            vwTx('Rename collection', () => { c.name = el.value.trim() || c.name; });
+        }
+    });
+    win.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT')
+            e.target.blur();
+        if (e.key === 'Escape') {
+            if (vw.menu) {
+                vw.menu = false;
+                renderVarsWindow();
+            }
+            else
+                toggleVarsWindow(false);
+            e.stopPropagation();
+        }
+    });
+    win.addEventListener('dblclick', e => {
+        if (e.target.closest('button, input'))
+            return;
+        let row = e.target.closest('[data-vw-coll]');
+        if (row) {
+            const c = varColl(row.dataset.vwColl);
+            inlineRename(row.querySelector('.vw-coll-name'), c.name, name => vwTx('Rename collection', () => { c.name = name; }));
+            return;
+        }
+        row = e.target.closest('[data-vw-gsel]');
+        if (row && row.dataset.vwGsel) {
+            const old = row.dataset.vwGsel, coll = varColl(vw.coll);
+            inlineRename(row.querySelector('.vw-coll-name'), old, name => vwTx('Rename group', () => vwRenameGroup(coll, old, name)));
+        }
+    });
+    win.addEventListener('click', e => {
+        const t = e.target;
+        let el;
+        if (vw.menu && !t.closest('.vw-create')) {
+            vw.menu = false;
+            renderVarsWindow();
+        }
+        if (t.closest('[data-vw-close]')) {
+            toggleVarsWindow(false);
+            return;
+        }
+        if (t.closest('[data-vw-full]')) {
+            vw.full = !vw.full;
+            applyVwMode(win);
+            renderVarsWindow();
+            return;
+        }
+        if ((el = t.closest('[data-vw-detail]'))) {
+            openVarDetails(el.dataset.vwDetail, el);
+            return;
+        }
+        if ((el = t.closest('[data-vw-del-group]'))) {
+            e.stopPropagation();
+            const old = el.dataset.vwDelGroup, coll = varColl(vw.coll);
+            vwTx('Ungroup', () => {
+                coll.groups = (coll.groups || []).filter(g => g !== old && !g.startsWith(old + '/'));
+                for (const i of varStore().items)
+                    if (i.collectionId === coll.id && i.name.startsWith(old + '/'))
+                        i.name = uniqueVarName(coll, i.name.slice(old.length + 1), i.id);
+                vw.group = '';
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-gsel]')) && !t.closest('input')) {
+            vw.group = el.dataset.vwGsel;
+            renderVarsWindow();
+            return;
+        }
+        if (t.closest('[data-vw-add-group]')) {
+            const coll = varColl(vw.coll), names = new Set(vwGroupsOf(coll));
+            let k = 1;
+            while (names.has(`Group ${k}`))
+                k++;
+            const name = `Group ${k}`;
+            vwTx('Create group', () => { (coll.groups ||= []).push(name); vw.group = name; });
+            const span = [...win.querySelectorAll('[data-vw-gsel]')].find(r => r.dataset.vwGsel === name)?.querySelector('.vw-coll-name');
+            inlineRename(span, name, nn => vwTx('Rename group', () => vwRenameGroup(coll, name, nn)));
+            return;
+        }
+        if ((el = t.closest('[data-vw-del-coll]'))) {
+            e.stopPropagation();
+            const id = el.dataset.vwDelColl, s = varStore();
+            vwTx('Delete collection', () => {
+                s.collections = s.collections.filter(c => c.id !== id);
+                const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
+                s.items = s.items.filter(i => i.collectionId !== id);
+                for (const i of s.items)
+                    for (const [m, v] of Object.entries(i.values))
+                        if (v && typeof v === 'object' && gone.has(v.alias))
+                            i.values[m] = varDefault(i.type);
+                for (const n of doc.nodes) {
+                    if (n.varModes)
+                        delete n.varModes[id];
+                }
+                if (!s.collections.length)
+                    s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
+                vw.coll = s.collections[0].id;
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-coll]')) && !t.closest('input')) {
+            vw.coll = el.dataset.vwColl;
+            renderVarsWindow();
+            return;
+        }
+        if (t.closest('[data-vw-add-coll]')) {
+            const s = varStore();
+            let id = null;
+            vwTx('Create collection', () => {
+                const c = { id: uid(), name: `Collection ${s.collections.length + 1}`, modes: [{ id: uid(), name: 'Mode 1' }] };
+                s.collections.push(c);
+                vw.coll = id = c.id;
+            });
+            // Bring the new collection into view and open it for renaming, text selected.
+            document.querySelector(`#vars-window [data-vw-coll="${id}"]`)?.scrollIntoView({ block: 'nearest' });
+            vwCollAction(`vwcoll:rename:${id}`);
+            return;
+        }
+        if (t.closest('[data-vw-create-toggle]')) {
+            vw.menu = !vw.menu;
+            renderVarsWindow();
+            return;
+        }
+        if ((el = t.closest('[data-vw-create]'))) {
+            const type = el.dataset.vwCreate, coll = varColl(vw.coll);
+            vw.menu = false;
+            let newId;
+            vwTx('Create variable', () => {
+                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + VAR_TYPES.find(x => x[0] === type)[1]), type, values: {} };
+                for (const m of coll.modes)
+                    item.values[m.id] = varDefault(type);
+                varStore().items.push(item);
+                newId = item.id;
+            });
+            const inp = win.querySelector(`[data-vw-name="${newId}"]`);
+            inp?.focus();
+            inp?.select();
+            inp?.scrollIntoView({ block: 'nearest' });
+            return;
+        }
+        if ((el = t.closest('[data-vw-del]'))) {
+            const id = el.dataset.vwDel, s = varStore();
+            vwTx('Delete variable', () => {
+                s.items = s.items.filter(i => i.id !== id);
+                for (const i of s.items)
+                    for (const [m, v] of Object.entries(i.values))
+                        if (v && typeof v === 'object' && v.alias === id)
+                            i.values[m] = varDefault(i.type);
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-dup]'))) {
+            const src = varItem(el.dataset.vwDup), coll = varColl(src.collectionId);
+            vwTx('Duplicate variable', () => { varStore().items.push({ ...src, id: uid(), name: uniqueVarName(coll, src.name), values: structuredClone(src.values) }); });
+            return;
+        }
+        if (t.closest('[data-vw-add-mode]')) {
+            const coll = varColl(vw.coll);
+            vwTx('Add mode', () => {
+                const m = { id: uid(), name: `Mode ${coll.modes.length + 1}` }, first = coll.modes[0].id;
+                coll.modes.push(m);
+                for (const i of varStore().items.filter(x => x.collectionId === coll.id))
+                    i.values[m.id] = structuredClone(i.values[first] ?? varDefault(i.type));
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-dup-mode]'))) {
+            const coll = varColl(vw.coll), src = coll.modes.find(m => m.id === el.dataset.vwDupMode);
+            vwTx('Duplicate mode', () => {
+                const m = { id: uid(), name: `${src.name} copy` };
+                coll.modes.splice(coll.modes.indexOf(src) + 1, 0, m);
+                for (const i of varStore().items.filter(x => x.collectionId === coll.id))
+                    i.values[m.id] = structuredClone(i.values[src.id] ?? varDefault(i.type));
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-del-mode]'))) {
+            const coll = varColl(vw.coll), id = el.dataset.vwDelMode;
+            if (coll.modes.length < 2)
+                return;
+            vwTx('Delete mode', () => {
+                coll.modes = coll.modes.filter(m => m.id !== id);
+                for (const i of varStore().items.filter(x => x.collectionId === coll.id))
+                    delete i.values[id];
+                for (const n of doc.nodes)
+                    if (n.varModes?.[coll.id] === id)
+                        delete n.varModes[coll.id];
+            });
+            return;
+        }
+        if ((el = t.closest('[data-vw-alias]'))) {
+            const key = el.dataset.vwAlias, [itemId, modeId] = key.split('|'), item = varItem(itemId), raw = item.values[modeId];
+            openVarPicker(el, { type: item.type, exclude: item.id, current: raw && typeof raw === 'object' ? raw.alias : null, onPick: id => vwSetValue(key, { alias: id, ...(raw && typeof raw === 'object' && raw.opacity != null ? { opacity: raw.opacity } : {}) }, false) });
+            return;
+        }
+        if ((el = t.closest('[data-vw-unalias]'))) {
+            const key = el.dataset.vwUnalias, item = varItem(key.split('|')[0]);
+            vwSetValue(key, varValue(doc, item, null) ?? varDefault(item.type), false);
+            return;
+        }
+        if ((el = t.closest('[data-vw-group]'))) {
+            const g = el.dataset.vwGroup;
+            vw.collapsed.has(g) ? vw.collapsed.delete(g) : vw.collapsed.add(g);
+            renderVarsWindow();
+        }
+    });
+    win.addEventListener('pointerdown', e => {
+        const bar = e.target.closest('[data-vw-drag]');
+        if (!bar || e.target.closest('button') || vw.full)
+            return;
+        const r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+        const move = ev => { win.style.left = clamp(ev.clientX - dx, 0, innerWidth - 120) + 'px'; win.style.top = clamp(ev.clientY - dy, 0, innerHeight - 40) + 'px'; };
+        const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+        addEventListener('pointermove', move);
+        addEventListener('pointerup', up);
+        e.preventDefault();
+    });
+}
+
+// ===== inline rename (pages, layers, file name, collections, groups) =====
+function inlineRename(el, value, commit) {
+    if (!el || el.querySelector('input.inline-rename'))
+        return;
+    const drag = el.closest('[draggable="true"]');
+    drag?.setAttribute('draggable', 'false');
+    const input = document.createElement('input');
+    input.className = 'inline-rename';
+    input.value = value;
+    input.maxLength = 200;
+    input.spellcheck = false;
+    input.setAttribute('aria-label', 'Rename');
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = ok => {
+        if (done)
+            return;
+        done = true;
+        drag?.setAttribute('draggable', 'true');
+        const v = input.value.trim();
+        if (document.body.contains(el))
+            el.textContent = value;
+        if (ok && v && v !== value)
+            commit(v);
+    };
+    input.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            finish(true);
+        }
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            finish(false);
+        }
+    });
+    input.addEventListener('blur', () => finish(true));
+    for (const t of ['mousedown', 'click', 'dblclick', 'pointerdown'])
+        input.addEventListener(t, e => e.stopPropagation());
+}
+// ===== sidebar rail =====
+function syncRail() {
+    for (const b of document.querySelectorAll('[data-rail]'))
+        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : state.leftTab === 'assets' ? 'assets' : state.leftTab === 'plugins' ? 'plugins' : 'design'));
+}
+function setLeftTab(k) {
+    state.leftTab = k === 'assets' ? 'assets' : k === 'plugins' ? 'plugins' : 'layers';
+    state.varCollMenu = false;
+    $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
+    renderLayers();
+    syncRail();
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-rail]');
+    if (b) {
+        const k = b.dataset.rail;
+        if (k === 'variables')
+            toggleVarsWindow(!vw.open);
+        else {
+            if (vw.open)
+                toggleVarsWindow(false);
+            setLeftTab(k === 'assets' ? 'assets' : k === 'plugins' ? 'plugins' : 'layers');
+        }
+    }
+    setTimeout(syncRail, 0);
+});
+// ===== variables: full window, groups, details + scope =====
+const vwParentGroup = g => g.includes('/') ? g.slice(0, g.lastIndexOf('/')) : '';
+// Groups as a tree, flattened depth-first. Siblings follow the user's drag order (coll.groupOrder), then A–Z.
+function vwGroupsOf(coll) {
+    const set = new Set();
+    const add = g => { for (let p = g; p; p = vwParentGroup(p)) set.add(p); };
+    for (const g of coll.groups || [])
+        add(g);
+    for (const i of varStore().items)
+        if (i.collectionId === coll.id && i.name.includes('/'))
+            add(i.name.split('/').map(s => s.trim()).slice(0, -1).join('/'));
+    const order = coll.groupOrder || [], rank = g => { const i = order.indexOf(g); return i < 0 ? 1e9 : i; };
+    const out = [], walk = parent => {
+        for (const g of [...set].filter(x => vwParentGroup(x) === parent).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))) {
+            out.push(g);
+            walk(g);
+        }
+    };
+    walk('');
+    return out;
+}
+function vwInGroup(i) {
+    if (!vw.group)
+        return true;
+    return i.name === vw.group || i.name.startsWith(vw.group + '/');
+}
+// Full-window mode covers the layers panel: it grows from the rail's right edge to the viewport edge.
+function applyVwMode(win) {
+    const rail = document.querySelector('.left-rail')?.getBoundingClientRect();
+    const bar = document.querySelector('.topbar')?.getBoundingClientRect();
+    const left = Math.max(0, rail?.right || 0), top = Math.max(0, bar?.bottom || 0);
+    if (vw.full) {
+        if (!vw.geom)
+            vw.geom = { left: win.style.left, top: win.style.top, width: win.style.width, height: win.style.height };
+        Object.assign(win.style, { left: left + 'px', top: top + 'px', width: Math.max(320, innerWidth - left) + 'px', height: Math.max(200, innerHeight - top) + 'px', maxWidth: 'none', maxHeight: 'none', resize: 'none' });
+        win.classList.add('full');
+    }
+    else {
+        win.classList.remove('full');
+        const g = vw.geom || {};
+        Object.assign(win.style, { left: g.left || win.style.left, top: g.top || win.style.top, width: g.width || '', height: g.height || '', maxWidth: '', maxHeight: '', resize: '' });
+        vw.geom = null;
+    }
+}
+window.addEventListener('resize', () => { const w = document.getElementById('vars-window'); if (w && vw.open && vw.full)
+    applyVwMode(w); });
+const SCOPE_DEF = {
+    color: [['fillFrame', 'Frame'], ['fillShape', 'Shape'], ['fillText', 'Text'], ['stroke', 'Stroke'], ['effects', 'Effects']],
+    number: [['size', 'Width and height'], ['gap', 'Gap'], ['padding', 'Padding'], ['radius', 'Corner radius'], ['strokeWidth', 'Stroke width'], ['opacity', 'Opacity'], ['fontSize', 'Font size'], ['lineHeight', 'Line height'], ['letterSpacing', 'Letter spacing'], ['fontWeight', 'Font weight']],
+    string: [['text', 'Text content'], ['fontFamily', 'Font family'], ['fontStyle', 'Font style']],
+    boolean: [['visible', 'Visibility']],
+    effect: [['effects', 'Effects']]
+};
+function scopeKeys(type) { return (SCOPE_DEF[type] || []).map(x => x[0]); }
+function scopeKeyFor(prop, node) {
+    if (/^fills\.\d+$/.test(prop) || prop === 'fill' || prop === 'fill2')
+        return node?.type === 'text' ? 'fillText' : node?.type === 'frame' ? 'fillFrame' : 'fillShape';
+    if (prop === 'stroke')
+        return 'stroke';
+    if (prop === 'shadowColor')
+        return 'effects';
+    if (['w', 'h', 'minW', 'maxW', 'minH', 'maxH'].includes(prop))
+        return 'size';
+    if (['gap', 'gapCross'].includes(prop))
+        return 'gap';
+    if (/^pad/.test(prop))
+        return 'padding';
+    if (prop === 'radius' || /^r(TL|TR|BR|BL)$/.test(prop))
+        return 'radius';
+    if (/^stroke(Width|T|R|B|L)$/.test(prop))
+        return 'strokeWidth';
+    if (prop === 'opacity')
+        return 'opacity';
+    if (['fontSize', 'lineHeight', 'letterSpacing'].includes(prop))
+        return prop;
+    if (prop === 'text')
+        return 'text';
+    if (prop === 'fontFamily')
+        return 'fontFamily';
+    if (prop === 'fontWeight')
+        return 'fontStyle';
+    if (prop === 'effects')
+        return 'effects';
+    if (prop === 'visible')
+        return 'visible';
+    return null;
+}
+function varInScope(item, prop, node) {
+    if (!prop || !Array.isArray(item.scope))
+        return true;
+    let k = scopeKeyFor(prop, node || activeNode());
+    if (prop === 'fontWeight' && item.type === 'number')
+        k = 'fontWeight';
+    return !k || item.scope.includes(k);
+}
+let vd = null;
+function closeVarDetails() { vd?.el.remove(); vd = null; }
+function vdHtml(item) {
+    const coll = varColl(item.collectionId), all = scopeKeys(item.type), cur = Array.isArray(item.scope) ? item.scope : all;
+    let h = `<div class="vd-tabs"><button class="${vd.tab === 'details' ? 'on' : ''}" data-vd-tab="details">Details</button><button class="${vd.tab === 'scope' ? 'on' : ''}" data-vd-tab="scope">Scope</button><button class="icon-button small vd-x" data-vd-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    if (vd.tab === 'details') {
+        h += `<div class="vd-body"><label class="vd-row"><span>Name</span><input data-vd-name value="${esc(item.name)}" spellcheck="false"></label><label class="vd-row"><span>Description</span><input data-vd-desc value="${esc(item.description || '')}" placeholder="How to use this variable" spellcheck="false"></label><div class="vd-sep"></div><div class="vd-title">Value</div>`;
+        for (const m of coll.modes) {
+            const key = `${item.id}|${m.id}`, raw = item.values[m.id], alias = raw && typeof raw === 'object' && raw.alias ? varItem(raw.alias) : null, v = raw === undefined ? varDefault(item.type) : raw;
+            let ctl;
+            if (alias)
+                ctl = `<span class="vd-alias">${VAR_ICON}${esc(alias.name)}</span>`;
+            else if (item.type === 'color')
+                ctl = `<label class="vw-sw big" style="background:${safeColor(String(v))}"><input type="color" value="${safeColor(String(v)).length === 7 ? safeColor(String(v)) : '#0058CA'}" data-vd-val="${key}" data-vwt="color"></label><input data-vd-val="${key}" data-vwt="hex" value="${esc(safeColor(String(v)).replace('#', '').toUpperCase())}" spellcheck="false">`;
+            else if (item.type === 'effect')
+                ctl = `<button class="vw-fx" data-vw-fx="${key}">${esc(fxSummary(v))}</button>`;
+            else if (item.type === 'number')
+                ctl = `<input type="number" step="any" data-vd-val="${key}" data-vwt="number" value="${esc(v)}">`;
+            else if (item.type === 'boolean')
+                ctl = `<select data-vd-val="${key}" data-vwt="boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>`;
+            else
+                ctl = `<input type="text" data-vd-val="${key}" data-vwt="string" value="${esc(v)}" spellcheck="false">`;
+            h += `<div class="vd-row"><span>${esc(m.name)}</span><div class="vd-ctl">${ctl}</div></div>`;
+        }
+        h += `<div class="vd-sep"></div><label class="vd-check"><input type="checkbox" data-vd-hidden ${item.hidden ? 'checked' : ''}> Hide from publishing</label></div>`;
+    }
+    else {
+        const chk = (key, label, indent = false, on = cur.includes(key)) => `<label class="vd-check ${indent ? 'indent' : ''}"><input type="checkbox" data-vd-scope="${key}" ${on ? 'checked' : ''}> ${label}</label>`;
+        const typeName = { color: 'Color', number: 'Number', string: 'String', boolean: 'Boolean', effect: 'Effect' }[item.type];
+        h += `<div class="vd-body"><div class="vd-title">${typeName} scope</div>${chk('*', 'Show in all supported properties', false, all.every(k => cur.includes(k)))}`;
+        if (item.type === 'color') {
+            h += chk('fill', 'Fill', false, ['fillFrame', 'fillShape', 'fillText'].every(k => cur.includes(k)));
+            h += chk('fillFrame', 'Frame', true) + chk('fillShape', 'Shape', true) + chk('fillText', 'Text', true) + chk('stroke', 'Stroke') + chk('effects', 'Effects');
+        }
+        else
+            h += SCOPE_DEF[item.type].map(([k, l]) => chk(k, l)).join('');
+        h += '</div>';
+    }
+    return h;
+}
+function refreshVarDetails() {
+    if (!vd)
+        return;
+    const item = varItem(vd.id);
+    if (!item) {
+        closeVarDetails();
+        return;
+    }
+    vd.el.innerHTML = vdHtml(item);
+}
+function openVarDetails(id, anchor) {
+    const same = vd && vd.id === id;
+    closeVarDetails();
+    if (same)
+        return;
+    const el = document.createElement('div');
+    el.className = 'vd-pop';
+    document.body.appendChild(el);
+    vd = { id, tab: 'details', el };
+    refreshVarDetails();
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.right - el.offsetWidth)) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    el.addEventListener('click', e => {
+        const t = e.target;
+        let b;
+        if ((b = t.closest('[data-vd-tab]'))) {
+            vd.tab = b.dataset.vdTab;
+            refreshVarDetails();
+        }
+        else if (t.closest('[data-vd-close]'))
+            closeVarDetails();
+    });
+    el.addEventListener('input', e => {
+        const t = e.target;
+        if (t.dataset?.vdVal && t.dataset.vwt === 'color') {
+            const v = vwWithAlpha(t.dataset.vdVal, t.value);
+            t.parentElement.style.background = v;
+            vwSetValue(t.dataset.vdVal, v, true);
+        }
+    });
+    el.addEventListener('change', e => {
+        const t = e.target, item = varItem(vd.id);
+        if (!item)
+            return;
+        if (t.matches('[data-vd-name]')) {
+            const name = t.value.trim().replace(/\s*\/\s*/g, '/') || item.name;
+            vwTx('Rename variable', () => { item.name = uniqueVarName(varColl(item.collectionId), name, item.id); });
+        }
+        else if (t.matches('[data-vd-desc]'))
+            vwTx('Variable description', () => { item.description = t.value; }, false);
+        else if (t.matches('[data-vd-hidden]'))
+            vwTx('Hide from publishing', () => { item.hidden = t.checked; }, false);
+        else if (t.dataset.vdVal) {
+            const key = t.dataset.vdVal, k = t.dataset.vwt;
+            if (k === 'color')
+                vwSetValue(key, vwWithAlpha(key, t.value), false);
+            else if (k === 'hex') {
+                let v = t.value.trim();
+                if (!v.startsWith('#'))
+                    v = '#' + v;
+                if (/^#[\da-f]{3}([\da-f]{3})?$/i.test(v))
+                    vwSetValue(key, vwWithAlpha(key, hex6(v)), false);
+            }
+            else if (k === 'number')
+                vwSetValue(key, Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0, false);
+            else if (k === 'boolean')
+                vwSetValue(key, t.value === 'true', false);
+            else
+                vwSetValue(key, t.value, false);
+        }
+        else if (t.dataset.vdScope) {
+            const key = t.dataset.vdScope, all = scopeKeys(item.type);
+            vwTx('Variable scope', () => {
+                let cur = Array.isArray(item.scope) ? [...item.scope] : [...all];
+                const set = (keys, on) => { for (const k of keys)
+                    cur = on ? [...new Set([...cur, k])] : cur.filter(x => x !== k); };
+                if (key === '*')
+                    set(all, t.checked);
+                else if (key === 'fill')
+                    set(['fillFrame', 'fillShape', 'fillText'], t.checked);
+                else
+                    set([key], t.checked);
+                if (all.every(k => cur.includes(k)))
+                    delete item.scope;
+                else
+                    item.scope = cur;
+            }, false);
+        }
+        refreshVarDetails();
+    });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!vd || !document.body.contains(vd.el)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!vd.el.contains(ev.target) && !ev.target.closest('[data-vw-detail]')) {
+            closeVarDetails();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+// ===== ruler guides snap to nodes =====
+function snapGuide(axis, v) {
+    const tol = 6 / state.camera.zoom;
+    let best = v, bd = tol;
+    for (const s of doc.scene()) {
+        const b = s.box, c = axis === 'x' ? [b.x, b.x + b.w / 2, b.x + b.w] : [b.y, b.y + b.h / 2, b.y + b.h];
+        for (const q of c)
+            if (Math.abs(q - v) <= bd) {
+                bd = Math.abs(q - v);
+                best = q;
+            }
+    }
+    return best === v ? Math.round(v) : Math.round(best * 100) / 100;
+}
+
+function applyFillHex(i, hex) {
+    if (i === 'stroke') {
+        const bare = String(hex).replace(/^#/, '');
+        setProperty('stroke', hex6('#' + bare).toLowerCase());
+    }
+    else
+        editFill(i, 'hex', hex, false);
+}
+
+// ===== fills (multiple, Figma-style) =====
+let activeImages = null;
+const patternCache = new Map();
+function getFills(n) {
+    if (Array.isArray(n.fills))
+        return n.fills;
+    if (n.type === 'image')
+        return [{ type: 'image', image: n.assetId, mode: 'fill', scale: 1, opacity: 1, visible: true }];
+    if (!n.fill || n.fill === 'none')
+        return [];
+    if (n.fillType === 'image' && n.fillImage)
+        return [{ type: 'image', image: n.fillImage, mode: n.fillMode || 'fill', scale: n.fillScale || 1, opacity: n.fillOpacity ?? 1, visible: true }];
+    if (n.fillType === 'linear')
+        return [{ type: 'linear', color: n.fill, color2: n.fill2 || '#ffffff', angle: n.gradientAngle ?? 90, opacity: n.fillOpacity ?? 1, visible: true }];
+    return [{ type: 'solid', color: n.fill, opacity: n.fillOpacity ?? 1, visible: true }];
+}
+function needsRasterFill(n) {
+    if (['text', 'group', 'image'].includes(n.type))
+        return false;
+    const f = getFills(n).filter(x => x.visible !== false);
+    return f.length > 1 || (f.length === 1 && f[0].type === 'image');
+}
+function materializeFills(n) {
+    if (!Array.isArray(n.fills)) {
+        n.fills = structuredClone(getFills(n));
+        if (n.type === 'image') {
+            n.type = 'frame';
+            n.clip = true;
+            delete n.assetId;
+        }
+    }
+    return n.fills;
+}
+// Simple single fills keep using the fast legacy fields, so variables and the GPU shape path still work.
+function syncLegacyFill(n) {
+    const vis = n.fills.filter(f => f.visible !== false);
+    if (!vis.length) {
+        n.fill = 'none';
+        n.fillType = 'solid';
+        return;
+    }
+    if (vis.length === 1 && vis[0].type !== 'image') {
+        const f = vis[0];
+        n.fill = f.color || '#d9d9d9';
+        n.fillType = f.type;
+        n.fill2 = f.color2 || n.fill2 || '#ffffff';
+        n.gradientAngle = f.angle ?? n.gradientAngle ?? 90;
+        n.fillOpacity = f.opacity ?? 1;
+        return;
+    }
+    const s = vis.find(f => f.type === 'solid') || vis.find(f => f.type === 'linear');
+    n.fillType = 'multi';
+    n.fillOpacity = 1;
+    n.fill = s?.color || '#ffffff';
+}
+function containFit(img, w, h) { const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
+function imageFillPattern(ctx, f, n) {
+    const img = f.image ? activeImages?.get(f.image) : null;
+    if (!img)
+        return null;
+    const mode = f.mode || 'fill', w = Math.max(1, n.w), h = Math.max(1, n.h), sc = f.scale || 1;
+    const key = `${f.image}:${mode}:${Math.round(w * 10)}:${Math.round(h * 10)}:${sc}`;
+    let p = patternCache.get(key);
+    if (!p) {
+        let repeat = 'no-repeat', m = new DOMMatrix();
+        if (mode === 'tile') {
+            repeat = 'repeat';
+            m = m.scale(sc, sc);
+        }
+        else {
+            const [dx, dy, dw, dh] = mode === 'fit' ? containFit(img, w, h) : imageFit(img, w, h);
+            m = m.translate(dx, dy).scale(dw / img.width, dh / img.height);
+        }
+        p = ctx.createPattern(img, repeat);
+        if (!p)
+            return null;
+        p.setTransform(m);
+        if (patternCache.size > 256)
+            patternCache.delete(patternCache.keys().next().value);
+        patternCache.set(key, p);
+    }
+    return p;
+}
+function fillPaint(ctx, f, n) {
+    if (f.type === 'solid')
+        return f.color && f.color !== 'none' ? f.color : null;
+    if (f.type === 'linear') {
+        const r = (f.angle ?? 90) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
+        const g = ctx.createLinearGradient(n.w / 2 - c * len / 2, n.h / 2 - s * len / 2, n.w / 2 + c * len / 2, n.h / 2 + s * len / 2);
+        g.addColorStop(0, f.color || '#d9d9d9');
+        g.addColorStop(1, f.color2 || '#ffffff');
+        return g;
+    }
+    if (f.type === 'image')
+        return imageFillPattern(ctx, f, n) || 'rgba(140,140,150,.18)';
+    return null;
+}
+// Paints every visible fill, bottom of the stack first (the list is stored top-first, like Figma).
+function paintFills(ctx, n, path, alpha = 1, afterFirst = null) {
+    const fills = getFills(n);
+    let first = true;
+    for (let i = fills.length - 1; i >= 0; i--) {
+        const f = fills[i];
+        if (f.visible === false)
+            continue;
+        const paint = fillPaint(ctx, f, n);
+        if (!paint)
+            continue;
+        ctx.fillStyle = paint;
+        ctx.globalAlpha = alpha * (f.opacity ?? 1);
+        ctx.fill(path);
+        if (first) {
+            first = false;
+            afterFirst?.();
+        }
+    }
+    ctx.globalAlpha = alpha;
+}
+function remapFillVars(n, from, delta, removed = -1) {
+    if (!n.vars)
+        return;
+    const out = {};
+    for (const [k, v] of Object.entries(n.vars)) {
+        const m = /^fills\.(\d+)$/.exec(k);
+        if (!m) {
+            out[k] = v;
+            continue;
+        }
+        let i = +m[1];
+        if (i === removed)
+            continue;
+        if (i >= from)
+            i += delta;
+        out['fills.' + i] = v;
+    }
+    n.vars = out;
+    if (!Object.keys(out).length)
+        delete n.vars;
+}
+function setFillType(f, t) {
+    f.type = t;
+    f.color ||= '#d9d9d9';
+    if (t === 'linear') {
+        f.color2 ||= '#ffffff';
+        f.angle ??= 90;
+    }
+    if (t === 'image') {
+        f.mode ||= 'fill';
+        f.scale ||= 1;
+    }
+}
+const hex6 = c => /^#[\da-f]{6}$/i.test(c) ? c : /^#[\da-f]{3}$/i.test(c) ? '#' + c.slice(1).split('').map(x => x + x).join('') : '#d9d9d9';
+function bindVarFor(prop) { const id = activeNode()?.vars?.[prop]; return id ? varItem(id) : null; }
+function fillsSection(n) {
+    const fills = getFills(n), simple = n.type === 'text';
+    const rows = fills.length ? fills.map((f, i) => fillRow(n, f, i, simple)).join('') : '<span class="small-label">No fills</span>';
+    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="fill" title="Apply variable" aria-label="Apply variable to fill">${VAR_ICON}</button>`;
+    return section('Fill', rows, simple ? '' : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
+}
+function addFill() {
+    closeFillPicker();
+    transaction('Add fill', () => {
+        for (const n of selected()) {
+            if (n.type === 'text' || n.type === 'group')
+                continue;
+            const fills = materializeFills(n), has = fills.length > 0;
+            fills.unshift({ type: 'solid', color: has ? '#000000' : '#d9d9d9', opacity: has ? .5 : 1, visible: true });
+            remapFillVars(n, 0, 1);
+            syncLegacyFill(n);
+            doc.touch(n);
+        }
+    });
+}
+function editFill(i, key, v, live) {
+    if (!history.pending)
+        history.begin('Edit fill');
+    let pick = false;
+    for (const n of selected()) {
+        if (n.type === 'group')
+            continue;
+        const fills = materializeFills(n), f = fills[i];
+        if (!f)
+            continue;
+        const normHex = s => { let h = String(s).trim(); if (!h.startsWith('#'))
+            h = '#' + h; if (!/^#[\da-f]{3}([\da-f]{3})?$/i.test(h))
+            return null; return hex6(h).toLowerCase(); };
+        switch (key) {
+            case 'color':
+            case 'hex': {
+                const c = key === 'color' ? v : normHex(v);
+                if (c) {
+                    f.color = c;
+                    if (n.vars?.['fills.' + i]) {
+                        delete n.vars['fills.' + i];
+                        if (!Object.keys(n.vars).length)
+                            delete n.vars;
+                    }
+                }
+                break;
+            }
+            case 'color2':
+                f.color2 = v;
+                break;
+            case 'hex2': {
+                const c = normHex(v);
+                if (c)
+                    f.color2 = c;
+                break;
+            }
+            case 'angle':
+                f.angle = v;
+                break;
+            case 'opacity':
+                f.opacity = clamp(v / 100, 0, 1);
+                break;
+            case 'scale':
+                f.scale = clamp(v / 100, .05, 10);
+                break;
+            case 'mode':
+                f.mode = v;
+                break;
+            case 'type':
+                setFillType(f, v);
+                if (v === 'image' && !f.image)
+                    pick = true;
+                break;
+        }
+        syncLegacyFill(n);
+        doc.touch(n);
+    }
+    changed({ ui: !live, commit: !live });
+    if (pick) {
+        state.fillPickIndex = i;
+        document.getElementById('fill-image-input').click();
+    }
+}
+async function applyFillImage(file) {
+    if (!file)
+        return;
+    if (!file.type.startsWith('image/')) {
+        toast('Choose an image file.');
+        return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+        toast('Please use an image under 25 MB.');
+        return;
+    }
+    try {
+        const url = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
+        const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
+        if (img.naturalWidth * img.naturalHeight > 64e6)
+            throw new Error('Image exceeds the 64 megapixel limit.');
+        const idx = state.fillPickIndex ?? 0;
+        transaction('Replace image', () => {
+            const id = uid();
+            doc.data.assets[id] = url;
+            for (const n of selected()) {
+                if (n.type === 'group' || n.type === 'text')
+                    continue;
+                const fills = materializeFills(n);
+                if (!fills[idx])
+                    fills.unshift({ type: 'image', image: id, mode: 'fill', scale: 1, opacity: 1, visible: true });
+                else {
+                    setFillType(fills[idx], 'image');
+                    fills[idx].image = id;
+                }
+                syncLegacyFill(n);
+                doc.touch(n);
+            }
+        });
+        invalidate();
+    }
+    catch (e) {
+        toast(e.message || 'Could not read the image.');
+    }
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-fill-image-pick]'))) {
+        state.fillPickIndex = +(el.dataset.fillImagePick || 0);
+        document.getElementById('fill-image-input').click();
+    }
+    else if ((el = e.target.closest('[data-fill-toggle]'))) {
+        const i = +el.dataset.fillToggle;
+        transaction('Toggle fill', () => { for (const n of selected()) {
+            const f = materializeFills(n)[i];
+            if (f) {
+                f.visible = f.visible === false;
+                syncLegacyFill(n);
+                doc.touch(n);
+            }
+        } });
+    }
+    else if ((el = e.target.closest('[data-fill-remove]'))) {
+        const i = +el.dataset.fillRemove;
+        closeFillPicker();
+        transaction('Remove fill', () => { for (const n of selected()) {
+            const fills = materializeFills(n);
+            if (fills[i]) {
+                fills.splice(i, 1);
+                remapFillVars(n, i + 1, -1, i);
+                syncLegacyFill(n);
+                doc.touch(n);
+            }
+        } });
+    }
+});
+document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset?.fillIdx === undefined || el.tagName === 'SELECT' || el.type === 'text')
+        return;
+    const v = el.type === 'number' ? el.valueAsNumber : el.value;
+    if (el.type === 'number' && !Number.isFinite(v))
+        return;
+    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, true);
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset?.fillIdx === undefined)
+        return;
+    const v = el.type === 'number' ? el.valueAsNumber : el.value;
+    if (el.type === 'number' && !Number.isFinite(v))
+        return;
+    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, false);
+});
+
+// ===== constraints + float =====
+const constraintSizes = new WeakMap();
+function applyConstraints(d) {
+    for (const f of d.nodes) {
+        if (f.type !== 'frame')
+            continue;
+        const last = constraintSizes.get(f);
+        if (!last) {
+            constraintSizes.set(f, { w: f.w, h: f.h });
+            continue;
+        }
+        if (last.w === f.w && last.h === f.h)
+            continue;
+        // A hugging axis is sized by its children, so it must never push them around.
+        constrainChildren(f, sizingOf(f, 'h') === 'hug' ? f.w : last.w, sizingOf(f, 'v') === 'hug' ? f.h : last.h);
+        constraintSizes.set(f, { w: f.w, h: f.h });
+    }
+}
+function constraintsSection(n) {
+    const p = doc.get(n.parentId);
+    if (!p || p.type !== 'frame' || (isAutoLayout(p) && n.layoutPositioning !== 'absolute'))
+        return '';
+    const h = n.constraintH || 'left', v = n.constraintV || 'top';
+    const pin = (side, on) => `<button class="cn-pin ${side} ${on ? 'on' : ''}" data-cn-pin="${side}" aria-label="Pin to ${side}" title="Pin to ${side}"><i></i></button>`;
+    const box = `<div class="cn-box"><div class="cn-inner ${h === 'scale' || v === 'scale' ? 'scale' : ''}"></div>${pin('top', ['top', 'stretch'].includes(v))}${pin('bottom', ['bottom', 'stretch'].includes(v))}${pin('left', ['left', 'stretch'].includes(h))}${pin('right', ['right', 'stretch'].includes(h))}<i class="cn-cx ${h === 'center' ? 'on' : ''}"></i><i class="cn-cy ${v === 'center' ? 'on' : ''}"></i></div>`;
+    return section('Constraints', `<div class="cn-row">${box}<div class="cn-sel"><div class="field-label"><span>Horizontal</span></div>${selectField('constraintH', h, [['left', 'Left'], ['right', 'Right'], ['stretch', 'Left & Right'], ['center', 'Center'], ['scale', 'Scale']])}<div class="field-label"><span>Vertical</span></div>${selectField('constraintV', v, [['top', 'Top'], ['bottom', 'Bottom'], ['stretch', 'Top & Bottom'], ['center', 'Center'], ['scale', 'Scale']])}</div></div>`);
+}
+function floatControl(n) {
+    if (!isAutoLayout(doc.get(n.parentId)))
+        return '';
+    const abs = n.layoutPositioning === 'absolute';
+    return `<div class="field-label"><span>Position in auto layout</span></div><div class="segmented ly-dir" style="margin-bottom:10px"><button data-ly-pos="auto" class="${!abs ? 'active' : ''}" title="Follow the auto layout">Auto</button><button data-ly-pos="absolute" class="${abs ? 'active' : ''}" title="Float: ignore auto layout and position freely">Absolute (float)</button></div>`;
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-ly-pos]'))) {
+        const abs = el.dataset.lyPos === 'absolute';
+        transaction(abs ? 'Float layer' : 'Return to auto layout', () => { for (const n of selected()) {
+            if (isAutoLayout(doc.get(n.parentId))) {
+                n.layoutPositioning = abs ? 'absolute' : 'auto';
+                doc.touch(n);
+            }
+        } });
+        return;
+    }
+    if ((el = e.target.closest('[data-cn-pin]'))) {
+        const n = activeNode();
+        if (!n)
+            return;
+        const side = el.dataset.cnPin, horiz = side === 'left' || side === 'right', cur = horiz ? (n.constraintH || 'left') : (n.constraintV || 'top');
+        const a = horiz ? 'left' : 'top', b = horiz ? 'right' : 'bottom';
+        let next;
+        if (side === a)
+            next = cur === 'stretch' ? b : cur === b ? 'stretch' : a;
+        else
+            next = cur === 'stretch' ? a : cur === a ? 'stretch' : b;
+        setProperty(horiz ? 'constraintH' : 'constraintV', next);
+    }
+});
+
+// ===== frame presets =====
+const FRAME_PRESETS = [
+    ['Phone', [['iPhone 16', 393, 852], ['iPhone 16 Pro', 402, 874], ['iPhone 16 Pro Max', 440, 956], ['iPhone SE', 375, 667], ['Android Compact', 412, 917], ['Android Medium', 700, 840]]],
+    ['Tablet', [['iPad mini 8.3"', 744, 1133], ['iPad Pro 11"', 834, 1194], ['iPad Pro 12.9"', 1024, 1366], ['Surface Pro 8', 1440, 960]]],
+    ['Desktop', [['MacBook Air', 1280, 832], ['MacBook Pro 14"', 1512, 982], ['MacBook Pro 16"', 1728, 1117], ['Desktop', 1440, 1024], ['TV', 1280, 720]]],
+    ['Presentation', [['Slide 16:9', 1920, 1080], ['Slide 4:3', 1024, 768]]],
+    ['Watch', [['Apple Watch 41mm', 352, 430], ['Apple Watch 45mm', 396, 484], ['Apple Watch Ultra 49mm', 410, 502]]],
+    ['Paper', [['A4', 595, 842], ['A5', 420, 595], ['A6', 298, 420], ['Letter', 612, 792], ['Tabloid', 792, 1224]]],
+    ['Social media', [['Instagram post', 1080, 1350], ['Instagram story', 1080, 1920], ['Twitter post', 1600, 900], ['Twitter header', 1500, 500], ['Facebook post', 1200, 630], ['Facebook cover', 820, 312], ['LinkedIn cover', 1584, 396], ['YouTube thumbnail', 1280, 720], ['YouTube channel cover', 2560, 1440]]],
+];
+const presetOpen = new Set(['Phone', 'Desktop']);
+function findPreset(key) {
+    const [group, name] = key.split('|'), g = FRAME_PRESETS.find(x => x[0] === group), it = g?.[1].find(x => x[0] === name);
+    return it ? { group, name: it[0], w: it[1], h: it[2] } : null;
+}
+function framePresetPanel() {
+    return section('Frame', FRAME_PRESETS.map(([group, items]) => `<div class="preset-group"><button class="preset-head" data-preset-group="${esc(group)}">${presetOpen.has(group) ? icon('chevronDown', 10) : icon('chevronRight', 10)} ${esc(group)}</button>${presetOpen.has(group) ? items.map(([name, w, h]) => `<button class="preset-item" data-frame-new="${esc(group + '|' + name)}"><span>${esc(name)}</span><small>${w} × ${h}</small></button>`).join('') : ''}</div>`).join('') + '<p class="small-label" style="margin-top:10px">Pick a size to add a frame to the center of your view, or drag on the canvas for a custom frame.</p>');
+}
+function frameSection(ns) {
+    const frames = ns.filter(n => n.type === 'frame');
+    if (!frames.length || frames.length !== ns.length)
+        return '';
+    const n = frames[0];
+    let cur = '';
+    for (const [group, items] of FRAME_PRESETS)
+        for (const [name, w, h] of items)
+            if ((n.w === w && n.h === h) || (n.w === h && n.h === w))
+                cur ||= group + '|' + name;
+    const opts = FRAME_PRESETS.map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(([name, w, h]) => `<option value="${esc(group + '|' + name)}" ${cur === group + '|' + name ? 'selected' : ''}>${esc(name)} · ${w}×${h}</option>`).join('')}</optgroup>`).join('');
+    return section('Frame', `<select class="full-width" data-frame-preset aria-label="Frame preset"><option value="" ${cur ? '' : 'selected'}>Custom size</option>${opts}</select><div class="ly-row" style="margin-top:8px"><div class="segmented ly-dir"><button data-frame-orient="portrait" class="${n.h >= n.w ? 'active' : ''}" title="Portrait">▯</button><button data-frame-orient="landscape" class="${n.w > n.h ? 'active' : ''}" title="Landscape">▭</button></div></div>`);
+}
+function createPresetFrame(key) {
+    const p = findPreset(key);
+    if (!p)
+        return;
+    const n = createAtCenter('frame', { name: p.name, w: p.w, h: p.h, fill: '#ffffff', clip: true });
+    setTool('select');
+    fit([n.id]);
+}
+function applyFramePreset(key) {
+    const p = findPreset(key);
+    if (!p)
+        return;
+    const names = new Set(['Frame', ...FRAME_PRESETS.flatMap(g => g[1].map(i => i[0]))]);
+    transaction('Frame preset', () => {
+        for (const f of selected().filter(x => x.type === 'frame')) {
+            const ow = f.w, oh = f.h;
+            f.w = p.w;
+            f.h = p.h;
+            f.layoutSizingH = 'fixed';
+            f.layoutSizingV = 'fixed';
+            if (names.has(f.name) || /^Frame \d+$/.test(f.name))
+                f.name = p.name;
+            constrainChildren(f, ow, oh);
+            doc.touch(f);
+        }
+    });
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-preset-group]'))) {
+        const g = el.dataset.presetGroup;
+        presetOpen.has(g) ? presetOpen.delete(g) : presetOpen.add(g);
+        renderInspector();
+    }
+    else if ((el = e.target.closest('[data-frame-new]')))
+        createPresetFrame(el.dataset.frameNew);
+    else if ((el = e.target.closest('[data-frame-orient]'))) {
+        const land = el.dataset.frameOrient === 'landscape';
+        transaction('Frame orientation', () => {
+            for (const f of selected().filter(x => x.type === 'frame')) {
+                if ((f.w > f.h) !== land && f.w !== f.h) {
+                    const ow = f.w, oh = f.h;
+                    f.w = oh;
+                    f.h = ow;
+                    f.layoutSizingH = 'fixed';
+                    f.layoutSizingV = 'fixed';
+                    constrainChildren(f, ow, oh);
+                    doc.touch(f);
+                }
+            }
+        });
+    }
+});
+document.addEventListener('change', e => {
+    if (e.target.matches?.('[data-frame-preset]') && e.target.value)
+        applyFramePreset(e.target.value);
+});
+
+// ===== home / file library =====
+const lib = { index: [], fileId: null, view: 'recent', search: '', open: false };
+const TEMPLATES = [
+    { id: 'blank', name: 'Design file', note: 'Start from an empty canvas' },
+    { id: 'forma', name: 'Forma · Product design', note: 'Sample project with a design system' },
+    { id: 'phone', name: 'Mobile app', frame: ['iPhone 16', 393, 852], note: 'iPhone 16 frame' },
+    { id: 'desktop', name: 'Landing page', frame: ['Desktop', 1440, 1024], note: 'Desktop frame' },
+    { id: 'slides', name: 'Presentation', frame: ['Slide 16:9', 1920, 1080], note: '16:9 slide' },
+    { id: 'social', name: 'Social post', frame: ['Instagram post', 1080, 1350], note: 'Instagram portrait post' },
+];
+// Documents and the library index live on disk (data/ folder), see src/storage.js.
+async function kvGet(key) {
+    try {
+        return await kv.get(key);
+    }
+    catch {
+        return null;
+    }
+}
+async function kvPut(key, value) { return kv.put(key, value); }
+async function kvDel(key) {
+    try {
+        await kv.del(key);
+    }
+    catch { }
+}
+
+
+
+
+
+
+
+function libSaveIndex() { return kvPut('index', JSON.stringify(lib.index)); }
+async function libBoot() {
+    const legacy = await openDB();
+    try {
+        const idx = JSON.parse(await kvGet('index') || '[]');
+        lib.index = Array.isArray(idx) ? idx.filter(m => m && typeof m.id === 'string') : [];
+    }
+    catch {
+        lib.index = [];
+    }
+    const last = await kvGet('last');
+    let json = null;
+    if (last && lib.index.some(m => m.id === last && !m.trashed)) {
+        json = await kvGet('file:' + last);
+        if (json)
+            lib.fileId = last;
+    }
+    if (!json && legacy) {
+        let name = 'Untitled';
+        try {
+            name = JSON.parse(legacy).name || name;
+        }
+        catch { }
+        lib.fileId = uid();
+        const now = Date.now();
+        lib.index.unshift({ id: lib.fileId, name, created: now, updated: now, opened: now, thumb: null });
+        try {
+            await kvPut('file:' + lib.fileId, legacy);
+            await libSaveIndex();
+        }
+        catch { }
+        json = legacy;
+    }
+    if (!json) {
+        lib.fileId = uid();
+        const now = Date.now();
+        lib.index.unshift({ id: lib.fileId, name: 'Forma · Product design', created: now, updated: now, opened: now, thumb: null });
+    }
+    return json;
+}
+function templateData(id) {
+    if (id === 'forma')
+        return makeStarter();
+    const t = TEMPLATES.find(x => x.id === id) || TEMPLATES[0], p = { id: uid(), name: 'Page 1', nodes: [] };
+    if (t.frame)
+        p.nodes.push(node('frame', { name: t.frame[0], x: 0, y: 0, w: t.frame[1], h: t.frame[2], fill: '#ffffff', clip: true }));
+    return { format: 'midas', version: 1, name: t.id === 'blank' ? 'Untitled' : t.name, pageId: p.id, pages: [p], tokens: defaultTokens(), assets: {}, variables: { collections: [], items: [] } };
+}
+async function makeThumb() {
+    try {
+        let first = doc.data.thumbnailId ? allNodes().find(n => n.id === doc.data.thumbnailId && n.type === 'frame' && !n.parentId) : null;
+        if (!first) {
+            const roots = doc.nodes.filter(n => !n.parentId && n.visible !== false);
+            if (!roots.length)
+                return null;
+            first = roots.find(n => n.type === 'frame') || roots[0];
+        }
+        const src = await renderNodeAnyPage(first.id, Math.max(.05, Math.min(1, 520 / Math.max(first.w, 1))));
+        const out = document.createElement('canvas');
+        out.width = 480;
+        out.height = 300;
+        const c = out.getContext('2d');
+        c.fillStyle = '#ececf1';
+        c.fillRect(0, 0, 480, 300);
+        const k = Math.min(440 / src.width, 260 / src.height, 1.5), w = src.width * k, h = src.height * k;
+        c.drawImage(src, (480 - w) / 2, (300 - h) / 2, w, h);
+        return out.toDataURL('image/jpeg', .72);
+    }
+    catch {
+        return null;
+    }
+}
+window.__midasLoadDesignSystem = async (ds, { merge = false } = {}) => {
+    if (merge && doc?.data) {
+        const firstAdded = ds.pages[0];
+        for (const p of ds.pages) {
+            const newPage = JSON.parse(JSON.stringify(p));
+            newPage.id = uid();
+            doc.data.pages.push(newPage);
+        }
+        doc.data.pageId = doc.data.pages[doc.data.pages.length - ds.pages.length].id;
+        const curVars = doc.data.variables ||= { collections: [], items: [] };
+        for (const coll of ds.variables?.collections || []) {
+            if (!curVars.collections.some(c => c.name === coll.name)) {
+                curVars.collections.push(coll);
+            }
+        }
+        for (const item of ds.variables?.items || []) {
+            if (!curVars.items.some(i => i.name === item.name)) {
+                curVars.items.push(item);
+            }
+        }
+        doc.refresh();
+        fit();
+        refreshUI();
+        toast('5 Design System pages merged into document.');
+        return ds;
+    } else {
+        await loadIntoEditor(JSON.parse(JSON.stringify(ds)), 'design-system');
+        toast('Midas Design System (5 pages) loaded.');
+        return ds;
+    }
+};
+
+async function loadIntoEditor(data, id) {
+    finishText();
+    data.variables = cleanVariables(data.variables);
+    history.pending = null;
+    history.undoStack = [];
+    history.redoStack = [];
+    doc.data = data;
+    doc.refresh();
+    state.selection.clear();
+    state.expanded.clear();
+    state.expandedPages.clear();
+    state.pageViews.clear();
+    state.tool = 'select';
+    resetRasterCaches();
+    try {
+        await loadStoredFonts();
+    }
+    catch { }
+    lib.fileId = id;
+    try {
+        await kvPut('last', id);
+    }
+    catch { }
+    fit();
+    refreshUI();
+    invalidate();
+}
+async function libOpen(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    if (meta.trashed) {
+        toast('Restore this file from Trash to open it.');
+        return;
+    }
+    if (id !== lib.fileId) {
+        await save();
+        let data = await projectStorage.loadProject(id);
+        if (!data) {
+            toast('This file could not be found.');
+            return;
+        }
+        try {
+            data = DocumentModel.parse(data);
+        }
+        catch (e) {
+            toast('This file could not be opened: ' + e.message);
+            return;
+        }
+        await loadIntoEditor(data, id);
+    }
+    meta.opened = Date.now();
+    libSaveIndex().catch(() => { });
+    hideHome();
+}
+async function libNew(templateId = 'blank', { stay = false } = {}) {
+    await save();
+    const data = templateData(templateId), id = uid(), now = Date.now();
+    lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null });
+    await loadIntoEditor(data, id);
+    await save();
+    if (!stay)
+        hideHome();
+    return id;
+}
+async function libImportFile(file) {
+    if (!file)
+        return;
+    // No size cap: importing whole Figma files is the migration path.
+    const isFig = /\.fig$/i.test(file.name);
+    try {
+        let data, report = null;
+        if (isFig) {
+            toast('Reading Figma file…');
+            await new Promise(r => setTimeout(r, 30));
+            const progressToast = (p) => {
+                toast(`Importing Figma: Page ${p.pageIndex}/${p.totalPages} (${p.pageName}) · ${p.layers.toLocaleString()} layers`);
+            };
+            const res = await figToMidas(file, progressToast);
+            report = res.report;
+            window.__lastFigReport = report;
+            console.info('[Figma import]', report);
+            data = DocumentModel.parse(res.data);
+        }
+        else
+            data = DocumentModel.parse(await file.text());
+        await save();
+        const id = uid(), now = Date.now();
+        lib.index.unshift({ id, name: data.name || 'Imported file', created: now, updated: now, opened: now, thumb: null });
+        toast('Saving project to local storage…');
+        await projectStorage.saveProject(id, data, {
+            onProgress: (p) => {
+                toast(`Saving to storage: Page ${p.savedPages}/${p.totalPages} (${p.pageName})`);
+            }
+        });
+        await loadIntoEditor(data, id);
+        libSaveIndex().catch(() => {});
+        kvPut('last', id).catch(() => {});
+        hideHome();
+        if (report) {
+            const extra = [...report.notes, ...report.skipped.map(s => s + ' skipped')];
+            toast(`Imported “${data.name}” from Figma: ${report.layers} layers on ${report.pages} page${report.pages === 1 ? '' : 's'}.${extra.length ? ' Approximated: ' + extra.slice(0, 3).join('; ') + (extra.length > 3 ? ` (+${extra.length - 3} more, see console)` : '') + '.' : ''}`);
+        }
+        else
+            toast('Opened ' + data.name);
+    }
+    catch (e) {
+        toast(e.message || 'Could not open this file.');
+    }
+}
+async function libJson(id) { return id === lib.fileId ? doc.serialize() : await kvGet('file:' + id); }
+async function libDuplicate(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    const data = await projectStorage.loadProject(id);
+    if (!data)
+        return;
+    const nid = uid(), now = Date.now();
+    data.name = `${meta.name} copy`;
+    data.id = nid;
+    await projectStorage.saveProject(nid, data);
+    lib.index.unshift({ ...meta, id: nid, name: data.name, created: now, updated: now, opened: now, trashed: undefined });
+    await libSaveIndex();
+    renderHome();
+}
+async function libRename(id, name) {
+    const meta = lib.index.find(m => m.id === id);
+    name = name.trim();
+    if (!meta || !name || name === meta.name)
+        return renderHome();
+    meta.name = name;
+    if (id === lib.fileId) {
+        doc.data.name = name;
+        $('#file-name').textContent = name;
+        await save();
+    }
+    else {
+        const json = await kvGet('file:' + id);
+        if (json) {
+            const d = JSON.parse(json);
+            d.name = name;
+            await kvPut('file:' + id, JSON.stringify(d));
+        }
+        await libSaveIndex();
+    }
+    renderHome();
+}
+async function libDownload(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    try {
+        const json = await projectStorage.exportProject(id);
+        download(new Blob([json], { type: 'application/json' }), safeName(meta.name) + '.midas');
+    } catch {
+        toast('Could not export document.');
+    }
+}
+async function libTrash(id, on) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    if (on)
+        meta.trashed = Date.now();
+    else
+        delete meta.trashed;
+    await libSaveIndex();
+    renderHome();
+}
+async function libDelete(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta || !confirm(`Delete “${meta.name}” permanently? This can't be undone.`))
+        return;
+    if (id === lib.fileId)
+        await libNew('blank', { stay: true });
+    lib.index = lib.index.filter(m => m.id !== id);
+    await projectStorage.deleteProject(id);
+    await libSaveIndex();
+    renderHome();
+}
+function timeAgo(ts) {
+    const s = Math.max(1, Math.round((Date.now() - ts) / 1000));
+    if (s < 60)
+        return 'just now';
+    const m = Math.round(s / 60);
+    if (m < 60)
+        return `${m} minute${m > 1 ? 's' : ''} ago`;
+    const h = Math.round(m / 60);
+    if (h < 24)
+        return `${h} hour${h > 1 ? 's' : ''} ago`;
+    const d = Math.round(h / 24);
+    return d < 30 ? `${d} day${d > 1 ? 's' : ''} ago` : new Date(ts).toLocaleDateString();
+}
+const HOME_ICONS = { recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>' };
+const homeIcon = n => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${HOME_ICONS[n]}</svg>`;
+function ensureHome() {
+    let home = document.getElementById('home');
+    if (home)
+        return home;
+    home = document.createElement('div');
+    home.id = 'home';
+    home.className = 'home hidden';
+    document.body.appendChild(home);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'home-import';
+    input.accept = '.midas,.vellum,.fig,.json,application/json';
+    input.hidden = true;
+    input.onchange = () => { libImportFile(input.files[0]); input.value = ''; };
+    document.body.appendChild(input);
+    home.addEventListener('click', e => {
+        const t = e.target;
+        let el;
+        document.getElementById('home-menu')?.remove();
+        if ((el = t.closest('[data-home-view]'))) {
+            lib.view = el.dataset.homeView;
+            renderHome();
+        }
+        else if ((el = t.closest('[data-home-new]')))
+            libNew(el.dataset.homeNew);
+        else if (t.closest('[data-home-import]'))
+            input.click();
+        else if ((el = t.closest('[data-hf-menu]')))
+            openFileMenu(el, el.dataset.hfMenu);
+        else if (t.closest('[data-home-empty-trash]')) {
+            const gone = lib.index.filter(m => m.trashed);
+            if (gone.length && confirm(`Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`)) {
+                Promise.all(gone.map(m => kvDel('file:' + m.id))).then(() => { lib.index = lib.index.filter(m => !m.trashed); return libSaveIndex(); }).then(renderHome);
+            }
+        }
+        else if (t.closest('[data-home-back]'))
+            hideHome();
+        else if ((el = t.closest('[data-hf]')) && !t.closest('input'))
+            libOpen(el.dataset.hf);
+    });
+    home.addEventListener('input', e => {
+        if (e.target.matches('[data-home-search]')) {
+            lib.search = e.target.value;
+            const pos = e.target.selectionStart;
+            renderHome();
+            const s = home.querySelector('[data-home-search]');
+            s?.focus();
+            s?.setSelectionRange(pos, pos);
+        }
+    });
+    home.addEventListener('change', e => {
+        if (e.target.matches('[data-hf-name]'))
+            libRename(e.target.dataset.hfName, e.target.value);
+    });
+    home.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.matches('[data-hf-name]'))
+            e.target.blur();
+    });
+    return home;
+}
+function openFileMenu(anchor, id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    const items = meta.trashed ? [['Restore', 'restore'], ['Delete permanently', 'delete']] : [['Open', 'open'], ['Rename', 'rename'], ['Duplicate', 'duplicate'], ['Download .midas', 'download'], ['Move to trash', 'trash']];
+    const menu = document.createElement('div');
+    menu.id = 'home-menu';
+    menu.className = 'home-menu';
+    menu.innerHTML = items.map(([l, a]) => `<button data-a="${a}" class="${a === 'delete' || a === 'trash' ? 'danger' : ''}">${l}</button>`).join('');
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = Math.min(innerWidth - 190, r.right - 170) + 'px';
+    menu.style.top = Math.min(innerHeight - items.length * 34 - 16, r.bottom + 4) + 'px';
+    menu.addEventListener('click', e => {
+        const a = e.target.closest('[data-a]')?.dataset.a;
+        menu.remove();
+        e.stopPropagation();
+        if (a === 'open')
+            libOpen(id);
+        else if (a === 'rename') {
+            const nameEl = document.querySelector(`[data-hf="${id}"] .hf-name`);
+            if (nameEl) {
+                nameEl.outerHTML = `<input class="hf-rename" data-hf-name="${id}" value="${esc(meta.name)}" aria-label="File name" spellcheck="false">`;
+                const inp = document.querySelector(`[data-hf-name="${id}"]`);
+                inp.focus();
+                inp.select();
+                inp.addEventListener('blur', () => libRename(id, inp.value));
+            }
+        }
+        else if (a === 'duplicate')
+            libDuplicate(id);
+        else if (a === 'download')
+            libDownload(id);
+        else if (a === 'trash')
+            libTrash(id, true);
+        else if (a === 'restore')
+            libTrash(id, false);
+        else if (a === 'delete')
+            libDelete(id);
+    });
+}
+function fileCard(m) {
+    const initial = esc((m.name || '?').trim()[0]?.toUpperCase() || '?');
+    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0"><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div><button class="hf-menu" data-hf-menu="${m.id}" aria-label="File options" title="More">···</button></div></div>`;
+}
+function renderHome() {
+    const home = ensureHome();
+    const q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed), trash = lib.index.filter(m => m.trashed);
+    const match = m => !q || (m.name || '').toLowerCase().includes(q);
+    const nav = [['recent', 'Recents'], ['all', 'All files'], ['templates', 'Templates'], ['trash', 'Trash']];
+    let main = '';
+    if (lib.view === 'templates')
+        main = `<h2>Templates</h2><div class="home-grid">${TEMPLATES.filter(t => !q || t.name.toLowerCase().includes(q)).map(t => `<div class="hf tpl" data-home-new="${t.id}" tabindex="0"><div class="hf-thumb tpl-thumb"><i style="aspect-ratio:${t.frame ? t.frame[1] + '/' + t.frame[2] : '4/3'}"></i></div><div class="hf-meta"><div class="hf-text"><div class="hf-name">${esc(t.name)}</div><div class="hf-sub">${esc(t.note)}</div></div></div></div>`).join('')}</div>`;
+    else if (lib.view === 'trash') {
+        const list = trash.filter(match).sort((a, b) => b.trashed - a.trashed);
+        main = `<div class="home-row"><h2>Trash</h2>${trash.length ? '<button class="home-link" data-home-empty-trash>Empty trash</button>' : ''}</div>${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : '<div class="home-empty">Trash is empty. Deleted files stay here until you remove them.</div>'}`;
+    }
+    else {
+        const list = live.filter(match).sort(lib.view === 'recent' ? (a, b) => (b.opened || b.updated) - (a.opened || a.updated) : (a, b) => b.updated - a.updated);
+        const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-new="forma"><span class="hc-ico">${homeIcon('recent')}</span><b>Sample project</b><small>Forma design system</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
+        main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
+    }
+    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">L</span><div><b>Local workspace</b><small>Saved in the data folder</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+}
+async function showHome({ thumb = true } = {}) {
+    finishText();
+    closeMenu();
+    toggleVarsWindow(false);
+    if (thumb) {
+        const m = lib.index.find(x => x.id === lib.fileId), t = m ? await makeThumb() : null;
+        if (m && t)
+            m.thumb = t;
+        await save();
+    }
+    const home = ensureHome();
+    lib.open = true;
+    home.classList.remove('hidden');
+    renderHome();
+}
+function hideHome() {
+    lib.open = false;
+    document.getElementById('home')?.classList.add('hidden');
+    document.getElementById('home-menu')?.remove();
+    overlay.focus({ preventScroll: true });
+    invalidate();
+}
+
+// ===== effects (drop/inner shadow, layer blur, background blur, glass) =====
+const FX_TYPES = [['drop', 'Drop shadow'], ['inner', 'Inner shadow'], ['layerBlur', 'Layer blur'], ['bgBlur', 'Background blur'], ['glass', 'Glass']];
+function fxDefaults(type) {
+    switch (type) {
+        case 'drop':
+        case 'inner': return { type, visible: true, color: '#000000', opacity: .25, x: 0, y: 4, blur: 4, spread: 0 };
+        case 'layerBlur': return { type, visible: true, radius: 4 };
+        case 'bgBlur': return { type, visible: true, radius: 8 };
+        default: return { type: 'glass', visible: true, angle: -45, intensity: 50, refraction: 80, depth: 20, dispersion: 0, frost: 4 };
+    }
+}
+function getEffects(n) {
+    if (Array.isArray(n.effects))
+        return n.effects;
+    if (n.shadow)
+        return [{ type: 'drop', visible: true, color: n.shadowColor || '#000000', opacity: n.shadowOpacity ?? .16, x: n.shadowX || 0, y: n.shadowY || 0, blur: n.shadowBlur ?? 20, spread: 0 }];
+    return [];
+}
+function materializeEffects(n) {
+    if (!Array.isArray(n.effects))
+        n.effects = structuredClone(getEffects(n));
+    return n.effects;
+}
+// A single plain drop shadow keeps using the GPU shape path; everything else is painted by the 2D painter.
+function hasComplexFx(n) {
+    if (n.type === 'group' || !Array.isArray(n.effects))
+        return false;
+    const e = n.effects.filter(x => x.visible !== false);
+    return e.length > 0 && !(e.length === 1 && e[0].type === 'drop' && !e[0].spread);
+}
+function syncLegacyShadow(n) {
+    const e = n.effects.filter(x => x.visible !== false);
+    if (e.length === 1 && e[0].type === 'drop' && !e[0].spread) {
+        n.shadow = true;
+        n.shadowColor = e[0].color;
+        n.shadowOpacity = e[0].opacity;
+        n.shadowX = e[0].x;
+        n.shadowY = e[0].y;
+        n.shadowBlur = e[0].blur;
+    }
+    else
+        n.shadow = false;
+}
+function newCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function rgbaOf(hex, opacity) { const c = color(hex, opacity); return `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${c[3]})`; }
+// Gaussian blur of `src` drawn at the origin; falls back to a down/up-scale blur where ctx.filter is unavailable (older Safari).
+function blurInto(ctx, src, sigma) {
+    if (sigma < .3) {
+        ctx.drawImage(src, 0, 0);
+        return;
+    }
+    if ('filter' in ctx) {
+        ctx.filter = `blur(${sigma}px)`;
+        ctx.drawImage(src, 0, 0);
+        ctx.filter = 'none';
+        return;
+    }
+    const f = Math.max(1, Math.min(48, sigma * 1.2)), w = Math.max(1, Math.ceil(src.width / f)), h = Math.max(1, Math.ceil(src.height / f));
+    const tmp = newCanvas(w, h), tc = tmp.getContext('2d');
+    tc.imageSmoothingQuality = 'high';
+    tc.drawImage(src, 0, 0, w, h);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(tmp, 0, 0, src.width, src.height);
+}
+function paintDropShadow(ctx, n, path, e) {
+    const t = ctx.getTransform(), ss = Math.hypot(t.a, t.b), off = 20000, sp = e.spread || 0;
+    ctx.save();
+    // The caster is drawn far off-canvas; only its shadow (offset back by the same amount) lands on screen.
+    ctx.setTransform(t.a, t.b, t.c, t.d, t.e - off, t.f);
+    ctx.shadowColor = rgbaOf(e.color, e.opacity ?? .25);
+    ctx.shadowBlur = Math.max(0, e.blur || 0) * ss;
+    ctx.shadowOffsetX = (e.x || 0) * ss + off;
+    ctx.shadowOffsetY = (e.y || 0) * ss;
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = '#000';
+    if (sp < 0 && n.w > 0 && n.h > 0) {
+        ctx.translate(n.w / 2, n.h / 2);
+        ctx.scale(Math.max(.001, (n.w + 2 * sp) / n.w), Math.max(.001, (n.h + 2 * sp) / n.h));
+        ctx.translate(-n.w / 2, -n.h / 2);
+    }
+    ctx.fill(path);
+    if (sp > 0) {
+        ctx.lineWidth = sp * 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke(path);
+    }
+    ctx.restore();
+}
+function paintInnerShadow(ctx, n, path, e) {
+    const t = ctx.getTransform(), ss = Math.hypot(t.a, t.b), sp = e.spread || 0;
+    ctx.save();
+    ctx.clip(path);
+    ctx.shadowColor = rgbaOf(e.color, e.opacity ?? .25);
+    ctx.shadowBlur = Math.max(0, e.blur || 0) * ss;
+    ctx.shadowOffsetX = (e.x || 0) * ss;
+    ctx.shadowOffsetY = (e.y || 0) * ss;
+    const big = Math.max(n.w, n.h) * 3 + 200 + (e.blur || 0) + Math.abs(e.x || 0) + Math.abs(e.y || 0);
+    const outer = new Path2D();
+    outer.rect(-big, -big, n.w + big * 2, n.h + big * 2);
+    let hole = path;
+    if (sp > 0 && n.w > 0 && n.h > 0) {
+        hole = new Path2D();
+        hole.addPath(path, new DOMMatrix().translate(n.w / 2, n.h / 2).scale(Math.max(.001, (n.w - 2 * sp) / n.w), Math.max(.001, (n.h - 2 * sp) / n.h)).translate(-n.w / 2, -n.h / 2));
+    }
+    outer.addPath(hole);
+    ctx.fillStyle = '#000';
+    ctx.fill(outer, 'evenodd');
+    ctx.restore();
+}
+function paintBackdropBlur(ctx, path, sigma) {
+    const cv = ctx.canvas, snap = newCanvas(cv.width, cv.height);
+    snap.getContext('2d').drawImage(cv, 0, 0);
+    ctx.save();
+    ctx.clip(path);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'copy';
+    blurInto(ctx, snap, sigma);
+    ctx.restore();
+}
+// Glass approximation: frosted backdrop, lens magnification (refraction) and optional RGB dispersion.
+function paintGlassBackdrop(ctx, n, path, e) {
+    const t = ctx.getTransform(), ss = Math.hypot(t.a, t.b), cv = ctx.canvas, w = cv.width, h = cv.height;
+    const snap = newCanvas(w, h);
+    snap.getContext('2d').drawImage(cv, 0, 0);
+    const k = 1 + clamp(e.refraction ?? 0, 0, 100) / 100 * .08, disp = clamp(e.dispersion ?? 0, 0, 100) / 100 * .03;
+    const cx = t.a * n.w / 2 + t.c * n.h / 2 + t.e, cy = t.b * n.w / 2 + t.d * n.h / 2 + t.f;
+    const scaled = (target, m) => { const c = target.getContext('2d'); c.save(); c.translate(cx, cy); c.scale(m, m); c.translate(-cx, -cy); c.drawImage(snap, 0, 0); c.restore(); };
+    const lens = newCanvas(w, h), lc = lens.getContext('2d');
+    if (disp > 0) {
+        [[k * (1 + disp), '#ff0000'], [k, '#00ff00'], [k * (1 - disp), '#0000ff']].forEach(([m, tint]) => {
+            const ch = newCanvas(w, h), cc = ch.getContext('2d');
+            scaled(ch, m);
+            cc.globalCompositeOperation = 'multiply';
+            cc.fillStyle = tint;
+            cc.fillRect(0, 0, w, h);
+            cc.globalCompositeOperation = 'destination-in';
+            cc.save();
+            cc.translate(cx, cy);
+            cc.scale(m, m);
+            cc.translate(-cx, -cy);
+            cc.drawImage(snap, 0, 0);
+            cc.restore();
+            lc.globalCompositeOperation = 'lighter';
+            lc.drawImage(ch, 0, 0);
+        });
+    }
+    else
+        scaled(lens, k);
+    ctx.save();
+    ctx.clip(path);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'copy';
+    blurInto(ctx, lens, clamp(e.frost ?? 0, 0, 100) * .35 * ss);
+    ctx.restore();
+}
+function paintGlassHighlights(ctx, n, path, e) {
+    const inten = clamp((e.intensity ?? 50) / 100, 0, 1);
+    if (inten <= 0)
+        return;
+    const a = (e.angle ?? -45) * Math.PI / 180 - Math.PI / 2, c = Math.cos(a), s = Math.sin(a), len = Math.abs(n.w * c) + Math.abs(n.h * s), band = 1 + clamp(e.depth ?? 20, 0, 100) * .12;
+    ctx.save();
+    ctx.clip(path);
+    const g = ctx.createLinearGradient(n.w / 2 + c * len / 2, n.h / 2 + s * len / 2, n.w / 2 - c * len / 2, n.h / 2 - s * len / 2);
+    g.addColorStop(0, `rgba(255,255,255,${inten})`);
+    g.addColorStop(.32, 'rgba(255,255,255,0)');
+    g.addColorStop(.68, 'rgba(255,255,255,0)');
+    g.addColorStop(1, `rgba(255,255,255,${inten * .5})`);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = band * 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke(path);
+    ctx.restore();
+}
+// ----- inspector -----
+const fxField = (i, key, label, value, o = {}) => `<label class="field" title="${esc(o.title || label)}"><span>${label}</span><input type="number" step="${o.step || 1}" ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${fmt(value ?? 0)}" data-fx-idx="${i}" data-fx-key="${key}" aria-label="${esc(o.title || label)}"></label>`;
+function addEffect(type) {
+    transaction('Add effect', () => {
+        for (const n of selected()) {
+            if (n.type === 'group')
+                continue;
+            const list = materializeEffects(n);
+            list.push(fxDefaults(n.type === 'text' ? 'layerBlur' : (typeof type === 'string' ? type : 'drop')));
+            syncLegacyShadow(n);
+            doc.touch(n);
+        }
+    });
+}
+function editEffect(i, key, v, live) {
+    if (!history.pending)
+        history.begin('Edit effect');
+    for (const n of selected()) {
+        if (n.type === 'group')
+            continue;
+        const list = materializeEffects(n), e = list[i];
+        if (!e)
+            continue;
+        const num = (min, max) => clamp(v, min, max);
+        switch (key) {
+            case 'type':
+                list[i] = { ...fxDefaults(v), visible: e.visible !== false };
+                break;
+            case 'color':
+                e.color = v;
+                break;
+            case 'hex': {
+                let h = String(v).trim();
+                if (!h.startsWith('#'))
+                    h = '#' + h;
+                if (/^#[\da-f]{3}([\da-f]{3})?$/i.test(h))
+                    e.color = hex6(h).toLowerCase();
+                break;
+            }
+            case 'opacity':
+                e.opacity = num(0, 100) / 100;
+                break;
+            case 'blur':
+                e.blur = Math.max(0, v);
+                break;
+            case 'radius':
+                e.radius = num(0, 250);
+                break;
+            case 'angle':
+                e.angle = num(-180, 180);
+                break;
+            case 'depth':
+                e.depth = num(1, 100);
+                break;
+            case 'intensity':
+            case 'refraction':
+            case 'dispersion':
+            case 'frost':
+                e[key] = num(0, 100);
+                break;
+            default:
+                e[key] = v;
+        }
+        syncLegacyShadow(n);
+        doc.touch(n);
+    }
+    changed({ ui: !live, commit: !live });
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-fx-toggle]'))) {
+        const i = +el.dataset.fxToggle;
+        transaction('Toggle effect', () => { for (const n of selected()) {
+            const x = materializeEffects(n)[i];
+            if (x) {
+                x.visible = x.visible === false;
+                syncLegacyShadow(n);
+                doc.touch(n);
+            }
+        } });
+    }
+    else if ((el = e.target.closest('[data-fx-remove]'))) {
+        const i = +el.dataset.fxRemove;
+        closeFxWindow();
+        transaction('Remove effect', () => { for (const n of selected()) {
+            const list = materializeEffects(n);
+            if (list[i]) {
+                list.splice(i, 1);
+                syncLegacyShadow(n);
+                doc.touch(n);
+            }
+        } });
+    }
+});
+document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset?.fxIdx === undefined || el.tagName === 'SELECT' || el.type === 'text')
+        return;
+    const v = el.type === 'number' ? el.valueAsNumber : el.value;
+    if (el.type === 'number' && !Number.isFinite(v))
+        return;
+    editEffect(+el.dataset.fxIdx, el.dataset.fxKey, v, true);
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset?.fxIdx === undefined)
+        return;
+    const v = el.type === 'number' ? el.valueAsNumber : el.value;
+    if (el.type === 'number' && !Number.isFinite(v))
+        return;
+    editEffect(+el.dataset.fxIdx, el.dataset.fxKey, v, false);
+    if (el.dataset.fxKey === 'type')
+        renderFxWindow();
+});
+
+// ===== ruler guides =====
+const RULER = 17;
+function pageGuides() { return doc.page.guides ||= []; }
+function guideScreen(g) { return g.axis === 'x' ? worldToScreen(g.value, 0).x : worldToScreen(0, g.value).y; }
+function guideAt(p) {
+    if (!options.rulers || p.x < RULER || p.y < RULER)
+        return null;
+    for (const g of pageGuides())
+        if (Math.abs((g.axis === 'x' ? p.x : p.y) - guideScreen(g)) <= 4)
+            return g;
+    return null;
+}
+function toolCursor() { return state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
+function rulerCursor(p) {
+    if (!options.rulers)
+        return '';
+    if (p.x < RULER && p.y >= RULER)
+        return 'col-resize';
+    if (p.y < RULER && p.x >= RULER)
+        return 'row-resize';
+    const g = guideAt(p);
+    return g ? (g.axis === 'x' ? 'col-resize' : 'row-resize') : '';
+}
+function drawGuides(c) {
+    c.save();
+    c.strokeStyle = '#e8528f';
+    c.fillStyle = '#e8528f';
+    c.lineWidth = 1;
+    for (const gd of pageGuides()) {
+        c.beginPath();
+        if (gd.axis === 'x') {
+            const x = Math.round(guideScreen(gd)) + .5;
+            c.moveTo(x, 0);
+            c.lineTo(x, area.clientHeight);
+        }
+        else {
+            const y = Math.round(guideScreen(gd)) + .5;
+            c.moveTo(0, y);
+            c.lineTo(area.clientWidth, y);
+        }
+        c.stroke();
+    }
+    const g = state.gesture;
+    if (g?.kind === 'guide' && g.p) {
+        const gd = pageGuides().find(x => x.id === g.id);
+        if (gd) {
+            c.font = '600 10px sans-serif';
+            const label = String(gd.value), w = c.measureText(label).width + 12;
+            c.fillRect(g.p.x + 12, g.p.y + 12, w, 18);
+            c.fillStyle = '#fff';
+            c.fillText(label, g.p.x + 18, g.p.y + 25);
+        }
+    }
+    c.restore();
+}
+// ===== drag into / out of frames =====
+function insideNodeBox(node, w) {
+    const s = doc.world(node.id);
+    if (!s)
+        return false;
+    const q = point(s.inverse, w.x, w.y);
+    return q.x >= 0 && q.y >= 0 && q.x <= node.w && q.y <= node.h;
+}
+function findDropTarget(g, w) {
+    const exclude = new Set();
+    for (const id of g.roots) {
+        exclude.add(id);
+        for (const d of doc.descendants(id))
+            exclude.add(d.id);
+    }
+    let t = hitTest(w, { framesOnly: true, exclude });
+    // Instances are closed: layers can only be dropped into frames marked as a slot property.
+    while (t && !t.propBind?.slot) {
+        const top = [t, ...doc.ancestors(t)].filter(a => a.isInstance).pop();
+        if (!top)
+            break;
+        t = doc.get(top.parentId) || null;
+        while (t && t.type !== 'frame')
+            t = doc.get(t.parentId) || null;
+    }
+    return t;
+}
+// Where a dragged layer will land. Children of an auto layout frame stay put (and just reorder) while the pointer is still inside it.
+function dropTargetFor(g, n) {
+    const cur = doc.get(n.parentId) || null;
+    if (cur && isAutoLayout(cur) && n.layoutPositioning !== 'absolute' && g.lastWorld && insideNodeBox(cur, g.lastWorld))
+        return cur;
+    return g.dropTarget || null;
+}
+function reparentNode(n, target, worldMatrix) {
+    const m = worldMatrix || doc.world(n.id).matrix, inv = target ? doc.world(target.id).inverse : identity();
+    n.parentId = target ? target.id : null;
+    setFromMatrix(n, multiply(inv, m));
+    const i = doc.nodes.indexOf(n);
+    doc.nodes.splice(i, 1);
+    doc.nodes.push(n);
+    if (target) {
+        state.expanded.add(target.id);
+        if (isAutoLayout(target)) {
+            delete n.layoutPositioning;
+            n._drag = true;
+            reorderDrag(n);
+            delete n._drag;
+        }
+    }
+    doc.refresh();
+    doc.touch(n);
+}
+function applyDrop(g) {
+    if (!g.moved || g.dropTarget === undefined)
+        return;
+    // Read every layer's position before moving any of them, so relayout of the first cannot disturb the rest.
+    const before = new Map(g.roots.map(id => [id, doc.world(id)?.matrix]));
+    for (const id of g.roots) {
+        const n = doc.get(id);
+        if (!n || n.locked)
+            continue;
+        const cur = doc.get(n.parentId) || null, target = dropTargetFor(g, n);
+        if ((target?.id || null) !== (cur?.id || null))
+            reparentNode(n, target, before.get(id));
+    }
+}
+function dropHighlight(g) {
+    for (const id of g.roots) {
+        const n = doc.get(id);
+        if (!n)
+            continue;
+        const t = dropTargetFor(g, n);
+        if ((t?.id || null) !== (doc.get(n.parentId)?.id || null))
+            return t;
+    }
+    return null;
+}
+// ===== fill reordering =====
+function reorderFillVars(n, from, to) {
+    if (!n.vars)
+        return;
+    const out = {};
+    for (const [k, v] of Object.entries(n.vars)) {
+        const m = /^fills\.(\d+)$/.exec(k);
+        if (!m) {
+            out[k] = v;
+            continue;
+        }
+        let i = +m[1];
+        if (i === from)
+            i = to;
+        else if (from < to && i > from && i <= to)
+            i--;
+        else if (from > to && i >= to && i < from)
+            i++;
+        out['fills.' + i] = v;
+    }
+    n.vars = out;
+}
+function moveFill(from, to) {
+    closeFillPicker();
+    transaction('Reorder fills', () => {
+        for (const n of selected()) {
+            const fills = materializeFills(n);
+            if (!fills[from] || to < 0 || to >= fills.length)
+                continue;
+            const [f] = fills.splice(from, 1);
+            fills.splice(to, 0, f);
+            reorderFillVars(n, from, to);
+            syncLegacyFill(n);
+            doc.touch(n);
+        }
+    });
+}
+document.addEventListener('pointerdown', e => {
+    const grip = e.target.closest?.('[data-fill-grip]');
+    if (!grip)
+        return;
+    e.preventDefault();
+    const from = +grip.dataset.fillGrip, rows = [...document.querySelectorAll('[data-fill-row]')];
+    let over = from;
+    rows[from]?.classList.add('fr-drag');
+    const clear = () => rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after', 'fr-drag'));
+    const move = ev => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-fill-row]');
+        rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after'));
+        if (el) {
+            over = +el.dataset.fillRow;
+            if (over !== from)
+                el.classList.add(over > from ? 'fr-over-after' : 'fr-over');
+        }
+    };
+    const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        clear();
+        if (over !== from)
+            moveFill(from, over);
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+});
+// ===== nudge preferences =====
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.matches?.('[data-option-num]'))
+        return;
+    const v = el.valueAsNumber;
+    if (Number.isFinite(v) && v > 0) {
+        options[el.dataset.optionNum] = v;
+        saveOptions();
+    }
+    else
+        el.value = options[el.dataset.optionNum];
+});
+
+// ===== Figma-style fill rows: hex field with variable search, and the color picker window =====
+function hexToRgb(h) { h = hex6(h); return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+function rgbToHex(r, g, b) { return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join(''); }
+function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d) {
+        if (max === r)
+            h = ((g - b) / d) % 6;
+        else if (max === g)
+            h = (b - r) / d + 2;
+        else
+            h = (r - g) / d + 4;
+        h *= 60;
+        if (h < 0)
+            h += 360;
+    }
+    return { h, s: max ? d / max : 0, v: max };
+}
+function hsvToRgb(h, s, v) {
+    const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+    const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+const hsvHex = ({ h, s, v }) => rgbToHex(...hsvToRgb(h, s, v));
+function swatchBg(f, hidden) {
+    if (f.type === 'linear')
+        return `linear-gradient(90deg, ${esc(f.color || '#d9d9d9')}, ${esc(f.color2 || '#ffffff')})`;
+    const [r, g, b] = hexToRgb(f.color || '#d9d9d9'), a = hidden ? 0 : (f.opacity ?? 1);
+    return `linear-gradient(rgba(${r},${g},${b},${a}), rgba(${r},${g},${b},${a})), var(--checker-sm)`;
+}
+function fillRow(n, f, i, simple) {
+    const hidden = f.visible === false, col = f.color || '#d9d9d9';
+    const sw = f.type === 'image'
+        ? `<button class="fr-sw img" data-fill-open="${i}" data-img-asset="${esc(f.image || '')}" title="Edit fill" aria-label="Edit fill">${f.image ? '' : '＋'}</button>`
+        : `<button class="fr-sw" style="background:${swatchBg(f, false)}" data-fill-open="${i}" title="Edit fill" aria-label="Edit fill"></button>`;
+    let field;
+    if (f.type === 'solid') {
+        const bound = bindVarFor(`fills.${i}`);
+        field = `<div class="fr-field ${bound ? 'bound' : ''}"><input class="fr-hex-in" data-fill-hex="${i}" value="${esc(bound ? bound.name : col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Fill color: hex or variable name">${bound ? `<button class="fr-detach" data-var-detach="fills.${i}" title="Detach variable" aria-label="Detach variable">${VAR_ICON}</button>` : ''}</div>`;
+    }
+    else
+        field = `<button class="fr-field static" data-fill-open="${i}">${f.type === 'linear' ? 'Linear gradient' : 'Image'}</button>`;
+    const opacity = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
+    const ops = simple ? '' : `<button class="icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
+    const grip = simple ? '' : `<span class="fr-grip" data-fill-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>`;
+    return `<div class="fr fr2 ${hidden ? 'off' : ''}" data-fill-row="${i}">${grip}${sw}${field}${opacity}${ops}</div>`;
+}
+// ----- hex field dropdown (type a hex code or search color variables) -----
+let fillDD = null;
+function closeFillDropdown() { fillDD?.el.remove(); fillDD = null; }
+function colorVariableGroups(q, scopeProp = 'fill') {
+    const store = varStore(), ql = q.trim().toLowerCase();
+    return store.collections.map(c => ({ c, items: store.items.filter(v => v.collectionId === c.id && v.type === 'color' && varInScope(v, scopeProp) && (!ql || v.name.toLowerCase().includes(ql))) })).filter(g => g.items.length);
+}
+function openFillDropdown(input) {
+    closeFillDropdown();
+    const isS = input.dataset.fillHex === 'stroke', i = isS ? 'stroke' : +input.dataset.fillHex, n = activeNode(), f = n && (isS ? { color: n.stroke } : getFills(n)[i]);
+    if (!f)
+        return;
+    const el = document.createElement('div');
+    el.className = 'fill-dd';
+    el.id = 'fill-dd';
+    document.body.appendChild(el);
+    const dd = fillDD = { el, input, i, items: [], active: 0, picked: false, dirty: false, orig: input.value };
+    const render = () => {
+        const q = dd.dirty ? input.value.trim() : '', bare = q.replace(/^#/, ''), isHex = /^[\da-f]{3}([\da-f]{3})?$/i.test(bare);
+        const literal = isHex ? hex6('#' + bare).toLowerCase() : (f.color || '#d9d9d9');
+        dd.items = [{ kind: 'hex', hex: literal }];
+        let html = `<button class="dd-item" data-dd="0"><i class="vw-sw" style="background:${esc(literal)}"></i><span>${esc(literal)}</span></button>`;
+        const groups = colorVariableGroups(isHex ? '' : q, isS ? 'stroke' : 'fill');
+        if (groups.length)
+            html += '<div class="dd-sep"></div>';
+        for (const g of groups) {
+            if (varStore().collections.length > 1)
+                html += `<div class="dd-group">${esc(g.c.name)}</div>`;
+            for (const v of g.items) {
+                dd.items.push({ kind: 'var', id: v.id });
+                html += `<button class="dd-item" data-dd="${dd.items.length - 1}"><i class="vw-sw" style="background:${esc(String(varDisplayValue(v) ?? '#000'))}"></i><span>${esc(v.name)}</span></button>`;
+            }
+        }
+        if (!groups.length && dd.dirty && !isHex)
+            html += '<div class="dd-empty">No variables match.</div>';
+        el.innerHTML = html;
+        dd.active = Math.min(dd.active, dd.items.length - 1);
+        if (dd.dirty && !isHex && dd.items.length > 1)
+            dd.active = 1;
+        paint();
+    };
+    const paint = () => el.querySelectorAll('.dd-item').forEach(b => { b.classList.toggle('on', +b.dataset.dd === dd.active); if (+b.dataset.dd === dd.active)
+        b.scrollIntoView?.({ block: 'nearest' }); });
+    dd.render = render;
+    dd.paint = paint;
+    const r = input.getBoundingClientRect(), w = 250;
+    el.style.width = w + 'px';
+    el.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
+    el.style.top = Math.min(innerHeight - 280, r.bottom + 4) + 'px';
+    el.addEventListener('pointerdown', ev => {
+        const b = ev.target.closest('[data-dd]');
+        if (!b)
+            return;
+        ev.preventDefault();
+        pickFillDD(+b.dataset.dd);
+    });
+    el.addEventListener('pointermove', ev => { const b = ev.target.closest('[data-dd]'); if (b && +b.dataset.dd !== dd.active) {
+        dd.active = +b.dataset.dd;
+        paint();
+    } });
+    render();
+}
+function pickFillDD(idx) {
+    const dd = fillDD;
+    if (!dd)
+        return;
+    const item = dd.items[idx];
+    dd.picked = true;
+    const input = dd.input, i = dd.i;
+    closeFillDropdown();
+    input.blur();
+    if (!item)
+        return;
+    if (item.kind === 'hex')
+        applyFillHex(i, item.hex);
+    else
+        bindVariable(i === 'stroke' ? 'stroke' : 'fills.' + i, item.id);
+}
+document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (el.matches?.('[data-fill-hex]')) {
+        el.dataset.sel = '1';
+        el.select();
+        openFillDropdown(el);
+    }
+});
+document.addEventListener('mouseup', e => {
+    const el = e.target;
+    if (el.dataset?.sel) {
+        e.preventDefault();
+        delete el.dataset.sel;
+    }
+}, true);
+document.addEventListener('focusout', e => {
+    const el = e.target, dd = fillDD;
+    if (!el.matches?.('[data-fill-hex]') || !dd || dd.input !== el)
+        return;
+    const text = el.value.trim().replace(/^#/, ''), picked = dd.picked, i = dd.i, orig = dd.orig;
+    closeFillDropdown();
+    if (!picked && text !== orig && /^[\da-f]{3}([\da-f]{3})?$/i.test(text))
+        applyFillHex(i, text);
+    else if (!picked)
+        el.value = orig;
+});
+document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.matches?.('[data-fill-hex]') && fillDD?.input === el) {
+        fillDD.dirty = true;
+        fillDD.active = 0;
+        fillDD.render();
+    }
+});
+document.addEventListener('keydown', e => {
+    const el = e.target, dd = fillDD;
+    if (!el.matches?.('[data-fill-hex]') || !dd || dd.input !== el)
+        return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        dd.active = (dd.active + (e.key === 'ArrowDown' ? 1 : -1) + dd.items.length) % dd.items.length;
+        dd.paint();
+    }
+    else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        pickFillDD(dd.active);
+    }
+    else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        dd.picked = true;
+        el.value = dd.orig;
+        closeFillDropdown();
+        el.blur();
+    }
+}, true);
+// ----- color picker window -----
+const FP = { open: false, i: 0, tab: 'custom', stop: 1, hsv: null, hsvFor: '', search: '' };
+function closeFillPicker() {
+    document.getElementById('fill-picker')?.remove();
+    FP.open = false;
+}
+function fpKey(f) { return f.type === 'linear' && FP.stop === 2 ? 'color2' : 'color'; }
+function openFillPicker(i, anchor) {
+    const was = FP.open && FP.i === i;
+    closeFillPicker();
+    if (was)
+        return;
+    const el = document.createElement('div');
+    el.id = 'fill-picker';
+    el.className = 'fill-picker';
+    document.body.appendChild(el);
+    FP.open = true;
+    FP.i = i;
+    FP.tab = 'custom';
+    FP.stop = 1;
+    FP.hsv = null;
+    FP.search = '';
+    const ins = document.getElementById('right-panel').getBoundingClientRect(), r = anchor.getBoundingClientRect(), w = 250;
+    el.style.left = Math.max(8, ins.left - w - 12) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - 440, r.top - 10)) + 'px';
+    el.style.width = w + 'px';
+    renderFillPicker();
+    wireFillPicker(el);
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        const picker = document.getElementById('fill-picker');
+        if (!picker) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!picker.contains(ev.target) && !ev.target.closest('[data-fill-open], .fill-dd, #var-picker')) {
+            closeFillPicker();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+const PK_TYPES = [['solid', 'Solid', '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/></svg>'], ['linear', 'Linear gradient', '<svg width="16" height="16" viewBox="0 0 16 16"><defs><linearGradient id="pkg" x1="0" x2="1"><stop stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".15"/></linearGradient></defs><rect x="2" y="2" width="12" height="12" rx="2" fill="url(#pkg)"/></svg>'], ['image', 'Image', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="2"/><circle cx="6" cy="6.5" r="1.2"/><path d="M3 12l3.5-3.5 2.5 2.5 2-2 2.5 3"/></svg>']];
+function renderFillPicker() {
+    const el = document.getElementById('fill-picker'), n = activeNode(), f = n && getFills(n)[FP.i];
+    if (!el || !f) {
+        closeFillPicker();
+        return;
+    }
+    const key = fpKey(f), hex = hex6(f[key] || '#d9d9d9');
+    if (!FP.hsv || FP.hsvFor !== hex) {
+        FP.hsv = rgbToHsv(...hexToRgb(hex));
+        FP.hsvFor = hex;
+    }
+    const { h, s, v } = FP.hsv, a = f.opacity ?? 1;
+    let body = '';
+    if (FP.tab === 'libs') {
+        const groups = colorVariableGroups(FP.search);
+        body = `<input class="vp-search pk-search" data-pk-search placeholder="Search variables" value="${esc(FP.search)}" spellcheck="false"><div class="pk-libs">${groups.length ? groups.map(g => `<div class="vp-group">${esc(g.c.name)}</div>${g.items.map(x => `<button class="vp-item" data-pk-var="${x.id}"><i class="vw-sw" style="background:${esc(String(varDisplayValue(x) ?? '#000'))}"></i><span class="vp-name">${esc(x.name)}</span></button>`).join('')}`).join('') : '<div class="vp-empty">No color variables yet. Create some in the Variables window.</div>'}</div>`;
+    }
+    else if (f.type === 'image')
+        body = `<div class="pk-pad"><button class="wide-button full-width" data-fill-image-pick="${FP.i}">Replace image</button><select class="full-width" data-fill-idx="${FP.i}" data-fill-key="mode" aria-label="Image mode" style="margin-top:8px"><option value="fill" ${(f.mode || 'fill') === 'fill' ? 'selected' : ''}>Fill</option><option value="fit" ${f.mode === 'fit' ? 'selected' : ''}>Fit</option><option value="tile" ${f.mode === 'tile' ? 'selected' : ''}>Tile</option></select>${f.mode === 'tile' ? `<label class="field" style="margin-top:8px"><span>⤢</span><input type="number" min="5" max="1000" value="${fmt((f.scale || 1) * 100)}" data-fill-idx="${FP.i}" data-fill-key="scale" aria-label="Tile scale"><i class="unit">%</i></label>` : ''}</div>`;
+    else {
+        const stops = f.type === 'linear' ? `<div class="pk-stops"><button data-pk-stop="1" class="${FP.stop === 1 ? 'on' : ''}"><i style="background:${esc(f.color || '#d9d9d9')}"></i>Start</button><button data-pk-stop="2" class="${FP.stop === 2 ? 'on' : ''}"><i style="background:${esc(f.color2 || '#ffffff')}"></i>End</button><label class="field pk-angle"><span>∠</span><input type="number" value="${fmt(f.angle ?? 90)}" data-fill-idx="${FP.i}" data-fill-key="angle" aria-label="Gradient angle"><i class="unit">°</i></label></div>` : '';
+        const eye = 'EyeDropper' in window ? `<button class="pk-eye" data-pk-eye title="Pick a color from the screen" aria-label="Eyedropper"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M4 20l1-4 9-9 3 3-9 9z"/></svg></button>` : '<span class="pk-eye"></span>';
+        body = `${stops}<div class="pk-sv" data-pk-sv style="--h:${Math.round(h)}"><i class="pk-sv-h" style="left:${s * 100}%;top:${(1 - v) * 100}%"></i></div><div class="pk-sliders">${eye}<div class="pk-bars"><div class="pk-hue" data-pk-hue><i style="left:${h / 360 * 100}%"></i></div><div class="pk-alpha" data-pk-alpha style="--c:${esc(hex)}"><i style="left:${a * 100}%"></i></div></div></div><div class="pk-hexrow"><span class="pk-fmt">Hex</span><input class="pk-hex" data-pk-hex value="${esc(hex.slice(1).toUpperCase())}" spellcheck="false" aria-label="Hex color"><span class="pk-sp"></span><input class="pk-opin" type="number" min="0" max="100" data-pk-op value="${fmt(a * 100)}" aria-label="Opacity"><i class="pk-pct">%</i></div>`;
+    }
+    el.innerHTML = `<div class="pk-head"><div class="pk-tabs"><button class="${FP.tab === 'custom' ? 'on' : ''}" data-pk-tab="custom">Custom</button><button class="${FP.tab === 'libs' ? 'on' : ''}" data-pk-tab="libs">Libraries</button></div><button class="vw-mini" data-pk-close title="Close" aria-label="Close">${icon('close', 12)}</button></div>${FP.tab === 'custom' ? `<div class="pk-types">${PK_TYPES.map(([t, l, svg]) => `<button class="${f.type === t ? 'on' : ''}" data-pk-type="${t}" title="${l}" aria-label="${l}">${svg}</button>`).join('')}</div>` : ''}${body}`;
+    el.querySelectorAll('[data-img-asset]').forEach(x => { const src = doc.data.assets[x.dataset.imgAsset]; if (src)
+        x.style.backgroundImage = `url("${src}")`; });
+}
+function updatePickerDom(f) {
+    const el = document.getElementById('fill-picker');
+    if (!el)
+        return;
+    const { h, s, v } = FP.hsv, key = fpKey(f), hex = hex6(f[key] || '#d9d9d9'), a = f.opacity ?? 1;
+    const sv = el.querySelector('[data-pk-sv]');
+    if (sv) {
+        sv.style.setProperty('--h', Math.round(h));
+        sv.firstElementChild.style.left = s * 100 + '%';
+        sv.firstElementChild.style.top = (1 - v) * 100 + '%';
+    }
+    el.querySelector('[data-pk-hue] i')?.style.setProperty('left', h / 360 * 100 + '%');
+    const al = el.querySelector('[data-pk-alpha]');
+    if (al) {
+        al.style.setProperty('--c', hex);
+        al.firstElementChild.style.left = a * 100 + '%';
+    }
+    const hx = el.querySelector('[data-pk-hex]');
+    if (hx && document.activeElement !== hx)
+        hx.value = hex.slice(1).toUpperCase();
+    const op = el.querySelector('[data-pk-op]');
+    if (op && document.activeElement !== op)
+        op.value = fmt(a * 100);
+    el.querySelectorAll('[data-pk-stop] i').forEach((i, idx) => { i.style.background = idx === 0 ? f.color : f.color2; });
+}
+function pkDrag(kind, target, e) {
+    const n = activeNode(), f0 = n && getFills(n)[FP.i];
+    if (!f0)
+        return;
+    const rect = target.getBoundingClientRect(), key = fpKey(f0);
+    const apply = (ev, live) => {
+        const nn = activeNode(), f = nn && getFills(nn)[FP.i];
+        if (!f)
+            return;
+        const x = clamp((ev.clientX - rect.left) / rect.width, 0, 1), y = clamp((ev.clientY - rect.top) / rect.height, 0, 1);
+        if (kind === 'alpha')
+            editFill(FP.i, 'opacity', Math.round(x * 100), live);
+        else {
+            if (kind === 'sv') {
+                FP.hsv.s = x;
+                FP.hsv.v = 1 - y;
+            }
+            else
+                FP.hsv.h = x * 360;
+            const hex = hsvHex(FP.hsv);
+            FP.hsvFor = hex;
+            editFill(FP.i, key, hex, live);
+        }
+        updatePickerDom(getFills(nn)[FP.i]);
+    };
+    e.preventDefault();
+    apply(e, true);
+    const move = ev => apply(ev, true);
+    const up = ev => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        apply(ev, false);
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+}
+function wireFillPicker(el) {
+    el.addEventListener('pointerdown', e => {
+        const sv = e.target.closest('[data-pk-sv]'), hue = e.target.closest('[data-pk-hue]'), al = e.target.closest('[data-pk-alpha]');
+        if (sv)
+            pkDrag('sv', sv, e);
+        else if (hue)
+            pkDrag('hue', hue, e);
+        else if (al)
+            pkDrag('alpha', al, e);
+    });
+    el.addEventListener('click', e => {
+        const t = e.target;
+        let b;
+        if (t.closest('[data-pk-close]'))
+            closeFillPicker();
+        else if ((b = t.closest('[data-pk-tab]'))) {
+            FP.tab = b.dataset.pkTab;
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-type]'))) {
+            editFill(FP.i, 'type', b.dataset.pkType, false);
+            FP.hsv = null;
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-stop]'))) {
+            FP.stop = +b.dataset.pkStop;
+            FP.hsv = null;
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-var]'))) {
+            bindVariable('fills.' + FP.i, b.dataset.pkVar);
+            FP.tab = 'custom';
+            renderFillPicker();
+        }
+        else if (t.closest('[data-pk-eye]'))
+            new EyeDropper().open().then(r => { const n = activeNode(), f = n && getFills(n)[FP.i]; if (f) {
+                FP.hsv = null;
+                editFill(FP.i, fpKey(f), r.sRGBHex.toLowerCase(), false);
+                renderFillPicker();
+            } }).catch(() => { });
+    });
+    el.addEventListener('input', e => {
+        if (e.target.matches('[data-pk-search]')) {
+            FP.search = e.target.value;
+            const pos = e.target.selectionStart;
+            renderFillPicker();
+            const s = el.querySelector('[data-pk-search]');
+            s?.focus();
+            s?.setSelectionRange(pos, pos);
+        }
+    });
+    el.addEventListener('change', e => {
+        const t = e.target;
+        if (t.matches('[data-pk-hex]')) {
+            const n = activeNode(), f = n && getFills(n)[FP.i];
+            if (f) {
+                FP.hsv = null;
+                editFill(FP.i, FP.stop === 2 && f.type === 'linear' ? 'hex2' : 'hex', t.value, false);
+                renderFillPicker();
+            }
+        }
+        else if (t.matches('[data-pk-op]')) {
+            const v = t.valueAsNumber;
+            if (Number.isFinite(v))
+                editFill(FP.i, 'opacity', v, false);
+        }
+        else if (t.matches('[data-fill-key="mode"]'))
+            setTimeout(renderFillPicker, 0);
+    });
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT')
+            e.target.blur();
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            closeFillPicker();
+        }
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-fill-open]');
+    if (b)
+        openFillPicker(+b.dataset.fillOpen, b);
+});
+
+// ===== effects: pick a type first, then edit it in a floating window =====
+const FXW = { open: false, i: 0 };
+const FX_ICON = {
+    inner: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M4.5 9.5V6a1.5 1.5 0 0 1 1.5-1.5h4" opacity=".6"/></svg>',
+    drop: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="9" height="9" rx="2"/><path d="M13.5 6v5a2.5 2.5 0 0 1-2.5 2.5H6" opacity=".6"/></svg>',
+    layerBlur: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="4" r="1"/><circle cx="8" cy="4" r="1" opacity=".7"/><circle cx="12" cy="4" r="1" opacity=".4"/><circle cx="4" cy="8" r="1"/><circle cx="8" cy="8" r="1" opacity=".7"/><circle cx="12" cy="8" r="1" opacity=".4"/><circle cx="4" cy="12" r="1"/><circle cx="8" cy="12" r="1" opacity=".7"/><circle cx="12" cy="12" r="1" opacity=".4"/></svg>',
+    bgBlur: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M2.5 6.2h11M2.5 9.8h11M6.2 2.5v11M9.8 2.5v11" opacity=".55"/></svg>',
+    glass: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><path d="M4.8 6.2A4 4 0 0 1 8 4.4" opacity=".7"/></svg>'
+};
+function effectRow(n, e, i) {
+    const hidden = e.visible === false, label = FX_TYPES.find(t => t[0] === e.type)?.[1] || e.type;
+    return `<div class="fx-row ${FXW.open && FXW.i === i ? 'on' : ''} ${hidden ? 'off' : ''}" data-fx-open="${i}" title="Edit effect"><span class="fx-ico">${FX_ICON[e.type] || ''}</span><span class="fx-name">${label}</span><button class="icon-button small" data-fx-toggle="${i}" title="${hidden ? 'Show effect' : 'Hide effect'}" aria-label="Toggle effect">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fx-remove="${i}" title="Remove effect" aria-label="Remove effect">${icon('minus', 14)}</button></div>`;
+}
+function effectsSection(n) {
+    const v = boundVar('effects');
+    if (v)
+        return section('Effects', varChip('effects', v), '');
+    const list = getEffects(n), rows = list.length ? list.map((e, i) => effectRow(n, e, i)).join('') : '';
+    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="effects" title="Apply effect variable" aria-label="Apply effect variable">${VAR_ICON}</button>`;
+    return section('Effects', rows, `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-fx-add title="Add effect" aria-label="Add effect">${icon('plus', 14)}</button></div>`);
+}
+function closeFxMenu() { document.getElementById('fx-menu')?.remove(); }
+function openEffectMenu(anchor) {
+    closeFxMenu();
+    const n = activeNode();
+    if (!n || n.type === 'group')
+        return;
+    const types = n.type === 'text' ? FX_TYPES.filter(t => t[0] === 'layerBlur') : [FX_TYPES[1], FX_TYPES[0], FX_TYPES[2], FX_TYPES[3], FX_TYPES[4]];
+    const menu = document.createElement('div');
+    menu.id = 'fx-menu';
+    menu.className = 'fx-menu';
+    menu.innerHTML = types.map(([t, l]) => `<button data-fx-new="${t}"><span class="fx-ico">${FX_ICON[t]}</span>${l}</button>`).join('');
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(innerWidth - 210, r.right - 200)) + 'px';
+    menu.style.top = Math.min(innerHeight - types.length * 38 - 16, r.bottom + 6) + 'px';
+    menu.addEventListener('click', e => {
+        const b = e.target.closest('[data-fx-new]');
+        if (!b)
+            return;
+        closeFxMenu();
+        addEffect(b.dataset.fxNew);
+        const list = getEffects(activeNode()), idx = list.length - 1;
+        openFxWindow(idx, document.querySelector(`[data-fx-open="${idx}"]`) || anchor, true);
+    });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!document.getElementById('fx-menu')) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!menu.contains(ev.target)) {
+            closeFxMenu();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+function closeFxWindow() {
+    document.getElementById('fx-window')?.remove();
+    FXW.open = false;
+}
+function openFxWindow(i, anchor, force = false) {
+    const was = FXW.open && FXW.i === i;
+    closeFxWindow();
+    if (was && !force) {
+        renderInspector();
+        return;
+    }
+    const el = document.createElement('div');
+    el.id = 'fx-window';
+    el.className = 'fx-window';
+    document.body.appendChild(el);
+    FXW.open = true;
+    FXW.i = i;
+    const ins = document.getElementById('right-panel').getBoundingClientRect(), r = anchor.getBoundingClientRect(), w = 262;
+    el.style.width = w + 'px';
+    el.style.left = Math.max(8, ins.left - w - 12) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - 330, r.top - 8)) + 'px';
+    renderFxWindow();
+    el.addEventListener('click', e => { if (e.target.closest('[data-fxw-close]')) {
+        closeFxWindow();
+        renderInspector();
+    } });
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT')
+            e.target.blur();
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            closeFxWindow();
+            renderInspector();
+        }
+    });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        const win = document.getElementById('fx-window');
+        if (!win) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!win.contains(ev.target) && !ev.target.closest('[data-fx-open], .fx-menu, [data-fx-add]')) {
+            closeFxWindow();
+            renderInspector();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+    renderInspector();
+}
+function renderFxWindow() {
+    const el = document.getElementById('fx-window'), n = activeNode(), e = n && getEffects(n)[FXW.i];
+    if (!el || !e) {
+        closeFxWindow();
+        return;
+    }
+    const i = FXW.i, types = n.type === 'text' ? FX_TYPES.filter(t => t[0] === 'layerBlur') : FX_TYPES;
+    const f = (key, label, value, o = {}) => `<label class="field fxw-f" title="${esc(o.title || label)}"><span>${label}</span><input type="number" step="${o.step || 1}" ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${fmt(value ?? 0)}" data-fx-idx="${i}" data-fx-key="${key}" aria-label="${esc(o.title || label)}"></label>`;
+    const row = (label, ...cells) => `<div class="fxw-row"><span class="fxw-l">${label}</span><div class="fxw-c">${cells.join('')}</div></div>`;
+    let body = '';
+    if (e.type === 'drop' || e.type === 'inner') {
+        const col = e.color || '#000000';
+        body = row('Position', f('x', 'X', e.x)) + row('', f('y', 'Y', e.y)) + row('Blur', f('blur', '⁝⁝', e.blur, { min: 0, title: 'Blur' })) + row('Spread', f('spread', '☼', e.spread, { title: 'Spread' })) + row('Color', `<div class="fxw-color"><label class="fr-sw small" style="background:${swatchBg({ type: 'solid', color: col, opacity: 1 })}"><input type="color" value="${hex6(col)}" data-fx-idx="${i}" data-fx-key="color" aria-label="Shadow color"></label><input class="fxw-hex" type="text" value="${esc(col.replace('#', '').toUpperCase())}" data-fx-idx="${i}" data-fx-key="hex" spellcheck="false" aria-label="Shadow hex"><span class="fxw-sep"></span><input class="fxw-op" type="number" min="0" max="100" value="${fmt((e.opacity ?? .25) * 100)}" data-fx-idx="${i}" data-fx-key="opacity" aria-label="Shadow opacity"><i>%</i></div>`);
+    }
+    else if (e.type === 'glass')
+        body = row('Light', f('angle', '∠', e.angle, { min: -180, max: 180, title: 'Light angle' }), f('intensity', 'I', e.intensity, { min: 0, max: 100, title: 'Light intensity' })) + row('Refraction', f('refraction', 'R', e.refraction, { min: 0, max: 100, title: 'Refraction' }), f('depth', 'D', e.depth, { min: 1, max: 100, title: 'Depth' })) + row('Dispersion', f('dispersion', 'Δ', e.dispersion, { min: 0, max: 100, title: 'Dispersion' })) + row('Frost', f('frost', 'F', e.frost, { min: 0, max: 100, title: 'Frost' }));
+    else
+        body = row('Blur', f('radius', '⁝⁝', e.radius, { min: 0, max: 250, title: 'Blur' }));
+    el.innerHTML = `<div class="fxw-head"><span class="fx-ico">${FX_ICON[e.type] || ''}</span><select class="fxw-type" data-fx-idx="${i}" data-fx-key="type" aria-label="Effect type">${types.map(([v, l]) => `<option value="${v}" ${e.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="vw-mini" data-fxw-close title="Close" aria-label="Close">${icon('close', 12)}</button></div><div class="fxw-body">${body}</div>`;
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-fx-add]')))
+        openEffectMenu(el);
+    else if ((el = e.target.closest('[data-fx-open]')) && !e.target.closest('[data-fx-toggle], [data-fx-remove]'))
+        openFxWindow(+el.dataset.fxOpen, el);
+});
+
+// ===== Position = alignment + X/Y + constraints + rotation + flips (like Figma) =====
+function constraintWidget(n, h, v) {
+    const pin = (side, on) => `<button class="cn-pin ${side} ${on ? 'on' : ''}" data-cn-pin="${side}" aria-label="Pin to ${side}" title="Pin to ${side}"><i></i></button>`;
+    return `<div class="cn-box"><div class="cn-inner ${h === 'scale' || v === 'scale' ? 'scale' : ''}"></div>${pin('top', ['top', 'stretch'].includes(v))}${pin('bottom', ['bottom', 'stretch'].includes(v))}${pin('left', ['left', 'stretch'].includes(h))}${pin('right', ['right', 'stretch'].includes(h))}<i class="cn-cx ${h === 'center' ? 'on' : ''}"></i><i class="cn-cy ${v === 'center' ? 'on' : ''}"></i></div>`;
+}
+const cnSelect = (prop, value, opts, ico) => `<div class="cn-select"><span class="cn-ico">${ico}</span>${selectField(prop, value, opts)}</div>`;
+const POS_ICONS = {
+    rot90: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 8A4.5 4.5 0 1 1 8 3.5h3"/><path d="M9.5 1.5l2 2-2 2"/></svg>',
+    flipH: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 2v12" stroke-dasharray="1.6 1.6"/><path d="M6.5 4.5L2.5 12h4zM9.5 4.5l4 7.5h-4z"/></svg>',
+    flipV: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 8h12" stroke-dasharray="1.6 1.6"/><path d="M4.5 6.5L12 2.5v4zM4.5 9.5l7.5 4v-4z"/></svg>'
+};
+function positionSectionHtml(n) {
+    const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
+    const p = doc.get(n.parentId), cons = !!p && p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute');
+    const h = n.constraintH || 'left', v = n.constraintV || 'top';
+    const flips = `<div class="pos-flips"><button data-rotate90 title="Rotate 90°" aria-label="Rotate 90 degrees">${POS_ICONS.rot90}</button><button data-flip="x" class="${n.flipX ? 'on' : ''}" title="Flip horizontal" aria-label="Flip horizontal">${POS_ICONS.flipH}</button><button data-flip="y" class="${n.flipY ? 'on' : ''}" title="Flip vertical" aria-label="Flip vertical">${POS_ICONS.flipV}</button></div>`;
+    const left = (cons ? cnSelect('constraintH', h, [['left', 'Left'], ['right', 'Right'], ['stretch', 'Left & Right'], ['center', 'Center'], ['scale', 'Scale']], '⊢⊣') + cnSelect('constraintV', v, [['top', 'Top'], ['bottom', 'Bottom'], ['stretch', 'Top & Bottom'], ['center', 'Center'], ['scale', 'Scale']], '⌶') : '') + field(icon('rotate', 12), 'rotation', n.rotation, { unit: '°', title: 'Rotation' });
+    return `${floatControl(n)}<div class="align-buttons">${align}</div><div class="property-grid">${field('X', 'x', n.x)}${field('Y', 'y', n.y)}</div><div class="pos-grid"><div class="pos-left">${left}</div><div class="pos-right">${cons ? constraintWidget(n, h, v) : ''}${flips}</div></div>`;
+}
+// Flips mirror the layer in its parent's axes: that negates the rotation and toggles the flip flag.
+function flipSelection(axis) {
+    transaction(axis === 'x' ? 'Flip horizontal' : 'Flip vertical', () => {
+        const roots = selectedRoots().filter(n => !n.locked);
+        if (roots.length > 1 && roots.every(n => n.parentId === roots[0].parentId)) {
+            const min = Math.min(...roots.map(n => axis === 'x' ? n.x : n.y)), max = Math.max(...roots.map(n => axis === 'x' ? n.x + n.w : n.y + n.h));
+            for (const n of roots) {
+                if (axis === 'x')
+                    n.x = min + max - (n.x + n.w);
+                else
+                    n.y = min + max - (n.y + n.h);
+            }
+        }
+        for (const n of roots) {
+            const key = axis === 'x' ? 'flipX' : 'flipY';
+            n[key] = !n[key];
+            if (!n[key])
+                delete n[key];
+            let r = -(n.rotation || 0);
+            if (r <= -180)
+                r += 360;
+            n.rotation = r;
+            doc.touch(n);
+        }
+    });
+}
+document.addEventListener('click', e => {
+    let el;
+    if ((el = e.target.closest('[data-flip]')))
+        flipSelection(el.dataset.flip);
+    else if (e.target.closest('[data-rotate90]'))
+        transaction('Rotate 90°', () => { for (const n of selectedRoots().filter(m => !m.locked)) {
+            let r = ((n.rotation || 0) + 90) % 360;
+            if (r > 180)
+                r -= 360;
+            n.rotation = r;
+            doc.touch(n);
+        } });
+});
+// Where a layer's (0,0) corner lands, expressed as the x/y a node needs (rotation + flips about its centre).
+function xyForTopLeft(n, tl) {
+    const r = (n.rotation || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), fx = n.flipX ? -1 : 1, fy = n.flipY ? -1 : 1, cx = n.w / 2, cy = n.h / 2;
+    return { x: tl.x - cx + (c * fx * cx - s * fy * cy), y: tl.y - cy + (s * fx * cx + c * fy * cy) };
+}
+
+class DocumentModel {
+    constructor(data) { this.data = data || makeStarter(); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
+    get nodes() { return this.page.nodes; }
+    get(id) { return this._map.get(id); }
+    refresh() {
+        this._map = new Map();
+        this._byParent = new Map();
+        for (const n of this.nodes) {
+            this._map.set(n.id, n);
+            const pid = n.parentId || null;
+            let list = this._byParent.get(pid);
+            if (!list) {
+                list = [];
+                this._byParent.set(pid, list);
+            }
+            list.push(n);
+        }
+        this.revision++;
+        this._sceneRevision = -1;
+        if (this.page) {
+            this._pageSnapshots.delete(this.page.id);
+        }
+    }
+    touch(n) {
+        if (n)
+            n.version = (n.version || 0) + 1;
+        this.revision++;
+        this._sceneRevision = -1;
+        if (this.page) {
+            this._pageSnapshots.delete(this.page.id);
+        }
+    }
+    add(n) {
+        this.nodes.push(n);
+        this._map.set(n.id, n);
+        const pid = n.parentId || null;
+        let list = this._byParent.get(pid);
+        if (!list) {
+            list = [];
+            this._byParent.set(pid, list);
+        }
+        list.push(n);
+        this.touch(n);
+        return n;
+    }
+    children(id) { return this._byParent.get(id || null) || []; }
+    descendants(id) {
+        const out = [], queue = [id], seen = new Set([id]);
+        while (queue.length > 0) {
+            const p = queue.shift();
+            for (const n of this.children(p)) {
+                if (!seen.has(n.id)) {
+                    seen.add(n.id);
+                    out.push(n);
+                    queue.push(n.id);
+                }
+            }
+        }
+        return out;
+    }
+    roots(ids) { const set = new Set(ids); return ids.map(id => this.get(id)).filter(n => n && !this.ancestors(n).some(p => set.has(p.id))); }
+    ancestors(n) {
+        if (!n)
+            return [];
+        const a = [], seen = new Set([n.id]);
+        let p = this.get(n.parentId);
+        while (p && !seen.has(p.id)) {
+            seen.add(p.id);
+            a.push(p);
+            p = this.get(p.parentId);
+        }
+        return a;
+    }
+    remove(ids) {
+        const all = new Set(ids);
+        for (const id of ids)
+            for (const n of this.descendants(id))
+                all.add(n.id);
+        this.page.nodes = this.nodes.filter(n => !all.has(n.id));
+        this.refresh();
+    }
+    scene() {
+        if (this._sceneRevision === this.revision)
+            return this._scene;
+        if (!this._laying) {
+            this._laying = true;
+            try {
+                for (let pass = 0; pass < 3; pass++) {
+                    const before = this.revision;
+                    applyVariables(this);
+                    applyConstraints(this);
+                    runLayout(this);
+                    if (this.revision === before)
+                        break;
+                }
+            }
+            finally {
+                this._laying = false;
+            }
+        }
+        const out = [], world = new Map(), byParent = new Map(), boolInside = new Set(); // boolean groups and everything inside them
+        for (const n of this.nodes) {
+            const pid = this.get(n.parentId) ? n.parentId : null;
+            if (!byParent.has(pid))
+                byParent.set(pid, []);
+            byParent.get(pid).push(n);
+        }
+        const visited = new Set();
+        const walk = (pid, m, opacity, parentClips, hidden, locked, depth) => {
+            if (depth > 500) // cycle guard only
+                return;
+            // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
+            let clips = parentClips;
+            for (const n of byParent.get(pid) || []) {
+                if (visited.has(n.id))
+                    continue;
+                visited.add(n.id);
+                const mat = multiply(m, localMatrix(n)), box = boxOf(mat, n.w, n.h), o = opacity * n.opacity, hide = hidden || !n.visible, lock = locked || n.locked;
+                const item = { node: n, matrix: mat, inverse: inverse(mat), box, opacity: o, clips, hidden: hide, locked: lock, boolChild: boolInside.has(pid) };
+                world.set(n.id, item);
+                if (!hide)
+                    out.push(item);
+                const next = n.type === 'frame' && n.clip ? [...clips, { matrix: mat, inverse: inverse(mat), w: n.w, h: n.h, radius: n.radius, radii: cornerRadii(n) }] : clips;
+                if (n.booleanOp || boolInside.has(pid))
+                    boolInside.add(n.id);
+                walk(n.id, mat, o, next, hide, lock, depth + 1);
+                if (n.isMask && n.visible && n.type !== 'group')
+                    clips = [...parentClips, { mask: n, matrix: mat, inverse: inverse(mat), w: n.w, h: n.h }];
+            }
+        };
+        walk(null, identity(), 1, [], false, false, 0);
+        this._world = world;
+        this._scene = out;
+        this._sceneRevision = this.revision;
+        return out;
+    }
+    world(id) {
+        this.scene();
+        return this._world.get(id) || {
+            node: this.get(id) || null,
+            matrix: identity(),
+            inverse: identity(),
+            box: { x: 0, y: 0, w: 0, h: 0 },
+            opacity: 1,
+            clips: [],
+            hidden: true,
+            locked: false,
+            boolChild: false
+        };
+    }
+    bounds(ids) { return union((ids ? ids.map(id => this.world(id)) : this.scene().filter(s => !s.node.parentId)).filter(Boolean).map(s => s.box)); }
+    snapshot() {
+        const pageChunks = this.data.pages.map(p => {
+            let s = this._pageSnapshots.get(p.id);
+            if (!s) {
+                s = JSON.stringify(p);
+                this._pageSnapshots.set(p.id, s);
+            }
+            return s;
+        });
+        const meta = {
+            name: this.data.name,
+            pageId: this.data.pageId,
+            tokens: this.data.tokens,
+            variables: this.data.variables,
+            thumbnailId: this.data.thumbnailId ?? null
+        };
+        const metaStr = JSON.stringify(meta);
+        return metaStr.slice(0, -1) + ',"pages":[' + pageChunks.join(',') + ']}';
+    }
+    restore(s) {
+        this._pageSnapshots.clear();
+        Object.assign(this.data, JSON.parse(s));
+        this.refresh();
+    }
+    serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }, null, 2); }
+    static parse(text) {
+        const d = typeof text === 'string' ? JSON.parse(text) : text;
+        if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
+            throw new Error('This is not a supported Midas document.');
+        const all = new Set();
+        let total = 0;
+        const valid = new Set(['rect', 'ellipse', 'text', 'frame', 'group', 'path', 'line', 'image']);
+        for (const p of d.pages) {
+            if (typeof p.id !== 'string' || !/^[-_a-zA-Z0-9]{1,128}$/.test(p.id) || typeof p.name !== 'string' || !Array.isArray(p.nodes))
+                throw new Error('Invalid page.');
+            total += p.nodes.length;
+            const ids = new Set(p.nodes.map(n => n.id));
+            for (let i = 0; i < p.nodes.length; i++) {
+                const n = p.nodes[i];
+                if (typeof n.id !== 'string' || !/^[-_a-zA-Z0-9]{1,128}$/.test(n.id) || all.has(n.id) || !valid.has(n.type))
+                    throw new Error('Invalid or duplicate layer.');
+                all.add(n.id);
+                for (const k of ['x', 'y', 'w', 'h', 'rotation', 'opacity']) {
+                    if (typeof n[k] !== 'number' || !Number.isFinite(n[k]) || Math.abs(n[k]) > 1e7)
+                        throw new Error(`Invalid ${k} in layer.`);
+                }
+                if (n.w < 0 || n.h < 0)
+                    throw new Error('Negative layer dimensions.');
+                if (n.parentId && !ids.has(n.parentId))
+                    throw new Error('Invalid layer parent.');
+                if (typeof n.name !== 'string')
+                    n.name = n.type;
+                if (n.text !== undefined && typeof n.text !== 'string')
+                    throw new Error('Invalid text content.');
+                if (n.points) {
+                    if (!Array.isArray(n.points))
+                        n.points = [];
+                    n.points = n.points.filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+                    for (const p of n.points) {
+                        if (p.in && (!Number.isFinite(p.in.x) || !Number.isFinite(p.in.y)))
+                            delete p.in;
+                        if (p.out && (!Number.isFinite(p.out.x) || !Number.isFinite(p.out.y)))
+                            delete p.out;
+                    }
+                }
+                if (n.text && n.text.length > 100000)
+                    throw new Error('Text layer is too large.');
+                p.nodes[i] = node(n.type, n);
+            }
+            const map = new Map(p.nodes.map(n => [n.id, n]));
+            for (const n of p.nodes) {
+                const seen = new Set([n.id]);
+                let par = map.get(n.parentId), depth = 0;
+                while (par) {
+                    if (seen.has(par.id) || ++depth > 10000)
+                        throw new Error('Cyclic layer hierarchy.');
+                    seen.add(par.id);
+                    par = map.get(par.parentId);
+                }
+            }
+        }
+        // Pages may nest: a page with no layers acts as a folder for other pages.
+        const pageIds = new Set(d.pages.map(p => p.id));
+        for (const p of d.pages) {
+            if (p.parentId && (!pageIds.has(p.parentId) || p.parentId === p.id))
+                p.parentId = null;
+        }
+        d.assets ||= {};
+        for (const v of Object.values(d.assets)) {
+            if (typeof v !== 'string' || !/^data:image\/(png|jpeg|webp|gif|svg\+xml);/i.test(v))
+                throw new Error('Unsupported image asset.');
+        }
+        d.tokens = defaultTokens();
+        d.pageId = d.pages.some(p => p.id === d.pageId) ? d.pageId : d.pages[0].id;
+        return d;
+    }
+}
+class History {
+    constructor(doc) { this.doc = doc; this.undoStack = []; this.redoStack = []; this.pending = null; }
+    // Strings are immutable: shallow copies retain image/font data without serializing binary
+    // payloads into every geometry snapshot. Replacing a document is therefore reversible.
+    capture(label) {
+        return { label, snapshot: this.doc.snapshot(), assets: { ...this.doc.data.assets }, fonts: { ...this.doc.data.fonts } };
+    }
+    apply(entry) {
+        this.doc.data.assets = { ...entry.assets };
+        this.doc.data.fonts = { ...entry.fonts };
+        this.doc.restore(entry.snapshot);
+    }
+    begin(label = 'Edit') { if (!this.pending)
+        this.pending = this.capture(label); }
+    commit() {
+        if (!this.pending)
+            return false;
+        const entry = this.pending;
+        this.pending = null;
+        const sameMap = (a, b = {}) => Object.keys(a).length === Object.keys(b).length && Object.keys(a).every(key => a[key] === b[key]);
+        if (entry.snapshot === this.doc.snapshot() && sameMap(entry.assets, this.doc.data.assets) && sameMap(entry.fonts, this.doc.data.fonts))
+            return false;
+        this.undoStack.push(entry);
+        if (this.undoStack.length > 40)
+            this.undoStack.shift();
+        this.redoStack = [];
+        return true;
+    }
+    cancel() { if (this.pending) {
+        this.apply(this.pending);
+        this.pending = null;
+    } }
+    undo() {
+        this.commit();
+        const entry = this.undoStack.pop();
+        if (!entry)
+            return null;
+        this.redoStack.push(this.capture(entry.label));
+        this.apply(entry);
+        return entry.label;
+    }
+    redo() {
+        const entry = this.redoStack.pop();
+        if (!entry)
+            return null;
+        this.undoStack.push(this.capture(entry.label));
+        this.apply(entry);
+        return entry.label;
+    }
+}
+function defaultTokens() { return { colors: [], typography: [] }; }
+function makeStarter() {
+    const p = { id: uid(), name: 'Design exploration', nodes: [] }, ds = { id: uid(), name: 'Design system', nodes: [] }, play = { id: uid(), name: 'Playground', nodes: [] };
+    let page = p;
+    const add = (type, props) => { const n = node(type, props); page.nodes.push(n); return n; };
+    const rect = (parent, x, y, w, h, fill, radius = 0, name = 'Surface', extra = {}) => add('rect', { parentId: parent?.id || null, x, y, w, h, fill, radius, name, ...extra });
+    const text = (parent, x, y, w, h, str, size = 14, fill = '#282431', weight = 400, extra = {}) => add('text', { parentId: parent?.id || null, x, y, w, h, text: str, fontSize: size, fill, fontWeight: weight, name: str.length > 28 ? str.slice(0, 27) + '…' : str, lineHeight: 1.3, ...extra });
+    const ellipse = (parent, x, y, w, h, fill, extra = {}) => add('ellipse', { parentId: parent?.id || null, x, y, w, h, fill, name: 'Ellipse', ...extra });
+    const ln = (parent, x, y, w, h, stroke = '#e9e6ee', sw = 1) => add('line', { parentId: parent?.id || null, x, y, w, h, fill: 'none', stroke, strokeWidth: sw, name: 'Divider' });
+    const dash = add('frame', { x: 0, y: 0, w: 1000, h: 720, fill: '#faf9fc', radius: 12, name: '01 · Workspace / Desktop', shadow: true, shadowOpacity: .24, shadowBlur: 24, shadowY: 12 });
+    const side = add('frame', { parentId: dash.id, x: 0, y: 0, w: 184, h: 720, fill: '#ffffff', name: 'Navigation', clip: false });
+    text(side, 28, 30, 26, 35, '◒', 30, '#0058CA', 700);
+    text(side, 62, 34, 99, 30, 'forma', 24, '#282431', 650, { letterSpacing: -1.2 });
+    rect(side, 18, 95, 148, 37, '#f5f3f8', 7, 'Workspace switcher');
+    rect(side, 27, 103, 20, 20, '#e3edfb', 5);
+    text(side, 31, 105, 17, 18, 'S', 12, '#0058CA', 650);
+    text(side, 55, 106, 93, 20, 'Studio workspace', 10, '#5d566a', 500);
+    text(side, 150, 106, 10, 17, '⌄', 12, '#81778c');
+    text(side, 27, 159, 125, 15, 'WORKSPACE', 8, '#a29aaa', 550, { letterSpacing: 1.3 });
+    const nav = [['▦', 'Overview', true], ['□', 'My projects', false], ['◷', 'Schedule', false], ['▤', 'All tasks', false], ['◇', 'Team members', false]];
+    nav.forEach(([icon, label, active], i) => {
+        if (active)
+            rect(side, 15, 185 + i * 42, 154, 35, '#e3edfb', 7, label + ' active');
+        text(side, 28, 194 + i * 42, 20, 20, icon, 14, active ? '#0058CA' : '#a399af', 500);
+        text(side, 57, 195 + i * 42, 103, 18, label, 10, active ? '#0058CA' : '#77707f', active ? 600 : 400);
+        if (label === 'All tasks') {
+            rect(side, 140, 197 + i * 42, 17, 15, '#f0edf4', 4);
+            text(side, 145, 199 + i * 42, 12, 13, '8', 8, '#8d829b', 500);
+        }
+    });
+    ln(side, 24, 415, 136, 0);
+    text(side, 27, 440, 110, 18, 'FAVORITES', 8, '#a29aaa', 550, { letterSpacing: 1.2 });
+    text(side, 29, 475, 137, 20, '●     Website redesign', 10, '#5b8fc9');
+    text(side, 29, 509, 137, 20, '●     Mobile experience', 10, '#89a897');
+    rect(side, 19, 593, 146, 68, '#f4f8fd', 9, 'Upgrade card');
+    text(side, 31, 605, 126, 20, 'Room for more ideas.', 10, '#4f6275', 600);
+    text(side, 31, 629, 126, 20, 'Explore Forma Pro   ↗', 9, '#0d63c9', 500);
+    ellipse(side, 25, 679, 25, 25, '#e9d8c9');
+    text(side, 31, 684, 17, 18, 'JD', 8, '#8c6958', 600);
+    text(side, 59, 680, 97, 18, 'Jamie Davis', 10, '#4c425b', 500);
+    text(side, 59, 695, 90, 13, 'Personal account', 7, '#aaa0b2');
+    ln(dash, 184, 0, 0, 720, '#ece9f1');
+    text(dash, 219, 31, 150, 24, 'Overview', 15, '#40394c', 600);
+    text(dash, 744, 36, 148, 19, '⌕    Search anything…', 10, '#a89faf');
+    ellipse(dash, 930, 28, 28, 28, '#e6eefb');
+    text(dash, 939, 35, 16, 17, '✧', 12, '#4a7cb5');
+    ln(dash, 184, 79, 816, 0, '#ebe8f0');
+    text(dash, 219, 105, 465, 38, 'Good morning, Jamie', 27, '#302937', 600, { letterSpacing: -.8 });
+    text(dash, 220, 149, 493, 25, "Let’s make space for your best work.", 11, '#9a91a3');
+    rect(dash, 811, 114, 152, 32, '#ffffff', 6, 'Date', { stroke: '#e9e4ef', strokeWidth: 1 });
+    text(dash, 824, 123, 136, 20, '▦   Monday, September 7', 9, '#83788f');
+    const hero = add('frame', { parentId: dash.id, x: 219, y: 191, w: 464, h: 158, fill: '#dceafb', radius: 11, name: 'Your ideas. In motion.', clip: true });
+    text(hero, 25, 20, 240, 18, 'A LITTLE FOCUS GOES A LONG WAY', 7.5, '#7aa2cc', 600, { letterSpacing: .9 });
+    text(hero, 25, 47, 289, 36, 'Your ideas. In motion.', 24, '#2c5a90', 600, { letterSpacing: -.6 });
+    text(hero, 25, 84, 273, 20, 'Turn today’s inspiration into tomorrow’s great work.', 9, '#7d9dc2');
+    rect(hero, 25, 113, 112, 28, '#0058CA', 6, 'Explore projects');
+    text(hero, 40, 121, 93, 15, 'Explore projects   ↗', 8, '#ffffff', 500);
+    ellipse(hero, 336, 28, 158, 158, '#b9d4f2', { name: 'Decorative orb' });
+    ellipse(hero, 363, 51, 101, 101, '#d2e3f9');
+    ellipse(hero, 389, 77, 48, 48, '#eff5fd');
+    rect(hero, 324, 32, 66, 14, '#dceafb', 5, 'Orbit cut', { rotation: -38 });
+    rect(hero, 352, 129, 88, 16, '#dceafb', 7, 'Orbit cut', { rotation: -38 });
+    const progress = add('frame', { parentId: dash.id, x: 699, y: 191, w: 265, h: 158, fill: '#ffffff', radius: 11, name: 'Weekly progress' });
+    text(progress, 18, 19, 192, 24, 'Your weekly progress', 11, '#615469', 600);
+    text(progress, 18, 49, 114, 48, '82%', 34, '#4f425b', 600, { letterSpacing: -1.5 });
+    text(progress, 19, 96, 113, 18, '↑  12% from last week', 8, '#80a18d');
+    text(progress, 19, 129, 163, 19, 'You’re finding your rhythm. Nice work.', 8, '#aaa0b1');
+    ellipse(progress, 168, 56, 69, 69, 'none', { stroke: '#e6eef8', strokeWidth: 8, name: 'Progress track' });
+    add('path', { parentId: progress.id, x: 168, y: 56, w: 69, h: 69, points: [{ x: 34.5, y: 0 }, { x: 63, y: 14 }, { x: 69, y: 43 }, { x: 49, y: 65 }, { x: 20, y: 67 }, { x: 1, y: 44 }], closed: false, stroke: '#5b9cf0', strokeWidth: 8, fill: 'none', name: 'Progress arc' });
+    text(progress, 186, 78, 44, 23, '✦', 24, '#3d7fcd', 600);
+    text(dash, 220, 379, 309, 29, 'Your projects', 17, '#4b4057', 600, { letterSpacing: -.3 });
+    text(dash, 874, 384, 97, 20, 'View all projects  →', 9, '#8ea5c2');
+    const cards = [{ x: 219, bg: '#e6eefb', dot: '#5b9cf0', name: 'Website redesign', tag: 'Design', pct: 72, people: '#c9d8e8', desc: 'A fresh perspective for a familiar brand.' }, { x: 471, bg: '#eaf1ec', dot: '#87a691', name: 'Mobile experience', tag: 'Product', pct: 48, people: '#c8d6ce', desc: 'Small screen. Big possibilities.' }, { x: 723, bg: '#f6efe7', dot: '#c4a47f', name: 'Brand foundations', tag: 'Strategy', pct: 91, people: '#e1c6b4', desc: 'Everything that makes us, us.' }];
+    cards.forEach((c, i) => { const frame = add('frame', { parentId: dash.id, x: c.x, y: 420, w: 241, h: 170, fill: '#ffffff', radius: 10, name: c.name, stroke: '#eeeaf2', strokeWidth: 1 }); rect(frame, 15, 16, 31, 31, c.bg, 8, 'Project icon'); text(frame, 25, 22, 24, 25, ['✳', '▦', '◇'][i], 17, c.dot); text(frame, 208, 18, 20, 19, '···', 12, '#aca1b7'); text(frame, 16, 61, 210, 24, c.name, 13, '#5f526c', 600); text(frame, 16, 88, 218, 21, c.desc, 8, '#ab9fb5'); rect(frame, 16, 117, 208, 4, '#f3eff6', 2, 'Progress track'); rect(frame, 16, 117, 208 * c.pct / 100, 4, c.dot, 2, 'Progress'); ellipse(frame, 17, 140, 17, 17, c.people); ellipse(frame, 30, 140, 17, 17, '#e8e0ed', { stroke: '#ffffff', strokeWidth: 2 }); ellipse(frame, 43, 140, 17, 17, '#d9d0e4', { stroke: '#ffffff', strokeWidth: 2 }); text(frame, 182, 141, 44, 14, `${c.pct}% done`, 8, '#9d8eaa'); });
+    text(dash, 220, 618, 276, 25, 'A little momentum', 16, '#554760', 600, { letterSpacing: -.4 });
+    text(dash, 819, 623, 150, 18, 'Your most recent activity', 8, '#b0a3bb');
+    rect(dash, 220, 656, 743, 43, '#ffffff', 8, 'Activity');
+    ellipse(dash, 235, 667, 22, 22, '#e2e9f0');
+    text(dash, 242, 672, 15, 15, 'A', 8, '#5a7fa8', 500);
+    text(dash, 269, 670, 463, 19, 'Alex added new explorations to Website redesign', 10, '#8b7b99');
+    text(dash, 882, 672, 72, 16, '2 min ago', 8, '#b5a9bf');
+    const mob = add('frame', { x: 1064, y: 0, w: 310, h: 670, fill: '#22202c', radius: 28, name: '02 · Focus / Mobile', shadow: true, shadowOpacity: .28, shadowBlur: 22, shadowY: 12 });
+    text(mob, 24, 19, 55, 24, '9:41', 12, '#faf8fd', 600);
+    rect(mob, 230, 25, 12, 7, '#d6d0e2', 2);
+    rect(mob, 248, 22, 15, 10, 'none', 2, 'Battery', { stroke: '#d6d0e2', strokeWidth: 1 });
+    rect(mob, 250, 24, 10, 6, '#d6d0e2', 1);
+    text(mob, 24, 66, 202, 23, 'forma', 22, '#f0eafb', 600, { letterSpacing: -1 });
+    ellipse(mob, 258, 66, 27, 27, '#393341');
+    text(mob, 266, 72, 16, 18, '✧', 13, '#a0bdd0');
+    text(mob, 24, 127, 260, 78, 'Find your\nflow state.', 35, '#f6f1ff', 500, { letterSpacing: -1.4, lineHeight: 1.1 });
+    text(mob, 25, 221, 260, 24, 'Less noise. More of what matters.', 11, '#9d91ad');
+    const focus = add('frame', { parentId: mob.id, x: 20, y: 268, w: 270, h: 211, fill: '#7fb0e3', fill2: '#4a86c8', fillType: 'linear', gradientAngle: 140, radius: 17, name: 'Focus session' });
+    text(focus, 19, 17, 214, 20, 'YOUR DAILY MOMENT', 8, '#eaf2fb', 600, { letterSpacing: 1 });
+    ellipse(focus, 91, 47, 89, 89, 'none', { stroke: '#b6d2ef', strokeWidth: 2 });
+    ellipse(focus, 99, 55, 73, 73, 'none', { stroke: '#d2e4f7', strokeWidth: 1 });
+    text(focus, 104, 76, 100, 41, '25:00', 29, '#ffffff', 400, { letterSpacing: -1.2 });
+    text(focus, 104, 113, 90, 14, 'MINUTES OF FOCUS', 5.4, '#eaf2fb', 600, { letterSpacing: .7 });
+    rect(focus, 20, 158, 230, 36, '#f0f6fd', 9, 'Start session');
+    text(focus, 88, 169, 123, 19, 'Start a session   ↗', 10, '#3a74b0', 600);
+    text(mob, 24, 511, 234, 24, 'Make a little progress', 14, '#e4dbf0', 500);
+    rect(mob, 23, 549, 124, 53, '#2d2836', 10);
+    rect(mob, 160, 549, 127, 53, '#2d2836', 10);
+    text(mob, 36, 559, 104, 22, '4.5 hours', 16, '#dcd1ea', 500);
+    text(mob, 37, 583, 97, 13, 'FOCUSED THIS WEEK', 6, '#857591', 550, { letterSpacing: .5 });
+    text(mob, 174, 559, 102, 22, '7 day streak', 16, '#dcd1ea', 500);
+    text(mob, 175, 583, 103, 13, 'LOOK AT YOU GO', 6, '#857591', 550, { letterSpacing: .5 });
+    text(mob, 43, 627, 35, 27, '◒', 21, '#7fb0e3');
+    text(mob, 143, 629, 35, 27, '▦', 19, '#70637f');
+    text(mob, 241, 629, 35, 27, '◷', 19, '#70637f');
+    rect(mob, 116, 659, 78, 3, '#736681', 2);
+    text(null, 0, 785, 600, 40, 'The little details, considered.', 22, '#a89ab8', 500, { letterSpacing: -.6 });
+    text(null, 0, 825, 800, 22, 'A calm foundation. An expressive personality. A design system that gives ideas room to grow.', 10, '#736a80');
+    const tokens = add('frame', { x: 0, y: 883, w: 466, h: 162, fill: '#f8f6fc', radius: 10, name: '03 · Color palette' });
+    text(tokens, 23, 20, 300, 20, 'A softer kind of bold', 12, '#6d7f94', 600);
+    const sw = ['#0058CA', '#7fb0e3', '#dceafb', '#c7e0d3', '#edcfb7', '#2b2535'];
+    sw.forEach((c, i) => { rect(tokens, 23 + i * 72, 57, 60, 60, c, 9, 'Color ' + c); text(tokens, 23 + i * 72, 130, 65, 15, c.toUpperCase(), 7, '#a8b6c6', 500); });
+    const types = add('frame', { x: 491, y: 883, w: 395, h: 162, fill: '#e3edfb', radius: 10, name: '04 · Typography' });
+    text(types, 22, 18, 310, 20, 'TYPE THAT SETS THE TONE', 7, '#8fa9c6', 600, { letterSpacing: 1 });
+    text(types, 22, 53, 341, 57, 'Room to create.', 32, '#2f6198', 500, { letterSpacing: -1.1 });
+    text(types, 23, 124, 354, 19, 'Inter   /   Regular · Medium · Semibold', 9, '#8ba7c6');
+    const buttonFrame = add('frame', { x: 911, y: 883, w: 463, h: 162, fill: '#f7f5fb', radius: 10, name: '05 · Building blocks' });
+    text(buttonFrame, 22, 20, 392, 20, 'Small pieces. Endless possibilities.', 12, '#7f8ea3', 500);
+    rect(buttonFrame, 22, 62, 137, 36, '#0058CA', 7, 'Primary button');
+    text(buttonFrame, 48, 74, 106, 20, 'Create something  ↗', 9, '#ffffff', 500);
+    rect(buttonFrame, 176, 62, 124, 36, '#dceafb', 7, 'Secondary button');
+    text(buttonFrame, 200, 74, 93, 20, 'Take a look   →', 9, '#2f6198', 500);
+    rect(buttonFrame, 317, 62, 121, 36, '#ffffff', 7, 'Ghost button', { stroke: '#dde7f0', strokeWidth: 1 });
+    text(buttonFrame, 341, 74, 90, 20, 'Maybe later', 9, '#5c7fa6', 500);
+    rect(buttonFrame, 23, 118, 69, 22, '#dceafb', 11, 'Design tag');
+    text(buttonFrame, 39, 124, 54, 15, '●  Design', 8, '#3d7fcd');
+    rect(buttonFrame, 107, 118, 85, 22, '#e5ede7', 11, 'Progress tag');
+    text(buttonFrame, 120, 124, 74, 15, '●  In progress', 8, '#9bb7a5');
+    rect(buttonFrame, 207, 118, 88, 22, '#f0e6dc', 11, 'Priority tag');
+    text(buttonFrame, 222, 124, 70, 15, '●  High priority', 8, '#c3a07f');
+    page = ds;
+    const system = add('frame', { x: 0, y: 0, w: 1100, h: 850, fill: '#faf8fd', name: 'Forma / Design foundations', radius: 12 });
+    text(system, 60, 58, 980, 75, 'Designed to give ideas room.', 46, '#3f4c5c', 500, { letterSpacing: -1.6 });
+    text(system, 62, 149, 870, 30, 'Our visual language is calm, considered, and quietly expressive.', 17, '#8b99a8');
+    text(system, 63, 235, 800, 30, '01 / Color foundations', 21, '#64748a', 500);
+    defaultTokens().colors.forEach((c, i) => { rect(system, 63 + i * 164, 291, 143, 108, c.value, 12, c.name); text(system, 63 + i * 164, 418, 158, 23, c.name, 11, '#74879c', 500); text(system, 63 + i * 164, 445, 143, 20, c.value.toUpperCase(), 10, '#a3b1c0'); });
+    text(system, 63, 515, 800, 30, '02 / Typographic scale', 21, '#64748a', 500);
+    defaultTokens().typography.forEach((t, i) => { text(system, 64, 576 + i * 62, 270, 28, t.name, 11, '#9db0c2'); text(system, 360, 564 + i * 62, 680, 57, 'Make something meaningful.', t.size, '#4c6478', t.weight, { lineHeight: t.lineHeight, letterSpacing: t.size > 30 ? -1 : 0 }); });
+    return { format: 'midas', version: 1, name: 'Forma · Product design', pageId: p.id, pages: [p, ds, play], tokens: defaultTokens(), assets: {} };
+}
+
+
+// ===== renderer.js =====
+
+const FONT_STACK = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+function fontSpec(n) { return `${n.fontStyle || 'normal'} ${n.fontWeight || 400} ${n.fontSize || 16}px ${n.fontFamily === 'Inter' ? FONT_STACK : `"${String(n.fontFamily).replace(/["\\]/g, '')}", sans-serif`}`; }
+function displayText(n) {
+    let t = n.text || '';
+    if (n.textCase === 'upper')
+        t = t.toLocaleUpperCase();
+    if (n.textCase === 'lower')
+        t = t.toLocaleLowerCase();
+    if (n.textCase === 'title')
+        t = t.replace(/\p{L}[\p{L}\p{M}]*/gu, s => s[0].toLocaleUpperCase() + s.slice(1).toLocaleLowerCase());
+    return t;
+}
+const measureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+function layoutText(n, ctx = measureCanvas.getContext('2d')) {
+    ctx.font = fontSpec(n);
+    ctx.letterSpacing = `${n.letterSpacing || 0}px`;
+    const max = n.autoW ? 1e9 : Math.max(1, n.w), lines = [];
+    for (const paragraph of displayText(n).split('\n')) {
+        if (!paragraph) {
+            lines.push('');
+            continue;
+        }
+        const words = paragraph.match(/\s+|\S+/gu) || [];
+        let line = '';
+        for (let word of words) {
+            if (ctx.measureText(line + word).width <= max) {
+                line += word;
+                continue;
+            }
+            if (line.trim()) {
+                lines.push(line.trimEnd());
+                line = '';
+            }
+            word = word.trimStart();
+            if (ctx.measureText(word).width <= max) {
+                line = word;
+                continue;
+            }
+            const segments = globalThis.Intl?.Segmenter ? [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(word)].map(s => s.segment) : Array.from(word);
+            for (const ch of segments) {
+                if (line && ctx.measureText(line + ch).width > max) {
+                    lines.push(line);
+                    line = '';
+                }
+                line += ch;
+            }
+        }
+        lines.push(line.trimEnd());
+    }
+    const lh = (n.fontSize || 16) * (n.lineHeight || 1.35), ascent = (n.fontSize || 16) * .82;
+    return { lines, lineHeight: lh, height: Math.max(lh, lines.length * lh), baseline: (lh - (n.fontSize || 16)) / 2 + ascent };
+}
+function fontSpecSpan(s, base) {
+    const style = s.fontStyle || base.fontStyle || 'normal';
+    const weight = s.fontWeight || base.fontWeight || 400;
+    const size = s.fontSize || base.fontSize || 16;
+    const fam = s.fontFamily || base.fontFamily || 'Inter';
+    return `${style} ${weight} ${size}px ${fam === 'Inter' ? FONT_STACK : `"${String(fam).replace(/["\\]/g, '')}", sans-serif`}`;
+}
+function paintText(ctx, n) {
+    const l = layoutText(n, ctx);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = n.textAlign || 'left';
+    ctx.direction = n.direction === 'rtl' ? 'rtl' : n.direction === 'ltr' ? 'ltr' : 'inherit';
+    const baseAlpha = ctx.globalAlpha;
+    const x = n.textAlign === 'center' ? n.w / 2 : n.textAlign === 'right' ? n.w : 0;
+    const stroked = strokeIsOn(n);
+    if (n.spans && n.spans.length > 1) {
+        const spanRanges = [];
+        let curIdx = 0;
+        for (const s of n.spans) {
+            const len = (s.text || '').length;
+            spanRanges.push({ span: s, start: curIdx, end: curIdx + len });
+            curIdx += len;
+        }
+        let charOffset = 0;
+        for (let i = 0; i < l.lines.length; i++) {
+            const y = l.baseline + i * l.lineHeight;
+            if (y - l.lineHeight > n.h)
+                break;
+            const line = l.lines[i];
+            const lineStart = charOffset, lineEnd = lineStart + line.length;
+            const lineSpans = [];
+            for (const sr of spanRanges) {
+                if (sr.end > lineStart && sr.start < lineEnd) {
+                    const sStart = Math.max(0, lineStart - sr.start);
+                    const sEnd = Math.min(sr.span.text.length, lineEnd - sr.start);
+                    const slice = sr.span.text.slice(sStart, sEnd);
+                    if (slice.length)
+                        lineSpans.push({ span: sr.span, text: slice });
+                }
+            }
+            let totalW = 0;
+            for (const ls of lineSpans) {
+                ctx.font = fontSpecSpan(ls.span, n);
+                ctx.letterSpacing = `${ls.span.letterSpacing || 0}px`;
+                totalW += ctx.measureText(ls.text).width;
+            }
+            let curX = n.textAlign === 'center' ? x - totalW / 2 : n.textAlign === 'right' ? x - totalW : x;
+            for (const ls of lineSpans) {
+                const s = ls.span;
+                ctx.font = fontSpecSpan(s, n);
+                ctx.letterSpacing = `${s.letterSpacing || 0}px`;
+                const spanW = ctx.measureText(ls.text).width;
+                if (s.fill && s.fill !== 'none') {
+                    ctx.globalAlpha = baseAlpha * (s.fillOpacity ?? n.fillOpacity ?? 1);
+                    ctx.fillStyle = s.fill;
+                    ctx.fillText(ls.text, curX, y);
+                }
+                if (stroked) {
+                    ctx.globalAlpha = baseAlpha * (n.strokeOpacity ?? 1);
+                    ctx.strokeStyle = n.stroke;
+                    ctx.lineWidth = n.strokeWidth;
+                    ctx.lineJoin = n.strokeJoin || 'round';
+                    ctx.lineCap = n.strokeCap || 'round';
+                    ctx.strokeText(ls.text, curX, y);
+                }
+                if (s.textDecoration === 'underline' || s.textDecoration === 'line-through') {
+                    ctx.globalAlpha = baseAlpha * (s.fillOpacity ?? 1);
+                    ctx.fillStyle = s.fill || n.fill;
+                    ctx.fillRect(curX, y + (s.textDecoration === 'underline' ? s.fontSize * .12 : -s.fontSize * .3), spanW, Math.max(1, s.fontSize * .055));
+                }
+                curX += spanW;
+            }
+            charOffset += line.length + 1;
+        }
+        ctx.globalAlpha = baseAlpha;
+        return l;
+    }
+    ctx.font = fontSpec(n);
+    ctx.letterSpacing = `${n.letterSpacing || 0}px`;
+    for (let i = 0; i < l.lines.length; i++) {
+        const y = l.baseline + i * l.lineHeight;
+        if (y - l.lineHeight > n.h)
+            break;
+        const line = l.lines[i];
+        if (n.fill && n.fill !== 'none') {
+            ctx.globalAlpha = baseAlpha * (n.fillOpacity ?? 1);
+            ctx.fillStyle = fillStyle(ctx, n);
+            ctx.fillText(line, x, y);
+        }
+        if (stroked) {
+            ctx.globalAlpha = baseAlpha * (n.strokeOpacity ?? 1);
+            ctx.strokeStyle = n.stroke;
+            ctx.lineWidth = n.strokeWidth;
+            ctx.lineJoin = n.strokeJoin || 'round';
+            ctx.lineCap = n.strokeCap || 'round';
+            ctx.strokeText(line, x, y);
+        }
+        if (n.textDecoration === 'underline' || n.textDecoration === 'line-through') {
+            const width = ctx.measureText(line).width, start = x - (n.textAlign === 'center' ? width / 2 : n.textAlign === 'right' ? width : 0);
+            ctx.globalAlpha = baseAlpha * (n.fillOpacity ?? 1);
+            ctx.fillStyle = fillStyle(ctx, n);
+            ctx.fillRect(start, y + (n.textDecoration === 'underline' ? n.fontSize * .12 : -n.fontSize * .3), width, Math.max(1, n.fontSize * .055));
+        }
+    }
+    ctx.globalAlpha = baseAlpha;
+    return l;
+}
+// ===== corners + stroke helpers =====
+const RECT_LIKE = ['rect', 'frame', 'image'];
+function hasRadii(n) { return RECT_LIKE.includes(n.type) && Array.isArray(n.radii) && n.radii.length === 4; }
+// [top-left, top-right, bottom-right, bottom-left], clamped to half of the shorter side.
+function cornerRadii(n) {
+    const m = Math.max(0, Math.min(n.w, n.h) / 2), r = hasRadii(n) ? n.radii : [n.radius || 0, n.radius || 0, n.radius || 0, n.radius || 0];
+    return r.map(v => Math.max(0, Math.min(+v || 0, m)));
+}
+function roundRectD(w, h, r, f = v => +(+v).toFixed(3)) {
+    const [a, b, c, d] = r;
+    return `M${f(a)} 0H${f(w - b)}A${f(b)} ${f(b)} 0 0 1 ${f(w)} ${f(b)}V${f(h - c)}A${f(c)} ${f(c)} 0 0 1 ${f(w - c)} ${f(h)}H${f(d)}A${f(d)} ${f(d)} 0 0 1 0 ${f(h - d)}V${f(a)}A${f(a)} ${f(a)} 0 0 1 ${f(a)} 0Z`;
+}
+function strokeIsOn(n) { return !['group'].includes(n.type) && n.strokeWidth > 0 && n.strokeVisible !== false && !!n.stroke && n.stroke !== 'none'; }
+function strokeClosed(n) { return !(n.type === 'line' || (n.type === 'path' && !n.closed)); }
+function strokeSideWidths(n) {
+    const w = n.strokeWidth || 0, m = n.strokeSides || 'all';
+    if (m === 'custom')
+        return { t: n.strokeT ?? w, r: n.strokeR ?? w, b: n.strokeB ?? w, l: n.strokeL ?? w };
+    if (m === 'all')
+        return { t: w, r: w, b: w, l: w };
+    return { t: m === 'top' ? w : 0, r: m === 'right' ? w : 0, b: m === 'bottom' ? w : 0, l: m === 'left' ? w : 0 };
+}
+function strokeSidesUniform(n) {
+    if (!RECT_LIKE.includes(n.type))
+        return true;
+    const s = strokeSideWidths(n);
+    return s.t === s.r && s.r === s.b && s.b === s.l;
+}
+function strokeDashArray(n) {
+    const w = n.strokeWidth || 1;
+    if (n.strokeStyle === 'dash')
+        return [n.strokeDash ?? 10, n.strokeGap ?? 10];
+    if (n.strokeStyle === 'dot')
+        return [.01, Math.max(2, w * 2)];
+    return [];
+}
+function strokeMiterLimit(n) { return Math.max(1, 1 / Math.max(Math.sin((n.strokeMiter ?? 28.96) * Math.PI / 360), .001)); }
+// Strokes the shader cannot draw (inside/outside, dashes, per-side widths, miter joins) go through the raster path.
+function strokeNeedsRaster(n) {
+    if (!strokeIsOn(n) || ['path', 'line', 'image', 'text'].includes(n.type))
+        return false;
+    const rl = RECT_LIKE.includes(n.type);
+    if (n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n))
+        return true;
+    if (n.strokeStyle && n.strokeStyle !== 'solid')
+        return true;
+    return rl && (!strokeSidesUniform(n) || (!!n.strokeJoin && n.strokeJoin !== 'round'));
+}
+function needsRasterShape(n) {
+    if (['text', 'group'].includes(n.type))
+        return false;
+    return hasRadii(n) || strokeNeedsRaster(n);
+}
+function paintStroke(ctx, n, path) {
+    if (!strokeIsOn(n) || n.type === 'text')
+        return;
+    const rl = RECT_LIKE.includes(n.type), align = strokeClosed(n) ? (n.strokeAlign || 'center') : 'center';
+    const sides = rl ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n), w = sides ? sides.t : n.strokeWidth;
+    ctx.save();
+    ctx.globalAlpha *= n.strokeOpacity ?? 1;
+    ctx.strokeStyle = n.stroke;
+    ctx.fillStyle = n.stroke;
+    const outsideClip = () => { const c = new Path2D(); c.rect(-1e5, -1e5, 2e5, 2e5); c.addPath(path); ctx.clip(c, 'evenodd'); };
+    if (uniform) {
+        if (w > 0) {
+            ctx.lineJoin = n.strokeJoin || 'round';
+            ctx.lineCap = n.strokeCap || 'round';
+            ctx.miterLimit = strokeMiterLimit(n);
+            ctx.setLineDash(strokeDashArray(n));
+            if (align === 'center') {
+                ctx.lineWidth = w;
+                ctx.stroke(path);
+            }
+            else {
+                if (align === 'outside')
+                    outsideClip();
+                else
+                    ctx.clip(path);
+                ctx.lineWidth = w * 2;
+                ctx.stroke(path);
+            }
+        }
+    }
+    else {
+        const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v;
+        if (align === 'outside')
+            outsideClip();
+        else if (align === 'inside')
+            ctx.clip(path);
+        const y0 = t > 0 ? -off(t) : 0, y1 = b > 0 ? H + off(b) : H;
+        if (t > 0)
+            ctx.fillRect(-off(l), -off(t), W + off(l) + off(r), t);
+        if (b > 0)
+            ctx.fillRect(-off(l), H - b + off(b), W + off(l) + off(r), b);
+        if (l > 0)
+            ctx.fillRect(-off(l), y0, l, y1 - y0);
+        if (r > 0)
+            ctx.fillRect(W - r + off(r), y0, r, y1 - y0);
+    }
+    ctx.restore();
+}
+// SVG: element for the node geometry with arbitrary attributes.
+function svgShapeEl(n, f, a) {
+    if (n.type === 'ellipse')
+        return `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${a}/>`;
+    if (n.type === 'path' || n.type === 'line')
+        return `<path d="${dFor(n)}" ${a}/>`;
+    if (hasRadii(n))
+        return `<path d="${roundRectD(n.w, n.h, cornerRadii(n), f)}" ${a}/>`;
+    return `<rect width="${f(n.w)}" height="${f(n.h)}" rx="${f(Math.min(n.radius || 0, n.w / 2, n.h / 2))}" ${a}/>`;
+}
+function strokeSvgAdvanced(n) {
+    return strokeIsOn(n) && ((n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n)) || !strokeSidesUniform(n));
+}
+function svgStrokeAttrs(n, f, e) {
+    if (!strokeIsOn(n) || strokeSvgAdvanced(n))
+        return 'stroke="none" stroke-width="0"';
+    const w = RECT_LIKE.includes(n.type) ? strokeSideWidths(n).t : n.strokeWidth, dash = strokeDashArray(n);
+    return `stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
+}
+function svgStrokeExtra(n, f, e, prefix) {
+    if (!strokeSvgAdvanced(n))
+        return { defs: '', el: '' };
+    const align = strokeClosed(n) ? (n.strokeAlign || 'center') : 'center', sides = RECT_LIKE.includes(n.type) ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n);
+    let defs = '', wrap = '';
+    if (align === 'inside') {
+        defs = `<clipPath id="${prefix}k">${svgShapeEl(n, f, '')}</clipPath>`;
+        wrap = ` clip-path="url(#${prefix}k)"`;
+    }
+    else if (align === 'outside') {
+        defs = `<mask id="${prefix}k" maskUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="#fff"/>${svgShapeEl(n, f, 'fill="#000"')}</mask>`;
+        wrap = ` mask="url(#${prefix}k)"`;
+    }
+    const op = f(n.strokeOpacity ?? 1);
+    let el;
+    if (uniform) {
+        const w = sides ? sides.t : n.strokeWidth, dash = strokeDashArray(n);
+        el = `<g${wrap}>${svgShapeEl(n, f, `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${op}" stroke-width="${f(align === 'center' ? w : w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`)}</g>`;
+    }
+    else {
+        const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v, fl = `fill="${e(n.stroke)}" fill-opacity="${op}"`;
+        const y0 = t > 0 ? -off(t) : 0, y1 = b > 0 ? H + off(b) : H, rect = (x, y, w, h) => `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" ${fl}/>`;
+        el = `<g${wrap}>${t > 0 ? rect(-off(l), -off(t), W + off(l) + off(r), t) : ''}${b > 0 ? rect(-off(l), H - b + off(b), W + off(l) + off(r), b) : ''}${l > 0 ? rect(-off(l), y0, l, y1 - y0) : ''}${r > 0 ? rect(W - r + off(r), y0, r, y1 - y0) : ''}</g>`;
+    }
+    return { defs, el };
+}
+
+function pathFor(n) {
+    const p = new Path2D();
+    if (n.type === 'ellipse')
+        p.ellipse(n.w / 2, n.h / 2, Math.max(.001, n.w / 2), Math.max(.001, n.h / 2), 0, 0, Math.PI * 2);
+    else if (n.type === 'line') {
+        p.moveTo(0, 0);
+        p.lineTo(n.w, n.h);
+    }
+    else if (n.type === 'path') {
+        const pts = n.points || [];
+        if (!pts.length)
+            return p;
+        const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1);
+        p.moveTo(pts[0].x * sx, pts[0].y * sy);
+        for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1], b = pts[i];
+            if (a.out || b.in)
+                p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
+            else
+                p.lineTo(b.x * sx, b.y * sy);
+        }
+        if (n.closed) {
+            const a = pts.at(-1), b = pts[0];
+            if (a.out || b.in)
+                p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
+            p.closePath();
+        }
+        for (const c of n.contours || []) {
+            const cp = c.points;
+            if (!cp?.length)
+                continue;
+            p.moveTo(cp[0].x * sx, cp[0].y * sy);
+            for (let i = 1; i < cp.length; i++)
+                p.lineTo(cp[i].x * sx, cp[i].y * sy);
+            p.closePath();
+        }
+    }
+    else
+        p.roundRect(0, 0, Math.max(0, n.w), Math.max(0, n.h), hasRadii(n) ? cornerRadii(n) : Math.max(0, Math.min(n.radius || 0, n.w / 2, n.h / 2)));
+    return p;
+}
+function fillStyle(ctx, n) {
+    if (!n.fill || n.fill === 'none')
+        return 'transparent';
+    if (n.fillType !== 'linear')
+        return n.fill === 'none' ? 'transparent' : n.fill;
+    const r = n.gradientAngle * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
+    const g = ctx.createLinearGradient(n.w / 2 - c * len / 2, n.h / 2 - s * len / 2, n.w / 2 + c * len / 2, n.h / 2 + s * len / 2);
+    g.addColorStop(0, n.fill);
+    g.addColorStop(1, n.fill2);
+    return g;
+}
+function imageFit(img, w, h) { const scale = Math.max(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
+class ImageStore {
+    constructor(doc, invalidate) { this.doc = doc; this.invalidate = invalidate; this.images = new Map(); this.pending = new Map(); }
+    get(id) {
+        if (this.images.has(id))
+            return this.images.get(id);
+        const src = this.doc.data.assets[id];
+        if (src && !this.pending.has(id)) {
+            const p = new Promise(resolve => { const img = new Image(); img.onload = () => { this.images.set(id, img); this.invalidate(); resolve(img); }; img.onerror = () => resolve(null); img.src = src; });
+            this.pending.set(id, p);
+        }
+        return null;
+    }
+    async ready() {
+        for (const id of Object.keys(this.doc.data.assets))
+            this.get(id);
+        await Promise.all(this.pending.values());
+    }
+}
+const WGSL = /* wgsl */ `
+struct Globals { viewport: vec4<f32>, camera: vec4<f32> }
+struct Instance { matrix: vec4<f32>, box: vec4<f32>, fill: vec4<f32>, stroke: vec4<f32>, props: vec4<f32>, uv: vec4<f32>, fill2: vec4<f32>, params: vec4<f32> }
+struct Clip { matrix: vec4<f32>, box: vec4<f32>, info: vec4<f32>, radii: vec4<f32> }
+@group(0) @binding(0) var<uniform> globals: Globals;
+@group(0) @binding(1) var<storage,read> instances: array<Instance>;
+@group(0) @binding(2) var atlas: texture_2d_array<f32>;
+@group(0) @binding(3) var atlasSampler: sampler;
+@group(0) @binding(4) var<storage,read> clips: array<Clip>;
+struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) local: vec2<f32>, @location(1) world: vec2<f32>, @location(2) @interpolate(flat) index: u32 }
+@vertex fn vs(@builtin(vertex_index) vi:u32,@builtin(instance_index) ii:u32)->VertexOutput {
+ var corners=array<vec2<f32>,6>(vec2(0.,0.),vec2(1.,0.),vec2(0.,1.),vec2(0.,1.),vec2(1.,0.),vec2(1.,1.));
+ let item=instances[ii]; let pad=select(max(item.props.y*.5+1.5/globals.viewport.z,item.params.y*2.),0.,item.props.z==2.);
+ let local=corners[vi]*(item.box.zw+vec2(pad*2.))-vec2(pad);
+ let world=vec2(item.matrix.x*local.x+item.matrix.z*local.y,item.matrix.y*local.x+item.matrix.w*local.y)+item.box.xy;
+ let screen=world*globals.viewport.z+globals.camera.xy;
+ var o:VertexOutput;o.position=vec4(screen.x/globals.viewport.x*2.-1.,1.-screen.y/globals.viewport.y*2.,0.,1.);o.local=local;o.world=world;o.index=ii;return o;
+}
+fn sdRound(p:vec2<f32>,size:vec2<f32>,radius:f32)->f32 {let r=min(radius,min(size.x,size.y)*.5);let q=abs(p-size*.5)-size*.5+vec2(r);return length(max(q,vec2(0.)))+min(max(q.x,q.y),0.)-r;}
+fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let top=select(rr.y,rr.x,c.x<0.);let bottom=select(rr.z,rr.w,c.x<0.);let r=min(select(bottom,top,c.y<0.),min(size.x,size.y)*.5);let q=abs(c)-size*.5+vec2(r);return length(max(q,vec2(0.)))+min(max(q.x,q.y),0.)-r;}
+@fragment fn fs(v:VertexOutput)->@location(0) vec4<f32> {
+ let item=instances[v.index];let aa=.75/globals.viewport.z;var clipAlpha=1.;var clipId=i32(item.params.z);
+ for(var count=0;count<100;count++){if(clipId<0){break;}let clip=clips[u32(clipId)];let cp=vec2(clip.matrix.x*v.world.x+clip.matrix.z*v.world.y,clip.matrix.y*v.world.x+clip.matrix.w*v.world.y)+clip.box.xy;clipAlpha*=1.-smoothstep(-aa,aa,sdRound4(cp,clip.box.zw,clip.radii));clipId=i32(clip.info.y);}
+ if(clipAlpha<.001){discard;}
+ if(item.props.z==2.){let uv=item.uv.xy+v.local/item.box.zw*item.uv.zw;let sample=textureSampleLevel(atlas,atlasSampler,uv,i32(item.params.w),0.);return sample*item.props.w*clipAlpha;}
+ var d=sdRound(v.local,item.box.zw,item.props.x);
+ if(item.props.z==1.) {let radii=max(item.box.zw*.5,vec2(.001));let p=(v.local-radii)/radii;let k0=length(p);let k1=length(p/radii);d=select(-min(radii.x,radii.y),k0*(k0-1.)/max(k1,.00001),k1>.00001);}
+ let edge=max(aa,item.params.y);let coverage=1.-smoothstep(-edge,edge,d);
+ var fill=item.fill;
+ if(item.params.x> -999.){let axis=vec2(cos(item.params.x),sin(item.params.x));let len=max(dot(abs(axis),item.box.zw),.001);let t=clamp(dot(v.local-item.box.zw*.5,axis)/len+.5,0.,1.);fill=mix(fill,item.fill2,t);}
+ var alpha=fill.a*coverage;var rgb=fill.rgb*alpha;
+ if(item.props.y>0.){let sc=1.-smoothstep(-aa,aa,abs(d)-item.props.y*.5);let sa=item.stroke.a*sc;rgb=item.stroke.rgb*sa+rgb*(1.-sa);alpha=sa+alpha*(1.-sa);}
+ return vec4(rgb,alpha)*item.props.w*clipAlpha;
+}`;
+class Atlas {
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch = 0; this.canvas = document.createElement('canvas'); }
+    reset() { this.entries.clear(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch++; }
+    get(n, res, images) {
+        const key = `${n.id}:${n.version}:${res}`;
+        if (this.entries.has(key))
+            return this.entries.get(key);
+        if (n.type === 'image' && !images.get(n.assetId))
+            return null;
+        if (needsRasterFill(n) && getFills(n).some(f => f.visible !== false && f.type === 'image' && f.image && images.doc.data.assets[f.image] && !images.get(f.image)))
+            return null;
+        // Raster-only paths carry stroke padding; the geometry stays editable in the document.
+        const padding = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
+        const width = n.w + padding * 2, height = n.h + padding * 2;
+        const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
+        const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
+        let page = this.shelves.length - 1, shelf = this.shelves[page];
+        if (shelf.x + w + 2 > this.size) {
+            shelf.x = 1;
+            shelf.y += shelf.h + 2;
+            shelf.h = 0;
+        }
+        if (shelf.y + h + 2 > this.size) {
+            if (this.shelves.length >= this.layers) {
+                // Ring buffer: recycle atlas pages when full rather than crashing WebGPU
+                this.entries.clear();
+                this.shelves = [{ x: 1, y: 1, h: 0 }];
+                page = 0;
+                shelf = this.shelves[0];
+            } else {
+                page++;
+                shelf = { x: 1, y: 1, h: 0 };
+                this.shelves.push(shelf);
+            }
+        }
+        this.canvas.width = w;
+        this.canvas.height = h;
+        const ctx = this.canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.translate(padding, padding);
+        if (n.type === 'text') {
+            ctx.beginPath();
+            ctx.rect(0, 0, n.w, n.h);
+            ctx.clip();
+            paintText(ctx, n);
+        }
+        else if (n.type === 'image') {
+            const img = images.get(n.assetId);
+            ctx.save();
+            ctx.clip(pathFor(n));
+            ctx.drawImage(img, ...imageFit(img, n.w, n.h));
+            ctx.restore();
+            paintStroke(ctx, n, pathFor(n));
+        }
+        else {
+            const path = pathFor(n);
+            paintFills(ctx, n, path, 1);
+            ctx.globalAlpha = 1;
+            paintStroke(ctx, n, path);
+        }
+        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [shelf.x, shelf.y, page], premultipliedAlpha: true }, [w, h]);
+        const entry = { u: shelf.x / this.size, v: shelf.y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
+        shelf.x += w + 2;
+        shelf.h = Math.max(shelf.h, h);
+        this.entries.set(key, entry);
+        return entry;
+    }
+    destroy() { this.texture.destroy(); }
+}
+class Renderer {
+    constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; }
+    async initialize() {
+        try {
+            if (!navigator.gpu || new URLSearchParams(location.search).has('canvas'))
+                throw new Error('WebGPU unavailable');
+            const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+            if (!adapter)
+                throw new Error('No WebGPU adapter');
+            this.device = await adapter.requestDevice();
+            this.device.addEventListener('uncapturederror', e => { this.gpuError = e.error.message; console.error('WebGPU validation:', e.error.message); this.onStatus('WebGPU validation error'); });
+            this.context = this.canvas.getContext('webgpu');
+            if (!this.context)
+                throw new Error('WebGPU canvas unavailable');
+            this.format = navigator.gpu.getPreferredCanvasFormat();
+            this.context.configure({ device: this.device, format: this.format, alphaMode: 'premultiplied' });
+            const module = this.device.createShaderModule({ label: 'Midas analytical primitives', code: WGSL });
+            const info = await module.getCompilationInfo();
+            const errors = info.messages.filter(m => m.type === 'error');
+            if (errors.length)
+                throw new Error(errors.map(m => m.message).join('\n'));
+            this.pipeline = await this.device.createRenderPipelineAsync({ label: 'Midas instanced scene', layout: 'auto', vertex: { module, entryPoint: 'vs' }, fragment: { module, entryPoint: 'fs', targets: [{ format: this.format, blend: { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } } }] }, primitive: { topology: 'triangle-list' } });
+            this.uniform = this.device.createBuffer({ label: 'Midas camera', size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+            this.sampler = this.device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+            this.atlas = new Atlas(this.device, this.invalidate);
+            this.ensureBuffers(256, 64);
+            this.backend = 'WebGPU';
+            this.adapterInfo = adapter.info ? `${adapter.info.vendor || ''} ${adapter.info.architecture || ''}`.trim() : '';
+            this.device.lost.then(info => {
+                if (info.reason !== 'destroyed') {
+                    this.gpuError = info.message;
+                    this.fallback();
+                    this.invalidate();
+                }
+            });
+        }
+        catch (e) {
+            this.gpuError = e.message;
+            this.fallback();
+        }
+        this.ready = true;
+        this.onStatus(this.backend);
+        return this.backend;
+    }
+    fallback() {
+        if (this.backend === 'Canvas 2D')
+            return; // A canvas cannot switch context modes once initialized.
+        if (this.context || this.canvas.getContext('2d') === null) {
+            const old = this.canvas, next = old.cloneNode();
+            old.replaceWith(next);
+            this.canvas = next;
+        }
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.style.visibility = 'visible';
+        this.canvas.style.display = 'block';
+        if (this.fxCanvas)
+            this.fxCanvas.style.display = 'none';
+        this.backend = 'Canvas 2D';
+        this.onStatus(this.backend);
+        this.resize(this.width, this.height, this.dpr);
+    }
+    ensureBuffers(count, clips) {
+        let dirty = false;
+        if (count > this.capacity) {
+            this.instanceBuffer?.destroy();
+            this.capacity = 2 ** Math.ceil(Math.log2(Math.max(256, count)));
+            this.instanceData = new Float32Array(this.capacity * 32);
+            this.instanceBuffer = this.device.createBuffer({ label: 'Midas instance stream', size: this.capacity * 128, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+            dirty = true;
+        }
+        if (clips > this.clipCapacity) {
+            this.clipBuffer?.destroy();
+            this.clipCapacity = 2 ** Math.ceil(Math.log2(Math.max(64, clips)));
+            this.clipData = new Float32Array(this.clipCapacity * 16);
+            this.clipBuffer = this.device.createBuffer({ label: 'Midas clip chains', size: this.clipCapacity * 64, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+            dirty = true;
+        }
+        if (dirty)
+            this.bindGroup = this.device.createBindGroup({ layout: this.pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.uniform } }, { binding: 1, resource: { buffer: this.instanceBuffer } }, { binding: 2, resource: this.atlas.texture.createView({ dimension: '2d-array' }) }, { binding: 3, resource: this.sampler }, { binding: 4, resource: { buffer: this.clipBuffer } }] });
+    }
+    resize(w, h, dpr = window.devicePixelRatio || 1) {
+        this.width = Math.max(1, w);
+        this.height = Math.max(1, h);
+        this.dpr = Math.min(dpr, 3);
+        const bw = Math.round(this.width * this.dpr), bh = Math.round(this.height * this.dpr);
+        if (this.canvas.width !== bw)
+            this.canvas.width = bw;
+        if (this.canvas.height !== bh)
+            this.canvas.height = bh;
+    }
+    render(camera) {
+        if (!this.ready)
+            return;
+        const start = performance.now();
+        const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, w: this.width / camera.zoom, h: this.height / camera.zoom };
+        const scene = this.doc.scene().filter(s => s.node.id !== this.skipId && s.node.type !== 'group' && !s.node.isMask && !s.boolChild && intersects({ ...s.box, x: s.box.x - 100, y: s.box.y - 100, w: s.box.w + 200, h: s.box.h + 200 }, viewport));
+        this.visibleCount = scene.length;
+        // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
+        // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
+        const fxRoute = this.backend === 'WebGPU' && scene.length <= 250 && scene.some(s => hasComplexFx(s.node) || s.clips.some(c => c.mask));
+        this.toggleFx(fxRoute);
+        if (fxRoute) {
+            try {
+                this.renderCanvas(scene, camera, this.fxCtx, this.fxCanvas.width, this.fxCanvas.height, this.dpr);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+        else if (this.backend === 'WebGPU') {
+            try {
+                this.renderGPU(scene, camera);
+            }
+            catch (e) {
+                if (e.message === 'ATLAS_FULL') {
+                    this.atlas.reset();
+                    try {
+                        this.renderGPU(scene, camera, .5);
+                    }
+                    catch (err) {
+                        this.gpuError = 'Raster working set exceeded atlas capacity; using Canvas 2D.';
+                        this.fallback();
+                        this.renderCanvas(scene, camera);
+                    }
+                }
+                else {
+                    console.error(e);
+                    this.gpuError = e.message;
+                    this.fallback();
+                    this.renderCanvas(scene, camera);
+                }
+            }
+        }
+        else
+            this.renderCanvas(scene, camera);
+        this.cpuMs = performance.now() - start;
+    }
+    // Effects the shape shader cannot express (inner shadow, blurs, glass) are drawn by the 2D painter on a layer above the GPU canvas.
+    toggleFx(on) {
+        if (on && !this.fxCanvas) {
+            const c = document.createElement('canvas');
+            c.id = 'scene-fx';
+            c.setAttribute('aria-hidden', 'true');
+            c.style.pointerEvents = 'none';
+            this.canvas.after(c);
+            this.fxCanvas = c;
+            this.fxCtx = c.getContext('2d');
+        }
+        if (!this.fxCanvas)
+            return;
+        if (on) {
+            if (this.fxCanvas.width !== this.canvas.width)
+                this.fxCanvas.width = this.canvas.width;
+            if (this.fxCanvas.height !== this.canvas.height)
+                this.fxCanvas.height = this.canvas.height;
+        }
+        this.fxCanvas.style.display = on ? 'block' : 'none';
+        this.canvas.style.visibility = on ? 'hidden' : 'visible';
+    }
+    renderGPU(scene, camera, quality = 1) {
+        const originX = -camera.x / camera.zoom, originY = -camera.y / camera.zoom;
+        const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0);
+        this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
+        let count = 0, clipN = 0;
+        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .5, 4) * quality;
+        const push = (s, n, clipId, shadow = false) => {
+            const base = count++ * 32, d = this.instanceData, m = s.matrix;
+            d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
+            d.set(color(n.fill, n.fillOpacity), base + 8);
+            d.set(color(n.stroke, n.strokeOpacity ?? 1), base + 12);
+            d.set([n.radius || 0, n.strokeVisible === false ? 0 : (n.strokeWidth || 0), n.type === 'ellipse' ? 1 : 0, s.opacity], base + 16);
+            d.set([0, 0, 0, 0], base + 20);
+            d.set(color(n.fill2, n.fillOpacity), base + 24);
+            d.set([n.fillType === 'linear' && n.fill !== 'none' ? n.gradientAngle * Math.PI / 180 : -1000, 0, clipId, 0], base + 28);
+            if (shadow) {
+                d[base + 4] += n.shadowX || 0;
+                d[base + 5] += n.shadowY || 0;
+                d.set(color(n.shadowColor || '#000000', n.shadowOpacity ?? .16), base + 8);
+                d[base + 17] = 0;
+                d[base + 28] = -1000;
+                d[base + 29] = (n.shadowBlur || 20) * .5;
+                return;
+            }
+            if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
+                const entry = this.atlas.get(n, resolution, this.images);
+                if (!entry) {
+                    count--;
+                    return;
+                }
+                d[base + 4] -= (m[0] + m[2]) * entry.padding;
+                d[base + 5] -= (m[1] + m[3]) * entry.padding;
+                d[base + 6] = entry.w;
+                d[base + 7] = entry.h;
+                d[base + 18] = 2;
+                d.set([entry.u, entry.v, entry.du, entry.dv], base + 20);
+                d[base + 31] = entry.page;
+            }
+        };
+        for (const s of scene) {
+            let clipId = -1;
+            for (const clip of s.clips) {
+                const i = clipN++ * 16, m = clip.inverse, cr = clip.radii || [clip.radius || 0, clip.radius || 0, clip.radius || 0, clip.radius || 0];
+                this.clipData.set([m[0], m[1], m[2], m[3], m[4] + m[0] * originX + m[2] * originY, m[5] + m[1] * originX + m[3] * originY, clip.w, clip.h, clip.radius || 0, clipId, 0, 0, cr[0], cr[1], cr[2], cr[3]], i);
+                clipId = clipN - 1;
+            }
+            if (s.node.shadow && !['text', 'path', 'line'].includes(s.node.type))
+                push(s, s.node, clipId, true);
+            push(s, s.node, clipId);
+        }
+        this.device.queue.writeBuffer(this.uniform, 0, new Float32Array([this.width, this.height, camera.zoom, this.dpr, 0, 0, 0, 0]));
+        if (count)
+            this.device.queue.writeBuffer(this.instanceBuffer, 0, this.instanceData.buffer, 0, count * 128);
+        if (clipN)
+            this.device.queue.writeBuffer(this.clipBuffer, 0, this.clipData.buffer, 0, clipN * 64);
+        const encoder = this.device.createCommandEncoder({ label: 'Midas frame' });
+        const pass = encoder.beginRenderPass({ colorAttachments: [{ view: this.context.getCurrentTexture().createView(), clearValue: { r: 0, g: 0, b: 0, a: 0 }, loadOp: 'clear', storeOp: 'store' }] });
+        pass.setPipeline(this.pipeline);
+        pass.setBindGroup(0, this.bindGroup);
+        if (count)
+            pass.draw(6, count);
+        pass.end();
+        this.device.queue.submit([encoder.finish()]);
+        this.instanceCount = count;
+        this.drawCalls = count ? 1 : 0;
+    }
+    renderCanvas(scene, camera, target = this.ctx, width = this.canvas.width, height = this.canvas.height, dpr = this.dpr) { const ctx = target; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, width, height); ctx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, camera.x * dpr, camera.y * dpr); this.paintScene(ctx, scene); this.instanceCount = scene.length; this.drawCalls = scene.length; }
+    paintScene(ctx, scene, opts = {}) {
+        const skip = new Set();
+        for (const s of scene) {
+            const n = s.node;
+            if (skip.has(n.id) || n.type === 'group' || n.isMask || s.boolChild || s.hidden || n.id === this.skipId)
+                continue;
+            const fx = getEffects(n).filter(e => e.visible !== false && !(opts.ignoreBlur === n.id && e.type === 'layerBlur'));
+            const lblur = fx.find(e => e.type === 'layerBlur');
+            if (lblur) {
+                // Layer blur softens the layer and everything inside it: paint the subtree on its own canvas, then blur it onto the page.
+                const ids = new Set([n.id, ...this.doc.descendants(n.id).map(d => d.id)]);
+                for (const id of ids)
+                    skip.add(id);
+                const t0 = ctx.getTransform(), off = newCanvas(ctx.canvas.width, ctx.canvas.height), oc = off.getContext('2d');
+                oc.setTransform(t0);
+                this.paintScene(oc, scene.filter(x => ids.has(x.node.id)), { ignoreBlur: n.id });
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                blurInto(ctx, off, Math.max(0, lblur.radius || 0) / 2 * Math.hypot(t0.a, t0.b));
+                ctx.restore();
+                continue;
+            }
+            // Sub-pixel culling for massive scenes
+            if (scene.length > 500 && s.node.parentId && Math.max(s.box.w, s.box.h) * (this.dpr || 1) < 0.75)
+                continue;
+            ctx.save();
+            for (const c of s.clips) {
+                try {
+                    let path = new Path2D();
+                    const cw = Math.max(0.1, c.w || 0), ch = Math.max(0.1, c.h || 0);
+                    if (c.mask)
+                        path = pathFor(c.mask);
+                    else {
+                        const cr = c.radii || [Math.min(c.radius || 0, cw / 2, ch / 2)];
+                        path.roundRect(0, 0, cw, ch, cr);
+                    }
+                    const transformed = new Path2D();
+                    transformed.addPath(path, new DOMMatrix(c.matrix));
+                    ctx.clip(transformed);
+                } catch {}
+            }
+            ctx.transform(...s.matrix);
+            ctx.globalAlpha = s.opacity;
+            const path = pathFor(n);
+            if (n.type === 'text') {
+                const tr = ctx.getTransform(), desired = clamp(2 ** Math.ceil(Math.log2(Math.hypot(tr.a, tr.b))), .5, 4), scale = Math.min(desired, 4096 / Math.max(n.w, n.h, 1)), key = n.id + ':' + scale;
+                let entry = this.cache.get(key);
+                if (!entry || entry.version !== n.version) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.ceil(n.w * scale));
+                    canvas.height = Math.max(1, Math.ceil(n.h * scale));
+                    const tc = canvas.getContext('2d');
+                    tc.scale(scale, scale);
+                    tc.beginPath();
+                    tc.rect(0, 0, n.w, n.h);
+                    tc.clip();
+                    paintText(tc, n);
+                    entry = { version: n.version, canvas };
+                    if (this.cache.size >= 512)
+                        this.cache.delete(this.cache.keys().next().value);
+                    this.cache.set(key, entry);
+                }
+                ctx.drawImage(entry.canvas, 0, 0, n.w, n.h);
+            }
+            else if (n.type === 'image') {
+                const image = this.images.get(n.assetId);
+                if (image) {
+                    ctx.save();
+                    ctx.clip(path);
+                    ctx.drawImage(image, ...imageFit(image, n.w, n.h));
+                    ctx.restore();
+                }
+                paintStroke(ctx, n, path);
+            }
+            else {
+                const ss = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
+                for (const e of fx)
+                    if (e.type === 'drop')
+                        paintDropShadow(ctx, n, path, e);
+                for (const e of fx) {
+                    if (e.type === 'bgBlur')
+                        paintBackdropBlur(ctx, path, (e.radius || 0) / 2 * ss);
+                    else if (e.type === 'glass')
+                        paintGlassBackdrop(ctx, n, path, e);
+                }
+                paintFills(ctx, n, path, s.opacity);
+                ctx.globalAlpha = s.opacity;
+                for (const e of fx)
+                    if (e.type === 'inner')
+                        paintInnerShadow(ctx, n, path, e);
+                for (const e of fx)
+                    if (e.type === 'glass')
+                        paintGlassHighlights(ctx, n, path, e);
+                paintStroke(ctx, n, path);
+            }
+            ctx.restore();
+        }
+    }
+    async exportCanvas(ids, scale = 2) {
+        await this.images.ready();
+        const included = new Set();
+        for (const id of ids) {
+            included.add(id);
+            for (const n of this.doc.descendants(id))
+                included.add(n.id);
+        }
+        const box = this.doc.bounds(ids);
+        if (!box)
+            throw new Error('Nothing to export.');
+        const maxDimension = 16384;
+        if (box.w * scale > maxDimension || box.h * scale > maxDimension || box.w * box.h * scale * scale > 64e6)
+            throw new Error('Export exceeds 64 megapixels or 16,384 pixels per side. Choose a lower scale.');
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.ceil(box.w * scale));
+        canvas.height = Math.max(1, Math.ceil(box.h * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.translate(-box.x, -box.y);
+        this.paintScene(ctx, this.doc.scene().filter(s => included.has(s.node.id)));
+        return canvas;
+    }
+    destroy() { this.atlas?.destroy(); this.instanceBuffer?.destroy(); this.clipBuffer?.destroy(); this.uniform?.destroy(); this.device?.destroy(); }
+}
+
+
+// ===== icons.js =====
+const paths = {
+    cursor: 'M5 3l14 9-7 1-3 7Z', frame: 'M8 3v18M16 3v18M3 8h18M3 16h18', rect: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z', ellipse: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z', line: 'M4 20 20 4', pen: 'm12 3 8 8-5 9-11 1 1-11ZM12 3l-7 7 7 7 8-6M4 21l7-8M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', text: 'M4 5h16M12 5v15M8 20h8', hand: 'M7 11V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v7l1-2a1.7 1.7 0 0 1 3 1l-3 7c-1 3-9 4-12 0l-5-6c-1-2 1-4 3-2l3 3', image: 'M4 4h16v16H4ZM4 15l5-5 5 6 3-3 3 3M16 8h.01', sparkles: 'm12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8ZM20 2v4M18 4h4', panel: 'M4 4h16v16H4ZM9 4v16', play: 'm8 4 12 8-12 8Z', search: 'M15.5 9.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM14 14l6 6', plus: 'M12 5v14M5 12h14', minus: 'M5 12h14', close: 'm6 6 12 12M6 18 18 6', arrowUpRight: 'M6 18 18 6M6 6h12v12', arrowLeft: 'M20 12H4m6-6-6 6 6 6', arrowRight: 'M4 12h16m-6-6 6 6-6 6', collapse: 'm8 4 4 4 4-4M8 20l4-4 4 4M5 12h14', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0', eyeOff: 'M3 3l18 18M10 5c6-1 12 7 12 7s-1 2-4 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 3-1 4-1M10 10l4 4', lock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0v4', unlock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0', sun: 'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5', moon: 'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z', sliders: 'M4 7h6M14 7h6M4 17h10M18 17h2M10 4v6M14 14v6', help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16h.01', page: 'M6 3h8l4 4v14H6ZM14 3v5h4', folder: 'M3 7a2 2 0 0 1 2-2h4.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', check: 'm5 12 4 4L19 6', chevron: 'm9 5 7 7-7 7', group: 'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 8h8v8H8Z', component: 'm12 2 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Zm-12 0 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Z', instance: 'm12 3 9 9-9 9-9-9Z', variant: 'm12 3 9 9-9 9-9-9ZM12 8l4 4-4 4-4-4Z', download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5', upload: 'M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5', copy: 'M9 8h11v13H9ZM15 8V3H4v13h5', undo: 'M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12', redo: 'm16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12', alignLeft: 'M4 3v18M8 6h12v4H8ZM8 14h8v4H8Z', alignCenter: 'M12 3v18M5 6h14v4H5ZM8 14h8v4H8Z', alignRight: 'M20 3v18M4 6h12v4H4ZM8 14h8v4H8Z', alignTop: 'M3 4h18M6 8h4v12H6ZM14 8h4v8h-4Z', alignMiddle: 'M3 12h18M6 5h4v14H6ZM14 8h4v8h-4Z', alignBottom: 'M3 20h18M6 4h4v12H6ZM14 8h4v8h-4Z', distributeH: 'M3 4v16M21 4v16M7 7h3v10H7ZM14 7h3v10h-3Z', distributeV: 'M4 3h16M4 21h16M7 7h10v3H7ZM7 14h10v3H7Z', textLeft: 'M4 5h16M4 10h11M4 15h16M4 20h11', textCenter: 'M4 5h16M7 10h10M4 15h16M7 20h10', textRight: 'M4 5h16M9 10h11M4 15h16M9 20h11', bold: 'M6 4h7a4 4 0 0 1 0 8H6ZM6 12h8a4 4 0 0 1 0 8H6Z', italic: 'M11 4h9M4 20h9M15 4 9 20', underline: 'M6 3v8a6 6 0 0 0 12 0V3M4 21h16', radius: 'M5 20v-9a6 6 0 0 1 6-6h9', rotate: 'M20 7V2l-4 4M20 7a9 9 0 1 0 1 8', opacity: 'M12 3S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12-7-12ZM12 3v19', grid: 'M3 3h18v18H3ZM9 3v18M15 3v18M3 9h18M3 15h18', code: 'm8 5-7 7 7 7m8-14 7 7-7 7M14 3l-4 18', trash: 'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7', link: 'm9 14 6-6M9 7l2-2a5 5 0 0 1 7 7l-2 2M15 17l-2 2a5 5 0 0 1-7-7l2-2', layers: 'm12 3 10 6-10 6L2 9Zm-10 11 10 6 10-6', chevronDown: 'm6 9 6 6 6-6', checkSquare: 'M4 4h16v16H4Zm3 8 3 3 7-7'
+};
+paths.mask = 'M4 4h16v16H4ZM12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8';
+paths.chevronRight = 'M9 6l6 6-6 6';
+function icon(name, size = 18) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.rect}"/></svg>`; }
+function hydrateIcons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
+
+
+// ===== svg.js =====
+
+const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const f = n => Math.round(n * 10000) / 10000;
+function dFor(n) {
+    if (n.type === 'line')
+        return `M0 0L${f(n.w)} ${f(n.h)}`;
+    const pts = n.points || [];
+    if (!pts.length)
+        return '';
+    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1);
+    const xy = p => `${f(p.x * sx)} ${f(p.y * sy)}`;
+    let d = 'M' + xy(pts[0]);
+    for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        d += a.out || b.in ? `C${xy(a.out || a)} ${xy(b.in || b)} ${xy(b)}` : `L${xy(b)}`;
+    }
+    if (n.closed) {
+        const a = pts.at(-1), b = pts[0];
+        if (a.out || b.in)
+            d += `C${xy(a.out || a)} ${xy(b.in || b)} ${xy(b)}`;
+        d += 'Z';
+    }
+    for (const c of n.contours || [])
+        if (c.points?.length)
+            d += 'M' + c.points.map(q => `${f(q.x * sx)} ${f(q.y * sy)}`).join('L') + 'Z';
+    return d;
+}
+function svgFxFilter(id, list, f, e) {
+    let body = '';
+    const under = [], over = [];
+    list.forEach((x, i) => {
+        const r = `fx${i}`, shadow = `<feOffset in="IN" dx="${f(x.x || 0)}" dy="${f(x.y || 0)}" result="${r}o"/><feGaussianBlur in="${r}o" stdDeviation="${f((x.blur || 0) / 2)}" result="${r}b"/><feFlood flood-color="${e(x.color || '#000000')}" flood-opacity="${f(x.opacity ?? .25)}" result="${r}c"/>`;
+        if (x.type === 'drop') {
+            const sp = x.spread || 0;
+            body += (sp ? `<feMorphology in="SourceAlpha" operator="${sp > 0 ? 'dilate' : 'erode'}" radius="${f(Math.abs(sp))}" result="${r}s"/>` : '') + shadow.replace('IN', sp ? `${r}s` : 'SourceAlpha') + `<feComposite in="${r}c" in2="${r}b" operator="in" result="${r}"/>`;
+            under.push(r);
+        }
+        else if (x.type === 'inner') {
+            body += `<feComponentTransfer in="SourceAlpha" result="${r}i"><feFuncA type="table" tableValues="1 0"/></feComponentTransfer>` + shadow.replace('IN', `${r}i`) + `<feComposite in="${r}c" in2="${r}b" operator="in" result="${r}t"/><feComposite in="${r}t" in2="SourceAlpha" operator="in" result="${r}"/>`;
+            over.push(r);
+        }
+    });
+    const merge = `<feMerge result="fxm">${under.map(r => `<feMergeNode in="${r}"/>`).join('')}<feMergeNode in="SourceGraphic"/>${over.map(r => `<feMergeNode in="${r}"/>`).join('')}</feMerge>`;
+    const blur = list.find(x => x.type === 'layerBlur');
+    return `<filter id="${id}" x="-100%" y="-100%" width="300%" height="300%" color-interpolation-filters="sRGB">${body}${merge}${blur ? `<feGaussianBlur in="fxm" stdDeviation="${f((blur.radius || 0) / 2)}"/>` : ''}</filter>`;
+}
+function exportSVG(doc, ids) {
+    const roots = doc.roots(ids), box = doc.bounds(roots.map(n => n.id));
+    if (!box)
+        throw new Error('Nothing to export.');
+    const include = new Set();
+    for (const n of roots) {
+        include.add(n.id);
+        doc.descendants(n.id).forEach(c => include.add(c.id));
+    }
+    let defs = '', body = '', index = 0;
+    for (const s of doc.scene()) {
+        const n = s.node;
+        if (!include.has(n.id) || n.type === 'group' || n.isMask || s.boolChild)
+            continue;
+        const prefix = 'v' + index++;
+        let fill = n.fill || 'none';
+        if (n.fillType === 'linear' && n.fill !== 'none') {
+            const r = n.gradientAngle * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
+            defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(n.fill)}"/><stop offset="1" stop-color="${e(n.fill2)}"/></linearGradient>`;
+            fill = `url(#${prefix}g)`;
+        }
+        let attrs = `fill="${e(fill)}" fill-opacity="${f(n.fillOpacity ?? 1)}" ${svgStrokeAttrs(n, f, e)}`;
+        const sx = svgStrokeExtra(n, f, e, prefix);
+        defs += sx.defs;
+        let item = '';
+        const fxList = getEffects(n).filter(x => x.visible !== false && ['drop', 'inner', 'layerBlur'].includes(x.type));
+        if (fxList.length) {
+            defs += svgFxFilter(`${prefix}s`, fxList, f, e);
+            attrs += ` filter="url(#${prefix}s)"`;
+        }
+        if (n.type === 'text') {
+            const l = layoutText(n), anchor = n.textAlign === 'center' ? 'middle' : n.textAlign === 'right' ? 'end' : 'start', x = n.textAlign === 'center' ? n.w / 2 : n.textAlign === 'right' ? n.w : 0;
+            defs += `<clipPath id="${prefix}t"><rect width="${f(n.w)}" height="${f(n.h)}"/></clipPath>`;
+            const textStroke = strokeIsOn(n) ? ` stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(n.strokeWidth)}" stroke-linejoin="${e(n.strokeJoin || 'round')}" paint-order="stroke"` : '';
+            if (n.spans && n.spans.length > 1) {
+                const tspans = n.spans.map(s => {
+                    const style = s.fontStyle || 'normal', weight = s.fontWeight || 400, size = s.fontSize || n.fontSize, fam = s.fontFamily || n.fontFamily, sfill = s.fill || n.fill, fillOp = s.fillOpacity ?? n.fillOpacity ?? 1, decor = s.textDecoration || 'none';
+                    return `<tspan font-family="${e(fam)}, sans-serif" font-size="${f(size)}" font-weight="${e(weight)}" font-style="${e(style)}" fill="${e(sfill)}" fill-opacity="${f(fillOp)}" text-decoration="${e(decor)}">${e(s.text)}</tspan>`;
+                }).join('');
+                item = `<text clip-path="url(#${prefix}t)" text-anchor="${anchor}" direction="${n.direction === 'rtl' ? 'rtl' : 'ltr'}" x="${f(x)}" y="${f(l.baseline)}"${textStroke} xml:space="preserve">${tspans}</text>`;
+            } else {
+                item = `<text clip-path="url(#${prefix}t)" font-family="${e(n.fontFamily)}, sans-serif" font-size="${f(n.fontSize)}" font-weight="${e(n.fontWeight)}" font-style="${e(n.fontStyle)}" letter-spacing="${f(n.letterSpacing || 0)}" text-anchor="${anchor}" text-decoration="${e(n.textDecoration || 'none')}" direction="${n.direction === 'rtl' ? 'rtl' : 'ltr'}" fill="${e(fill)}" fill-opacity="${f(n.fillOpacity ?? 1)}"${textStroke} xml:space="preserve">${l.lines.map((line, i) => `<tspan x="${f(x)}" y="${f(l.baseline + i * l.lineHeight)}">${e(line)}</tspan>`).join('')}</text>`;
+            }
+        }
+        else if (n.type === 'image') {
+            defs += `<clipPath id="${prefix}i">${svgShapeEl(n, f, '')}</clipPath>`;
+            item = `<image href="${e(doc.data.assets[n.assetId] || '')}" width="${f(n.w)}" height="${f(n.h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${prefix}i)"/>`;
+            if (strokeIsOn(n))
+                item += sx.el || svgShapeEl(n, f, `fill="none" ${svgStrokeAttrs(n, f, e)}`);
+        }
+        else if (n.type === 'ellipse')
+            item = `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${attrs}/>`;
+        else if (n.type === 'path' || n.type === 'line')
+            item = `<path d="${dFor(n)}" ${attrs}/>`;
+        else
+            item = svgShapeEl(n, f, attrs);
+        if (n.type !== 'image' && n.type !== 'text' && !needsRasterFill(n) && sx.el)
+            item += sx.el;
+        if (needsRasterFill(n)) {
+            const geo = a => svgShapeEl(n, f, a);
+            const list = getFills(n);
+            let parts = '';
+            for (let i = list.length - 1; i >= 0; i--) {
+                const fp = list[i];
+                if (fp.visible === false)
+                    continue;
+                const op = f(fp.opacity ?? 1), id = `${prefix}f${i}`;
+                if (fp.type === 'solid')
+                    parts += geo(`fill="${e(fp.color)}" fill-opacity="${op}"`);
+                else if (fp.type === 'linear') {
+                    const r = (fp.angle ?? 90) * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
+                    defs += `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(fp.color)}"/><stop offset="1" stop-color="${e(fp.color2 || '#ffffff')}"/></linearGradient>`;
+                    parts += geo(`fill="url(#${id})" fill-opacity="${op}"`);
+                }
+                else if (fp.type === 'image') {
+                    const src = doc.data.assets[fp.image] || '', mode = fp.mode || 'fill';
+                    defs += `<clipPath id="${id}c">${geo('')}</clipPath>`;
+                    if (mode === 'tile') {
+                        const im = activeImages?.get(fp.image), sc = fp.scale || 1, iw = (im?.width || 100) * sc, ih = (im?.height || 100) * sc;
+                        defs += `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${f(iw)}" height="${f(ih)}"><image href="${e(src)}" width="${f(iw)}" height="${f(ih)}"/></pattern>`;
+                        parts += `<rect width="${f(n.w)}" height="${f(n.h)}" fill="url(#${id})" clip-path="url(#${id}c)" opacity="${op}"/>`;
+                    }
+                    else
+                        parts += `<image href="${e(src)}" width="${f(n.w)}" height="${f(n.h)}" preserveAspectRatio="xMidYMid ${mode === 'fit' ? 'meet' : 'slice'}" clip-path="url(#${id}c)" opacity="${op}"/>`;
+                }
+            }
+            const strokeOnly = strokeIsOn(n) ? (sx.el || geo(`fill="none" ${svgStrokeAttrs(n, f, e)}`)) : '';
+            item = `<g${fxList.length ? ` filter="url(#${prefix}s)"` : ''}>${parts}${strokeOnly}</g>`;
+        }
+        let wrapped = `<g transform="matrix(${s.matrix.map(f).join(' ')})" opacity="${f(s.opacity)}"><title>${e(n.name)}</title>${item}</g>`;
+        s.clips.forEach((c, j) => { const cr = c.radii || [c.radius || 0, c.radius || 0, c.radius || 0, c.radius || 0], tr = `transform="matrix(${c.matrix.map(f).join(' ')})"`; defs += `<clipPath id="${prefix}c${j}" clipPathUnits="userSpaceOnUse">${c.mask ? `<g ${tr}>${svgShapeEl(c.mask, f, '')}</g>` : cr.every(v => v === cr[0]) ? `<rect width="${f(c.w)}" height="${f(c.h)}" rx="${f(cr[0])}" ${tr}/>` : `<path d="${roundRectD(c.w, c.h, cr, f)}" ${tr}/>`}</clipPath>`; wrapped = `<g clip-path="url(#${prefix}c${j})">${wrapped}</g>`; });
+        body += wrapped;
+    }
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${f(box.w)}" height="${f(box.h)}" viewBox="${f(box.x)} ${f(box.y)} ${f(box.w)} ${f(box.h)}"><title>${e(doc.data.name)}</title><desc>Created with Midas. Text uses installed fonts, which are not embedded.</desc><defs>${defs}</defs>${body}</svg>`;
+}
+
+
+// ===== app.js =====
+
+
+
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Math.round(n * 100) / 100;
+const round = n => Math.round(n * 10) / 10;
+const isInput = e => e instanceof HTMLElement && (e.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName));
+const defaultOptions = { grid: false, snap: true, rulers: false, theme: 'dark', nudge: 1, bigNudge: 10 };
+let options = { ...defaultOptions };
+try {
+    Object.assign(options, JSON.parse(localStore.getItem('midas-options') || '{}'));
+}
+catch { }
+document.documentElement.dataset.theme = options.theme;
+let storageMode = 'Local disk (data folder)', saveTimer, toastTimer;
+// Older builds kept a single document in the browser; on disk there is no legacy copy to migrate.
+async function openDB() { return null; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), 32000000); }
+const saved = await libBoot();
+let initial;
+try {
+    if (saved)
+        initial = DocumentModel.parse(saved);
+}
+catch (e) {
+    console.warn('Saved file could not be restored', e);
+    toast('Saved file could not be restored. Your starter document is open.');
+}
+const doc = new DocumentModel(initial), history = new History(doc);
+const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
+const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
+let scheduled = false, lastInspector = 0, uiQueued = false;
+const renderer = new Renderer($('#scene'), doc, status => { $('#engine-label').textContent = status === 'WebGPU' ? 'WebGPU accelerated' : status === 'Canvas 2D' ? 'Canvas 2D fallback' : status; $('#engine-label').title = status === 'WebGPU' ? 'Shapes: instanced GPU quads. Text and paths: cached raster atlas.' : renderer?.gpuError || status; }, () => invalidate());
+function saveOptions() {
+    try {
+        localStore.setItem('midas-options', JSON.stringify(options));
+    }
+    catch { }
+}
+function saveSoon() { state.dirty = true; $('#save-indicator').innerHTML = '<i></i> Saving locally'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
+let savingInProgress = false;
+let saveQueued = false;
+async function save() {
+    clearTimeout(saveTimer);
+    if (!lib.fileId)
+        return;
+    if (savingInProgress) {
+        saveQueued = true;
+        return;
+    }
+    savingInProgress = true;
+    saveQueued = false;
+    const indicator = $('#save-indicator');
+    if (indicator) indicator.innerHTML = '<i class="spin"></i> Saving…';
+    try {
+        let m = lib.index.find(x => x.id === lib.fileId);
+        if (!m) {
+            const now = Date.now();
+            m = { id: lib.fileId, name: doc.data.name, created: now, updated: now, opened: now, thumb: null };
+            lib.index.unshift(m);
+        }
+        await projectStorage.saveActivePage(lib.fileId, doc.data, doc.page);
+        m.name = doc.data.name;
+        m.updated = Date.now();
+        await libSaveIndex();
+        await kvPut('last', lib.fileId);
+        state.dirty = false;
+        if (indicator) indicator.innerHTML = '<i></i> Saved locally';
+    }
+    catch (e) {
+        console.error('Save failed:', e);
+        if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Save failed';
+        const quota = await projectStorage.getQuota();
+        if (quota && quota.isLow) {
+            toast(`Browser storage quota is nearly full (${quota.percent}% used). Export your .midas file.`);
+        } else {
+            toast('Could not save to browser storage. Export your .midas file to keep your work.');
+        }
+    }
+    finally {
+        savingInProgress = false;
+        if (saveQueued) {
+            saveQueued = false;
+            saveSoon();
+        }
+    }
+}
+function invalidate() {
+    if (scheduled)
+        return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+        scheduled = false;
+        renderer.render(state.camera);
+        drawOverlay();
+        $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
+        $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
+        const spacing = 20 * state.camera.zoom;
+        $('#canvas-world').style.backgroundImage = options.grid && spacing >= 5 ? 'radial-gradient(var(--dot) .7px, transparent .7px)' : 'none';
+        $('#canvas-world').style.backgroundSize = `${spacing}px ${spacing}px`;
+        $('#canvas-world').style.backgroundPosition = `${state.camera.x}px ${state.camera.y}px`;
+        if (state.editing || state.pendingText)
+            positionTextEditor();
+    });
+}
+function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
+    renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
+    renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
+function syncComponents(activeOnly = true) {
+    detachOrphans(activeOnly);
+    syncInstanceStructure(activeOnly);
+    const targetPages = activeOnly ? [doc.page] : doc.data.pages;
+    const components = new Map();
+    for (const page of doc.data.pages) {
+        for (const n of page.nodes) {
+            if (n.component)
+                components.set(n.id, n);
+        }
+    }
+    for (const page of targetPages) {
+        const pmap = new Map(page.nodes.map(n => [n.id, n]));
+        for (const n of page.nodes) {
+            if (!n.sourceId)
+                continue;
+            const src = components.get(n.sourceId) || pmap.get(n.sourceId);
+            if (!src)
+                continue;
+            // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
+            const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : [])]);
+            // Text / visibility driven by a component property value win over the main component.
+            const controlled = propControlled(n, src, pmap, components);
+            for (const [k, v] of Object.entries(src)) {
+                if (omitted.has(k) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
+                    continue;
+                if (n[k] === v)
+                    continue;
+                if (typeof v !== 'object' || v === null) {
+                    n[k] = v;
+                    n.version = (n.version || 0) + 1;
+                } else if (JSON.stringify(n[k]) !== JSON.stringify(v)) {
+                    n[k] = structuredClone(v);
+                    n.version = (n.version || 0) + 1;
+                }
+            }
+            for (const [k, v] of Object.entries(controlled)) {
+                if (n[k] === v)
+                    continue;
+                n[k] = v;
+                if (k === 'text' && n.type === 'text') {
+                    if (n.autoW)
+                        hugText(n);
+                    else
+                        n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+                }
+                n.version = (n.version || 0) + 1;
+            }
+        }
+    }
+    doc.touch();
+}
+function isImageLike(n) {
+    if (!n)
+        return false;
+    if (n.type === 'image')
+        return true;
+    try {
+        const f = getFills(n);
+        return f.length === 1 && f[0].type === 'image' && f[0].visible !== false;
+    }
+    catch {
+        return false;
+    }
+}
+function syncGeomInputs() {
+    const n = activeNode(), box = document.getElementById('inspector');
+    if (!n || !box)
+        return;
+    for (const k of ['x', 'y', 'w', 'h', 'rotation']) {
+        const el = box.querySelector(`input[data-prop="${k}"]`);
+        if (el && el !== document.activeElement && n[k] !== undefined)
+            el.value = fmt(n[k]);
+    }
+}
+function changed({ ui = true, commit = false } = {}) {
+    refreshBooleans();
+    doc.touch();
+    if (commit) {
+        markSelectedOverrides();
+        applyAllLayouts();
+        syncComponents();
+        history.commit();
+        saveSoon();
+    }
+    if (ui)
+        refreshUI();
+    else if (!uiQueued) {
+        syncGeomInputs();
+        uiQueued = true;
+        setTimeout(() => {
+            uiQueued = false;
+            renderLayers();
+            if (!isInput(document.activeElement))
+                renderInspector();
+        }, 80);
+    }
+    invalidate();
+}
+function transaction(label, fn) { finishText(); history.begin(label); fn(); changed({ commit: true }); }
+function select(ids, { reveal = true } = {}) {
+    closeFillPicker();
+    closeFillDropdown();
+    closeFxWindow();
+    state.selection = new Set(ids.filter(id => doc.get(id)));
+    state.selectionVersion++;
+    state.pathEdit = null;
+    if (reveal) {
+        // Expanding ancestors keeps the layer tree in sync with whatever is selected on the canvas.
+        for (const id of state.selection)
+            for (const n of doc.ancestors(doc.get(id)))
+                state.expanded.add(n.id);
+    }
+    renderLayers();
+    renderInspector();
+    scrollSelectionIntoView();
+    invalidate();
+}
+function scrollSelectionIntoView() {
+    requestAnimationFrame(() => {
+        const row = document.querySelector('#layer-tree .layer-row.selected');
+        if (row)
+            row.scrollIntoView({ block: 'nearest' });
+    });
+}
+function selected() { return [...state.selection].map(id => doc.get(id)).filter(Boolean); }
+function selectedRoots() { return doc.roots([...state.selection]); }
+function activeNode() { return selected()[0] || null; }
+function screenToWorld(x, y) { return { x: (x - state.camera.x) / state.camera.zoom, y: (y - state.camera.y) / state.camera.zoom }; }
+function worldToScreen(x, y) { return { x: x * state.camera.zoom + state.camera.x, y: y * state.camera.zoom + state.camera.y }; }
+function eventPoint(e) { const b = area.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+function eventWorld(e) { const p = eventPoint(e); return screenToWorld(p.x, p.y); }
+function fit(ids = null) {
+    const b = doc.bounds(ids);
+    if (!b) {
+        state.camera = { x: 80, y: 100, zoom: 1 };
+        invalidate();
+        return;
+    }
+    const w = area.clientWidth, h = area.clientHeight;
+    state.camera.zoom = clamp(Math.min((w - 90) / Math.max(1, b.w), (h - 205) / Math.max(1, b.h)), .02, 2);
+    state.camera.x = (w - b.w * state.camera.zoom) / 2 - b.x * state.camera.zoom;
+    state.camera.y = 67 - b.y * state.camera.zoom;
+    invalidate();
+}
+function zoomAt(factor, x = area.clientWidth / 2, y = area.clientHeight / 2) { const w = screenToWorld(x, y); state.camera.zoom = clamp(state.camera.zoom * factor, .02, 64); state.camera.x = x - w.x * state.camera.zoom; state.camera.y = y - w.y * state.camera.zoom; invalidate(); }
+function setTool(tool) {
+    finishText();
+    if (state.pen.length)
+        finishPen();
+    state.tool = tool;
+    state.pathEdit = null;
+    renderInspector();
+    $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    overlay.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : ['rect', 'frame', 'ellipse', 'line', 'pen'].includes(tool) ? 'crosshair' : 'default';
+    $('#canvas-hint').textContent = tool === 'pen' ? 'Click to add points · Drag for Bézier handles · Enter to finish · Click first point to close' : tool === 'text' ? 'Click to add text · Double-click existing text to edit' : 'Space to pan · ⌘/Ctrl scroll to zoom · ? for shortcuts';
+    invalidate();
+}
+function getSelectionBounds() { return doc.bounds([...state.selection]); }
+function switchPage(id) {
+    finishText();
+    state.pageViews.set(doc.page.id, { camera: { ...state.camera }, selection: [...state.selection] });
+    doc.data.pageId = id;
+    doc.refresh();
+    state.selection.clear();
+    state.pathEdit = null;
+    state.pen = [];
+    const view = state.pageViews.get(id);
+    if (view) {
+        state.camera = { ...view.camera };
+        state.selection = new Set(view.selection.filter(i => doc.get(i)));
+    }
+    else
+        fit();
+    refreshUI();
+    saveSoon();
+    invalidate();
+}
+// ----- pages: nesting folders, dividers, drag reordering -----
+function pageChildren(pid) { return doc.data.pages.filter(p => (p.parentId || null) === (pid || null)); }
+function pageHasNodes(p) { return (p.nodes?.length || 0) > 0; }
+function isPageDivider(p) { return /^-{2,}$/.test(String(p.name || '').trim()); }
+function pageIsFolder(p) { return pageChildren(p.id).length > 0; }
+function togglePageExpand(id) {
+    if (state.expandedPages.has(id))
+        state.expandedPages.delete(id);
+    else
+        state.expandedPages.add(id);
+    renderPages();
+}
+function renderPages() {
+    const out = [];
+    const walk = (parentId, depth) => {
+        for (const p of pageChildren(parentId)) {
+            if (isPageDivider(p)) {
+                out.push(`<div class="page-divider" data-page="${p.id}" data-divider="1" title="Divider — double-click to rename"><span></span></div>`);
+                continue;
+            }
+            const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
+            if (folder && open)
+                walk(p.id, depth + 1);
+        }
+    };
+    walk(null, 0);
+    $('#page-list').innerHTML = out.join('') || '<div class="empty-state" style="padding:14px">No pages yet.</div>';
+}
+function movePage(srcId, targetId, mode) {
+    const pages = doc.data.pages, src = pages.find(p => p.id === srcId);
+    if (!src)
+        return;
+    const isDescendantOf = (id, of) => {
+        let c = pages.find(p => p.id === id);
+        while (c && c.parentId) {
+            if (c.parentId === of)
+                return true;
+            c = pages.find(p => p.id === c.parentId);
+        }
+        return false;
+    };
+    if (targetId && (targetId === srcId || isDescendantOf(targetId, srcId)))
+        return;
+    transaction('Reorder pages', () => {
+        pages.splice(pages.indexOf(src), 1);
+        if (!targetId) {
+            src.parentId = null;
+            pages.push(src);
+        }
+        else {
+            const t = pages.find(p => p.id === targetId);
+            if (!t) {
+                src.parentId = null;
+                pages.push(src);
+            }
+            else if (mode === 'into' && !pageHasNodes(t)) {
+                src.parentId = t.id;
+                pages.splice(pages.indexOf(t) + 1, 0, src);
+                state.expandedPages.add(t.id);
+            }
+            else {
+                src.parentId = t.parentId || null;
+                pages.splice(pages.indexOf(t) + (mode === 'after' ? 1 : 0), 0, src);
+            }
+        }
+    });
+}
+function deletePage(id) {
+    const p = doc.data.pages.find(x => x.id === id);
+    if (!p)
+        return;
+    if (doc.data.pages.length <= 1) {
+        toast('A document needs at least one page.');
+        return;
+    }
+    // No confirmation: the delete is a normal history step, so Ctrl+Z brings the page back.
+    toast(`Deleted “${p.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
+    transaction('Delete page', () => {
+        for (const c of doc.data.pages)
+            if (c.parentId === id)
+                c.parentId = p.parentId || null;
+        doc.data.pages = doc.data.pages.filter(x => x.id !== id);
+        state.pageViews.delete(id);
+        if (doc.data.pageId === id) {
+            doc.data.pageId = doc.data.pages[0].id;
+            state.selection.clear();
+            state.camera = { x: 60, y: 70, zoom: .6 };
+        }
+        doc.refresh();
+    });
+    setTimeout(() => fit(), 0);
+}
+// Copy a page with all of its layers. References inside the page (parents, instances of components on
+// this page, swaps, prototype links) point at the copies; references to other pages stay as they are.
+function duplicatePage(id) {
+    const src = doc.data.pages.find(x => x.id === id);
+    if (!src)
+        return;
+    const ids = new Map(src.nodes.map(n => [n.id, uid()])), remap = v => ids.get(v) ?? v;
+    const nodes = src.nodes.map(n => {
+        const c = structuredClone(n);
+        c.id = ids.get(n.id);
+        for (const k of ['parentId', 'sourceId', 'swapOf', 'prototypeTarget'])
+            if (c[k] != null)
+                c[k] = remap(c[k]);
+        if (Array.isArray(c.exposedNested))
+            c.exposedNested = c.exposedNested.map(remap);
+        c.version = 0;
+        return c;
+    });
+    const names = new Set(doc.data.pages.map(p => p.name));
+    let name = `${src.name} copy`, k = 2;
+    while (names.has(name))
+        name = `${src.name} copy ${k++}`;
+    const page = { ...structuredClone({ ...src, nodes: [] }), id: uid(), name, nodes };
+    transaction('Duplicate page', () => {
+        doc.data.pages.splice(doc.data.pages.indexOf(src) + 1, 0, page);
+    });
+    switchPage(page.id);
+}
+function renamePageInline(id) {
+    const p = doc.data.pages.find(x => x.id === id);
+    if (!p)
+        return;
+    const row = document.querySelector(`[data-page="${id}"]`);
+    const el = row?.querySelector('.page-name') || row;
+    if (!el)
+        return;
+    inlineRename(el, p.name, name => transaction('Rename page', () => { p.name = name; }));
+}
+function renderLayers() {
+    const pluginsMode = state.leftTab === 'plugins';
+    $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
+    $('#layers-heading').classList.toggle('hidden', pluginsMode);
+    if (pluginsMode) {
+        for (const id of ['#pages-heading', '#page-list', '#layer-tree', '#assets-panel', '#layer-search'])
+            $(id).classList.add('hidden');
+        renderPlugins();
+        return;
+    }
+    const assetsMode = state.leftTab === 'assets';
+    $('#pages-heading').classList.toggle('hidden', assetsMode);
+    $('#page-list').classList.toggle('hidden', assetsMode);
+    if (assetsMode)
+        $('#layer-search').classList.add('hidden');
+    $('#layer-count').textContent = assetsMode ? '' : doc.nodes.length;
+    $('#tree-heading').textContent = assetsMode ? 'Components' : 'Layers';
+    $('#layer-tree').classList.toggle('hidden', assetsMode);
+    $('#assets-panel').classList.toggle('hidden', !assetsMode);
+    if (assetsMode) {
+        renderAssets();
+        return;
+    }
+    const q = $('#search-layers').value.trim().toLowerCase();
+    // The top-level ancestor of a nested selection sticks under the "Layers" heading while its subtree scrolls.
+    const stickyRoots = new Set();
+    for (const id of state.selection) {
+        const n = doc.get(id), top = n && doc.ancestors(n).at(-1);
+        if (top)
+            stickyRoots.add(top.id);
+    }
+    let html = '', rowCount = 0;
+    const MAX_ROWS = 250, visited = new Set();
+    const walk = (parent, depth) => {
+        if (depth > 50 || visited.has(parent) || rowCount >= MAX_ROWS)
+            return;
+        visited.add(parent);
+        for (const n of [...doc.children(parent)].reverse()) {
+            if (rowCount >= MAX_ROWS) {
+                html += '<div class="layer-group"><div class="layer-row dim" style="padding:6px 14px;font-size:11px;opacity:0.65;font-style:italic">…remaining layers hidden (use search to filter)</div></div>';
+                return;
+            }
+            const matches = !q || n.name.toLowerCase().includes(q) || n.text?.toLowerCase().includes(q);
+            if (q && !matches && !doc.descendants(n.id).some(c => c.name.toLowerCase().includes(q) || c.text?.toLowerCase().includes(q)))
+                continue;
+            rowCount++;
+            const children = doc.children(n.id), hasChildren = children.length > 0, open = state.expanded.has(n.id) || !!q;
+            if (depth === 0)
+                html += '<div class="layer-group">';
+            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${n.component || n.isInstance || n.componentSet ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${n.booleanOp ? MENU_ICONS[n.booleanOp] : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
+            if (hasChildren && open)
+                walk(n.id, depth + 1);
+            if (depth === 0)
+                html += '</div>';
+        }
+    };
+    walk(null, 0);
+    $('#layer-tree').innerHTML = html || '<div class="empty-state">A fresh canvas.<br>Press R to draw your first shape.</div>';
+}
+// Line height reads in px by default; typing "135%" sets it relative to the font size. Stored as a multiplier.
+function lineHeightField(n) {
+    return `<label class="field${boundVar('lineHeight') ? ' var-bound-num' : ''}" title="Line height (px, or type a % of the font size)"><span>↕</span><input type="text" inputmode="decimal" data-lh value="${fmt(n.lineHeight * (n.fontSize || 16))}" aria-label="Line height" spellcheck="false"><i class="unit">px</i>${varBindButton('lineHeight')}</label>`;
+}
+function safeColor(c) { return /^#[\da-f]{3,8}$/i.test(c) ? c : '#0058CA'; }
+function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${fmt(value ?? 0)}" aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
+function field(label, prop, value, opts = {}) {
+    const bv = bindType(prop) ? boundVar(prop) : null;
+    if (bv && bv.type === 'number')
+        return fieldBase(label, prop, value, opts).replace('class="field"', 'class="field var-bound-num"').replace(/<\/label>$/, `${varBindButton(prop)}</label>`);
+    if (bv)
+        return `<div class="field var-bound" title="${esc(opts.title || prop)}"><span>${label}</span>${varChip(prop, bv)}</div>`;
+    return fieldBase(label, prop, value, opts).replace(/<\/label>$/, `${varBindButton(prop)}</label>`);
+}
+function colorField(prop, value, opacityProp = null, opacity = 1) {
+    const bv = VAR_BIND[prop] ? boundVar(prop) : null;
+    if (bv)
+        return `<div class="fill-row">${varChip(prop, bv)}${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`;
+    return colorFieldBase(prop, value, opacityProp, opacity).replace(/<\/div>$/, `${varBindButton(prop)}</div>`);
+}
+function section(title, body, action = '', extra = '') { return `<section class="inspector-section ${extra}"><div class="section-heading"><span>${title}</span>${action}</div>${body}</section>`; }
+function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
+function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
+function renderInspector() {
+    if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
+        return;
+    const ns = selected(), n = ns[0];
+    let html = '';
+    if (state.inspectorTab === 'prototype') {
+        renderPrototype(n);
+        return;
+    }
+    if (!n && state.tool === 'frame') {
+        html += framePresetPanel();
+    }
+    else if (!n) {
+        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>`);
+        html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
+        html += section('Your work, your device', `<p>No account. No uploads. This document is saved to the data folder on this computer.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
+    }
+    else {
+        const multi = ns.length > 1;
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
+        if (!multi)
+            html += componentBlockHtml(n);
+
+        html += frameSection(ns);
+        const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
+        html += section('Position', positionSectionHtml(n));
+        html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
+        html += section('Appearance', `${appearanceTopHtml(n)}${varRow('Visibility', 'visible')}${varCollectionsHtml(n)}`, varCollectionsButton(n));
+        if (ns.every(x => x.type === 'text')) {
+            html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div></div>${selectField('textCase', n.textCase, [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']])}${selectField('direction', n.direction || 'auto', [['auto', 'Automatic direction'], ['ltr', 'Left to right'], ['rtl', 'Right to left']])}<div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
+        }
+        if (n.type !== 'group')
+            html += fillsSection(n);
+        if (n.type !== 'group')
+            html += strokeSectionHtml(n);
+        if (n.type !== 'group')
+            html += effectsSection(n);
+        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
+        html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
+    }
+    $('#inspector').innerHTML = html;
+    $('#inspector').querySelectorAll('[data-img-asset]').forEach(el => { const src = doc.data.assets[el.dataset.imgAsset]; if (src)
+        el.style.backgroundImage = `url("${src}")`; });
+    lastInspector = performance.now();
+}
+function renderPrototype(n) { const frames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId); $('#inspector').innerHTML = section('Prototype', `<p>Connect a layer to a frame. In preview, clicking that layer navigates to the destination.</p>`) + (n ? section('Interaction', `<div class="field-label">On click → Navigate to</div>${selectField('prototypeTarget', n.prototypeTarget || '', [['', 'No destination'], ...frames.map(f => [f.id, f.name])])}<p>Transition: instant. Keyboard arrows also navigate between frames.</p>`) : section('Select a layer', '<p>Select a button, card, or other layer to add an interaction.</p>')) + section('Flow preview', `<button class="wide-button primary" data-action="present">${icon('play', 14)} Present frames</button><p>Preview is local. It does not publish or upload your design.</p>`); }
+function constrainChildren(n, oldW, oldH) {
+    if (!['frame', 'group'].includes(n.type) && !n.booleanOp)
+        return;
+    const dx = n.w - oldW, dy = n.h - oldH;
+    for (const c of doc.children(n.id)) {
+        if (n.type === 'frame' && isAutoLayout(n) && c.layoutPositioning !== 'absolute')
+            continue;
+        if (n.type === 'group' || n.booleanOp) {
+            const sx = n.w / (oldW || 1), sy = n.h / (oldH || 1), cw = c.w, ch = c.h;
+            c.x *= sx;
+            c.y *= sy;
+            c.w *= sx;
+            c.h *= sy;
+            if (c.type === 'text')
+                c.fontSize *= Math.min(sx, sy);
+            constrainChildren(c, cw, ch);
+        }
+        else {
+            switch (c.constraintH) {
+                case 'right':
+                    c.x += dx;
+                    break;
+                case 'center':
+                    c.x += dx / 2;
+                    break;
+                case 'stretch':
+                    c.w = Math.max(1, c.w + dx);
+                    break;
+                case 'scale':
+                    c.x *= n.w / (oldW || 1);
+                    c.w *= n.w / (oldW || 1);
+                    break;
+            }
+            switch (c.constraintV) {
+                case 'bottom':
+                    c.y += dy;
+                    break;
+                case 'center':
+                    c.y += dy / 2;
+                    break;
+                case 'stretch':
+                    c.h = Math.max(1, c.h + dy);
+                    break;
+                case 'scale':
+                    c.y *= n.h / (oldH || 1);
+                    c.h *= n.h / (oldH || 1);
+                    break;
+            }
+        }
+        doc.touch(c);
+    }
+    if (n.type === 'frame')
+        constraintSizes.set(n, { w: n.w, h: n.h });
+}
+function applyLayout() { }
+function applyAllLayouts() { doc.touch(); doc.scene(); }
+function setProperty(prop, value, { live = false } = {}) {
+    if (!state.selection.size)
+        return;
+    if (!history.pending)
+        history.begin(`Change ${prop}`);
+    for (const n of selected()) {
+        let v = value;
+        if (['opacity', 'fillOpacity', 'shadowOpacity', 'strokeOpacity'].includes(prop))
+            v = clamp(+v / 100, 0, 1);
+        if (prop === 'lineHeight')
+            v = clamp(+v / 100, .05, 20);
+        if (prop === 'fontWeight')
+            v = +v;
+        if (['w', 'h'].includes(prop))
+            v = Math.max(.1, +v);
+        if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'gap', 'gapCross', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
+            v = Math.max(0, +v);
+        if (prop === 'fontSize')
+            v = clamp(+v, 1, 512);
+        if (typeof v === 'number' && !Number.isFinite(v))
+            continue;
+        if (Array.isArray(n.fills) && (prop === 'fill' || prop === 'fill2' || prop === 'fillType' || prop === 'gradientAngle' || prop === 'fillOpacity')) {
+            const top = n.fills[0];
+            if (top) {
+                if (prop === 'fillType')
+                    setFillType(top, v);
+                else if (prop === 'fill' && v === 'none')
+                    top.visible = false;
+                else
+                    top[{ fill: 'color', fill2: 'color2', gradientAngle: 'angle', fillOpacity: 'opacity' }[prop]] = v;
+                syncLegacyFill(n);
+                doc.touch(n);
+            }
+            continue;
+        }
+        const ow = n.w, oh = n.h;
+        if (n.vars?.[prop]) {
+            delete n.vars[prop];
+            if (!Object.keys(n.vars).length)
+                delete n.vars;
+        }
+        if (prop === 'gridCols')
+            v = Math.max(1, Math.round(+v));
+        if (prop === 'strokeMiter')
+            v = clamp(+v, 1, 180);
+        if (['rTL', 'rTR', 'rBR', 'rBL'].includes(prop)) {
+            if (!hasRadii(n)) {
+                const r0 = n.radius || 0;
+                n.radii = [r0, r0, r0, r0];
+            }
+            n.radii = [...n.radii];
+            n.radii[{ rTL: 0, rTR: 1, rBR: 2, rBL: 3 }[prop]] = v;
+            doc.touch(n);
+            continue;
+        }
+        if (prop === 'radius' && hasRadii(n))
+            n.radii = [v, v, v, v];
+        if (n.lockRatio && (prop === 'w' || prop === 'h') && ow > 0 && oh > 0) {
+            if (prop === 'w') {
+                n.h = Math.max(.1, +(oh * v / ow).toFixed(3));
+                n.layoutSizingV = 'fixed';
+            }
+            else {
+                n.w = Math.max(.1, +(ow * v / oh).toFixed(3));
+                n.layoutSizingH = 'fixed';
+                if (n.type === 'text')
+                    n.autoW = false;
+            }
+        }
+        if (prop === 'padH') {
+            n.padL = v;
+            n.padR = v;
+        }
+        else if (prop === 'padV') {
+            n.padT = v;
+            n.padB = v;
+        }
+        else
+            n[prop] = v;
+        if (prop === 'w')
+            n.layoutSizingH = 'fixed';
+        if (prop === 'h')
+            n.layoutSizingV = 'fixed';
+        if (['w', 'h', 'minW', 'maxW', 'minH', 'maxH'].includes(prop)) {
+            n.w = clampMM(n, 'w', n.w);
+            n.h = clampMM(n, 'h', n.h);
+        }
+        if (n.type === 'text' && prop === 'layoutSizingH') {
+            n.autoW = v === 'hug';
+            if (n.autoW)
+                hugText(n);
+        }
+        if (n.type === 'text' && prop === 'layoutSizingV' && v === 'hug' && !n.autoW)
+            n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+        if (n.sourceId) {
+            n.overrides ||= {};
+            n.overrides[prop] = v;
+        }
+        if (prop === 'w' || prop === 'h')
+            constrainChildren(n, ow, oh);
+        if (n.type === 'text' && prop === 'w')
+            n.autoW = false;
+        if (n.type === 'text' && prop === 'h')
+            n.autoW = false;
+        if (n.type === 'text' && prop === 'w' && textModeOf(n) === 'auto-h')
+            n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+        if (n.type === 'text' && ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'fontStyle', 'textCase'].includes(prop)) {
+            if (n.autoW)
+                hugText(n);
+            else
+                n.h = Math.max(n.h, layoutText(n).height);
+        }
+        if (['layout', 'gap', 'padding', 'layoutAlign'].includes(prop))
+            applyLayout(n);
+        doc.touch(n);
+    }
+    changed({ ui: !live, commit: !live });
+}
+function toggleProperty(prop) {
+    const n = activeNode();
+    if (n)
+        setProperty(prop, !n[prop]);
+}
+function cloneNodes(roots, offset = 20, asInstance = false) {
+    const results = [];
+    for (const root of roots) {
+        const children = doc.descendants(root.id), all = [root, ...children], map = new Map(all.map(n => [n.id, uid()]));
+        for (const src of all) {
+            const copy = structuredClone(src);
+            copy.id = map.get(src.id);
+            copy.parentId = src.id === root.id ? src.parentId : map.get(src.parentId);
+            copy.version = 0;
+            if (src.id === root.id) {
+                copy.x += offset;
+                copy.y += offset;
+                copy.name = asInstance ? src.name : src.name + ' copy';
+                results.push(copy);
+            }
+            if (asInstance) {
+                copy.sourceId = src.id;
+                copy.component = false;
+                copy.isInstance = src.id === root.id;
+                copy.overrides = {};
+            }
+            doc.add(copy);
+        }
+    }
+    if (!asInstance)
+        for (const r of results) {
+            if (!r.component)
+                continue;
+            const set = parentSetOf(r), first = set && variantProps(set)[0];
+            if (!first)
+                continue;
+            const taken = new Set(setVariants(set).filter(v => v !== r).map(v => v.variant?.[first]));
+            let k = taken.size + 1, val = `Variant ${k}`;
+            while (taken.has(val))
+                val = `Variant ${++k}`;
+            r.variant = { ...(r.variant || {}), [first]: val };
+            renameVariants(set);
+            layoutVariantSet(set);
+        }
+    return results;
+}
+function duplicate() {
+    if (!state.selection.size)
+        return;
+    transaction('Duplicate layers', () => { const copies = cloneNodes(selectedRoots()); select(copies.map(n => n.id)); });
+    toast('Selection duplicated');
+}
+function removeSelection() {
+    if (!state.selection.size)
+        return;
+    transaction('Delete layers', () => { doc.remove([...state.selection]); state.selection.clear(); });
+}
+function copySelection() {
+    const roots = selectedRoots();
+    if (!roots.length)
+        return;
+    const all = roots.flatMap(n => [n, ...doc.descendants(n.id)]), rootIds = roots.map(n => n.id);
+    const nodes = structuredClone(all);
+    for (const n of nodes.filter(n => rootIds.includes(n.id))) {
+        const w = doc.world(n.id);
+        n.parentId = null;
+        setFromMatrix(n, w.matrix);
+    }
+    state.clipboard = { format: 'midas-clipboard', rootIds, nodes, assets: structuredClone(doc.data.assets) };
+    navigator.clipboard?.writeText(JSON.stringify(state.clipboard)).catch(() => { });
+    toast(`${roots.length} layer${roots.length > 1 ? 's' : ''} copied`);
+}
+async function pasteSelection() {
+    let payload = state.clipboard;
+    try {
+        const str = await navigator.clipboard.readText();
+        if (str) {
+            try {
+                const parsed = JSON.parse(str);
+                if ((parsed.format === 'midas-clipboard' || parsed.format === 'vellum-clipboard') && Array.isArray(parsed.nodes))
+                    payload = parsed;
+                else if (!payload) {
+                    createTextAtCenter(str);
+                    return;
+                }
+            }
+            catch {
+                if (!payload) {
+                    createTextAtCenter(str);
+                    return;
+                }
+            }
+        }
+    }
+    catch { }
+    if (!payload) {
+        toast('Nothing copied yet. Copy a layer first.');
+        return;
+    }
+    transaction('Paste layers', () => {
+        const temp = { format: 'midas', version: 1, name: 'Clipboard', pageId: 'paste', pages: [{ id: 'paste', name: 'Paste', nodes: payload.nodes }], assets: payload.assets || {} };
+        let data;
+        try {
+            data = DocumentModel.parse(JSON.stringify(temp));
+        }
+        catch (e) {
+            toast('Clipboard data is not valid.');
+            return;
+        }
+        const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
+        Object.assign(doc.data.assets, data.assets);
+        const roots = [];
+        const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
+        // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
+        const instRootOf = id => { let cur = byId.get(id); while (cur) {
+            if (payload.rootIds.includes(cur.id))
+                return cur.component && !cur.componentSet && componentById(cur.id) ? cur.id : null;
+            cur = byId.get(cur.parentId);
+        } return null; };
+        for (const src of data.pages[0].nodes) {
+            const n = structuredClone(src);
+            n.id = map.get(src.id);
+            n.parentId = map.get(src.parentId) || null;
+            const instRoot = instRootOf(src.id);
+            if (instRoot) {
+                const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
+                n.sourceId = src.id;
+                n.component = false;
+                n.isInstance = isRoot;
+                n.overrides = {};
+                delete n.variant;
+                delete n.componentSet;
+                if (vset)
+                    n.name = vset.name;
+            }
+            if (payload.rootIds.includes(src.id)) {
+                n.x = Math.round(n.x + 24);
+                n.y = Math.round(n.y + 24);
+                roots.push(n.id);
+            }
+            doc.add(n);
+        }
+        select(roots);
+    });
+}
+function groupSelection(asFrame = false, autoLayout = false) {
+    const roots = selectedRoots();
+    if (!roots.length)
+        return;
+    transaction(autoLayout ? 'Add auto layout' : asFrame ? 'Frame selection' : 'Group layers', () => {
+        const commonParent = roots.every(n => n.parentId === roots[0].parentId) ? roots[0].parentId : null;
+        const pm = commonParent ? doc.world(commonParent).matrix : identity(), inv = inverse(pm);
+        const rects = roots.map(n => boxOf(multiply(inv, doc.world(n.id).matrix), n.w, n.h));
+        const b = union(rects), g = node(asFrame ? 'frame' : 'group', { name: asFrame ? 'Frame' : 'Group', parentId: commonParent, x: b.x, y: b.y, w: b.w, h: b.h, fill: asFrame ? '#ffffff' : 'none', clip: asFrame });
+        const worldBefore = new Map(roots.map(n => [n.id, doc.world(n.id).matrix]));
+        const firstIndex = Math.min(...roots.map(n => doc.nodes.indexOf(n)));
+        doc.add(g);
+        doc.nodes.splice(doc.nodes.indexOf(g), 1);
+        doc.nodes.splice(firstIndex, 0, g);
+        doc.refresh();
+        const gi = inverse(doc.world(g.id).matrix);
+        for (const n of roots) {
+            const m = multiply(gi, worldBefore.get(n.id));
+            setFromMatrix(n, m);
+            n.parentId = g.id;
+            doc.touch(n);
+        }
+        if (autoLayout) {
+            g.fill = 'none';
+            g.clip = false;
+            const nd = Math.max(0, Math.round(+options.bigNudge || 0));
+            // Wrapping layers (Shift+A): big nudge becomes both padding and gap.
+            enableAutoLayout(g, null, { hug: true, pad: nd, gapFromNudge: true });
+            g.x -= nd;
+            g.y -= nd;
+            doc.touch(g);
+        }
+        state.expanded.add(g.id);
+        select([g.id]);
+    });
+}
+function setFromMatrix(n, m) {
+    let sx = n.flipX ? -1 : 1;
+    const sy = n.flipY ? -1 : 1, det = m[0] * m[3] - m[1] * m[2];
+    if (det * sx * sy < 0)
+        sx = -sx;
+    if (sx < 0)
+        n.flipX = true;
+    else
+        delete n.flipX;
+    n.rotation = Math.atan2(m[1] * sx, m[0] * sx) * 180 / Math.PI;
+    Object.assign(n, xyForTopLeft(n, { x: m[4], y: m[5] }));
+}
+function ungroupSelection() {
+    transaction('Ungroup', () => {
+        const ids = [];
+        for (const g of selectedRoots()) {
+            if (!['group', 'frame'].includes(g.type))
+                continue;
+            const parent = g.parentId, pm = parent ? doc.world(parent).matrix : identity(), inv = inverse(pm), children = doc.children(g.id);
+            const transformed = children.map(c => [c, multiply(inv, doc.world(c.id).matrix)]);
+            for (const [c, m] of transformed) {
+                c.parentId = parent;
+                setFromMatrix(c, m);
+                ids.push(c.id);
+                doc.touch(c);
+            }
+            doc.remove([g.id]);
+        }
+        select(ids);
+    });
+}
+function reorder(direction) {
+    if (!state.selection.size)
+        return;
+    transaction('Reorder layers', () => {
+        const roots = selectedRoots();
+        for (const n of direction.includes('back') ? [...roots].reverse() : roots) {
+            const siblings = doc.children(n.parentId), index = siblings.indexOf(n);
+            let target;
+            if (direction === 'front')
+                target = siblings.at(-1);
+            else if (direction === 'back')
+                target = siblings[0];
+            else if (direction === 'forward')
+                target = siblings[index + 1];
+            else
+                target = siblings[index - 1];
+            if (!target || target === n)
+                continue;
+            doc.nodes.splice(doc.nodes.indexOf(n), 1);
+            const at = doc.nodes.indexOf(target) + (direction === 'front' || direction === 'forward' ? 1 : 0);
+            doc.nodes.splice(at, 0, n);
+        }
+        doc.refresh();
+    });
+}
+function alignSelection(mode) {
+    const roots = selectedRoots();
+    if (!roots.length)
+        return;
+    transaction(`Align ${mode}`, () => {
+        const b = roots.length === 1 && roots[0].parentId ? doc.world(roots[0].parentId).box : doc.bounds(roots.map(n => n.id));
+        for (const n of roots) {
+            const w = doc.world(n.id).box;
+            let dx = 0, dy = 0;
+            if (mode === 'left')
+                dx = b.x - w.x;
+            if (mode === 'center')
+                dx = b.x + b.w / 2 - w.x - w.w / 2;
+            if (mode === 'right')
+                dx = b.x + b.w - w.x - w.w;
+            if (mode === 'top')
+                dy = b.y - w.y;
+            if (mode === 'middle')
+                dy = b.y + b.h / 2 - w.y - w.h / 2;
+            if (mode === 'bottom')
+                dy = b.y + b.h - w.y - w.h;
+            const inv = n.parentId ? doc.world(n.parentId).inverse : identity();
+            n.x += inv[0] * dx + inv[2] * dy;
+            n.y += inv[1] * dx + inv[3] * dy;
+            doc.touch(n);
+        }
+    });
+}
+function distribute(horizontal) {
+    const roots = selectedRoots();
+    if (roots.length < 3) {
+        toast('Select at least three layers to distribute.');
+        return;
+    }
+    transaction('Distribute spacing', () => {
+        const sorted = roots.map(n => ({ n, b: doc.world(n.id).box })).sort((a, b) => horizontal ? a.b.x - b.b.x : a.b.y - b.b.y);
+        const first = sorted[0].b, last = sorted.at(-1).b;
+        const total = sorted.reduce((s, i) => s + (horizontal ? i.b.w : i.b.h), 0), extent = horizontal ? last.x + last.w - first.x : last.y + last.h - first.y, gap = (extent - total) / (roots.length - 1);
+        let at = horizontal ? first.x : first.y;
+        for (const { n, b } of sorted) {
+            const delta = at - (horizontal ? b.x : b.y), inv = n.parentId ? doc.world(n.parentId).inverse : identity();
+            n.x += horizontal ? inv[0] * delta : inv[2] * delta;
+            n.y += horizontal ? inv[1] * delta : inv[3] * delta;
+            doc.touch(n);
+            at += (horizontal ? b.w : b.h) + gap;
+        }
+    });
+}
+function makeComponent() {
+    if (!state.selection.size)
+        return;
+    if (state.selection.size > 1)
+        groupSelection();
+    transaction('Create component', () => { const n = activeNode(); n.component = true; n.isInstance = false; doc.touch(n); });
+    toast('Main component created. Find it in Components.');
+}
+function instantiate(id, at = null) {
+    const sourcePage = doc.data.pages.find(p => p.nodes.some(n => n.id === id));
+    const source = sourcePage?.nodes.find(n => n.id === id);
+    if (!source)
+        return;
+    transaction('Place component instance', () => {
+        const old = doc.data.pageId;
+        let root;
+        if (sourcePage.id !== old) {
+            doc.data.pageId = sourcePage.id;
+            doc.refresh();
+            const all = [source, ...doc.descendants(source.id)].map(n => structuredClone(n));
+            doc.data.pageId = old;
+            doc.refresh();
+            const ids = new Map(all.map(n => [n.id, uid()]));
+            for (const n of all) {
+                const src = n.id;
+                n.id = ids.get(src);
+                n.parentId = src === id ? null : ids.get(n.parentId);
+                n.sourceId = src;
+                n.component = false;
+                n.isInstance = src === id;
+                n.overrides = {};
+                doc.add(n);
+                if (src === id)
+                    root = n;
+            }
+        }
+        else
+            root = cloneNodes([source], 0, true)[0];
+        const vset = parentSetOf(source);
+        if (vset)
+            root.name = vset.name;
+        const c = at || screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
+        root.parentId = null;
+        root.x = Math.round(c.x - root.w / 2);
+        root.y = Math.round(c.y - root.h / 2);
+        doc.touch(root);
+        select([root.id]);
+    });
+}
+function createAtCenter(type, props = {}) { const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2); let n; transaction(`Insert ${type}`, () => { n = node(type, props); n.x = Math.round(c.x - n.w / 2); n.y = Math.round(c.y - n.h / 2); doc.add(n); select([n.id]); }); return n; }
+function createTextAtCenter(text) { const n = createAtCenter('text', { text, name: text.slice(0, 28), w: 360, h: 70, fontSize: 28, fill: options.theme === 'dark' ? '#f0eaf8' : '#282431' }); n.h = layoutText(n).height; doc.touch(n); changed({ commit: true }); }
+function insertAsset(type) {
+    const center = screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
+    transaction('Insert ' + type, () => {
+        let f;
+        if (type === 'button') {
+            f = doc.add(node('frame', { name: 'Button / Primary', x: center.x - 90, y: center.y - 24, w: 180, h: 48, fill: '#0058CA', radius: 9, clip: false, component: false }));
+            doc.add(node('text', { parentId: f.id, x: 20, y: 14, w: 140, h: 24, text: 'Get started   ↗', name: 'Label', fill: '#ffffff', fontSize: 14, fontWeight: 500, textAlign: 'center' }));
+        }
+        else if (type === 'badge') {
+            f = doc.add(node('frame', { name: 'Badge / Status', x: center.x - 72, y: center.y - 17, w: 144, h: 34, fill: '#d4e8dc', radius: 17 }));
+            doc.add(node('text', { parentId: f.id, x: 14, y: 8, w: 120, h: 22, text: '●  In progress', name: 'Status', fontSize: 12, fill: '#537962' }));
+        }
+        else {
+            f = doc.add(node('frame', { name: 'Card / Content', x: center.x - 150, y: center.y - 100, w: 300, h: 200, fill: '#e3edfb', radius: 16, shadow: true }));
+            doc.add(node('text', { parentId: f.id, x: 25, y: 29, w: 250, h: 80, text: 'A little\ninspiration.', name: 'Heading', fontSize: 30, fill: '#2c5a90', fontWeight: 600, lineHeight: 1.15 }));
+            doc.add(node('text', { parentId: f.id, x: 25, y: 139, w: 250, h: 42, text: 'Give your next big idea\na little room to grow.', name: 'Body', fontSize: 13, fill: '#6f8dab' }));
+        }
+        select([f.id]);
+        state.expanded.add(f.id);
+    });
+}
+function preset(name) { const sizes = { desktop: [1440, 900], phone: [390, 844], tablet: [834, 1194], square: [1080, 1080] }; const [w, h] = sizes[name]; const n = createAtCenter('frame', { name: name[0].toUpperCase() + name.slice(1), w, h, fill: '#ffffff' }); fit([n.id]); }
+function resetRasterCaches() { renderer.images.images.clear(); renderer.images.pending.clear(); renderer.atlas?.reset(); renderer.cache.clear(); }
+function undo() {
+    finishText();
+    const label = history.undo();
+    resetRasterCaches();
+    if (!label)
+        return;
+    state.selection = new Set([...state.selection].filter(id => doc.get(id)));
+    refreshUI();
+    saveSoon();
+    invalidate();
+    toast('Undo: ' + label);
+}
+function redo() {
+    finishText();
+    const label = history.redo();
+    resetRasterCaches();
+    if (!label)
+        return;
+    state.selection = new Set([...state.selection].filter(id => doc.get(id)));
+    refreshUI();
+    saveSoon();
+    invalidate();
+    toast('Redo: ' + label);
+}
+function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
+function safeName(s) { return s.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').slice(0, 120) || 'Midas'; }
+async function saveFile() {
+    finishText();
+    toast('Preparing .midas export…');
+    try {
+        const json = await projectStorage.exportProject(lib.fileId, doc.data);
+        download(new Blob([json], { type: 'application/json' }), safeName(doc.data.name) + '.midas');
+        toast('Portable document exported. Includes all pages and images.');
+    }
+    catch (e) {
+        download(new Blob([doc.serialize()], { type: 'application/json' }), safeName(doc.data.name) + '.midas');
+        toast('Portable document exported.');
+    }
+}
+async function doExport(format, scale = 2, ids = [...state.selection]) {
+    finishText();
+    if (!ids.length)
+        ids = doc.nodes.filter(n => !n.parentId).map(n => n.id);
+    if (!ids.length) {
+        toast('Add something to the canvas first.');
+        return;
+    }
+    const name = safeName(ids.length === 1 ? doc.get(ids[0]).name : doc.page.name);
+    try {
+        if (format === 'SVG') {
+            download(new Blob([exportSVG(doc, ids)], { type: 'image/svg+xml' }), name + '.svg');
+        }
+        else {
+            const canvas = await renderer.exportCanvas(ids, scale);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob)
+                throw new Error('Image encoding failed.');
+            download(blob, name + `@${scale}x.png`);
+        }
+        toast(`${format} exported`);
+    }
+    catch (e) {
+        toast(e.message);
+    }
+}
+async function importDocument(file) { await libImportFile(file); }
+async function importImage(file, location = null) {
+    if (!file)
+        return;
+    if (file.size > 25 * 1024 * 1024) {
+        toast('Please use an image under 25 MB.');
+        return;
+    }
+    if (!file.type.startsWith('image/')) {
+        toast('Choose an image file.');
+        return;
+    }
+    try {
+        const url = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+        const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
+        if (img.naturalWidth * img.naturalHeight > 64e6)
+            throw new Error('Image exceeds the 64 megapixel limit.');
+        transaction('Place image', () => { const asset = uid(); doc.data.assets[asset] = url; const scale = Math.min(1, 800 / img.naturalWidth, 800 / img.naturalHeight), w = img.naturalWidth * scale, h = img.naturalHeight * scale, c = location || screenToWorld(area.clientWidth / 2, area.clientHeight / 2); const n = doc.add(node('image', { name: file.name, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), w: Math.round(w), h: Math.round(h), assetId: asset })); materializeFills(n); n.type = 'rect'; n.clip = false; n.radius = 0; n.lockRatio = true; syncLegacyFill(n); renderer.images.images.set(asset, img); select([n.id]); });
+        toast('Image placed. Original resolution preserved.');
+    }
+    catch (e) {
+        toast(e.message || 'Could not read the image.');
+    }
+}
+function selectionGeometry() {
+    const roots = selectedRoots();
+    if (!roots.length)
+        return null;
+    if (roots.length === 1) {
+        const n = roots[0], s = doc.world(n.id);
+        if (!s || !s.matrix)
+            return null;
+        return { matrix: s.matrix, w: n.w, h: n.h, node: n };
+    }
+    const b = getSelectionBounds();
+    if (!b)
+        return null;
+    return { matrix: [1, 0, 0, 1, b.x, b.y], w: b.w, h: b.h, node: null };
+}
+function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
+function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
+function drawOverlay() {
+    const c = octx, dpr = renderer.dpr || 1;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, overlay.width, overlay.height);
+    c.scale(dpr, dpr);
+    const z = state.camera.zoom, accent = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
+    c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    for (const s of doc.scene()) {
+        if (s.node.type !== 'frame' || s.node.parentId)
+            continue;
+        const p = worldToScreen(s.box.x, s.box.y);
+        if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
+            continue;
+        c.fillStyle = state.selection.has(s.node.id) ? accent : options.theme === 'dark' ? '#8d839a' : '#8c8297';
+        c.fillText(s.node.name, p.x, p.y - 12);
+    }
+    if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
+        const s = doc.world(state.hover);
+        if (s)
+            outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, '#5b9cf0', .8);
+    }
+    const g = selectionGeometry();
+    if (g && !state.editing && !state.pathEdit) {
+        const corners = outline(c, g, accent, 1.2);
+        if (!state.gesture || !['move', 'marquee'].includes(state.gesture.kind)) {
+            const handles = handlesFor(g);
+            c.strokeStyle = accent;
+            c.fillStyle = options.theme === 'dark' ? '#242426' : '#ffffff';
+            const top = handles.find(h => h.name === 'n'), rot = handles.find(h => h.name === 'rotate');
+            if (top && rot) {
+                c.beginPath();
+                c.moveTo(top.x, top.y);
+                c.lineTo(rot.x, rot.y);
+                c.stroke();
+            }
+            for (const h of handles) {
+                if (h.name === 'rotate') {
+                    c.beginPath();
+                    c.arc(h.x, h.y, 3, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                }
+                else {
+                    c.fillRect(h.x - 3, h.y - 3, 6, 6);
+                    c.strokeRect(h.x - 3, h.y - 3, 6, 6);
+                }
+            }
+        }
+        const label = `${fmt(g.w)} × ${fmt(g.h)}`, p = { x: (corners[2].x + corners[3].x) / 2, y: Math.max(corners[2].y, corners[3].y) + 15 };
+        c.font = '9px Inter, sans-serif';
+        const tw = c.measureText(label).width;
+        c.fillStyle = accent;
+        c.beginPath();
+        c.roundRect(p.x - tw / 2 - 7, p.y - 5, tw + 14, 18, 4);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.fillText(label, p.x - tw / 2, p.y + 7);
+    }
+    if (state.marquee) {
+        const m = state.marquee;
+        c.strokeStyle = accent;
+        c.fillStyle = '#5b9cf016';
+        c.lineWidth = 1;
+        c.fillRect(m.x, m.y, m.w, m.h);
+        c.strokeRect(m.x + .5, m.y + .5, m.w, m.h);
+    }
+    c.strokeStyle = '#e77aa0';
+    c.lineWidth = .8;
+    c.setLineDash([4, 3]);
+    for (const guide of state.guides) {
+        c.beginPath();
+        if (guide.axis === 'x') {
+            const x = worldToScreen(guide.value, 0).x;
+            c.moveTo(x, 40);
+            c.lineTo(x, area.clientHeight - 85);
+        }
+        else {
+            const y = worldToScreen(0, guide.value).y;
+            c.moveTo(0, y);
+            c.lineTo(area.clientWidth, y);
+        }
+        c.stroke();
+    }
+    c.setLineDash([]);
+    if (state.pen.length) {
+        drawPen(c, state.pen, identity(), accent, state.penHover);
+    }
+    if (state.pathEdit) {
+        const n = doc.get(state.pathEdit), s = n && doc.world(n.id);
+        if (n && s) {
+            const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), m = multiply(s.matrix, [sx, 0, 0, sy, 0, 0]);
+            drawPen(c, n.points, m, accent, null, n.closed);
+        }
+    }
+    if (options.rulers)
+        drawGuides(c);
+    const dg = state.gesture;
+    if (dg?.kind === 'move' && dg.moved) {
+        const target = dropHighlight(dg), ts = target && doc.world(target.id);
+        if (ts)
+            outline(c, { matrix: ts.matrix, w: target.w, h: target.h }, '#5b9cf0', 2);
+    }
+    if (options.rulers)
+        drawRulers(c);
+}
+function drawPen(c, pts, m, accent, hover = null, closed = false) {
+    if (!pts.length)
+        return;
+    const transform = p => { const wp = point(m, p.x, p.y); return worldToScreen(wp.x, wp.y); };
+    c.strokeStyle = accent;
+    c.fillStyle = options.theme === 'dark' ? '#242426' : '#fff';
+    c.lineWidth = 1.3;
+    c.beginPath();
+    let p = transform(pts[0]);
+    c.moveTo(p.x, p.y);
+    for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i], q = transform(b);
+        if (a.out || b.in) {
+            const c1 = transform(a.out || a), c2 = transform(b.in || b);
+            c.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, q.x, q.y);
+        }
+        else
+            c.lineTo(q.x, q.y);
+    }
+    if (hover) {
+        const hp = transform(hover);
+        c.lineTo(hp.x, hp.y);
+    }
+    if (closed)
+        c.closePath();
+    c.stroke();
+    for (const a of pts) {
+        const p = transform(a);
+        for (const key of ['in', 'out'])
+            if (a[key]) {
+                const h = transform(a[key]);
+                c.beginPath();
+                c.moveTo(p.x, p.y);
+                c.lineTo(h.x, h.y);
+                c.stroke();
+                c.beginPath();
+                c.arc(h.x, h.y, 3, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            }
+        c.fillRect(p.x - 3, p.y - 3, 6, 6);
+        c.strokeRect(p.x - 3, p.y - 3, 6, 6);
+    }
+}
+function drawRulers(c) {
+    const z = state.camera.zoom;
+    let step = 100;
+    while (step * z < 45)
+        step *= 2;
+    while (step * z > 160)
+        step /= 2;
+    c.fillStyle = options.theme === 'dark' ? '#242426ee' : '#fffffff0';
+    c.fillRect(0, 0, area.clientWidth, 17);
+    c.fillRect(0, 0, 17, area.clientHeight);
+    c.strokeStyle = options.theme === 'dark' ? '#5a5364' : '#c4bccd';
+    c.fillStyle = options.theme === 'dark' ? '#8d839a' : '#8c8297';
+    c.font = '8px sans-serif';
+    for (let x = Math.floor(-state.camera.x / z / step) * step; x < (area.clientWidth - state.camera.x) / z; x += step) {
+        const sx = x * z + state.camera.x;
+        c.beginPath();
+        c.moveTo(sx, 12);
+        c.lineTo(sx, 17);
+        c.stroke();
+        c.fillText(String(round(x)), sx + 3, 10);
+    }
+    for (let y = Math.floor(-state.camera.y / z / step) * step; y < (area.clientHeight - state.camera.y) / z; y += step) {
+        const sy = y * z + state.camera.y;
+        c.beginPath();
+        c.moveTo(12, sy);
+        c.lineTo(17, sy);
+        c.stroke();
+        c.save();
+        c.translate(9, sy - 3);
+        c.rotate(-Math.PI / 2);
+        c.fillText(String(round(y)), 0, 0);
+        c.restore();
+    }
+}
+function insideRound(x, y, w, h, r = 0) {
+    if (x < 0 || y < 0 || x > w || y > h)
+        return false;
+    if (Array.isArray(r))
+        r = x < w / 2 ? (y < h / 2 ? r[0] : r[3]) : (y < h / 2 ? r[1] : r[2]);
+    r = Math.min(r, w / 2, h / 2);
+    const cx = clamp(x, r, w - r), cy = clamp(y, r, h - r);
+    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r + 1e-6;
+}
+const hitCtx = document.createElement('canvas').getContext('2d');
+function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {}) {
+    const scene = doc.scene(), tol = 4 / state.camera.zoom;
+    for (let i = scene.length - 1; i >= 0; i--) {
+        const s = scene[i], n = s.node;
+        if (s.locked || n.id === state.editing || n.type === 'group' || exclude?.has(n.id) || framesOnly && n.type !== 'frame')
+            continue;
+        if (world.x < s.box.x - tol || world.x > s.box.x + s.box.w + tol ||
+            world.y < s.box.y - tol || world.y > s.box.y + s.box.h + tol)
+            continue;
+        let clipped = false;
+        for (const clip of s.clips) {
+            const q = point(clip.inverse, world.x, world.y);
+            if (clip.mask ? !hitCtx.isPointInPath(pathFor(clip.mask), q.x, q.y) : !insideRound(q.x, q.y, clip.w, clip.h, clip.radii || clip.radius)) {
+                clipped = true;
+                break;
+            }
+        }
+        if (clipped)
+            continue;
+        const p = point(s.inverse, world.x, world.y);
+        let hit = false;
+        if (n.type === 'ellipse')
+            hit = ((p.x - n.w / 2) / (n.w / 2 + tol)) ** 2 + ((p.y - n.h / 2) / (n.h / 2 + tol)) ** 2 <= 1;
+        else if (n.type === 'path' || n.type === 'line') {
+            hitCtx.lineWidth = Math.max(n.strokeWidth, 8 / state.camera.zoom);
+            hit = n.fill !== 'none' && hitCtx.isPointInPath(pathFor(n), p.x, p.y) || hitCtx.isPointInStroke(pathFor(n), p.x, p.y);
+        }
+        else
+            hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
+        if (hit) {
+            if (!deep && !framesOnly) {
+                const groups = doc.ancestors(n).filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                if (groups.length)
+                    return groups[0];
+            }
+            return n;
+        }
+    }
+    return null;
+}
+function pathHandleAt(screen) {
+    const n = doc.get(state.pathEdit);
+    if (!n)
+        return null;
+    const s = doc.world(n.id), sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), m = multiply(s.matrix, [sx, 0, 0, sy, 0, 0]);
+    for (let i = 0; i < n.points.length; i++) {
+        const a = n.points[i];
+        for (const key of ['in', 'out', 'anchor']) {
+            const p = key === 'anchor' ? a : a[key];
+            if (!p)
+                continue;
+            const w = point(m, p.x, p.y), sp = worldToScreen(w.x, w.y);
+            if (Math.hypot(sp.x - screen.x, sp.y - screen.y) < 7)
+                return { index: i, key, matrix: m };
+        }
+    }
+    return null;
+}
+function saveOriginals(roots) {
+    const all = new Map();
+    for (const n of roots) {
+        if (!n)
+            continue;
+        all.set(n.id, { x: n.x, y: n.y, w: n.w, h: n.h, rotation: n.rotation, fontSize: n.fontSize });
+    }
+    return all;
+}
+function frameLabelHit(p) {
+    octx.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    for (const sc of doc.scene()) {
+        if (sc.node.type !== 'frame' || sc.node.parentId || sc.locked)
+            continue;
+        const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width;
+        if (p.x >= q.x - 3 && p.x <= q.x + w + 6 && p.y >= q.y - 26 && p.y <= q.y - 2)
+            return sc.node;
+    }
+    return null;
+}
+function pointerDown(e) {
+    if (e.button === 2)
+        return;
+    closeMenu();
+    if (e.target !== overlay)
+        return;
+    overlay.focus({ preventScroll: true });
+    const p = eventPoint(e), w = screenToWorld(p.x, p.y);
+    state.pointers.set(e.pointerId, p);
+    overlay.setPointerCapture(e.pointerId);
+    if (e.pointerType === 'touch' && state.pointers.size === 2) {
+        if (state.gesture && history.pending) {
+            history.cancel();
+            state.gesture = null;
+        }
+        const [a, b] = [...state.pointers.values()];
+        state.pinch = { distance: Math.hypot(a.x - b.x, a.y - b.y), camera: { ...state.camera }, center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+        return;
+    }
+    let keepTextId = null;
+    if (state.editing || state.pendingText) {
+        keepTextId = state.editing;
+        finishText();
+        keepTextId = keepTextId && doc.get(keepTextId) ? keepTextId : null;
+        if (keepTextId && state.tool === 'select' && !e.shiftKey)
+            select([keepTextId]);
+    }
+    if (e.button === 1 || state.space || state.tool === 'hand') {
+        state.gesture = { kind: 'pan', start: p, camera: { ...state.camera } };
+        overlay.style.cursor = 'grabbing';
+        return;
+    }
+    if (options.rulers && e.button === 0) {
+        let axis = null, gd = null;
+        if (p.x < RULER && p.y >= RULER)
+            axis = 'x';
+        else if (p.y < RULER && p.x >= RULER)
+            axis = 'y';
+        else
+            gd = guideAt(p);
+        if (axis || gd) {
+            history.begin('Guide');
+            if (!gd) {
+                gd = { id: uid(), axis, value: Math.round(axis === 'x' ? w.x : w.y) };
+                pageGuides().push(gd);
+            }
+            state.gesture = { kind: 'guide', id: gd.id, p };
+            overlay.style.cursor = gd.axis === 'x' ? 'col-resize' : 'row-resize';
+            invalidate();
+            return;
+        }
+    }
+    if (state.pathEdit) {
+        const handle = pathHandleAt(p);
+        if (handle) {
+            history.begin('Edit vector point');
+            state.gesture = { kind: 'path-edit', id: state.pathEdit, handle, start: w, original: structuredClone(doc.get(state.pathEdit)) };
+            return;
+        }
+        else
+            state.pathEdit = null;
+    }
+    if (state.tool === 'pen') {
+        if (state.pen.length >= 2) {
+            const first = worldToScreen(state.pen[0].x, state.pen[0].y);
+            if (Math.hypot(first.x - p.x, first.y - p.y) < 8) {
+                finishPen(true);
+                return;
+            }
+        }
+        const a = { x: w.x, y: w.y };
+        if (e.shiftKey && state.pen.length) {
+            const prev = state.pen.at(-1), angle = Math.round(Math.atan2(w.y - prev.y, w.x - prev.x) / (Math.PI / 4)) * Math.PI / 4, len = Math.hypot(w.x - prev.x, w.y - prev.y);
+            a.x = prev.x + Math.cos(angle) * len;
+            a.y = prev.y + Math.sin(angle) * len;
+        }
+        state.pen.push(a);
+        state.gesture = { kind: 'pen-handle', index: state.pen.length - 1, start: p };
+        invalidate();
+        return;
+    }
+    if (state.tool === 'text') {
+        const existing = hitTest(w, { deep: true });
+        if (existing?.type === 'text') {
+            select([existing.id]);
+            startText(existing);
+            refocusText();
+            return;
+        }
+        const parent = hitTest(w, { framesOnly: true }), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
+        state.tool = 'select';
+        $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === 'select'));
+        startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, parent ? '#302937' : options.theme === 'dark' ? '#efe8f8' : '#302937');
+        refocusText();
+        return;
+    }
+    if (['rect', 'ellipse', 'frame', 'line'].includes(state.tool)) {
+        history.begin('Draw ' + state.tool);
+        const parent = hitTest(w, { framesOnly: true }), inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = state.tool;
+        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), fill: type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
+        state.selection = new Set([n.id]);
+        state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
+        refreshUI();
+        invalidate();
+        return;
+    }
+    const geo = selectionGeometry();
+    if (geo) {
+        const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
+        if (handle && (handle.name === 'p1' || handle.name === 'p2')) {
+            const n = geo.node, other = point(doc.world(n.id).matrix, handle.name === 'p1' ? n.w : 0, n.h / 2), inv = n.parentId ? doc.world(n.parentId).inverse : identity();
+            history.begin('Move line point');
+            state.gesture = { kind: 'line-end', id: n.id, end: handle.name, fixed: point(inv, other.x, other.y), parentInverse: inv, originals: saveOriginals([n]) };
+            return;
+        }
+        if (handle) {
+            history.begin(handle.name === 'rotate' ? 'Rotate layers' : 'Resize layers');
+            state.gesture = { kind: handle.name === 'rotate' ? 'rotate' : 'resize', handle: handle.name, start: w, geometry: structuredClone(geo), originals: saveOriginals(selectedRoots()), roots: selectedRoots().map(n => n.id), center: point(geo.matrix, geo.w / 2, geo.h / 2) };
+            return;
+        }
+    }
+    const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    if (hit) {
+        if (e.shiftKey) {
+            if (state.selection.has(hit.id))
+                state.selection.delete(hit.id);
+            else
+                state.selection.add(hit.id);
+            renderLayers();
+            renderInspector();
+            invalidate();
+            if (!state.selection.has(hit.id))
+                return;
+        }
+        else if (!state.selection.has(hit.id))
+            select([hit.id]);
+        if (e.altKey) {
+            history.begin('Duplicate and move');
+            const clones = cloneNodes(selectedRoots(), 0);
+            select(clones.map(n => n.id));
+        }
+        const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
+        state.gesture = { kind: 'move', start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
+    }
+    else if (keepTextId && state.tool === 'select' && !e.shiftKey) {
+        // Clicking empty canvas while typing only exits edit mode; the text layer stays selected (like Figma).
+        select([keepTextId]);
+        refreshUI();
+        invalidate();
+        return;
+    }
+    else {
+        const old = e.shiftKey ? new Set(state.selection) : new Set();
+        if (!e.shiftKey)
+            select([]);
+        state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey };
+        state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
+        invalidate();
+    }
+}
+function smartSnap(dx, dy, g, disabled) {
+    state.guides = [];
+    if (disabled || !options.snap || !g.bounds)
+        return { dx, dy };
+    const moved = new Set(g.originals.keys()), box = { ...g.bounds, x: g.bounds.x + dx, y: g.bounds.y + dy }, threshold = 5 / state.camera.zoom;
+    let bestX = threshold, bestY = threshold, adjustX = 0, adjustY = 0;
+    const parentIds = new Set(g.roots.map(id => doc.get(id)?.parentId));
+    if (options.rulers)
+        for (const gd of pageGuides()) {
+            const edges = gd.axis === 'x' ? [box.x, box.x + box.w / 2, box.x + box.w] : [box.y, box.y + box.h / 2, box.y + box.h];
+            for (const b of edges) {
+                const dist = Math.abs(gd.value - b);
+                if (gd.axis === 'x' && dist < bestX) {
+                    bestX = dist;
+                    adjustX = gd.value - b;
+                    state.guides = state.guides.filter(q => q.axis !== 'x');
+                    state.guides.push({ axis: 'x', value: gd.value });
+                }
+                else if (gd.axis === 'y' && dist < bestY) {
+                    bestY = dist;
+                    adjustY = gd.value - b;
+                    state.guides = state.guides.filter(q => q.axis !== 'y');
+                    state.guides.push({ axis: 'y', value: gd.value });
+                }
+            }
+        }
+    for (const s of doc.scene()) {
+        if (moved.has(s.node.id) || !parentIds.has(s.node.parentId) || s.locked)
+            continue;
+        const b = s.box;
+        for (const x of [b.x, b.x + b.w / 2, b.x + b.w])
+            for (const bx of [box.x, box.x + box.w / 2, box.x + box.w])
+                if (Math.abs(x - bx) < bestX) {
+                    bestX = Math.abs(x - bx);
+                    adjustX = x - bx;
+                    state.guides = state.guides.filter(g => g.axis !== 'x');
+                    state.guides.push({ axis: 'x', value: x });
+                }
+        for (const y of [b.y, b.y + b.h / 2, b.y + b.h])
+            for (const by of [box.y, box.y + box.h / 2, box.y + box.h])
+                if (Math.abs(y - by) < bestY) {
+                    bestY = Math.abs(y - by);
+                    adjustY = y - by;
+                    state.guides = state.guides.filter(g => g.axis !== 'y');
+                    state.guides.push({ axis: 'y', value: y });
+                }
+    }
+    return { dx: dx + adjustX, dy: dy + adjustY };
+}
+function pointerMove(e) {
+    const p = eventPoint(e), w = screenToWorld(p.x, p.y);
+    if (state.pointers.has(e.pointerId))
+        state.pointers.set(e.pointerId, p);
+    if (state.pinch && state.pointers.size >= 2) {
+        const [a, b] = [...state.pointers.values()], center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, pinch = state.pinch, ratio = Math.hypot(a.x - b.x, a.y - b.y) / Math.max(1, pinch.distance);
+        state.camera.zoom = clamp(pinch.camera.zoom * ratio, .02, 64);
+        state.camera.x = center.x - (pinch.center.x - pinch.camera.x) / pinch.camera.zoom * state.camera.zoom;
+        state.camera.y = center.y - (pinch.center.y - pinch.camera.y) / pinch.camera.zoom * state.camera.zoom;
+        invalidate();
+        return;
+    }
+    const g = state.gesture;
+    if (!g) {
+        if (options.rulers) {
+            const rc = rulerCursor(p);
+            if (rc) {
+                overlay.style.cursor = rc;
+                state.rulerCursor = true;
+                return;
+            }
+            if (state.rulerCursor) {
+                state.rulerCursor = false;
+                overlay.style.cursor = toolCursor();
+            }
+        }
+        if (state.tool === 'pen') {
+            state.penHover = w;
+            invalidate();
+            return;
+        }
+        if (state.tool === 'select') {
+            const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey });
+            const hover = hit?.id || null;
+            const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
+            overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', n: 'ns-resize', ne: 'nesw-resize', e: 'ew-resize', se: 'nwse-resize', s: 'ns-resize', sw: 'nesw-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
+            if (hover !== state.hover) {
+                state.hover = hover;
+                invalidate();
+            }
+        }
+        return;
+    }
+    if (g.kind === 'pan') {
+        state.camera.x = g.camera.x + p.x - g.start.x;
+        state.camera.y = g.camera.y + p.y - g.start.y;
+        invalidate();
+        return;
+    }
+    if (g.kind === 'pen-handle') {
+        const a = state.pen[g.index];
+        if (Math.hypot(p.x - g.start.x, p.y - g.start.y) > 3) {
+            a.out = { x: w.x, y: w.y };
+            a.in = { x: 2 * a.x - w.x, y: 2 * a.y - w.y };
+            state.penHover = null;
+            invalidate();
+        }
+        return;
+    }
+    if (g.kind === 'path-edit') {
+        const n = doc.get(g.id), q = point(inverse(g.handle.matrix), w.x, w.y), a = n.points[g.handle.index], orig = g.original.points[g.handle.index];
+        if (g.handle.key === 'anchor') {
+            const dx = q.x - orig.x, dy = q.y - orig.y;
+            a.x = q.x;
+            a.y = q.y;
+            for (const key of ['in', 'out'])
+                if (orig[key])
+                    a[key] = { x: orig[key].x + dx, y: orig[key].y + dy };
+        }
+        else {
+            a[g.handle.key] = q;
+            if (!e.altKey) {
+                const other = g.handle.key === 'in' ? 'out' : 'in';
+                a[other] = { x: 2 * a.x - q.x, y: 2 * a.y - q.y };
+            }
+        }
+        doc.touch(n);
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'marquee') {
+        state.marquee = { x: Math.min(g.start.x, p.x), y: Math.min(g.start.y, p.y), w: Math.abs(p.x - g.start.x), h: Math.abs(p.y - g.start.y) };
+        const tl = screenToWorld(state.marquee.x, state.marquee.y), b = { ...tl, w: state.marquee.w / state.camera.zoom, h: state.marquee.h / state.camera.zoom };
+        state.selection = new Set(g.old);
+        for (const s of doc.scene()) {
+            if (s.locked || !g.deep && s.node.parentId)
+                continue;
+            if (s.box.x >= b.x && s.box.y >= b.y && s.box.x + s.box.w <= b.x + b.w && s.box.y + s.box.h <= b.y + b.h)
+                state.selection.add(s.node.id);
+        }
+        renderLayers();
+        renderInspector();
+        invalidate();
+        return;
+    }
+    if (g.kind === 'line-end') {
+        const n = doc.get(g.id);
+        if (!n)
+            return;
+        let q = point(g.parentInverse, w.x, w.y), dx = q.x - g.fixed.x, dy = q.y - g.fixed.y;
+        if (e.shiftKey) {
+            const len = Math.hypot(dx, dy), a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+            dx = Math.cos(a) * len;
+            dy = Math.sin(a) * len;
+        }
+        // p2 is the end the line points to; dragging p1 flips the direction so p1 stays the start.
+        const [sx, sy, ex, ey] = g.end === 'p2' ? [g.fixed.x, g.fixed.y, g.fixed.x + dx, g.fixed.y + dy] : [g.fixed.x + dx, g.fixed.y + dy, g.fixed.x, g.fixed.y];
+        const len = Math.max(.1, Math.hypot(ex - sx, ey - sy));
+        n.w = len;
+        n.x = (sx + ex) / 2 - len / 2;
+        n.y = (sy + ey) / 2 - n.h / 2;
+        n.rotation = Math.atan2(ey - sy, ex - sx) * 180 / Math.PI;
+        doc.touch(n);
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'create') {
+        const n = doc.get(g.id), q0 = point(g.parentInverse, w.x, w.y), q = g.type === 'line' ? q0 : { x: Math.round(q0.x), y: Math.round(q0.y) };
+        let dx = q.x - g.localStart.x, dy = q.y - g.localStart.y;
+        if (e.shiftKey) {
+            const size = Math.max(Math.abs(dx), Math.abs(dy));
+            dx = Math.sign(dx || 1) * size;
+            dy = Math.sign(dy || 1) * size;
+        }
+        if (g.type === 'line') {
+            const len = Math.hypot(dx, dy);
+            n.x = g.localStart.x + dx / 2 - len / 2;
+            n.y = g.localStart.y + dy / 2 - .05;
+            n.w = Math.max(.1, len);
+            n.h = .1;
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            n.rotation = e.shiftKey ? Math.round(angle / 45) * 45 : angle;
+        }
+        else {
+            n.x = g.localStart.x + Math.min(0, dx);
+            n.y = g.localStart.y + Math.min(0, dy);
+            n.w = Math.max(.1, Math.abs(dx));
+            n.h = Math.max(.1, Math.abs(dy));
+            if (e.altKey) {
+                n.x = g.localStart.x - n.w;
+                n.y = g.localStart.y - n.h;
+                n.w *= 2;
+                n.h *= 2;
+            }
+            n.x = Math.round(n.x);
+            n.y = Math.round(n.y);
+            n.w = n.w < 1 ? n.w : Math.round(n.w);
+            n.h = n.h < 1 ? n.h : Math.round(n.h);
+        }
+        doc.touch(n);
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'guide') {
+        const gd = pageGuides().find(x => x.id === g.id);
+        if (gd) {
+            gd.value = snapGuide(gd.axis, gd.axis === 'x' ? w.x : w.y);
+            g.p = p;
+        }
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'move') {
+        let dx = w.x - g.start.x, dy = w.y - g.start.y;
+        if (e.shiftKey) {
+            if (Math.abs(dx) > Math.abs(dy))
+                dy = 0;
+            else
+                dx = 0;
+        }
+        dx = Math.round(dx);
+        dy = Math.round(dy);
+        ({ dx, dy } = smartSnap(dx, dy, g, e.ctrlKey || e.metaKey));
+        if (!g.moved && Math.hypot(dx, dy) * state.camera.zoom > 2) {
+            g.moved = true;
+            if (!history.pending)
+                history.begin('Move layers');
+        }
+        for (const id of g.roots) {
+            const n = doc.get(id), orig = g.originals.get(id), inv = g.parentMatrices.get(id);
+            n.x = Math.round(orig.x + inv[0] * dx + inv[2] * dy);
+            n.y = Math.round(orig.y + inv[1] * dx + inv[3] * dy);
+            doc.touch(n);
+            const par = doc.get(n.parentId);
+            if (g.moved && isAutoLayout(par) && n.layoutPositioning !== 'absolute') {
+                n._drag = true;
+                if (insideNodeBox(par, w))
+                    reorderDrag(n);
+            }
+        }
+        if (g.moved) {
+            g.lastWorld = w;
+            g.dropTarget = findDropTarget(g, w);
+        }
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'resize') {
+        const local = point(inverse(g.geometry.matrix), w.x, w.y), origW = g.geometry.w, origH = g.geometry.h;
+        let left = 0, top = 0, right = origW, bottom = origH;
+        if (g.handle.includes('w'))
+            left = Math.min(local.x, right - .1);
+        if (g.handle.includes('e'))
+            right = Math.max(local.x, left + .1);
+        if (g.handle.includes('n'))
+            top = Math.min(local.y, bottom - .1);
+        if (g.handle.includes('s'))
+            bottom = Math.max(local.y, top + .1);
+        const locked = g.roots.some(id => !!doc.get(id)?.lockRatio);
+        const imgLike = g.roots.every(id => isImageLike(doc.get(id))), corner = g.handle.length === 2;
+        const keepRatio = locked || e.shiftKey;
+        if (keepRatio && !corner) {
+            const ratio = origW / (origH || 1);
+            if (g.handle === 'e' || g.handle === 'w')
+                bottom = top + (right - left) / ratio;
+            else
+                right = left + (bottom - top) * ratio;
+        }
+        else if (keepRatio) {
+            const ratio = origW / (origH || 1), nw = right - left, nh = bottom - top;
+            if (nw / nh > ratio) {
+                if (g.handle.includes('n'))
+                    top = bottom - nw / ratio;
+                else
+                    bottom = top + nw / ratio;
+            }
+            else {
+                if (g.handle.includes('w'))
+                    left = right - nh * ratio;
+                else
+                    right = left + nh * ratio;
+            }
+        }
+        if (e.altKey) {
+            if (g.handle.includes('w'))
+                right = origW - left;
+            if (g.handle.includes('e'))
+                left = origW - right;
+            if (g.handle.includes('n'))
+                bottom = origH - top;
+            if (g.handle.includes('s'))
+                top = origH - bottom;
+        }
+        left = Math.round(left);
+        top = Math.round(top);
+        right = Math.round(right);
+        bottom = Math.round(bottom);
+        if (right - left < 1) {
+            if (g.handle.includes('w'))
+                left = right - 1;
+            else
+                right = left + 1;
+        }
+        if (bottom - top < 1) {
+            if (g.handle.includes('n'))
+                top = bottom - 1;
+            else
+                bottom = top + 1;
+        }
+        const nw = right - left, nh = bottom - top, sx = nw / origW, sy = nh / origH;
+        for (const [id, orig] of g.originals) {
+            const n = doc.get(id);
+            if (n) {
+                // Keep the version climbing: restoring the original version would make every drag frame
+                // reuse the first frame's raster cache key, so images/text drawn from the atlas froze at a stale size.
+                const version = n.version;
+                Object.assign(n, structuredClone(orig));
+                n.version = version;
+            }
+        }
+        doc.touch();
+        if (g.roots.length === 1) {
+            const n = doc.get(g.roots[0]), orig = g.originals.get(n.id), worldTL = point(g.geometry.matrix, left, top), parentInv = n.parentId ? doc.world(n.parentId).inverse : identity(), tl = point(parentInv, worldTL.x, worldTL.y);
+            const rnw = Math.round(nw), rnh = Math.round(nh);
+            n.w = rnw;
+            n.h = rnh;
+            if (Math.abs(nw - orig.w) > .01) {
+                n.layoutSizingH = 'fixed';
+                if (n.type === 'text')
+                    n.autoW = false;
+            }
+            if (Math.abs(nh - orig.h) > .01) {
+                n.layoutSizingV = 'fixed';
+                if (n.type === 'text') {
+                    n.autoW = false;
+                    n.layoutSizingH = 'fixed';
+                }
+            }
+            Object.assign(n, xyForTopLeft(n, tl));
+            n.x = Math.round(n.x);
+            n.y = Math.round(n.y);
+            constrainChildren(n, orig.w, orig.h);
+            if (n.type === 'text')
+                n.h = textModeOf(n) === 'auto-h' ? Math.ceil(Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height))) : Math.max(n.h, Math.ceil(n.fontSize * n.lineHeight));
+            doc.touch(n);
+        }
+        else {
+            for (const id of g.roots) {
+                const n = doc.get(id), orig = g.originals.get(id), world = doc.world(id), oldBox = world.box, newX = g.geometry.matrix[4] + left + (oldBox.x - g.geometry.matrix[4]) * sx, newY = g.geometry.matrix[5] + top + (oldBox.y - g.geometry.matrix[5]) * sy, inv = n.parentId ? doc.world(n.parentId).inverse : identity(), delta = { x: newX - oldBox.x, y: newY - oldBox.y };
+                n.x = Math.round(orig.x + inv[0] * delta.x + inv[2] * delta.y);
+                n.y = Math.round(orig.y + inv[1] * delta.x + inv[3] * delta.y);
+                n.w = Math.max(1, Math.round(orig.w * sx));
+                n.h = Math.max(1, Math.round(orig.h * sy));
+                if (n.type === 'text')
+                    n.fontSize = orig.fontSize * Math.min(sx, sy);
+                constrainChildren(n, orig.w, orig.h);
+                doc.touch(n);
+            }
+        }
+        changed({ ui: false });
+        return;
+    }
+    if (g.kind === 'rotate') {
+        const a = Math.atan2(w.y - g.center.y, w.x - g.center.x), start = Math.atan2(g.start.y - g.center.y, g.start.x - g.center.x);
+        let delta = (a - start) * 180 / Math.PI;
+        if (e.shiftKey)
+            delta = Math.round(delta / 15) * 15;
+        for (const id of g.roots) {
+            const n = doc.get(id), orig = g.originals.get(id);
+            n.rotation = orig.rotation + delta;
+            if (g.roots.length > 1) {
+                const parent = n.parentId ? doc.world(n.parentId).matrix : identity(), inv = inverse(parent), wc = point(parent, orig.x + orig.w / 2, orig.y + orig.h / 2), rad = delta * Math.PI / 180, dx = wc.x - g.center.x, dy = wc.y - g.center.y, q = point(inv, g.center.x + dx * Math.cos(rad) - dy * Math.sin(rad), g.center.y + dx * Math.sin(rad) + dy * Math.cos(rad));
+                n.x = q.x - n.w / 2;
+                n.y = q.y - n.h / 2;
+            }
+            doc.touch(n);
+        }
+        changed({ ui: false });
+    }
+}
+function pointerUp(e) {
+    state.pointers.delete(e.pointerId);
+    if (state.pinch) {
+        if (state.pointers.size < 2)
+            state.pinch = null;
+        state.gesture = null;
+        return;
+    }
+    const g = state.gesture;
+    state.gesture = null;
+    state.guides = [];
+    state.marquee = null;
+    if (!g)
+        return;
+    if (g.kind === 'guide') {
+        const gd = pageGuides().find(x => x.id === g.id), q = eventPoint(e);
+        if (gd && (gd.axis === 'x' ? q.x < RULER : q.y < RULER))
+            doc.page.guides = pageGuides().filter(x => x.id !== g.id);
+        changed({ commit: true });
+        overlay.style.cursor = toolCursor();
+        return;
+    }
+    if (g.kind === 'create') {
+        const n = doc.get(g.id);
+        if (n && n.w < 3 && n.h < 3) {
+            n.w = n.type === 'frame' ? 400 : 120;
+            n.h = n.type === 'frame' ? 300 : n.type === 'line' ? 0.1 : 100;
+            doc.touch(n);
+        }
+        setTool('select');
+    }
+    if (g.kind === 'path-edit') {
+        normalizePath(doc.get(g.id));
+    }
+    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end'].includes(g.kind)) {
+        if (g.originals)
+            for (const [id, orig] of g.originals) {
+                const n = doc.get(id);
+                if (n?.sourceId) {
+                    n.overrides ||= {};
+                    for (const key of ['x', 'y', 'w', 'h', 'rotation', 'fontSize'])
+                        if (n[key] !== orig[key])
+                            n.overrides[key] = n[key];
+                }
+            }
+        if (g.kind === 'move') {
+            for (const id of g.roots) {
+                const m = doc.get(id);
+                if (m)
+                    delete m._drag;
+            }
+            if (g.moved) {
+                applyDrop(g);
+                doc.touch();
+                doc.scene();
+            }
+        }
+        if (g.moved)
+            changed({ commit: true });
+        else {
+            if (history.pending && history.pending.label === 'Move layers')
+                history.cancel();
+            refreshUI();
+        }
+    }
+    else
+        refreshUI();
+    overlay.style.cursor = state.tool === 'hand' || state.space ? 'grab' : 'default';
+    invalidate();
+}
+// Tight bounds of the drawn curve (Bézier extrema), not of the handles that shape it.
+function pathCurveBounds(points, closed) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const addPt = (x, y) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); };
+    const roots = (a, b, c) => {
+        // t where the derivative of one axis is zero: a t² + b t + c = 0, within (0, 1)
+        if (Math.abs(a) < 1e-12)
+            return Math.abs(b) < 1e-12 ? [] : [-c / b];
+        const d = b * b - 4 * a * c;
+        if (d < 0)
+            return [];
+        const s = Math.sqrt(d);
+        return [(-b + s) / (2 * a), (-b - s) / (2 * a)];
+    };
+    const at = (p0, p1, p2, p3, t) => { const u = 1 - t; return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3; };
+    const n = points.length;
+    for (const p of points)
+        addPt(p.x, p.y);
+    for (let i = 0; i < (closed ? n : n - 1); i++) {
+        const a = points[i], b = points[(i + 1) % n], c1 = a.out || a, c2 = b.in || b;
+        if (!a.out && !b.in)
+            continue;
+        for (const axis of ['x', 'y']) {
+            const p0 = a[axis], p1 = c1[axis], p2 = c2[axis], p3 = b[axis];
+            for (const t of roots(3 * (-p0 + 3 * p1 - 3 * p2 + p3), 6 * (p0 - 2 * p1 + p2), 3 * (p1 - p0)))
+                if (t > 0 && t < 1)
+                    addPt(at(a.x, c1.x, c2.x, b.x, t), at(a.y, c1.y, c2.y, b.y, t));
+        }
+    }
+    return { minX, minY, maxX, maxY };
+}
+function normalizePath(n) {
+    if (!n?.points?.length)
+        return;
+    const { minX, minY, maxX, maxY } = pathCurveBounds(n.points, n.closed);
+    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), matrix = localMatrix(n), tl = point(matrix, minX * sx, minY * sy);
+    for (const p of n.points) {
+        p.x = (p.x - minX) * sx;
+        p.y = (p.y - minY) * sy;
+        for (const key of ['in', 'out'])
+            if (p[key]) {
+                p[key].x = (p[key].x - minX) * sx;
+                p[key].y = (p[key].y - minY) * sy;
+            }
+    }
+    n.w = Math.max(.1, (maxX - minX) * sx);
+    n.h = Math.max(.1, (maxY - minY) * sy);
+    n.pathW = n.w;
+    n.pathH = n.h;
+    Object.assign(n, xyForTopLeft(n, tl));
+    doc.touch(n);
+}
+function finishPen(closed = false) {
+    if (state.pen.length < 2) {
+        state.pen = [];
+        state.penHover = null;
+        invalidate();
+        return;
+    }
+    const points = structuredClone(state.pen);
+    state.pen = [];
+    state.penHover = null;
+    transaction('Draw vector path', () => { const n = node('path', { name: 'Vector', x: 0, y: 0, w: 1, h: 1, pathW: 1, pathH: 1, points, closed, fill: closed ? '#8fbcf0' : 'none', stroke: '#0058CA', strokeWidth: 2 }); doc.add(n); normalizePath(n); select([n.id]); });
+    setTool('select');
+}
+// The browser moves focus to the canvas right after pointerdown, which used to blur the editor
+// and discard the empty text. Give focus back once the press has finished.
+function refocusText() {
+    const el = $('#text-editor'), back = () => { if ((state.pendingText || state.editing) && document.activeElement !== el)
+        el.focus(); };
+    setTimeout(back, 0);
+    overlay.addEventListener('pointerup', () => setTimeout(back, 0), { once: true });
+}
+function hugText(n) {
+    const l = layoutText(n), ctx = measureCanvas.getContext('2d');
+    ctx.font = fontSpec(n);
+    ctx.letterSpacing = `${n.letterSpacing || 0}px`;
+    n.w = Math.max(1, Math.ceil(Math.max(0, ...l.lines.map(t => ctx.measureText(t).width))) + 1);
+    n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, l.height));
+}
+function startPendingText(x, y, parentId, fill) {
+    finishText();
+    const proto = node('text', { x, y, parentId, fill, text: '', autoW: true });
+    state.pendingText = { x, y, parentId, fill, proto };
+    const el = $('#text-editor');
+    el.textContent = '';
+    el.classList.remove('hidden');
+    el.classList.add('pending');
+    positionTextEditor();
+    el.focus();
+}
+function startText(n, selectAll = false) {
+    if (!n || n.type !== 'text')
+        return;
+    finishText();
+    history.begin('Edit text');
+    state.editing = n.id;
+    renderer.skipId = n.id;
+    const el = $('#text-editor');
+    el.textContent = n.text;
+    el.classList.remove('hidden');
+    positionTextEditor();
+    el.focus();
+    if (selectAll) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+    invalidate();
+}
+function positionTextEditor() {
+    const p = state.pendingText, n = p ? p.proto : doc.get(state.editing), s = !p && n && doc.world(n.id);
+    if (!n || (!p && !s))
+        return;
+    const el = $('#text-editor'), z = state.camera.zoom;
+    let m, tx, ty, opacity = 1;
+    if (p) {
+        const pm = p.parentId ? doc.world(p.parentId).matrix : identity(), o = point(pm, p.x, p.y);
+        m = pm; tx = o.x; ty = o.y;
+    }
+    else {
+        m = s.matrix; tx = m[4]; ty = m[5]; opacity = s.opacity;
+    }
+    el.style.left = '0';
+    el.style.top = '0';
+    if (n.autoW) {
+        el.style.width = 'max-content';
+        el.style.minWidth = '1px';
+        el.style.whiteSpace = 'pre';
+        el.style.minHeight = (n.fontSize * n.lineHeight) + 'px';
+    }
+    else {
+        el.style.width = n.w + 'px';
+        el.style.minWidth = '';
+        el.style.whiteSpace = '';
+        el.style.minHeight = n.h + 'px';
+    }
+    el.style.font = fontSpec(n);
+    el.style.lineHeight = String(n.lineHeight);
+    el.style.letterSpacing = n.letterSpacing + 'px';
+    el.style.textAlign = n.textAlign;
+    el.style.textDecoration = n.textDecoration;
+    el.style.textTransform = n.textCase === 'upper' ? 'uppercase' : n.textCase === 'lower' ? 'lowercase' : n.textCase === 'title' ? 'capitalize' : 'none';
+    el.style.direction = n.direction === 'auto' ? 'inherit' : n.direction;
+    el.style.color = n.fill === 'none' ? '#0058CA' : n.fill;
+    el.style.opacity = opacity;
+    el.style.transform = `matrix(${m[0] * z},${m[1] * z},${m[2] * z},${m[3] * z},${tx * z + state.camera.x},${ty * z + state.camera.y})`;
+}
+function finishText(cancel = false) {
+    if (state.pendingText) {
+        state.pendingText = null;
+        const pel = $('#text-editor');
+        pel.textContent = '';
+        pel.classList.add('hidden');
+        pel.classList.remove('pending');
+        return;
+    }
+    if (!state.editing)
+        return;
+    const n = doc.get(state.editing), el = $('#text-editor');
+    if (n && !cancel) {
+        n.text = el.innerText.replace(/\r\n/g, '\n').replace(/\n$/, '');
+        n.name = n.text.trim().slice(0, 28) || 'Text';
+        if (n.autoW)
+            hugText(n);
+        else
+            n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+        if (n.sourceId) {
+            n.overrides ||= {};
+            n.overrides.text = n.text;
+            n.overrides.h = n.h;
+        }
+        doc.touch(n);
+        if (!n.text.trim()) {
+            state.selection.delete(n.id);
+            doc.remove([n.id]);
+        }
+    }
+    state.editing = null;
+    renderer.skipId = null;
+    el.classList.add('hidden');
+    if (cancel)
+        history.cancel();
+    else {
+        history.commit();
+        saveSoon();
+    }
+    refreshUI();
+    invalidate();
+}
+function closeMenu() { $('#context-menu').classList.add('hidden'); }
+function showMenu(items, x, y) { const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
+function instanceMenuItems(n) {
+    const has = Object.keys(n.overrides || {}).length > 0;
+    return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, ...(has ? [{ label: 'Reset overrides', action: 'resetOverrides' }] : []), '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
+}
+function detachSelectedInstances() { transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
+    detachNodeTree(pageOfNode(x.id), x.id); }); }
+function resetSelectedOverrides() { transaction('Reset overrides', () => { for (const r of selectedRoots()) {
+    const page = pageOfNode(r.id);
+    for (const x of [r, ...pageTree(page, r.id)]) {
+        if (x.sourceId)
+            x.overrides = {};
+        doc.touch(x);
+    }
+} }); }
+function createFromInstance() { detachSelectedInstances(); makeComponent(); }
+function flattenPathOf(n) {
+    const pts = n.points || [], sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
+    const seg = (a, b) => {
+        if (a.out || b.in) {
+            const p0 = { x: a.x * sx, y: a.y * sy }, p1 = { x: (a.out?.x ?? a.x) * sx, y: (a.out?.y ?? a.y) * sy }, p2 = { x: (b.in?.x ?? b.x) * sx, y: (b.in?.y ?? b.y) * sy }, p3 = { x: b.x * sx, y: b.y * sy };
+            for (let i = 1; i <= 12; i++) {
+                const t = i / 12, u = 1 - t;
+                out.push({ x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y });
+            }
+        }
+        else
+            out.push({ x: b.x * sx, y: b.y * sy });
+    };
+    if (!pts.length)
+        return out;
+    out.push({ x: pts[0].x * sx, y: pts[0].y * sy });
+    for (let i = 1; i < pts.length; i++)
+        seg(pts[i - 1], pts[i]);
+    if (n.closed && pts.length > 1)
+        seg(pts.at(-1), pts[0]);
+    return out;
+}
+function nodePolys(n) {
+    const m = doc.world(n.id).matrix, tp = (x, y) => { const q = point(m, x, y); return [q.x, q.y]; };
+    let ring = null;
+    if (n.type === 'ellipse') {
+        ring = [];
+        for (let i = 0; i < 72; i++) {
+            const a = i / 72 * Math.PI * 2;
+            ring.push(tp(n.w / 2 + Math.cos(a) * n.w / 2, n.h / 2 + Math.sin(a) * n.h / 2));
+        }
+    }
+    else if (n.type === 'path') {
+        if (!n.closed)
+            return null;
+        ring = flattenPathOf(n).map(p => tp(p.x, p.y));
+    }
+    else if (['rect', 'frame', 'image'].includes(n.type))
+        ring = [tp(0, 0), tp(n.w, 0), tp(n.w, n.h), tp(0, n.h)];
+    else
+        return null;
+    return ring.length >= 3 ? [[ring]] : null;
+}
+function buildPathNode(res, first, name) {
+    const inv = first.parentId ? doc.world(first.parentId).inverse : identity();
+    const rings = res.flatMap(poly => poly).map(r => { const q = r.map(([x, y]) => point(inv, x, y)); if (q.length > 1 && q[0].x === q.at(-1).x && q[0].y === q.at(-1).y)
+        q.pop(); return q; });
+    const xs = rings.flat().map(p => p.x), ys = rings.flat().map(p => p.y), minX = Math.min(...xs), minY = Math.min(...ys), w = Math.max(1, Math.max(...xs) - minX), h = Math.max(1, Math.max(...ys) - minY);
+    const rel = r => r.map(p => ({ x: p.x - minX, y: p.y - minY }));
+    const props = { name, x: minX, y: minY, w, h, pathW: w, pathH: h, points: rel(rings[0]), closed: true, parentId: first.parentId || null, stroke: first.stroke, strokeWidth: first.strokeWidth, opacity: first.opacity };
+    if (rings.length > 1)
+        props.contours = rings.slice(1).map(r => ({ points: rel(r), closed: true }));
+    if (Array.isArray(first.fills))
+        props.fills = structuredClone(first.fills);
+    props.fill = first.fill && first.fill !== 'none' ? first.fill : '#8fbcf0';
+    if (first.fillType)
+        props.fillType = first.fillType;
+    return node('path', props);
+}
+function booleanOp(kind) {
+    const roots = selectedRoots(), pc = window.polygonClipping;
+    if (!roots.length) {
+        toast('Select shapes first.');
+        return;
+    }
+    if (roots.length < 2 && (kind === 'subtract' || kind === 'exclude')) {
+        toast('Select two or more shapes.');
+        return;
+    }
+    const polys = roots.map(nodePolys);
+    if (polys.some(p => !p) || !pc) {
+        toast('Boolean operations work on rectangles, ellipses and closed paths.');
+        return;
+    }
+    let res;
+    try {
+        const [a, ...rest] = polys;
+        res = kind === 'union' ? pc.union(a, ...rest) : kind === 'intersect' ? pc.intersection(a, ...rest) : kind === 'subtract' ? pc.difference(a, ...rest) : pc.xor(a, ...rest);
+    }
+    catch {
+        toast('Could not compute this operation.');
+        return;
+    }
+    if (!res.length) {
+        toast('The result is empty.');
+        return;
+    }
+    const names = { union: 'Union', intersect: 'Intersect', subtract: 'Subtract', exclude: 'Exclude' };
+    // Like Figma, the result is a live boolean group: the operands stay as its children (visible and
+    // selectable in the layers panel) and the shape is recomputed whenever they change.
+    transaction(names[kind], () => {
+        const ordered = [...roots].sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
+        const out = buildPathNode(res, ordered[0], names[kind]);
+        out.booleanOp = kind;
+        const before = new Map(ordered.map(r => [r.id, doc.world(r.id).matrix])), top = Math.max(...ordered.map(r => doc.nodes.indexOf(r)));
+        doc.add(out);
+        doc.nodes.splice(doc.nodes.indexOf(out), 1);
+        doc.nodes.splice(top + 1, 0, out);
+        doc.refresh();
+        const gi = inverse(doc.world(out.id).matrix);
+        for (const r of ordered) {
+            setFromMatrix(r, multiply(gi, before.get(r.id)));
+            r.parentId = out.id;
+            doc.touch(r);
+        }
+        doc.refresh();
+        state.expanded.add(out.id);
+        select([out.id]);
+    });
+}
+const boolSignatures = new Map();
+// Recompute every boolean group whose operands moved or changed. Deepest first, so nested booleans feed outer ones.
+function refreshBooleans() {
+    const pc = window.polygonClipping, list = doc.nodes.filter(n => n.booleanOp);
+    if (!list.length || !pc)
+        return;
+    list.sort((a, b) => doc.ancestors(b).length - doc.ancestors(a).length);
+    for (const b of list) {
+        const kids = doc.children(b.id).filter(k => k.visible !== false);
+        if (!kids.length)
+            continue;
+        const sig = JSON.stringify(kids.map(k => [doc.world(k.id).matrix.map(v => Math.round(v * 1000)), k.w, k.h, k.type, k.points, k.contours, k.closed])) + b.booleanOp;
+        if (boolSignatures.get(b.id) === sig)
+            continue;
+        const polys = kids.map(nodePolys);
+        if (polys.some(p => !p))
+            continue;
+        let res;
+        try {
+            const [a, ...rest] = polys;
+            res = !rest.length ? pc.union(a) : b.booleanOp === 'union' ? pc.union(a, ...rest) : b.booleanOp === 'intersect' ? pc.intersection(a, ...rest) : b.booleanOp === 'subtract' ? pc.difference(a, ...rest) : pc.xor(a, ...rest);
+        }
+        catch {
+            continue;
+        }
+        const worlds = new Map(kids.map(k => [k.id, doc.world(k.id).matrix]));
+        if (res.length) {
+            const g = buildPathNode(res, b, b.name);
+            Object.assign(b, { x: g.x, y: g.y, w: g.w, h: g.h, pathW: g.pathW, pathH: g.pathH, points: g.points, rotation: 0, flipX: false, flipY: false });
+            if (g.contours)
+                b.contours = g.contours;
+            else
+                delete b.contours;
+        }
+        else
+            Object.assign(b, { points: [], contours: undefined });
+        doc.touch(b);
+        // Keep the operands where they were on the canvas while the group's frame moves under them.
+        const gi = inverse(doc.world(b.id).matrix);
+        for (const k of kids) {
+            setFromMatrix(k, multiply(gi, worlds.get(k.id)));
+            doc.touch(k);
+        }
+        boolSignatures.set(b.id, JSON.stringify(kids.map(k => [doc.world(k.id).matrix.map(v => Math.round(v * 1000)), k.w, k.h, k.type, k.points, k.contours, k.closed])) + b.booleanOp);
+    }
+}
+function flattenSelection() {
+    const roots = selectedRoots(), pc = window.polygonClipping;
+    if (!roots.length || !pc)
+        return;
+    const ids = [];
+    transaction('Flatten', () => {
+        for (const r of roots) {
+            let nn;
+            if (r.type === 'ellipse') {
+                const k = .5523, cx = r.w / 2, cy = r.h / 2;
+                nn = node('path', { name: r.name, x: r.x, y: r.y, w: r.w, h: r.h, pathW: r.w, pathH: r.h, rotation: r.rotation || 0, parentId: r.parentId || null, closed: true, fill: r.fill, fillType: r.fillType, stroke: r.stroke, strokeWidth: r.strokeWidth, opacity: r.opacity, points: [{ x: cx, y: 0, in: { x: cx - k * cx, y: 0 }, out: { x: cx + k * cx, y: 0 } }, { x: r.w, y: cy, in: { x: r.w, y: cy - k * cy }, out: { x: r.w, y: cy + k * cy } }, { x: cx, y: r.h, in: { x: cx + k * cx, y: r.h }, out: { x: cx - k * cx, y: r.h } }, { x: 0, y: cy, in: { x: 0, y: cy + k * cy }, out: { x: 0, y: cy - k * cy } }] });
+                if (Array.isArray(r.fills))
+                    nn.fills = structuredClone(r.fills);
+            }
+            else {
+                const poly = nodePolys(r);
+                if (!poly)
+                    continue;
+                nn = buildPathNode(pc.union(poly), r, r.name);
+            }
+            doc.remove([r.id]);
+            doc.add(nn);
+            ids.push(nn.id);
+        }
+        if (ids.length)
+            select(ids);
+    });
+    if (!ids.length)
+        toast('Flatten works on rectangles, ellipses and paths.');
+}
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
+const kbd = (mac, win) => IS_MAC ? mac : win;
+// Filled glyphs in the style of Figma's boolean icons: back shape dimmed, result solid.
+const MENU_ICONS = (() => {
+    const svg = body => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">${body}</svg>`;
+    const a = 'M1.5 1.5h8v8h-8z', b = 'M6.5 6.5h8v8h-8z';
+    return {
+        mask: svg(`<rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor"/><circle cx="8" cy="8" r="3.6" fill="currentColor"/>`),
+        union: svg(`<path d="M1.5 1.5h8v5h5v8h-8v-5h-5z" fill="currentColor"/>`),
+        subtract: svg(`<path d="${b}" fill="none" stroke="currentColor" opacity=".55"/><path d="M1.5 1.5h8v5h-3v3h-5z" fill="currentColor"/>`),
+        intersect: svg(`<path d="${a}M6.5 6.5h8v8h-8z" fill="none" stroke="currentColor" opacity=".55"/><path d="M6.5 6.5h3v3h-3z" fill="currentColor"/>`),
+        exclude: svg(`<path d="M1.5 1.5h8v5h-3v3h-5zM9.5 9.5v-3h5v8h-8v-5z" fill="currentColor"/><path d="M6.5 6.5h3v3h-3z" fill="none" stroke="currentColor" opacity=".55"/>`),
+        flatten: svg(`<path d="M8 1.5v8M4.5 6 8 9.5 11.5 6M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`),
+    };
+})();
+// The ··· menu in the inspector header: masking and boolean operations only.
+function selectionMenu(x = window.innerWidth - 295, y = 113) {
+    const one = state.selection.size === 1 && activeNode();
+    showMenu([
+        { label: one?.isMask ? 'Remove mask' : 'Use as mask', action: 'useAsMask', icon: 'mask', key: kbd('⌥⌘M', 'Ctrl+Alt+M'), disabled: !state.selection.size },
+        '-',
+        { label: 'Union', action: 'booleanUnion', icon: 'union', key: kbd('⌥⇧U', 'Alt+Shift+U') },
+        { label: 'Subtract', action: 'booleanSubtract', icon: 'subtract', key: kbd('⌥⇧S', 'Alt+Shift+S') },
+        { label: 'Intersect', action: 'booleanIntersect', icon: 'intersect', key: kbd('⌥⇧I', 'Alt+Shift+I') },
+        { label: 'Exclude', action: 'booleanExclude', icon: 'exclude', key: kbd('⌥⇧E', 'Alt+Shift+E') },
+        { label: 'Flatten', action: 'flatten', icon: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') },
+    ], x, y);
+}
+function useAsMask() {
+    const roots = selectedRoots().filter(n => !n.locked);
+    if (!roots.length) {
+        toast('Select a layer to use as a mask.');
+        return;
+    }
+    if (roots.length === 1) {
+        const n = roots[0];
+        transaction(n.isMask ? 'Remove mask' : 'Use as mask', () => { n.isMask = !n.isMask; doc.touch(n); });
+        return;
+    }
+    // Several layers: wrap them in a "Mask group" and let the bottom-most one mask the rest.
+    groupSelection();
+    const g = activeNode();
+    if (!g)
+        return;
+    transaction('Use as mask', () => {
+        g.name = 'Mask group';
+        const bottom = doc.children(g.id)[0];
+        if (bottom) {
+            bottom.isMask = true;
+            doc.touch(bottom);
+        }
+        doc.touch(g);
+    });
+}
+// Right-click menu on the canvas and layer list keeps the full command set.
+function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an?.isInstance) {
+    showMenu(instanceMenuItems(an), x, y);
+    return;
+} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
+function modal(content) { closeMenu(); $('#modal').innerHTML = content; $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
+function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#modal').innerHTML = ''; overlay.focus({ preventScroll: true }); }
+function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
+function promptText(title, value, callback) {
+    modal(`${modalHeader(esc(title))}<form id="prompt-form"><input class="form-input" id="prompt-value" value="${esc(value)}" required maxlength="200" autocomplete="off"><div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" type="submit">Save</button></div></form>`);
+    $('#prompt-form').onsubmit = e => {
+        e.preventDefault();
+        const v = $('#prompt-value').value.trim();
+        if (v) {
+            closeModal();
+            callback(v);
+        }
+    };
+    $('#prompt-value').select();
+}
+function renameLayer() {
+    const n = activeNode();
+    if (!n)
+        return;
+    const span = document.querySelector(`[data-layer="${n.id}"] .layer-name`);
+    if (span)
+        inlineRename(span, n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
+    else
+        promptText('Rename layer', n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
+}
+function renameFile() { inlineRename($('#file-name'), doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
+function renameDocFrom(el) { inlineRename(el, doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
+function addPage() {
+    transaction('Add page', () => {
+        const nums = doc.data.pages.map(p => /^Page (\d+)$/.exec(p.name)).filter(Boolean).map(m => +m[1]);
+        const p = { id: uid(), name: `Page ${(nums.length ? Math.max(...nums) : 0) + 1}`, nodes: [], parentId: null };
+        doc.data.pages.push(p);
+        doc.data.pageId = p.id;
+        doc.refresh();
+        state.selection.clear();
+        fit();
+    });
+}
+function editTokens() {
+    modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
+    $('#save-tokens').onclick = () => {
+        const next = doc.data.tokens.colors.map((c, i) => ({ name: $(`[data-token-name="${i}"]`).value || c.name, value: $(`[data-token-color="${i}"]`).value }));
+        closeModal();
+        transaction('Update design tokens', () => {
+            const replacements = new Map(doc.data.tokens.colors.map((c, i) => [c.value.toLowerCase(), next[i].value]));
+            for (const page of doc.data.pages)
+                for (const n of page.nodes)
+                    for (const k of ['fill', 'fill2', 'stroke', 'shadowColor']) {
+                        if (replacements.has(n[k]?.toLowerCase())) {
+                            n[k] = replacements.get(n[k].toLowerCase());
+                            n.version++;
+                        }
+                    }
+            doc.data.tokens.colors = next;
+        });
+        toast('Tokens updated across all pages');
+    };
+    $('#export-tokens').onclick = () => download(new Blob([JSON.stringify(doc.data.tokens, null, 2)], { type: 'application/json' }), 'midas-tokens.json');
+}
+function inspectCSS() {
+    const n = activeNode();
+    if (!n)
+        return;
+    let css = `/* ${n.name.replace(/\*\//g, '')} */\nposition: absolute;\nleft: ${fmt(n.x)}px;\ntop: ${fmt(n.y)}px;\nwidth: ${fmt(n.w)}px;\nheight: ${fmt(n.h)}px;`;
+    if (n.rotation)
+        css += `\ntransform: rotate(${fmt(n.rotation)}deg);`;
+    if (n.type === 'text') {
+        css += `\nfont-family: ${n.fontFamily}, sans-serif;\nfont-size: ${fmt(n.fontSize)}px;\nfont-weight: ${n.fontWeight};\nline-height: ${fmt(n.lineHeight)};\nletter-spacing: ${fmt(n.letterSpacing)}px;\ntext-align: ${n.textAlign};\ncolor: ${n.fill};`;
+        if (n.strokeWidth)
+            css += `\n-webkit-text-stroke: ${fmt(n.strokeWidth)}px ${n.stroke};`;
+    }
+    else {
+        css += `\nbackground: ${n.fillType === 'linear' ? `linear-gradient(${n.gradientAngle + 90}deg, ${n.fill}, ${n.fill2})` : n.fill === 'none' ? 'transparent' : n.fill};`;
+        if (hasRadii(n))
+            css += `\nborder-radius: ${n.radii.map(v => fmt(v) + 'px').join(' ')};`;
+        else if (n.radius)
+            css += `\nborder-radius: ${fmt(n.radius)}px;`;
+        if (n.type === 'ellipse')
+            css += '\nborder-radius: 50%;';
+        if (n.strokeWidth)
+            css += `\nborder: ${fmt(n.strokeWidth)}px solid ${n.stroke};`;
+    }
+    if (n.opacity !== 1)
+        css += `\nopacity: ${n.opacity};`;
+    if (n.shadow)
+        css += `\nbox-shadow: ${n.shadowX}px ${n.shadowY}px ${n.shadowBlur}px ${n.shadowColor}${Math.round(n.shadowOpacity * 255).toString(16).padStart(2, '0')};`;
+    if (n.layout && n.layout !== 'none')
+        css += n.layout === 'grid' ? `\ndisplay: grid;\ngrid-template-columns: repeat(${n.gridCols || 2}, auto);\ngap: ${n.gapCross ?? n.gap ?? 16}px ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;` : `\ndisplay: flex;\nflex-direction: ${n.layout === 'horizontal' ? 'row' : 'column'};${n.layoutWrap ? '\nflex-wrap: wrap;' : ''}\ngap: ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;`;
+    modal(`${modalHeader('Inspect CSS', esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>Geometry and visual styles. Vector paths and text shaping remain renderer-specific.</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">Copy CSS</button></div>`);
+    $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast('CSS copied')).catch(() => toast('Clipboard blocked. Select the code to copy it.'));
+}
+function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Midas field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup', '⇧⌘G'], ['Commands', '⌘K'], ['Rename layer', '⌘R / double-click'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], [`Nudge ${options.nudge}px`, 'Arrow keys'], [`Nudge ${options.bigNudge}px`, 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
+function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Nudge</h3><div class="property-grid"><label class="field" title="Arrow keys"><span>Nudge</span><input type="number" min="0.01" step="any" data-option-num="nudge" value="${options.nudge}" aria-label="Nudge amount"><i class="unit">px</i></label><label class="field" title="Shift + arrow keys"><span>Big</span><input type="number" min="0.01" step="any" data-option-num="bigNudge" value="${options.bigNudge}" aria-label="Big nudge amount"><i class="unit">px</i></label></div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Midas draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
+function toggleTheme() { options.theme = options.theme === 'dark' ? 'light' : 'dark'; delete options.canvasColor; $('#canvas-world').style.backgroundColor = ''; document.documentElement.dataset.theme = options.theme; saveOptions(); refreshUI(); invalidate(); }
+function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .midas document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Midas file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Midas files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
+function newFile() { libNew('blank'); }
+function stressTest() {
+    transaction('Generate rendering stress test', () => {
+        const p = { id: uid(), name: 'GPU stress test · 5,000 shapes', nodes: [] };
+        doc.data.pages.push(p);
+        doc.data.pageId = p.id;
+        doc.refresh();
+        for (let i = 0; i < 5000; i++) {
+            const x = (i % 100) * 30, y = Math.floor(i / 100) * 30;
+            p.nodes.push(node(i % 3 === 0 ? 'ellipse' : 'rect', { x, y, w: 24, h: 24, radius: 5, fill: ['#5b9cf0', '#0058CA', '#9ec8f2', '#c8dcf5', '#9dbbb0', '#debea3'][i % 6], name: `Shape ${i + 1}` }));
+        }
+        doc.refresh();
+        state.selection.clear();
+        fit();
+    });
+    toast('5,000 editable GPU primitives. See Settings for measured render statistics.');
+}
+// ===== variables: JSON import / export (Figma "variables to JSON" shape) =====
+const FIGMA_TYPE = { color: 'color', number: 'float', string: 'string', boolean: 'boolean', effect: 'effect' };
+const APP_TYPE = { color: 'color', float: 'number', number: 'number', string: 'string', boolean: 'boolean', effect: 'effect', shadow: 'effect' };
+const SCOPE_TO_FIGMA = { fillFrame: ['FRAME_FILL'], fillShape: ['SHAPE_FILL'], fillText: ['TEXT_FILL'], stroke: ['STROKE_COLOR'], effects: ['EFFECT_COLOR'], size: ['WIDTH_HEIGHT'], gap: ['GAP'], padding: ['GAP'], radius: ['CORNER_RADIUS'], strokeWidth: ['STROKE_FLOAT'], opacity: ['OPACITY'], fontSize: ['FONT_SIZE'], lineHeight: ['LINE_HEIGHT'], letterSpacing: ['LETTER_SPACING'], fontWeight: ['FONT_WEIGHT'], text: ['TEXT_CONTENT'], fontFamily: ['FONT_FAMILY'], fontStyle: ['FONT_STYLE'] };
+const FIGMA_TO_SCOPE = { FRAME_FILL: ['fillFrame'], SHAPE_FILL: ['fillShape'], TEXT_FILL: ['fillText'], ALL_FILLS: ['fillFrame', 'fillShape', 'fillText'], STROKE_COLOR: ['stroke'], EFFECT_COLOR: ['effects'], WIDTH_HEIGHT: ['size'], GAP: ['gap', 'padding'], CORNER_RADIUS: ['radius'], STROKE_FLOAT: ['strokeWidth'], OPACITY: ['opacity'], FONT_SIZE: ['fontSize'], LINE_HEIGHT: ['lineHeight'], LETTER_SPACING: ['letterSpacing'], PARAGRAPH_SPACING: ['letterSpacing'], PARAGRAPH_INDENT: ['letterSpacing'], TEXT_CONTENT: ['text'], FONT_FAMILY: ['fontFamily'], FONT_STYLE: ['fontStyle'], FONT_WEIGHT: ['fontWeight'] };
+function parseColorValue(v) {
+    const s = String(v ?? '').trim();
+    if (/^#([\da-f]{3}|[\da-f]{6}|[\da-f]{8})$/i.test(s))
+        return s.toLowerCase();
+    const m = s.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i);
+    if (m) {
+        const h = n => Math.max(0, Math.min(255, Math.round(+n))).toString(16).padStart(2, '0');
+        const a = m[4] === undefined ? 1 : m[4].endsWith('%') ? parseFloat(m[4]) / 100 : +m[4];
+        return '#' + h(m[1]) + h(m[2]) + h(m[3]) + (a >= 1 ? '' : h(a * 255));
+    }
+    return '#00000000'; // broken exports such as "#NaNNaNNaN" become transparent
+}
+function importVariablesJSON(text) {
+    let data;
+    try {
+        data = JSON.parse(text);
+    }
+    catch {
+        throw new Error('This file is not valid JSON.');
+    }
+    const list = Array.isArray(data) ? data : [data];
+    const store = varStore(), stats = { collections: 0, variables: 0, updated: 0, aliases: 0, unresolved: 0 };
+    if (store.collections.length === 1 && !store.items.length && store.collections[0].name === 'Collection 1' && store.collections[0].modes.length === 1)
+        store.collections.length = 0; // drop the untouched default collection
+    const pending = [];
+    let found = false;
+    for (const entry of list) {
+        if (!entry || typeof entry !== 'object')
+            continue;
+        for (const [cname, cv] of Object.entries(entry)) {
+            const modes = cv && typeof cv === 'object' ? cv.modes : null;
+            if (!modes || typeof modes !== 'object')
+                continue;
+            found = true;
+            let coll = store.collections.find(c => c.name === cname);
+            if (!coll) {
+                coll = { id: uid(), name: cname, modes: [], groups: [] };
+                store.collections.push(coll);
+                stats.collections++;
+            }
+            const modeByName = {};
+            for (const mname of Object.keys(modes)) {
+                let m = coll.modes.find(x => x.name === mname);
+                if (!m) {
+                    const first = coll.modes[0];
+                    m = { id: uid(), name: mname };
+                    coll.modes.push(m);
+                    for (const it of store.items)
+                        if (it.collectionId === coll.id)
+                            it.values[m.id] = structuredClone(first ? it.values[first.id] ?? varDefault(it.type) : varDefault(it.type));
+                }
+                modeByName[mname] = m;
+            }
+            const vars = new Map();
+            for (const [mname, tree] of Object.entries(modes)) {
+                const walk = (node, path) => {
+                    if (!node || typeof node !== 'object')
+                        return;
+                    if (path.length && ('$type' in node || '$value' in node)) {
+                        const name = path.join('/');
+                        let v = vars.get(name);
+                        if (!v) {
+                            v = { type: APP_TYPE[node.$type], desc: node.$description, hidden: !!node.$hiddenFromPublishing, scopes: node.$scopes, values: {} };
+                            vars.set(name, v);
+                        }
+                        v.values[mname] = { value: node.$value, collection: node.$collectionName };
+                    }
+                    for (const [k, c] of Object.entries(node))
+                        if (!k.startsWith('$'))
+                            walk(c, [...path, k]);
+                };
+                walk(tree, []);
+            }
+            for (const [name, v] of vars) {
+                if (!v.type)
+                    continue;
+                let item = store.items.find(i => i.collectionId === coll.id && i.name === name);
+                if (item && item.type !== v.type) {
+                    store.items = store.items.filter(i => i !== item);
+                    item = null;
+                }
+                if (item)
+                    stats.updated++;
+                else {
+                    item = { id: uid(), collectionId: coll.id, name, type: v.type, values: {} };
+                    store.items.push(item);
+                    stats.variables++;
+                }
+                if (typeof v.desc === 'string')
+                    item.description = v.desc;
+                item.hidden = v.hidden;
+                const keys = new Set(), all = scopeKeys(v.type), scopes = Array.isArray(v.scopes) ? v.scopes : ['ALL_SCOPES'];
+                if (!scopes.includes('ALL_SCOPES'))
+                    for (const sc of scopes)
+                        for (const k of FIGMA_TO_SCOPE[sc] || [])
+                            if (all.includes(k))
+                                keys.add(k);
+                if (keys.size && keys.size < all.length)
+                    item.scope = [...keys];
+                else
+                    delete item.scope;
+                for (const m of coll.modes) {
+                    const raw = v.values[m.name];
+                    if (!raw) {
+                        if (item.values[m.id] === undefined)
+                            item.values[m.id] = varDefault(item.type);
+                        continue;
+                    }
+                    const val = raw.value;
+                    if (typeof val === 'string' && /^\{.+\}$/.test(val.trim())) {
+                        item.values[m.id] = varDefault(item.type);
+                        pending.push({ item, modeId: m.id, target: raw.collection || coll.name, path: val.trim().slice(1, -1) });
+                    }
+                    else if (v.type === 'effect')
+                        item.values[m.id] = parseEffectValue(val);
+                    else if (v.type === 'color')
+                        item.values[m.id] = parseColorValue(val);
+                    else if (v.type === 'number')
+                        item.values[m.id] = Number.isFinite(+val) ? +val : 0;
+                    else if (v.type === 'boolean')
+                        item.values[m.id] = val === true || val === 'true';
+                    else
+                        item.values[m.id] = String(val ?? '');
+                }
+            }
+        }
+    }
+    if (!found)
+        throw new Error('No variable collections found in this JSON.');
+    const exact = new Map(), dotted = new Map();
+    for (const i of store.items) {
+        exact.set(i.collectionId + '|' + i.name, i);
+        dotted.set(i.collectionId + '|' + i.name.replace(/\//g, '.'), i);
+    }
+    for (const p of pending) {
+        const c = store.collections.find(x => x.name === p.target);
+        const t = c && (exact.get(c.id + '|' + p.path.replace(/\./g, '/')) || dotted.get(c.id + '|' + p.path));
+        if (t && t !== p.item && t.type === p.item.type) {
+            p.item.values[p.modeId] = { alias: t.id };
+            stats.aliases++;
+        }
+        else
+            stats.unresolved++;
+    }
+    return stats;
+}
+function figmaScopes(item) {
+    if (!Array.isArray(item.scope))
+        return ['ALL_SCOPES'];
+    const out = new Set();
+    for (const k of item.scope)
+        for (const s of SCOPE_TO_FIGMA[k] || [])
+            out.add(s);
+    return out.size ? [...out] : ['ALL_SCOPES'];
+}
+function exportVariablesJSON(onlyId = null) {
+    const store = varStore(), out = [], byId = new Map(store.items.map(i => [i.id, i])), collName = new Map(store.collections.map(c => [c.id, c.name]));
+    for (const c of store.collections) {
+        if (onlyId && c.id !== onlyId)
+            continue;
+        const items = store.items.filter(i => i.collectionId === c.id), modesOut = {};
+        for (const m of c.modes) {
+            const tree = {};
+            for (const it of items) {
+                let node = tree;
+                for (const part of it.name.split('/'))
+                    node = node[part] ||= {};
+                const raw = it.values[m.id], leaf = { $scopes: figmaScopes(it), $type: FIGMA_TYPE[it.type] };
+                if (it.description)
+                    leaf.$description = it.description;
+                if (it.hidden)
+                    leaf.$hiddenFromPublishing = true;
+                const target = raw && typeof raw === 'object' && raw.alias ? byId.get(raw.alias) : null;
+                if (target) {
+                    leaf.$libraryName = '';
+                    leaf.$collectionName = collName.get(target.collectionId);
+                    leaf.$value = '{' + target.name.replace(/\//g, '.') + '}';
+                }
+                else {
+                    let v = raw === undefined || (raw && typeof raw === 'object') ? varDefault(it.type) : raw;
+                    if (it.type === 'color' && /^#[\da-f]{8}$/i.test(v))
+                        v = `rgba(${parseInt(v.slice(1, 3), 16)}, ${parseInt(v.slice(3, 5), 16)}, ${parseInt(v.slice(5, 7), 16)}, ${+(parseInt(v.slice(7, 9), 16) / 255).toFixed(2)})`;
+                    leaf.$value = v;
+                }
+                Object.assign(node, leaf);
+            }
+            modesOut[m.name] = tree;
+        }
+        out.push({ [c.name]: { modes: modesOut } });
+    }
+    download(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }), safeName(doc.data.name + ' variables') + '.json');
+    toast(onlyId ? 'Collection exported.' : `Exported ${store.collections.length} collection${store.collections.length === 1 ? '' : 's'} and ${store.items.length} variables.`);
+}
+function vwDeleteCollection(id) {
+    const s = varStore(), c = varColl(id);
+    if (!c)
+        return;
+    toast(`Deleted “${c.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
+    vwTx('Delete collection', () => {
+        s.collections = s.collections.filter(x => x.id !== id);
+        const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
+        s.items = s.items.filter(i => i.collectionId !== id);
+        for (const i of s.items)
+            for (const [m, v] of Object.entries(i.values))
+                if (v && typeof v === 'object' && gone.has(v.alias))
+                    i.values[m] = varDefault(i.type);
+        for (const n of doc.nodes)
+            if (n.varModes)
+                delete n.varModes[id];
+        if (!s.collections.length)
+            s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
+        vw.coll = s.collections[0].id;
+    });
+}
+function vwCollAction(act) {
+    const [, kind, id] = act.split(':'), c = varColl(id);
+    if (!c)
+        return;
+    if (kind === 'rename') {
+        const span = document.querySelector(`#vars-window [data-vw-coll="${id}"] .vw-coll-name`);
+        if (span)
+            inlineRename(span, c.name, name => vwTx('Rename collection', () => { c.name = name; }));
+    }
+    else if (kind === 'export')
+        exportVariablesJSON(id);
+    else if (kind === 'delete')
+        vwDeleteCollection(id);
+}
+document.addEventListener('contextmenu', e => {
+    const row = e.target.closest?.('#vars-window [data-vw-coll]');
+    if (!row)
+        return;
+    e.preventDefault();
+    const id = row.dataset.vwColl;
+    showMenu([{ label: 'Rename', action: `vwcoll:rename:${id}` }, { label: 'Export', action: `vwcoll:export:${id}` }, '-', { label: 'Delete', action: `vwcoll:delete:${id}` }], e.clientX, e.clientY);
+});
+document.addEventListener('focusin', e => { const el = e.target; if (el.matches?.('[data-vw-name]') && el.dataset.full !== undefined)
+    el.value = el.dataset.full; });
+document.addEventListener('focusout', e => { const el = e.target; if (el.matches?.('[data-vw-name]') && el.dataset.full !== undefined && el.value === el.dataset.full)
+    el.value = el.dataset.short; });
+document.addEventListener('pointerdown', e => {
+    const win = document.getElementById('vars-window');
+    if (!win)
+        return;
+    const col = e.target.closest?.('[data-vw-colres]'), split = e.target.closest?.('[data-vw-split]'), sw = e.target.closest?.('[data-vw-sidew]');
+    if (!col && !split && !sw)
+        return;
+    e.preventDefault();
+    e.stopPropagation();
+    const coll = varColl(vw.coll), sx = e.clientX, sy = e.clientY, id = col?.dataset.vwColres;
+    const base = col ? (id === 'name' ? (vw.nameW || 220) : (vw.modeW?.[id] || 220)) : split ? win.querySelector('.vw-colls').getBoundingClientRect().height : win.querySelector('.vw-side').getBoundingClientRect().width;
+    const move = ev => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (col) {
+            const w = Math.max(110, Math.min(800, base + dx));
+            if (id === 'name')
+                vw.nameW = w;
+            else
+                (vw.modeW ||= {})[id] = w;
+            const cols = vwCols(coll);
+            win.querySelectorAll('.vw-row').forEach(r => { r.style.gridTemplateColumns = cols; });
+        }
+        else if (split) {
+            vw.collsH = Math.max(40, Math.min(500, base + dy));
+            win.querySelector('.vw-colls').style.height = vw.collsH + 'px';
+        }
+        else {
+            vw.sideW = Math.max(120, Math.min(420, base + dx));
+            win.querySelector('.vw-side').style.width = vw.sideW + 'px';
+        }
+    };
+    const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+}, true);
+// Press and drag a collection or group in the variables sidebar to reorder it. Groups dropped on the middle
+// of another group nest inside it (their variables are renamed to the new path).
+document.addEventListener('pointerdown', e => {
+    const row = e.target.closest?.('#vars-window .vw-colls [data-vw-coll], #vars-window .vw-groups [data-vw-gsel]');
+    if (!row || e.button !== 0 || e.target.closest('button, input') || row.dataset.vwGsel === '')
+        return;
+    const isGroup = row.dataset.vwGsel !== undefined, id = isGroup ? row.dataset.vwGsel : row.dataset.vwColl;
+    const listSel = isGroup ? '#vars-window .vw-groups [data-vw-gsel]' : '#vars-window .vw-colls [data-vw-coll]';
+    const sy = e.clientY, sx = e.clientX;
+    let dragging = false, drop = null;
+    const clear = () => document.querySelectorAll(listSel).forEach(r => r.classList.remove('vw-drop-before', 'vw-drop-after', 'vw-drop-into', 'vw-dragging'));
+    const move = ev => {
+        if (!dragging) {
+            if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5)
+                return;
+            dragging = true;
+            document.body.classList.add('vw-reordering');
+        }
+        clear();
+        row.classList.add('vw-dragging');
+        drop = null;
+        for (const r of document.querySelectorAll(listSel)) {
+            const b = r.getBoundingClientRect();
+            if (ev.clientY < b.top || ev.clientY > b.bottom || r === row)
+                continue;
+            const f = (ev.clientY - b.top) / b.height, target = isGroup ? r.dataset.vwGsel : r.dataset.vwColl;
+            const where = !isGroup ? (f < .5 ? 'before' : 'after') : target === '' ? 'root' : f < .28 ? 'before' : f > .72 ? 'after' : 'into';
+            if (isGroup && target && (target === id || target.startsWith(id + '/')))
+                break;
+            drop = { target, where };
+            r.classList.add(where === 'root' ? 'vw-drop-after' : 'vw-drop-' + where);
+            break;
+        }
+    };
+    const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        document.body.classList.remove('vw-reordering');
+        clear();
+        if (!dragging)
+            return;
+        // The click that follows a drag must not also select the row.
+        addEventListener('click', ev => { ev.stopPropagation(); ev.preventDefault(); }, { capture: true, once: true });
+        if (!drop)
+            return;
+        if (!isGroup) {
+            const s = varStore(), from = s.collections.findIndex(c => c.id === id), t = s.collections.findIndex(c => c.id === drop.target);
+            if (from < 0 || t < 0)
+                return;
+            vwTx('Reorder collections', () => {
+                const [c] = s.collections.splice(from, 1);
+                const ti = s.collections.findIndex(x => x.id === drop.target);
+                s.collections.splice(drop.where === 'after' ? ti + 1 : ti, 0, c);
+            });
+            return;
+        }
+        const coll = varColl(vw.coll), leaf = id.split('/').pop();
+        const parent = drop.where === 'into' ? drop.target : drop.where === 'root' ? '' : vwParentGroup(drop.target);
+        const nn = parent ? `${parent}/${leaf}` : leaf;
+        if (nn !== id && vwGroupsOf(coll).includes(nn)) {
+            toast(`A group named “${nn}” already exists there.`);
+            return;
+        }
+        vwTx('Move group', () => {
+            if (nn !== id)
+                vwRenameGroup(coll, id, nn);
+            const order = vwGroupsOf(coll).filter(g => g !== nn);
+            const at = drop.where === 'before' ? order.indexOf(drop.target) : drop.where === 'after' ? order.indexOf(drop.target) + 1 : drop.where === 'root' ? 0 : order.length;
+            order.splice(Math.max(0, at), 0, nn);
+            coll.groupOrder = order;
+        });
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+});
+// Press a mode header and drag it sideways to reorder modes. A plain click still edits the mode name.
+document.addEventListener('pointerdown', e => {
+    const cell = e.target.closest?.('#vars-window [data-vw-mode-cell]');
+    if (!cell || e.button !== 0 || e.target.closest('button, [data-vw-colres]'))
+        return;
+    const coll = varColl(vw.coll);
+    if (coll.modes.length < 2)
+        return;
+    const id = cell.dataset.vwModeCell, sx = e.clientX, sy = e.clientY;
+    const cells = () => [...document.querySelectorAll('#vars-window [data-vw-mode-cell]')];
+    let dragging = false, slot = null;
+    const move = ev => {
+        if (!dragging) {
+            if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5)
+                return;
+            dragging = true;
+            document.activeElement?.blur?.();
+            getSelection()?.removeAllRanges();
+            cell.classList.add('vw-mode-dragging');
+            document.body.classList.add('vw-reordering');
+        }
+        const list = cells();
+        slot = list.length;
+        for (let i = 0; i < list.length; i++) {
+            const r = list[i].getBoundingClientRect();
+            if (ev.clientX < r.left + r.width / 2) {
+                slot = i;
+                break;
+            }
+        }
+        list.forEach((c, i) => {
+            c.classList.toggle('vw-drop-before', i === slot);
+            c.classList.toggle('vw-drop-after', slot === list.length && i === list.length - 1);
+        });
+        cell.style.transform = `translateX(${ev.clientX - sx}px)`;
+    };
+    const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        document.body.classList.remove('vw-reordering');
+        cells().forEach(c => { c.classList.remove('vw-drop-before', 'vw-drop-after', 'vw-mode-dragging'); c.style.transform = ''; });
+        if (!dragging || slot === null)
+            return;
+        const from = coll.modes.findIndex(m => m.id === id), to = slot > from ? slot - 1 : slot;
+        if (from < 0 || to === from)
+            return;
+        vwTx('Reorder modes', () => { const [m] = coll.modes.splice(from, 1); coll.modes.splice(to, 0, m); });
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+});
+function pickVariablesFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file)
+            return;
+        try {
+            const text = await file.text();
+            let stats;
+            vwTx('Import variables', () => { stats = importVariablesJSON(text); const s = varStore(); if (!varColl(vw.coll))
+                vw.coll = s.collections[0]?.id; vw.group = ''; });
+            toast(`Imported ${stats.collections} new collection${stats.collections === 1 ? '' : 's'}, ${stats.variables} new and ${stats.updated} updated variables, ${stats.aliases} aliases${stats.unresolved ? ` (${stats.unresolved} unresolved)` : ''}.`);
+        }
+        catch (e) {
+            toast(e.message || 'Could not import this file.');
+        }
+    };
+    input.click();
+}
+document.addEventListener('click', e => {
+    if (e.target.closest('[data-vw-export]'))
+        exportVariablesJSON();
+    else if (e.target.closest('[data-vw-import]'))
+        pickVariablesFile();
+});
+// ===== components + instances =====
+let _cachedAllNodes = null, _cachedAllNodesRev = -1;
+function allNodes() {
+    if (_cachedAllNodes && _cachedAllNodesRev === doc.revision)
+        return _cachedAllNodes;
+    _cachedAllNodes = doc.data.pages.flatMap(p => p.nodes);
+    _cachedAllNodesRev = doc.revision;
+    return _cachedAllNodes;
+}
+let _cachedNodeIndex = null, _cachedNodeIndexRev = -1;
+function nodeIndex() {
+    if (_cachedNodeIndex && _cachedNodeIndexRev === doc.revision)
+        return _cachedNodeIndex;
+    _cachedNodeIndex = new Map(allNodes().map(n => [n.id, n]));
+    _cachedNodeIndexRev = doc.revision;
+    return _cachedNodeIndex;
+}
+let _compMap = null, _instMap = null, _pageMap = null, _globalRev = -1;
+function ensureGlobalIndexes() {
+    if (_compMap && _globalRev === doc.revision)
+        return;
+    _compMap = new Map();
+    _instMap = new Map();
+    _pageMap = new Map();
+    for (const p of doc.data.pages) {
+        for (const n of p.nodes) {
+            _pageMap.set(n.id, p);
+            if (n.component)
+                _compMap.set(n.id, n);
+            if (n.isInstance && n.sourceId) {
+                let arr = _instMap.get(n.sourceId);
+                if (!arr) { arr = []; _instMap.set(n.sourceId, arr); }
+                arr.push(n);
+            }
+        }
+    }
+    _globalRev = doc.revision;
+}
+
+function componentById(id) {
+    if (!id) return null;
+    const direct = doc.get(id);
+    if (direct && direct.component) return direct;
+    ensureGlobalIndexes();
+    return _compMap.get(id) || null;
+}
+function instancesOf(id) {
+    if (!id) return [];
+    ensureGlobalIndexes();
+    return _instMap.get(id) || [];
+}
+function pageOfNode(id) {
+    if (!id) return null;
+    if (doc.get(id)) return doc.page;
+    ensureGlobalIndexes();
+    return _pageMap.get(id) || null;
+}
+function pageTree(page, rootId) {
+    if (!page || !rootId)
+        return [];
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
+        const k = new Map();
+        for (const n of page.nodes)
+            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
+        return k;
+    })();
+    const out = [], queue = [rootId], seen = new Set([rootId]);
+    while (queue.length) {
+        const id = queue.shift();
+        for (const c of kids.get(id) || []) {
+            if (!seen.has(c.id)) {
+                seen.add(c.id);
+                out.push(c);
+                queue.push(c.id);
+            }
+        }
+    }
+    return out;
+}
+function detachNodeTree(page, rootId) {
+    const root = page.nodes.find(n => n.id === rootId);
+    if (!root)
+        return;
+    for (const n of [root, ...pageTree(page, rootId)]) {
+        delete n.sourceId;
+        delete n.isInstance;
+        delete n.overrides;
+        delete n.swapOf;
+        delete n.propValues;
+        n.component = false;
+        n.version = (n.version || 0) + 1;
+    }
+}
+const SYNC_OMIT = ['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested'];
+function markSelectedOverrides() {
+    try {
+        if (PL.noMark)
+            return;
+    }
+    catch { }
+    const sel = selected();
+    if (!sel.length)
+        return;
+    const sources = new Map();
+    for (const p of doc.data.pages)
+        for (const n of p.nodes)
+            if (n.component)
+                sources.set(n.id, n);
+    for (const n of sel) {
+        if (!n.sourceId)
+            continue;
+        const src = sources.get(n.sourceId) || doc.get(n.sourceId);
+        if (!src)
+            continue;
+        const omit = new Set([...SYNC_OMIT, ...(n.isInstance ? ['x', 'y', 'rotation'] : [])]);
+        const page = doc.page, controlled = propControlled(n, src, doc._map, sources);
+        for (const [k, v] of Object.entries(n)) {
+            if (omit.has(k) || Object.hasOwn(n.overrides || {}, k) || Object.hasOwn(controlled, k) && controlled[k] === v)
+                continue;
+            if (v === src[k])
+                continue;
+            if (typeof v !== 'object' || JSON.stringify(v) !== JSON.stringify(src[k])) {
+                n.overrides ||= {};
+                n.overrides[k] = structuredClone(v);
+            }
+        }
+    }
+}
+// Descendants of an instance, without walking into nested instances that were swapped to another component.
+function instanceTree(page, rootId) {
+    if (!page || !rootId)
+        return [];
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
+        const k = new Map();
+        for (const n of page.nodes)
+            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
+        return k;
+    })();
+    const out = [], queue = [rootId], seen = new Set([rootId]);
+    while (queue.length) {
+        const id = queue.shift();
+        for (const c of kids.get(id) || []) {
+            if (!seen.has(c.id)) {
+                seen.add(c.id);
+                out.push(c);
+                if (!c.swapOf)
+                    queue.push(c.id);
+            }
+        }
+    }
+    return out;
+}
+// Keeps the layer structure of instances in step with their main component (added / removed layers).
+function syncInstanceStructure(activeOnly = true) {
+    let dirty = false;
+    const sources = new Map();
+    for (const page of doc.data.pages)
+        for (const n of page.nodes)
+            if (n.component)
+                sources.set(n.id, n);
+    const targetPages = activeOnly ? [doc.page] : doc.data.pages;
+    for (const page of targetPages) {
+        for (const root of [...page.nodes]) {
+            if (!root.isInstance || !root.sourceId)
+                continue;
+            const src = sources.get(root.sourceId);
+            if (!src)
+                continue;
+            const srcPage = pageOfNode(src.id);
+            if (!srcPage)
+                continue;
+            const srcDesc = pageTree(srcPage, src.id), srcIds = new Set(srcDesc.map(n => n.id));
+            // A nested instance swapped through an instance-swap property keeps its slot via `swapOf`;
+            // its own subtree is synced when it is visited as an instance root itself.
+            const inst = instanceTree(page, root.id), bySource = new Map(), slotKey = n => n.swapOf || n.sourceId;
+            for (const n of inst)
+                if (slotKey(n))
+                    bySource.set(slotKey(n), n);
+            for (const n of inst)
+                if (slotKey(n) && !srcIds.has(slotKey(n))) {
+                    const gone = new Set([n.id, ...pageTree(page, n.id).map(x => x.id)]);
+                    page.nodes = page.nodes.filter(x => !gone.has(x.id));
+                    bySource.delete(slotKey(n));
+                    dirty = true;
+                }
+            for (const s of srcDesc) {
+                if (bySource.has(s.id))
+                    continue;
+                const parent = s.parentId === src.id ? root : bySource.get(s.parentId);
+                if (!parent || parent.swapOf)
+                    continue;
+                const c = structuredClone(s);
+                c.id = uid();
+                c.parentId = parent.id;
+                c.sourceId = s.id;
+                c.component = false;
+                c.isInstance = false;
+                c.overrides = {};
+                c.version = 0;
+                page.nodes.push(c);
+                bySource.set(s.id, c);
+                dirty = true;
+            }
+            // keep the layer order of the main component
+            const pairs = [[root.id, src.id]];
+            for (const n of instanceTree(page, root.id))
+                if (!n.swapOf && n.sourceId && srcIds.has(n.sourceId))
+                    pairs.push([n.id, n.sourceId]);
+            for (const [ip, sp] of pairs) {
+                const srcOrder = srcPage.nodes.filter(x => x.parentId === sp).map(x => x.id), idxs = [], kids = [];
+                page.nodes.forEach((x, i) => { if (x.parentId === ip) {
+                    idxs.push(i);
+                    kids.push(x);
+                } });
+                if (kids.length < 2)
+                    continue;
+                const rank = x => slotKey(x) && srcOrder.includes(slotKey(x)) ? srcOrder.indexOf(slotKey(x)) : 1e9;
+                const sorted = [...kids].sort((a, b) => rank(a) - rank(b));
+                if (sorted.some((x, i) => x !== kids[i])) {
+                    idxs.forEach((idx, i) => { page.nodes[idx] = sorted[i]; });
+                    dirty = true;
+                }
+            }
+        }
+    }
+    if (dirty)
+        doc.refresh();
+}
+function detachOrphans(activeOnly = true) {
+    const targetPages = activeOnly ? [doc.page] : doc.data.pages;
+    const allIds = new Set();
+    for (const page of doc.data.pages)
+        for (const n of page.nodes)
+            allIds.add(n.id);
+    for (const page of targetPages)
+        for (const n of page.nodes)
+            if (n.sourceId && !allIds.has(n.sourceId)) {
+                delete n.sourceId;
+                delete n.isInstance;
+                delete n.overrides;
+                delete n.swapOf;
+            }
+}
+function createComponentFromSelection() {
+    const n = activeNode();
+    if (!n) {
+        toast('Select a layer first, then create a component.');
+        return;
+    }
+    if (n.isInstance || n.sourceId) {
+        toast('This layer is already part of an instance.');
+        return;
+    }
+    if (n.component) {
+        toast('This layer is already a main component.');
+        return;
+    }
+    makeComponent();
+}
+function goToMainComponent(id) {
+    const page = pageOfNode(id);
+    if (!page)
+        return;
+    if (page.id !== doc.page.id)
+        switchPage(page.id);
+    select([id]);
+    fit([id]);
+    refreshUI();
+}
+const thumbCache = new Map();
+async function ensureThumb(n) {
+    const page = pageOfNode(n.id);
+    if (!page)
+        return;
+    const tree = pageTree(page, n.id);
+    let sig = n.version || 0;
+    for (const x of tree)
+        sig += (x.version || 0) * 3 + 1;
+    const key = `${tree.length}:${sig}:${n.w}x${n.h}`;
+    if (thumbCache.get(n.id)?.key === key)
+        return;
+    thumbCache.set(n.id, { key, url: null });
+    try {
+        const src = await renderNodeAnyPage(n.id, Math.max(.05, Math.min(1, 240 / Math.max(n.w, n.h, 1))));
+        const out = document.createElement('canvas');
+        out.width = 220;
+        out.height = 130;
+        const c = out.getContext('2d');
+        const k = Math.min(200 / src.width, 110 / src.height, 2), w = src.width * k, h = src.height * k;
+        c.drawImage(src, (220 - w) / 2, (130 - h) / 2, w, h);
+        const url = out.toDataURL('image/png');
+        thumbCache.set(n.id, { key, url });
+        const holder = document.querySelector(`[data-thumb="${n.id}"]`);
+        if (holder)
+            holder.innerHTML = `<img src="${url}" alt="">`;
+    }
+    catch { }
+}
+function renderAssets() {
+    const nodes = allNodes(), entries = [];
+    for (const c of nodes.filter(n => n.component))
+        if (!parentSetOf(c))
+            entries.push({ comp: c, name: c.name, variants: 0, instances: instancesOf(c.id).length, target: c.id });
+    for (const set of nodes.filter(n => n.componentSet)) {
+        const vs = setVariants(set);
+        if (vs.length)
+            entries.push({ comp: vs[0], name: set.name, variants: vs.length, instances: vs.reduce((t, v) => t + instancesOf(v.id).length, 0), target: set.id });
+    }
+    const head = `<div class="asset-head"><button class="wide-button asset-create" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
+    if (!entries.length) {
+        $('#assets-panel').innerHTML = head + `<p class="small-label">No components yet. Select a layer and click “Create component” (⌥⌘K). Instances you place stay linked to the main component.</p>`;
+        return;
+    }
+    $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + entries.map(en => {
+        const n = en.comp, cached = thumbCache.get(n.id), page = pageOfNode(en.target);
+        const prev = cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(n.fill)}">${esc(en.name)}</div>`;
+        return `<div class="asset-card" data-component="${n.id}" draggable="true"><div class="asset-preview" data-thumb="${n.id}">${prev}</div><div class="asset-caption"><span class="asset-name">${esc(en.name)}</span><span class="asset-count" title="${en.variants ? 'Variants · instances' : 'Instances'}">${en.variants ? en.variants + ' variants · ' : ''}${en.instances} ◆</span><button class="icon-button small" data-cmp-goto="${en.target}" title="Go to main component${page && page.id !== doc.page.id ? ' (' + esc(page.name) + ')' : ''}" aria-label="Go to main component">${icon('search', 12)}</button></div></div>`;
+    }).join('');
+    for (const en of entries)
+        ensureThumb(en.comp);
+}
+function componentBlockHtml(n) {
+    if (n.isInstance && n.sourceId) {
+        const src = componentById(n.sourceId), set = src && parentSetOf(src);
+        const rows = set ? variantProps(set).map(pr => {
+            const vals = variantValues(set, pr), bp = binaryPair(vals), key = 'vprop:' + pr, bv = n.vars?.[key] && varItem(n.vars[key]);
+            let ctl;
+            if (bv)
+                ctl = varChip(key, bv);
+            else if (bp)
+                ctl = `<label class="vsw"><input type="checkbox" role="switch" class="variant-bool" data-variant-swap="${esc(pr)}" data-variant-true="${esc(bp.t)}" data-variant-false="${esc(bp.f)}" ${src.variant?.[pr] === bp.t ? 'checked' : ''} aria-label="${esc(pr)}"></label><span class="vsw-spacer"></span>${varBindButton(key)}`;
+            else
+                ctl = `${comboField(`data-variant-swap="${esc(pr)}"`, src.variant?.[pr], vals, pr)}${varBindButton(key)}`;
+            return `<div class="cmp-prop2"><span title="${esc(pr)}">${esc(pr)}</span><div class="cmp-ctl">${ctl}</div></div>`;
+        }).join('') : '';
+        const own = src ? instancePropsHtml(n, propHolderOf(src)) : '';
+        return rows || own ? `<div class="cmp-block instance-props"><div class="cmp-props">${rows}${own}</div></div>` : '';
+    }
+    if (n.component) {
+        const count = instancesOf(n.id).length, set = parentSetOf(n), common = `<button class="cmp-btn" data-cmp="place">Place instance</button><button class="cmp-btn" data-cmp="select-instances" ${count ? '' : 'disabled'}>Select instances</button>`;
+        if (set)
+            return `<div class="cmp-block main">${variantEditorHtml(set, n)}</div>`;
+        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div><div class="cmp-actions"><button class="cmp-btn" data-cmp="add-variant">+ Variant</button>${common}<button class="cmp-btn" data-cmp="remove">Remove component</button></div></div>`;
+    }
+    if (n.componentSet) {
+        const vs = setVariants(n);
+        return `<div class="cmp-block main">${variantEditorHtml(n, null)}</div>`;
+    }
+    if (!n.sourceId)
+        return `<div class="cmp-block"><button class="cmp-btn wide" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
+    return '';
+}
+document.addEventListener('click', e => {
+    const goto = e.target.closest('[data-cmp-goto]');
+    if (goto) {
+        e.stopPropagation();
+        goToMainComponent(goto.dataset.cmpGoto);
+        return;
+    }
+    const b = e.target.closest('[data-cmp]');
+    if (!b || b.disabled)
+        return;
+    const n = activeNode(), act = b.dataset.cmp;
+    if (act === 'create')
+        createComponentFromSelection();
+    else if (!n)
+        return;
+    else if (act === 'goto' && n.sourceId)
+        goToMainComponent(n.sourceId);
+    else if (act === 'reset')
+        transaction('Reset overrides', () => { const page = pageOfNode(n.id); for (const x of [n, ...pageTree(page, n.id)]) {
+            if (x.sourceId)
+                x.overrides = {};
+            doc.touch(x);
+        } });
+    else if (act === 'detach')
+        transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
+            detachNodeTree(pageOfNode(x.id), x.id); });
+    else if (act === 'place')
+        instantiate(n.id);
+    else if (act === 'select-instances') {
+        const ids = instancesOf(n.id).filter(i => doc.get(i.id)).map(i => i.id);
+        if (ids.length)
+            select(ids);
+        else
+            toast('The instances live on other pages.');
+    }
+    else if (act === 'remove') {
+        const inst = instancesOf(n.id);
+        if (inst.length && !confirm(`${inst.length} instance${inst.length === 1 ? '' : 's'} will be detached and become regular layers. Continue?`))
+            return;
+        transaction('Remove component', () => { for (const i of inst)
+            detachNodeTree(pageOfNode(i.id), i.id); n.component = false; doc.touch(n); doc.refresh(); });
+    }
+});
+// ===== variants (component sets) =====
+function parentSetOf(n) {
+    const page = pageOfNode(n.id), p = page && n.parentId ? page.nodes.find(x => x.id === n.parentId) : null;
+    return p && p.componentSet ? p : null;
+}
+function selNameHtml(n, multi, ns) {
+    if (multi)
+        return `<span class="selection-name">${ns.length} layers selected</span>`;
+    if (n.component && parentSetOf(n))
+        return `<span class="selection-name">${esc(n.name)}</span>`;
+    return `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+}
+function compSplitHtml(ns) {
+    if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
+        return '';
+    return `<span class="cmp-split"><button class="icon-button small" data-cs="component" title="Create component (⌥⌘K)" aria-label="Create component">${icon('component', 14)}</button><button class="icon-button small" data-cs-menu title="Component options" aria-label="Component options">${icon('chevronDown', 12)}</button></span>`;
+}
+function createMultipleComponents() {
+    const rs = selectedRoots().filter(n => !n.isInstance && !n.sourceId && !n.component && !n.componentSet);
+    if (!rs.length) {
+        toast('Nothing to convert — the selection is already made of components.');
+        return;
+    }
+    transaction('Create multiple components', () => { for (const n of rs) {
+        n.component = true;
+        n.isInstance = false;
+        doc.touch(n);
+    } });
+    toast(`${rs.length} main component${rs.length === 1 ? '' : 's'} created.`);
+}
+document.addEventListener('click', e => {
+    if (e.target.closest('[data-cs]')) {
+        makeComponent();
+        return;
+    }
+    const m = e.target.closest('[data-cs-menu]');
+    if (m)
+        openPopMenu(m, [{ label: 'Create component', run: () => makeComponent() }, { label: 'Create multiple components', run: createMultipleComponents }, { label: 'Create component set', run: combineAsVariants }]);
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.matches?.('[data-rename-inline]'))
+        return;
+    const n = activeNode(), v = el.value.trim();
+    if (!n || !v) {
+        el.value = n?.name || '';
+        return;
+    }
+    if (v !== n.name)
+        transaction('Rename layer', () => { n.name = v; doc.touch(n); });
+});
+document.addEventListener('keydown', e => {
+    if (!e.target.matches?.('[data-rename-inline]'))
+        return;
+    if (e.key === 'Enter')
+        e.target.blur();
+    else if (e.key === 'Escape') {
+        e.target.value = activeNode()?.name || '';
+        e.target.blur();
+    }
+});
+function setOfNode(n) { return !n ? null : n.componentSet ? n : n.component ? parentSetOf(n) : null; }
+// A dropdown you can also type into: the field takes free text, the chevron lists the existing values.
+function comboField(attrs, value, options, label) {
+    return `<span class="cmp-combo"><input type="text" ${attrs} value="${esc(value ?? '')}" spellcheck="false" aria-label="${esc(label)}"><button type="button" class="cmp-combo-btn" data-combo-options="${esc(JSON.stringify(options))}" tabindex="-1" aria-label="Show values">${icon('chevronDown', 12)}</button></span>`;
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-combo-options]');
+    if (!b)
+        return;
+    const input = b.parentElement.querySelector('input'), values = JSON.parse(b.dataset.comboOptions || '[]');
+    openPopMenu(b.parentElement, values.map(v => ({ label: v, checked: v === input.value, run: () => { input.value = v; input.dispatchEvent(new Event('change', { bubbles: true })); } })));
+});
+function binaryPair(vals) {
+    if (vals.length !== 2)
+        return null;
+    const l = vals.map(v => String(v).trim().toLowerCase());
+    for (const [a, b] of [['yes', 'no'], ['on', 'off']])
+        if (l.includes(a) && l.includes(b))
+            return { t: vals[l.indexOf(a)], f: vals[l.indexOf(b)] };
+    return null;
+}
+function variantEditorHtml(set, cur) {
+    const props = variantProps(set);
+    if (cur) {
+        const sels = props.map(k => {
+            const vals = variantValues(set, k);
+            const ctl = comboField(`data-vprop-val="${esc(k)}"`, cur.variant?.[k], vals, k);
+            return `<div class="cmp-prop2"><span title="${esc(k)}">${esc(k)}</span><div class="cmp-ctl">${ctl}</div></div>`;
+        }).join('');
+        return `<div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div><div class="cmp-props">${sels}</div>${cpropRowsHtml(set)}</div>`;
+    }
+    const rows = props.map(k => {
+        const vals = variantValues(set, k), open = propPop && propPop.prop === k && propPop.setId === set.id;
+        return `<div class="vp-row2"><button class="vp-pill ${open ? 'on' : ''}" data-cmp="edit-prop" data-prop-name="${esc(k)}" title="Edit property" aria-label="Edit property ${esc(k)}">${CPROP_ICON.variant}<span>${esc(k)} · ${esc(vals.join(', '))}</span></button>${propRowActions(`data-cmp="edit-prop" data-prop-name="${esc(k)}"`, props.length > 1 ? `data-cmp="remove-prop" data-prop-name="${esc(k)}"` : '')}</div>`;
+    }).join('');
+    return `<div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${rows}${cpropRowsHtml(set)}</div>`;
+}
+let propPop = null;
+function closePropPop() {
+    if (!propPop)
+        return;
+    propPop.el.remove();
+    document.removeEventListener('pointerdown', propPop.away, true);
+    propPop = null;
+    renderInspector();
+}
+function renderPropPop() {
+    const pp = propPop, set = pp && doc.get(pp.setId);
+    if (!set) {
+        closePropPop();
+        return;
+    }
+    const vals = variantValues(set, pp.prop);
+    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map(v => `<div class="pp-val"><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
+}
+function openPropPop(anchor, set, prop) {
+    if (!set)
+        return;
+    const same = propPop && propPop.prop === prop && propPop.setId === set.id;
+    closePropPop();
+    if (same)
+        return;
+    const el = document.createElement('div');
+    el.className = 'prop-pop';
+    document.body.appendChild(el);
+    propPop = { el, setId: set.id, prop, away: null };
+    propPop.away = ev => { if (!el.contains(ev.target) && !ev.target.closest('[data-cmp="edit-prop"]'))
+        closePropPop(); };
+    document.addEventListener('pointerdown', propPop.away, true);
+    renderPropPop();
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
+    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
+    el.addEventListener('click', ev => {
+        const set2 = doc.get(propPop?.setId);
+        if (!set2)
+            return;
+        if (ev.target.closest('[data-pp-close]'))
+            closePropPop();
+        else if (ev.target.closest('[data-pp-delprop]')) {
+            const k = propPop.prop;
+            closePropPop();
+            removeVariantProp(set2, k);
+        }
+        else if (ev.target.closest('[data-pp-add]')) {
+            addVariantValue(set2, propPop.prop);
+            renderPropPop();
+        }
+        else {
+            const d = ev.target.closest('[data-pp-del]');
+            if (d) {
+                removeVariantValue(set2, propPop.prop, d.dataset.ppDel);
+                renderPropPop();
+            }
+        }
+    });
+    el.addEventListener('change', ev => {
+        const set2 = doc.get(propPop?.setId), t = ev.target;
+        if (!set2)
+            return;
+        if (t.matches('[data-pp-name]')) {
+            if (renameVariantProp(set2, propPop.prop, t.value))
+                propPop.prop = t.value.trim();
+        }
+        else if (t.matches('[data-pp-val]'))
+            renameVariantValue(set2, propPop.prop, t.dataset.old, t.value);
+        renderPropPop();
+    });
+    el.addEventListener('keydown', ev => { if (ev.key === 'Enter')
+        ev.target.blur();
+    else if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        closePropPop();
+    } });
+}
+function addVariantValue(set, prop) {
+    const vs = setVariants(set), vals = variantValues(set, prop);
+    if (!vs.length || !vals.length)
+        return;
+    let k = vals.length + 1, val = `Value ${k}`;
+    while (vals.includes(val))
+        val = `Value ${++k}`;
+    transaction('Add variant value', () => {
+        for (const base of vs.filter(v => v.variant?.[prop] === vals[0])) {
+            const copy = cloneNodes([base], 0)[0];
+            copy.parentId = set.id;
+            copy.component = true;
+            copy.variant = { ...(base.variant || {}), [prop]: val };
+        }
+        renameVariants(set);
+        layoutVariantSet(set);
+    });
+}
+function removeVariantValue(set, prop, value) {
+    const gone = setVariants(set).filter(v => v.variant?.[prop] === value);
+    if (!gone.length || variantValues(set, prop).length < 2)
+        return;
+    const inst = gone.reduce((t, v) => t + instancesOf(v.id).length, 0);
+    if (inst && !confirm(`${inst} instance${inst === 1 ? '' : 's'} of the removed variant${gone.length === 1 ? '' : 's'} will be detached. Continue?`))
+        return;
+    transaction('Remove variant value', () => {
+        for (const v of gone)
+            for (const i of instancesOf(v.id))
+                detachNodeTree(pageOfNode(i.id), i.id);
+        doc.remove(gone.map(v => v.id));
+        state.selection = new Set([set.id]);
+        renameVariants(set);
+        layoutVariantSet(set);
+    });
+}
+function renameVariantValue(set, prop, oldV, newV) {
+    newV = String(newV).trim();
+    if (!newV || newV === oldV)
+        return false;
+    if (variantValues(set, prop).some(v => v !== oldV && String(v).toLowerCase() === newV.toLowerCase())) {
+        toast(`A value named “${newV}” already exists.`);
+        return false;
+    }
+    transaction('Rename variant value', () => {
+        for (const v of setVariants(set))
+            if (v.variant?.[prop] === oldV)
+                v.variant = { ...v.variant, [prop]: newV };
+        renameVariants(set);
+    });
+    return true;
+}
+// Select several layers -> one component set (like Figma's "Combine as variants").
+function combineAsVariants() {
+    const roots = selectedRoots().filter(n => !n.isInstance && !n.sourceId && !n.componentSet);
+    if (roots.length < 2) {
+        toast('Select two or more layers to combine as variants.');
+        return;
+    }
+    let setId = null;
+    transaction('Combine as variants', () => {
+        const parentId = roots.every(n => n.parentId === roots[0].parentId) ? roots[0].parentId : null;
+        const pm = parentId ? doc.world(parentId).matrix : identity(), inv = inverse(pm);
+        const rects = roots.map(n => boxOf(multiply(inv, doc.world(n.id).matrix), n.w, n.h)), b = union(rects);
+        const set = node('frame', { name: 'Component ' + (allNodes().filter(x => x.componentSet).length + 1), x: Math.round(b.x - 16), y: Math.round(b.y - 16), w: Math.round(b.w + 32), h: Math.round(b.h + 32), fill: 'none', clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
+        set.parentId = parentId;
+        set.componentSet = true;
+        doc.add(set);
+        roots.sort((a, c) => (rects[roots.indexOf(a)].x - rects[roots.indexOf(c)].x) || (rects[roots.indexOf(a)].y - rects[roots.indexOf(c)].y));
+        const used = new Set();
+        roots.forEach((r, i) => {
+            let val = (r.name || '').trim() || `Variant ${i + 1}`, k = 2;
+            while (used.has(val))
+                val = `${(r.name || 'Variant').trim()} ${k++}`;
+            used.add(val);
+            const world = doc.world(r.id).matrix;
+            setFromMatrix(r, multiply(inv, world));
+            r.parentId = set.id;
+            r.component = true;
+            r.variant = { 'Property 1': val };
+            doc.touch(r);
+        });
+        renameVariants(set);
+        layoutVariantSet(set);
+        setId = set.id;
+    });
+    if (setId) {
+        select([setId]);
+        toast('Combined into a component set.');
+    }
+}
+function setVariants(set) {
+    const page = pageOfNode(set.id);
+    return page ? page.nodes.filter(x => x.parentId === set.id && x.component) : [];
+}
+function variantProps(set) {
+    const props = [];
+    for (const v of setVariants(set))
+        for (const k of Object.keys(v.variant || {}))
+            if (!props.includes(k))
+                props.push(k);
+    return props;
+}
+function variantValues(set, prop) { return [...new Set(setVariants(set).map(v => v.variant?.[prop]).filter(x => x !== undefined))]; }
+function variantName(v) { return Object.entries(v.variant || {}).map(([k, x]) => `${k}=${x}`).join(', ') || 'Variant'; }
+function renameVariants(set) { for (const v of setVariants(set)) {
+    v.name = variantName(v);
+    doc.touch(v);
+} }
+function layoutVariantSet(set) {
+    const vs = setVariants(set), cols = Math.max(1, Math.min(vs.length, 4)), maxW = Math.max(...vs.map(v => v.w), 40);
+    set.w = cols * maxW + (cols + 1) * 16 + (cols - 1) * 0;
+    set.layoutSizingV = 'hug';
+    doc.touch(set);
+}
+function addVariant(comp) {
+    if (!comp || !comp.component)
+        return;
+    let created = null;
+    transaction('Add variant', () => {
+        let set = parentSetOf(comp);
+        if (!set) {
+            set = node('frame', { name: comp.name, x: comp.x - 16, y: comp.y - 16, w: comp.w * 2 + 48, h: comp.h + 32, fill: 'none', clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
+            set.parentId = comp.parentId || null;
+            set.componentSet = true;
+            doc.add(set);
+            comp.parentId = set.id;
+            comp.variant = { 'Property 1': 'Default' };
+        }
+        const props = variantProps(set).length ? variantProps(set) : ['Property 1'], first = props[0];
+        const copy = cloneNodes([comp], 0)[0];
+        copy.parentId = set.id;
+        copy.component = true;
+        copy.variant = { ...(comp.variant || {}) };
+        let k = setVariants(set).filter(v => v !== copy).length + 1, val = `Variant ${k}`;
+        while (variantValues(set, first).includes(val))
+            val = `Variant ${++k}`;
+        copy.variant[first] = val;
+        for (const p of props)
+            if (copy.variant[p] === undefined)
+                copy.variant[p] = 'Default';
+        renameVariants(set);
+        set.name = set.name || comp.name;
+        layoutVariantSet(set);
+        created = copy;
+    });
+    if (created)
+        select([created.id]);
+}
+function addVariantProp(comp) {
+    const set = setOfNode(comp);
+    if (!set)
+        return;
+    transaction('Add variant property', () => {
+        const existing = variantProps(set);
+        let k = existing.length + 1, name = `Property ${k}`;
+        while (existing.includes(name))
+            name = `Property ${++k}`;
+        for (const v of setVariants(set)) {
+            v.variant = { ...(v.variant || {}), [name]: 'Default' };
+        }
+        renameVariants(set);
+    });
+}
+function removeVariantProp(comp, prop) {
+    const set = setOfNode(comp);
+    if (!set || variantProps(set).length < 2)
+        return;
+    transaction('Remove variant property', () => {
+        for (const v of setVariants(set)) {
+            const next = { ...(v.variant || {}) };
+            delete next[prop];
+            v.variant = next;
+        }
+        renameVariants(set);
+    });
+}
+function renameVariantProp(comp, oldName, newName) {
+    const set = setOfNode(comp);
+    newName = String(newName).trim();
+    if (!set || !newName || newName === oldName)
+        return false;
+    if (variantProps(set).some(p => p !== oldName && p.toLowerCase() === newName.toLowerCase())) {
+        toast(`A property named “${newName}” already exists.`);
+        return false;
+    }
+    transaction('Rename variant property', () => {
+        for (const v of setVariants(set)) {
+            const next = {};
+            for (const [k, x] of Object.entries(v.variant || {}))
+                next[k === oldName ? newName : k] = x;
+            v.variant = next;
+        }
+        renameVariants(set);
+    });
+    return true;
+}
+function setVariantValue(comp, prop, value) {
+    const set = setOfNode(comp);
+    value = String(value).trim();
+    if (!set || !value)
+        return;
+    transaction('Set variant value', () => { comp.variant = { ...(comp.variant || {}), [prop]: value }; renameVariants(set); });
+}
+// ===== component properties: text, boolean, instance swap, slot + nested instances =====
+// Definitions live on the property holder (the component set, or a standalone main component) in `cprops`.
+// Layers inside the component point at a property via `propBind` ({ text | visible | swap | slot: propId });
+// instances keep the chosen values in `propValues`. `exposedNested` lists nested instances (ids inside the
+// component) whose properties are shown on the outer instance.
+const CPROP_LABEL = { variant: 'Variant', text: 'Text', boolean: 'Boolean', instance: 'Instance swap', slot: 'Slot' };
+const CPROP_FIELD = { text: 'text', boolean: 'visible', instance: 'swap', slot: 'slot' };
+const CPROP_ICON = (() => {
+    const s = body => `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+    return {
+        variant: s('<path d="M8 2.2 13.8 8 8 13.8 2.2 8Z"/>'),
+        text: s('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 5.5h5M8 5.5v5"/>'),
+        boolean: s('<rect x="1.5" y="4.5" width="13" height="7" rx="3.5"/><circle cx="5" cy="8" r="1.6" fill="currentColor"/>'),
+        instance: s('<path d="M8 2.2 13.8 8 8 13.8 2.2 8Z"/><path d="M8 5.6 10.4 8 8 10.4 5.6 8Z" fill="currentColor" stroke="none"/>'),
+        slot: s('<rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke-dasharray="2.2 1.8"/><path d="M8 5.5v5M5.5 8h5"/>'),
+        nested: s('<path d="M8 13.5V5M4.8 8.2 8 5l3.2 3.2M3 2.5h10"/>'),
+    };
+})();
+// nodeIndex is cached above
+function propHolderOf(n) { return !n ? null : n.componentSet ? n : n.component ? (parentSetOf(n) || n) : null; }
+// The main component an instance (or a nested-instance copy inside one) ultimately comes from.
+function chainComponent(x, idx = null) {
+    const seen = new Set();
+    let s = x;
+    while (s && !s.component && !seen.has(s.id)) {
+        seen.add(s.id);
+        if (!s.sourceId)
+            break;
+        s = idx ? idx.get(s.sourceId) : (doc.get(s.sourceId) || componentById(s.sourceId));
+    }
+    return s?.component ? s : null;
+}
+function cpropsOf(holder) { return holder?.cprops || []; }
+function findCprop(holder, pid) { return cpropsOf(holder).find(p => p.id === pid) || null; }
+// Value of a property for a bound layer: the nearest instance above it (then the main components it
+// comes from) that sets the property wins.
+function propValueFor(n, pid, pmap, idx) {
+    const seen = new Set();
+    for (let a = pmap.get(n.parentId); a && !seen.has(a.id); a = pmap.get(a.parentId)) {
+        seen.add(a.id);
+        for (let s = a, i = 0; s && i < 64; s = s.sourceId ? idx.get(s.sourceId) : null, i++)
+            if (s.propValues && Object.hasOwn(s.propValues, pid))
+                return { found: true, value: s.propValues[pid] };
+    }
+    return { found: false };
+}
+// Fields of an instance layer currently driven by a text / boolean property value.
+function propControlled(n, src, pmap, idx) {
+    const bind = src?.propBind || n.propBind, out = {};
+    if (!bind)
+        return out;
+    for (const [field, pid] of Object.entries(bind)) {
+        if (field !== 'text' && field !== 'visible')
+            continue;
+        if (Object.hasOwn(n.overrides || {}, field))
+            continue;
+        const r = propValueFor(n, pid, pmap, idx);
+        if (r.found)
+            out[field] = field === 'visible' ? r.value !== false && r.value !== 'false' : String(r.value ?? '');
+    }
+    return out;
+}
+// Layers a property can bind to: the component tree without variant roots and without the insides of nested instances.
+function holderLayers(holder) {
+    const page = holder && pageOfNode(holder.id);
+    if (!page)
+        return [];
+    const kids = new Map();
+    for (const n of page.nodes)
+        (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
+    const out = [], seen = new Set([holder.id]);
+    const walk = pid => {
+        for (const c of kids.get(pid) || []) {
+            if (seen.has(c.id))
+                continue;
+            seen.add(c.id);
+            if (!(holder.componentSet && pid === holder.id))
+                out.push(c);
+            if (!c.isInstance)
+                walk(c.id);
+        }
+    };
+    walk(holder.id);
+    return out;
+}
+function layerCandidates(holder, type) {
+    const all = holderLayers(holder);
+    if (type === 'text')
+        return all.filter(n => n.type === 'text');
+    if (type === 'instance')
+        return all.filter(n => n.isInstance);
+    if (type === 'slot')
+        return all.filter(n => n.type === 'frame' && !n.isInstance);
+    return all;
+}
+function boundLayers(holder, p) { return holderLayers(holder).filter(n => n.propBind?.[CPROP_FIELD[p.type]] === p.id); }
+function bindLayer(holder, p, layerId) {
+    const field = CPROP_FIELD[p.type];
+    for (const n of boundLayers(holder, p)) {
+        delete n.propBind[field];
+        if (!Object.keys(n.propBind).length)
+            delete n.propBind;
+        doc.touch(n);
+    }
+    const n = layerId && allNodes().find(x => x.id === layerId);
+    if (!n)
+        return;
+    n.propBind = { ...(n.propBind || {}), [field]: p.id };
+    if (p.type === 'text')
+        p.def = n.text ?? '';
+    else if (p.type === 'boolean')
+        n.visible = p.def !== false;
+    else if (p.type === 'instance')
+        p.def = chainComponent(n)?.id || null;
+    doc.touch(n);
+}
+function swappableComponents() {
+    const out = [];
+    for (const p of doc.data.pages) {
+        for (const c of p.nodes) {
+            if (c.component) {
+                const set = parentSetOf(c);
+                out.push({ id: c.id, label: set ? `${set.name} / ${c.name}` : c.name });
+            }
+        }
+    }
+    return out;
+}
+// Replace a nested instance with an instance of another component, in place. Runs inside a transaction.
+function swapNestedNode(y, targetId) {
+    const idx = nodeIndex(), target = idx.get(targetId), page = pageOfNode(y.id);
+    if (!target?.component || !page)
+        return false;
+    if (chainComponent(y, idx)?.id === target.id)
+        return false;
+    // A component cannot contain an instance of itself (directly or through an instance of it).
+    const pmap = new Map(page.nodes.map(n => [n.id, n]));
+    for (let a = pmap.get(y.parentId); a; a = pmap.get(a.parentId))
+        if (a.id === target.id || chainComponent(a, idx)?.id === target.id) {
+            toast('A component cannot contain an instance of itself.');
+            return false;
+        }
+    const originalComp = y.swapOf ? chainComponent(idx.get(y.swapOf), idx) : null;
+    const gone = new Set(pageTree(page, y.id).map(n => n.id));
+    page.nodes = page.nodes.filter(n => !gone.has(n.id));
+    if (y.swapOf && originalComp?.id === target.id) {
+        y.sourceId = y.swapOf;
+        delete y.swapOf;
+        y.isInstance = false;
+    }
+    else if (y.isInstance && !y.swapOf)
+        y.sourceId = target.id; // a real instance, e.g. the nested instance inside the main component
+    else {
+        y.swapOf = y.swapOf || y.sourceId;
+        y.sourceId = target.id;
+        y.isInstance = true;
+    }
+    y.overrides = {};
+    doc.refresh();
+    doc.touch(y);
+    return true;
+}
+function addComponentProp(n, type) {
+    const holder = propHolderOf(n);
+    if (!holder)
+        return;
+    if (type === 'variant') {
+        if (parentSetOf(n) || n.componentSet)
+            addVariantProp(n);
+        else
+            addVariant(n);
+        return;
+    }
+    const existing = new Set([...cpropsOf(holder).map(p => p.name), ...(holder.componentSet ? variantProps(holder) : [])]);
+    let k = 1, name = CPROP_LABEL[type];
+    while (existing.has(name))
+        name = `${CPROP_LABEL[type]} ${++k}`;
+    const p = { id: uid(), name, type, def: type === 'boolean' ? true : type === 'text' ? 'Text' : null };
+    // Bind to the selected layer when it fits, otherwise the first candidate (like Figma's create flow).
+    const cands = layerCandidates(holder, type), sel = selected().find(s => cands.includes(s));
+    transaction(`Add ${CPROP_LABEL[type].toLowerCase()} property`, () => {
+        holder.cprops = [...cpropsOf(holder), p];
+        bindLayer(holder, p, (sel || cands[0])?.id);
+        doc.touch(holder);
+    });
+    openCpropPop(document.querySelector('[data-cmp="add-prop"]'), holder, p.id);
+}
+function setPropDefault(holder, pid, value) {
+    const p = findCprop(holder, pid);
+    if (!p)
+        return;
+    transaction('Change property default', () => {
+        p.def = value;
+        for (const n of boundLayers(holder, p)) {
+            if (p.type === 'text') {
+                n.text = String(value);
+                if (n.type === 'text')
+                    n.autoW ? hugText(n) : n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+            }
+            else if (p.type === 'boolean')
+                n.visible = !!value;
+            else if (p.type === 'instance' && value)
+                swapNestedNode(n, value);
+            doc.touch(n);
+        }
+        doc.touch(holder);
+    });
+}
+function removeComponentProp(holder, pid) {
+    const p = findCprop(holder, pid);
+    if (!p)
+        return;
+    transaction('Delete property', () => {
+        bindLayer(holder, p, null);
+        holder.cprops = cpropsOf(holder).filter(x => x.id !== pid);
+        for (const n of allNodes())
+            if (n.propValues && Object.hasOwn(n.propValues, pid)) {
+                const next = { ...n.propValues };
+                delete next[pid];
+                n.propValues = next;
+            }
+        doc.touch(holder);
+    });
+}
+// Set a property value on an instance (or on a nested-instance copy exposed through its parent instance).
+function setInstanceProp(owner, pid, value) {
+    const comp = chainComponent(owner), holder = propHolderOf(comp), p = findCprop(holder, pid);
+    if (!p)
+        return;
+    transaction(`Change ${p.name}`, () => {
+        owner.propValues = { ...(owner.propValues || {}), [pid]: value };
+        const page = pageOfNode(owner.id), field = CPROP_FIELD[p.type];
+        for (const y of page ? pageTree(page, owner.id).filter(y => y.propBind?.[field] === pid) : []) {
+            if (p.type === 'instance')
+                swapNestedNode(y, value);
+            else if (y.overrides)
+                delete y.overrides[field]; // a property change replaces a direct edit of the same field
+        }
+        doc.touch(owner);
+    });
+}
+function instancePropValue(owner, p) {
+    const idx = nodeIndex();
+    for (let s = owner, i = 0; s && i < 64; s = s.sourceId ? idx.get(s.sourceId) : null, i++)
+        if (s.propValues && Object.hasOwn(s.propValues, p.id))
+            return s.propValues[p.id];
+    if (p.type === 'instance') {
+        const page = pageOfNode(owner.id), y = page && pageTree(page, owner.id).find(y => y.propBind?.swap === p.id);
+        return y ? chainComponent(y, idx)?.id : p.def;
+    }
+    return p.def;
+}
+// Properties list shown on a main component / component set.
+function cpropRowsHtml(holder) {
+    const rows = cpropsOf(holder).map(p => {
+        const open = cpropPop && cpropPop.pid === p.id;
+        const bound = boundLayers(holder, p)[0], idx = nodeIndex();
+        const summary = p.type === 'text' ? `“${p.def ?? ''}”` : p.type === 'boolean' ? (p.def === false ? 'False' : 'True') : p.type === 'instance' ? (idx.get(p.def)?.name || '—') : (bound?.name || 'No layer');
+        return `<div class="vp-row2"><button class="vp-pill ${open ? 'on' : ''}" data-cmp="edit-cprop" data-pid="${p.id}" title="Edit property" aria-label="Edit property ${esc(p.name)}">${CPROP_ICON[p.type]}<span>${esc(p.name)} · ${esc(summary)}</span></button>${propRowActions(`data-cmp="edit-cprop" data-pid="${p.id}"`, `data-cmp="del-cprop" data-pid="${p.id}"`)}</div>`;
+    });
+    const page = pageOfNode(holder.id), nested = (holder.exposedNested || []).map(id => page?.nodes.find(n => n.id === id)).filter(Boolean);
+    if (nested.length)
+        rows.push(`<div class="vp-sub">Nested instances</div>` + nested.map(n => `<div class="vp-row2"><button class="vp-pill" data-cmp="nested-props" title="Choose nested instances">${CPROP_ICON.nested}<span>${esc(n.name)}</span>${icon('sliders', 14)}</button></div>`).join(''));
+    return rows.join('');
+}
+// Settings + remove buttons revealed on hover of a property row (Figma style).
+function propRowActions(editAttrs, delAttrs) {
+    return `<span class="vp-acts"><button class="icon-button small" ${editAttrs} title="Edit property" aria-label="Edit property">${icon('sliders', 14)}</button>${delAttrs ? `<button class="icon-button small" ${delAttrs} title="Delete property" aria-label="Delete property">${icon('minus', 14)}</button>` : ''}</span>`;
+}
+function propsAddButton() { return `<button class="icon-button small" data-cmp="add-prop" title="Create property" aria-label="Create property">${icon('plus', 14)}</button>`; }
+function openCpropMenu(anchor, n) {
+    const holder = propHolderOf(n);
+    if (!holder)
+        return;
+    const hasNested = layerCandidates(holder, 'instance').length > 0;
+    // The inspector may have re-rendered during the click; anchor to the live button so the menu opens next to "+".
+    if (!anchor?.isConnected)
+        anchor = document.querySelector('#inspector [data-cmp="add-prop"]') || anchor;
+    openPopMenu(anchor, [
+        { header: 'Create property' },
+        ...['variant', 'text', 'boolean', 'instance', 'slot'].map(t => ({ label: CPROP_LABEL[t], icon: CPROP_ICON[t], run: () => addComponentProp(n, t), disabled: t !== 'variant' && t !== 'boolean' && !layerCandidates(holder, t).length })),
+        '-',
+        { header: 'Expose properties from' },
+        { label: 'Nested instances', icon: CPROP_ICON.nested, run: () => openNestedPop(anchor, holder), disabled: !hasNested },
+    ]);
+}
+let cpropPop = null;
+function closeCpropPop() {
+    if (!cpropPop)
+        return;
+    cpropPop.el.remove();
+    document.removeEventListener('pointerdown', cpropPop.away, true);
+    cpropPop = null;
+    renderInspector();
+}
+function openFloatingPop(anchor, state) {
+    const el = document.createElement('div');
+    el.className = 'prop-pop';
+    document.body.appendChild(el);
+    cpropPop = { el, ...state, away: null };
+    cpropPop.away = ev => { if (!el.contains(ev.target) && !ev.target.closest('[data-cmp="edit-cprop"], [data-cmp="add-prop"], .stp-menu'))
+        closeCpropPop(); };
+    document.addEventListener('pointerdown', cpropPop.away, true);
+    renderCpropPop();
+    const r = (anchor || $('#inspector')).getBoundingClientRect();
+    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
+    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
+    el.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.tagName === 'INPUT')
+        ev.target.blur();
+    else if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        closeCpropPop();
+    } });
+    el.addEventListener('click', ev => {
+        if (ev.target.closest('[data-pp-close]'))
+            closeCpropPop();
+        else if (ev.target.closest('[data-cp-delete]')) {
+            const { holderId, pid } = cpropPop;
+            closeCpropPop();
+            removeComponentProp(doc.get(holderId) || allNodes().find(n => n.id === holderId), pid);
+        }
+    });
+    el.addEventListener('change', ev => {
+        const t = ev.target, holder = allNodes().find(n => n.id === cpropPop?.holderId);
+        if (!holder)
+            return;
+        if (cpropPop.kind === 'nested') {
+            const id = t.dataset.cpNested;
+            transaction('Expose nested instance', () => {
+                const list = new Set(holder.exposedNested || []);
+                t.checked ? list.add(id) : list.delete(id);
+                holder.exposedNested = [...list];
+                doc.touch(holder);
+            });
+        }
+        else {
+            const p = findCprop(holder, cpropPop.pid);
+            if (!p)
+                return;
+            if (t.matches('[data-cp-name]')) {
+                const v = t.value.trim();
+                if (v)
+                    transaction('Rename property', () => { p.name = v; doc.touch(holder); });
+            }
+            else if (t.matches('[data-cp-layer]'))
+                transaction('Bind property', () => { bindLayer(holder, p, t.value); doc.touch(holder); });
+            else if (t.matches('[data-cp-def]'))
+                setPropDefault(holder, p.id, p.type === 'boolean' ? t.value === 'true' : t.value);
+        }
+        renderCpropPop();
+    });
+}
+function openCpropPop(anchor, holder, pid) {
+    const same = cpropPop && cpropPop.pid === pid;
+    closeCpropPop();
+    closePropPop();
+    if (!same)
+        openFloatingPop(anchor, { kind: 'prop', holderId: holder.id, pid });
+}
+function openNestedPop(anchor, holder) {
+    closeCpropPop();
+    closePropPop();
+    openFloatingPop(anchor, { kind: 'nested', holderId: holder.id });
+}
+function renderCpropPop() {
+    const pp = cpropPop, holder = pp && allNodes().find(n => n.id === pp.holderId);
+    if (!holder) {
+        closeCpropPop();
+        return;
+    }
+    const head = title => `<div class="pp-head"><span>${title}</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    if (pp.kind === 'nested') {
+        const list = layerCandidates(holder, 'instance'), on = new Set(holder.exposedNested || []);
+        pp.el.innerHTML = head('Expose properties from nested instances') + (list.length ? list.map(n => `<label class="pp-check"><input type="checkbox" data-cp-nested="${n.id}" ${on.has(n.id) ? 'checked' : ''}>${CPROP_ICON.instance}<span>${esc(n.name)}</span><small>${esc(chainComponent(n)?.name || '')}</small></label>`).join('') : '<p class="pp-note">This component has no nested instances.</p>') + '<p class="pp-note">Exposed properties appear on every instance of this component.</p>';
+        return;
+    }
+    const p = findCprop(holder, pp.pid);
+    if (!p) {
+        closeCpropPop();
+        return;
+    }
+    const bound = boundLayers(holder, p)[0], cands = layerCandidates(holder, p.type);
+    const layerSel = `<select data-cp-layer aria-label="Layer"><option value="">— None —</option>${cands.map(n => `<option value="${n.id}" ${bound?.id === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select>`;
+    let def = '';
+    if (p.type === 'text')
+        def = `<input data-cp-def value="${esc(p.def ?? '')}" spellcheck="false" aria-label="Default value">`;
+    else if (p.type === 'boolean')
+        def = `<select data-cp-def aria-label="Default value"><option value="true" ${p.def !== false ? 'selected' : ''}>True</option><option value="false" ${p.def === false ? 'selected' : ''}>False</option></select>`;
+    else if (p.type === 'instance')
+        def = `<select data-cp-def aria-label="Default value">${swappableComponents().map(c => `<option value="${c.id}" ${p.def === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>`;
+    const layerLabel = { text: 'Text layer', boolean: 'Layer', instance: 'Instance', slot: 'Slot frame' }[p.type];
+    pp.el.innerHTML = head(`${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
+        `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
+        `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>` +
+        (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Default (visible)' : 'Default value'}</label>${def}</div>` : '') +
+        (p.type === 'slot' ? '<p class="pp-note">Instances can drop their own layers into this frame.</p>' : '') +
+        `<div class="pp-foot"><button class="cmp-btn wide" data-cp-delete>Delete property</button></div>`;
+}
+// Controls on an instance for the component's own properties and for exposed nested instances.
+function instancePropsHtml(owner, holder) {
+    const ctl = (owner, p, attrs = '') => {
+        const v = instancePropValue(owner, p);
+        if (p.type === 'text')
+            return `<input class="cmp-input" data-iprop="${p.id}" ${attrs} value="${esc(v ?? '')}" spellcheck="false" aria-label="${esc(p.name)}">`;
+        if (p.type === 'boolean')
+            return `<label class="vsw"><input type="checkbox" role="switch" data-iprop="${p.id}" ${attrs} ${v !== false ? 'checked' : ''} aria-label="${esc(p.name)}"></label><span class="vsw-spacer"></span>`;
+        if (p.type === 'instance')
+            return `<select data-iprop="${p.id}" ${attrs} aria-label="${esc(p.name)}">${swappableComponents().map(c => `<option value="${c.id}" ${v === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>`;
+        const page = pageOfNode(owner.id), slot = page && pageTree(page, owner.id).find(y => y.propBind?.slot === p.id);
+        return `<span class="cmp-slot">${CPROP_ICON.slot}${esc(slot?.name || 'Slot')} · drop layers in</span>`;
+    };
+    const row = (o, p, attrs) => `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.type]} ${esc(p.name)}</span><div class="cmp-ctl">${ctl(o, p, attrs)}</div></div>`;
+    let html = cpropsOf(holder).map(p => row(owner, p)).join('');
+    const page = pageOfNode(owner.id), tree = page ? instanceTree(page, owner.id) : [];
+    for (const nid of holder.exposedNested || []) {
+        const x = tree.find(y => (y.swapOf || y.sourceId) === nid);
+        if (!x)
+            continue;
+        const comp = chainComponent(x), set = comp && parentSetOf(comp), nh = propHolderOf(comp);
+        let inner = '';
+        if (set)
+            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${comboField(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
+        if (nh)
+            inner += cpropsOf(nh).filter(p => p.type !== 'slot').map(p => row(x, p, `data-owner="${x.id}"`)).join('');
+        html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
+    }
+    return html;
+}
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.matches?.('#inspector [data-iprop], #inspector [data-nested-variant]'))
+        return;
+    const owner = el.dataset.owner ? allNodes().find(n => n.id === el.dataset.owner) : activeNode();
+    if (!owner)
+        return;
+    if (el.matches('[data-nested-variant]')) {
+        const comp = chainComponent(owner), set = comp && parentSetOf(comp);
+        if (!set)
+            return;
+        const want = { ...(comp.variant || {}), [el.dataset.nestedVariant]: el.value }, sibs = setVariants(set);
+        const target = sibs.find(s => Object.entries(want).every(([k, v]) => s.variant?.[k] === v)) || sibs.find(s => s.variant?.[el.dataset.nestedVariant] === el.value);
+        if (target && target.id !== comp.id)
+            transaction('Swap variant', () => { swapNestedNode(owner, target.id); });
+        else
+            renderInspector();
+        return;
+    }
+    setInstanceProp(owner, el.dataset.iprop, el.type === 'checkbox' ? el.checked : el.value);
+});
+document.addEventListener('click', e => {
+    const b = e.target.closest('#inspector [data-select-layer]');
+    if (b)
+        select([b.dataset.selectLayer]);
+});
+// Swap an instance to another variant of the same component set (position is kept, overrides are reset).
+function swapVariant(inst, prop, value) {
+    const src = componentById(inst.sourceId), set = src && parentSetOf(src);
+    if (!set)
+        return;
+    const sibs = setVariants(set), want = { ...(src.variant || {}), [prop]: value };
+    const target = sibs.find(s => Object.entries(want).every(([k, v]) => s.variant?.[k] === v)) || sibs.find(s => s.variant?.[prop] === value);
+    if (!target || target.id === src.id)
+        return;
+    transaction('Swap variant', () => {
+        const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(n => n.id));
+        page.nodes = page.nodes.filter(n => !gone.has(n.id));
+        inst.sourceId = target.id;
+        inst.overrides = {};
+        doc.refresh();
+        doc.touch(inst);
+        syncComponents();
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-cmp]');
+    if (!b || b.disabled)
+        return;
+    const n = activeNode(), act = b.dataset.cmp;
+    if (act === 'combine') {
+        combineAsVariants();
+        return;
+    }
+    if (!n)
+        return;
+    if (act === 'add-variant') {
+        if (n.component)
+            addVariant(n);
+        else if (n.componentSet) {
+            const vs = setVariants(n);
+            if (vs.length)
+                addVariant(vs[vs.length - 1]);
+        }
+    }
+    else if (act === 'add-prop' && (n.component || n.componentSet))
+        openCpropMenu(b, n);
+    else if (act === 'edit-cprop' && propHolderOf(n))
+        openCpropPop(b, propHolderOf(n), b.dataset.pid);
+    else if (act === 'del-cprop' && propHolderOf(n))
+        removeComponentProp(propHolderOf(n), b.dataset.pid);
+    else if (act === 'nested-props' && propHolderOf(n))
+        openNestedPop(b, propHolderOf(n));
+    else if (act === 'remove-prop' && (n.component || n.componentSet))
+        removeVariantProp(n, b.dataset.propName);
+    else if (act === 'edit-prop' && setOfNode(n))
+        openPropPop(b, setOfNode(n), b.dataset.propName);
+    else if (act === 'add-value' && setOfNode(n))
+        addVariantValue(setOfNode(n), b.dataset.propName);
+    else if (act === 'remove-value' && setOfNode(n))
+        removeVariantValue(setOfNode(n), b.dataset.propName, b.dataset.value);
+    else if (act === 'select-variant')
+        select([b.dataset.id]);
+    else if (act === 'select-set' && setOfNode(n))
+        select([setOfNode(n).id]);
+    else if (act === 'combine')
+        combineAsVariants();
+});
+document.addEventListener('change', e => {
+    const el = e.target, n = activeNode();
+    if (!n || !el.matches)
+        return;
+    if (el.matches('[data-vprop-name]') && (n.component || n.componentSet)) {
+        if (!renameVariantProp(n, el.dataset.vpropName, el.value))
+            el.value = el.dataset.vpropName;
+    }
+    else if (el.matches('[data-vprop-valname]') && setOfNode(n)) {
+        if (!renameVariantValue(setOfNode(n), el.dataset.vpropValname, el.dataset.old, el.value))
+            el.value = el.dataset.old;
+    }
+    else if (el.matches('[data-vprop-val]') && n.component)
+        setVariantValue(n, el.dataset.vpropVal, el.type === 'checkbox' ? (el.checked ? el.dataset.t : el.dataset.f) : el.value);
+    else if (el.matches('[data-variant-swap]') && n.isInstance) {
+        let v = el.value.trim();
+        const set = parentSetOf(componentById(n.sourceId) || {});
+        if (el.type !== 'checkbox' && set && !variantValues(set, el.dataset.variantSwap).includes(v)) {
+            toast(`“${v}” is not a value of ${el.dataset.variantSwap}.`);
+            renderInspector();
+            return;
+        }
+        if (el.type === 'checkbox')
+            v = el.checked ? el.dataset.variantTrue : el.dataset.variantFalse;
+        swapVariant(n, el.dataset.variantSwap, v);
+    }
+});
+// ===== set as thumbnail =====
+function isThumbCandidate() { const n = activeNode(); return !!n && n.type === 'frame' && !n.parentId && state.selection.size === 1; }
+function thumbMenuLabel() { const n = activeNode(); return n && doc.data.thumbnailId === n.id ? 'Remove as thumbnail' : 'Set as thumbnail'; }
+function setAsThumbnail() {
+    const n = activeNode();
+    if (!isThumbCandidate()) {
+        toast('Select a top-level frame to use as the file thumbnail.');
+        return;
+    }
+    const remove = doc.data.thumbnailId === n.id;
+    transaction(remove ? 'Remove thumbnail' : 'Set thumbnail', () => { if (remove)
+        delete doc.data.thumbnailId;
+    else
+        doc.data.thumbnailId = n.id; });
+    toast(remove ? 'Thumbnail removed. Home shows the first frame again.' : `“${n.name}” is now this file's thumbnail on Home.`);
+}
+// Render a layer from any page (temporarily switches the page for the export).
+let thumbJobs = Promise.resolve();
+function renderNodeAnyPage(id, scale) {
+    const job = thumbJobs.then(async () => {
+        const page = pageOfNode(id);
+        if (!page)
+            throw new Error('Layer not found.');
+        if (page.id === doc.page.id)
+            return renderer.exportCanvas([id], scale);
+        await renderer.images.ready();
+        const prev = doc.data.pageId;
+        doc.data.pageId = page.id;
+        doc.refresh();
+        try {
+            return await renderer.exportCanvas([id], scale);
+        }
+        finally {
+            doc.data.pageId = prev;
+            doc.refresh();
+        }
+    });
+    thumbJobs = job.catch(() => { });
+    return job;
+}
+
+// ===== Figma (.fig) import =====
+function figParseContainer(bytes) {
+    const L = window.FigLibs;
+    if (!L)
+        throw new Error('The Figma importer library is missing from this build.');
+    let canvas, meta = null;
+    const images = new Map();
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+        let files;
+        try {
+            files = L.unzipSync(bytes, { filter: f => /(^|\/)(canvas\.fig|meta\.json)$/.test(f.name) || /(^|\/)images\/[^/]+$/.test(f.name) });
+        }
+        catch {
+            throw new Error('This .fig archive could not be unzipped.');
+        }
+        const key = Object.keys(files).find(k => /(^|\/)canvas\.fig$/.test(k));
+        if (!key)
+            throw new Error('No design data found in this .fig file. FigJam, Slides and Make files are not supported.');
+        canvas = files[key];
+        for (const [k, v] of Object.entries(files))
+            if (/(^|\/)images\/[^/]+$/.test(k))
+                images.set(k.split('/').pop(), v);
+        const mk = Object.keys(files).find(k => /(^|\/)meta\.json$/.test(k));
+        if (mk)
+            try {
+                meta = JSON.parse(new TextDecoder().decode(files[mk]));
+            }
+            catch { }
+    }
+    else
+        canvas = bytes;
+    const prelude = String.fromCharCode(...canvas.subarray(0, 8));
+    if (!prelude.startsWith('fig-'))
+        throw new Error('This does not look like a Figma file.');
+    if (prelude.trim() === 'fig-jam')
+        throw new Error('FigJam files are not supported.');
+    const view = new DataView(canvas.buffer, canvas.byteOffset, canvas.byteLength), chunks = [];
+    let off = 12;
+    while (off + 4 <= canvas.byteLength) {
+        const len = view.getUint32(off, true);
+        off += 4;
+        if (off + len > canvas.byteLength)
+            throw new Error('This .fig file is truncated or damaged.');
+        chunks.push(canvas.subarray(off, off + len));
+        off += len;
+    }
+    if (chunks.length < 2)
+        throw new Error('This .fig file has an unexpected structure.');
+    let message;
+    try {
+        const compiled = L.compileSchema(L.decodeBinarySchema(L.inflateSync(chunks[0])));
+        const c1 = chunks[1], data = c1[0] === 0x28 && c1[1] === 0xb5 && c1[2] === 0x2f && c1[3] === 0xfd ? L.zstdDecompress(c1) : L.inflateSync(c1);
+        message = compiled.decodeMessage(data);
+    }
+    catch (e) {
+        throw new Error('Could not decode the Figma data (' + (e?.message || e) + ').');
+    }
+    return { message, images, meta, version: view.getUint32(8, true) };
+}
+async function figToMidas(file, onProgress, abortSignal) {
+    const { message, images, meta } = figParseContainer(new Uint8Array(await file.arrayBuffer()));
+    const gkey = g => g ? `${g.sessionID}:${g.localID}` : null;
+    const fig = new Map(), kids = new Map();
+    for (const nc of message.nodeChanges || []) {
+        if (nc.phase === 'REMOVED' || !nc.guid)
+            continue;
+        fig.set(gkey(nc.guid), nc);
+    }
+    for (const nc of fig.values()) {
+        const pk = gkey(nc.parentIndex?.guid);
+        if (!pk)
+            continue;
+        if (!kids.has(pk))
+            kids.set(pk, []);
+        kids.get(pk).push(nc);
+    }
+    for (const list of kids.values())
+        list.sort((a, b) => { const x = a.parentIndex?.position ?? '', y = b.parentIndex?.position ?? ''; return x < y ? -1 : x > y ? 1 : 0; });
+    const blobs = (message.blobs || []).map(b => b.bytes || b);
+    const rep = { pages: 0, layers: 0, notes: new Map(), skipped: new Map() };
+    const note = (k) => rep.notes.set(k, (rep.notes.get(k) || 0) + 1);
+    const skip = (t) => rep.skipped.set(t, (rep.skipped.get(t) || 0) + 1);
+    const assets = {}, assetByHash = new Map();
+    const hex2 = v => Math.max(0, Math.min(255, Math.round((v ?? 0) * 255))).toString(16).padStart(2, '0');
+    const hexOf = (c, withAlpha = false) => !c ? '#000000' : '#' + hex2(c.r) + hex2(c.g) + hex2(c.b) + (withAlpha && (c.a ?? 1) < 1 ? hex2(c.a) : '');
+    const imageAsset = hash => {
+        if (!hash || !hash.length)
+            return null;
+        const hx = Array.from(hash, b => b.toString(16).padStart(2, '0')).join('');
+        if (assetByHash.has(hx))
+            return assetByHash.get(hx);
+        const bytes = images.get(hx);
+        if (!bytes) {
+            note('image missing from the file');
+            return null;
+        }
+        const mime = bytes[0] === 0x89 ? 'image/png' : bytes[0] === 0xff ? 'image/jpeg' : bytes[0] === 0x47 ? 'image/gif' : bytes[0] === 0x52 ? 'image/webp' : 'image/png';
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000)
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        const id = uid();
+        assets[id] = `data:${mime};base64,${btoa(bin)}`;
+        assetByHash.set(hx, id);
+        return id;
+    };
+    const gradientAngle = (p, w, h) => {
+        const t = p.transform;
+        if (!t)
+            return 90;
+        const det = t.m00 * t.m11 - t.m01 * t.m10;
+        if (!det)
+            return 90;
+        const inv = (x, y) => ({ x: (t.m11 * (x - t.m02) - t.m01 * (y - t.m12)) / det, y: (-t.m10 * (x - t.m02) + t.m00 * (y - t.m12)) / det });
+        const a = inv(0, .5), b = inv(1, .5);
+        return Math.round(Math.atan2((b.y - a.y) * (h || 1), (b.x - a.x) * (w || 1)) * 180 / Math.PI);
+    };
+    const convertPaints = (paints, w, h) => {
+        const out = [];
+        for (const p of paints || []) {
+            if (!p)
+                continue;
+            const vis = p.visible !== false, op = Math.round((p.opacity ?? 1) * 1000) / 1000;
+            if (p.type === 'SOLID')
+                out.push({ type: 'solid', color: hexOf(p.color), opacity: Math.round(op * (p.color?.a ?? 1) * 1000) / 1000, visible: vis });
+            else if (p.type === 'IMAGE') {
+                const id = imageAsset(p.image?.hash);
+                if (id)
+                    out.push({ type: 'image', image: id, mode: p.imageScaleMode === 'FIT' ? 'fit' : p.imageScaleMode === 'TILE' ? 'tile' : 'fill', scale: 1, opacity: op, visible: vis });
+            }
+            else if (/^GRADIENT_/.test(p.type) && p.stops?.length) {
+                const first = p.stops[0], last = p.stops[p.stops.length - 1];
+                if (p.type !== 'GRADIENT_LINEAR')
+                    note(`${p.type.slice(9).toLowerCase()} gradient approximated as linear`);
+                else if (p.stops.length > 2)
+                    note('gradient with more than 2 stops reduced to 2');
+                out.push({ type: 'linear', color: hexOf(first.color, true), color2: hexOf(last.color, true), angle: p.type === 'GRADIENT_LINEAR' ? gradientAngle(p, w, h) : 90, opacity: op, visible: vis });
+            }
+            else
+                note(`${String(p.type).toLowerCase()} fill not supported`);
+        }
+        // Figma lists paints bottom → top; Midas keeps fills top → bottom (like the fill list in the panel).
+        return out.reverse();
+    };
+    const num = v => Number.isFinite(v) ? v : 0;
+    const applyFills = (n, f) => {
+        const fills = convertPaints(f.fillPaints, n.w, n.h);
+        if (n.type === 'text') {
+            const s = fills.find(x => x.type === 'solid' && x.visible !== false) || fills.find(x => x.type === 'linear');
+            n.fill = s ? (s.type === 'solid' ? s.color : s.color) : '#000000';
+            n.fillOpacity = s ? s.opacity : 1;
+            return;
+        }
+        n.fills = fills;
+        syncLegacyFill(n);
+    };
+    const applyStroke = (n, f) => {
+        const sp = (f.strokePaints || []).find(p => p.visible !== false && (p.type === 'SOLID' || /^GRADIENT_/.test(p.type)));
+        const weight = f.strokeWeight || 0;
+        if (!sp || !(weight > 0) && !f.borderStrokeWeightsIndependent) {
+            n.strokeWidth = 0;
+            return;
+        }
+        if (sp.type !== 'SOLID')
+            note('gradient stroke approximated by a solid color');
+        n.stroke = sp.type === 'SOLID' ? hexOf(sp.color) : hexOf(sp.stops?.[0]?.color);
+        n.strokeOpacity = Math.round((sp.opacity ?? 1) * (sp.type === 'SOLID' ? sp.color?.a ?? 1 : 1) * 1000) / 1000;
+        n.strokeWidth = weight;
+        n.strokeAlign = { INSIDE: 'inside', OUTSIDE: 'outside' }[f.strokeAlign] || 'center';
+        n.strokeJoin = { BEVEL: 'bevel', ROUND: 'round' }[f.strokeJoin] || 'miter';
+        n.strokeCap = { ROUND: 'round', SQUARE: 'square' }[f.strokeCap] || 'butt';
+        if (Array.isArray(f.dashPattern) && f.dashPattern.length) {
+            n.strokeStyle = 'dash';
+            n.strokeDash = f.dashPattern[0];
+            n.strokeGap = f.dashPattern[1] ?? f.dashPattern[0];
+        }
+        if (f.borderStrokeWeightsIndependent && ['rect', 'frame'].includes(n.type)) {
+            n.strokeSides = 'custom';
+            n.strokeT = f.borderTopWeight ?? weight;
+            n.strokeR = f.borderRightWeight ?? weight;
+            n.strokeB = f.borderBottomWeight ?? weight;
+            n.strokeL = f.borderLeftWeight ?? weight;
+            n.strokeWidth = Math.max(n.strokeT, n.strokeR, n.strokeB, n.strokeL);
+        }
+    };
+    const applyEffects = (n, f) => {
+        const list = [];
+        for (const e of f.effects || []) {
+            const vis = e.visible !== false;
+            if (e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW')
+                list.push({ type: e.type === 'DROP_SHADOW' ? 'drop' : 'inner', visible: vis, color: hexOf(e.color), opacity: Math.round((e.color?.a ?? 1) * 1000) / 1000, x: e.offset?.x ?? 0, y: e.offset?.y ?? 0, blur: e.radius ?? 0, spread: e.spread ?? 0 });
+            else if (e.type === 'FOREGROUND_BLUR')
+                list.push({ type: 'layerBlur', visible: vis, radius: e.radius ?? 0 });
+            else if (e.type === 'BACKGROUND_BLUR')
+                list.push({ type: 'bgBlur', visible: vis, radius: e.radius ?? 0 });
+            else
+                note(`${String(e.type).toLowerCase().replace(/_/g, ' ')} effect not supported`);
+        }
+        if (list.length) {
+            n.effects = list;
+            syncLegacyShadow(n);
+        }
+    };
+    const createSpan = (text, styleId, lookup, base) => {
+        const ov = lookup.get(styleId) || {};
+        const st = ov.fontName?.style || base.fontStyle;
+        const fw = ov.fontName?.style
+            ? (/thin|hairline/i.test(st) ? 100 : /extra.?light|ultra.?light/i.test(st) ? 200 : /light/i.test(st) ? 300 : /semi.?bold|demi/i.test(st) ? 600 : /extra.?bold|ultra.?bold/i.test(st) ? 800 : /black|heavy/i.test(st) ? 900 : /bold/i.test(st) ? 700 : /medium/i.test(st) ? 500 : 400)
+            : base.fontWeight;
+        const fs = ov.fontName?.style ? (/italic|oblique/i.test(st) ? 'italic' : 'normal') : base.fontStyle;
+        let fill = base.fill, fillOpacity = base.fillOpacity ?? 1;
+        if (ov.fillPaints?.length) {
+            const fp = ov.fillPaints.find(p => p.visible !== false && p.type === 'SOLID');
+            if (fp) {
+                fill = hexOf(fp.color);
+                fillOpacity = Math.round((fp.opacity ?? 1) * (fp.color?.a ?? 1) * 1000) / 1000;
+            }
+        }
+        return {
+            text,
+            fontFamily: ov.fontName?.family || base.fontFamily,
+            fontSize: ov.fontSize || base.fontSize,
+            fontWeight: fw,
+            fontStyle: fs,
+            fill,
+            fillOpacity,
+            letterSpacing: ov.letterSpacing ? (ov.letterSpacing.units === 'PERCENT' ? Math.round(ov.letterSpacing.value / 100 * (ov.fontSize || base.fontSize) * 100) / 100 : ov.letterSpacing.value || 0) : base.letterSpacing,
+            lineHeight: ov.lineHeight ? (ov.lineHeight.units === 'PIXELS' ? Math.round(ov.lineHeight.value / (ov.fontSize || base.fontSize) * 1000) / 1000 : ov.lineHeight.units === 'PERCENT' ? ov.lineHeight.value / 100 : ov.lineHeight.value || 1.2) : base.lineHeight,
+            textDecoration: ov.textDecoration ? ({ UNDERLINE: 'underline', STRIKETHROUGH: 'line-through' }[ov.textDecoration] || 'none') : base.textDecoration
+        };
+    };
+    const applyText = (n, f) => {
+        n.text = f.textData?.characters ?? n.text ?? '';
+        const style = f.fontName?.style || 'Regular';
+        n.fontFamily = f.fontName?.family || n.fontFamily || 'Inter';
+        n.fontWeight = /thin|hairline/i.test(style) ? 100 : /extra.?light|ultra.?light/i.test(style) ? 200 : /light/i.test(style) ? 300 : /semi.?bold|demi/i.test(style) ? 600 : /extra.?bold|ultra.?bold/i.test(style) ? 800 : /black|heavy/i.test(style) ? 900 : /bold/i.test(style) ? 700 : /medium/i.test(style) ? 500 : 400;
+        n.fontStyle = /italic|oblique/i.test(style) ? 'italic' : 'normal';
+        n.fontSize = f.fontSize || n.fontSize || 14;
+        const lh = f.lineHeight;
+        n.lineHeight = !lh ? 1.2 : lh.units === 'PIXELS' ? Math.round(lh.value / n.fontSize * 1000) / 1000 : lh.units === 'PERCENT' ? lh.value / 100 : lh.value || 1.2;
+        const ls = f.letterSpacing;
+        n.letterSpacing = !ls ? 0 : ls.units === 'PERCENT' ? Math.round(ls.value / 100 * n.fontSize * 100) / 100 : ls.value || 0;
+        n.textAlign = { CENTER: 'center', RIGHT: 'right' }[f.textAlignHorizontal] || 'left';
+        n.textCase = { UPPER: 'upper', LOWER: 'lower', TITLE: 'title' }[f.textCase] || 'none';
+        n.textDecoration = { UNDERLINE: 'underline', STRIKETHROUGH: 'line-through' }[f.textDecoration] || 'none';
+        n.autoW = f.textAutoResize === 'WIDTH_AND_HEIGHT';
+        const td = f.textData;
+        if (td?.characterStyleIDs?.length && td?.styleOverrideTable?.length && n.text.length) {
+            const table = td.styleOverrideTable, lookup = new Map();
+            table.forEach((entry, idx) => {
+                const id = entry.styleID !== undefined ? entry.styleID : idx + 1;
+                lookup.set(id, entry);
+            });
+            const chars = Array.from(n.text), styleIDs = td.characterStyleIDs, spans = [];
+            let curStyleId = styleIDs[0] || 0, curText = '';
+            for (let i = 0; i < chars.length; i++) {
+                const sid = styleIDs[i] || 0;
+                if (sid !== curStyleId && curText.length > 0) {
+                    spans.push(createSpan(curText, curStyleId, lookup, n));
+                    curText = '';
+                    curStyleId = sid;
+                }
+                curText += chars[i];
+            }
+            if (curText.length > 0)
+                spans.push(createSpan(curText, curStyleId, lookup, n));
+            if (spans.length > 1) {
+                n.spans = spans;
+            } else if (spans.length === 1 && spans[0]) {
+                const s = spans[0];
+                if (s.fill) n.fill = s.fill;
+                if (s.fontSize) n.fontSize = s.fontSize;
+                if (s.fontFamily) n.fontFamily = s.fontFamily;
+                if (s.fontWeight) n.fontWeight = s.fontWeight;
+            }
+        }
+    };
+    const geometry = (n, f) => {
+        const t = f.transform || { m00: 1, m01: 0, m02: 0, m10: 0, m11: 1, m12: 0 }, w = Math.max(0, num(f.size?.x)), h = Math.max(0, num(f.size?.y));
+        const det = t.m00 * t.m11 - t.m01 * t.m10, flip = det < 0;
+        const cx = t.m00 * w / 2 + t.m01 * h / 2 + t.m02, cy = t.m10 * w / 2 + t.m11 * h / 2 + t.m12;
+        n.w = w;
+        n.h = h;
+        n.x = Math.round((cx - w / 2) * 100) / 100;
+        n.y = Math.round((cy - h / 2) * 100) / 100;
+        let rot = Math.atan2(flip ? -t.m10 : t.m10, flip ? -t.m00 : t.m00) * 180 / Math.PI;
+        if (Math.abs(rot) < .001)
+            rot = 0;
+        n.rotation = Math.round(rot * 1000) / 1000;
+        if (flip)
+            n.flipX = true;
+    };
+    const applyRadius = (n, f) => {
+        if (f.rectangleCornerRadiiIndependent && ['rect', 'frame'].includes(n.type))
+            n.radii = [f.rectangleTopLeftCornerRadius || 0, f.rectangleTopRightCornerRadius || 0, f.rectangleBottomRightCornerRadius || 0, f.rectangleBottomLeftCornerRadius || 0];
+        else
+            n.radius = f.cornerRadius || 0;
+    };
+    const applyLayout = (n, f) => {
+        if (f.stackMode !== 'HORIZONTAL' && f.stackMode !== 'VERTICAL') {
+            if (f.stackMode === 'GRID')
+                note('grid layout imported as a plain frame');
+            return;
+        }
+        const horiz = f.stackMode === 'HORIZONTAL', l = f.stackHorizontalPadding ?? f.stackPadding ?? 0, t = f.stackVerticalPadding ?? f.stackPadding ?? 0;
+        n.layout = horiz ? 'horizontal' : 'vertical';
+        n.gap = f.stackSpacing ?? 0;
+        n.padding = l;
+        n.padL = l;
+        n.padT = t;
+        n.padR = f.stackPaddingRight ?? l;
+        n.padB = f.stackPaddingBottom ?? t;
+        const just = f.stackPrimaryAlignItems || f.stackJustify || 'MIN';
+        n.primaryAlign = just === 'CENTER' ? 'center' : just === 'MAX' ? 'end' : 'start';
+        if (just === 'SPACE_BETWEEN' || just === 'SPACE_EVENLY')
+            n.gapAuto = true;
+        const ca = f.stackCounterAlignItems || 'MIN';
+        n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
+        const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
+        const prim = hug(f.stackPrimarySizing), counter = hug(f.stackCounterSizing);
+        n.layoutSizingH = horiz ? prim : counter;
+        n.layoutSizingV = horiz ? counter : prim;
+        if (f.stackWrap) {
+            n.layoutWrap = true;
+            n.gapCross = f.stackCounterSpacing ?? n.gap;
+        }
+        n.gapAuto = !!n.gapAuto;
+    };
+    const applyChildLayout = (n, f, pf) => {
+        if (!pf || (pf.stackMode !== 'HORIZONTAL' && pf.stackMode !== 'VERTICAL'))
+            return;
+        if (f.stackPositioning === 'ABSOLUTE') {
+            n.layoutPositioning = 'absolute';
+            return;
+        }
+        const horiz = pf.stackMode === 'HORIZONTAL';
+        if (f.stackChildPrimaryGrow > 0)
+            n[horiz ? 'layoutSizingH' : 'layoutSizingV'] = 'fill';
+        if (f.stackChildAlignSelf === 'STRETCH')
+            n[horiz ? 'layoutSizingV' : 'layoutSizingH'] = 'fill';
+    };
+    const applyConstraints = (n, f) => {
+        const h = { MIN: 'left', MAX: 'right', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.horizontalConstraint], v = { MIN: 'top', MAX: 'bottom', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.verticalConstraint];
+        if (h && h !== 'left')
+            n.constraintH = h;
+        if (v && v !== 'top')
+            n.constraintV = v;
+    };
+    // ---- vector geometry (path command blobs) ----
+    const readCommands = blob => {
+        const dv = new DataView(blob.buffer, blob.byteOffset, blob.byteLength), subs = [];
+        let cur = null, i = 0;
+        while (i < blob.length) {
+            const c = blob[i++];
+            if (c === 0 || c === 3) {
+                // 0: Separator / subpath end, 3: ClosePath (0 parameters)
+                if (cur)
+                    cur.closed = true;
+            }
+            else if (c === 1) {
+                // 1: MoveTo (2 floats: x, y)
+                if (i + 8 > blob.length)
+                    break;
+                const x = dv.getFloat32(i, true), y = dv.getFloat32(i + 4, true);
+                i += 8;
+                cur = { pts: [{ x, y }], closed: false };
+                subs.push(cur);
+            }
+            else if (c === 2) {
+                // 2: LineTo (2 floats: x, y)
+                if (i + 8 > blob.length)
+                    break;
+                const x = dv.getFloat32(i, true), y = dv.getFloat32(i + 4, true);
+                i += 8;
+                if (!cur) {
+                    cur = { pts: [{ x, y }], closed: false };
+                    subs.push(cur);
+                }
+                else {
+                    cur.pts.push({ x, y });
+                }
+            }
+            else if (c === 4) {
+                // 4: Cubic Bezier (6 floats: cp1x, cp1y, cp2x, cp2y, endx, endy)
+                if (i + 24 > blob.length)
+                    break;
+                const cp1x = dv.getFloat32(i, true), cp1y = dv.getFloat32(i + 4, true);
+                const cp2x = dv.getFloat32(i + 8, true), cp2y = dv.getFloat32(i + 12, true);
+                const endx = dv.getFloat32(i + 16, true), endy = dv.getFloat32(i + 20, true);
+                i += 24;
+                if (!cur || !cur.pts.length) {
+                    cur = { pts: [{ x: 0, y: 0 }], closed: false };
+                    subs.push(cur);
+                }
+                const last = cur.pts[cur.pts.length - 1];
+                last.out = { x: cp1x, y: cp1y };
+                cur.pts.push({ x: endx, y: endy, in: { x: cp2x, y: cp2y } });
+            }
+            else {
+                // Unknown path command: break safely instead of throwing
+                break;
+            }
+        }
+        return subs;
+    };
+    const pathNodes = (f, paths, base, fillsFromStroke) => {
+        const out = [];
+        for (const p of paths || []) {
+            if (p.commandsBlob === undefined || !blobs[p.commandsBlob]?.length)
+                continue;
+            let subs;
+            try {
+                subs = readCommands(blobs[p.commandsBlob]);
+            }
+            catch {
+                note('a vector shape could not be decoded');
+                continue;
+            }
+            for (const sp of subs) {
+                sp.pts = (sp.pts || []).filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y));
+                for (const q of sp.pts) {
+                    if (q.in && (!Number.isFinite(q.in.x) || !Number.isFinite(q.in.y)))
+                        delete q.in;
+                    if (q.out && (!Number.isFinite(q.out.x) || !Number.isFinite(q.out.y)))
+                        delete q.out;
+                }
+                if (sp.pts.length < 2)
+                    continue;
+                // a closed path whose last point repeats the first one
+                const a = sp.pts[0], z = sp.pts[sp.pts.length - 1];
+                if (sp.closed && Math.hypot(a.x - z.x, a.y - z.y) < .001 && sp.pts.length > 2) {
+                    if (z.in)
+                        a.in = z.in;
+                    sp.pts.pop();
+                }
+                const xs = sp.pts.flatMap(q => [q.x, q.in?.x, q.out?.x].filter(v => Number.isFinite(v))),
+                      ys = sp.pts.flatMap(q => [q.y, q.in?.y, q.out?.y].filter(v => Number.isFinite(v)));
+                const w = Math.max(0, f.size?.x || 0), h = Math.max(0, f.size?.y || 0);
+                const pathW = Math.max(1, f.size?.x || (xs.length ? Math.max(...xs) : 1) || 1);
+                const pathH = Math.max(1, f.size?.y || (ys.length ? Math.max(...ys) : 1) || 1);
+                const n = node('path', { ...base, x: 0, y: 0, w, h, points: sp.pts, closed: !!sp.closed, pathW, pathH });
+                out.push(n);
+            }
+        }
+        return out;
+    };
+    // ---- node conversion ----
+    const idMap = new Map(), figOfMidas = new Map(), midasById = new Map(), childrenOf = new Map(), pending = [], linked = [];
+    const FRAMEISH = new Set(['FRAME', 'SECTION', 'SYMBOL', 'INSTANCE', 'SLIDE', 'SLIDE_ROW', 'SLIDE_GRID', 'WEBPAGE', 'RESPONSIVE_SET', 'TABLE', 'TABLE_CELL']);
+    const SHAPES = { RECTANGLE: 'rect', ROUNDED_RECTANGLE: 'rect', ELLIPSE: 'ellipse', LINE: 'line', TEXT: 'text', GROUP: 'group', BOOLEAN_OPERATION: 'path', SHAPE_WITH_TEXT: 'rect', STICKY: 'rect', CONNECTOR: 'line', STAMP: 'rect', HIGHLIGHT: 'path' };
+    const makeMidas = (f, pf, out, parentMidas) => {
+        const k = gkey(f.guid), vector = ['VECTOR', 'STAR', 'REGULAR_POLYGON'].includes(f.type), isBool = f.type === 'BOOLEAN_OPERATION';
+        let type = FRAMEISH.has(f.type) ? 'frame' : isBool ? 'path' : SHAPES[f.type] || (vector ? 'group' : null);
+        if (!type && (kids.get(gkey(f.guid)) || []).length > 0)
+            type = 'frame';
+        if (!type) {
+            skip(f.type);
+            return null;
+        }
+        const n = node(type, { name: f.name || type, visible: f.visible !== false, locked: !!f.locked, opacity: f.opacity ?? 1 });
+        n.parentId = parentMidas ? parentMidas.id : null;
+        geometry(n, f);
+        if (type === 'line')
+            n.h = .1;
+        applyConstraints(n, f);
+        if (isBool) {
+            const opMap = { UNION: 'union', 0: 'union', INTERSECT: 'intersect', 1: 'intersect', SUBTRACT: 'subtract', 2: 'subtract', XOR: 'exclude', EXCLUDE: 'exclude', 3: 'exclude' };
+            n.booleanOp = opMap[f.booleanOperation] || 'union';
+            n.fill = 'none';
+        }
+        if (f.mask)
+            n.isMask = true;
+        if (type === 'frame') {
+            n.clip = f.type === 'SECTION' ? false : !f.frameMaskDisabled;
+            applyFills(n, f);
+            applyLayout(n, f);
+        }
+        else if (type === 'rect' || type === 'ellipse') {
+            applyFills(n, f);
+        }
+        else if (type === 'text') {
+            applyFills(n, f);
+            applyText(n, f);
+            n.layoutSizingH = n.autoW ? 'hug' : 'fixed';
+            n.layoutSizingV = f.textAutoResize === 'NONE' || f.textAutoResize === undefined && !n.autoW ? 'fixed' : 'hug';
+        }
+        else if (type === 'group' || isBool)
+            n.fill = 'none';
+        if (type !== 'group' && type !== 'text') {
+            applyRadius(n, f);
+            if (type === 'line') {
+                n.fill = 'none';
+                n.fills = [];
+            }
+        }
+        if (type !== 'group')
+            applyStroke(n, f);
+        if (type !== 'group')
+            applyEffects(n, f);
+        else if (f.effects?.length) {
+            applyEffects(n, f);
+        }
+        applyChildLayout(n, f, pf);
+        if (f.type === 'SYMBOL')
+            n.component = true;
+        if (f.isStateGroup)
+            n.componentSet = true;
+        idMap.set(k, n.id);
+        figOfMidas.set(n.id, f);
+        midasById.set(n.id, n);
+        out.push(n);
+        rep.layers++;
+        if (vector) {
+            // build path nodes from the geometry blobs, inside the group created above
+            const fillParts = pathNodes(f, f.fillGeometry, { name: 'Shape' }, false), strokeParts = pathNodes(f, f.strokeGeometry, { name: 'Outline' }, true);
+            const fills = convertPaints(f.fillPaints, n.w, n.h), strokeFill = (f.strokePaints || []).find(p => p.visible !== false && p.type === 'SOLID');
+            const parts = [];
+            for (const p of fillParts) {
+                p.fills = fills;
+                syncLegacyFill(p);
+                parts.push(p);
+            }
+            for (const p of strokeParts) {
+                if (!strokeFill)
+                    continue;
+                p.fills = [{ type: 'solid', color: hexOf(strokeFill.color), opacity: Math.round((strokeFill.opacity ?? 1) * (strokeFill.color?.a ?? 1) * 1000) / 1000, visible: true }];
+                syncLegacyFill(p);
+                parts.push(p);
+            }
+            if (!parts.length) {
+                note('a vector shape had no readable geometry');
+                n.type = 'rect';
+                applyFills(n, f);
+                n.fill = n.fill === 'none' ? '#d9d9d9' : n.fill;
+            }
+            else if (parts.length === 1) {
+                // a single shape replaces the wrapper group
+                Object.assign(parts[0], { id: n.id, name: n.name, parentId: n.parentId, x: n.x, y: n.y, w: n.w, h: n.h, rotation: n.rotation, flipX: n.flipX, opacity: n.opacity, visible: n.visible, locked: n.locked });
+                applyEffects(parts[0], f);
+                out[out.length - 1] = parts[0];
+                midasById.set(n.id, parts[0]);
+            }
+            else
+                for (const p of parts) {
+                    p.parentId = n.id;
+                    p.id = uid();
+                    out.push(p);
+                    rep.layers++;
+                }
+        }
+        return n;
+    };
+    const walk = (f, parentMidas, pf, out) => {
+        const hasKids = (kids.get(gkey(f.guid)) || []).length > 0;
+        const n = makeMidas(f, pf, out, parentMidas);
+        if (!n)
+            return;
+        if (f.type === 'INSTANCE')
+            (hasKids ? linked : pending).push({ f, n });
+        if (['VECTOR', 'STAR', 'REGULAR_POLYGON'].includes(f.type))
+            return;
+        const cur = midasById.get(n.id) === n ? n : midasById.get(n.id);
+        for (const c of kids.get(gkey(f.guid)) || [])
+            walk(c, cur && cur.type !== 'path' ? cur : n, f, out);
+    };
+    const doc = [...fig.values()].find(n => n.type === 'DOCUMENT');
+    const canvases = (doc ? kids.get(gkey(doc.guid)) || [] : [...fig.values()].filter(n => n.type === 'CANVAS')).filter(c => c.type === 'CANVAS' && !c.internalOnly && c.name !== 'Internal Only Canvas');
+    if (!canvases.length)
+        throw new Error('No pages found in this Figma file.');
+    const pages = [];
+    let processedLayers = 0;
+    for (let ci = 0; ci < canvases.length; ci++) {
+        if (abortSignal?.aborted)
+            throw new Error('Import cancelled by user.');
+        const c = canvases[ci];
+        const nodes = [];
+        for (const ch of kids.get(gkey(c.guid)) || [])
+            walk(ch, null, null, nodes);
+        processedLayers += nodes.length;
+        pages.push({ id: uid(), name: c.name || `Page ${pages.length + 1}`, nodes, canvas: c });
+        rep.pages++;
+        if (onProgress) {
+            onProgress({
+                pageIndex: ci + 1,
+                totalPages: canvases.length,
+                pageName: c.name || `Page ${ci + 1}`,
+                layers: processedLayers
+            });
+        }
+        if (ci % 2 === 0)
+            await new Promise(r => setTimeout(r, 0));
+    }
+    // ---- component sets: variant properties from "Prop=Value, Prop2=Value" names ----
+    const allMidas = pages.flatMap(p => p.nodes);
+    const byParent = new Map();
+    for (const n of allMidas) {
+        if (!byParent.has(n.parentId))
+            byParent.set(n.parentId, []);
+        byParent.get(n.parentId).push(n);
+    }
+    for (const n of allMidas.filter(x => x.componentSet)) {
+        const vs = (byParent.get(n.id) || []).filter(x => x.component), parsed = vs.map(v => Object.fromEntries(v.name.split(',').map(s => s.trim().split('=')).filter(a => a.length === 2 && a[0].trim()).map(a => [a[0].trim(), a[1].trim()])));
+        if (vs.length && parsed.every(p => Object.keys(p).length))
+            vs.forEach((v, i) => { v.variant = parsed[i]; });
+        else {
+            n.componentSet = false;
+        }
+    }
+    // ---- instances: link to the main component and apply simple overrides ----
+    const descendants = id => { const out = [], q = [id]; while (q.length) {
+        const x = q.shift();
+        for (const c of byParent.get(x) || []) {
+            out.push(c);
+            q.push(c.id);
+        }
+    } return out; };
+    const owner = new Map(); // midas id -> page
+    for (const p of pages)
+        for (const n of p.nodes)
+            owner.set(n.id, p);
+    let instCount = 0;
+    for (const { f, n } of pending) {
+        if (++instCount % 50 === 0)
+            await new Promise(r => setTimeout(r, 0));
+        const symKey = gkey(f.symbolData?.symbolID), srcId = idMap.get(symKey), src = srcId && midasById.get(srcId);
+        if (!src || !src.component) {
+            note('instance of a component that is not in this file (shown as an empty frame)');
+            continue;
+        }
+        const page = owner.get(n.id), clones = new Map(), srcDesc = descendants(src.id);
+        n.sourceId = src.id;
+        n.isInstance = true;
+        n.overrides = {};
+        n.component = false;
+        for (const s of srcDesc) {
+            const c = structuredClone(s);
+            c.id = uid();
+            c.parentId = s.parentId === src.id ? n.id : clones.get(s.parentId)?.id;
+            c.sourceId = s.id;
+            c.component = false;
+            c.isInstance = false;
+            c.overrides = {};
+            c.version = 0;
+            if (!c.parentId)
+                continue;
+            clones.set(s.id, c);
+            page.nodes.push(c);
+            owner.set(c.id, page);
+            rep.layers++;
+        }
+        if (Math.abs(n.w - src.w) > .5 || Math.abs(n.h - src.h) > .5) {
+            n.overrides.w = n.w;
+            n.overrides.h = n.h;
+        }
+        for (const ov of f.symbolData?.symbolOverrides || []) {
+            const guids = ov.guidPath?.guids || [];
+            if (!guids.length)
+                continue;
+            const targetGuid = guids[guids.length - 1];
+            const targetSrc = idMap.get(gkey(targetGuid));
+            let c = targetSrc ? clones.get(targetSrc) : null;
+            if (!c && targetSrc) {
+                for (const clone of clones.values()) {
+                    if (clone.sourceId === targetSrc) {
+                        c = clone;
+                        break;
+                    }
+                }
+            }
+            if (!c)
+                continue;
+            const before = { ...c };
+            if (ov.textData?.characters !== undefined)
+                c.text = ov.textData.characters;
+            if (ov.visible !== undefined)
+                c.visible = ov.visible !== false;
+            if (ov.opacity !== undefined)
+                c.opacity = ov.opacity;
+            if (ov.fillPaints)
+                applyFills(c, ov);
+            if (ov.strokePaints)
+                applyStroke(c, { ...figOfMidas.get(targetSrc), ...ov });
+            if (ov.effects)
+                applyEffects(c, ov);
+            if (ov.fontSize)
+                c.fontSize = ov.fontSize;
+            for (const key of Object.keys(c))
+                if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== before[key] || (typeof c[key] === 'object' && JSON.stringify(c[key]) !== JSON.stringify(before[key]))))
+                    c.overrides[key] = structuredClone(c[key]);
+        }
+    }
+    // instances whose layers are stored in the file: link them to the main component and keep every difference as an override
+    const OMIT = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'name', 'variant', 'componentSet']);
+    const linkPair = (inst, src, root) => {
+        inst.sourceId = src.id;
+        inst.component = false;
+        inst.isInstance = root;
+        inst.overrides = {};
+        for (const k of Object.keys(inst)) {
+            if (OMIT.has(k) || (root && ['x', 'y', 'rotation'].includes(k)))
+                continue;
+            if (JSON.stringify(inst[k]) !== JSON.stringify(src[k]))
+                inst.overrides[k] = structuredClone(inst[k]);
+        }
+        const a = byParent.get(inst.id) || [], b = byParent.get(src.id) || [];
+        if (a.length === b.length)
+            a.forEach((c, i) => { if (c.name === b[i].name && c.type === b[i].type)
+                linkPair(c, b[i], false); });
+    };
+    for (const { f, n } of linked) {
+        const src = midasById.get(idMap.get(gkey(f.symbolData?.symbolID)));
+        if (src && src.component && src.id !== n.id)
+            linkPair(n, src, true);
+    }
+    // ---- sanitize + assemble ----
+    for (const p of pages)
+        for (const n of p.nodes) {
+            for (const k of ['x', 'y', 'w', 'h', 'rotation', 'opacity'])
+                if (!Number.isFinite(n[k]))
+                    n[k] = k === 'opacity' ? 1 : 0;
+            n.w = Math.max(0, n.w);
+            n.h = Math.max(0, n.h);
+            if (n.points) {
+                if (!Array.isArray(n.points))
+                    n.points = [];
+                n.points = n.points.filter(pt => pt && Number.isFinite(pt.x) && Number.isFinite(pt.y));
+                for (const pt of n.points) {
+                    if (pt.in && (!Number.isFinite(pt.in.x) || !Number.isFinite(pt.in.y)))
+                        delete pt.in;
+                    if (pt.out && (!Number.isFinite(pt.out.x) || !Number.isFinite(pt.out.y)))
+                        delete pt.out;
+                }
+            }
+            if (n.type === 'path') {
+                if (!Number.isFinite(n.pathW) || n.pathW <= 0)
+                    n.pathW = Math.max(1, n.w || 1);
+                if (!Number.isFinite(n.pathH) || n.pathH <= 0)
+                    n.pathH = Math.max(1, n.h || 1);
+            }
+            delete n.version;
+            n.version = 0;
+        }
+    const name = (meta?.file_name || file.name.replace(/\.fig$/i, '') || 'Figma import').toString().slice(0, 120);
+    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes })), tokens: defaultTokens(), assets, variables: { collections: [], items: [] } };
+    const notes = [...rep.notes].map(([k, v]) => v > 1 ? `${v}× ${k}` : k), skipped = [...rep.skipped].map(([k, v]) => `${v}× ${k.toLowerCase().replace(/_/g, ' ')}`);
+    return { data, report: { pages: rep.pages, layers: rep.layers, notes, skipped } };
+}
+
+// ===== Google Fonts (all families) =====
+const GF_RAW = "ABeeZee~0~8~8|ADLaM Display~2~8~0|AR One Sans~0~120~0|Abel~0~8~0|Abhaya Libre~1~248~0|Aboreto~2~8~0|Abril Fatface~2~8~0|Abyssinica SIL~1~8~0|Aclonica~0~8~0|Acme~0~8~0|Actor~0~8~0|Adamina~1~8~0|Advent Pro~0~511~511|Afacad~0~120~120|Afacad Flux~0~511~0|Agbalumo~2~8~0|Agdasima~0~72~0|Agu Display~2~8~0|Aguafina Script~3~8~0|Akatab~0~504~0|Akaya Kanadaka~2~8~0|Akaya Telivigala~2~8~0|Akronim~2~8~0|Akshar~0~124~0|Aladin~2~8~0|Alan Sans~0~508~0|Alata~0~8~0|Alatsi~0~8~0|Albert Sans~0~511~511|Aldrich~0~8~0|Alef~0~72~0|Alegreya~1~504~504|Alegreya SC~1~472~472|Alegreya Sans~0~477~477|Alegreya Sans SC~0~477~477|Aleo~1~511~511|Alex Brush~3~8~0|Alexandria~0~511~0|Alfa Slab One~2~8~0|Alice~1~8~0|Alike~1~8~0|Alike Angular~1~8~0|Alkalami~1~8~0|Alkatra~2~120~0|Allan~2~72~0|Allerta~0~8~0|Allerta Stencil~0~8~0|Allison~3~8~0|Allura~3~8~0|Almarai~0~204~0|Almendra~1~72~72|Almendra Display~2~8~0|Almendra SC~1~8~0|Alumni Sans~0~511~511|Alumni Sans Collegiate One~0~8~8|Alumni Sans Inline One~2~8~8|Alumni Sans Pinstripe~0~8~8|Alumni Sans SC~0~511~511|Amarante~2~8~0|Amaranth~0~72~72|Amarna~0~127~127|Amatic SC~3~72~0|Amethysta~1~8~0|Amiko~0~104~0|Amiri~1~72~72|Amiri Quran~1~8~0|Amita~3~72~0|Anaheim~0~248~0|Ancizar Sans~0~511~511|Ancizar Serif~1~508~508|Andada Pro~1~248~248|Andika~0~72~72|Anek Bangla~0~255~0|Anek Devanagari~0~255~0|Anek Gujarati~0~255~0|Anek Gurmukhi~0~255~0|Anek Kannada~0~255~0|Anek Latin~0~255~0|Anek Malayalam~0~255~0|Anek Odia~0~255~0|Anek Tamil~0~255~0|Anek Telugu~0~255~0|Angkor~2~8~0|Annapurna SIL~1~72~0|Annie Use Your Telescope~3~8~0|Anonymous Pro~4~72~72|Anta~0~8~0|Antic~0~8~0|Antic Didone~1~8~0|Antic Slab~1~8~0|Anton~0~8~0|Anton SC~0~8~0|Antonio~0~127~0|Anuphan~0~127~0|Anybody~2~511~511|Aoboshi One~1~8~0|Arapey~1~8~8|Arbutus~1~8~0|Arbutus Slab~1~8~0|Architects Daughter~3~8~0|Archivo~0~511~511|Archivo Black~0~8~0|Archivo Narrow~0~120~120|Are You Serious~3~8~0|Aref Ruqaa~1~72~0|Aref Ruqaa Ink~1~72~0|Arima~2~127~0|Arimo~0~120~120|Arizonia~3~8~0|Armata~0~8~0|Arsenal~0~72~72|Arsenal SC~0~72~72|Artifika~1~8~0|Arvo~1~72~72|Arya~0~72~0|Asap~0~511~511|Asap Condensed~0~510~510|Asar~1~8~0|Asimovian~0~8~0|Asset~2~8~0|Assistant~0~254~0|Asta Sans~0~252~0|Astloch~2~72~0|Asul~1~72~0|Athiti~0~126~0|Atkinson Hyperlegible~0~72~72|Atkinson Hyperlegible Mono~0~254~254|Atkinson Hyperlegible Next~0~254~254|Atma~2~124~0|Atomic Age~2~8~0|Aubrey~2~8~0|Audiowide~2~8~0|Autour One~2~8~0|Average~1~8~0|Average Sans~0~8~0|Averia Gruesa Libre~2~8~0|Averia Libre~2~76~76|Averia Sans Libre~2~76~76|Averia Serif Libre~2~76~76|Azeret Mono~4~511~511|B612~0~72~72|B612 Mono~4~72~72|BBH Bartle~0~8~0|BBH Bogle~0~8~0|BBH Hegarty~0~8~0|BIZ UDGothic~0~72~0|BIZ UDMincho~1~72~0|BIZ UDPGothic~0~72~0|BIZ UDPMincho~1~72~0|Babylonica~3~8~0|Bacasime Antique~1~8~0|Bad Script~3~8~0|Badeen Display~2~8~0|Bagel Fat One~2~8~0|Bahiana~2~8~0|Bahianita~2~8~0|Bai Jamjuree~0~126~126|Bakbak One~2~8~0|Ballet~3~8~0|Baloo 2~2~248~0|Baloo Bhai 2~2~248~0|Baloo Bhaijaan 2~2~248~0|Baloo Bhaina 2~2~248~0|Baloo Chettan 2~2~248~0|Baloo Da 2~2~248~0|Baloo Paaji 2~2~248~0|Baloo Tamma 2~2~248~0|Baloo Tammudu 2~2~248~0|Baloo Thambi 2~2~248~0|Balsamiq Sans~2~72~72|Balthazar~1~8~0|Bangers~2~8~0|Barlow~0~511~511|Barlow Condensed~0~511~511|Barlow Semi Condensed~0~511~511|Barriecito~2~8~0|Barrio~2~8~0|Basic~0~8~0|Baskervville~1~120~120|Baskervville SC~1~120~0|Battambang~2~333~0|Baumans~2~8~0|Bayon~0~8~0|Be Vietnam Pro~0~511~511|Beau Rivage~3~8~0|Bebas Neue~0~8~0|Beiruti~0~510~0|Belanosima~0~104~0|Belgrano~1~8~0|Bellefair~1~8~0|Belleza~0~8~0|Bellota~2~76~76|Bellota Text~2~76~76|BenchNine~0~76~0|Benne~1~8~0|Bentham~1~8~0|Berkshire Swash~3~8~0|Besley~1~504~504|Beth Ellen~3~8~0|Bevan~1~8~8|BhuTuka Expanded One~1~8~0|Big Shoulders~2~511~0|Big Shoulders Inline~2~511~0|Big Shoulders Stencil~2~511~0|Bigelow Rules~2~8~0|Bigshot One~2~8~0|Bilbo~3~8~0|Bilbo Swash Caps~3~8~0|BioRhyme~1~254~0|BioRhyme Expanded~1~206~0|Birthstone~3~8~0|Birthstone Bounce~3~24~0|Biryani~0~494~0|Bitcount~2~511~0|Bitcount Grid Double~2~511~0|Bitcount Grid Double Ink~2~511~0|Bitcount Grid Single~2~511~0|Bitcount Grid Single Ink~2~511~0|Bitcount Ink~2~511~0|Bitcount Prop Double~2~511~0|Bitcount Prop Double Ink~2~511~0|Bitcount Prop Single~2~511~0|Bitcount Prop Single Ink~2~511~0|Bitcount Single~2~511~0|Bitcount Single Ink~2~511~0|Bitter~1~511~511|Black And White Picture~2~8~0|Black Han Sans~0~8~0|Black Ops One~2~8~0|Blaka~2~8~0|Blaka Hollow~2~8~0|Blaka Ink~2~8~0|Blinker~0~495~0|Bodoni Moda~1~504~504|Bodoni Moda SC~1~504~504|Bokor~2~8~0|Boldonse~2~8~0|Bona Nova~1~72~8|Bona Nova SC~1~72~8|Bonbon~3~8~0|Bonheur Royale~3~8~0|Boogaloo~2~8~0|Borel~3~8~0|Bowlby One~2~8~0|Bowlby One SC~2~8~0|Braah One~0~8~0|Brawler~1~72~0|Bree Serif~1~8~0|Bricolage Grotesque~0~254~0|Bruno Ace~2~8~0|Bruno Ace SC~2~8~0|Brygada 1918~1~120~120|Bubblegum Sans~2~8~0|Bubbler One~0~8~0|Buda~2~4~0|Buenard~1~120~0|Bungee~2~8~0|Bungee Hairline~2~8~0|Bungee Inline~2~8~0|Bungee Outline~2~8~0|Bungee Shade~2~8~0|Bungee Spice~2~8~0|Bungee Tint~2~8~0|Butcherman~2~8~0|Butterfly Kids~3~8~0|Bytesized~0~8~0|Cabin~0~120~120|Cabin Condensed~0~120~0|Cabin Sketch~2~72~0|Cactus Classical Serif~1~8~0|Caesar Dressing~2~8~0|Cagliostro~0~8~0|Cairo~0~510~0|Cairo Play~0~510~0|Cal Sans~0~8~0|Caladea~1~72~72|Calistoga~2~8~0|Calligraffitti~3~8~0|Cambay~0~72~72|Cambo~1~8~0|Candal~0~8~0|Cantarell~0~72~72|Cantata One~1~8~0|Cantora One~0~8~0|Caprasimo~2~8~0|Capriola~0~8~0|Caramel~3~8~0|Carattere~3~8~0|Cardo~1~72~8|Carlito~0~72~72|Carme~0~8~0|Carrois Gothic~0~8~0|Carrois Gothic SC~0~8~0|Carter One~2~8~0|Cascadia Code~0~126~126|Cascadia Mono~0~126~126|Castoro~1~8~8|Castoro Titling~2~8~0|Catamaran~0~511~0|Caudex~1~72~72|Cause~3~511~0|Caveat~3~120~0|Caveat Brush~3~8~0|Cedarville Cursive~3~8~0|Ceviche One~2~8~0|Chakra Petch~0~124~124|Changa~0~254~0|Changa One~2~8~8|Chango~2~8~0|Charis SIL~1~72~72|Charm~3~72~0|Charmonman~3~72~0|Chathura~0~205~0|Chau Philomene One~0~8~8|Chela One~2~8~0|Chelsea Market~2~8~0|Chenla~2~8~0|Cherish~3~8~0|Cherry Bomb One~2~8~0|Cherry Cream Soda~2~8~0|Cherry Swash~2~72~0|Chewy~2~8~0|Chicle~2~8~0|Chilanka~3~8~0|Chiron GoRound TC~0~510~0|Chiron Hei HK~0~510~510|Chiron Sung HK~1~510~510|Chivo~0~511~511|Chivo Mono~4~511~511|Chocolate Classical Sans~0~8~0|Chokokutai~2~8~0|Chonburi~2~8~0|Cinzel~1~504~0|Cinzel Decorative~2~328~0|Clicker Script~3~8~0|Climate Crisis~2~8~0|Coda~2~136~0|Codystar~2~12~0|Coiny~2~8~0|Combo~2~8~0|Comfortaa~2~124~0|Comforter~3~8~0|Comforter Brush~3~8~0|Comic Neue~3~76~76|Comic Relief~2~72~0|Coming Soon~3~8~0|Comme~0~511~0|Commissioner~0~511~0|Concert One~2~8~0|Condiment~3~8~0|Content~2~72~0|Contrail One~2~8~0|Convergence~0~8~0|Cookie~3~8~0|Copse~1~8~0|Coral Pixels~2~8~0|Corben~2~72~0|Corinthia~3~72~0|Cormorant~1~124~124|Cormorant Garamond~1~124~124|Cormorant Infant~1~124~124|Cormorant SC~1~124~0|Cormorant Unicase~1~124~0|Cormorant Upright~1~124~0|Cossette Texte~0~72~0|Cossette Titre~0~72~0|Courgette~3~8~0|Courier Prime~4~72~72|Cousine~4~72~72|Coustard~1~264~0|Covered By Your Grace~3~8~0|Crafty Girls~3~8~0|Creepster~2~8~0|Crete Round~1~8~8|Crimson Pro~1~510~510|Crimson Text~1~104~104|Croissant One~2~8~0|Crushed~2~8~0|Cuprum~0~120~120|Cute Font~2~8~0|Cutive~1~8~0|Cutive Mono~4~8~0|DM Mono~4~28~28|DM Sans~0~511~511|DM Serif Display~1~8~8|DM Serif Text~1~8~8|Dai Banna SIL~1~124~124|Damion~3~8~0|Dancing Script~3~120~0|Danfo~1~8~0|Dangrek~2~8~0|Darker Grotesque~0~508~0|Darumadrop One~2~8~0|David Libre~1~88~0|Dawning of a New Day~3~8~0|Days One~0~8~0|Dekko~3~8~0|Dela Gothic One~2~8~0|Delicious Handrawn~3~8~0|Delius~3~8~0|Delius Swash Caps~3~8~0|Delius Unicase~3~72~0|Della Respira~1~8~0|Denk One~0~8~0|Devonshire~3~8~0|Dhurjati~0~8~0|Didact Gothic~0~8~0|Diphylleia~1~8~0|Diplomata~2~8~0|Diplomata SC~2~8~0|Do Hyeon~0~8~0|Dokdo~2~8~0|Domine~1~120~0|Donegal One~1~8~0|Dongle~0~76~0|Doppio One~0~8~0|Dorsa~0~8~0|Dosis~0~254~0|DotGothic16~0~8~0|Doto~0~511~0|Dr Sugiyama~3~8~0|Duru Sans~0~8~0|DynaPuff~2~120~0|Dynalight~2~8~0|EB Garamond~1~248~248|Eagle Lake~3~8~0|East Sea Dokdo~3~8~0|Eater~2~8~0|Economica~0~72~72|Eczar~1~248~0|Edu AU VIC WA NT Arrows~3~120~0|Edu AU VIC WA NT Dots~3~120~0|Edu AU VIC WA NT Guides~3~120~0|Edu AU VIC WA NT Hand~3~120~0|Edu AU VIC WA NT Pre~3~120~0|Edu NSW ACT Cursive~3~120~0|Edu NSW ACT Foundation~3~120~0|Edu NSW ACT Hand Pre~3~120~0|Edu QLD Beginner~3~120~0|Edu QLD Hand~3~120~0|Edu SA Beginner~3~120~0|Edu SA Hand~3~120~0|Edu TAS Beginner~3~120~0|Edu VIC WA NT Beginner~3~120~0|Edu VIC WA NT Hand~3~120~0|Edu VIC WA NT Hand Pre~3~120~0|El Messiri~0~120~0|Electrolize~0~8~0|Elms Sans~0~511~511|Elsie~2~264~0|Elsie Swash Caps~2~264~0|Emblema One~2~8~0|Emilys Candy~2~8~0|Encode Sans~0~511~0|Encode Sans Condensed~0~511~0|Encode Sans Expanded~0~511~0|Encode Sans SC~0~511~0|Encode Sans Semi Condensed~0~511~0|Encode Sans Semi Expanded~0~511~0|Engagement~3~8~0|Englebert~0~8~0|Enriqueta~1~120~0|Ephesis~3~8~0|Epilogue~0~511~511|Epunda Sans~0~508~508|Epunda Slab~1~508~508|Erica One~2~8~0|Esteban~1~8~0|Estonia~3~8~0|Euphoria Script~3~8~0|Ewert~2~8~0|Exile~2~8~0|Exo~0~511~511|Exo 2~0~511~511|Expletus Sans~2~120~120|Explora~3~8~0|Faculty Glyphic~0~8~0|Fahkwang~0~126~126|Familjen Grotesk~0~120~120|Fanwood Text~1~8~8|Farro~0~92~0|Farsan~2~8~0|Fascinate~2~8~0|Fascinate Inline~2~8~0|Faster One~2~8~0|Fasthand~2~8~0|Fauna One~1~8~0|Faustina~1~252~252|Federant~2~8~0|Federo~0~8~0|Felipa~3~8~0|Fenix~1~8~0|Festive~3~8~0|Figtree~0~508~508|Finger Paint~2~8~0|Finlandica~0~120~120|Fira Code~4~124~0|Fira Mono~4~88~0|Fira Sans~0~511~511|Fira Sans Condensed~0~511~511|Fira Sans Extra Condensed~0~511~511|Fjalla One~0~8~0|Fjord One~1~8~0|Flamenco~2~12~0|Flavors~2~8~0|Fleur De Leah~3~8~0|Flow Block~2~8~0|Flow Circular~2~8~0|Flow Rounded~2~8~0|Foldit~2~511~0|Fondamento~3~8~8|Fontdiner Swanky~2~8~0|Forum~2~8~0|Fragment Mono~4~8~8|Francois One~0~8~0|Frank Ruhl Libre~1~508~0|Fraunces~1~511~511|Freckle Face~2~8~0|Fredericka the Great~2~8~0|Fredoka~0~124~0|Freehand~2~8~0|Freeman~2~8~0|Fresca~0~8~0|Frijole~2~8~0|Fruktur~2~8~8|Fugaz One~2~8~0|Fuggles~3~8~0|Funnel Display~2~252~0|Funnel Sans~0~252~252|Fustat~0~254~0|Fuzzy Bubbles~3~72~0|GFS Didot~1~8~0|GFS Neohellenic~0~72~72|Ga Maamli~2~8~0|Gabarito~2~504~0|Gabriela~1~8~0|Gaegu~3~76~0|Gafata~0~8~0|Gajraj One~2~8~0|Galada~2~8~0|Galdeano~0~8~0|Galindo~2~8~0|Gamja Flower~3~8~0|Gantari~0~511~511|Gasoek One~0~8~0|Gayathri~0~73~0|Geist~0~511~0|Geist Mono~4~511~0|Gelasio~1~120~120|Gemunu Libre~0~254~0|Genos~0~511~511|Gentium Book Plus~1~72~72|Gentium Plus~1~72~72|Geo~0~8~8|Geologica~0~511~0|Geom~0~508~508|Georama~0~511~511|Geostar~2~8~0|Geostar Fill~2~8~0|Germania One~2~8~0|Gideon Roman~2~8~0|Gidole~0~8~0|Gidugu~0~8~0|Gilda Display~1~8~0|Girassol~2~8~0|Give You Glory~3~8~0|Glass Antiqua~2~8~0|Glegoo~1~72~0|Gloock~1~8~0|Gloria Hallelujah~3~8~0|Glory~0~255~255|Gluten~2~511~0|Goblin One~2~8~0|Gochi Hand~3~8~0|Goldman~2~72~0|Golos Text~0~504~0|Google Sans~0~120~120|Google Sans Code~4~252~252|Google Sans Flex~0~511~0|Gorditas~2~72~0|Gothic A1~0~511~0|Gotu~0~8~0|Goudy Bookletter 1911~1~8~0|Gowun Batang~1~72~0|Gowun Dodum~0~8~0|Graduate~1~8~0|Grand Hotel~3~8~0|Grandiflora One~1~8~0|Grandstander~2~511~511|Grape Nuts~3~8~0|Gravitas One~2~8~0|Great Vibes~3~8~0|Grechen Fuemen~3~8~0|Grenze~1~511~511|Grenze Gotisch~2~511~0|Grey Qo~3~8~0|Griffy~2~8~0|Gruppo~0~8~0|Gudea~0~72~8|Gugi~2~8~0|Gulzar~1~8~0|Gupter~1~88~0|Gurajada~0~8~0|Gwendolyn~3~72~0|Habibi~1~8~0|Hachi Maru Pop~3~8~0|Hahmlet~1~511~0|Halant~1~124~0|Hammersmith One~0~8~0|Hanalei~2~8~0|Hanalei Fill~2~8~0|Handjet~2~511~0|Handlee~3~8~0|Hanken Grotesk~0~511~511|Hanuman~1~511~0|Happy Monkey~2~8~0|Harmattan~0~120~0|Headland One~1~8~0|Hedvig Letters Sans~0~8~0|Hedvig Letters Serif~1~8~0|Heebo~0~511~0|Henny Penny~2~8~0|Hepta Slab~1~511~0|Herr Von Muellerhoff~3~8~0|Hi Melody~3~8~0|Hina Mincho~1~8~0|Hind~0~124~0|Hind Guntur~0~124~0|Hind Madurai~0~124~0|Hind Mysuru~0~124~0|Hind Siliguri~0~124~0|Hind Vadodara~0~124~0|Holtwood One SC~1~8~0|Homemade Apple~3~8~0|Homenaje~0~8~0|Honk~2~8~0|Host Grotesk~0~252~252|Hubballi~0~8~0|Hubot Sans~0~510~510|Huninn~0~8~0|Hurricane~3~8~0|IBM Plex Mono~4~127~127|IBM Plex Sans~0~127~127|IBM Plex Sans Arabic~0~127~0|IBM Plex Sans Condensed~0~127~127|IBM Plex Sans Devanagari~0~127~0|IBM Plex Sans Hebrew~0~127~0|IBM Plex Sans JP~0~127~0|IBM Plex Sans KR~0~127~0|IBM Plex Sans Thai~0~127~0|IBM Plex Sans Thai Looped~0~127~0|IBM Plex Serif~1~127~127|IM Fell DW Pica~1~8~8|IM Fell DW Pica SC~1~8~0|IM Fell Double Pica~1~8~8|IM Fell Double Pica SC~1~8~0|IM Fell English~1~8~8|IM Fell English SC~1~8~0|IM Fell French Canon~1~8~8|IM Fell French Canon SC~1~8~0|IM Fell Great Primer~1~8~8|IM Fell Great Primer SC~1~8~0|Iansui~3~8~0|Ibarra Real Nova~1~120~120|Iceberg~2~8~0|Iceland~2~8~0|Imbue~1~511~0|Imperial Script~3~8~0|Imprima~0~8~0|Inclusive Sans~0~124~124|Inconsolata~4~510~0|Inder~0~8~0|Indie Flower~3~8~0|Ingrid Darling~3~8~0|Inika~1~72~0|Inknut Antiqua~1~508~0|Inria Sans~0~76~76|Inria Serif~1~76~76|Inspiration~3~8~0|Instrument Sans~0~120~120|Instrument Serif~1~8~8|Intel One Mono~4~124~124|Inter~0~511~511|Inter Tight~0~511~511|Irish Grover~2~8~0|Island Moments~3~8~0|Istok Web~0~72~72|Italiana~0~8~0|Italianno~3~8~0|Itim~3~8~0|Jacquard 12~2~8~0|Jacquard 12 Charted~2~8~0|Jacquard 24~2~8~0|Jacquard 24 Charted~2~8~0|Jacquarda Bastarda 9~2~8~0|Jacquarda Bastarda 9 Charted~2~8~0|Jacques Francois~1~8~0|Jacques Francois Shadow~2~8~0|Jaini~2~8~0|Jaini Purva~2~8~0|Jaldi~0~72~0|Jaro~0~8~0|Jersey 10~2~8~0|Jersey 10 Charted~2~8~0|Jersey 15~2~8~0|Jersey 15 Charted~2~8~0|Jersey 20~2~8~0|Jersey 20 Charted~2~8~0|Jersey 25~2~8~0|Jersey 25 Charted~2~8~0|JetBrains Mono~4~255~255|Jim Nightshade~3~8~0|Joan~1~8~0|Jockey One~0~8~0|Jolly Lodger~2~8~0|Jomhuria~2~8~0|Jomolhari~1~8~0|Josefin Sans~0~127~127|Josefin Slab~1~127~127|Jost~0~511~511|Joti One~2~8~0|Jua~0~8~0|Judson~1~72~8|Julee~3~8~0|Julius Sans One~0~8~0|Junge~1~8~0|Jura~0~124~0|Just Another Hand~3~8~0|Just Me Again Down Here~3~8~0|K2D~0~255~255|Kablammo~2~8~0|Kadwa~1~72~0|Kaisei Decol~1~88~0|Kaisei HarunoUmi~1~88~0|Kaisei Opti~1~88~0|Kaisei Tokumin~1~216~0|Kalam~3~76~0|Kalnia~1~127~0|Kalnia Glaze~2~127~0|Kameron~1~120~0|Kanchenjunga~0~120~0|Kanit~0~511~511|Kantumruy Pro~0~127~127|Kapakana~3~12~0|Karantina~2~76~0|Karla~0~254~254|Karla Tamil Inclined~0~72~0|Karla Tamil Upright~0~72~0|Karma~1~124~0|Katibeh~2~8~0|Kaushan Script~3~8~0|Kavivanar~3~8~0|Kavoon~2~8~0|Kay Pho Du~1~120~0|Kdam Thmor Pro~0~8~0|Keania One~2~8~0|Kedebideri~0~504~0|Kelly Slab~2~8~0|Kenia~2~8~0|Khand~0~124~0|Khmer~0~8~0|Khula~0~236~0|Kings~3~8~0|Kirang Haerang~2~8~0|Kite One~0~8~0|Kiwi Maru~1~28~0|Klee One~3~40~0|Knewave~2~8~0|KoHo~0~126~126|Kodchasan~0~126~126|Kode Mono~4~120~0|Koh Santepheap~1~333~0|Kolker Brush~3~8~0|Konkhmer Sleokchher~2~8~0|Kosugi~0~8~0|Kosugi Maru~0~8~0|Kotta One~1~8~0|Koulen~2~8~0|Kranky~2~8~0|Kreon~1~124~0|Kristi~3~8~0|Krona One~0~8~0|Krub~0~126~126|Kufam~0~504~504|Kulim Park~0~110~110|Kumar One~2~8~0|Kumar One Outline~2~8~0|Kumbh Sans~0~511~0|Kurale~1~8~0|LXGW Marker Gothic~0~8~0|LXGW WenKai Mono TC~4~76~0|LXGW WenKai TC~3~76~0|La Belle Aurore~3~8~0|Labrada~1~511~511|Lacquer~2~8~0|Laila~1~124~0|Lakki Reddy~3~8~0|Lalezar~0~8~0|Lancelot~2~8~0|Langar~2~8~0|Lateef~1~254~0|Lato~0~333~333|Lavishly Yours~3~8~0|League Gothic~0~8~0|League Script~3~8~0|League Spartan~0~511~0|Leckerli One~3~8~0|Ledger~1~8~0|Lekton~4~72~8|Lemon~2~8~0|Lemonada~2~124~0|Lexend~0~511~0|Lexend Deca~0~511~0|Lexend Exa~0~511~0|Lexend Giga~0~511~0|Lexend Mega~0~511~0|Lexend Peta~0~511~0|Lexend Tera~0~511~0|Lexend Zetta~0~511~0|Libertinus Keyboard~2~8~0|Libertinus Math~2~8~0|Libertinus Mono~4~8~0|Libertinus Sans~0~72~8|Libertinus Serif~1~104~104|Libertinus Serif Display~2~8~0|Libre Barcode 128~2~8~0|Libre Barcode 128 Text~2~8~0|Libre Barcode 39~2~8~0|Libre Barcode 39 Extended~2~8~0|Libre Barcode 39 Extended Text~2~8~0|Libre Barcode 39 Text~2~8~0|Libre Barcode EAN13 Text~2~8~0|Libre Baskerville~1~120~120|Libre Bodoni~1~120~120|Libre Caslon Display~1~8~0|Libre Caslon Text~1~72~8|Libre Franklin~0~511~511|Licorice~3~8~0|Life Savers~2~200~0|Lilex~4~127~127|Lilita One~2~8~0|Lily Script One~2~8~0|Limelight~2~8~0|Linden Hill~1~8~8|Linefont~2~511~0|Lisu Bosa~1~510~510|Liter~0~8~0|Literata~1~510~510|Liu Jian Mao Cao~3~8~0|Livvic~0~383~383|Lobster~2~8~0|Lobster Two~2~72~72|Londrina Outline~2~8~0|Londrina Shadow~2~8~0|Londrina Sketch~2~8~0|Londrina Solid~2~269~0|Long Cang~3~8~0|Lora~1~120~120|Love Light~3~8~0|Love Ya Like A Sister~2~8~0|Loved by the King~3~8~0|Lovers Quarrel~3~8~0|Luckiest Guy~2~8~0|Lugrasimo~3~8~0|Lumanosimo~3~8~0|Lunasima~0~72~0|Lusitana~1~72~0|Lustria~1~8~0|Luxurious Roman~2~8~0|Luxurious Script~3~8~0|M PLUS 1~0~511~0|M PLUS 1 Code~4~127~0|M PLUS 1p~0~477~0|M PLUS 2~0~511~0|M PLUS Code Latin~0~127~0|M PLUS Rounded 1c~0~477~0|Ma Shan Zheng~3~8~0|Macondo~2~8~0|Macondo Swash Caps~2~8~0|Mada~0~510~0|Madimi One~0~8~0|Magra~0~72~0|Maiden Orange~1~8~0|Maitree~1~126~0|Major Mono Display~4~8~0|Mako~0~8~0|Mali~3~126~126|Mallanna~0~8~0|Maname~1~8~0|Mandali~0~8~0|Manjari~0~73~0|Manrope~0~254~0|Mansalva~3~8~0|Manuale~1~252~252|Manufacturing Consent~2~8~0|Marcellus~1~8~0|Marcellus SC~1~8~0|Marck Script~3~8~0|Margarine~2~8~0|Marhey~2~124~0|Markazi Text~1~120~0|Marko One~1~8~0|Marmelad~0~8~0|Martel~1~494~0|Martel Sans~0~494~0|Martian Mono~4~255~0|Marvel~0~72~72|Matangi~0~508~0|Mate~1~8~8|Mate SC~1~8~0|Matemasie~0~8~0|Material Symbols~4~127~0|Maven Pro~0~504~0|McLaren~2~8~0|Mea Culpa~3~8~0|Meddon~3~8~0|MedievalSharp~2~8~0|Medula One~2~8~0|Meera Inimai~0~8~0|Megrim~2~8~0|Meie Script~3~8~0|Menbere~0~127~0|Meow Script~3~8~0|Merienda~3~508~0|Merriweather~1~508~508|Merriweather Sans~0~252~252|Metal~2~8~0|Metal Mania~2~8~0|Metamorphous~2~8~0|Metrophobic~0~8~0|Michroma~0~8~0|Micro 5~2~8~0|Micro 5 Charted~2~8~0|Milonga~2~8~0|Miltonian~2~8~0|Miltonian Tattoo~2~8~0|Mina~0~72~0|Mingzat~0~8~0|Miniver~2~8~0|Miriam Libre~0~120~0|Mirza~1~120~0|Miss Fajardose~3~8~0|Mitr~0~126~0|Mochiy Pop One~0~8~0|Mochiy Pop P One~0~8~0|Modak~2~8~0|Modern Antiqua~2~8~0|Moderustic~0~252~0|Mogra~2~8~0|Mohave~0~124~124|Moirai One~2~8~0|Molengo~0~8~0|Molle~3~0~8|Momo Signature~0~8~0|Momo Trust Display~0~8~0|Momo Trust Sans~0~254~0|Mona Sans~0~510~510|Monda~0~120~0|Monofett~4~8~0|Monomakh~2~8~0|Monomaniac One~0~8~0|Monoton~2~8~0|Monsieur La Doulaise~3~8~0|Montaga~1~8~0|Montagu Slab~1~127~0|MonteCarlo~3~8~0|Montez~3~8~0|Montserrat~0~511~511|Montserrat Alternates~0~511~511|Montserrat Underline~0~511~511|Moo Lah Lah~2~8~0|Mooli~0~8~0|Moon Dance~3~8~0|Moul~2~8~0|Moulpali~0~8~0|Mountains of Christmas~2~72~0|Mouse Memoirs~0~8~0|Mozilla Headline~0~126~0|Mozilla Text~0~126~0|Mr Bedfort~3~8~0|Mr Dafoe~3~8~0|Mr De Haviland~3~8~0|Mrs Saint Delafield~3~8~0|Mrs Sheppards~3~8~0|Ms Madi~3~8~0|Mukta~0~254~0|Mukta Mahee~0~254~0|Mukta Malar~0~254~0|Mukta Vaani~0~254~0|Mulish~0~510~510|Murecho~0~511~0|MuseoModerno~2~511~511|My Soul~3~8~0|Mynerve~3~8~0|Mystery Quest~2~8~0|NTR~0~8~0|Nabla~2~8~0|Namdhinggo~1~248~0|Nanum Brush Script~3~8~0|Nanum Gothic~0~200~0|Nanum Gothic Coding~3~72~0|Nanum Myeongjo~1~200~0|Nanum Pen Script~3~8~0|Narnoor~0~248~0|Nata Sans~0~511~0|National Park~0~254~0|Neonderthaw~3~8~0|Nerko One~3~8~0|Neucha~3~8~0|Neuton~1~206~8|New Amsterdam~0~8~0|New Rocker~2~8~0|New Tegomin~1~8~0|News Cycle~0~72~0|Newsreader~1~254~254|Niconne~3~8~0|Niramit~0~126~126|Nixie One~2~8~0|Nobile~0~88~88|Nokora~0~511~0|Norican~3~8~0|Nosifer~2~8~0|Notable~0~8~0|Nothing You Could Do~3~8~0|Noticia Text~1~72~72|Noto Color Emoji~0~8~0|Noto Emoji~0~124~0|Noto Kufi Arabic~0~511~0|Noto Music~0~8~0|Noto Naskh Arabic~1~120~0|Noto Nastaliq Urdu~1~120~0|Noto Rashi Hebrew~1~511~0|Noto Sans~0~511~511|Noto Sans Adlam~0~120~0|Noto Sans Adlam Unjoined~0~120~0|Noto Sans Anatolian Hieroglyphs~0~8~0|Noto Sans Arabic~0~511~0|Noto Sans Armenian~0~511~0|Noto Sans Avestan~0~8~0|Noto Sans Balinese~0~120~0|Noto Sans Bamum~0~120~0|Noto Sans Bassa Vah~0~120~0|Noto Sans Batak~0~8~0|Noto Sans Bengali~0~511~0|Noto Sans Bhaiksuki~0~8~0|Noto Sans Brahmi~0~8~0|Noto Sans Buginese~0~8~0|Noto Sans Buhid~0~8~0|Noto Sans Canadian Aboriginal~0~511~0|Noto Sans Carian~0~8~0|Noto Sans Caucasian Albanian~0~8~0|Noto Sans Chakma~0~8~0|Noto Sans Cham~0~511~0|Noto Sans Cherokee~0~511~0|Noto Sans Chorasmian~0~8~0|Noto Sans Coptic~0~8~0|Noto Sans Cuneiform~0~8~0|Noto Sans Cypriot~0~8~0|Noto Sans Cypro Minoan~0~8~0|Noto Sans Deseret~0~8~0|Noto Sans Devanagari~0~511~0|Noto Sans Display~0~511~511|Noto Sans Duployan~0~72~0|Noto Sans Egyptian Hieroglyphs~0~8~0|Noto Sans Elbasan~0~8~0|Noto Sans Elymaic~0~8~0|Noto Sans Ethiopic~0~511~0|Noto Sans Georgian~0~511~0|Noto Sans Glagolitic~0~8~0|Noto Sans Gothic~0~8~0|Noto Sans Grantha~0~8~0|Noto Sans Gujarati~0~511~0|Noto Sans Gunjala Gondi~0~120~0|Noto Sans Gurmukhi~0~511~0|Noto Sans HK~0~511~0|Noto Sans Hanifi Rohingya~0~120~0|Noto Sans Hanunoo~0~8~0|Noto Sans Hatran~0~8~0|Noto Sans Hebrew~0~511~0|Noto Sans Imperial Aramaic~0~8~0|Noto Sans Indic Siyaq Numbers~0~8~0|Noto Sans Inscriptional Pahlavi~0~8~0|Noto Sans Inscriptional Parthian~0~8~0|Noto Sans JP~0~511~0|Noto Sans Javanese~0~120~0|Noto Sans KR~0~511~0|Noto Sans Kaithi~0~8~0|Noto Sans Kannada~0~511~0|Noto Sans Kawi~0~120~0|Noto Sans Kayah Li~0~120~0|Noto Sans Kharoshthi~0~8~0|Noto Sans Khmer~0~511~0|Noto Sans Khojki~0~8~0|Noto Sans Khudawadi~0~8~0|Noto Sans Lao~0~511~0|Noto Sans Lao Looped~0~511~0|Noto Sans Lepcha~0~8~0|Noto Sans Limbu~0~8~0|Noto Sans Linear A~0~8~0|Noto Sans Linear B~0~8~0|Noto Sans Lisu~0~120~0|Noto Sans Lycian~0~8~0|Noto Sans Lydian~0~8~0|Noto Sans Mahajani~0~8~0|Noto Sans Malayalam~0~511~0|Noto Sans Mandaic~0~8~0|Noto Sans Manichaean~0~8~0|Noto Sans Marchen~0~8~0|Noto Sans Masaram Gondi~0~8~0|Noto Sans Math~0~8~0|Noto Sans Mayan Numerals~0~8~0|Noto Sans Medefaidrin~0~120~0|Noto Sans Meetei Mayek~0~511~0|Noto Sans Mende Kikakui~0~8~0|Noto Sans Meroitic~0~8~0|Noto Sans Miao~0~8~0|Noto Sans Modi~0~8~0|Noto Sans Mongolian~0~8~0|Noto Sans Mono~0~511~0|Noto Sans Mro~0~8~0|Noto Sans Multani~0~8~0|Noto Sans Myanmar~0~511~0|Noto Sans NKo~0~8~0|Noto Sans NKo Unjoined~0~120~0|Noto Sans Nabataean~0~8~0|Noto Sans Nag Mundari~0~120~0|Noto Sans Nandinagari~0~8~0|Noto Sans New Tai Lue~0~120~0|Noto Sans Newa~0~8~0|Noto Sans Nushu~0~8~0|Noto Sans Ogham~0~8~0|Noto Sans Ol Chiki~0~120~0|Noto Sans Old Hungarian~0~8~0|Noto Sans Old Italic~0~8~0|Noto Sans Old North Arabian~0~8~0|Noto Sans Old Permic~0~8~0|Noto Sans Old Persian~0~8~0|Noto Sans Old Sogdian~0~8~0|Noto Sans Old South Arabian~0~8~0|Noto Sans Old Turkic~0~8~0|Noto Sans Oriya~0~511~0|Noto Sans Osage~0~8~0|Noto Sans Osmanya~0~8~0|Noto Sans Pahawh Hmong~0~8~0|Noto Sans Palmyrene~0~8~0|Noto Sans Pau Cin Hau~0~8~0|Noto Sans PhagsPa~0~8~0|Noto Sans Phoenician~0~8~0|Noto Sans Psalter Pahlavi~0~8~0|Noto Sans Rejang~0~8~0|Noto Sans Runic~0~8~0|Noto Sans SC~0~511~0|Noto Sans Samaritan~0~8~0|Noto Sans Saurashtra~0~8~0|Noto Sans Sharada~0~8~0|Noto Sans Shavian~0~8~0|Noto Sans Siddham~0~8~0|Noto Sans SignWriting~0~8~0|Noto Sans Sinhala~0~511~0|Noto Sans Sogdian~0~8~0|Noto Sans Sora Sompeng~0~120~0|Noto Sans Soyombo~0~8~0|Noto Sans Sundanese~0~120~0|Noto Sans Sunuwar~0~8~0|Noto Sans Syloti Nagri~0~8~0|Noto Sans Symbols~0~511~0|Noto Sans Symbols 2~0~8~0|Noto Sans Syriac~0~511~0|Noto Sans Syriac Eastern~0~511~0|Noto Sans Syriac Western~0~511~0|Noto Sans TC~0~511~0|Noto Sans Tagalog~0~8~0|Noto Sans Tagbanwa~0~8~0|Noto Sans Tai Le~0~8~0|Noto Sans Tai Tham~0~120~0|Noto Sans Tai Viet~0~8~0|Noto Sans Takri~0~8~0|Noto Sans Tamil~0~511~0|Noto Sans Tamil Supplement~0~8~0|Noto Sans Tangsa~0~120~0|Noto Sans Telugu~0~511~0|Noto Sans Thaana~0~511~0|Noto Sans Thai~0~511~0|Noto Sans Thai Looped~0~511~0|Noto Sans Tifinagh~0~8~0|Noto Sans Tirhuta~0~8~0|Noto Sans Ugaritic~0~8~0|Noto Sans Vai~0~8~0|Noto Sans Vithkuqi~0~120~0|Noto Sans Wancho~0~8~0|Noto Sans Warang Citi~0~8~0|Noto Sans Yi~0~8~0|Noto Sans Zanabazar Square~0~8~0|Noto Serif~1~511~511|Noto Serif Ahom~1~8~0|Noto Serif Armenian~1~511~0|Noto Serif Balinese~1~8~0|Noto Serif Bengali~1~511~0|Noto Serif Devanagari~1~511~0|Noto Serif Display~1~511~511|Noto Serif Dives Akuru~1~8~0|Noto Serif Dogra~1~8~0|Noto Serif Ethiopic~1~511~0|Noto Serif Georgian~1~511~0|Noto Serif Grantha~1~8~0|Noto Serif Gujarati~1~511~0|Noto Serif Gurmukhi~1~511~0|Noto Serif HK~1~510~0|Noto Serif Hebrew~1~511~0|Noto Serif Hentaigana~1~510~0|Noto Serif JP~1~510~0|Noto Serif KR~1~510~0|Noto Serif Kannada~1~511~0|Noto Serif Khitan Small Script~1~8~0|Noto Serif Khmer~1~511~0|Noto Serif Khojki~1~120~0|Noto Serif Lao~1~511~0|Noto Serif Makasar~1~8~0|Noto Serif Malayalam~1~511~0|Noto Serif Myanmar~1~511~0|Noto Serif NP Hmong~1~120~0|Noto Serif Old Uyghur~1~8~0|Noto Serif Oriya~1~120~0|Noto Serif Ottoman Siyaq~1~8~0|Noto Serif SC~1~510~0|Noto Serif Sinhala~1~511~0|Noto Serif TC~1~510~0|Noto Serif Tamil~1~511~511|Noto Serif Tangut~1~8~0|Noto Serif Telugu~1~511~0|Noto Serif Thai~1~511~0|Noto Serif Tibetan~1~511~0|Noto Serif Todhri~1~8~0|Noto Serif Toto~1~120~0|Noto Serif Vithkuqi~1~120~0|Noto Serif Yezidi~1~120~0|Noto Traditional Nushu~0~124~0|Noto Znamenny Musical Notation~0~8~0|Nova Cut~2~8~0|Nova Flat~2~8~0|Nova Mono~4~8~0|Nova Oval~2~8~0|Nova Round~2~8~0|Nova Script~2~8~0|Nova Slim~2~8~0|Nova Square~2~8~0|Numans~0~8~0|Nunito~0~510~510|Nunito Sans~0~510~510|Nuosu SIL~0~8~0|Odibee Sans~2~8~0|Odor Mean Chey~1~8~0|Offside~2~8~0|Oi~2~8~0|Ojuju~0~254~0|Old Standard TT~1~72~8|Oldenburg~2~8~0|Ole~3~8~0|Oleo Script~2~72~0|Oleo Script Swash Caps~2~72~0|Onest~0~511~0|Oooh Baby~3~8~0|Open Sans~0~252~252|Oranienbaum~1~8~0|Orbit~0~8~0|Orbitron~0~504~0|Oregano~2~8~8|Orelega One~2~8~0|Orienta~0~8~0|Original Surfer~2~8~0|Oswald~0~126~0|Outfit~0~511~0|Over the Rainbow~3~8~0|Overlock~2~328~328|Overlock SC~2~8~0|Overpass~0~511~511|Overpass Mono~4~124~0|Ovo~1~8~0|Oxanium~2~254~0|Oxygen~0~76~0|Oxygen Mono~4~8~0|PT Mono~4~8~0|PT Sans~0~72~72|PT Sans Caption~0~72~0|PT Sans Narrow~0~72~0|PT Serif~1~72~72|PT Serif Caption~1~8~8|Pacifico~3~8~0|Padauk~0~72~0|Padyakke Expanded One~1~8~0|Palanquin~0~127~0|Palanquin Dark~0~120~0|Palette Mosaic~2~8~0|Pangolin~3~8~0|Paprika~2~8~0|Parastoo~1~120~0|Parisienne~3~8~0|Parkinsans~0~252~0|Passero One~2~8~0|Passion One~2~328~0|Passions Conflict~3~8~0|Pathway Extreme~0~511~511|Pathway Gothic One~0~8~0|Patrick Hand~3~8~0|Patrick Hand SC~3~8~0|Pattaya~0~8~0|Patua One~2~8~0|Pavanam~0~8~0|Paytone One~0~8~0|Peddana~1~8~0|Peralta~1~8~0|Permanent Marker~3~8~0|Petemoss~3~8~0|Petit Formal Script~3~8~0|Petrona~1~511~511|Phetsarath~0~72~0|Philosopher~0~72~72|Phudu~2~508~0|Piazzolla~1~511~511|Piedra~2~8~0|Pinyon Script~3~8~0|Pirata One~2~8~0|Pixelify Sans~2~120~0|Plaster~2~8~0|Platypi~1~252~252|Play~0~72~0|Playball~2~8~0|Playfair~1~508~508|Playfair Display~1~504~504|Playfair Display SC~1~328~328|Playpen Sans~3~255~0|Playpen Sans Arabic~3~255~0|Playpen Sans Deva~3~255~0|Playpen Sans Hebrew~3~255~0|Playpen Sans Thai~3~255~0|Playwrite AR~3~15~0|Playwrite AR Guides~3~8~0|Playwrite AT~3~15~15|Playwrite AT Guides~3~8~8|Playwrite AU NSW~3~15~0|Playwrite AU NSW Guides~3~8~0|Playwrite AU QLD~3~15~0|Playwrite AU QLD Guides~3~8~0|Playwrite AU SA~3~15~0|Playwrite AU SA Guides~3~8~0|Playwrite AU TAS~3~15~0|Playwrite AU TAS Guides~3~8~0|Playwrite AU VIC~3~15~0|Playwrite AU VIC Guides~3~8~0|Playwrite BE VLG~3~15~0|Playwrite BE VLG Guides~3~8~0|Playwrite BE WAL~3~15~0|Playwrite BE WAL Guides~3~8~0|Playwrite BR~3~15~0|Playwrite BR Guides~3~8~0|Playwrite CA~3~15~0|Playwrite CA Guides~3~8~0|Playwrite CL~3~15~0|Playwrite CL Guides~3~8~0|Playwrite CO~3~15~0|Playwrite CO Guides~3~8~0|Playwrite CU~3~15~0|Playwrite CU Guides~3~8~0|Playwrite CZ~3~15~0|Playwrite CZ Guides~3~8~0|Playwrite DE Grund~3~15~0|Playwrite DE Grund Guides~3~8~0|Playwrite DE LA~3~15~0|Playwrite DE LA Guides~3~8~0|Playwrite DE SAS~3~15~0|Playwrite DE SAS Guides~3~8~0|Playwrite DE VA~3~15~0|Playwrite DE VA Guides~3~8~0|Playwrite DK Loopet~3~15~0|Playwrite DK Loopet Guides~3~8~0|Playwrite DK Uloopet~3~15~0|Playwrite DK Uloopet Guides~3~8~0|Playwrite ES~3~15~0|Playwrite ES Deco~3~15~0|Playwrite ES Deco Guides~3~8~0|Playwrite ES Guides~3~8~0|Playwrite FR Moderne~3~15~0|Playwrite FR Moderne Guides~3~8~0|Playwrite FR Trad~3~15~0|Playwrite FR Trad Guides~3~8~0|Playwrite GB J~3~15~15|Playwrite GB J Guides~3~8~8|Playwrite GB S~3~15~15|Playwrite GB S Guides~3~8~8|Playwrite HR~3~15~0|Playwrite HR Guides~3~8~0|Playwrite HR Lijeva~3~15~0|Playwrite HR Lijeva Guides~3~8~0|Playwrite HU~3~15~0|Playwrite HU Guides~3~8~0|Playwrite ID~3~15~0|Playwrite ID Guides~3~8~0|Playwrite IE~3~15~0|Playwrite IE Guides~3~8~0|Playwrite IN~3~15~0|Playwrite IN Guides~3~8~0|Playwrite IS~3~15~0|Playwrite IS Guides~3~8~0|Playwrite IT Moderna~3~15~0|Playwrite IT Moderna Guides~3~8~0|Playwrite IT Trad~3~15~0|Playwrite IT Trad Guides~3~8~0|Playwrite MX~3~15~0|Playwrite MX Guides~3~8~0|Playwrite NG Modern~3~15~0|Playwrite NG Modern Guides~3~8~0|Playwrite NL~3~15~0|Playwrite NL Guides~3~8~0|Playwrite NO~3~15~0|Playwrite NO Guides~3~8~0|Playwrite NZ~3~15~0|Playwrite NZ Guides~3~8~0|Playwrite PE~3~15~0|Playwrite PE Guides~3~8~0|Playwrite PL~3~15~0|Playwrite PL Guides~3~8~0|Playwrite PT~3~15~0|Playwrite PT Guides~3~8~0|Playwrite RO~3~15~0|Playwrite RO Guides~3~8~0|Playwrite SK~3~15~0|Playwrite SK Guides~3~8~0|Playwrite TZ~3~15~0|Playwrite TZ Guides~3~8~0|Playwrite US Modern~3~15~0|Playwrite US Modern Guides~3~8~0|Playwrite US Trad~3~15~0|Playwrite US Trad Guides~3~8~0|Playwrite VN~3~15~0|Playwrite VN Guides~3~8~0|Playwrite ZA~3~15~0|Playwrite ZA Guides~3~8~0|Plus Jakarta Sans~0~254~254|Pochaevsk~2~8~0|Podkova~1~248~0|Poetsen One~2~8~0|Poiret One~2~8~0|Poller One~2~8~0|Poltawski Nowy~1~120~120|Poly~1~8~8|Pompiere~2~8~0|Ponnala~2~8~0|Ponomar~2~8~0|Pontano Sans~0~124~0|Poor Story~2~8~0|Poppins~0~511~511|Port Lligat Sans~0~8~0|Port Lligat Slab~1~8~0|Potta One~2~8~0|Pragati Narrow~0~72~0|Praise~3~8~0|Prata~1~8~0|Preahvihear~0~8~0|Press Start 2P~2~8~0|Pridi~1~126~0|Princess Sofia~3~8~0|Prociono~1~8~0|Prompt~0~511~511|Prosto One~2~8~0|Protest Guerrilla~2~8~0|Protest Revolution~2~8~0|Protest Riot~2~8~0|Protest Strike~2~8~0|Proza Libre~0~248~248|Public Sans~0~511~511|Puppies Play~3~8~0|Puritan~0~72~72|Purple Purse~2~8~0|Qahiri~0~8~0|Quando~1~8~0|Quantico~0~72~72|Quattrocento~1~72~0|Quattrocento Sans~0~72~72|Questrial~0~8~0|Quicksand~0~124~0|Quintessential~3~8~0|Qwigley~3~8~0|Qwitcher Grypen~3~72~0|REM~0~511~511|Racing Sans One~2~8~0|Radio Canada~0~124~124|Radio Canada Big~0~120~120|Radley~1~8~8|Rajdhani~0~124~0|Rakkas~2~8~0|Raleway~0~511~511|Raleway Dots~2~8~0|Ramabhadra~0~8~0|Ramaraja~1~8~0|Rambla~0~72~72|Rammetto One~2~8~0|Rampart One~2~8~0|Ranchers~2~8~0|Rancho~3~8~0|Ranga~2~72~0|Rasa~1~124~124|Rationale~0~8~0|Ravi Prakash~2~8~0|Readex Pro~0~126~0|Recursive~0~508~0|Red Hat Display~0~508~508|Red Hat Mono~4~124~124|Red Hat Text~0~124~124|Red Rose~2~124~0|Redacted~2~8~0|Redacted Script~2~76~0|Reddit Mono~4~510~0|Reddit Sans~0~510~510|Reddit Sans Condensed~0~510~0|Redressed~3~8~0|Reem Kufi~0~120~0|Reem Kufi Fun~0~120~0|Reem Kufi Ink~0~8~0|Reenie Beanie~3~8~0|Reggae One~2~8~0|Rethink Sans~0~248~248|Revalia~2~8~0|Rhodium Libre~1~8~0|Ribeye~2~8~0|Ribeye Marrow~2~8~0|Righteous~2~8~0|Risque~2~8~0|Road Rage~2~8~0|Roboto~0~511~511|Roboto Condensed~0~511~511|Roboto Flex~0~8~0|Roboto Mono~4~127~127|Roboto Serif~1~511~511|Roboto Slab~1~511~0|Rochester~3~8~0|Rock 3D~2~8~0|Rock Salt~3~8~0|RocknRoll One~0~8~0|Rokkitt~1~511~511|Romanesco~3~8~0|Ropa Sans~0~8~8|Rosario~0~124~124|Rosarivo~1~8~8|Rouge Script~3~8~0|Rowdies~2~76~0|Rozha One~1~8~0|Rubik~0~508~508|Rubik 80s Fade~2~8~0|Rubik Beastly~2~8~0|Rubik Broken Fax~2~8~0|Rubik Bubbles~2~8~0|Rubik Burned~2~8~0|Rubik Dirt~2~8~0|Rubik Distressed~2~8~0|Rubik Doodle Shadow~2~8~0|Rubik Doodle Triangles~2~8~0|Rubik Gemstones~2~8~0|Rubik Glitch~2~8~0|Rubik Glitch Pop~2~8~0|Rubik Iso~2~8~0|Rubik Lines~2~8~0|Rubik Maps~2~8~0|Rubik Marker Hatch~2~8~0|Rubik Maze~2~8~0|Rubik Microbe~2~8~0|Rubik Mono One~0~8~0|Rubik Moonrocks~2~8~0|Rubik Pixels~2~8~0|Rubik Puddles~2~8~0|Rubik Scribble~2~8~0|Rubik Spray Paint~2~8~0|Rubik Storm~2~8~0|Rubik Vinyl~2~8~0|Rubik Wet Paint~2~8~0|Ruda~0~504~0|Rufina~1~72~0|Ruge Boogie~3~8~0|Ruluko~0~8~0|Rum Raisin~0~8~0|Ruslan Display~2~8~0|Russo One~0~8~0|Ruthie~3~8~0|Ruwudu~1~120~0|Rye~2~8~0|STIX Two Text~1~120~120|SUSE~0~511~511|SUSE Mono~0~255~255|Sacramento~3~8~0|Sahitya~1~72~0|Sail~2~8~0|Saira~0~511~511|Saira Condensed~0~511~0|Saira Extra Condensed~0~511~0|Saira Semi Condensed~0~511~0|Saira Stencil One~2~8~0|Salsa~2~8~0|Sanchez~1~8~8|Sancreek~2~8~0|Sankofa Display~0~8~0|Sansation~0~76~76|Sansita~0~456~456|Sansita Swashed~2~508~0|Sarabun~0~255~255|Sarala~0~72~0|Sarina~2~8~0|Sarpanch~0~504~0|Sassy Frass~3~8~0|Satisfy~3~8~0|Savate~0~510~510|Sawarabi Gothic~0~8~0|Sawarabi Mincho~1~8~0|Scada~0~72~72|Scheherazade New~1~120~0|Schibsted Grotesk~0~504~504|Schoolbell~3~8~0|Science Gothic~0~511~0|Scope One~1~8~0|Seaweed Script~2~8~0|Secular One~0~8~0|Sedan~1~8~8|Sedan SC~1~8~0|Sedgwick Ave~3~8~0|Sedgwick Ave Display~3~8~0|Sekuya~2~8~0|Sen~0~248~0|Send Flowers~3~8~0|Sevillana~2~8~0|Seymour One~0~8~0|Shadows Into Light~3~8~0|Shadows Into Light Two~3~8~0|Shafarik~2~8~0|Shalimar~3~8~0|Shantell Sans~2~252~252|Shanti~0~8~0|Share~0~72~72|Share Tech~0~8~0|Share Tech Mono~4~8~0|Shippori Antique~0~8~0|Shippori Antique B1~0~8~0|Shippori Mincho~1~248~0|Shippori Mincho B1~1~248~0|Shizuru~2~8~0|Shojumaru~2~8~0|Short Stack~3~8~0|Shrikhand~2~8~0|Siemreap~0~8~0|Sigmar~2~8~0|Sigmar One~2~8~0|Signika~0~124~0|Signika Negative~0~124~0|Silkscreen~2~72~0|Simonetta~2~264~264|Single Day~2~8~0|Sintony~0~72~0|Sirin Stencil~2~8~0|Sirivennela~0~8~0|Six Caps~0~8~0|Sixtyfour~4~8~0|Sixtyfour Convergence~4~8~0|Skranji~2~72~0|Slabo 13px~1~8~0|Slabo 27px~1~8~0|Slackey~2~8~0|Slackside One~3~8~0|Smokum~2~8~0|Smooch~3~8~0|Smooch Sans~0~511~0|Smythe~2~8~0|Sniglet~2~136~0|Snippet~0~8~0|Snowburst One~2~8~0|Sofadi One~2~8~0|Sofia~3~8~0|Sofia Sans~0~511~511|Sofia Sans Condensed~0~511~511|Sofia Sans Extra Condensed~0~511~511|Sofia Sans Semi Condensed~0~511~511|Solitreo~3~8~0|Solway~1~220~0|Sometype Mono~4~120~120|Song Myung~1~8~0|Sono~0~254~0|Sonsie One~2~8~0|Sora~0~255~0|Sorts Mill Goudy~1~8~8|Sour Gummy~0~511~511|Source Code Pro~4~510~510|Source Sans 3~0~510~510|Source Serif 4~1~510~510|Space Grotesk~0~124~0|Space Mono~4~72~72|Special Elite~2~8~0|Special Gothic~0~120~0|Special Gothic Condensed One~0~8~0|Special Gothic Expanded One~0~8~0|Spectral~1~254~254|Spectral SC~1~254~254|Spicy Rice~2~8~0|Spinnaker~0~8~0|Spirax~2~8~0|Splash~3~8~0|Spline Sans~0~124~0|Spline Sans Mono~4~124~124|Squada One~2~8~0|Square Peg~3~8~0|Sree Krushnadevaraya~1~8~0|Sriracha~3~8~0|Srisakdi~2~72~0|Staatliches~2~8~0|Stack Sans Headline~0~126~0|Stack Sans Notch~0~126~0|Stack Sans Text~0~126~0|Stalemate~3~8~0|Stalinist One~2~8~0|Stardos Stencil~2~72~0|Stick~0~8~0|Stick No Bills~0~254~0|Stint Ultra Condensed~1~8~0|Stint Ultra Expanded~1~8~0|Stoke~1~12~0|Story Script~0~8~0|Strait~0~8~0|Style Script~3~8~0|Stylish~0~8~0|Sue Ellen Francisco~3~8~0|Suez One~1~8~0|Sulphur Point~0~76~0|Sumana~1~72~0|Sunflower~0~84~0|Sunshiney~3~8~0|Supermercado One~2~8~0|Sura~1~72~0|Suranna~1~8~0|Suravaram~1~8~0|Suwannaphum~1~333~0|Swanky and Moo Moo~3~8~0|Syncopate~0~72~0|Syne~0~248~0|Syne Mono~4~8~0|Syne Tactile~2~8~0|TASA Explorer~0~248~0|TASA Orbiter~0~248~0|Tac One~0~8~0|Tagesschrift~2~8~0|Tai Heritage Pro~1~72~0|Tajawal~0~478~0|Tangerine~3~72~0|Tapestry~3~8~0|Taprom~2~8~0|Tauri~0~8~0|Taviraj~1~511~511|Teachers~0~248~248|Teko~0~124~0|Tektur~2~504~0|Telex~0~8~0|Tenali Ramakrishna~0~8~0|Tenor Sans~0~8~0|Text Me One~0~8~0|Texturina~1~511~511|Thasadith~0~72~72|The Girl Next Door~3~8~0|The Nautigal~3~72~0|Tienne~1~328~0|TikTok Sans~0~508~0|Tillana~2~248~0|Tilt Neon~2~8~0|Tilt Prism~2~8~0|Tilt Warp~2~8~0|Timmana~0~8~0|Tinos~1~72~72|Tiny5~0~8~0|Tiro Bangla~1~8~8|Tiro Devanagari Hindi~1~8~8|Tiro Devanagari Marathi~1~8~8|Tiro Devanagari Sanskrit~1~8~8|Tiro Gurmukhi~1~8~8|Tiro Kannada~1~8~8|Tiro Tamil~1~8~8|Tiro Telugu~1~8~8|Tirra~0~504~0|Titan One~2~8~0|Titillium Web~0~366~110|Tomorrow~0~511~511|Tourney~2~511~511|Trade Winds~2~8~0|Train One~2~8~0|Triodion~2~8~0|Trirong~1~511~511|Trispace~0~255~0|Trocchi~1~8~0|Trochut~2~72~8|Truculenta~0~511~0|Trykker~1~8~0|Tsukimi Rounded~0~124~0|Tuffy~0~72~72|Tulpen One~2~8~0|Turret Road~2~222~0|Twinkle Star~3~8~0|Ubuntu~0~92~92|Ubuntu Condensed~0~8~0|Ubuntu Mono~4~72~72|Ubuntu Sans~0~255~255|Ubuntu Sans Mono~4~120~120|Uchen~1~8~0|Ultra~1~8~0|Unbounded~0~510~0|Uncial Antiqua~2~8~0|Underdog~2~8~0|Unica One~2~8~0|UnifrakturCook~2~64~0|UnifrakturMaguntia~2~8~0|Unkempt~2~72~0|Unlock~2~8~0|Unna~1~72~72|UoqMunThenKhung~1~8~0|Updock~3~8~0|Urbanist~0~511~511|VT323~4~8~0|Vampiro One~2~8~0|Varela~0~8~0|Varela Round~0~8~0|Varta~0~124~0|Vast Shadow~1~8~0|Vazirmatn~0~511~0|Vend Sans~0~124~124|Vesper Libre~1~344~0|Viaoda Libre~2~8~0|Vibes~2~8~0|Vibur~3~8~0|Victor Mono~4~127~127|Vidaloka~1~8~0|Viga~0~8~0|Vina Sans~2~8~0|Voces~0~8~0|Volkhov~1~72~72|Vollkorn~1~504~504|Vollkorn SC~1~360~0|Voltaire~0~8~0|Vujahday Script~3~8~0|WDXL Lubrifont JP N~0~8~0|WDXL Lubrifont SC~0~8~0|WDXL Lubrifont TC~0~8~0|Waiting for the Sunrise~3~8~0|Wallpoet~2~8~0|Walter Turncoat~3~8~0|Warnes~2~8~0|Water Brush~3~8~0|Waterfall~3~8~0|Wavefont~2~511~0|Wellfleet~1~8~0|Wendy One~0~8~0|Whisper~3~8~0|WindSong~3~24~0|Winky Rough~0~508~508|Winky Sans~0~508~508|Wire One~0~8~0|Wittgenstein~1~504~504|Wix Madefor Display~0~248~0|Wix Madefor Text~0~248~248|Work Sans~0~511~511|Workbench~4~8~0|Xanh Mono~4~8~8|Yaldevi~0~126~0|Yanone Kaffeesatz~0~126~0|Yantramanav~0~349~0|Yarndings 12~2~8~0|Yarndings 12 Charted~2~8~0|Yarndings 20~2~8~0|Yarndings 20 Charted~2~8~0|Yatra One~2~8~0|Yellowtail~3~8~0|Yeon Sung~2~8~0|Yeseva One~2~8~0|Yesteryear~3~8~0|Yomogi~3~8~0|Young Serif~1~8~0|Yrsa~1~124~124|Ysabeau~0~511~511|Ysabeau Infant~0~511~511|Ysabeau Office~0~511~511|Ysabeau SC~0~511~0|Yuji Boku~1~8~0|Yuji Hentaigana Akari~3~8~0|Yuji Hentaigana Akebono~3~8~0|Yuji Mai~1~8~0|Yuji Syuku~1~8~0|Yusei Magic~0~8~0|ZCOOL KuaiLe~0~8~0|ZCOOL QingKe HuangYou~0~8~0|ZCOOL XiaoWei~0~8~0|Zain~0~462~12|Zalando Sans~0~510~510|Zalando Sans Expanded~0~510~510|Zalando Sans SemiExpanded~0~510~510|Zen Antique~1~8~0|Zen Antique Soft~1~8~0|Zen Dots~2~8~0|Zen Kaku Gothic Antique~0~348~0|Zen Kaku Gothic New~0~348~0|Zen Kurenaido~0~8~0|Zen Loop~2~8~8|Zen Maru Gothic~0~348~0|Zen Old Mincho~1~376~0|Zen Tokyo Zoo~2~8~0|Zeyada~3~8~0|Zhi Mang Xing~3~8~0|Zilla Slab~1~124~124|Zilla Slab Highlight~1~72~0";
+
+const GF_CATS = ['sans-serif', 'serif', 'display', 'handwriting', 'monospace'];
+const GF_CAT_LABEL = ['Sans', 'Serif', 'Display', 'Handwriting', 'Mono'];
+const GF_POPULAR = ['Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Noto Sans', 'Source Sans 3', 'Raleway', 'Nunito', 'DM Sans', 'Work Sans', 'Manrope', 'Rubik', 'Plus Jakarta Sans', 'Space Grotesk', 'IBM Plex Sans', 'Playfair Display', 'Merriweather', 'Lora', 'Roboto Mono', 'JetBrains Mono', 'Fira Code', 'Oswald', 'Bebas Neue', 'Pacifico', 'Caveat'];
+const GF_SYSTEM = ['Arial', 'Helvetica Neue', 'Georgia', 'Times New Roman', 'Verdana', 'Courier New', 'monospace', 'serif', 'sans-serif'];
+const GF_WEIGHT_NAMES = { 100: 'Thin', 200: 'Extra light', 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'Semibold', 700: 'Bold', 800: 'Extra bold', 900: 'Black' };
+const GF = { list: null, byName: null, css: new Map(), keys: new Set(), previewDone: new Set(), pop: null, timer: null };
+function gfList() {
+    if (GF.list)
+        return GF.list;
+    GF.list = GF_RAW.split('|').map(s => { const [name, c, w, i] = s.split('~'); return { name, cat: +c, wm: +w, im: +i }; });
+    GF.byName = new Map(GF.list.map(f => [f.name, f]));
+    return GF.list;
+}
+function gfInfo(name) { gfList(); return GF.byName.get(name) || null; }
+function gfWeights(info, italic) {
+    const m = italic ? info.im : info.wm, out = [];
+    for (let k = 0; k < 9; k++)
+        if (m & (1 << k))
+            out.push((k + 1) * 100);
+    return out;
+}
+const gfPlus = s => encodeURIComponent(s).replace(/%20/g, '+');
+function gfCssUrl(info) {
+    const nw = gfWeights(info, false), iw = gfWeights(info, true);
+    const tuples = iw.length ? [...nw.map(w => `0,${w}`), ...iw.map(w => `1,${w}`)] : nw.map(String);
+    return `https://fonts.googleapis.com/css2?family=${gfPlus(info.name)}:${iw.length ? 'ital,wght' : 'wght'}@${tuples.join(';')}&display=swap`;
+}
+// Adds the family's stylesheet once. Resolves false when offline (retried after 30 s).
+function gfEnsureFamily(name) {
+    const info = gfInfo(name);
+    if (!info)
+        return Promise.resolve(false);
+    if (GF.css.has(name))
+        return GF.css.get(name);
+    const p = new Promise(resolve => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = gfCssUrl(info);
+        link.dataset.gf = name;
+        link.onload = () => resolve(true);
+        link.onerror = () => {
+            link.remove();
+            GF.css.set(name, Promise.resolve(false));
+            setTimeout(() => GF.css.delete(name), 30000);
+            resolve(false);
+        };
+        document.head.appendChild(link);
+    });
+    GF.css.set(name, p);
+    return p;
+}
+async function gfLoadFace(name, weight = 400, style = 'normal', text = 'Aa') {
+    if (!(await gfEnsureFamily(name)))
+        return false;
+    const spec = `${style} ${weight} 16px "${name}"`;
+    try {
+        await document.fonts.load(spec, text || 'Aa');
+        return document.fonts.check(spec, text || 'Aa');
+    }
+    catch {
+        return false;
+    }
+}
+// After a face arrives, text using it must be measured and drawn again.
+function gfRefresh(family) {
+    let any = false;
+    for (const n of doc.nodes)
+        if (n.type === 'text' && n.fontFamily === family) {
+            n.version = (n.version || 0) + 1;
+            if (n.autoW)
+                hugText(n);
+            any = true;
+        }
+    if (!any)
+        return;
+    renderer.cache.clear();
+    renderer.atlas?.reset();
+    applyAllLayouts();
+    doc.touch();
+    invalidate();
+    renderInspector();
+}
+function gfScan() {
+    GF.timer = null;
+    const need = new Map();
+    for (const n of doc.nodes) {
+        if (n.type !== 'text' || !n.fontFamily || (doc.data.fonts || {})[n.fontFamily] || !gfInfo(n.fontFamily))
+            continue;
+        const key = `${n.fontFamily}|${n.fontWeight || 400}|${n.fontStyle || 'normal'}`;
+        if (GF.keys.has(key))
+            continue;
+        need.set(key, (need.get(key) || '') + (n.text || '').slice(0, 400));
+    }
+    for (const [key, text] of need) {
+        GF.keys.add(key);
+        const [family, weight, style] = key.split('|');
+        gfLoadFace(family, +weight, style, [...new Set(text + 'Aa')].join('').slice(0, 800)).then(ok => { if (ok)
+            gfRefresh(family);
+        else
+            GF.keys.delete(key); });
+    }
+}
+function gfScanSoon() {
+    if (GF.timer)
+        return;
+    GF.timer = setTimeout(gfScan, 250);
+}
+function gfNearestWeight(info, weight, italic) {
+    const ws = gfWeights(info, italic).length ? gfWeights(info, italic) : gfWeights(info, false);
+    return ws.length ? ws.reduce((a, b) => Math.abs(b - weight) < Math.abs(a - weight) ? b : a) : weight;
+}
+function fontWeightOptions(n) {
+    const info = gfInfo(n.fontFamily);
+    let ws = info ? gfWeights(info, n.fontStyle === 'italic') : [];
+    if (info && !ws.length)
+        ws = gfWeights(info, false);
+    if (!ws.length)
+        ws = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+    if (!ws.includes(n.fontWeight))
+        ws = [...ws, n.fontWeight].sort((a, b) => a - b);
+    return ws.map(w => [w, GF_WEIGHT_NAMES[w] || String(w)]);
+}
+const fontCssFamily = fam => `'${String(fam).replace(/['"\\<>]/g, '')}', sans-serif`;
+function fontWeightFieldHtml(n) {
+    const v = boundVar('fontWeight');
+    if (v)
+        return `<div class="var-chip-row cell"><button class="var-chip" data-var-bind="fontWeight" title="${esc(v.name)} · ${esc(GF_WEIGHT_NAMES[n.fontWeight] || n.fontWeight)}"><i class="vc-glyph">${v.type === 'number' ? '#' : 'T'}</i><span>${esc(v.name)}</span></button><button class="var-x" data-var-detach="fontWeight" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+    return `<div class="font-field-row">${selectField('fontWeight', n.fontWeight, fontWeightOptions(n))}${varBindButton('fontWeight')}</div>`;
+}
+function fontFieldHtml(n) {
+    const fam = n.fontFamily || 'Inter', v = boundVar('fontFamily'), label = '<div class="field-label"><span>Font family</span></div>';
+    if (v)
+        return `${label}<div class="var-chip-row"><button class="var-chip" data-var-bind="fontFamily" title="${esc(v.name)} · ${esc(fam)}"><i class="vc-glyph">T</i><span>${esc(v.name)}</span><em class="vc-val" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</em></button><button class="var-x" data-var-detach="fontFamily" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+    return `${label}<div class="font-field-row"><button class="font-field" data-font-picker title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>${varBindButton('fontFamily')}</div>`;
+}
+// --- picker ---
+function gfPreview(names) {
+    const todo = names.filter(n => gfInfo(n) && !GF.previewDone.has(n));
+    for (let i = 0; i < todo.length; i += 24) {
+        const batch = todo.slice(i, i + 24);
+        batch.forEach(n => GF.previewDone.add(n));
+        const text = [...new Set(batch.join(''))].join('');
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css?family=${batch.map(gfPlus).join('|')}&text=${encodeURIComponent(text)}&display=swap`;
+        link.dataset.gfPreview = '1';
+        link.onerror = () => { link.remove(); batch.forEach(n => GF.previewDone.delete(n)); };
+        document.head.appendChild(link);
+    }
+}
+function fontPickerRows(q, cat) {
+    const list = gfList(), lq = q.trim().toLowerCase(), rows = [];
+    const custom = Object.keys(doc.data.fonts || {}), used = [...new Set(doc.nodes.filter(n => n.type === 'text').map(n => n.fontFamily))].filter(Boolean);
+    const match = name => !lq || name.toLowerCase().includes(lq);
+    const add = (title, names, hint) => { const items = names.filter(match); if (items.length) {
+        if (title)
+            rows.push({ header: title });
+        for (const name of items)
+            rows.push({ name, hint: hint?.(name) });
+    } };
+    const catOf = name => { const f = gfInfo(name); return f ? GF_CAT_LABEL[f.cat] : ''; };
+    if (cat === 'all') {
+        if (!lq) {
+            add('In this file', used, name => gfInfo(name) ? catOf(name) : custom.includes(name) ? 'Uploaded' : 'System');
+            add('Uploaded', custom.filter(x => !used.includes(x)), () => 'Uploaded');
+            add('Popular', GF_POPULAR.filter(x => gfInfo(x)), catOf);
+            add('System', GF_SYSTEM, () => 'System');
+            add('All Google Fonts', list.map(f => f.name), catOf);
+        }
+        else {
+            add(null, custom, () => 'Uploaded');
+            add(null, GF_SYSTEM, () => 'System');
+            add(null, list.map(f => f.name), catOf);
+        }
+    }
+    else if (cat === 'file')
+        add(null, used, name => gfInfo(name) ? catOf(name) : custom.includes(name) ? 'Uploaded' : 'System');
+    else
+        add(null, list.filter(f => f.cat === +cat).map(f => f.name), catOf);
+    return rows;
+}
+function closeFontPicker() {
+    GF.pop?.el.remove();
+    GF.pop = null;
+}
+function openFontPicker(anchor) {
+    const n = activeNode();
+    if (!n || n.type !== 'text')
+        return;
+    const same = !!GF.pop;
+    closeFontPicker();
+    if (same)
+        return;
+    gfList();
+    const el = document.createElement('div');
+    el.className = 'font-pop';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Choose a font');
+    const cats = [['all', 'All'], ['file', 'In file'], ...GF_CAT_LABEL.map((l, i) => [String(i), l])];
+    el.innerHTML = `<div class="fp-head"><input class="fp-search" placeholder="Search ${GF.list.length.toLocaleString()} fonts" aria-label="Search fonts" spellcheck="false" autocomplete="off"></div><div class="fp-cats">${cats.map(([k, l]) => `<button data-fp-cat="${k}" class="${k === 'all' ? 'on' : ''}">${l}</button>`).join('')}</div><div class="fp-list" role="listbox"></div><div class="fp-foot"></div>`;
+    document.body.appendChild(el);
+    const insp = $('#inspector').getBoundingClientRect(), a = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
+    el.style.top = Math.max(8, Math.min(a.top - 30, innerHeight - el.offsetHeight - 8)) + 'px';
+    const pop = GF.pop = { el, q: '', cat: 'all', rows: [], shown: 0, active: -1, current: n.fontFamily };
+    const list = el.querySelector('.fp-list'), search = el.querySelector('.fp-search');
+    const itemHtml = r => r.header ? `<div class="fp-sec">${esc(r.header)}</div>` : `<button class="fp-item ${r.name === pop.current ? 'cur' : ''}" role="option" data-font="${esc(r.name)}"><span class="fp-name" style="font-family:${fontCssFamily(r.name)}">${esc(r.name)}</span><span class="fp-cat">${esc(r.hint || '')}</span>${r.name === pop.current ? '<span class="fp-check">✓</span>' : ''}</button>`;
+    const renderMore = () => {
+        const next = pop.rows.slice(pop.shown, pop.shown + 90);
+        if (!next.length)
+            return;
+        list.insertAdjacentHTML('beforeend', next.map(itemHtml).join(''));
+        pop.shown += next.length;
+        gfPreview(next.filter(r => r.name).map(r => r.name));
+    };
+    const rebuild = () => {
+        pop.rows = fontPickerRows(pop.q, pop.cat);
+        pop.shown = 0;
+        pop.active = -1;
+        list.innerHTML = '';
+        renderMore();
+        if (!pop.rows.length)
+            list.innerHTML = '<div class="fp-empty">No fonts match.</div>';
+        el.querySelector('.fp-foot').textContent = `${new Set(pop.rows.filter(r => r.name).map(r => r.name)).size.toLocaleString()} fonts`;
+        list.scrollTop = 0;
+        const cur = list.querySelector('.fp-item.cur');
+        if (cur && !pop.q && pop.cat === 'all') { }
+    };
+    const setActive = i => {
+        const items = [...list.querySelectorAll('.fp-item')];
+        if (!items.length)
+            return;
+        pop.active = Math.max(0, Math.min(i, items.length - 1));
+        items.forEach((x, k) => x.classList.toggle('hot', k === pop.active));
+        items[pop.active].scrollIntoView({ block: 'nearest' });
+        if (pop.active >= items.length - 8)
+            renderMore();
+    };
+    list.addEventListener('scroll', () => { if (list.scrollTop + list.clientHeight > list.scrollHeight - 160)
+        renderMore(); });
+    search.addEventListener('input', () => { pop.q = search.value; rebuild(); });
+    search.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(pop.active + 1);
+        }
+        else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(pop.active - 1);
+        }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            const it = list.querySelectorAll('.fp-item')[Math.max(0, pop.active)];
+            if (it)
+                pickFont(it.dataset.font);
+        }
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeFontPicker();
+        }
+    });
+    el.addEventListener('click', e => {
+        const item = e.target.closest('[data-font]'), chip = e.target.closest('[data-fp-cat]');
+        if (item)
+            pickFont(item.dataset.font);
+        else if (chip) {
+            pop.cat = chip.dataset.fpCat;
+            el.querySelectorAll('[data-fp-cat]').forEach(b => b.classList.toggle('on', b === chip));
+            rebuild();
+        }
+    });
+    rebuild();
+    // bring the current font into view
+    const curEl = list.querySelector('.fp-item.cur');
+    if (curEl)
+        list.scrollTop = Math.max(0, curEl.offsetTop - 120);
+    search.focus();
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!GF.pop || !document.body.contains(GF.pop.el)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!GF.pop.el.contains(ev.target) && !ev.target.closest('[data-font-picker]')) {
+            closeFontPicker();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+function pickFont(name) {
+    const info = gfInfo(name);
+    closeFontPicker();
+    transaction('Font family', () => {
+        for (const n of selected().filter(x => x.type === 'text')) {
+            n.fontFamily = name;
+            if (n.vars?.fontFamily) {
+                delete n.vars.fontFamily;
+                if (!Object.keys(n.vars).length)
+                    delete n.vars;
+            }
+            if (info)
+                n.fontWeight = gfNearestWeight(info, n.fontWeight || 400, n.fontStyle === 'italic');
+            if (n.sourceId) {
+                n.overrides ||= {};
+                n.overrides.fontFamily = name;
+                n.overrides.fontWeight = n.fontWeight;
+            }
+            if (n.autoW)
+                hugText(n);
+            else
+                n.h = Math.max(n.h, layoutText(n).height);
+            doc.touch(n);
+        }
+    });
+    for (const n of selected().filter(x => x.type === 'text'))
+        gfLoadFace(name, n.fontWeight, n.fontStyle || 'normal', (n.text || '').slice(0, 400)).then(ok => { if (ok)
+            gfRefresh(name); });
+    gfScanSoon();
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-font-picker]');
+    if (b) {
+        e.preventDefault();
+        openFontPicker(b);
+    }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && GF.pop) {
+    closeFontPicker();
+    e.stopPropagation();
+} }, true);
+
+// ===== effect variables (composite values: one variable holds a whole shadow / blur stack) =====
+function fxSummary(list) {
+    list = Array.isArray(list) ? list : [];
+    if (!list.length)
+        return 'No effects';
+    const one = e => e.type === 'drop' || e.type === 'inner' ? `${e.type === 'drop' ? 'Drop' : 'Inner'} ${fmt(e.x || 0)} ${fmt(e.y || 0)} ${fmt(e.blur || 0)}${e.spread ? ' ' + fmt(e.spread) : ''}` : e.type === 'layerBlur' ? `Blur ${fmt(e.radius || 0)}` : e.type === 'bgBlur' ? `BG blur ${fmt(e.radius || 0)}` : 'Glass';
+    return list.slice(0, 2).map(one).join(' + ') + (list.length > 2 ? ` +${list.length - 2}` : '');
+}
+// Accepts Midas effect arrays and the W3C design-token "shadow" shape (offsetX / offsetY / blur / spread / color).
+function parseEffectValue(val) {
+    const arr = Array.isArray(val) ? val : [val], px = v => { const x = parseFloat(String(v ?? 0)); return Number.isFinite(x) ? x : 0; }, out = [];
+    for (const e of arr) {
+        if (!e || typeof e !== 'object')
+            continue;
+        if (['drop', 'inner', 'layerBlur', 'bgBlur', 'glass'].includes(e.type))
+            out.push({ ...fxDefaults(e.type), ...e });
+        else if ('offsetX' in e || 'blur' in e || 'color' in e) {
+            const c = parseColorValue(e.color);
+            out.push({ type: e.inset ? 'inner' : 'drop', visible: true, color: c.slice(0, 7), opacity: c.length === 9 ? Math.round(parseInt(c.slice(7), 16) / 255 * 1000) / 1000 : 1, x: px(e.offsetX), y: px(e.offsetY), blur: px(e.blur), spread: px(e.spread) });
+        }
+    }
+    return out.length ? out : varDefault('effect');
+}
+function createEffectVariableFromNode() {
+    const n = activeNode();
+    if (!n || n.type === 'group')
+        return;
+    const list = getEffects(n);
+    if (!list.length) {
+        toast('Add an effect first, then save it as a variable.');
+        return;
+    }
+    ensureVarCollection();
+    const coll = varColl(vw.coll) || varStore().collections[0];
+    let name = '';
+    transaction('Create effect variable', () => {
+        const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, 'effect/shadow'), type: 'effect', values: {} };
+        name = item.name;
+        for (const m of coll.modes)
+            item.values[m.id] = structuredClone(list);
+        varStore().items.push(item);
+        for (const x of selected())
+            if (x.type !== 'group') {
+                x.vars = { ...(x.vars || {}), effects: item.id };
+                doc.touch(x);
+            }
+    });
+    toast(`Saved as “${name}” in ${coll.name}. Rename it in Variables.`);
+}
+const VE = { key: null, el: null };
+function closeEffectVarEditor() {
+    VE.el?.remove();
+    VE.el = null;
+    VE.key = null;
+}
+function veList() {
+    if (!VE.key)
+        return null;
+    const [id, mode] = VE.key.split('|'), raw = varItem(id)?.values[mode];
+    return Array.isArray(raw) ? structuredClone(raw) : null;
+}
+function veHtml(list) {
+    const num = (i, f, label, val) => `<label class="ve-num"><span>${label}</span><input type="number" step="any" data-ve="${i}|${f}" value="${fmt(val ?? 0)}"></label>`;
+    const types = [['drop', 'Drop shadow'], ['inner', 'Inner shadow'], ['layerBlur', 'Layer blur'], ['bgBlur', 'Background blur']];
+    const rows = list.map((e, i) => {
+        const shadow = e.type === 'drop' || e.type === 'inner', blur = e.type === 'layerBlur' || e.type === 'bgBlur', opts = e.type === 'glass' ? [...types, ['glass', 'Glass']] : types;
+        return `<div class="ve-row ${e.visible === false ? 'off' : ''}"><div class="ve-head"><select data-ve="${i}|type" aria-label="Effect type">${opts.map(([t, l]) => `<option value="${t}" ${e.type === t ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="icon-button small" data-ve-vis="${i}" title="${e.visible === false ? 'Show' : 'Hide'}" aria-label="Toggle effect">${icon(e.visible === false ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-ve-del="${i}" title="Remove" aria-label="Remove effect">${icon('minus', 14)}</button></div>${shadow ? `<div class="ve-grid"><label class="ve-color"><input type="color" data-ve="${i}|color" value="${safeColor(e.color || '#000000').slice(0, 7)}"><span>${esc(String(e.color || '#000000').toUpperCase())}</span></label>${num(i, 'opacity', 'Opacity %', Math.round((e.opacity ?? 1) * 100))}${num(i, 'x', 'X', e.x)}${num(i, 'y', 'Y', e.y)}${num(i, 'blur', 'Blur', e.blur)}${num(i, 'spread', 'Spread', e.spread)}</div>` : blur ? `<div class="ve-grid">${num(i, 'radius', 'Radius', e.radius)}</div>` : '<div class="ve-note">Glass effects are edited on a layer.</div>'}</div>`;
+    }).join('');
+    return `<div class="ve-title"><b>Effect value</b><button class="icon-button small" data-ve-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${rows || '<div class="ve-note">No effects.</div>'}<button class="cmp-btn wide" data-ve-add>+ Add effect</button></div>`;
+}
+function refreshEffectVarEditor() {
+    const list = veList();
+    if (!VE.el)
+        return;
+    if (!list) {
+        closeEffectVarEditor();
+        return;
+    }
+    VE.el.innerHTML = veHtml(list);
+}
+function veSet(list, live) { vwSetValue(VE.key, list, live); }
+function openEffectVarEditor(key, anchor) {
+    const same = VE.key === key;
+    closeEffectVarEditor();
+    if (same)
+        return;
+    VE.key = key;
+    const list = veList();
+    if (!list) {
+        VE.key = null;
+        return;
+    }
+    const el = VE.el = document.createElement('div');
+    el.className = 've-pop';
+    el.innerHTML = veHtml(list);
+    document.body.appendChild(el);
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left)) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    el.addEventListener('input', e => {
+        const t = e.target;
+        if (t.dataset?.ve?.endsWith('|color')) {
+            const l = veList(), i = +t.dataset.ve.split('|')[0];
+            if (l?.[i]) {
+                l[i].color = t.value;
+                veSet(l, true);
+            }
+        }
+    });
+    el.addEventListener('change', e => {
+        const t = e.target;
+        if (!t.dataset?.ve)
+            return;
+        const [si, f] = t.dataset.ve.split('|'), i = +si, l = veList();
+        if (!l?.[i])
+            return;
+        const eff = l[i];
+        if (f === 'type') {
+            const shadows = ['drop', 'inner'];
+            l[i] = shadows.includes(eff.type) && shadows.includes(t.value) ? { ...eff, type: t.value } : { ...fxDefaults(t.value), visible: eff.visible !== false };
+        }
+        else if (f === 'color')
+            eff.color = t.value;
+        else if (f === 'opacity')
+            eff.opacity = Math.max(0, Math.min(1, (+t.value || 0) / 100));
+        else if (['blur', 'radius'].includes(f))
+            eff[f] = Math.max(0, +t.value || 0);
+        else
+            eff[f] = +t.value || 0;
+        veSet(l, false);
+        refreshEffectVarEditor();
+    });
+    el.addEventListener('click', e => {
+        const t = e.target;
+        let b;
+        if (t.closest('[data-ve-close]')) {
+            closeEffectVarEditor();
+            return;
+        }
+        const l = veList();
+        if (!l)
+            return;
+        if ((b = t.closest('[data-ve-vis]'))) {
+            const e0 = l[+b.dataset.veVis];
+            if (e0)
+                e0.visible = e0.visible === false;
+        }
+        else if ((b = t.closest('[data-ve-del]')))
+            l.splice(+b.dataset.veDel, 1);
+        else if (t.closest('[data-ve-add]'))
+            l.push(fxDefaults('drop'));
+        else
+            return;
+        veSet(l, false);
+        refreshEffectVarEditor();
+    });
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!VE.el || !document.body.contains(VE.el)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!VE.el.contains(ev.target) && !ev.target.closest('[data-vw-fx]')) {
+            closeEffectVarEditor();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-vw-fx]');
+    if (b)
+        openEffectVarEditor(b.dataset.vwFx, b);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && VE.el) {
+    closeEffectVarEditor();
+    e.stopPropagation();
+} }, true);
+
+// ===== plugins =====
+const PLUGIN_KEY = 'midas-plugins';
+const SAMPLE_PLUGINS = [
+    {
+        id: 'sample-grid', name: 'Rectangle grid', description: 'Creates a 3×3 grid of rectangles inside a new frame.', code: String.raw`// Creates a 3x3 grid of rectangles inside a new frame.
+const frame = midas.createFrame();
+frame.name = 'Rectangle grid';
+frame.resize(3 * 80 + 4 * 16, 3 * 80 + 4 * 16);
+frame.fill = '#ffffff';
+for (let row = 0; row < 3; row++) {
+  for (let col = 0; col < 3; col++) {
+    const rect = midas.createRectangle();
+    rect.name = 'Cell ' + (row * 3 + col + 1);
+    rect.resize(80, 80);
+    rect.x = 16 + col * 96;
+    rect.y = 16 + row * 96;
+    rect.fill = '#0058CA';
+    rect.cornerRadius = 8;
+    frame.appendChild(rect);
+  }
+}
+midas.selection = [frame];
+midas.viewport.scrollAndZoomIntoView([frame]);
+midas.notify('Created 9 rectangles');
+midas.closePlugin();`
+    },
+    {
+        id: 'sample-rename', name: 'Batch rename', description: 'Shows a small UI and renames the selected layers.', code: String.raw`// Batch rename the selected layers. The UI is plain HTML in a sandboxed iframe.
+const end = '<' + '/script>';
+const html = '<style>body{font:13px system-ui;margin:12px}input{width:100%;box-sizing:border-box;padding:6px;margin:6px 0 10px}button{padding:6px 12px}</style>'
+  + '<label>Name pattern (# = number)</label><input id="p" value="Layer #">'
+  + '<button id="go">Rename selection</button>'
+  + '<script>document.getElementById("go").onclick=function(){parent.postMessage({pluginMessage:{type:"rename",pattern:document.getElementById("p").value}},"*")}' + end;
+midas.showUI(html, { title: 'Batch rename', width: 260, height: 140 });
+midas.ui.onmessage = function (msg) {
+  if (msg.type === 'rename') {
+    const nodes = midas.selection;
+    nodes.forEach(function (node, i) { node.name = msg.pattern.replace('#', i + 1); });
+    midas.notify('Renamed ' + nodes.length + ' layer' + (nodes.length === 1 ? '' : 's'));
+    midas.closePlugin();
+  }
+};`
+    }
+];
+const PLUGIN_DOCS = `midas.selection                get / set the selected nodes
+midas.currentPage.children     top-level nodes of this page
+midas.createRectangle()  createEllipse()  createFrame()  createLine()  createText(chars)
+midas.getNodeById(id)
+
+node.id  type  name  x  y  width  height  rotation  opacity  visible
+node.fill (hex)  cornerRadius  characters  fontSize  children  parent
+node.resize(w, h)  appendChild(child)  clone()  remove()  get(prop)  set(prop, value)
+
+midas.viewport.scrollAndZoomIntoView(nodes)
+midas.notify(message)      midas.closePlugin()
+midas.showUI(html, { title, width, height })
+midas.ui.postMessage(msg)  midas.ui.onmessage = msg => {}
+  inside the UI html:  parent.postMessage({ pluginMessage: msg }, '*')
+midas.clientStorage.getAsync(key)  setAsync(key, value)
+midas.variables.list()  create({ collection, name, type, value })
+
+Code runs as an async function, so you can use await. Plugins run with the
+same access as the editor: only run code you trust.`;
+const PL = { list: null, editing: null, run: null, timer: null };
+function loadPlugins() {
+    if (PL.list)
+        return PL.list;
+    try {
+        const raw = localStore.getItem(PLUGIN_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed))
+                return PL.list = parsed.filter(p => p && typeof p.id === 'string' && typeof p.code === 'string');
+        }
+    }
+    catch { }
+    PL.list = structuredClone(SAMPLE_PLUGINS);
+    savePlugins();
+    return PL.list;
+}
+function savePlugins() {
+    try {
+        localStore.setItem(PLUGIN_KEY, JSON.stringify(PL.list));
+    }
+    catch {
+        toast('Could not save plugins to the data folder.');
+    }
+}
+function renderPlugins() {
+    const list = loadPlugins();
+    $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
+}
+// --- plugin API ---
+const PL_TYPES = { rect: 'RECTANGLE', frame: 'FRAME', ellipse: 'ELLIPSE', text: 'TEXT', line: 'LINE', group: 'GROUP', path: 'VECTOR', image: 'IMAGE' };
+function pluginBegin() {
+    if (!history.pending)
+        history.begin('Plugin: ' + (PL.run?.plugin.name || 'script'));
+}
+function pluginDirty(n) {
+    if (n)
+        doc.touch(n);
+    clearTimeout(PL.timer);
+    PL.timer = setTimeout(flushPluginMutations, 60);
+}
+function flushPluginMutations() {
+    clearTimeout(PL.timer);
+    PL.timer = null;
+    PL.noMark = true; // plugin edits are not user overrides on selected instances
+    try {
+        if (history.pending)
+            changed({ commit: true });
+        else
+            changed();
+    }
+    finally {
+        PL.noMark = false;
+    }
+}
+class PluginNode {
+    constructor(n) { Object.defineProperty(this, '_n', { value: n, enumerable: false }); }
+    get id() { return this._n.id; }
+    get type() { return PL_TYPES[this._n.type] || String(this._n.type).toUpperCase(); }
+    get name() { return this._n.name; }
+    set name(v) { this._set('name', String(v)); }
+    get x() { return this._n.x; }
+    set x(v) { this._set('x', +v); }
+    get y() { return this._n.y; }
+    set y(v) { this._set('y', +v); }
+    get width() { return this._n.w; }
+    set width(v) { this.resize(+v, this._n.h); }
+    get height() { return this._n.h; }
+    set height(v) { this.resize(this._n.w, +v); }
+    get rotation() { return this._n.rotation; }
+    set rotation(v) { this._set('rotation', +v); }
+    get opacity() { return this._n.opacity; }
+    set opacity(v) { this._set('opacity', Math.max(0, Math.min(1, +v))); }
+    get visible() { return this._n.visible !== false; }
+    set visible(v) { this._set('visible', !!v); }
+    get fill() { return Array.isArray(this._n.fills) && this._n.fills[0]?.color || this._n.fill; }
+    set fill(v) {
+        const hex = String(v);
+        pluginBegin();
+        const n = this._n;
+        if (Array.isArray(n.fills) && n.fills.length)
+            n.fills = n.fills.map((f, i) => i === 0 ? { ...f, type: 'solid', color: hex } : f);
+        else {
+            n.fill = hex;
+            n.fillType = 'solid';
+        }
+        pluginDirty(n);
+    }
+    get cornerRadius() { return this._n.radius || 0; }
+    set cornerRadius(v) { this._set('radius', Math.max(0, +v)); }
+    get characters() { return this._n.text; }
+    set characters(v) {
+        pluginBegin();
+        const n = this._n;
+        n.text = String(v);
+        if (n.type === 'text') {
+            if (n.autoW)
+                hugText(n);
+            else
+                n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+        }
+        pluginDirty(n);
+    }
+    get fontSize() { return this._n.fontSize; }
+    set fontSize(v) { this._set('fontSize', Math.max(1, +v)); }
+    get children() { return doc.children(this._n.id).map(c => new PluginNode(c)); }
+    get parent() { const p = this._n.parentId && doc.get(this._n.parentId); return p ? new PluginNode(p) : null; }
+    _set(k, v) { pluginBegin(); this._n[k] = v; pluginDirty(this._n); }
+    get(prop) { return structuredClone(this._n[prop]); }
+    set(prop, value) { this._set(prop, structuredClone(value)); }
+    resize(w, h) {
+        pluginBegin();
+        const n = this._n, ow = n.w, oh = n.h;
+        n.w = Math.max(.1, +w);
+        n.h = Math.max(.1, +h);
+        n.layoutSizingH = 'fixed';
+        n.layoutSizingV = 'fixed';
+        if (n.type === 'text')
+            n.autoW = false;
+        if (n.w !== ow || n.h !== oh)
+            constrainChildren(n, ow, oh);
+        pluginDirty(n);
+    }
+    appendChild(child) {
+        if (!(child instanceof PluginNode) || child._n === this._n)
+            return;
+        pluginBegin();
+        child._n.parentId = this._n.id;
+        pluginDirty(child._n);
+        pluginDirty(this._n);
+    }
+    clone() {
+        pluginBegin();
+        const c = cloneNodes([this._n], 20)[0];
+        pluginDirty(c);
+        return new PluginNode(c);
+    }
+    remove() {
+        pluginBegin();
+        doc.remove([this._n.id]);
+        state.selection.delete(this._n.id);
+        pluginDirty();
+    }
+}
+function buildPluginApi(run) {
+    const wrap = n => new PluginNode(n);
+    const make = (type, props, after) => {
+        pluginBegin();
+        const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2), n = node(type, props);
+        n.x = Math.round(c.x - n.w / 2);
+        n.y = Math.round(c.y - n.h / 2);
+        doc.add(n);
+        after?.(n);
+        pluginDirty(n);
+        return wrap(n);
+    };
+    const ids = nodes => (Array.isArray(nodes) ? nodes : [nodes]).filter(x => x instanceof PluginNode).map(x => x._n.id);
+    const page = {
+        get id() { return doc.page.id; },
+        get name() { return doc.page.name; },
+        get children() { return doc.children(null).map(wrap); },
+        get selection() { return selected().map(wrap); },
+        set selection(v) { select(ids(v)); },
+        findAll(cb) { return doc.nodes.map(wrap).filter(cb || (() => true)); }
+    };
+    const api = {
+        get selection() { return page.selection; },
+        set selection(v) { page.selection = v; },
+        currentPage: page,
+        createRectangle: () => make('rect', { w: 100, h: 100, name: 'Rectangle' }),
+        createEllipse: () => make('ellipse', { w: 100, h: 100, name: 'Ellipse' }),
+        createFrame: () => make('frame', { w: 200, h: 200, name: 'Frame', fill: '#ffffff', clip: true }),
+        createLine: () => make('line', { w: 100, h: .1, name: 'Line' }),
+        createText: (chars = 'Text') => make('text', { text: String(chars), name: String(chars).slice(0, 28) || 'Text', w: 160, h: 24, fontSize: 16, fill: options.theme === 'dark' ? '#f0eaf8' : '#282431' }, n => { n.h = layoutText(n).height; }),
+        getNodeById: id => { const n = doc.get(id); return n ? wrap(n) : null; },
+        notify: msg => { run.notified = true; toast(String(msg)); },
+        closePlugin: msg => { if (msg)
+            toast(String(msg)); closePluginRun(); },
+        showUI: (html, opts = {}) => pluginShowUI(run, String(html), opts),
+        ui: {
+            onmessage: null,
+            postMessage: msg => run.ui?.frame.contentWindow?.postMessage({ pluginMessage: msg }, '*'),
+            close: () => closePluginUI(run)
+        },
+        viewport: {
+            get zoom() { return state.camera.zoom; },
+            get center() { const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2); return { x: c.x, y: c.y }; },
+            scrollAndZoomIntoView: nodes => { const list = ids(nodes); if (list.length)
+                fit(list); }
+        },
+        clientStorage: {
+            getAsync: async key => { try {
+                const v = localStore.getItem(`midas-plugin:${run.plugin.id}:${key}`);
+                return v === null ? undefined : JSON.parse(v);
+            }
+            catch {
+                return undefined;
+            } },
+            setAsync: async (key, value) => { try {
+                localStore.setItem(`midas-plugin:${run.plugin.id}:${key}`, JSON.stringify(value));
+            }
+            catch { } }
+        },
+        variables: {
+            list: () => varStore().collections.map(c => ({ name: c.name, modes: c.modes.map(m => m.name), variables: varStore().items.filter(i => i.collectionId === c.id).map(i => ({ name: i.name, type: i.type, values: Object.fromEntries(c.modes.map(m => [m.name, i.values[m.id]])) })) })),
+            create: ({ collection, name, type = 'color', value } = {}) => {
+                if (!collection || !name || !['color', 'number', 'string', 'boolean', 'effect'].includes(type))
+                    throw new Error('variables.create needs { collection, name, type }');
+                pluginBegin();
+                const s = varStore();
+                let c = s.collections.find(x => x.name === collection);
+                if (!c) {
+                    c = { id: uid(), name: collection, modes: [{ id: uid(), name: 'Mode 1' }], groups: [] };
+                    s.collections.push(c);
+                }
+                const item = { id: uid(), collectionId: c.id, name: String(name), type, values: {} };
+                for (const m of c.modes)
+                    item.values[m.id] = value === undefined ? varDefault(type) : structuredClone(value);
+                s.items.push(item);
+                pluginDirty();
+                return item.id;
+            }
+        }
+    };
+    return api;
+}
+function pluginShowUI(run, html, opts) {
+    closePluginUI(run);
+    const w = Math.max(160, Math.min(opts.width || 300, 900)), h = Math.max(80, Math.min(opts.height || 200, 700));
+    const el = document.createElement('div');
+    el.className = 'plugin-ui';
+    el.style.width = w + 'px';
+    el.innerHTML = `<div class="plugin-ui-title" data-pui-drag><span>${esc(opts.title || run.plugin.name)}</span><button class="vw-mini" data-pui-close aria-label="Close plugin">${icon('close', 12)}</button></div>`;
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.setAttribute('title', run.plugin.name);
+    frame.style.height = h + 'px';
+    frame.srcdoc = html;
+    el.appendChild(frame);
+    document.body.appendChild(el);
+    const ar = area.getBoundingClientRect();
+    el.style.left = Math.max(12, ar.right - w - 24) + 'px';
+    el.style.top = Math.max(60, ar.bottom - h - 120) + 'px';
+    const onMsg = async e => {
+        if (e.source !== frame.contentWindow || !e.data || !('pluginMessage' in e.data))
+            return;
+        try {
+            await run.api.ui.onmessage?.(e.data.pluginMessage);
+        }
+        catch (err) {
+            pluginLog(run, 'error', [String(err?.message || err)]);
+            toast('Plugin error: ' + (err?.message || err));
+        }
+    };
+    addEventListener('message', onMsg);
+    run.ui = { el, frame, onMsg };
+}
+function closePluginUI(run) {
+    if (!run?.ui)
+        return;
+    removeEventListener('message', run.ui.onMsg);
+    run.ui.el.remove();
+    run.ui = null;
+}
+function closePluginRun() {
+    const run = PL.run;
+    if (!run)
+        return;
+    closePluginUI(run);
+    PL.run = null;
+    flushPluginMutations();
+}
+function pluginLog(run, kind, args) {
+    const text = args.map(a => { if (typeof a === 'string')
+        return a; try {
+        return JSON.stringify(a);
+    }
+    catch {
+        return String(a);
+    } }).join(' ');
+    const el = document.querySelector('[data-pe-log]');
+    if (el && run.logToEditor) {
+        const line = document.createElement('div');
+        line.className = 'pe-line ' + kind;
+        line.textContent = text;
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+    }
+    if (kind === 'error')
+        console.error('[plugin]', text);
+}
+async function runPlugin(p, fromEditor = false) {
+    closePluginRun();
+    const run = { plugin: p, ui: null, api: null, notified: false, logToEditor: fromEditor };
+    PL.run = run;
+    if (fromEditor) {
+        const el = document.querySelector('[data-pe-log]');
+        if (el)
+            el.innerHTML = '';
+    }
+    run.api = buildPluginApi(run);
+    const cons = { log: (...a) => pluginLog(run, 'log', a), info: (...a) => pluginLog(run, 'log', a), warn: (...a) => pluginLog(run, 'warn', a), error: (...a) => pluginLog(run, 'error', a) };
+    try {
+        const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+        await new AsyncFunction('midas', 'console', p.code)(run.api, cons);
+    }
+    catch (e) {
+        pluginLog(run, 'error', [String(e?.message || e)]);
+        toast(`Plugin “${p.name}” failed: ${e?.message || e}`);
+    }
+    flushPluginMutations();
+    if (PL.run === run && !run.ui) {
+        PL.run = null;
+        if (!run.notified)
+            toast(`Plugin “${p.name}” finished.`);
+    }
+}
+// --- plugin editor window ---
+function openPluginEditor(id) {
+    const p = loadPlugins().find(x => x.id === id);
+    if (!p)
+        return;
+    PL.editing = id;
+    document.getElementById('plugin-editor')?.remove();
+    const el = document.createElement('section');
+    el.id = 'plugin-editor';
+    el.className = 'plugin-editor';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Plugin editor');
+    el.innerHTML = `<div class="pe-title" data-pe-drag><span>Plugin editor</span><button class="vw-mini" data-pe-act="close" aria-label="Close">${icon('close', 12)}</button></div>
+<div class="pe-body"><label class="pe-field"><span>Name</span><input data-pe="name" value="${esc(p.name)}" maxlength="80" spellcheck="false"></label><label class="pe-field"><span>Description</span><input data-pe="desc" value="${esc(p.description || '')}" maxlength="200" spellcheck="false"></label><label class="pe-field grow"><span>Code</span><textarea data-pe="code" spellcheck="false" wrap="off"></textarea></label><details class="pe-docs"><summary>API reference</summary><pre>${esc(PLUGIN_DOCS)}</pre></details><div class="pe-log" data-pe-log aria-live="polite"></div></div>
+<div class="pe-foot"><button class="wide-button" data-pe-act="delete">Delete</button><button class="wide-button" data-pe-act="export">Export</button><span class="pe-spacer"></span><button class="wide-button" data-pe-act="save">Save</button><button class="wide-button primary" data-pe-act="run">Save &amp; run</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector('[data-pe="code"]').value = p.code;
+    const ar = area.getBoundingClientRect();
+    el.style.left = Math.max(12, ar.left + (ar.width - 640) / 2) + 'px';
+    el.style.top = Math.max(60, ar.top + 30) + 'px';
+    el.querySelector('[data-pe="name"]').focus();
+}
+function savePluginEditor() {
+    const el = document.getElementById('plugin-editor'), p = loadPlugins().find(x => x.id === PL.editing);
+    if (!el || !p)
+        return null;
+    p.name = el.querySelector('[data-pe="name"]').value.trim() || 'Untitled plugin';
+    p.description = el.querySelector('[data-pe="desc"]').value.trim();
+    p.code = el.querySelector('[data-pe="code"]').value;
+    savePlugins();
+    renderPlugins();
+    return p;
+}
+document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t?.matches?.('[data-pe="code"]') && e.key === 'Tab') {
+        e.preventDefault();
+        const s = t.selectionStart, en = t.selectionEnd;
+        t.value = t.value.slice(0, s) + '  ' + t.value.slice(en);
+        t.selectionStart = t.selectionEnd = s + 2;
+    }
+    if (t?.closest?.('#plugin-editor') && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        const p = savePluginEditor();
+        if (p)
+            runPlugin(p, true);
+    }
+}, true);
+document.addEventListener('click', e => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-pl]'))) {
+        if (el.dataset.pl === 'new') {
+            const p = { id: uid(), name: 'New plugin', description: '', code: "// Your code runs as an async function.\n// `midas` is the plugin API (see the API reference below).\nconst rect = midas.createRectangle();\nrect.fill = '#0058CA';\nmidas.selection = [rect];\nmidas.notify('Hello from my plugin');\nmidas.closePlugin();\n" };
+            loadPlugins().push(p);
+            savePlugins();
+            renderPlugins();
+            openPluginEditor(p.id);
+        }
+        else if (el.dataset.pl === 'import') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,application/json';
+            input.onchange = async () => {
+                const f = input.files?.[0];
+                if (!f)
+                    return;
+                try {
+                    const d = JSON.parse(await f.text());
+                    if (d.format !== 'midas-plugin' || typeof d.code !== 'string')
+                        throw new Error('This is not a Midas plugin file.');
+                    if (!confirm(`Import plugin “${d.name || 'Untitled'}”?\n\nPlugins can read and change your designs. Only import code you trust.`))
+                        return;
+                    loadPlugins().push({ id: uid(), name: String(d.name || 'Imported plugin'), description: String(d.description || ''), code: d.code });
+                    savePlugins();
+                    renderPlugins();
+                    toast('Plugin imported.');
+                }
+                catch (err) {
+                    toast(err.message || 'Could not import this plugin.');
+                }
+            };
+            input.click();
+        }
+        return;
+    }
+    if ((el = t.closest('[data-pl-run]'))) {
+        const p = loadPlugins().find(x => x.id === el.dataset.plRun);
+        if (p)
+            runPlugin(p);
+        return;
+    }
+    if ((el = t.closest('[data-pl-edit]'))) {
+        openPluginEditor(el.dataset.plEdit);
+        return;
+    }
+    if (t.closest('[data-pui-close]')) {
+        closePluginRun();
+        return;
+    }
+    if ((el = t.closest('[data-pe-act]'))) {
+        const act = el.dataset.peAct;
+        if (act === 'close') {
+            document.getElementById('plugin-editor')?.remove();
+            PL.editing = null;
+        }
+        else if (act === 'save') {
+            if (savePluginEditor())
+                toast('Plugin saved.');
+        }
+        else if (act === 'run') {
+            const p = savePluginEditor();
+            if (p)
+                runPlugin(p, true);
+        }
+        else if (act === 'export') {
+            const p = savePluginEditor();
+            if (p)
+                download(new Blob([JSON.stringify({ format: 'midas-plugin', version: 1, name: p.name, description: p.description, code: p.code }, null, 2)], { type: 'application/json' }), safeName(p.name) + '.midas-plugin.json');
+        }
+        else if (act === 'delete') {
+            const p = loadPlugins().find(x => x.id === PL.editing);
+            if (p && confirm(`Delete plugin “${p.name}”?`)) {
+                PL.list = loadPlugins().filter(x => x.id !== p.id);
+                savePlugins();
+                renderPlugins();
+                document.getElementById('plugin-editor')?.remove();
+                PL.editing = null;
+            }
+        }
+    }
+});
+for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
+    document.addEventListener('pointerdown', e => {
+        const bar = e.target.closest(sel);
+        if (!bar || e.target.closest('button'))
+            return;
+        const win = bar.parentElement, r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+        const move = ev => { win.style.left = Math.max(0, Math.min(ev.clientX - dx, innerWidth - 120)) + 'px'; win.style.top = Math.max(0, Math.min(ev.clientY - dy, innerHeight - 40)) + 'px'; };
+        const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+        addEventListener('pointermove', move);
+        addEventListener('pointerup', up);
+        e.preventDefault();
+    });
+
+const actions = { loadDesignSystem: () => window.loadDesignSystem?.(), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+        return; if (getEffects(n).some(e => e.type === 'drop'))
+        transaction('Remove shadow', () => { for (const m of selected()) {
+            if (Array.isArray(materializeEffects(m))) {
+                m.effects = m.effects.filter(e => e.type !== 'drop');
+                syncLegacyShadow(m);
+                doc.touch(m);
+            }
+        } });
+    else
+        addEffect('drop'); }, toggleLayout: () => {
+        const n = activeNode();
+        if (!n) {
+            toast('Select a frame first.');
+            return;
+        }
+        if (isAutoLayout(n))
+            removeAutoLayout();
+        else
+            addAutoLayout();
+    }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
+const commands = [['Load Design System', 'loadDesignSystem'], ['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Present frames', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+function commandPalette() {
+    modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
+    let selectedIndex = 0, filtered = [];
+    const render = () => { filtered = commands.filter(([label]) => label.toLowerCase().includes($('#command-search').value.toLowerCase())); selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1)); $('#command-results').innerHTML = filtered.map(([label, action], i) => `<button class="menu-item ${i === selectedIndex ? 'focused' : ''}" data-command="${action}"><span>${esc(label)}</span><span class="shortcut">↵</span></button>`).join('') || '<div class="empty-state">No matching commands.</div>'; };
+    $('#command-search').oninput = () => { selectedIndex = 0; render(); };
+    $('#command-search').onkeydown = e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = clamp(selectedIndex + (e.key === 'ArrowDown' ? 1 : -1), 0, filtered.length - 1);
+            render();
+            $('#command-results .focused')?.scrollIntoView({ block: 'nearest' });
+        }
+        else if (e.key === 'Enter' && filtered[selectedIndex]) {
+            e.preventDefault();
+            const action = filtered[selectedIndex][1];
+            closeModal();
+            actions[action]?.();
+        }
+    };
+    render();
+}
+async function present() {
+    finishText();
+    state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
+    if (!state.previewFrames.length) {
+        toast('Create a frame to present your design.');
+        return;
+    }
+    const active = activeNode(), ancestor = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
+    state.previewIndex = Math.max(0, state.previewFrames.findIndex(n => n.id === ancestor?.id));
+    $('#presentation').classList.remove('hidden');
+    await showPreview();
+}
+async function showPreview() {
+    const n = state.previewFrames[state.previewIndex];
+    if (!n)
+        return;
+    $('#presentation-title').textContent = n.name;
+    $('#presentation-count').textContent = `${state.previewIndex + 1} / ${state.previewFrames.length}`;
+    try {
+        const canvas = await renderer.exportCanvas([n.id], Math.min(2, Math.max(1, 1000 / Math.max(n.w, n.h))));
+        const target = $('#presentation-canvas');
+        target.width = canvas.width;
+        target.height = canvas.height;
+        target.getContext('2d').drawImage(canvas, 0, 0);
+        target.style.aspectRatio = `${canvas.width}/${canvas.height}`;
+        const stage = $('#presentation-stage'), scale = Math.min((stage.clientWidth - 72) / canvas.width, (stage.clientHeight - 72) / canvas.height, 1);
+        target.style.width = canvas.width * scale + 'px';
+        target.style.height = canvas.height * scale + 'px';
+    }
+    catch (e) {
+        toast(e.message);
+    }
+}
+function stepPreview(delta) {
+    if (!state.previewFrames.length)
+        return;
+    state.previewIndex = (state.previewIndex + delta + state.previewFrames.length) % state.previewFrames.length;
+    showPreview();
+}
+function closePreview() { $('#presentation').classList.add('hidden'); overlay.focus({ preventScroll: true }); }
+// Event delegation keeps the chrome inexpensive even with a large scene tree.
+document.addEventListener('click', e => {
+    const action = e.target.closest('[data-action]');
+    if (action) {
+        actions[action.dataset.action]?.();
+        return;
+    }
+    const menu = e.target.closest('[data-menu-action]');
+    if (menu) {
+        const act = menu.dataset.menuAction;
+        closeMenu();
+        if (act.startsWith('page-rename:'))
+            renamePageInline(act.slice(12));
+        else if (act.startsWith('page-delete:'))
+            deletePage(act.slice(12));
+        else if (act.startsWith('page-duplicate:'))
+            duplicatePage(act.slice(15));
+        else if (act.startsWith('vwcoll:'))
+            vwCollAction(act);
+        else
+            actions[act]?.();
+        return;
+    }
+    const command = e.target.closest('[data-command]');
+    if (command) {
+        const fn = actions[command.dataset.command];
+        closeModal();
+        fn?.();
+        return;
+    }
+    if (e.target.closest('[data-close-modal]')) {
+        closeModal();
+        return;
+    }
+    const tool = e.target.closest('[data-tool]');
+    if (tool) {
+        setTool(tool.dataset.tool);
+        return;
+    }
+    const expandPage = e.target.closest('[data-page-expand]');
+    if (expandPage) {
+        togglePageExpand(expandPage.dataset.pageExpand);
+        return;
+    }
+    const page = e.target.closest('[data-page]');
+    if (page) {
+        const p = doc.data.pages.find(x => x.id === page.dataset.page);
+        if (!p || isPageDivider(p))
+            return;
+        const now = performance.now(), last = state.lastPageClick;
+        if (last && last.id === p.id && now - last.t < 420) {
+            state.lastPageClick = null;
+            renamePageInline(p.id);
+            return;
+        }
+        state.lastPageClick = { id: p.id, t: now };
+        setTimeout(() => {
+            if (state.lastPageClick && state.lastPageClick.id === p.id && performance.now() - state.lastPageClick.t >= 400) {
+                state.lastPageClick = null;
+                if (pageIsFolder(p))
+                    togglePageExpand(p.id);
+                else if (p.id !== doc.page.id)
+                    switchPage(p.id);
+            }
+        }, 410);
+        return;
+    }
+    const tab = e.target.closest('[data-left-tab]');
+    if (tab) {
+        setLeftTab(tab.dataset.leftTab);
+        return;
+    }
+    const itab = e.target.closest('[data-inspector-tab]');
+    if (itab) {
+        state.inspectorTab = itab.dataset.inspectorTab;
+        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el === itab));
+        renderInspector();
+        return;
+    }
+    const exp = e.target.closest('[data-expand]');
+    if (exp) {
+        const id = exp.dataset.expand;
+        if (state.expanded.has(id))
+            state.expanded.delete(id);
+        else
+            state.expanded.add(id);
+        renderLayers();
+        return;
+    }
+    const vis = e.target.closest('[data-visibility]');
+    if (vis) {
+        transaction('Toggle layer visibility', () => { const n = doc.get(vis.dataset.visibility); n.visible = !n.visible; doc.touch(n); });
+        return;
+    }
+    const lock = e.target.closest('[data-lock]');
+    if (lock) {
+        transaction('Toggle layer lock', () => { const n = doc.get(lock.dataset.lock); n.locked = !n.locked; doc.touch(n); });
+        return;
+    }
+    const layer = e.target.closest('[data-layer]');
+    if (layer) {
+        const id = layer.dataset.layer;
+        const now = performance.now(), last = state.lastLayerClick;
+        // The tree re-renders on every click, so double-click is detected with a timestamp instead of a dblclick event.
+        if (last && last.id === id && now - last.t < 420) {
+            state.lastLayerClick = null;
+            const n = doc.get(id);
+            if (n) {
+                select([id]);
+                const span = document.querySelector(`[data-layer="${id}"] .layer-name`);
+                if (span)
+                    inlineRename(span, n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
+            }
+            return;
+        }
+        state.lastLayerClick = { id, t: now };
+        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+            const set = new Set(state.selection);
+            if (set.has(id))
+                set.delete(id);
+            else
+                set.add(id);
+            select([...set]);
+        }
+        else
+            select([id]);
+        return;
+    }
+    const a = e.target.closest('[data-align]');
+    if (a) {
+        alignSelection(a.dataset.align);
+        return;
+    }
+    const toggle = e.target.closest('[data-toggle]');
+    if (toggle) {
+        toggleProperty(toggle.dataset.toggle);
+        return;
+    }
+    const textAlign = e.target.closest('[data-text-align]');
+    if (textAlign) {
+        setProperty('textAlign', textAlign.dataset.textAlign);
+        return;
+    }
+    const textStyle = e.target.closest('[data-text-style]');
+    if (textStyle) {
+        const n = activeNode();
+        if (!n)
+            return;
+        const s = textStyle.dataset.textStyle;
+        if (s === 'bold')
+            setProperty('fontWeight', n.fontWeight >= 700 ? 400 : 700);
+        if (s === 'italic')
+            setProperty('fontStyle', n.fontStyle === 'italic' ? 'normal' : 'italic');
+        if (s === 'underline')
+            setProperty('textDecoration', n.textDecoration === 'underline' ? 'none' : 'underline');
+        return;
+    }
+    const fill = e.target.closest('[data-fill]');
+    if (fill) {
+        setProperty('fill', fill.dataset.fill);
+        return;
+    }
+    const presetButton = e.target.closest('[data-preset]');
+    if (presetButton) {
+        preset(presetButton.dataset.preset);
+        return;
+    }
+    const asset = e.target.closest('[data-asset]');
+    if (asset) {
+        insertAsset(asset.dataset.asset);
+        return;
+    }
+});
+document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.matches('[data-prop]') && el.type !== 'checkbox' && el.tagName !== 'SELECT') {
+        let value = el.type === 'number' ? el.valueAsNumber : el.value;
+        if (el.type === 'color' || el.type === 'number' && Number.isFinite(value))
+            setProperty(el.dataset.prop, value, { live: true });
+    }
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches('[data-lh]')) {
+        const s = el.value.trim(), num = parseFloat(s), n = activeNode();
+        if (!n || !Number.isFinite(num) || num <= 0) {
+            renderInspector();
+            return;
+        }
+        setProperty('lineHeight', (s.endsWith('%') ? num / 100 : num / (n.fontSize || 16)) * 100);
+        return;
+    }
+    if (el.matches('[data-prop]')) {
+        const value = el.type === 'checkbox' ? el.checked : el.type === 'number' ? el.valueAsNumber : el.value;
+        setProperty(el.dataset.prop, value);
+        return;
+    }
+    if (el.matches('[data-hex]')) {
+        let value = el.value.trim();
+        if (value.toLowerCase() === 'none') {
+            setProperty(el.dataset.hex, 'none');
+            return;
+        }
+        if (!value.startsWith('#'))
+            value = '#' + value;
+        if (/^#[\da-f]{3}([\da-f]{3})?$/i.test(value)) {
+            if (value.length === 4)
+                value = '#' + value.slice(1).split('').map(c => c + c).join('');
+            setProperty(el.dataset.hex, value);
+        }
+        else {
+            toast('Enter a 3- or 6-digit hex color, or None.');
+            renderInspector();
+        }
+        return;
+    }
+    if (el.matches('[data-option]')) {
+        options[el.dataset.option] = el.checked;
+        saveOptions();
+        invalidate();
+        return;
+    }
+    if (el.id === 'canvas-color') {
+        options.canvasColor = el.value;
+        $('#canvas-world').style.backgroundColor = el.value;
+        saveOptions();
+        invalidate();
+    }
+});
+// ----- page list interactions: rename, delete, drag reorder & nesting -----
+$('#page-list').addEventListener('contextmenu', e => {
+    const row = e.target.closest('[data-page]');
+    if (!row)
+        return;
+    e.preventDefault();
+    const p = doc.data.pages.find(x => x.id === row.dataset.page);
+    if (!p)
+        return;
+    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
+});
+$('#page-list').addEventListener('dblclick', e => {
+    const row = e.target.closest('[data-page]');
+    if (!row || row.querySelector('input'))
+        return;
+    const p = doc.data.pages.find(x => x.id === row.dataset.page);
+    if (p)
+        renamePageInline(p.id);
+});
+$('#page-list').addEventListener('dragstart', e => {
+    const row = e.target.closest('[data-page]');
+    if (!row || row.dataset.divider)
+        return;
+    e.dataTransfer.setData('application/x-midas-page', row.dataset.page);
+    e.dataTransfer.effectAllowed = 'move';
+});
+$('#page-list').addEventListener('dragover', e => {
+    if (![...e.dataTransfer.types].includes('application/x-midas-page'))
+        return;
+    e.preventDefault();
+    $$('.page-row.drop-before, .page-row.drop-after, .page-row.drop-into').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-into'));
+    const row = e.target.closest('[data-page]');
+    if (!row || row.dataset.divider) {
+        state.pageDrop = { targetId: null, mode: 'after' };
+        return;
+    }
+    const p = doc.data.pages.find(x => x.id === row.dataset.page);
+    const r = row.getBoundingClientRect(), rel = (e.clientY - r.top) / Math.max(1, r.height);
+    let mode = rel < .28 ? 'before' : rel > .72 ? 'after' : 'into';
+    if (mode === 'into' && (!p || pageHasNodes(p)))
+        mode = rel < .5 ? 'before' : 'after';
+    row.classList.add('drop-' + mode);
+    state.pageDrop = { targetId: row.dataset.page, mode };
+});
+$('#page-list').addEventListener('dragleave', e => {
+    if (e.target === $('#page-list'))
+        state.pageDrop = null;
+});
+$('#page-list').addEventListener('drop', e => {
+    const src = e.dataTransfer.getData('application/x-midas-page');
+    if (!src)
+        return;
+    e.preventDefault();
+    $$('.page-row.drop-before, .page-row.drop-after, .page-row.drop-into').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-into'));
+    const drop = state.pageDrop || { targetId: null, mode: 'after' };
+    state.pageDrop = null;
+    movePage(src, drop.targetId, drop.mode);
+});
+$('#layer-tree').addEventListener('dragstart', e => {
+    const row = e.target.closest('[data-layer]');
+    if (!row)
+        return;
+    e.dataTransfer.setData('application/x-midas-layer', row.dataset.layer);
+    e.dataTransfer.effectAllowed = 'move';
+});
+$('#layer-tree').addEventListener('dragover', e => {
+    if (![...e.dataTransfer.types].includes('application/x-midas-layer'))
+        return;
+    const row = e.target.closest('[data-layer]');
+    if (row) {
+        e.preventDefault();
+        $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
+        row.classList.add('drop-target');
+    }
+});
+$('#layer-tree').addEventListener('dragleave', e => e.target.closest('.drop-target')?.classList.remove('drop-target'));
+$('#layer-tree').addEventListener('drop', e => {
+    e.preventDefault();
+    $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
+    const id = e.dataTransfer.getData('application/x-midas-layer'), row = e.target.closest('[data-layer]');
+    if (!id || !row)
+        return;
+    const source = doc.get(id), target = doc.get(row.dataset.layer);
+    if (!source || !target || source === target || doc.descendants(id).some(n => n.id === target.id))
+        return;
+    transaction('Reorder layer', () => {
+        const world = doc.world(id).matrix, parentId = e.shiftKey && ['frame', 'group'].includes(target.type) ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
+        source.parentId = parentId;
+        setFromMatrix(source, multiply(inverse(parentMatrix), world));
+        doc.nodes.splice(doc.nodes.indexOf(source), 1);
+        doc.nodes.splice(doc.nodes.indexOf(target) + 1, 0, source);
+        doc.refresh();
+        if (parentId)
+            state.expanded.add(parentId);
+        select([id]);
+    });
+});
+$('#assets-panel').addEventListener('dragstart', e => {
+    const card = e.target.closest('[data-component]');
+    if (!card)
+        return;
+    e.dataTransfer.setData('application/x-midas-component', card.dataset.component);
+    e.dataTransfer.effectAllowed = 'copy';
+});
+$('#assets-panel').addEventListener('dblclick', e => {
+    const c = e.target.closest('[data-component]');
+    if (c)
+        instantiate(c.dataset.component);
+});
+$('#assets-panel').addEventListener('click', e => {
+    const c = e.target.closest('[data-component]');
+    if (c && !e.detail)
+        instantiate(c.dataset.component);
+});
+$('#main-menu').onclick = () => showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, { label: 'Load Design System', action: 'loadDesignSystem' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
+$('#file-name').onclick = renameFile;
+$('#left-heading-title').addEventListener('dblclick', e => renameDocFrom(e.currentTarget));
+$('#crumb-home').onclick = () => showHome();
+$('#add-page').onclick = addPage;
+$('#theme-toggle').onclick = toggleTheme;
+$('#settings').onclick = settings;
+$('#help').onclick = help;
+$('#share').onclick = openExport;
+$('#present').onclick = () => present();
+$('#insert-image').onclick = () => $('#image-input').click();
+$('#command-button').onclick = commandPalette;
+$('#profile').onclick = () => toast('Your local workspace. No account, presence simulation, or cloud upload.');
+$('#canvas-status').onclick = () => toast('Saved to the data folder on this computer. Export a .midas copy to share it.');
+$('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');
+$('#search-button').onclick = () => {
+    $('#layer-search').classList.toggle('hidden');
+    if (!$('#layer-search').classList.contains('hidden'))
+        $('#search-layers').focus();
+    else {
+        $('#search-layers').value = '';
+        renderLayers();
+    }
+};
+$('#search-layers').oninput = renderLayers;
+$('#zoom-in').onclick = () => zoomAt(1.25);
+$('#zoom-out').onclick = () => zoomAt(.8);
+$('#zoom-value').onclick = e => showMenu([{ label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 150);
+$('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
+$('#image-input').onchange = e => { importImage(e.target.files[0]); e.target.value = ''; };
+$('#modal-backdrop').onclick = e => {
+    if (e.target === $('#modal-backdrop'))
+        closeModal();
+};
+document.addEventListener('pointerdown', e => {
+    if (!e.target.closest('#context-menu,#main-menu,#zoom-value'))
+        closeMenu();
+    if (!e.target.closest('#layer-tree'))
+        state.lastLayerClick = null;
+    if (!e.target.closest('#page-list'))
+        state.lastPageClick = null;
+});
+overlay.addEventListener('pointerdown', pointerDown);
+overlay.addEventListener('pointermove', pointerMove);
+overlay.addEventListener('pointerup', pointerUp);
+overlay.addEventListener('pointercancel', e => {
+    state.pointers.delete(e.pointerId);
+    state.pinch = null;
+    state.gesture = null;
+    state.guides = [];
+    state.marquee = null;
+    if (history.pending)
+        history.cancel();
+    refreshUI();
+    invalidate();
+});
+overlay.addEventListener('pointerleave', () => {
+    state.hover = null;
+    if (!state.gesture)
+        invalidate();
+});
+overlay.addEventListener('dblclick', e => {
+    const hit = hitTest(eventWorld(e), { deep: true });
+    if (state.tool === 'pen') {
+        finishPen(false);
+        return;
+    }
+    if (hit?.type === 'text') {
+        select([hit.id]);
+        startText(hit, true);
+    }
+    else if (hit?.type === 'path') {
+        select([hit.id]);
+        state.pathEdit = hit.id;
+        state.activePathPoint = null;
+        invalidate();
+        toast('Vector edit mode. Drag anchors or Bézier handles. Escape to finish.');
+    }
+    else if (hit) {
+        select([hit.id]);
+    }
+});
+overlay.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const hit = hitTest(eventWorld(e));
+    if (hit && !state.selection.has(hit.id))
+        select([hit.id]);
+    layerContextMenu(e.clientX, e.clientY);
+});
+$('#layer-tree').addEventListener('contextmenu', e => {
+    const row = e.target.closest('[data-layer]');
+    if (row) {
+        e.preventDefault();
+        if (!state.selection.has(row.dataset.layer))
+            select([row.dataset.layer]);
+        layerContextMenu(e.clientX, e.clientY);
+    }
+});
+window.addEventListener('keydown', e => { if (e.key === 'Control' || e.key === 'Meta')
+    state.ctrlDown = true; });
+window.addEventListener('keyup', e => { if (e.key === 'Control' || e.key === 'Meta')
+    state.ctrlDown = false; });
+window.addEventListener('blur', () => { state.ctrlDown = false; });
+area.addEventListener('wheel', e => {
+    if (!$('#modal-backdrop').classList.contains('hidden'))
+        return;
+    e.preventDefault();
+    const p = eventPoint(e);
+    if ((e.ctrlKey || e.metaKey) && state.ctrlDown) {
+        // Ctrl + mouse wheel: one notch = 3%; the faster the wheel spins, the bigger each step gets.
+        const now = performance.now(), dt = now - (state.zoomT || 0), raw = e.deltaY || e.deltaX;
+        state.zoomT = now;
+        state.zoomStreak = dt < 140 ? Math.min((state.zoomStreak || 0) + 1, 60) : 0;
+        const mag = Math.min(Math.abs(raw) / 100, 3) || 1, dir = -Math.sign(raw) || 1, z = state.camera.zoom;
+        let f = Math.max(.01, z + dir * 3 * mag / 100) / z;
+        if (state.zoomStreak > 1)
+            f = Math.pow(f, 1 + state.zoomStreak * .35);
+        zoomAt(clamp(f, .5, 2), p.x, p.y);
+    }
+    else if (e.ctrlKey || e.metaKey || e.altKey)
+        zoomAt(Math.exp(-clamp(e.deltaY, -100, 100) * .012), p.x, p.y);
+    else {
+        state.camera.x -= e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
+        state.camera.y -= e.shiftKey ? 0 : e.deltaY;
+        invalidate();
+    }
+}, { passive: false });
+area.addEventListener('dragover', e => {
+    if ([...e.dataTransfer.types].includes('Files') || [...e.dataTransfer.types].includes('application/x-midas-component'))
+        e.preventDefault();
+    if ([...e.dataTransfer.types].includes('Files'))
+        e.dataTransfer.dropEffect = 'copy';
+});
+area.addEventListener('drop', e => {
+    const compId = e.dataTransfer.getData('application/x-midas-component');
+    if (compId) {
+        e.preventDefault();
+        instantiate(compId, eventWorld(e));
+        return;
+    }
+    if (e.dataTransfer.files.length) {
+        e.preventDefault();
+        const f = e.dataTransfer.files[0];
+        if (/\.(midas|vellum|fig|json)$/i.test(f.name))
+            importDocument(f);
+        else
+            importImage(f, eventWorld(e));
+    }
+});
+$('#text-editor').addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishText();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishText();
+    }
+});
+$('#text-editor').addEventListener('paste', e => {
+    e.preventDefault();
+    const t = e.clipboardData.getData('text/plain');
+    const selection = window.getSelection();
+    if (!selection.rangeCount)
+        return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const text = document.createTextNode(t);
+    range.insertNode(text);
+    range.setStartAfter(text);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+});
+$('#text-editor').addEventListener('input', () => {
+    const el = $('#text-editor'), p = state.pendingText, t = el.innerText.replace(/\r\n/g, '\n').replace(/\n$/, '');
+    if (p) {
+        if (!t)
+            return;
+        history.begin('Create text');
+        const n = doc.add(node('text', { x: p.x, y: p.y, parentId: p.parentId, fill: p.fill, text: t, name: t.slice(0, 28), autoW: true }));
+        hugText(n);
+        doc.touch(n);
+        state.pendingText = null;
+        el.classList.remove('pending');
+        select([n.id]);
+        state.editing = n.id;
+        renderer.skipId = n.id;
+        if (document.activeElement !== el) {
+            el.focus();
+            const r = document.createRange(), sel = window.getSelection();
+            r.selectNodeContents(el);
+            r.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(r);
+        }
+        positionTextEditor();
+        invalidate();
+        return;
+    }
+    const n = state.editing && doc.get(state.editing);
+    if (n?.autoW) {
+        n.text = t;
+        hugText(n);
+        doc.touch(n);
+        positionTextEditor();
+        invalidate();
+    }
+    else if (n && isAutoLayout(doc.get(n.parentId))) {
+        n.text = t;
+        doc.touch(n);
+        positionTextEditor();
+        invalidate();
+    }
+});
+$('#text-editor').addEventListener('blur', () => setTimeout(() => {
+    if ((state.editing || state.pendingText) && !$('#text-editor').contains(document.activeElement))
+        finishText();
+}, 0));
+(function sidebarResizers() {
+    try {
+        const saved = JSON.parse(localStore.getItem('midas-sidebars') || '{}');
+        if (saved.left)
+            document.documentElement.style.setProperty('--left', saved.left + 'px');
+        if (saved.right)
+            document.documentElement.style.setProperty('--right', saved.right + 'px');
+    }
+    catch { }
+    for (const [id, varName, side, key] of [['left-panel', '--left', 'right', 'left'], ['right-panel', '--right', 'left', 'right']]) {
+        const el = document.getElementById(id), h = document.createElement('div');
+        h.className = 'side-resizer ' + side;
+        h.title = 'Drag to resize';
+        el.appendChild(h);
+        h.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            h.setPointerCapture(e.pointerId);
+            h.classList.add('on');
+            const sx = e.clientX, w0 = el.getBoundingClientRect().width;
+            const move = ev => {
+                const w = Math.round(Math.max(200, Math.min(560, side === 'right' ? w0 + ev.clientX - sx : w0 - (ev.clientX - sx))));
+                document.documentElement.style.setProperty(varName, w + 'px');
+                window.dispatchEvent(new Event('resize'));
+            };
+            const up = () => {
+                h.classList.remove('on');
+                h.removeEventListener('pointermove', move);
+                h.removeEventListener('pointerup', up);
+                try {
+                    const saved = JSON.parse(localStore.getItem('midas-sidebars') || '{}');
+                    saved[key] = Math.round(el.getBoundingClientRect().width);
+                    localStore.setItem('midas-sidebars', JSON.stringify(saved));
+                }
+                catch { }
+            };
+            h.addEventListener('pointermove', move);
+            h.addEventListener('pointerup', up);
+        });
+    }
+})();
+$('#close-presentation').onclick = closePreview;
+$('#prev-frame').onclick = () => stepPreview(-1);
+$('#next-frame').onclick = () => stepPreview(1);
+$('#presentation-canvas').onclick = e => {
+    const frame = state.previewFrames[state.previewIndex], b = e.target.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
+    const hit = hitTest(w, { deep: true });
+    const target = hit && [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget);
+    if (target) {
+        const index = state.previewFrames.findIndex(n => n.id === target.prototypeTarget);
+        if (index >= 0) {
+            state.previewIndex = index;
+            showPreview();
+        }
+    }
+};
+document.addEventListener('keydown', e => {
+    if (lib.open) {
+        if (e.key === 'Escape' && !isInput(document.activeElement) && lib.index.some(m => m.id === lib.fileId && !m.trashed))
+            hideHome();
+        return;
+    }
+    if (!$('#presentation').classList.contains('hidden')) {
+        if (e.key === 'Escape')
+            closePreview();
+        if (e.key === 'ArrowRight')
+            stepPreview(1);
+        if (e.key === 'ArrowLeft')
+            stepPreview(-1);
+        return;
+    }
+    if (!$('#modal-backdrop').classList.contains('hidden')) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+        }
+        if (e.key === 'Tab') {
+            const items = [...$('#modal').querySelectorAll('button,input,select,textarea,[tabindex]')].filter(el => !el.disabled), first = items[0], last = items.at(-1);
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last?.focus();
+            }
+            else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first?.focus();
+            }
+        }
+        return;
+    }
+    const cmd = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
+    if (isInput(e.target)) {
+        if (cmd && key === 's') {
+            e.preventDefault();
+            saveFile();
+        }
+        return;
+    }
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeMenu();
+        if (state.gesture && history.pending) {
+            history.cancel();
+            state.gesture = null;
+            state.marquee = null;
+            state.guides = [];
+            refreshUI();
+        }
+        else if (state.pen.length) {
+            state.pen = [];
+            state.penHover = null;
+            setTool('select');
+        }
+        else if (state.pathEdit)
+            state.pathEdit = null;
+        else
+            select([]);
+        setTool('select');
+        invalidate();
+        return;
+    }
+    // e.code, not e.key: Option on macOS turns letters into symbols.
+    if (cmd && e.altKey && !e.shiftKey && e.code === 'KeyM') {
+        e.preventDefault();
+        useAsMask();
+        return;
+    }
+    if (!cmd && e.altKey && e.shiftKey) {
+        const op = { KeyU: 'booleanUnion', KeyS: 'booleanSubtract', KeyI: 'booleanIntersect', KeyE: 'booleanExclude', KeyF: 'flatten' }[e.code];
+        if (op) {
+            e.preventDefault();
+            actions[op]();
+            return;
+        }
+    }
+    if (cmd) {
+        const handled = ['z', 'y', 'c', 'v', 'x', 'd', 'a', 'g', 'k', 's', 'o', 'n', 'r', 'b', 'i', 'u', 'l', 'h'].includes(key);
+        if (handled)
+            e.preventDefault();
+        if (key === 'z') {
+            e.shiftKey ? redo() : undo();
+            return;
+        }
+        if (key === 'y') {
+            redo();
+            return;
+        }
+        if (key === 'c') {
+            copySelection();
+            return;
+        }
+        if (key === 'v') {
+            pasteSelection();
+            return;
+        }
+        if (key === 'x') {
+            copySelection();
+            removeSelection();
+            return;
+        }
+        if (key === 'd') {
+            duplicate();
+            return;
+        }
+        if (key === 'a') {
+            select(doc.nodes.filter(n => !n.parentId && n.visible && !n.locked).map(n => n.id));
+            return;
+        }
+        if (key === 'g') {
+            e.shiftKey ? ungroupSelection() : groupSelection(e.altKey);
+            return;
+        }
+        if (key === 'k') {
+            e.altKey ? makeComponent() : e.shiftKey ? $('#image-input').click() : commandPalette();
+            return;
+        }
+        if (key === 's') {
+            saveFile();
+            return;
+        }
+        if (key === 'o') {
+            $('#file-input').click();
+            return;
+        }
+        if (key === 'n') {
+            newFile();
+            return;
+        }
+        if (key === 'r') {
+            state.selection.size ? renameLayer() : renameFile();
+            return;
+        }
+        if (key === 'l' && e.shiftKey) {
+            toggleProperty('locked');
+            return;
+        }
+        if (key === 'h' && e.shiftKey) {
+            toggleProperty('visible');
+            return;
+        }
+        if (['b', 'i', 'u'].includes(key)) {
+            const n = activeNode();
+            if (n?.type === 'text') {
+                setProperty(key === 'b' ? 'fontWeight' : key === 'i' ? 'fontStyle' : 'textDecoration', key === 'b' ? (n.fontWeight >= 700 ? 400 : 700) : key === 'i' ? (n.fontStyle === 'italic' ? 'normal' : 'italic') : (n.textDecoration === 'underline' ? 'none' : 'underline'));
+            }
+            return;
+        }
+    }
+    if (e.code === 'Space') {
+        e.preventDefault();
+        state.space = true;
+        overlay.style.cursor = 'grab';
+        return;
+    }
+    if (e.shiftKey && e.code === 'Digit1') {
+        e.preventDefault();
+        fit();
+        return;
+    }
+    if (e.shiftKey && e.code === 'Digit2') {
+        e.preventDefault();
+        fit([...state.selection]);
+        return;
+    }
+    if (e.shiftKey && e.code === 'Digit0') {
+        e.preventDefault();
+        zoomAt(1 / state.camera.zoom);
+        return;
+    }
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        document.body.classList.toggle('panels-hidden');
+        return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        removeSelection();
+        return;
+    }
+    if (e.key === 'F2') {
+        e.preventDefault();
+        renameLayer();
+        return;
+    }
+    if (e.key === 'Enter') {
+        if (state.pen.length)
+            finishPen();
+        else if (activeNode()?.type === 'text')
+            startText(activeNode(), true);
+        return;
+    }
+    if (e.key === '?' || e.key === '/') {
+        e.preventDefault();
+        help();
+        return;
+    }
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+        if (state.selection.size)
+            transaction('Nudge layers', () => {
+                const d = e.shiftKey ? options.bigNudge : options.nudge;
+                for (const n of selectedRoots()) {
+                    if (n.locked)
+                        continue;
+                    n.x += e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0;
+                    n.y += e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
+                    doc.touch(n);
+                }
+            });
+        return;
+    }
+    if (e.key === '[') {
+        e.preventDefault();
+        reorder(e.shiftKey ? 'back' : 'backward');
+        return;
+    }
+    if (e.key === ']') {
+        e.preventDefault();
+        reorder(e.shiftKey ? 'front' : 'forward');
+        return;
+    }
+    if ((e.key === '+' || e.key === '=') && !cmd) {
+        zoomAt(1.25);
+        return;
+    }
+    if (e.key === '-' && !cmd) {
+        zoomAt(.8);
+        return;
+    }
+    if (!cmd && !e.altKey && e.shiftKey && key === 'a') {
+        e.preventDefault();
+        addAutoLayout();
+        return;
+    }
+    if (!cmd && !e.altKey && e.shiftKey && key === 'r') {
+        e.preventDefault();
+        actions.rulers();
+        return;
+    }
+    if (!cmd && !e.altKey) {
+        const tools = { v: 'select', f: 'frame', r: 'rect', o: 'ellipse', l: 'line', p: 'pen', t: 'text', h: 'hand' };
+        if (tools[key]) {
+            e.preventDefault();
+            setTool(tools[key]);
+        }
+    }
+});
+document.addEventListener('keyup', e => {
+    if (e.code === 'Space') {
+        state.space = false;
+        overlay.style.cursor = state.tool === 'hand' ? 'grab' : 'default';
+    }
+});
+window.addEventListener('blur', () => {
+    state.space = false;
+    if (state.gesture) {
+        if (history.pending)
+            history.cancel();
+        state.gesture = null;
+        state.pointers.clear();
+        state.pinch = null;
+        state.guides = [];
+        state.marquee = null;
+        refreshUI();
+        invalidate();
+    }
+});
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.dirty)
+        save();
+});
+window.addEventListener('beforeunload', e => {
+    if (state.dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+const resize = new ResizeObserver(() => { const width = area.clientWidth, height = area.clientHeight; renderer.resize(width, height); overlay.width = Math.round(width * renderer.dpr); overlay.height = Math.round(height * renderer.dpr); invalidate(); });
+resize.observe(area);
+// Optional user-supplied fonts. No font binaries are bundled or fetched by this application.
+const fontInput = document.createElement('input');
+fontInput.type = 'file';
+fontInput.accept = '.ttf,.otf,.woff,.woff2';
+fontInput.hidden = true;
+document.body.append(fontInput);
+actions.loadFont = () => fontInput.click();
+commands.splice(commands.length - 3, 0, ['Load a local font…', 'loadFont']);
+async function loadStoredFonts() {
+    for (const [family, source] of Object.entries(doc.data.fonts || {})) {
+        if (typeof source !== 'string' || !source.startsWith('data:'))
+            continue;
+        try {
+            const face = await new FontFace(family, `url(${JSON.stringify(source)})`).load();
+            document.fonts.add(face);
+        }
+        catch (e) {
+            console.warn('Font not loaded:', family, e);
+        }
+    }
+}
+fontInput.onchange = async () => {
+    const file = fontInput.files[0];
+    if (!file)
+        return;
+    if (file.size > 15 * 1024 * 1024) {
+        toast('Font file exceeds 15 MB.');
+        return;
+    }
+    try {
+        const source = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }), family = file.name.replace(/\.(ttf|otf|woff2?)$/i, '').replace(/["\\]/g, '');
+        const face = await new FontFace(family, await file.arrayBuffer()).load();
+        document.fonts.add(face);
+        doc.data.fonts ||= {};
+        doc.data.fonts[family] = source;
+        if (selected().some(n => n.type === 'text'))
+            setProperty('fontFamily', family);
+        renderer.atlas?.reset();
+        renderer.cache.clear();
+        saveSoon();
+        renderInspector();
+        invalidate();
+        toast(`${family} loaded. Import only fonts you have permission to embed.`);
+    }
+    catch (e) {
+        toast('Could not load the font: ' + e.message);
+    }
+    fontInput.value = '';
+};
+await loadStoredFonts();
+await renderer.initialize();
+renderer.resize(area.clientWidth, area.clientHeight);
+overlay.width = Math.round(area.clientWidth * renderer.dpr);
+overlay.height = Math.round(area.clientHeight * renderer.dpr);
+if (!initial) {
+    const hero = doc.nodes.find(n => n.type === 'frame' && n.name === 'Your ideas. In motion.');
+    if (hero) {
+        state.selection.add(hero.id);
+        state.expanded.add(hero.parentId);
+    }
+    fit();
+}
+else
+    fit();
+if (options.canvasColor)
+    $('#canvas-world').style.backgroundColor = options.canvasColor;
+refreshUI();
+invalidate();
+if (!initial)
+    saveSoon();
+// Explicit, inspectable automation surface. This is the same model and command path used by the UI.
+window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
+
+$('#open-variables').addEventListener('click', () => toggleVarsWindow());
+$('#go-home').addEventListener('click', () => showHome());
+$('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
+showHome({ thumb: false });
+setTimeout(() => ensureGlobalIndexes(), 50);
