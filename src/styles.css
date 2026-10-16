@@ -2676,3 +2676,5 @@ select.vw-text { cursor: pointer }
 .sz-field { position: relative }
 .sz-field:hover .sz-mode { margin-right: 22px }
 .sz-field.var-bound-num .sz-mode { margin-right: 22px }
+.font-field-row.bound .font-field { background: var(--accent-bg) }
+.font-field-row.bound .var-btn { opacity: 1; color: var(--accent); right: 6px }

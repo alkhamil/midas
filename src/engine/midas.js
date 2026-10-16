@@ -735,6 +735,9 @@ function varValue(d, item, node, depth = 0) {
     let v = item.values[mode];
     if (v === undefined)
         v = item.values[coll.modes[0].id];
+    // No value for the default mode (Figma leaves modes unset): use the first mode that has one.
+    if (v === undefined)
+        v = coll.modes.map(m => item.values[m.id]).find(x => x !== undefined);
     if (v && typeof v === 'object' && v.alias) {
         const t = store.items.find(i => i.id === v.alias);
         if (!t || t.type !== item.type || depth > 20)
@@ -929,7 +932,7 @@ const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" st
 function varBindButton(prop) { return bindType(prop) ? `<button class="var-btn" data-var-bind="${prop}" title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
 function varChip(prop, v) {
     const val = varDisplayValue(v, activeNode());
-    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
+    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
     return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="var-x" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
 }
@@ -989,10 +992,10 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
                 shown++;
                 const val = varDisplayValue(i), leaf = i.name.split('/').pop();
                 if (grid) {
-                    row += `<button class="vpk-sw ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}" style="background:${esc(safeColor(String(val)))}"></button>`;
+                    row += `<button class="vpk-sw ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}" style="background:${esc(previewColor(val))}"></button>`;
                     continue;
                 }
-                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(safeColor(String(val)))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
+                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
                 const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : String(val ?? '');
                 row += `<button class="vp-item vpk-item ${g ? 'in-group' : ''} ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}">${sw}<span class="vp-name">${esc(leaf)}</span><span class="vp-val">${esc(shownVal)}</span>${i.id === current ? icon('check', 12) : ''}</button>`;
             }
@@ -1674,7 +1677,7 @@ function vwCell(item, coll, mode) {
     const alias = raw && typeof raw === 'object' && raw.alias ? varItem(raw.alias) : null;
     const aliasBtn = `<button class="vw-alias-btn" data-vw-alias="${key}" title="Apply variable alias" aria-label="Create alias">${VAR_ICON}</button>`;
     if (alias) {
-        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${safeColor(String(val))}"></i>` : `<i class="vc-glyph">${varGlyph(item.type)}</i>`;
+        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(item.type)}</i>`;
         // Clicking the chip opens the picker to swap the aliased variable without detaching first.
         const op = raw.opacity ?? 100, alpha = item.type === 'color' ? `<label class="vw-alpha ${op < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${op}" data-vw="${key}" data-vwt="alias-alpha" aria-label="Opacity"><span>%</span></label>` : '';
         return `<div class="vw-cell"><div class="vw-aliaschip"><button class="vw-alias-pick" data-vw-alias="${key}" title="Change variable">${sw}<span>${esc(alias.name)}</span></button><button data-vw-unalias="${key}" title="Detach alias" aria-label="Detach alias">${icon('close', 12)}</button></div>${alpha}</div>`;
@@ -2634,7 +2637,7 @@ function fillsSection(n) {
     const fills = getFills(n), simple = n.type === 'text';
     const rows = fills.length ? fills.map((f, i) => fillRow(n, f, i, simple)).join('') : '<span class="small-label">No fills</span>';
     const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="fill" title="Apply variable" aria-label="Apply variable to fill">${VAR_ICON}</button>`;
-    return section('Fill', rows, simple ? '' : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
+    return section('Fill', rows, simple ? varBtn : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
 }
 function addFill() {
     closeFillPicker();
@@ -2884,6 +2887,9 @@ function framePresetPanel() {
 function frameSection(ns) {
     const frames = ns.filter(n => n.type === 'frame');
     if (!frames.length || frames.length !== ns.length)
+        return '';
+    // Size presets belong to plain frames, not to components, variant sets or instances.
+    if (frames.some(f => f.component || f.componentSet || f.isInstance || f.sourceId))
         return '';
     const n = frames[0];
     let cur = '';
@@ -6219,7 +6225,78 @@ function syncComponents(activeOnly = true) {
             }
         }
     }
+    constrainInstanceLayers(targetPages);
     doc.touch();
+}
+// An instance sized differently from its main component lays its layers out by their constraints (Scale, Left & Right, …),
+// as in Figma. Geometry copied from the main component is re-derived here, top-down, unless the layer has its own override.
+function constrainInstanceLayers(pages) {
+    let all = null;
+    for (const page of pages) {
+        for (const root of page.nodes) {
+            if (!root.isInstance || !root.sourceId)
+                continue;
+            all ||= new Map(doc.data.pages.flatMap(p => p.nodes).map(n => [n.id, n]));
+            const rootSrc = all.get(root.sourceId);
+            if (!rootSrc || (root.w === rootSrc.w && root.h === rootSrc.h && !page.nodes.some(n => n.parentId === root.id && n.sourceId && all.get(n.sourceId) && (n.overrides?.w != null || n.overrides?.h != null))))
+                continue;
+            const kidsOf = new Map();
+            for (const n of page.nodes)
+                if (n.parentId)
+                    (kidsOf.get(n.parentId) || kidsOf.set(n.parentId, []).get(n.parentId)).push(n);
+            const visit = (p, depth) => {
+                const ps = all.get(p.sourceId);
+                if (!ps || depth > 50)
+                    return;
+                const dx = p.w - ps.w, dy = p.h - ps.h, fx = p.w / (ps.w || 1), fy = p.h / (ps.h || 1);
+                const auto = p.type === 'frame' && isAutoLayout(p), grp = p.type === 'group' || p.booleanOp;
+                for (const c of kidsOf.get(p.id) || []) {
+                    const cs = c.sourceId && all.get(c.sourceId);
+                    if (!cs || c.swapOf)
+                        continue;
+                    if (!(auto && c.layoutPositioning !== 'absolute')) {
+                        const g = { x: cs.x, y: cs.y, w: cs.w, h: cs.h };
+                        if (grp) {
+                            g.x *= fx;
+                            g.y *= fy;
+                            g.w *= fx;
+                            g.h *= fy;
+                        }
+                        else {
+                            const ch = cs.constraintH, cv = cs.constraintV;
+                            if (ch === 'right')
+                                g.x += dx;
+                            else if (ch === 'center')
+                                g.x += dx / 2;
+                            else if (ch === 'stretch')
+                                g.w = Math.max(1, g.w + dx);
+                            else if (ch === 'scale') {
+                                g.x *= fx;
+                                g.w *= fx;
+                            }
+                            if (cv === 'bottom')
+                                g.y += dy;
+                            else if (cv === 'center')
+                                g.y += dy / 2;
+                            else if (cv === 'stretch')
+                                g.h = Math.max(1, g.h + dy);
+                            else if (cv === 'scale') {
+                                g.y *= fy;
+                                g.h *= fy;
+                            }
+                        }
+                        for (const k of ['x', 'y', 'w', 'h'])
+                            if (!Object.hasOwn(c.overrides || {}, k) && Math.abs(c[k] - g[k]) > 1e-6) {
+                                c[k] = g[k];
+                                c.version = (c.version || 0) + 1;
+                            }
+                    }
+                    visit(c, depth + 1);
+                }
+            };
+            visit(root, 0);
+        }
+    }
 }
 function isImageLike(n) {
     if (!n)
@@ -6557,6 +6634,8 @@ function lineHeightField(n) {
     return `<label class="field${boundVar('lineHeight') ? ' var-bound-num' : ''}" title="Line height (px, or type a % of the font size)"><span>↕</span><input type="text" inputmode="decimal" data-lh value="${fmt(n.lineHeight * (n.fontSize || 16))}" aria-label="Line height" spellcheck="false"><i class="unit">px</i>${varBindButton('lineHeight')}</label>`;
 }
 function safeColor(c) { return /^#[\da-f]{3,8}$/i.test(c) ? c : '#0058CA'; }
+// Swatches in variable lists: a missing / unresolved value stays empty instead of masquerading as the brand blue.
+function previewColor(c) { return typeof c === 'string' && /^#[\da-f]{3,8}$/i.test(c) ? c : 'transparent'; }
 function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${fmt(value ?? 0)}" aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
 function field(label, prop, value, opts = {}) {
     const bv = bindType(prop) ? boundVar(prop) : null;
@@ -7261,12 +7340,22 @@ function selectionGeometry() {
 }
 function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
 function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
+// Components, variant sets, instances and everything inside them are selected in Figma's purple.
+const COMPONENT_PURPLE = '#9747FF';
+function inComponentTree(n) {
+    for (let cur = n, i = 0; cur && i < 200; cur = doc.get(cur.parentId), i++)
+        if (cur.component || cur.componentSet || cur.isInstance)
+            return true;
+    return false;
+}
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, overlay.width, overlay.height);
     c.scale(dpr, dpr);
-    const z = state.camera.zoom, accent = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
+    const z = state.camera.zoom, blue = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
+    const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
+    const accent = selNodes.length && selNodes.every(inComponentTree) ? COMPONENT_PURPLE : blue;
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     for (const s of doc.scene()) {
         if (s.node.type !== 'frame' || s.node.parentId)
@@ -7274,13 +7363,13 @@ function drawOverlay() {
         const p = worldToScreen(s.box.x, s.box.y);
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
-        c.fillStyle = state.selection.has(s.node.id) ? accent : options.theme === 'dark' ? '#8d839a' : '#8c8297';
+        c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
         c.fillText(s.node.name, p.x, p.y - 12);
     }
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
         if (s)
-            outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, '#5b9cf0', .8);
+            outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, inComponentTree(s.node) ? COMPONENT_PURPLE : '#5b9cf0', .8);
     }
     const g = selectionGeometry();
     if (g && !state.editing && !state.pathEdit) {
@@ -11445,6 +11534,64 @@ async function figToMidas(file, onProgress, abortSignal) {
     for (const p of pages)
         for (const n of p.nodes)
             owner.set(n.id, p);
+    // Same rules as constrainChildren (live resizing), applied to detached import nodes; changed geometry is recorded as overrides.
+    const constrainImported = (parent, oldW, oldH, kidsOfParent) => {
+        const dx = parent.w - oldW, dy = parent.h - oldH;
+        if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6)
+            return;
+        const auto = parent.type === 'frame' && isAutoLayout(parent);
+        for (const c of kidsOfParent.get(parent.id) || []) {
+            if (auto && c.layoutPositioning !== 'absolute')
+                continue;
+            const before = { x: c.x, y: c.y, w: c.w, h: c.h };
+            if (parent.type === 'group' || parent.booleanOp) {
+                const sx = parent.w / (oldW || 1), sy = parent.h / (oldH || 1);
+                c.x *= sx;
+                c.y *= sy;
+                c.w *= sx;
+                c.h *= sy;
+                if (c.type === 'text')
+                    c.fontSize *= Math.min(sx, sy);
+            }
+            else {
+                const fx = parent.w / (oldW || 1), fy = parent.h / (oldH || 1);
+                switch (c.constraintH) {
+                    case 'right':
+                        c.x += dx;
+                        break;
+                    case 'center':
+                        c.x += dx / 2;
+                        break;
+                    case 'stretch':
+                        c.w = Math.max(1, c.w + dx);
+                        break;
+                    case 'scale':
+                        c.x *= fx;
+                        c.w *= fx;
+                        break;
+                }
+                switch (c.constraintV) {
+                    case 'bottom':
+                        c.y += dy;
+                        break;
+                    case 'center':
+                        c.y += dy / 2;
+                        break;
+                    case 'stretch':
+                        c.h = Math.max(1, c.h + dy);
+                        break;
+                    case 'scale':
+                        c.y *= fy;
+                        c.h *= fy;
+                        break;
+                }
+            }
+            for (const k of ['x', 'y', 'w', 'h'])
+                if (Math.abs(c[k] - before[k]) > 1e-6)
+                    (c.overrides ||= {})[k] = c[k];
+            constrainImported(c, before.w, before.h, kidsOfParent);
+        }
+    };
     let instCount = 0;
     for (const { f, n } of pending) {
         if (++instCount % 50 === 0)
@@ -11503,6 +11650,12 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (Math.abs(n.w - src.w) > .5 || Math.abs(n.h - src.h) > .5) {
             n.overrides.w = n.w;
             n.overrides.h = n.h;
+            // The instance is not the master's size: lay its layers out by their constraints (Scale, Left & Right, …),
+            // like Figma does, and keep the result as overrides so syncing with the master does not undo it.
+            const kidsOfClone = new Map();
+            for (const c of [...clones.values()])
+                (kidsOfClone.get(c.parentId) || kidsOfClone.set(c.parentId, []).get(c.parentId)).push(c);
+            constrainImported(n, src.w, src.h, kidsOfClone);
         }
         for (const ov of f.symbolData?.symbolOverrides || []) {
             const guids = ov.guidPath?.guids || [];
@@ -11728,14 +11881,15 @@ function fontWeightOptions(n) {
 const fontCssFamily = fam => `'${String(fam).replace(/['"\\<>]/g, '')}', sans-serif`;
 function fontWeightFieldHtml(n) {
     const v = boundVar('fontWeight');
+    // Bound: same size as the normal field, blue like a bound number field; the bind button opens the picker (with Detach).
     if (v)
-        return `<div class="var-chip-row cell"><button class="var-chip" data-var-bind="fontWeight" title="${esc(v.name)} · ${esc(GF_WEIGHT_NAMES[n.fontWeight] || n.fontWeight)}"><i class="vc-glyph">${v.type === 'number' ? '#' : 'T'}</i><span>${esc(v.name)}</span></button><button class="var-x" data-var-detach="fontWeight" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+        return `<div class="font-field-row bound"><button class="font-field" data-var-bind="fontWeight" title="${esc(v.name)}" aria-label="Font weight bound to ${esc(v.name)}"><span class="ff-name">${esc(GF_WEIGHT_NAMES[n.fontWeight] || n.fontWeight)}</span></button>${varBindButton('fontWeight')}</div>`;
     return `<div class="font-field-row">${selectField('fontWeight', n.fontWeight, fontWeightOptions(n))}${varBindButton('fontWeight')}</div>`;
 }
 function fontFieldHtml(n) {
     const fam = n.fontFamily || 'Inter', v = boundVar('fontFamily'), label = '<div class="field-label"><span>Font family</span></div>';
     if (v)
-        return `${label}<div class="var-chip-row"><button class="var-chip" data-var-bind="fontFamily" title="${esc(v.name)} · ${esc(fam)}"><i class="vc-glyph">T</i><span>${esc(v.name)}</span><em class="vc-val" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</em></button><button class="var-x" data-var-detach="fontFamily" title="Detach variable" aria-label="Detach variable">${icon('close', 12)}</button></div>`;
+        return `${label}<div class="font-field-row bound"><button class="font-field" data-var-bind="fontFamily" title="${esc(v.name)}" aria-label="Font family bound to ${esc(v.name)}"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span></button>${varBindButton('fontFamily')}</div>`;
     return `${label}<div class="font-field-row"><button class="font-field" data-font-picker title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>${varBindButton('fontFamily')}</div>`;
 }
 // --- picker ---
