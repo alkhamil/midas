@@ -21,11 +21,28 @@ export interface LibrarySnapshot {
     variables?: { collections?: unknown[]; items?: unknown[] };
     /** Aset yang dipakai komponen (assetId → data URL), mis. SVG ikon. */
     assets?: Record<string, string>;
+    /** Komponen yang dipublish sebagai ikon, dengan SVG per gaya (diekspor Studio saat publish). */
+    icons?: SnapshotIcon[];
 }
 
-/** Ikon design system: component set bernama "Icon/<kategori>/<nama>" (lihat apps/studio/src/iconSet.js). */
+export interface SnapshotIcon {
+    componentKey: string;
+    name: string;
+    category: string;
+    /** gaya → SVG lengkap */
+    styles: Record<string, string>;
+}
+
+/** Penamaan lama ikon (snapshot sebelum `icons` ada): component set "Icon/<kategori>/<nama>". */
 export const ICON_PREFIX = 'Icon/';
 export const isIconComponent = (c: { name: string }) => c.name.startsWith(ICON_PREFIX);
+
+/** Komponen yang menjadi ikon: dari `snapshot.icons`, atau penamaan lama bila snapshot belum punya `icons`. */
+export function iconKeysOf(snapshot: LibrarySnapshot): Set<string> {
+    if (Array.isArray(snapshot.icons))
+        return new Set(snapshot.icons.map(i => i.componentKey));
+    return new Set(snapshot.components.filter(isIconComponent).map(c => c.id));
+}
 
 export type PropSource = 'variant' | 'text' | 'boolean' | 'instance' | 'slot';
 export type PropType = 'enum' | 'string' | 'boolean' | 'node';
@@ -118,10 +135,10 @@ export function deriveMapping(c: SnapshotComponent): ComponentMapping {
 }
 
 /** Mapping default untuk semua komponen, menimpa dengan mapping versi sebelumnya bila komponen/prop sama. */
-export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMapping[] = []): ComponentMapping[] {
+export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMapping[] = [], skip: Set<string> = iconKeysOf(snapshot)): ComponentMapping[] {
     const prev = new Map(previous.map(m => [m.componentKey, m]));
     // Ikon tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkannya terpisah.
-    return snapshot.components.filter(c => !isIconComponent(c)).map(c => {
+    return snapshot.components.filter(c => !skip.has(c.id)).map(c => {
         const d = deriveMapping(c), p = prev.get(c.id);
         if (!p)
             return d;

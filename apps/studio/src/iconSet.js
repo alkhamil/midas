@@ -10,6 +10,27 @@ const ICON_SIZE = 24, COL_W = 260, ROW_H = 80, COLS = 10;
 
 export const isIconName = name => typeof name === 'string' && name.startsWith(ICON_PREFIX);
 
+/**
+ * Komponen dianggap ikon bila berada di page bernama "Icons"/"Icon", atau namanya diawali
+ * "Icon/" / "Icons/". Desainer bisa mengubahnya per komponen di form publish.
+ */
+export function looksLikeIcon(componentName, pageName = '') {
+    return /^icons?\//i.test(String(componentName).trim()) || /^icons?$/i.test(String(pageName).trim());
+}
+
+/** "Icon/arrows/Arrow Left" → { name: "arrow-left", category: "arrows" }. */
+export function iconNameParts(componentName) {
+    const parts = String(componentName).replace(/^icons?\//i, '').split('/').map(slug).filter(Boolean);
+    const name = parts.pop() || 'icon';
+    return { name, category: parts.join('/') || 'general' };
+}
+
+/** Nama gaya dari variant, mis. { Style: 'Bold' } → "bold"; tanpa variant → "default". */
+export function iconStyleOf(variant) {
+    const values = Object.values(variant || {}).map(slug).filter(Boolean);
+    return values.join('-') || 'default';
+}
+
 const slug = s => String(s).trim().toLowerCase().replace(/\.svg$/i, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 /**

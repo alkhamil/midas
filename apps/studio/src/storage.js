@@ -364,7 +364,7 @@ export const libraryApi = {
     },
     history: id => api('GET', `/api/libraries/${enc(id)}`),
     /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
-    draft: (id, name, snapshot) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot }),
+    draft: (id, name, snapshot, iconKeys = []) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot, iconKeys }),
     packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
     publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => r.library),
     fileUses: async fileId => {

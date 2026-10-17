@@ -5,11 +5,11 @@ import { db } from '../db/index.js';
 import { componentMappings, designFiles, fileLibraries, libraries, libraryVersions } from '../db/schema.js';
 import { requireUser } from '../lib/auth.js';
 import {
-    breakingChanges, bumpSemver, compareSemver, deriveMappings, isIconComponent, PACKAGE_NAME_RE, packageSlug, SEMVER_RE, validateMappings,
+    breakingChanges, bumpSemver, compareSemver, deriveMappings, iconKeysOf, PACKAGE_NAME_RE, packageSlug, SEMVER_RE, validateMappings,
     type ComponentMapping, type LibrarySnapshot,
 } from '../lib/library.js';
 import { config } from '../config.js';
-import { buildKit, buildManifest, kitBreakingChanges, type KitInput } from '../lib/kit.js';
+import { buildKit, buildManifest, kitBreakingChanges, tokenBreakingChanges, type KitInput } from '../lib/kit.js';
 import { buildScaffold } from '../lib/scaffold.js';
 import { getObject, putObject } from '../lib/s3.js';
 import { zipFiles } from '../lib/zip.js';
@@ -22,6 +22,12 @@ const snapshotShape = z.object({
     components: z.array(z.object({ id: z.string().min(1), name: z.string(), set: z.boolean().optional(), nodes: z.array(z.object({ id: z.string() }).passthrough()) }).passthrough()),
     variables: z.object({ collections: z.array(z.unknown()).default([]), items: z.array(z.unknown()).default([]) }).passthrough().default({ collections: [], items: [] }),
     assets: z.record(z.string(), z.string()).default({}),
+    icons: z.array(z.object({
+        componentKey: z.string().min(1),
+        name: z.string().min(1),
+        category: z.string().default('general'),
+        styles: z.record(z.string(), z.string()),
+    })).optional(),
 });
 const propShape = z.object({
     source: z.enum(['variant', 'text', 'boolean', 'instance', 'slot']),
@@ -93,7 +99,7 @@ async function storeVersion(opts: {
     seq: number; version: string; releaseNotes?: string | null; snapshot: LibrarySnapshot; mappings: ComponentMapping[];
 }) {
     const published = Date.now();
-    const snap = { id: opts.libraryId, name: opts.name, packageName: opts.packageName, version: opts.seq, semver: opts.version, updated: published, components: opts.snapshot.components, variables: opts.snapshot.variables, assets: opts.snapshot.assets ?? {} };
+    const snap = { id: opts.libraryId, name: opts.name, packageName: opts.packageName, version: opts.seq, semver: opts.version, updated: published, components: opts.snapshot.components, variables: opts.snapshot.variables, assets: opts.snapshot.assets ?? {}, icons: opts.snapshot.icons ?? [] };
     const key = snapshotKey(opts.libraryId, opts.seq);
     await putObject(key, Buffer.from(JSON.stringify(snap)), 'application/json');
     await db.transaction(async tx => {
@@ -103,7 +109,7 @@ async function storeVersion(opts: {
             await tx.update(libraries).set({ name: opts.name }).where(eq(libraries.id, opts.libraryId));
         const [v] = await tx.insert(libraryVersions).values({
             libraryId: opts.libraryId, seq: opts.seq, version: opts.version, releaseNotes: opts.releaseNotes ?? null, snapshotKey: key,
-            componentsCount: opts.snapshot.components.filter(c => !isIconComponent(c)).length, variablesCount: opts.snapshot.variables?.items?.length ?? 0,
+            componentsCount: opts.mappings.length, variablesCount: opts.snapshot.variables?.items?.length ?? 0,
             manifest: buildManifest({ packageName: opts.packageName, version: opts.version, libraryName: opts.name, publishedAt: new Date(published), snapshot: opts.snapshot, mappings: opts.mappings }),
             publishedBy: opts.userId, publishedAt: new Date(published),
         }).returning({ id: libraryVersions.id });
@@ -113,17 +119,6 @@ async function storeVersion(opts: {
     return snap;
 }
 
-/** Jumlah ikon & gaya di snapshot, untuk ringkasan di form publish. */
-function iconSummary(snapshot: LibrarySnapshot) {
-    const sets = snapshot.components.filter(isIconComponent);
-    const styles = new Set<string>();
-    for (const c of sets)
-        for (const n of c.nodes)
-            if (n.parentId === c.id && n.component)
-                for (const v of Object.values(n.variant ?? {}))
-                    styles.add(v);
-    return { count: sets.length, styles: [...styles].sort() };
-}
 
 /** Versi berdasarkan semver (`version`) atau terbaru bila kosong. */
 async function versionOf(libraryId: string, version?: string): Promise<VersionRow | null> {
@@ -189,7 +184,8 @@ export async function libraryRoutes(app: FastifyInstance) {
 
     // Bahan form Publish Library: data library yang ada, mapping default, saran versi & nama paket.
     app.post<{ Params: { id: string } }>('/api/libraries/:id/draft', async (req, reply) => {
-        const body = z.object({ name: z.string().default(''), snapshot: snapshotShape }).safeParse(req.body);
+        // iconKeys = komponen yang ditebak Studio sebagai ikon (page "Icons" / nama "Icon/…").
+        const body = z.object({ name: z.string().default(''), snapshot: snapshotShape, iconKeys: z.array(z.string()).default([]) }).safeParse(req.body);
         if (!body.success)
             return reply.code(400).send({ error: 'invalid', message: body.error.issues[0].message });
         const f = await sourceFile(req, req.params.id);
@@ -198,8 +194,11 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = await libraryOf(req, f.id);
         const latest = l ? await latestVersion(l.id) : null;
         const previous = latest ? await mappingsOf(latest.id) : [];
-        const mappings = deriveMappings(body.data.snapshot as LibrarySnapshot, previous);
-        const breaking = [...breakingChanges(previous, mappings), ...(latest ? kitBreakingChanges(latest.manifest, body.data.snapshot as LibrarySnapshot) : [])];
+        const snapshot = body.data.snapshot as LibrarySnapshot, iconKeys = new Set(body.data.iconKeys);
+        // Mapping untuk semua komponen (termasuk tebakan ikon) supaya desainer bisa memindahkan komponen ↔ ikon di form.
+        const mappings = deriveMappings(snapshot, previous, new Set());
+        // Ikon dicek saat publish (SVG baru diekspor di sana); token bisa dicek sekarang.
+        const breaking = [...breakingChanges(previous, mappings.filter(m => !iconKeys.has(m.componentKey))), ...(latest ? tokenBreakingChanges(latest.manifest, snapshot) : [])];
         const name = l?.name ?? (body.data.name || f.name);
         return {
             library: l ? { id: l.id, name: l.name, packageName: l.packageName } : null,
@@ -209,7 +208,7 @@ export async function libraryRoutes(app: FastifyInstance) {
             mappings,
             previousMappings: previous,
             breaking,
-            icons: iconSummary(body.data.snapshot as LibrarySnapshot),
+            iconKeys: [...iconKeys],
         };
     });
 
@@ -248,11 +247,18 @@ export async function libraryRoutes(app: FastifyInstance) {
             errors.push('Versi harus berformat semver, mis. 1.2.0');
         const snapshotIds = new Set(b.snapshot.components.map(c => c.id));
         const mappings = b.mappings as ComponentMapping[];
-        if (!mappings.length && !(b.snapshot.variables.items?.length) && !b.snapshot.components.some(isIconComponent))
+        const iconKeys = iconKeysOf(b.snapshot as LibrarySnapshot);
+        if (!mappings.length && !(b.snapshot.variables.items?.length) && !iconKeys.size)
             errors.push('Pilih minimal satu komponen, atau buat Variables / ikon dulu');
-        for (const m of mappings)
+        for (const m of mappings) {
             if (!snapshotIds.has(m.componentKey))
                 errors.push(`Komponen ${m.componentName} tidak ada di snapshot`);
+            if (iconKeys.has(m.componentKey))
+                errors.push(`${m.componentName} tidak bisa sekaligus menjadi ikon dan komponen`);
+        }
+        for (const i of b.snapshot.icons ?? [])
+            if (!snapshotIds.has(i.componentKey))
+                errors.push(`Ikon ${i.name} tidak ada di snapshot`);
         errors.push(...validateMappings(mappings));
         const latest = l ? await latestVersion(l.id) : null;
         const previous = latest ? await mappingsOf(latest.id) : [];
@@ -267,18 +273,18 @@ export async function libraryRoutes(app: FastifyInstance) {
             return reply.code(400).send({ error: 'invalid', message: errors[0], errors, breaking });
         // Komponen yang dipilih (punya mapping) dan semua ikon masuk snapshot, beserta aset yang dipakainya.
         const chosen = new Set(mappings.map(m => m.componentKey));
-        const components = b.snapshot.components.filter(c => chosen.has(c.id) || isIconComponent(c));
+        const components = b.snapshot.components.filter(c => chosen.has(c.id) || iconKeys.has(c.id));
         const used = new Set(components.flatMap(c => c.nodes).flatMap(n => {
             const x = n as { assetId?: string; fills?: { type?: string; image?: string }[] };
             return [x.assetId, ...(Array.isArray(x.fills) ? x.fills.filter(f => f?.type === 'image').map(f => f.image) : [])].filter((v): v is string => !!v);
         }));
         const assets = Object.fromEntries(Object.entries(b.snapshot.assets).filter(([id]) => used.has(id)));
-        const snapshot = { components, variables: b.snapshot.variables, assets } as LibrarySnapshot;
+        const snapshot = { components, variables: b.snapshot.variables, assets, icons: b.snapshot.icons } as LibrarySnapshot;
         const snap = await storeVersion({
             libraryId: f.id, workspaceId: req.user!.workspaceId, userId: req.user!.id, name: b.name, packageName: l?.packageName ?? b.packageName,
             isNew: !l, seq: (latest?.seq ?? 0) + 1, version: b.version, releaseNotes: b.releaseNotes, snapshot, mappings,
         });
-        return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: snapshot.components.filter(c => !isIconComponent(c)).length, icons: snapshot.components.filter(isIconComponent).length, variables: snapshot.variables?.items?.length ?? 0, codeStatus: 'pending' }, breaking };
+        return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: mappings.length, icons: iconKeys.size, variables: snapshot.variables?.items?.length ?? 0, codeStatus: 'pending' }, breaking };
     });
 
     // Cari library dari nama paket (dipakai `midas sync` / `midas init`).

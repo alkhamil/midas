@@ -2761,3 +2761,9 @@ a.wide-button { text-decoration: none; color: inherit }
 .cb-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 20px; text-align: center; color: var(--text-secondary) }
 .cb-empty b { color: var(--text); font-size: 12px }
 .cb-empty p { margin: 0; max-width: 200px; line-height: 1.5 }
+.lp-icons summary { cursor: pointer; color: var(--text-secondary) }
+.lp-icon-row { display: flex; align-items: center; gap: 8px; padding: 3px 8px }
+.lp-vars { color: var(--muted); font-size: 10px }
+.asset-group { margin-top: 8px }
+.asset-icon-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+.asset-preview img.asset-svg { width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 6px; padding: 6px }

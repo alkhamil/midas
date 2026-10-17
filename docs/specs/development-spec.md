@@ -86,10 +86,11 @@ Prinsip pembagian kerja (**hybrid**):
 2. Susun di **Pages** seperti biasa, mis. Page `Foundations` (warna, tipografi, spacing), `Buttons`, `Forms`, `Table`, `Layout`.
 3. Buat **main component** + **variants** + **component properties** (mis. Button: `Type = Primary | Secondary | Destructive | Outline | Ghost`, `Size = sm | md`, `Disabled: boolean`, `Label: text`, `Icon: instance swap`).
 4. Definisikan warna, tipografi, spacing, radius sebagai **Variables** (bukan nilai hex lepas) — ini yang menjadi token tema.
-5. **Ikon** juga berasal dari design system (library UI **tidak** memakai paket ikon pihak ketiga seperti `lucide-react`). Assets → **Import icons** menerima folder SVG berpola `<gaya>/<kategori>/<nama>.svg` (mis. set WDS: `bold`, `bold-duotone`, `broken`, `line-duotone`, `outline`) dan membuat page **Icons**:
-   - satu component set per ikon bernama `Icon/<kategori>/<nama>`, satu variant per gaya (`Style=outline`, …);
-   - isi variant = node gambar berisi SVG asli (aset `image/svg+xml`);
-   - import ulang mengganti set dengan nama sama, set lain dipertahankan.
+5. **Ikon** juga berasal dari design system (library UI **tidak** memakai paket ikon pihak ketiga seperti `lucide-react`). Desainer membuat page **Icons** seperti biasa:
+   - setiap ikon = **main component** (atau component set bila punya beberapa gaya, mis. variant `Style=Bold | Outline`);
+   - isi ikon bebas: vector/pen tool, shape, boolean, hasil import Figma, atau SVG yang di-paste;
+   - komponen dianggap ikon bila berada di page bernama **Icons** (atau **Icon**), atau namanya diawali `Icon/` / `Icons/` (mis. `Icon/navigation/arrow-left` → kategori `navigation`, nama `arrow-left`). Desainer bisa mengubahnya per komponen di form publish.
+   - Fitur bantu (opsional): Assets → **Import icons** memasukkan folder SVG siap pakai berpola `<gaya>/<kategori>/<nama>.svg` (mis. set WDS) ke page Icons — satu component set per ikon, satu variant per gaya. Import ulang mengganti set dengan nama sama.
 
 ### 3.2. Publish Library
 
@@ -103,7 +104,9 @@ Tombol **Publish Library** pada file design system membuka form:
 | Catatan rilis | "Tambah variant Ghost pada Button" | Opsional |
 | Komponen yang dipublish | ☑ Button ☑ TextField ☐ Draft/… | Default semua main component, kecuali yang diawali `_` / `.` (privat) |
 
-Untuk setiap komponen, form juga menampilkan **Component Mapping**:
+Form memisahkan **Components** dan **Icons**. Ikon terdeteksi otomatis (lihat §3.1 poin 5); setiap baris bisa dipindah (*Icon* ↔ *Component*). Saat publish, Studio mengekspor setiap variant ikon ke SVG — gambar SVG dipakai apa adanya, selain itu diekspor dari layer-nya (vector, shape, boolean) — dan mengirimnya di snapshot (`snapshot.icons`).
+
+Untuk setiap komponen (bukan ikon), form juga menampilkan **Component Mapping**:
 - **Export name** di kode (default dari nama komponen, PascalCase: "Text Field" → `TextField`).
 - **Props mapping**: component property / variant → prop kode (mis. `Type=Primary` → `variant="primary"`, `Disabled` → `disabled`).
 - Pengecekan otomatis: nama export bentrok, variant tanpa mapping, warna/tipografi yang tidak memakai Variables → peringatan.
@@ -139,7 +142,7 @@ Aturan pembangkitan:
 - **Tema** = nama mode dari collection Variables yang punya lebih dari satu mode (mis. Light/Dark → `light`, `dark`); collection satu mode berlaku untuk semua tema. Alias di-resolve per tema.
 - **Nama token** = path Variable dalam camelCase, tanpa grup awal `color/` untuk warna: `color/primary-foreground` → `primaryForeground` → `--theme-primary-foreground`; `radius/md` → `radiusMd`. Number → `px`. Variable `effect` belum didukung (muncul sebagai peringatan).
 - **Props**: variant → union string (`"primary" | "ghost"`) atau boolean bila nilainya true/false; property text → `string`, boolean → `boolean`, instance swap / slot → `ReactNode` (slot pertama → `children`). Semua prop opsional; default = varian pertama dan default component property. Setiap komponen juga punya `testId`.
-- **Ikon**: component set `Icon/…` tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkan komponen ikon React dari SVG-nya. Warna yang paling banyak dipakai di SVG diganti `currentColor` (ikon ikut warna teks), opacity/duotone dan warna lain dipertahankan; atribut `on*` dan `<script>` dibuang. Default gaya = `outline` bila ada. Setiap ikon diberi anotasi `/* @__PURE__ */` sehingga aplikasi hanya membundel ikon yang dipakai.
+- **Ikon**: komponen yang dipublish sebagai ikon tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkan komponen ikon React dari SVG hasil export (`snapshot.icons`). Gaya = nilai variant (tanpa variant → `default`). Warna yang paling banyak dipakai di SVG diganti `currentColor` (ikon ikut warna teks), opacity/duotone dan warna lain dipertahankan; `<script>`, atribut `on*`, serta `<title>`/`<desc>`/`<metadata>` dari export dibuang. Default gaya = `outline` bila ada. Setiap ikon diberi anotasi `/* @__PURE__ */` sehingga aplikasi hanya membundel ikon yang dipakai.
 - Snapshot library membawa aset yang dipakai komponen (data URL), sehingga file lain yang memakai library dan Library Kit mendapat gambar/ikon yang sama.
 - Hasilnya deterministik per versi, sehingga sync bisa diulang dengan aman.
 

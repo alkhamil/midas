@@ -156,3 +156,44 @@ test('resolve, kit and scaffold zip for a published version', async () => {
     const list = await call('GET', '/api/libraries');
     assert.ok(list.body.libraries.find((l: { id: string }) => l.id === dsFile));
 });
+
+// Ikon yang digambar desainer dengan vector, di page "Icons", tanpa variant — SVG diekspor Studio (exportSVG).
+const vectorSvg = (color: string) => `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><title>DS</title><desc>Created with Midas.</desc><defs></defs><path d="M4 12h16" stroke="${color}" stroke-width="2" fill="none"/><path d="M10 6l-6 6 6 6" stroke="${color}" stroke-width="2" fill="none"/></svg>`;
+const iconComp = { id: 'ic-back', name: 'Back', nodes: [{ id: 'ic-back', parentId: null, component: true }, { id: 'ic-back-path', parentId: 'ic-back', type: 'path' }] };
+const dsIcons = `ds-icons-${stamp}`;
+
+test('icons drawn as vectors are published from snapshot.icons', async () => {
+    await call('PUT', `/api/files/${dsIcons}`, { name: 'Icon DS', meta: { name: 'Icon DS', pageMeta: [] }, baseVersion: null });
+    const snap = { components: [button(), iconComp], variables: { collections: [], items: [] } };
+    const d = await call('POST', `/api/libraries/${dsIcons}/draft`, { snapshot: snap, iconKeys: ['ic-back'] });
+    assert.deepEqual(d.body.iconKeys, ['ic-back']);
+    assert.deepEqual(d.body.mappings.map((m: { componentKey: string }) => m.componentKey).sort(), ['btn', 'ic-back'], 'draft maps every component so the designer can switch');
+    const buttonMapping = d.body.mappings.filter((m: { componentKey: string }) => m.componentKey === 'btn');
+    const icons = [{ componentKey: 'ic-back', name: 'back', category: 'navigation', styles: { default: vectorSvg('#1C274C') } }];
+    const both = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.0.0', snapshot: { ...snap, icons }, mappings: d.body.mappings });
+    assert.equal(both.status, 400);
+    assert.match(both.body.errors.join(), /sekaligus menjadi ikon dan komponen/);
+    const ok = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.0.0', snapshot: { ...snap, icons }, mappings: buttonMapping });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.library.components, 1);
+    assert.equal(ok.body.library.icons, 1);
+    const kit = await call('GET', `/api/libraries/${dsIcons}/kit`);
+    const file = kit.body.files['src/generated/icons/BackIcon.ts'];
+    assert.match(file, /createIcon\("back"/);
+    assert.match(file, /"default": \{/);
+    assert.match(file, /stroke=\\"currentColor\\"/);
+    assert.doesNotMatch(file, /<\?xml|#1C274C|<title>|<desc>|<defs>/i);
+    assert.match(kit.body.files['src/generated/icons/createIcon.tsx'], /export type IconStyle = "default";/);
+    // File lain yang memakai library tetap mendapat komponen ikon di snapshot.
+    const s = await call('GET', `/api/libraries/${dsIcons}/snapshot`);
+    assert.deepEqual(s.body.components.map((c: { id: string }) => c.id).sort(), ['btn', 'ic-back']);
+});
+
+test('removing a published icon requires a major version', async () => {
+    const snap = { components: [button()], variables: { collections: [], items: [] }, icons: [] };
+    const d = await call('POST', `/api/libraries/${dsIcons}/draft`, { snapshot: snap, iconKeys: [] });
+    const minor = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.1.0', snapshot: snap, mappings: d.body.mappings });
+    assert.equal(minor.status, 400);
+    assert.match(minor.body.errors.join(), /minimal 2\.0\.0/);
+    assert.ok(minor.body.breaking.includes('Ikon back dihapus'));
+});

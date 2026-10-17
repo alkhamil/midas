@@ -36,7 +36,8 @@ export function normalizeSvg(svg: string): IconStyleSource | null {
     const vb = /viewBox\s*=\s*"([^"]+)"/i.exec(attrs)?.[1]
         ?? `0 0 ${/\swidth\s*=\s*"([\d.]+)/i.exec(attrs)?.[1] ?? 24} ${/\sheight\s*=\s*"([\d.]+)/i.exec(attrs)?.[1] ?? 24}`;
     let body = svg.slice(open.index + open[0].length, close)
-        .replace(/<\?xml[^>]*>|<!--[\s\S]*?-->|<script[\s\S]*?<\/script>/gi, '')
+        // Komentar, script, dan metadata (title/desc dari export Midas/Figma akan tampil sebagai tooltip) dibuang.
+        .replace(/<\?xml[^>]*>|<!--[\s\S]*?-->|<script[\s\S]*?<\/script>|<title[\s\S]*?<\/title>|<desc[\s\S]*?<\/desc>|<metadata[\s\S]*?<\/metadata>|<defs>\s*<\/defs>/gi, '')
         .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
         .trim();
     const counts = new Map<string, number>();
@@ -51,11 +52,42 @@ export function normalizeSvg(svg: string): IconStyleSource | null {
     return { viewBox: vb.trim(), body: body.replace(/\s*\n\s*/g, '') };
 }
 
+/** Beri nama export unik; nama ikon kembar di kategori berbeda diberi awalan kategori. */
+function addIcon(icons: IconSource[], used: Map<string, string>, warnings: string[], label: string, name: string, category: string, styles: Record<string, IconStyleSource>) {
+    let exportName = iconExportName(name);
+    if (used.has(exportName))
+        exportName = iconExportName(`${category}-${name}`);
+    if (used.has(exportName)) {
+        warnings.push(`Ikon ${label} bentrok dengan ${used.get(exportName)} — dilewati`);
+        return;
+    }
+    used.set(exportName, label);
+    icons.push({ name: icons.some(i => i.name === name) ? `${category}-${name}` : name, category, exportName, styles });
+}
+
 /** Semua ikon di snapshot (urut nama), dengan nama export unik. */
 export function collectIcons(snapshot: LibrarySnapshot): { icons: IconSource[]; warnings: string[] } {
     const warnings: string[] = [];
     const icons: IconSource[] = [];
     const used = new Map<string, string>();
+    // Snapshot baru: SVG per gaya sudah diekspor Studio dari layer ikon (vector, shape, gambar SVG).
+    if (Array.isArray(snapshot.icons)) {
+        for (const i of snapshot.icons) {
+            const styles: Record<string, IconStyleSource> = {};
+            for (const [style, svg] of Object.entries(i.styles)) {
+                const norm = normalizeSvg(svg);
+                if (norm)
+                    styles[style] = norm;
+                else
+                    warnings.push(`Ikon ${i.name} (${style}) bukan SVG yang valid — dilewati`);
+            }
+            if (Object.keys(styles).length)
+                addIcon(icons, used, warnings, `${i.category}/${i.name}`, i.name, i.category, styles);
+        }
+        icons.sort((a, b) => a.name.localeCompare(b.name));
+        return { icons, warnings };
+    }
+    // Snapshot lama: component set "Icon/…" berisi gambar SVG.
     for (const c of snapshot.components.filter(isIconComponent)) {
         const path = c.name.slice(ICON_PREFIX.length).split('/').map(s => s.trim()).filter(Boolean);
         const name = path.pop() ?? '';
@@ -81,15 +113,7 @@ export function collectIcons(snapshot: LibrarySnapshot): { icons: IconSource[]; 
         }
         if (!name || !Object.keys(styles).length)
             continue;
-        let exportName = iconExportName(name);
-        if (used.has(exportName))
-            exportName = iconExportName(`${category}-${name}`);
-        if (used.has(exportName)) {
-            warnings.push(`Ikon ${c.name} bentrok dengan ${used.get(exportName)} — dilewati`);
-            continue;
-        }
-        used.set(exportName, c.name);
-        icons.push({ name: icons.some(i => i.name === name) ? `${category}-${name}` : name, category, exportName, styles });
+        addIcon(icons, used, warnings, c.name, name, category, styles);
     }
     icons.sort((a, b) => a.name.localeCompare(b.name));
     return { icons, warnings };

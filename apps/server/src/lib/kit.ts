@@ -255,12 +255,18 @@ export function buildKit(input: KitInput): KitFiles {
 
 /** Token & ikon yang hilang dibanding manifest versi sebelumnya — juga breaking change (kode bisa memakainya). */
 export function kitBreakingChanges(previousManifest: unknown, snapshot: LibrarySnapshot): string[] {
-    const prev = (previousManifest ?? {}) as { tokens?: { key: string }[]; icons?: { name: string; styles: string[] }[] };
-    const out: string[] = [];
+    return [...tokenBreakingChanges(previousManifest, snapshot), ...iconBreakingChanges(previousManifest, snapshot)];
+}
+
+export function tokenBreakingChanges(previousManifest: unknown, snapshot: LibrarySnapshot): string[] {
+    const prev = (previousManifest ?? {}) as { tokens?: { key: string }[] };
     const tokens = new Set(buildTokens(snapshot).keys.map(k => k.key));
-    for (const t of prev.tokens ?? [])
-        if (!tokens.has(t.key))
-            out.push(`Token ${t.key} dihapus`);
+    return (prev.tokens ?? []).filter(t => !tokens.has(t.key)).map(t => `Token ${t.key} dihapus`);
+}
+
+export function iconBreakingChanges(previousManifest: unknown, snapshot: LibrarySnapshot): string[] {
+    const prev = (previousManifest ?? {}) as { icons?: { name: string; styles: string[] }[] };
+    const out: string[] = [];
     const icons = new Map(collectIcons(snapshot).icons.map(i => [i.name, new Set(Object.keys(i.styles))]));
     for (const i of prev.icons ?? []) {
         const now = icons.get(i.name);

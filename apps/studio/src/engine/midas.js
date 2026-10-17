@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
-import { buildIconPage, isIconName, assetIdsOf } from '../iconSet.js';
+import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
 
 
 // ===== document.js =====
@@ -5529,10 +5529,16 @@ class ImageStore {
         }
         return null;
     }
-    async ready() {
-        for (const id of Object.keys(this.doc.data.assets))
+    // Tunggu gambar yang dibutuhkan saja (`ids`); tanpa argumen: semua aset dokumen.
+    // Penting untuk design system dengan ribuan ikon SVG: dekode SVG berjalan di main thread.
+    async ready(ids = Object.keys(this.doc.data.assets)) {
+        const waits = [];
+        for (const id of ids) {
             this.get(id);
-        await Promise.all(this.pending.values());
+            if (this.pending.has(id))
+                waits.push(this.pending.get(id));
+        }
+        await Promise.all(waits);
     }
 }
 const WGSL = /* wgsl */ `
@@ -6060,13 +6066,13 @@ class Renderer {
         ctx.drawImage(tmp, 0, 0, n.w, n.h);
     }
     async exportCanvas(ids, scale = 2) {
-        await this.images.ready();
         const included = new Set();
         for (const id of ids) {
             included.add(id);
             for (const n of this.doc.descendants(id))
                 included.add(n.id);
         }
+        await this.images.ready([...assetIdsOf([...included].map(id => this.doc.get(id)).filter(Boolean))]);
         const box = this.doc.bounds(ids);
         if (!box)
             throw new Error('Nothing to export.');
@@ -10033,6 +10039,57 @@ async function snapshotAssets(components) {
             used[id] = doc.data.assets[id];
     return assetsAsDataUrls(lib.fileId, used);
 }
+// ===== ikon untuk library: komponen di page "Icons" / bernama "Icon/…" → SVG per gaya =====
+// Ekspor SVG node di page mana pun (exportSVG hanya membaca page aktif).
+function exportSvgAnyPage(id) {
+    const page = pageOfNode(id);
+    if (!page)
+        throw new Error('Layer not found.');
+    if (page.id === doc.page.id)
+        return exportSVG(doc, [id]);
+    const prev = doc.data.pageId;
+    doc.data.pageId = page.id;
+    doc.refresh();
+    try {
+        return exportSVG(doc, [id]);
+    }
+    finally {
+        doc.data.pageId = prev;
+        doc.refresh();
+    }
+}
+// SVG satu variant ikon. Isi berupa satu gambar SVG dipakai apa adanya; selain itu (vector, shape, boolean,
+// hasil import Figma) diekspor dari layer-nya.
+async function iconVariantSvg(v) {
+    const kids = subtreeOf(v.id).filter(n => n.id !== v.id && n.visible !== false);
+    const only = kids.length === 1 ? kids[0] : kids.length === 0 ? v : null;
+    const imageId = only && (only.type === 'image' ? only.assetId : (Array.isArray(only.fills) && only.fills.length === 1 && only.fills[0].type === 'image' ? only.fills[0].image : null));
+    const url = imageId && doc.data.assets[imageId];
+    if (url) {
+        let text = dataUrlToSvg(url);
+        if (!text && url.startsWith('/api/'))
+            text = await fetch(url, { credentials: 'same-origin' }).then(r => (r.ok && /svg/.test(r.headers.get('content-type') || '') ? r.text() : null)).catch(() => null);
+        if (text && /<svg[\s>]/i.test(text))
+            return text;
+    }
+    return exportSvgAnyPage(v.id);
+}
+// Sumber ikon untuk snapshot: satu entri per komponen ikon, gaya dari variant (tanpa variant → "default").
+async function iconSources(roots) {
+    const out = [];
+    for (const r of roots) {
+        const variants = r.componentSet ? setVariants(r) : [r], styles = {};
+        for (const v of variants) {
+            try {
+                styles[r.componentSet ? iconStyleOf(v.variant) : 'default'] = await iconVariantSvg(v);
+            }
+            catch { }
+        }
+        if (Object.keys(styles).length)
+            out.push({ componentKey: r.id, ...iconNameParts(r.name), styles });
+    }
+    return out;
+}
 async function publishLibrary() {
     const snapshot = librarySnapshot();
     if (!snapshot.components.length && !snapshot.variables.items.length) {
@@ -10048,38 +10105,57 @@ async function publishLibrary() {
         toast(`Could not read the images used by components: ${e?.message || e}`);
         return;
     }
+    // Tebakan awal: komponen di page "Icons" atau bernama "Icon/…" adalah ikon; bisa diubah di form.
+    const iconKeys = snapshot.components.filter(c => looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
     let draft;
     try {
-        draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot);
+        draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot, iconKeys);
     }
     catch (e) {
         toast(`Could not prepare the library: ${e?.message || e}`);
         return;
     }
-    publishDialog(snapshot, draft);
+    publishDialog(snapshot, draft, new Set(iconKeys));
 }
 const semverBump = (v, part) => { const [M, m, p] = String(v).split('.').map(Number); return part === 'major' ? `${M + 1}.0.0` : part === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`; };
-// Publish Library form (spec §3.2): library + package name, version, release notes and the component → code mapping.
-function publishDialog(snapshot, draft) {
+// Publish Library form (spec §3.2): library + package name, version, release notes, the component → code mapping
+// and which components are icons (icons become React icon components in the Library Kit instead of mapped components).
+function publishDialog(snapshot, draft, iconKeys) {
     const isNew = !draft.library, latest = draft.latest;
     const mappings = structuredClone(draft.mappings);
     const include = mappings.map(m => !/^[_.]/.test(m.componentName));
-    const vars = snapshot.variables.items.length, iconCount = draft.icons?.count || 0;
+    const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
+    const vars = snapshot.variables.items.length;
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
-    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components and variables; developers get a frontend package with the same version.')}
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
+    const lists = () => {
+        const comps = mappings.map((m, i) => (isIcon[i] ? '' : compRow(m, i))).join(''), icons = mappings.map((m, i) => (isIcon[i] ? iconRow(m, i) : '')).join('');
+        const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
+        return `<div class="lp-field"><span>Components (${nComp}) · export name in code</span><div class="lp-comps">${comps || '<p class="small-label">No components.</p>'}</div></div>
+<details class="lp-field lp-icons" ${nIcon && nIcon <= 12 ? 'open' : ''}><summary>Icons (${nIcon}) · React icon components, color follows the text</summary><small>Detected from the Icons page and names starting with “Icon/”. Each variant (e.g. Style=Bold) becomes an icon style.</small><div class="lp-comps">${icons || '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</div></details>`;
+    };
+    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables; developers get a frontend package with the same version.')}
 <form id="lp-form" class="lp-form" novalidate>
 <label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
 <label class="lp-field"><span>Frontend package</span><input class="lp-input lp-mono" id="lp-pkg" value="${esc(draft.packageName)}" ${isNew ? '' : 'disabled'} spellcheck="false" autocomplete="off"><small id="lp-pkg-msg">${isNew ? 'Locked after the first publish. Format: @midas/name' : 'Locked — set on the first publish.'}</small></label>
 <div class="lp-field"><span>Version</span><div class="lp-version"><input class="lp-input lp-mono" id="lp-version" value="${esc(draft.suggestedVersion)}" spellcheck="false" autocomplete="off">${latest ? ['patch', 'minor', 'major'].map(k => `<button type="button" class="cmp-btn" data-lp-bump="${k}">${k}</button>`).join('') : ''}</div><small>${latest ? `Latest: ${esc(latest.version)} · published ${timeAgo(latest.publishedAt)}` : 'First release.'}</small></div>
 ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a major version</b><ul>${draft.breaking.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
 <label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
-<div class="lp-field"><span>Components (${mappings.length}) · export name in code</span><div class="lp-comps">${mappings.length ? mappings.map(compRow).join('') : '<p class="small-label">No components — only variables are published.</p>'}</div><small>${vars} variable${vars === 1 ? '' : 's'}${draft.icons?.count ? ` and ${draft.icons.count} icon${draft.icons.count === 1 ? '' : 's'} (${draft.icons.styles.map(esc).join(', ')})` : ''} from this file are included.</small></div>
+<div id="lp-lists">${lists()}</div>
+<small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are included as theme tokens.</small>
 <div id="lp-errors" class="lp-errors hidden" role="alert"></div>
 <div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="lp-submit">Publish ${esc(draft.suggestedVersion)}</button></div>
 </form>`);
     const form = $('#lp-form'), version = $('#lp-version'), submit = $('#lp-submit'), errorsBox = $('#lp-errors');
     const showErrors = list => { errorsBox.innerHTML = list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; errorsBox.classList.toggle('hidden', !list.length); };
+    // Ambil isian form ke model sebelum daftar digambar ulang atau dikirim.
+    const collect = () => {
+        form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
+        form.querySelectorAll('[data-lp-export]').forEach(el => { mappings[+el.dataset.lpExport].exportName = el.value.trim(); });
+        form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
+        form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });
+    };
     version.oninput = () => { submit.textContent = `Publish ${version.value.trim() || ''}`; };
     let pkgTimer;
     if (isNew)
@@ -10095,31 +10171,37 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             }, 300);
         };
     form.addEventListener('click', e => {
-        const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]');
+        const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]'), kind = e.target.closest('[data-lp-kind]');
         if (bump) {
             version.value = semverBump(latest.version, bump.dataset.lpBump);
             version.oninput();
         }
         if (fold)
             form.querySelector(`[data-lp-props="${fold.dataset.lpFold}"]`).classList.toggle('hidden');
+        if (kind) {
+            collect();
+            isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
+            $('#lp-lists').innerHTML = lists();
+        }
     });
     form.onsubmit = async e => {
         e.preventDefault();
-        form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
-        form.querySelectorAll('[data-lp-export]').forEach(el => { mappings[+el.dataset.lpExport].exportName = el.value.trim(); });
-        form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
-        form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });
-        const chosen = mappings.filter((_, i) => include[i]);
-        if (!chosen.length && !vars && !iconCount)
-            return showErrors(['Choose at least one component to publish.']);
+        collect();
+        const chosen = mappings.filter((_, i) => include[i] && !isIcon[i]);
+        const byId = new Map(allNodes().map(n => [n.id, n]));
+        const iconRoots = mappings.filter((_, i) => include[i] && isIcon[i]).map(m => byId.get(m.componentKey)).filter(Boolean);
+        if (!chosen.length && !vars && !iconRoots.length)
+            return showErrors(['Choose at least one component or icon to publish.']);
         submit.disabled = true;
-        submit.textContent = 'Publishing…';
+        submit.textContent = iconRoots.length ? `Exporting ${iconRoots.length} icon${iconRoots.length === 1 ? '' : 's'}…` : 'Publishing…';
         try {
-            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot, mappings: chosen });
+            const icons = await iconSources(iconRoots);
+            submit.textContent = 'Publishing…';
+            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, icons }, mappings: chosen });
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
-            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}${published.icons ? `, ${published.icons} icon${published.icons === 1 ? '' : 's'}` : ''}.`);
+            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
             renderAssets();
         }
         catch (err) {
@@ -10376,13 +10458,28 @@ function renderAssets() {
         $('#assets-panel').innerHTML = head + `<p class="small-label">No components yet. Select a layer and click “Create component” (⌥⌘K). Instances you place stay linked to the main component.</p>`;
         return;
     }
-    $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + entries.map(en => {
-        const n = en.comp, cached = thumbCache.get(n.id), page = pageOfNode(en.target);
-        const prev = cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(n.fill)}">${esc(en.name)}</div>`;
+    // Ikon (page "Icons" / nama "Icon/…") dikelompokkan dan baru digambar saat grupnya dibuka: design system
+    // bisa berisi ratusan ikon, dan thumbnail per komponen mahal.
+    const isIconEntry = en => looksLikeIcon(en.name, pageOfNode(en.target)?.name);
+    const iconEntries = entries.filter(isIconEntry), compEntries = entries.filter(en => !isIconEntry(en));
+    const card = en => {
+        const n = en.comp, cached = thumbCache.get(n.id), page = pageOfNode(en.target), svg = svgThumbOf(n);
+        const prev = svg ? `<img src="${esc(svg)}" alt="" class="asset-svg">` : cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(n.fill)}">${esc(en.name)}</div>`;
         return `<div class="asset-card" data-component="${n.id}" draggable="true"><div class="asset-preview" data-thumb="${n.id}">${prev}</div><div class="asset-caption"><span class="asset-name">${esc(en.name)}</span><span class="asset-count" title="${en.variants ? 'Variants · instances' : 'Instances'}">${en.variants ? en.variants + ' variants · ' : ''}${en.instances} ◆</span><button class="icon-button small" data-cmp-goto="${en.target}" title="Go to main component${page && page.id !== doc.page.id ? ' (' + esc(page.name) + ')' : ''}" aria-label="Go to main component">${icon('search', 12)}</button></div></div>`;
-    }).join('');
-    for (const en of entries)
-        ensureThumb(en.comp);
+    };
+    const iconsOpen = state.assetIconsOpen === true;
+    const iconGroup = iconEntries.length ? `<div class="asset-group"><button class="lib-group-head" data-asset-icons>${icon(iconsOpen ? 'chevronDown' : 'chevronRight', 10)}<span>Icons</span><small>${iconEntries.length}</small></button>${iconsOpen ? `<div class="asset-icon-grid">${iconEntries.map(card).join('')}</div>` : ''}</div>` : '';
+    $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + compEntries.map(card).join('') + iconGroup;
+    for (const en of [...compEntries, ...(iconsOpen ? iconEntries : [])])
+        if (!svgThumbOf(en.comp))
+            ensureThumb(en.comp);
+}
+// Thumbnail cepat untuk komponen yang isinya satu gambar SVG (mis. ikon hasil import): pakai gambarnya langsung.
+function svgThumbOf(n) {
+    const kids = subtreeOf(n.id).filter(x => x.id !== n.id);
+    const only = kids.length === 1 ? kids[0] : kids.length === 0 ? n : null;
+    const url = only?.type === 'image' && doc.data.assets[only.assetId];
+    return url && (/^data:image\/svg\+xml/.test(url) || url.startsWith('/api/')) ? url : null;
 }
 function componentBlockHtml(n) {
     if (n.isInstance && n.sourceId) {
@@ -11530,7 +11627,6 @@ function renderNodeAnyPage(id, scale) {
             throw new Error('Layer not found.');
         if (page.id === doc.page.id)
             return renderer.exportCanvas([id], scale);
-        await renderer.images.ready();
         const prev = doc.data.pageId;
         doc.data.pageId = page.id;
         doc.refresh();
@@ -14327,6 +14423,10 @@ $('#assets-panel').addEventListener('click', e => {
         libUse(el.dataset.libToggle, !LIBS.use.some(u => u.id === el.dataset.libToggle));
     else if ((el = e.target.closest('[data-lib-update]')))
         libUpdate(el.dataset.libUpdate);
+    else if (e.target.closest('[data-asset-icons]')) {
+        state.assetIconsOpen = !state.assetIconsOpen;
+        renderAssets();
+    }
     else if ((el = e.target.closest('[data-lib-fold]'))) {
         if (LIBS.open.has(el.dataset.libFold))
             LIBS.open.delete(el.dataset.libFold);
