@@ -3236,38 +3236,6 @@ async function makeThumb() {
         return null;
     }
 }
-window.__midasLoadDesignSystem = async (ds, { merge = false } = {}) => {
-    if (merge && doc?.data) {
-        const firstAdded = ds.pages[0];
-        for (const p of ds.pages) {
-            const newPage = JSON.parse(JSON.stringify(p));
-            newPage.id = uid();
-            doc.data.pages.push(newPage);
-        }
-        doc.data.pageId = doc.data.pages[doc.data.pages.length - ds.pages.length].id;
-        const curVars = doc.data.variables ||= { collections: [], items: [] };
-        for (const coll of ds.variables?.collections || []) {
-            if (!curVars.collections.some(c => c.name === coll.name)) {
-                curVars.collections.push(coll);
-            }
-        }
-        for (const item of ds.variables?.items || []) {
-            if (!curVars.items.some(i => i.name === item.name)) {
-                curVars.items.push(item);
-            }
-        }
-        doc.refresh();
-        fit();
-        refreshUI();
-        toast('5 Design System pages merged into document.');
-        return ds;
-    } else {
-        await loadIntoEditor(JSON.parse(JSON.stringify(ds)), 'design-system');
-        toast('Midas Design System (5 pages) loaded.');
-        return ds;
-    }
-};
-
 async function loadIntoEditor(data, id) {
     finishText();
     data.variables = cleanVariables(data.variables);
@@ -13724,7 +13692,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { loadDesignSystem: () => window.loadDesignSystem?.(), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -13745,7 +13713,7 @@ const actions = { loadDesignSystem: () => window.loadDesignSystem?.(), setThumbn
         else
             addAutoLayout();
     }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
-const commands = [['Load Design System', 'loadDesignSystem'], ['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Present frames', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Present frames', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
 function commandPalette() {
     modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
     let selectedIndex = 0, filtered = [];
@@ -14188,7 +14156,7 @@ $('#assets-panel').addEventListener('click', e => {
     if (c && !e.detail)
         instantiate(c.dataset.component);
 });
-$('#main-menu').onclick = () => showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, { label: 'Load Design System', action: 'loadDesignSystem' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
+$('#main-menu').onclick = () => showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
 $('#file-name').onclick = renameFile;
 $('#left-heading-title').addEventListener('dblclick', e => renameDocFrom(e.currentTarget));
 $('#crumb-home').onclick = () => showHome();

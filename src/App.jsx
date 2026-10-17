@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Topbar, LeftRail, LeftPanel, CanvasArea, RightPanel, Overlays } from './components/Shell.jsx';
 import { loadSettings } from './storage.js';
-import './design-system-loader.js';
 
 let started = null;
 function startEngine() {
