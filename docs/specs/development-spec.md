@@ -86,6 +86,10 @@ Prinsip pembagian kerja (**hybrid**):
 2. Susun di **Pages** seperti biasa, mis. Page `Foundations` (warna, tipografi, spacing), `Buttons`, `Forms`, `Table`, `Layout`.
 3. Buat **main component** + **variants** + **component properties** (mis. Button: `Type = Primary | Secondary | Destructive | Outline | Ghost`, `Size = sm | md`, `Disabled: boolean`, `Label: text`, `Icon: instance swap`).
 4. Definisikan warna, tipografi, spacing, radius sebagai **Variables** (bukan nilai hex lepas) — ini yang menjadi token tema.
+5. **Ikon** juga berasal dari design system (library UI **tidak** memakai paket ikon pihak ketiga seperti `lucide-react`). Assets → **Import icons** menerima folder SVG berpola `<gaya>/<kategori>/<nama>.svg` (mis. set WDS: `bold`, `bold-duotone`, `broken`, `line-duotone`, `outline`) dan membuat page **Icons**:
+   - satu component set per ikon bernama `Icon/<kategori>/<nama>`, satu variant per gaya (`Style=outline`, …);
+   - isi variant = node gambar berisi SVG asli (aset `image/svg+xml`);
+   - import ulang mengganti set dengan nama sama, set lain dipertahankan.
 
 ### 3.2. Publish Library
 
@@ -120,6 +124,12 @@ src/generated/                # JANGAN diedit manual — ditimpa setiap sync
 ├── props/
 │   ├── Button.ts             # export interface ButtonProps { variant?: 'primary' | …; label?: string; … } + buttonDefaults
 │   └── index.ts
+├── icons/
+│   ├── createIcon.tsx        # IconProps, IconStyle (gaya dari variant Style), defaultIconStyle
+│   ├── ArrowLeftIcon.ts      # satu komponen per ikon: <ArrowLeftIcon variant="bold" size={16} />
+│   ├── registry.ts           # IconName, iconNames, iconRegistry
+│   ├── Icon.tsx              # <Icon name="arrow-left" /> (memuat semua ikon — untuk bundle kecil pakai ikon bernama)
+│   └── index.ts
 ├── index.ts
 ├── README.md
 └── manifest.json             # daftar komponen + props (nama, tipe, nilai enum, default) + token, untuk Properties Inspector
@@ -129,6 +139,8 @@ Aturan pembangkitan:
 - **Tema** = nama mode dari collection Variables yang punya lebih dari satu mode (mis. Light/Dark → `light`, `dark`); collection satu mode berlaku untuk semua tema. Alias di-resolve per tema.
 - **Nama token** = path Variable dalam camelCase, tanpa grup awal `color/` untuk warna: `color/primary-foreground` → `primaryForeground` → `--theme-primary-foreground`; `radius/md` → `radiusMd`. Number → `px`. Variable `effect` belum didukung (muncul sebagai peringatan).
 - **Props**: variant → union string (`"primary" | "ghost"`) atau boolean bila nilainya true/false; property text → `string`, boolean → `boolean`, instance swap / slot → `ReactNode` (slot pertama → `children`). Semua prop opsional; default = varian pertama dan default component property. Setiap komponen juga punya `testId`.
+- **Ikon**: component set `Icon/…` tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkan komponen ikon React dari SVG-nya. Warna yang paling banyak dipakai di SVG diganti `currentColor` (ikon ikut warna teks), opacity/duotone dan warna lain dipertahankan; atribut `on*` dan `<script>` dibuang. Default gaya = `outline` bila ada. Setiap ikon diberi anotasi `/* @__PURE__ */` sehingga aplikasi hanya membundel ikon yang dipakai.
+- Snapshot library membawa aset yang dipakai komponen (data URL), sehingga file lain yang memakai library dan Library Kit mendapat gambar/ikon yang sama.
 - Hasilnya deterministik per versi, sehingga sync bisa diulang dengan aman.
 
 Developer memakai CLI `@midas/cli` (dipublish ke Midas Registry):
@@ -164,7 +176,8 @@ Isi minimal sebuah library frontend mengikuti apa yang di `contoh_base_code` sek
 
 | Kelompok | Komponen |
 | --- | --- |
-| UI | `Button`, `Card`, `Table` (+ `Column`), `Badge`, `Dialog`, `Drawer`, `Alert`, `Tooltip`, `FilterToolbar`, `DetailCard`, `RowActionButton`, `RelationLabel`, `LoadingOverlay`, `FormSkeleton`, `ErrorStatePage`, `NavigationGuard`, `SvgIcon`, `Toast` (`ToastProvider`, `useToast`) |
+| UI | `Button`, `Card`, `Table` (+ `Column`), `Badge`, `Dialog`, `Drawer`, `Alert`, `Tooltip`, `FilterToolbar`, `DetailCard`, `RowActionButton`, `RelationLabel`, `LoadingOverlay`, `FormSkeleton`, `ErrorStatePage`, `NavigationGuard`, `Toast` (`ToastProvider`, `useToast`) |
+| Ikon | Dari Library Kit (`src/generated/icons`): `<NamaIcon>` per ikon + `<Icon name>`. Komponen library memakai ikon ini, bukan paket ikon pihak ketiga. |
 | Field | `TextField`, `PasswordField`, `TextAreaField`, `SelectField`, `SelectMultipleField`, `CheckboxField`, `CheckboxGroupField`, `RadioButtonField`, `RadioGroupField`, `SwitchField`, `DatePickerField`, `DateRangeField`, `FileUploadField`, `ColorField`, `EditorField`, `FormArrayField` |
 | Layout | `AppShell`, `Sidebar`, `PageHeader`, `PageContent`, `AvatarUser` |
 | Theme | `ThemeProvider`, `theme.ts`, `tokens.css` (dari Library Kit) |
@@ -197,7 +210,7 @@ Code Builder project memilih @midas/ui-cms@1.2.0
 - `id` library = id file design system sumbernya (satu file = satu library). Layer salinan komponen library di file lain menyimpan `libRef = <libraryId>:<nodeId>`, sehingga instance tetap tersambung setelah update.
 - Status per komponen di menu Library: **Ready** (export ada dan props sesuai manifest), **Not implemented** (belum ada export), **Mismatch** (props kode berbeda dari manifest).
 - Code Builder hanya bisa memilih versi yang paketnya sudah ter-publish. Instance komponen berstatus *Not implemented* ditampilkan sebagai **Issue** (§4.6).
-- Breaking change (hapus komponen/prop, ganti nilai variant) memaksa kenaikan versi **major**.
+- Breaking change memaksa kenaikan versi **major**: komponen/prop dihapus atau diganti nama, nilai variant dihapus, tipe prop berubah, **token (Variable) dihapus**, **ikon atau gaya ikon dihapus**.
 
 ### 3.6. Private Registry (Verdaccio)
 

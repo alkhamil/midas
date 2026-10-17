@@ -19,7 +19,13 @@ export interface SnapshotComponent {
 export interface LibrarySnapshot {
     components: SnapshotComponent[];
     variables?: { collections?: unknown[]; items?: unknown[] };
+    /** Aset yang dipakai komponen (assetId → data URL), mis. SVG ikon. */
+    assets?: Record<string, string>;
 }
+
+/** Ikon design system: component set bernama "Icon/<kategori>/<nama>" (lihat apps/studio/src/iconSet.js). */
+export const ICON_PREFIX = 'Icon/';
+export const isIconComponent = (c: { name: string }) => c.name.startsWith(ICON_PREFIX);
 
 export type PropSource = 'variant' | 'text' | 'boolean' | 'instance' | 'slot';
 export type PropType = 'enum' | 'string' | 'boolean' | 'node';
@@ -114,7 +120,8 @@ export function deriveMapping(c: SnapshotComponent): ComponentMapping {
 /** Mapping default untuk semua komponen, menimpa dengan mapping versi sebelumnya bila komponen/prop sama. */
 export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMapping[] = []): ComponentMapping[] {
     const prev = new Map(previous.map(m => [m.componentKey, m]));
-    return snapshot.components.map(c => {
+    // Ikon tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkannya terpisah.
+    return snapshot.components.filter(c => !isIconComponent(c)).map(c => {
         const d = deriveMapping(c), p = prev.get(c.id);
         if (!p)
             return d;

@@ -1,6 +1,7 @@
 // Library Kit (spec §3.3): file yang dibangkitkan otomatis dari satu versi library —
 // token tema dari Variables, tipe props + manifest dari component mapping.
 // Hasilnya deterministik untuk versi yang sama, sehingga `midas sync` aman diulang.
+import { collectIcons, iconFiles } from './icons.js';
 import { camelCase, type ComponentMapping, type LibrarySnapshot, type PropMapping } from './library.js';
 
 export interface KitFiles {
@@ -212,7 +213,7 @@ export const ${camelCase(m.exportName)}Defaults = ${JSON.stringify(defaults, nul
 `;
 }
 
-export function buildManifest(input: KitInput, tokens = buildTokens(input.snapshot)) {
+export function buildManifest(input: KitInput, tokens = buildTokens(input.snapshot), icons = collectIcons(input.snapshot)) {
     return {
         package: input.packageName,
         version: input.version,
@@ -227,14 +228,16 @@ export function buildManifest(input: KitInput, tokens = buildTokens(input.snapsh
             props: m.propsMap.props.map(p => ({ name: p.name, type: p.type, source: p.source, label: p.label, ...(p.values ? { values: [...new Set(Object.values(p.values))] } : {}) })),
             defaults: propDefaults(m, input.snapshot),
         })),
-        warnings: tokens.warnings,
+        icons: icons.icons.map(i => ({ name: i.name, category: i.category, exportName: i.exportName, styles: Object.keys(i.styles) })),
+        warnings: [...tokens.warnings, ...icons.warnings],
     };
 }
 
 /** Semua file Library Kit, relatif ke root repo paket. */
 export function buildKit(input: KitInput): KitFiles {
     const tokens = buildTokens(input.snapshot);
-    const manifest = buildManifest(input, tokens);
+    const icons = collectIcons(input.snapshot);
+    const manifest = buildManifest(input, tokens, icons);
     const files: KitFiles = {
         [`${GENERATED_DIR}/theme.ts`]: themeTs(tokens),
         [`${GENERATED_DIR}/tokens.css`]: tokensCss(tokens),
@@ -244,7 +247,30 @@ export function buildKit(input: KitInput): KitFiles {
     for (const m of input.mappings)
         files[`${GENERATED_DIR}/props/${m.exportName}.ts`] = propsTs(m, manifest.components.find(c => c.exportName === m.exportName)!.defaults);
     files[`${GENERATED_DIR}/props/index.ts`] = `${HEADER('Semua kontrak props komponen library.')}\n${input.mappings.map(m => `export * from './${m.exportName}';`).join('\n')}\n`;
-    files[`${GENERATED_DIR}/index.ts`] = `${HEADER(`Library Kit ${input.packageName}@${input.version}.`)}\nexport * from './theme';\nexport * from './props';\n`;
-    files[`${GENERATED_DIR}/README.md`] = `# Library Kit — ${input.packageName}@${input.version}\n\nFolder ini dibangkitkan oleh Midas dari library **${input.libraryName}** dan ditimpa setiap \`npx @midas/cli sync\`. Jangan diedit manual: ubah desain di Midas, publish versi baru, lalu sync.\n\n- \`theme.ts\`, \`tokens.css\`, \`tailwind-theme.css\` — token tema dari Variables\n- \`props/\` — kontrak props setiap komponen (dipakai komponen di \`src/components\`)\n- \`manifest.json\` — daftar komponen + props untuk Properties Inspector Code Builder\n${manifest.warnings.length ? `\n## Peringatan\n\n${manifest.warnings.map(w => `- ${w}`).join('\n')}\n` : ''}`;
+    Object.assign(files, iconFiles(icons.icons, `${GENERATED_DIR}/icons`));
+    files[`${GENERATED_DIR}/index.ts`] = `${HEADER(`Library Kit ${input.packageName}@${input.version}.`)}\nexport * from './theme';\nexport * from './props';\nexport * from './icons';\n`;
+    files[`${GENERATED_DIR}/README.md`] = `# Library Kit — ${input.packageName}@${input.version}\n\nFolder ini dibangkitkan oleh Midas dari library **${input.libraryName}** dan ditimpa setiap \`npx @midas/cli sync\`. Jangan diedit manual: ubah desain di Midas, publish versi baru, lalu sync.\n\n- \`theme.ts\`, \`tokens.css\`, \`tailwind-theme.css\` — token tema dari Variables\n- \`props/\` — kontrak props setiap komponen (dipakai komponen di \`src/components\`)\n- \`icons/\` — ${manifest.icons.length} ikon React dari design system (\`ArrowLeftIcon\`, \`<Icon name>\`), warna ikut \`currentColor\`\n- \`manifest.json\` — daftar komponen + props untuk Properties Inspector Code Builder\n${manifest.warnings.length ? `\n## Peringatan\n\n${manifest.warnings.map(w => `- ${w}`).join('\n')}\n` : ''}`;
     return files;
+}
+
+/** Token & ikon yang hilang dibanding manifest versi sebelumnya — juga breaking change (kode bisa memakainya). */
+export function kitBreakingChanges(previousManifest: unknown, snapshot: LibrarySnapshot): string[] {
+    const prev = (previousManifest ?? {}) as { tokens?: { key: string }[]; icons?: { name: string; styles: string[] }[] };
+    const out: string[] = [];
+    const tokens = new Set(buildTokens(snapshot).keys.map(k => k.key));
+    for (const t of prev.tokens ?? [])
+        if (!tokens.has(t.key))
+            out.push(`Token ${t.key} dihapus`);
+    const icons = new Map(collectIcons(snapshot).icons.map(i => [i.name, new Set(Object.keys(i.styles))]));
+    for (const i of prev.icons ?? []) {
+        const now = icons.get(i.name);
+        if (!now) {
+            out.push(`Ikon ${i.name} dihapus`);
+            continue;
+        }
+        for (const st of i.styles)
+            if (!now.has(st))
+                out.push(`Ikon ${i.name}: gaya ${st} dihapus`);
+    }
+    return out;
 }

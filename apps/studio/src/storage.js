@@ -174,13 +174,17 @@ function dataUrlToBlob(url) {
 
 async function uploadNewAssets(fileId, docData) {
     const done = assetsOf(fileId);
-    for (const [id, url] of Object.entries(docData.assets || {})) {
-        if (done.has(id) || typeof url !== 'string' || !url.startsWith('data:')) continue;
-        const blob = dataUrlToBlob(url);
-        if (!blob) continue;
-        await api('PUT', assetUrl(fileId, id), blob);
-        done.add(id);
-    }
+    const queue = Object.entries(docData.assets || {}).filter(([id, url]) => !done.has(id) && typeof url === 'string' && url.startsWith('data:'));
+    // Beberapa upload sekaligus: satu set ikon bisa berisi ribuan file kecil.
+    const worker = async () => {
+        for (let job = queue.shift(); job; job = queue.shift()) {
+            const [id, url] = job, blob = dataUrlToBlob(url);
+            if (!blob) continue;
+            await api('PUT', assetUrl(fileId, id), blob);
+            done.add(id);
+        }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
 }
 
 async function saveMeta(fileId, docData) {
@@ -215,21 +219,26 @@ async function savePage(fileId, page) {
 }
 
 /** Ganti URL aset server dengan data URL, supaya file `.midas` hasil export portabel. */
+export const assetsAsDataUrls = (fileId, assets) => embedAssets(fileId, assets);
 async function embedAssets(fileId, assets = {}) {
-    const out = {};
+    const out = {}, queue = [];
     for (const [id, url] of Object.entries(assets)) {
-        if (!isServerAsset(fileId, url)) {
-            out[id] = url;
-            continue;
-        }
-        const blob = await (await api('GET', url, undefined, { raw: true })).blob();
-        out[id] = await new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.onerror = () => reject(r.error);
-            r.readAsDataURL(blob);
-        });
+        if (isServerAsset(fileId, url)) queue.push([id, url]);
+        else out[id] = url;
     }
+    const worker = async () => {
+        for (let job = queue.shift(); job; job = queue.shift()) {
+            const [id, url] = job;
+            const blob = await (await api('GET', url, undefined, { raw: true })).blob();
+            out[id] = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+                r.readAsDataURL(blob);
+            });
+        }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
     return out;
 }
 
