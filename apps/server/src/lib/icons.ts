@@ -40,6 +40,12 @@ export function normalizeSvg(svg: string): IconStyleSource | null {
         .replace(/<\?xml[^>]*>|<!--[\s\S]*?-->|<script[\s\S]*?<\/script>|<title[\s\S]*?<\/title>|<desc[\s\S]*?<\/desc>|<metadata[\s\S]*?<\/metadata>|<defs>\s*<\/defs>/gi, '')
         .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
         .trim();
+    // Atribut presentasi di <svg> (mis. stroke="#000" stroke-width="1.5") berlaku untuk semua isi:
+    // bawa ke <g> pembungkus supaya tidak hilang. fill="none" di <svg> sudah menjadi default createIcon.
+    const PRESENTATION = /\s((?:fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|stroke-dasharray|stroke-opacity|fill-opacity|fill-rule|clip-rule|opacity|color)\s*=\s*"[^"]*")/gi;
+    const rootAttrs = [...attrs.matchAll(PRESENTATION)].map(m => m[1]).filter(a => !/^fill\s*=\s*"none"$/i.test(a));
+    if (rootAttrs.length)
+        body = `<g ${rootAttrs.join(' ')}>${body}</g>`;
     const counts = new Map<string, number>();
     for (const m of body.matchAll(/\s(?:fill|stroke)\s*=\s*"([^"]+)"/gi)) {
         const c = m[1].trim().toLowerCase();

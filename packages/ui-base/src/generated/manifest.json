@@ -1,0 +1,4152 @@
+{
+  "package": "@midas/ui-base",
+  "version": "1.0.0",
+  "library": "Midas Base Design System",
+  "publishedAt": "2026-10-17T16:37:58.650Z",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "tokens": [
+    {
+      "key": "primary",
+      "cssVar": "--theme-primary",
+      "type": "color",
+      "variable": "color/primary"
+    },
+    {
+      "key": "primaryForeground",
+      "cssVar": "--theme-primary-foreground",
+      "type": "color",
+      "variable": "color/primary-foreground"
+    },
+    {
+      "key": "secondary",
+      "cssVar": "--theme-secondary",
+      "type": "color",
+      "variable": "color/secondary"
+    },
+    {
+      "key": "secondaryForeground",
+      "cssVar": "--theme-secondary-foreground",
+      "type": "color",
+      "variable": "color/secondary-foreground"
+    },
+    {
+      "key": "success",
+      "cssVar": "--theme-success",
+      "type": "color",
+      "variable": "color/success"
+    },
+    {
+      "key": "warning",
+      "cssVar": "--theme-warning",
+      "type": "color",
+      "variable": "color/warning"
+    },
+    {
+      "key": "danger",
+      "cssVar": "--theme-danger",
+      "type": "color",
+      "variable": "color/danger"
+    },
+    {
+      "key": "info",
+      "cssVar": "--theme-info",
+      "type": "color",
+      "variable": "color/info"
+    },
+    {
+      "key": "background",
+      "cssVar": "--theme-background",
+      "type": "color",
+      "variable": "color/background"
+    },
+    {
+      "key": "surface",
+      "cssVar": "--theme-surface",
+      "type": "color",
+      "variable": "color/surface"
+    },
+    {
+      "key": "muted",
+      "cssVar": "--theme-muted",
+      "type": "color",
+      "variable": "color/muted"
+    },
+    {
+      "key": "border",
+      "cssVar": "--theme-border",
+      "type": "color",
+      "variable": "color/border"
+    },
+    {
+      "key": "foreground",
+      "cssVar": "--theme-foreground",
+      "type": "color",
+      "variable": "color/foreground"
+    },
+    {
+      "key": "mutedForeground",
+      "cssVar": "--theme-muted-foreground",
+      "type": "color",
+      "variable": "color/muted-foreground"
+    },
+    {
+      "key": "radiusSm",
+      "cssVar": "--theme-radius-sm",
+      "type": "number",
+      "variable": "radius/sm"
+    },
+    {
+      "key": "radiusMd",
+      "cssVar": "--theme-radius-md",
+      "type": "number",
+      "variable": "radius/md"
+    },
+    {
+      "key": "radiusLg",
+      "cssVar": "--theme-radius-lg",
+      "type": "number",
+      "variable": "radius/lg"
+    },
+    {
+      "key": "pagePadding",
+      "cssVar": "--theme-page-padding",
+      "type": "number",
+      "variable": "page-padding"
+    },
+    {
+      "key": "pagePaddingLg",
+      "cssVar": "--theme-page-padding-lg",
+      "type": "number",
+      "variable": "page-padding-lg"
+    },
+    {
+      "key": "cardPaddingX",
+      "cssVar": "--theme-card-padding-x",
+      "type": "number",
+      "variable": "card-padding-x"
+    },
+    {
+      "key": "cardPaddingY",
+      "cssVar": "--theme-card-padding-y",
+      "type": "number",
+      "variable": "card-padding-y"
+    },
+    {
+      "key": "sectionGap",
+      "cssVar": "--theme-section-gap",
+      "type": "number",
+      "variable": "section-gap"
+    },
+    {
+      "key": "stackGap",
+      "cssVar": "--theme-stack-gap",
+      "type": "number",
+      "variable": "stack-gap"
+    },
+    {
+      "key": "fieldGap",
+      "cssVar": "--theme-field-gap",
+      "type": "number",
+      "variable": "field-gap"
+    }
+  ],
+  "components": [
+    {
+      "exportName": "Button",
+      "componentKey": "base-395-uckvb1",
+      "componentName": "Button",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "danger",
+            "primary",
+            "secondary"
+          ]
+        },
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "icon",
+          "type": "node",
+          "source": "instance",
+          "label": "Icon"
+        }
+      ],
+      "defaults": {
+        "variant": "primary",
+        "size": "sm",
+        "children": "Button",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "Badge",
+      "componentKey": "base-39z-9e1k45",
+      "componentName": "Badge",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "error",
+            "primary",
+            "success",
+            "warning",
+            "secondary"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "children": "Badge"
+      }
+    },
+    {
+      "exportName": "Alert",
+      "componentKey": "base-3ak-e13qjv",
+      "componentName": "Alert",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "error",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "message": "Pesan untuk pengguna"
+      }
+    },
+    {
+      "exportName": "Card",
+      "componentKey": "base-3b0-fxrivg",
+      "componentName": "Card",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "title": "Judul card"
+      }
+    },
+    {
+      "exportName": "TextField",
+      "componentKey": "base-3bb-a21agi",
+      "componentName": "TextField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "source": "text",
+          "label": "Error"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "placeholder": "Ketik di sini…",
+        "disabled": false,
+        "error": ""
+      }
+    },
+    {
+      "exportName": "TextAreaField",
+      "componentKey": "base-3bo-l7i5u2",
+      "componentName": "TextAreaField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "source": "text",
+          "label": "Error"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "placeholder": "Ketik di sini…",
+        "error": ""
+      }
+    },
+    {
+      "exportName": "PasswordField",
+      "componentKey": "base-3c1-wz62bn",
+      "componentName": "PasswordField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "source": "text",
+          "label": "Error"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "placeholder": "Ketik di sini…",
+        "error": ""
+      }
+    },
+    {
+      "exportName": "SelectField",
+      "componentKey": "base-3cf-q6rp08",
+      "componentName": "SelectField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "source": "text",
+          "label": "Error"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "placeholder": "Pilih…",
+        "disabled": false,
+        "error": ""
+      }
+    },
+    {
+      "exportName": "CheckboxField",
+      "componentKey": "base-3ct-tz3qa3",
+      "componentName": "CheckboxField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "checkboxLabel",
+          "type": "string",
+          "source": "text",
+          "label": "Checkbox Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "indeterminate",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Indeterminate"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "checkboxLabel": "Setuju",
+        "disabled": false,
+        "indeterminate": false
+      }
+    },
+    {
+      "exportName": "SwitchField",
+      "componentKey": "base-3d6-rgbvs8",
+      "componentName": "SwitchField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "switchLabel",
+          "type": "string",
+          "source": "text",
+          "label": "Switch Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "switchLabel": "Aktif",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "Dialog",
+      "componentKey": "base-3dj-fb1opm",
+      "componentName": "Dialog",
+      "props": [
+        {
+          "name": "maxWidth",
+          "type": "enum",
+          "source": "variant",
+          "label": "Max Width",
+          "values": [
+            "lg",
+            "md",
+            "sm",
+            "xl",
+            "2xl"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "maxWidth": "sm",
+        "title": "Judul dialog"
+      }
+    },
+    {
+      "exportName": "Tooltip",
+      "componentKey": "base-3e2-8il0ip",
+      "componentName": "Tooltip",
+      "props": [
+        {
+          "name": "placement",
+          "type": "enum",
+          "source": "variant",
+          "label": "Placement",
+          "values": [
+            "top",
+            "bottom"
+          ]
+        },
+        {
+          "name": "content",
+          "type": "string",
+          "source": "text",
+          "label": "Content"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Trigger"
+        }
+      ],
+      "defaults": {
+        "placement": "top",
+        "content": "Keterangan"
+      }
+    },
+    {
+      "exportName": "RowActionButton",
+      "componentKey": "base-3eb-gifxx8",
+      "componentName": "RowActionButton",
+      "props": [
+        {
+          "name": "action",
+          "type": "enum",
+          "source": "variant",
+          "label": "Action",
+          "values": [
+            "edit",
+            "view",
+            "delete",
+            "restore"
+          ]
+        },
+        {
+          "name": "color",
+          "type": "enum",
+          "source": "variant",
+          "label": "Color",
+          "values": [
+            "info",
+            "muted",
+            "danger",
+            "default",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "action": "view",
+        "color": "default",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "PageHeader",
+      "componentKey": "base-3fr-d3dfrs",
+      "componentName": "PageHeader",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Actions"
+        }
+      ],
+      "defaults": {
+        "title": "Judul halaman"
+      }
+    },
+    {
+      "exportName": "Table",
+      "componentKey": "base-3fu-1ks1zh",
+      "componentName": "Table",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "FilterToolbar",
+      "componentKey": "base-3fx-fglhav",
+      "componentName": "FilterToolbar",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "DetailCard",
+      "componentKey": "base-3g0-1df9q4",
+      "componentName": "DetailCard",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "Sidebar",
+      "componentKey": "base-3g3-jpm3xf",
+      "componentName": "Sidebar",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "AppShell",
+      "componentKey": "base-3g6-t5ah0l",
+      "componentName": "AppShell",
+      "props": [],
+      "defaults": {}
+    }
+  ],
+  "icons": [
+    {
+      "name": "add",
+      "category": "ui",
+      "exportName": "AddIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "album",
+      "category": "video-audio-sound",
+      "exportName": "AlbumIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-down",
+      "category": "arrows",
+      "exportName": "AltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-left",
+      "category": "arrows",
+      "exportName": "AltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-right",
+      "category": "arrows",
+      "exportName": "AltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-up",
+      "category": "arrows",
+      "exportName": "AltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-down",
+      "category": "arrows",
+      "exportName": "ArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-left",
+      "category": "arrows",
+      "exportName": "ArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-left-down",
+      "category": "arrows",
+      "exportName": "ArrowLeftDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-left-up",
+      "category": "arrows",
+      "exportName": "ArrowLeftUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-right",
+      "category": "arrows",
+      "exportName": "ArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-right-down",
+      "category": "arrows",
+      "exportName": "ArrowRightDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-right-up",
+      "category": "arrows",
+      "exportName": "ArrowRightUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-up",
+      "category": "arrows",
+      "exportName": "ArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "banknote",
+      "category": "money",
+      "exportName": "BanknoteIcon",
+      "styles": [
+        "bold",
+        "bold-duotone"
+      ]
+    },
+    {
+      "name": "banknote-2",
+      "category": "money",
+      "exportName": "Banknote2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "bill",
+      "category": "money",
+      "exportName": "BillIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "bill-check",
+      "category": "money",
+      "exportName": "BillCheckIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "bill-cross",
+      "category": "money",
+      "exportName": "BillCrossIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "bill-list",
+      "category": "money",
+      "exportName": "BillListIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "branching-paths-down",
+      "category": "map-location",
+      "exportName": "BranchingPathsDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "branching-paths-up",
+      "category": "map-location",
+      "exportName": "BranchingPathsUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "calendar",
+      "category": "ui",
+      "exportName": "CalendarIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "camera",
+      "category": "video-audio-sound",
+      "exportName": "CameraIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "camera-add",
+      "category": "video-audio-sound",
+      "exportName": "CameraAddIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "camera-minimalistic",
+      "category": "video-audio-sound",
+      "exportName": "CameraMinimalisticIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "camera-rotate",
+      "category": "video-audio-sound",
+      "exportName": "CameraRotateIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "camera-square",
+      "category": "video-audio-sound",
+      "exportName": "CameraSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "card",
+      "category": "money",
+      "exportName": "CardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "card-2",
+      "category": "money",
+      "exportName": "Card2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "card-recive",
+      "category": "money",
+      "exportName": "CardReciveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "card-search",
+      "category": "money",
+      "exportName": "CardSearchIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "card-send",
+      "category": "money",
+      "exportName": "CardSendIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "card-transfer",
+      "category": "money",
+      "exportName": "CardTransferIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "cardholder",
+      "category": "money",
+      "exportName": "CardholderIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "cash-out",
+      "category": "money",
+      "exportName": "CashOutIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "chat-dots",
+      "category": "messages-conversation",
+      "exportName": "ChatDotsIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-line",
+      "category": "messages-conversation",
+      "exportName": "ChatLineIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-call",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundCallIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-check",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundCheckIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-dots",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundDotsIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-like",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundLikeIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-line",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundLineIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-money",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundMoneyIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-unread",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundUnreadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-round-video",
+      "category": "messages-conversation",
+      "exportName": "ChatRoundVideoIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square-arrow",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareArrowIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square-call",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareCallIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square-check",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareCheckIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square-code",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareCodeIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-square-like",
+      "category": "messages-conversation",
+      "exportName": "ChatSquareLikeIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "chat-unread",
+      "category": "messages-conversation",
+      "exportName": "ChatUnreadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "check-circle",
+      "category": "ui",
+      "exportName": "CheckCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "check-read",
+      "category": "messages-conversation",
+      "exportName": "CheckReadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard-edit",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardEditIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard-open",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardOpenIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard-open-play",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardOpenPlayIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard-play",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardPlayIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "clapperboard-text",
+      "category": "video-audio-sound",
+      "exportName": "ClapperboardTextIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "close",
+      "category": "ui",
+      "exportName": "CloseIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "close-circle",
+      "category": "ui",
+      "exportName": "CloseCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "compass",
+      "category": "map-location",
+      "exportName": "CompassIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "compass-big",
+      "category": "map-location",
+      "exportName": "CompassBigIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "compass-square",
+      "category": "map-location",
+      "exportName": "CompassSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "danger-circle",
+      "category": "ui",
+      "exportName": "DangerCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "danger-triangle",
+      "category": "ui",
+      "exportName": "DangerTriangleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "dialog",
+      "category": "messages-conversation",
+      "exportName": "DialogIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "dialog-2",
+      "category": "messages-conversation",
+      "exportName": "Dialog2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "dollar",
+      "category": "money",
+      "exportName": "DollarIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "dollar-minimalistic",
+      "category": "money",
+      "exportName": "DollarMinimalisticIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-down",
+      "category": "arrows",
+      "exportName": "DoubleAltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-left",
+      "category": "arrows",
+      "exportName": "DoubleAltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-right",
+      "category": "arrows",
+      "exportName": "DoubleAltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-up",
+      "category": "arrows",
+      "exportName": "DoubleAltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "euro",
+      "category": "money",
+      "exportName": "EuroIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "eye",
+      "category": "ui",
+      "exportName": "EyeIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "file-text",
+      "category": "ui",
+      "exportName": "FileTextIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "filter",
+      "category": "ui",
+      "exportName": "FilterIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "forward",
+      "category": "messages-conversation",
+      "exportName": "ForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "full-screen",
+      "category": "video-audio-sound",
+      "exportName": "FullScreenIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "full-screen-circle",
+      "category": "video-audio-sound",
+      "exportName": "FullScreenCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "full-screen-square",
+      "category": "video-audio-sound",
+      "exportName": "FullScreenSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery",
+      "category": "video-audio-sound",
+      "exportName": "GalleryIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-add",
+      "category": "video-audio-sound",
+      "exportName": "GalleryAddIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-check",
+      "category": "video-audio-sound",
+      "exportName": "GalleryCheckIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-circle",
+      "category": "video-audio-sound",
+      "exportName": "GalleryCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-download",
+      "category": "video-audio-sound",
+      "exportName": "GalleryDownloadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-edit",
+      "category": "video-audio-sound",
+      "exportName": "GalleryEditIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-favourite",
+      "category": "video-audio-sound",
+      "exportName": "GalleryFavouriteIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-minimalistic",
+      "category": "video-audio-sound",
+      "exportName": "GalleryMinimalisticIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-remove",
+      "category": "video-audio-sound",
+      "exportName": "GalleryRemoveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-round",
+      "category": "video-audio-sound",
+      "exportName": "GalleryRoundIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-send",
+      "category": "video-audio-sound",
+      "exportName": "GallerySendIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gallery-wide",
+      "category": "video-audio-sound",
+      "exportName": "GalleryWideIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "global",
+      "category": "map-location",
+      "exportName": "GlobalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "globus",
+      "category": "map-location",
+      "exportName": "GlobusIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "gps",
+      "category": "map-location",
+      "exportName": "GpsIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "hamburger-menu",
+      "category": "ui",
+      "exportName": "HamburgerMenuIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox",
+      "category": "messages-conversation",
+      "exportName": "InboxIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox-archive",
+      "category": "messages-conversation",
+      "exportName": "InboxArchiveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox-in",
+      "category": "messages-conversation",
+      "exportName": "InboxInIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox-line",
+      "category": "messages-conversation",
+      "exportName": "InboxLineIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox-out",
+      "category": "messages-conversation",
+      "exportName": "InboxOutIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "inbox-unread",
+      "category": "messages-conversation",
+      "exportName": "InboxUnreadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "info-circle",
+      "category": "ui",
+      "exportName": "InfoCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "letter",
+      "category": "messages-conversation",
+      "exportName": "LetterIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "letter-opened",
+      "category": "messages-conversation",
+      "exportName": "LetterOpenedIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "letter-unread",
+      "category": "messages-conversation",
+      "exportName": "LetterUnreadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "library",
+      "category": "video-audio-sound",
+      "exportName": "LibraryIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "logout",
+      "category": "ui",
+      "exportName": "LogoutIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "magnifer",
+      "category": "ui",
+      "exportName": "MagniferIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "mailbox",
+      "category": "messages-conversation",
+      "exportName": "MailboxIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map",
+      "category": "map-location",
+      "exportName": "MapIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-arrow-down",
+      "category": "map-location",
+      "exportName": "MapArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-arrow-left",
+      "category": "map-location",
+      "exportName": "MapArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-arrow-right",
+      "category": "map-location",
+      "exportName": "MapArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-arrow-square",
+      "category": "map-location",
+      "exportName": "MapArrowSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-arrow-up",
+      "category": "map-location",
+      "exportName": "MapArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point",
+      "category": "map-location",
+      "exportName": "MapPointIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-add",
+      "category": "map-location",
+      "exportName": "MapPointAddIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-favourite",
+      "category": "map-location",
+      "exportName": "MapPointFavouriteIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-hospital",
+      "category": "map-location",
+      "exportName": "MapPointHospitalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-remove",
+      "category": "map-location",
+      "exportName": "MapPointRemoveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-rotate",
+      "category": "map-location",
+      "exportName": "MapPointRotateIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-school",
+      "category": "map-location",
+      "exportName": "MapPointSchoolIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-search",
+      "category": "map-location",
+      "exportName": "MapPointSearchIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point-wave",
+      "category": "map-location",
+      "exportName": "MapPointWaveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "microphone",
+      "category": "video-audio-sound",
+      "exportName": "MicrophoneIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "microphone-2",
+      "category": "video-audio-sound",
+      "exportName": "Microphone2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "microphone-3",
+      "category": "video-audio-sound",
+      "exportName": "Microphone3Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "microphone-large",
+      "category": "video-audio-sound",
+      "exportName": "MicrophoneLargeIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "money-bag",
+      "category": "money",
+      "exportName": "MoneyBagIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "multiple-forward-left",
+      "category": "messages-conversation",
+      "exportName": "MultipleForwardLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "multiple-forward-right",
+      "category": "messages-conversation",
+      "exportName": "MultipleForwardRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-library",
+      "category": "video-audio-sound",
+      "exportName": "MusicLibraryIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-library-2",
+      "category": "video-audio-sound",
+      "exportName": "MusicLibrary2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note",
+      "category": "video-audio-sound",
+      "exportName": "MusicNoteIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note-2",
+      "category": "video-audio-sound",
+      "exportName": "MusicNote2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note-3",
+      "category": "video-audio-sound",
+      "exportName": "MusicNote3Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note-4",
+      "category": "video-audio-sound",
+      "exportName": "MusicNote4Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note-slider",
+      "category": "video-audio-sound",
+      "exportName": "MusicNoteSliderIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-note-slider-2",
+      "category": "video-audio-sound",
+      "exportName": "MusicNoteSlider2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "music-notes",
+      "category": "video-audio-sound",
+      "exportName": "MusicNotesIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "muted",
+      "category": "video-audio-sound",
+      "exportName": "MutedIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "panorama",
+      "category": "video-audio-sound",
+      "exportName": "PanoramaIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "paperclip",
+      "category": "messages-conversation",
+      "exportName": "PaperclipIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "paperclip-2",
+      "category": "messages-conversation",
+      "exportName": "Paperclip2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "paperclip-rounded",
+      "category": "messages-conversation",
+      "exportName": "PaperclipRoundedIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "paperclip-rounded-2",
+      "category": "messages-conversation",
+      "exportName": "PaperclipRounded2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pause",
+      "category": "video-audio-sound",
+      "exportName": "PauseIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pause-circle",
+      "category": "video-audio-sound",
+      "exportName": "PauseCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pen",
+      "category": "messages-conversation",
+      "exportName": "PenIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pen-2",
+      "category": "messages-conversation",
+      "exportName": "Pen2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pen-new-round",
+      "category": "messages-conversation",
+      "exportName": "PenNewRoundIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pen-new-square",
+      "category": "messages-conversation",
+      "exportName": "PenNewSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "people-nearby",
+      "category": "map-location",
+      "exportName": "PeopleNearbyIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pip",
+      "category": "video-audio-sound",
+      "exportName": "PipIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "pip-2",
+      "category": "video-audio-sound",
+      "exportName": "Pip2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "plain",
+      "category": "messages-conversation",
+      "exportName": "PlainIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "plain-2",
+      "category": "messages-conversation",
+      "exportName": "Plain2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "plain-3",
+      "category": "messages-conversation",
+      "exportName": "Plain3Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "play",
+      "category": "video-audio-sound",
+      "exportName": "PlayIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "play-circle",
+      "category": "video-audio-sound",
+      "exportName": "PlayCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "play-stream",
+      "category": "video-audio-sound",
+      "exportName": "PlayStreamIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "playback-speed",
+      "category": "video-audio-sound",
+      "exportName": "PlaybackSpeedIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "podcast",
+      "category": "video-audio-sound",
+      "exportName": "PodcastIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "point-on-map",
+      "category": "map-location",
+      "exportName": "PointOnMapIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "point-on-map-perspective",
+      "category": "map-location",
+      "exportName": "PointOnMapPerspectiveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "quit-full-screen",
+      "category": "video-audio-sound",
+      "exportName": "QuitFullScreenIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "quit-full-screen-circle",
+      "category": "video-audio-sound",
+      "exportName": "QuitFullScreenCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "quit-full-screen-square",
+      "category": "video-audio-sound",
+      "exportName": "QuitFullScreenSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "quit-pip",
+      "category": "video-audio-sound",
+      "exportName": "QuitPipIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "radar",
+      "category": "map-location",
+      "exportName": "RadarIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "radar-2",
+      "category": "map-location",
+      "exportName": "Radar2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "record",
+      "category": "video-audio-sound",
+      "exportName": "RecordIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "record-circle",
+      "category": "video-audio-sound",
+      "exportName": "RecordCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "reel",
+      "category": "video-audio-sound",
+      "exportName": "ReelIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "reel-2",
+      "category": "video-audio-sound",
+      "exportName": "Reel2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "refresh",
+      "category": "arrows",
+      "exportName": "RefreshIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "refresh-circle",
+      "category": "arrows",
+      "exportName": "RefreshCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "refresh-square",
+      "category": "arrows",
+      "exportName": "RefreshSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "repeat",
+      "category": "video-audio-sound",
+      "exportName": "RepeatIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "repeat-one",
+      "category": "video-audio-sound",
+      "exportName": "RepeatOneIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "repeat-one-minimalistic",
+      "category": "video-audio-sound",
+      "exportName": "RepeatOneMinimalisticIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "restart",
+      "category": "arrows",
+      "exportName": "RestartIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "restart-circle",
+      "category": "arrows",
+      "exportName": "RestartCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "restart-square",
+      "category": "arrows",
+      "exportName": "RestartSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-10-seconds-back",
+      "category": "video-audio-sound",
+      "exportName": "Rewind10SecondsBackIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-10-seconds-forward",
+      "category": "video-audio-sound",
+      "exportName": "Rewind10SecondsForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-15-seconds-back",
+      "category": "video-audio-sound",
+      "exportName": "Rewind15SecondsBackIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-15-seconds-forward",
+      "category": "video-audio-sound",
+      "exportName": "Rewind15SecondsForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-5-seconds-back",
+      "category": "video-audio-sound",
+      "exportName": "Rewind5SecondsBackIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-5-seconds-forward",
+      "category": "video-audio-sound",
+      "exportName": "Rewind5SecondsForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-back",
+      "category": "video-audio-sound",
+      "exportName": "RewindBackIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-back-circle",
+      "category": "video-audio-sound",
+      "exportName": "RewindBackCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-forward",
+      "category": "video-audio-sound",
+      "exportName": "RewindForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "rewind-forward-circle",
+      "category": "video-audio-sound",
+      "exportName": "RewindForwardCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-alt-arrow-down",
+      "category": "arrows",
+      "exportName": "RoundAltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-alt-arrow-left",
+      "category": "arrows",
+      "exportName": "RoundAltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-alt-arrow-right",
+      "category": "arrows",
+      "exportName": "RoundAltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-alt-arrow-up",
+      "category": "arrows",
+      "exportName": "RoundAltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-down",
+      "category": "arrows",
+      "exportName": "RoundArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-left",
+      "category": "arrows",
+      "exportName": "RoundArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-left-down",
+      "category": "arrows",
+      "exportName": "RoundArrowLeftDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-left-up",
+      "category": "arrows",
+      "exportName": "RoundArrowLeftUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-right",
+      "category": "arrows",
+      "exportName": "RoundArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-right-down",
+      "category": "arrows",
+      "exportName": "RoundArrowRightDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-right-up",
+      "category": "arrows",
+      "exportName": "RoundArrowRightUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-arrow-up",
+      "category": "arrows",
+      "exportName": "RoundArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-double-alt-arrow-down",
+      "category": "arrows",
+      "exportName": "RoundDoubleAltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-double-alt-arrow-left",
+      "category": "arrows",
+      "exportName": "RoundDoubleAltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-double-alt-arrow-right",
+      "category": "arrows",
+      "exportName": "RoundDoubleAltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-double-alt-arrow-up",
+      "category": "arrows",
+      "exportName": "RoundDoubleAltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-sort-horizontal",
+      "category": "arrows",
+      "exportName": "RoundSortHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-sort-vertical",
+      "category": "arrows",
+      "exportName": "RoundSortVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-transfer-diagonal",
+      "category": "arrows",
+      "exportName": "RoundTransferDiagonalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-transfer-horizontal",
+      "category": "arrows",
+      "exportName": "RoundTransferHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "round-transfer-vertical",
+      "category": "arrows",
+      "exportName": "RoundTransferVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "route",
+      "category": "map-location",
+      "exportName": "RouteIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "routing",
+      "category": "map-location",
+      "exportName": "RoutingIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "routing-2",
+      "category": "map-location",
+      "exportName": "Routing2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "routing-3",
+      "category": "map-location",
+      "exportName": "Routing3Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "ruble",
+      "category": "money",
+      "exportName": "RubleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "safe-2",
+      "category": "money",
+      "exportName": "Safe2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "safe-circle",
+      "category": "money",
+      "exportName": "SafeCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "safe-square",
+      "category": "money",
+      "exportName": "SafeSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "sale",
+      "category": "money",
+      "exportName": "SaleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "sale-square",
+      "category": "money",
+      "exportName": "SaleSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "settings",
+      "category": "ui",
+      "exportName": "SettingsIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "shuffle",
+      "category": "video-audio-sound",
+      "exportName": "ShuffleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "signpost",
+      "category": "map-location",
+      "exportName": "SignpostIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "signpost-2",
+      "category": "map-location",
+      "exportName": "Signpost2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "skip-next",
+      "category": "video-audio-sound",
+      "exportName": "SkipNextIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "skip-previous",
+      "category": "video-audio-sound",
+      "exportName": "SkipPreviousIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "sort-horizontal",
+      "category": "arrows",
+      "exportName": "SortHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "sort-vertical",
+      "category": "arrows",
+      "exportName": "SortVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "soundwave",
+      "category": "video-audio-sound",
+      "exportName": "SoundwaveIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "soundwave-circle",
+      "category": "video-audio-sound",
+      "exportName": "SoundwaveCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "soundwave-square",
+      "category": "video-audio-sound",
+      "exportName": "SoundwaveSquareIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-alt-arrow-down",
+      "category": "arrows",
+      "exportName": "SquareAltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-alt-arrow-left",
+      "category": "arrows",
+      "exportName": "SquareAltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-alt-arrow-right",
+      "category": "arrows",
+      "exportName": "SquareAltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-alt-arrow-up",
+      "category": "arrows",
+      "exportName": "SquareAltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-down",
+      "category": "arrows",
+      "exportName": "SquareArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-left",
+      "category": "arrows",
+      "exportName": "SquareArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-left-down",
+      "category": "arrows",
+      "exportName": "SquareArrowLeftDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-left-up",
+      "category": "arrows",
+      "exportName": "SquareArrowLeftUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-right",
+      "category": "arrows",
+      "exportName": "SquareArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-right-down",
+      "category": "arrows",
+      "exportName": "SquareArrowRightDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-right-up",
+      "category": "arrows",
+      "exportName": "SquareArrowRightUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-arrow-up",
+      "category": "arrows",
+      "exportName": "SquareArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-double-alt-arrow-down",
+      "category": "arrows",
+      "exportName": "SquareDoubleAltArrowDownIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-double-alt-arrow-left",
+      "category": "arrows",
+      "exportName": "SquareDoubleAltArrowLeftIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-double-alt-arrow-right",
+      "category": "arrows",
+      "exportName": "SquareDoubleAltArrowRightIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-double-alt-arrow-up",
+      "category": "arrows",
+      "exportName": "SquareDoubleAltArrowUpIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-forward",
+      "category": "messages-conversation",
+      "exportName": "SquareForwardIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-share-line",
+      "category": "messages-conversation",
+      "exportName": "SquareShareLineIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-sort-horizontal",
+      "category": "arrows",
+      "exportName": "SquareSortHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-sort-vertical",
+      "category": "arrows",
+      "exportName": "SquareSortVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-transfer-horizontal",
+      "category": "arrows",
+      "exportName": "SquareTransferHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "square-transfer-vertical",
+      "category": "arrows",
+      "exportName": "SquareTransferVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "stop",
+      "category": "video-audio-sound",
+      "exportName": "StopIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "stop-circle",
+      "category": "video-audio-sound",
+      "exportName": "StopCircleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "stream",
+      "category": "video-audio-sound",
+      "exportName": "StreamIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "streets",
+      "category": "map-location",
+      "exportName": "StreetsIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "streets-map-point",
+      "category": "map-location",
+      "exportName": "StreetsMapPointIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "streets-navigation",
+      "category": "map-location",
+      "exportName": "StreetsNavigationIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "tag",
+      "category": "money",
+      "exportName": "TagIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "tag-horizontal",
+      "category": "money",
+      "exportName": "TagHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "tag-price",
+      "category": "money",
+      "exportName": "TagPriceIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "ticker-star",
+      "category": "money",
+      "exportName": "TickerStarIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "ticket",
+      "category": "money",
+      "exportName": "TicketIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "ticket-sale",
+      "category": "money",
+      "exportName": "TicketSaleIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "to-pip",
+      "category": "video-audio-sound",
+      "exportName": "ToPipIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "transfer-horizontal",
+      "category": "arrows",
+      "exportName": "TransferHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "transfer-vertical",
+      "category": "arrows",
+      "exportName": "TransferVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "trash-bin",
+      "category": "ui",
+      "exportName": "TrashBinIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "unread",
+      "category": "messages-conversation",
+      "exportName": "UnreadIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "upload-track",
+      "category": "video-audio-sound",
+      "exportName": "UploadTrackIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "upload-track-2",
+      "category": "video-audio-sound",
+      "exportName": "UploadTrack2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "verified-check",
+      "category": "money",
+      "exportName": "VerifiedCheckIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "video-frame",
+      "category": "video-audio-sound",
+      "exportName": "VideoFrameIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-2",
+      "category": "video-audio-sound",
+      "exportName": "VideoFrame2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-cut",
+      "category": "video-audio-sound",
+      "exportName": "VideoFrameCutIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-cut-2",
+      "category": "video-audio-sound",
+      "exportName": "VideoFrameCut2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-play-horizontal",
+      "category": "video-audio-sound",
+      "exportName": "VideoFramePlayHorizontalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-play-vertical",
+      "category": "video-audio-sound",
+      "exportName": "VideoFramePlayVerticalIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-frame-replace",
+      "category": "video-audio-sound",
+      "exportName": "VideoFrameReplaceIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "video-library",
+      "category": "video-audio-sound",
+      "exportName": "VideoLibraryIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "videocamera",
+      "category": "video-audio-sound",
+      "exportName": "VideocameraIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "videocamera-add",
+      "category": "video-audio-sound",
+      "exportName": "VideocameraAddIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "videocamera-record",
+      "category": "video-audio-sound",
+      "exportName": "VideocameraRecordIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "vinyl",
+      "category": "video-audio-sound",
+      "exportName": "VinylIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "vinyl-record",
+      "category": "video-audio-sound",
+      "exportName": "VinylRecordIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "volume",
+      "category": "video-audio-sound",
+      "exportName": "VolumeIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "volume-cross",
+      "category": "video-audio-sound",
+      "exportName": "VolumeCrossIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "volume-loud",
+      "category": "video-audio-sound",
+      "exportName": "VolumeLoudIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "volume-small",
+      "category": "video-audio-sound",
+      "exportName": "VolumeSmallIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    },
+    {
+      "name": "wad-of-money",
+      "category": "money",
+      "exportName": "WadOfMoneyIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "wallet",
+      "category": "money",
+      "exportName": "WalletIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken"
+      ]
+    },
+    {
+      "name": "wallet-2",
+      "category": "money",
+      "exportName": "Wallet2Icon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "wallet-money",
+      "category": "money",
+      "exportName": "WalletMoneyIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "broken",
+        "outline"
+      ]
+    },
+    {
+      "name": "wallpaper",
+      "category": "video-audio-sound",
+      "exportName": "WallpaperIcon",
+      "styles": [
+        "bold",
+        "bold-duotone",
+        "line-duotone",
+        "outline"
+      ]
+    }
+  ],
+  "warnings": []
+}

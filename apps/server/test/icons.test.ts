@@ -36,6 +36,9 @@ test('normalizeSvg switches the main color to currentColor and keeps opacity', (
     const keepWhite = normalizeSvg('<svg viewBox="0 0 24 24"><path fill="#111"/><path fill="#111"/><path fill="white"/></svg>')!;
     assert.match(keepWhite.body, /fill="white"/);
     assert.equal(normalizeSvg('<svg viewBox="0 0 24 24"><path fill="#111" onclick="x()"/></svg>')!.body, '<path fill="currentColor"/>');
+    // Atribut stroke di <svg> (gaya ikon garis) dibawa ke <g> dan warnanya jadi currentColor.
+    assert.equal(normalizeSvg('<svg viewBox="0 0 24 24" fill="none" stroke="#1C274C" stroke-width="1.5"><path d="M5 12h14"/></svg>')!.body,
+        '<g stroke="currentColor" stroke-width="1.5"><path d="M5 12h14"/></g>');
 });
 
 test('iconExportName', () => {

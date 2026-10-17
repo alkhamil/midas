@@ -1,0 +1,5 @@
+{
+  "server": "http://127.0.0.1:4000",
+  "libraryId": "midas-base-ds-o1qjpg2o",
+  "package": "@midas/ui-base"
+}

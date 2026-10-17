@@ -1,0 +1,14 @@
+/* Class spacing semantik design system (dipakai komponen & aplikasi). Nilai dari token --theme-*. */
+.page-padding { padding: var(--theme-page-padding) }
+@media (min-width: 1024px) { .page-padding { padding: var(--theme-page-padding-lg) } }
+.section-gap { gap: var(--theme-section-gap) }
+.stack-gap { gap: var(--theme-stack-gap) }
+.field-gap { gap: var(--theme-field-gap) }
+
+/* Scrollbar tabel & helper yang dipakai komponen (Table, FilterToolbar). */
+.table-scroll { scrollbar-color: var(--theme-border) transparent }
+.table-scroll::-webkit-scrollbar { height: 8px }
+.table-scroll::-webkit-scrollbar-track { background: transparent }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 9999px }
+.no-scrollbar { scrollbar-width: none }
+.no-scrollbar::-webkit-scrollbar { display: none }
