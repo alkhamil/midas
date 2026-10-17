@@ -8,7 +8,11 @@ import {
     breakingChanges, bumpSemver, compareSemver, deriveMappings, PACKAGE_NAME_RE, packageSlug, SEMVER_RE, validateMappings,
     type ComponentMapping, type LibrarySnapshot,
 } from '../lib/library.js';
+import { config } from '../config.js';
+import { buildKit, buildManifest, type KitInput } from '../lib/kit.js';
+import { buildScaffold } from '../lib/scaffold.js';
 import { getObject, putObject } from '../lib/s3.js';
+import { zipFiles } from '../lib/zip.js';
 
 type VersionRow = typeof libraryVersions.$inferSelect;
 
@@ -99,12 +103,26 @@ async function storeVersion(opts: {
         const [v] = await tx.insert(libraryVersions).values({
             libraryId: opts.libraryId, seq: opts.seq, version: opts.version, releaseNotes: opts.releaseNotes ?? null, snapshotKey: key,
             componentsCount: opts.snapshot.components.length, variablesCount: opts.snapshot.variables?.items?.length ?? 0,
+            manifest: buildManifest({ packageName: opts.packageName, version: opts.version, libraryName: opts.name, publishedAt: new Date(published), snapshot: opts.snapshot, mappings: opts.mappings }),
             publishedBy: opts.userId, publishedAt: new Date(published),
         }).returning({ id: libraryVersions.id });
         if (opts.mappings.length)
             await tx.insert(componentMappings).values(opts.mappings.map(m => ({ libraryVersionId: v.id, ...m })));
     });
     return snap;
+}
+
+/** Versi berdasarkan semver (`version`) atau terbaru bila kosong. */
+async function versionOf(libraryId: string, version?: string): Promise<VersionRow | null> {
+    if (!version)
+        return latestVersion(libraryId);
+    const [v] = await db.select().from(libraryVersions).where(and(eq(libraryVersions.libraryId, libraryId), eq(libraryVersions.version, version))).limit(1);
+    return v ?? null;
+}
+
+async function kitInput(l: typeof libraries.$inferSelect, v: VersionRow): Promise<KitInput> {
+    const snap = JSON.parse((await getObject(v.snapshotKey)).toString('utf8')) as LibrarySnapshot & { name?: string };
+    return { packageName: l.packageName, version: v.version, libraryName: snap.name ?? l.name, publishedAt: v.publishedAt, snapshot: snap, mappings: await mappingsOf(v.id) };
 }
 
 export async function libraryRoutes(app: FastifyInstance) {
@@ -241,6 +259,40 @@ export async function libraryRoutes(app: FastifyInstance) {
             isNew: !l, seq: (latest?.seq ?? 0) + 1, version: b.version, releaseNotes: b.releaseNotes, snapshot, mappings,
         });
         return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: snapshot.components.length, variables: snapshot.variables?.items?.length ?? 0, codeStatus: 'pending' }, breaking };
+    });
+
+    // Cari library dari nama paket (dipakai `midas sync` / `midas init`).
+    app.get<{ Querystring: { package?: string } }>('/api/libraries/resolve', async (req, reply) => {
+        const [l] = await db.select().from(libraries)
+            .where(and(eq(libraries.packageName, req.query.package ?? ''), eq(libraries.workspaceId, req.user!.workspaceId))).limit(1);
+        if (!l)
+            return reply.code(404).send({ error: 'not_found', message: `Library ${req.query.package} tidak ditemukan di workspace ini` });
+        const v = await latestVersion(l.id);
+        return { id: l.id, name: l.name, packageName: l.packageName, latest: v?.version ?? null };
+    });
+
+    // Library Kit satu versi (spec §3.3) — file untuk `src/generated/`.
+    app.get<{ Params: { id: string }; Querystring: { version?: string } }>('/api/libraries/:id/kit', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.query.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: req.query.version ? `Versi ${req.query.version} tidak ditemukan` : 'Library tidak ditemukan' });
+        return { libraryId: l.id, package: l.packageName, version: v.version, files: buildKit(await kitInput(l, v)) };
+    });
+
+    // Kerangka repo paket (spec §3.4) + Library Kit. `?format=zip` untuk unduhan dari Studio.
+    app.get<{ Params: { id: string }; Querystring: { version?: string; format?: string } }>('/api/libraries/:id/scaffold', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.query.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: 'Library tidak ditemukan' });
+        const files = buildScaffold({ ...(await kitInput(l, v)), libraryId: l.id, serverUrl: config.publicUrl, registryUrl: config.registryUrl });
+        if (req.query.format !== 'zip')
+            return { libraryId: l.id, package: l.packageName, version: v.version, files };
+        const dir = l.packageName.split('/')[1];
+        return reply.header('content-type', 'application/zip')
+            .header('content-disposition', `attachment; filename="${dir}-${v.version}.zip"`)
+            .send(zipFiles(files, dir));
     });
 
     // Library yang dipakai sebuah file (bentuk sama dengan `LIBS.use` di engine).

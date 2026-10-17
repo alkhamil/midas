@@ -10108,6 +10108,37 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         }
     };
 }
+// Developer kit (spec §3.3–§3.4): repo paket frontend + Library Kit untuk developer, per versi library.
+async function developerKitDialog() {
+    const mine = LIBS.published.find(x => x.id === lib.fileId);
+    if (!mine)
+        return toast('Publish this file as a library first.');
+    let versions = [];
+    try {
+        versions = (await libraryApi.history(lib.fileId)).versions;
+    }
+    catch (e) {
+        return toast(`Could not load the library: ${e?.message || e}`);
+    }
+    const server = location.origin, pkg = mine.packageName, dir = pkg.split('/')[1];
+    const code = (s) => `<pre class="token-code lp-code">${esc(s)}</pre>`;
+    modal(`${modalHeader('Developer kit', `Frontend package <span class="lp-mono">${esc(pkg)}</span> for “${esc(mine.name)}”.`)}
+<div class="lp-form">
+<label class="lp-field"><span>Version</span><select class="lp-input" id="dk-version">${versions.map(v => `<option value="${esc(v.version)}">${esc(v.version)}${v.releaseNotes ? ` — ${esc(v.releaseNotes.slice(0, 60))}` : ''}</option>`).join('')}</select></label>
+<div class="lp-field"><span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit. Create it once; after that the repository belongs to the developers.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a></div>
+<div class="lp-field"><span>Or with the CLI</span>${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}</div>
+<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version.</small>${code(`npx midas sync --version <version>`)}</div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
+</div>`);
+    const sel = $('#dk-version'), zip = $('#dk-zip');
+    const update = () => {
+        const v = sel.value;
+        zip.href = `/api/libraries/${encodeURIComponent(lib.fileId)}/scaffold?format=zip&version=${encodeURIComponent(v)}`;
+        $('#modal').querySelectorAll('.lp-code').forEach(el => { el.textContent = el.textContent.replace(/--version \S+$/m, `--version ${v}`); });
+    };
+    sel.onchange = update;
+    update();
+}
 function libSyncVariables(snap) {
     const store = varStore();
     store.collections = store.collections.filter(c => c.libId !== snap.id);
@@ -10245,7 +10276,7 @@ async function libUpdate(libId) {
 function libPanelHtml() {
     const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
     const used = new Set(LIBS.use.map(u => u.id));
-    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<button class="wide-button lib-publish" data-lib-devkit>${icon('download', 13)} Developer kit</button>` : ''}${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
     h += `<div class="lib-head"><b>Libraries</b></div>`;
     h += others.length ? others.map(l => {
         const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;
@@ -14227,6 +14258,8 @@ $('#assets-panel').addEventListener('click', e => {
     let el;
     if (e.target.closest('[data-lib-publish]'))
         publishLibrary();
+    else if (e.target.closest('[data-lib-devkit]'))
+        developerKitDialog();
     else if ((el = e.target.closest('[data-lib-toggle]')))
         libUse(el.dataset.libToggle, !LIBS.use.some(u => u.id === el.dataset.libToggle));
     else if ((el = e.target.closest('[data-lib-update]')))

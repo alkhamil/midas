@@ -2754,3 +2754,5 @@ select.vw-text { cursor: pointer }
 .lp-values { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 12px }
 .lp-value { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted) }
 .lp-value .lp-input { width: 96px; min-height: 26px; padding: 3px 7px }
+.lp-code { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 11px }
+a.wide-button { text-decoration: none; color: inherit }

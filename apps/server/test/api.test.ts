@@ -103,3 +103,14 @@ test('kv store', async () => {
     assert.deepEqual((await call('GET', '/api/kv?prefix=la')).body.keys, ['last']);
     assert.equal((await call('GET', '/api/kv/missing')).status, 404);
 });
+
+test('CLI token works as Bearer auth', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/auth/tokens', payload: { email, password: 'rahasia123' } });
+    assert.equal(res.statusCode, 200);
+    const { token } = res.json();
+    assert.match(token, /^mdt_/);
+    const me = await app.inject({ method: 'GET', url: '/api/auth/me', headers: { authorization: `Bearer ${token}` } });
+    assert.equal(me.json().user.email, email);
+    const bad = await app.inject({ method: 'POST', url: '/api/auth/tokens', payload: { email, password: 'salah-sekali' } });
+    assert.equal(bad.statusCode, 401);
+});

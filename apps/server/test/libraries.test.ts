@@ -140,3 +140,19 @@ test('breakingChanges reports renamed exports', () => {
     const a = deriveMapping(button());
     assert.deepEqual(breakingChanges([a], [{ ...a, exportName: 'Btn' }]), ['Komponen Button diganti nama menjadi Btn']);
 });
+
+test('resolve, kit and scaffold zip for a published version', async () => {
+    const r = await call('GET', `/api/libraries/resolve?package=${encodeURIComponent(pkg)}`);
+    assert.equal(r.body.id, dsFile);
+    assert.equal(r.body.latest, '2.0.0');
+    const kit = await call('GET', `/api/libraries/${dsFile}/kit?version=1.0.0`);
+    assert.equal(kit.body.version, '1.0.0');
+    assert.match(kit.body.files['src/generated/props/Button.ts'], /type\?: "primary" \| "secondary";/);
+    const missing = await call('GET', `/api/libraries/${dsFile}/kit?version=9.9.9`);
+    assert.equal(missing.status, 404);
+    const zip = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/scaffold?format=zip`, headers: { cookie } });
+    assert.equal(zip.headers['content-type'], 'application/zip');
+    assert.equal(zip.rawPayload.readUInt32LE(0), 0x04034b50);
+    const list = await call('GET', '/api/libraries');
+    assert.ok(list.body.libraries.find((l: { id: string }) => l.id === dsFile));
+});

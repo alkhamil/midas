@@ -8,7 +8,8 @@ Design editor (clone Figma di sisi canvas) + Code Builder. Spesifikasi: [docs/sp
 apps/
 ├── studio/     # Midas Studio (React + Vite): editor canvas, engine di src/engine/midas.js
 └── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
-packages/       # paket bersama (CLI, library UI) — fase berikutnya
+packages/
+└── cli/        # @midas/cli: login, init, sync Library Kit ke repo paket design system
 infra/          # konfigurasi Verdaccio & SeaweedFS untuk docker-compose
 docs/specs/     # spesifikasi & workflow
 ```
@@ -28,11 +29,25 @@ npm run dev:studio                   # Studio di http://127.0.0.1:5173 (proxy /a
 
 Buka Studio, lalu buat akun pertama di layar login (akun pertama selalu diizinkan; akun berikutnya mengikuti `ALLOW_REGISTER`).
 
-Test API (butuh infra jalan):
+Test (API butuh infra jalan):
 
 ```bash
 npm test --workspace @midas/server
+npm test --workspace @midas/cli
 ```
+
+## Design system library → paket frontend
+
+1. Di Studio: file design system → Assets → **Publish as library** (nama paket `@midas/ui-*`, versi, mapping komponen).
+2. **Developer kit** di panel yang sama: unduh `.zip` kerangka repo, atau pakai CLI:
+
+```bash
+node packages/cli/bin/midas.js login --server http://127.0.0.1:4000
+node packages/cli/bin/midas.js init ui-cms --library @midas/ui-cms
+cd ui-cms && npx midas sync --version <versi>
+```
+
+3. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
 
 ## Penyimpanan
 

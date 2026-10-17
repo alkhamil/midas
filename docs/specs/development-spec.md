@@ -114,19 +114,32 @@ Saat publish, Midas:
 
 ```text
 src/generated/                # JANGAN diedit manual — ditimpa setiap sync
-├── theme.ts                  # token light/dark dari Variables
-├── tokens.css                # CSS variables --theme-* + utility semantik (.page-padding, .stack-gap, …)
+├── theme.ts                  # ThemeName, ThemeTokens, themes, applyTheme() dari Variables
+├── tokens.css                # CSS variables --theme-* per tema (:root = tema pertama, [data-theme="dark"], …)
+├── tailwind-theme.css        # @theme inline: --color-* / --radius-* → var(--theme-*) untuk Tailwind v4
 ├── props/
-│   ├── Button.ts             # export interface ButtonProps { variant: 'primary' | …; disabled?: boolean; … }
-│   └── TextField.ts
-└── manifest.json             # daftar komponen + props (nama, tipe, enum, default) untuk Properties Inspector
+│   ├── Button.ts             # export interface ButtonProps { variant?: 'primary' | …; label?: string; … } + buttonDefaults
+│   └── index.ts
+├── index.ts
+├── README.md
+└── manifest.json             # daftar komponen + props (nama, tipe, nilai enum, default) + token, untuk Properties Inspector
 ```
 
-Developer menarik Kit terbaru ke repo paket dengan CLI:
+Aturan pembangkitan:
+- **Tema** = nama mode dari collection Variables yang punya lebih dari satu mode (mis. Light/Dark → `light`, `dark`); collection satu mode berlaku untuk semua tema. Alias di-resolve per tema.
+- **Nama token** = path Variable dalam camelCase, tanpa grup awal `color/` untuk warna: `color/primary-foreground` → `primaryForeground` → `--theme-primary-foreground`; `radius/md` → `radiusMd`. Number → `px`. Variable `effect` belum didukung (muncul sebagai peringatan).
+- **Props**: variant → union string (`"primary" | "ghost"`) atau boolean bila nilainya true/false; property text → `string`, boolean → `boolean`, instance swap / slot → `ReactNode` (slot pertama → `children`). Semua prop opsional; default = varian pertama dan default component property. Setiap komponen juga punya `testId`.
+- Hasilnya deterministik per versi, sehingga sync bisa diulang dengan aman.
+
+Developer memakai CLI `@midas/cli` (dipublish ke Midas Registry):
 
 ```bash
-npx @midas/cli sync --library @midas/ui-cms --version 1.2.0
+npx @midas/cli login --server https://midas.example.com     # token disimpan di ~/.midas/config.json
+npx @midas/cli init ui-cms --library @midas/ui-cms           # repo baru: kerangka + Library Kit (sekali)
+npx midas sync --version 1.2.0                               # di repo: timpa src/generated + samakan version package.json
 ```
+
+Di CI, token diberikan lewat `MIDAS_TOKEN` (dibuat dengan `POST /api/auth/tokens`). Kerangka repo juga bisa diunduh sebagai `.zip` dari tombol **Developer kit** di panel Library Studio.
 
 ### 3.4. Repo paket frontend (developer)
 
@@ -139,7 +152,7 @@ ui-cms/
 ├── midas.config.json         # { "libraryId": "...", "package": "@midas/ui-cms" }
 ├── src/
 │   ├── generated/            # Library Kit (§3.3)
-│   ├── components/           # isi komponen — ditulis developer
+│   ├── components/           # isi komponen — ditulis developer (awalnya kerangka bertanda midasStub)
 │   │   ├── Button/Button.tsx #   function Button(props: ButtonProps) { … }
 │   │   └── TextField/TextField.tsx
 │   ├── layout/               # AppShell, Sidebar, PageHeader, PageContent, …
@@ -584,7 +597,8 @@ Catatan:
 
 | Area | Endpoint | Keterangan |
 | --- | --- | --- |
-| Auth | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Session cookie (httpOnly) / JWT |
+| Auth | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Session cookie (httpOnly) |
+| | `POST /api/auth/tokens` | Token CLI/CI (`mdt_…`, berlaku `TOKEN_DAYS`), dikirim sebagai `Authorization: Bearer` — dipakai `midas login` dan CI |
 | Files | `GET /api/files`, `POST /api/files` | Daftar & buat file desain |
 | | `GET /api/files/:id` | Meta file + daftar page (tanpa `nodes`) |
 | | `PATCH /api/files/:id` | Update meta (nama, tokens, variables, urutan page); body membawa `version` |
@@ -603,8 +617,9 @@ Catatan:
 | | `POST /api/libraries/:id/versions` | **Publish Library**: buat library pada publish pertama (nama paket dikunci), validasi semver + breaking change, simpan snapshot & mapping |
 | | `GET /api/libraries/:id/versions/:version/mappings` | Component mapping satu versi |
 | | `POST /api/libraries/import-legacy` | Pindahkan library dari penyimpanan lama (`user_kv` / IndexedDB) |
-| | `GET /api/libraries/:id/versions/:version/kit` | Unduh Library Kit (dipakai `@midas/cli sync`) |
-| | `GET /api/libraries/:id/scaffold` | Unduh kerangka repo paket (§3.4) |
+| | `GET /api/libraries/resolve?package=` | Cari library dari nama paket (dipakai CLI) |
+| | `GET /api/libraries/:id/kit?version=` | Library Kit satu versi (default terbaru) sebagai `{ files }` — dipakai `midas sync` |
+| | `GET /api/libraries/:id/scaffold?version=&format=zip` | Kerangka repo paket (§3.4) + Library Kit; JSON untuk `midas init`, zip untuk tombol **Developer kit** di Studio |
 | | `POST /api/libraries/:id/versions/:version/code` | Dipanggil CI setelah `npm publish` (token CI): daftar export + bundleUrl → hitung status kode |
 | | `GET/PUT /api/files/:id/libraries` | Library yang dipakai sebuah file desain + versi (`seq`) yang dipakai |
 | Code Builder | `GET/POST /api/builder-projects`, `GET/PUT /api/builder-projects/:id` | Konfigurasi project/module/screen; `PUT` membawa `version` |
