@@ -12,7 +12,7 @@ const VariablesIcon = ({ size }) => (
     </svg>
 );
 
-export function Topbar() {
+export function Topbar({ user }) {
     return (
         <header className="topbar">
             <div className="brand-section">
@@ -31,12 +31,11 @@ export function Topbar() {
                 <span className="crumb-slash">/</span>
                 <button id="file-name" title="Rename document">Untitled</button>
                 <span className="file-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
-                <span className="save-indicator" id="save-indicator"><i></i> Saved locally</span>
+                <span className="save-indicator" id="save-indicator"><i></i> Saved</span>
             </div>
             <div className="top-actions">
                 <button className="icon-button" id="open-variables" title="Variables" aria-label="Variables"><VariablesIcon size={17} /></button>
-                <span className="local-badge">LOCAL FILE</span>
-                <button className="avatar" id="profile" title="Local-first · no account required">M</button>
+                <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
                 <button className="icon-button" id="present" title="Present frames" aria-label="Present frames" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
@@ -121,7 +120,7 @@ export function CanvasArea() {
             <canvas id="overlay" tabIndex={0} aria-label="Canvas interaction area"></canvas>
             <div className="canvas-topline">
                 <span className="canvas-crumb" id="canvas-page-name">Design exploration</span>
-                <button className="canvas-pill" id="canvas-status"><i></i><span>All changes stay on this device</span></button>
+                <button className="canvas-pill" id="canvas-status"><i></i><span>All changes saved to your workspace</span></button>
             </div>
             <div id="text-editor" contentEditable="plaintext-only" suppressContentEditableWarning className="text-editor hidden" role="textbox" aria-multiline="true" spellCheck="false"></div>
             <div className="canvas-footer">

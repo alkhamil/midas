@@ -1,0 +1,40 @@
+# Infrastruktur lokal Midas: database, object storage, dan registry paket library.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: midas
+      POSTGRES_PASSWORD: midas
+      POSTGRES_DB: midas
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U midas"]
+      interval: 5s
+      retries: 10
+
+  # Object storage S3-compatible (aset, snapshot library, bundle). MinIO tidak lagi
+  # menyediakan image publik, jadi dipakai SeaweedFS dengan gateway S3.
+  s3:
+    image: chrislusf/seaweedfs:4.48
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.volumeSizeLimitMB=1024
+    ports:
+      - "8333:8333"
+    volumes:
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+      - s3data:/data
+
+  verdaccio:
+    image: verdaccio/verdaccio:6
+    ports:
+      - "4873:4873"
+    volumes:
+      - ./infra/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - verdacciostorage:/verdaccio/storage
+
+volumes:
+  pgdata:
+  s3data:
+  verdacciostorage:

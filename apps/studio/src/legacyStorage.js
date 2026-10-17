@@ -1,7 +1,6 @@
-// Browser client-side storage implementation for Midas.
-// Uses IndexedDB for large documents & library index (supports large Figma files with 180k+ layers),
-// with structured page-level incremental storage, automatic migration, and seamless fallback to localStorage.
-// `settings` provides synchronous access to localStorage settings.
+// Penyimpanan lama Midas di browser (IndexedDB, local-first). Sejak file tersimpan di server
+// (lihat storage.js), modul ini hanya dipakai untuk membaca file lama saat import ke workspace,
+// dan `settings` (preferensi editor per browser di localStorage).
 
 const DB_NAME = 'midas-db';
 const DB_VERSION = 1;
@@ -407,4 +406,39 @@ export const settings = {
 
 export async function loadSettings() {
     return Promise.resolve();
+}
+
+const IMPORTED_KEY = 'midas-imported-local-files';
+
+function importedIds() {
+    try {
+        return new Set(JSON.parse(localStorage.getItem(IMPORTED_KEY) || '[]'));
+    } catch {
+        return new Set();
+    }
+}
+
+/** File lama di IndexedDB yang belum di-import ke server: `[{ id, name, updated }]`. */
+export async function listLegacyFiles() {
+    if (typeof indexedDB === 'undefined') return [];
+    let index = [];
+    try {
+        index = JSON.parse(await kv.get('index') || '[]');
+    } catch { }
+    const done = importedIds(), out = [];
+    for (const m of Array.isArray(index) ? index : []) {
+        if (!m || typeof m.id !== 'string' || m.trashed || done.has(m.id)) continue;
+        if (await kv.get(`file:${m.id}:meta`) || await kv.get(`file:${m.id}`))
+            out.push({ id: m.id, name: String(m.name || 'Untitled'), updated: m.updated || 0 });
+    }
+    return out;
+}
+
+/** Tandai file lama sudah di-import supaya tidak ditawarkan lagi. */
+export function markLegacyImported(id) {
+    const ids = importedIds();
+    ids.add(id);
+    try {
+        localStorage.setItem(IMPORTED_KEY, JSON.stringify([...ids]));
+    } catch { }
 }

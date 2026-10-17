@@ -1,5 +1,5 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
-import { kv, settings as localStore, projectStorage } from '../storage.js';
+import { kv, settings as localStore, projectStorage, auth, getSignedInUser } from '../storage.js';
 
 
 // ===== document.js =====
@@ -3331,10 +3331,10 @@ async function libImportFile(file) {
             await save();
         const id = uid(), now = Date.now();
         lib.index.unshift({ id, name: data.name || 'Imported file', created: now, updated: now, opened: now, thumb: null });
-        toast('Saving project to local storage…');
+        toast('Uploading project to the server…');
         await projectStorage.saveProject(id, data, {
             onProgress: (p) => {
-                toast(`Saving to storage: Page ${p.savedPages}/${p.totalPages} (${p.pageName})`);
+                toast(`Uploading: Page ${p.savedPages}/${p.totalPages} (${p.pageName})`);
             }
         });
         await loadIntoEditor(data, id);
@@ -3622,7 +3622,7 @@ function renderHome() {
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
         main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
-    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">L</span><div><b>Local workspace</b><small>Saved in the data folder</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
 }
 async function showHome({ thumb = true } = {}) {
@@ -6256,7 +6256,7 @@ try {
 }
 catch { }
 document.documentElement.dataset.theme = options.theme;
-let storageMode = 'Local disk (data folder)', saveTimer, toastTimer;
+let storageMode = 'Midas server (Postgres + object storage)', saveTimer, toastTimer, retryTimer, conflictOpen = false;
 // Older builds kept a single document in the browser; on disk there is no legacy copy to migrate.
 async function openDB() { return null; }
 
@@ -6309,12 +6309,14 @@ function markPagesSaved() {
     for (const p of doc.data.pages)
         savedPageSigs.set(p.id, pageSig(p));
 }
-function saveSoon() { state.dirty = true; $('#save-indicator').innerHTML = '<i></i> Saving locally'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
+// Autosave ke server: ditahan ±1,5 detik setelah perubahan terakhir, lalu hanya page yang berubah yang dikirim.
+function saveSoon() { state.dirty = true; if (!conflictOpen) $('#save-indicator').innerHTML = '<i></i> Unsaved changes'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); }
 let savingInProgress = false;
 let saveQueued = false;
 async function save() {
     clearTimeout(saveTimer);
-    if (!lib.fileId)
+    clearTimeout(retryTimer);
+    if (!lib.fileId || conflictOpen)
         return;
     if (savingInProgress) {
         saveQueued = true;
@@ -6341,16 +6343,26 @@ async function save() {
         await libSaveIndex();
         await kvPut('last', lib.fileId);
         state.dirty = false;
-        if (indicator) indicator.innerHTML = '<i></i> Saved locally';
+        if (indicator) indicator.innerHTML = '<i></i> Saved';
     }
     catch (e) {
-        console.error('Save failed:', e);
-        if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Save failed';
-        const quota = await projectStorage.getQuota();
-        if (quota && quota.isLow) {
-            toast(`Browser storage quota is nearly full (${quota.percent}% used). Export your .midas file.`);
-        } else {
-            toast('Could not save to browser storage. Export your .midas file to keep your work.');
+        if (e?.name === 'ConflictError') {
+            if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Conflict';
+            savingInProgress = false;
+            saveQueued = false;
+            await resolveConflict();
+            return;
+        }
+        if (e instanceof TypeError) {
+            // Tidak terhubung ke server: perubahan tetap di memori dan dikirim ulang otomatis.
+            if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Offline — changes pending';
+            retryTimer = setTimeout(save, 5000);
+        }
+        else {
+            console.error('Save failed:', e);
+            if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Save failed';
+            toast(`Could not save to the server (${e?.message || e}). Retrying… Export your .midas file if this keeps happening.`);
+            retryTimer = setTimeout(save, 10000);
         }
     }
     finally {
@@ -6359,6 +6371,40 @@ async function save() {
             saveQueued = false;
             saveSoon();
         }
+    }
+}
+// Versi file di server lebih baru dari yang dimuat di tab ini (dibuka di tab/perangkat lain).
+async function resolveConflict() {
+    if (conflictOpen)
+        return;
+    conflictOpen = true;
+    try {
+        const reload = confirm('This file was changed somewhere else (another tab or device).\n\nOK — reload the latest version from the server (your unsaved edits in this tab are discarded).\nCancel — keep your edits and save them as a new copy.');
+        if (reload) {
+            projectStorage.forget(lib.fileId);
+            const data = await projectStorage.loadProject(lib.fileId);
+            if (data)
+                await loadIntoEditor(DocumentModel.parse(data), lib.fileId);
+            state.dirty = false;
+            toast('Reloaded the latest version.');
+        }
+        else {
+            const data = JSON.parse(doc.serialize()), id = uid(), now = Date.now();
+            data.name = `${doc.data.name} (copy)`;
+            await projectStorage.saveProject(id, data);
+            lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null });
+            await loadIntoEditor(DocumentModel.parse(data), id);
+            libSaveIndex().catch(() => { });
+            state.dirty = false;
+            toast(`Saved your edits as “${data.name}”.`);
+        }
+        $('#save-indicator').innerHTML = '<i></i> Saved';
+    }
+    catch (e) {
+        toast(`Could not resolve the conflict: ${e?.message || e}`);
+    }
+    finally {
+        conflictOpen = false;
     }
 }
 function invalidate() {
@@ -6915,7 +6961,7 @@ function renderInspector() {
     else if (!n) {
         html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>`);
         html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
-        html += section('Your work, your device', `<p>No account. No uploads. This document is saved to the data folder on this computer.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
+        html += section('Saved to your workspace', `<p>This document is saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
     }
     else {
         const multi = ns.length > 1;
@@ -14168,8 +14214,18 @@ $('#share').onclick = openExport;
 $('#present').onclick = () => present();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#command-button').onclick = commandPalette;
-$('#profile').onclick = () => toast('Your local workspace. No account, presence simulation, or cloud upload.');
-$('#canvas-status').onclick = () => toast('Saved to the data folder on this computer. Export a .midas copy to share it.');
+$('#profile').onclick = async () => {
+    const user = await auth.me().catch(() => null);
+    if (!user)
+        return location.reload();
+    if (!confirm(`Signed in as ${user.name} (${user.email}).\n\nSign out?`))
+        return;
+    if (state.dirty)
+        await save();
+    await auth.logout().catch(() => { });
+    location.reload();
+};
+$('#canvas-status').onclick = () => toast('Saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.');
 $('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');
 // ===== find & replace (Figma-style) =====
 // Searches layer names and text content, on this page by default or across all pages. Results are grouped by

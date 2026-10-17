@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "midas",
+      "credentials": [{ "accessKey": "midas", "secretKey": "midas-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

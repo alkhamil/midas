@@ -1,19 +1,21 @@
 {
-  "name": "midas",
+  "name": "midas-monorepo",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "npm run dev --workspace @midas/server & npm run dev --workspace @midas/studio",
+    "dev:studio": "npm run dev --workspace @midas/studio",
+    "dev:server": "npm run dev --workspace @midas/server",
+    "build": "npm run build --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace @midas/server",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
   },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.7"
+  "engines": {
+    "node": ">=22"
   }
 }

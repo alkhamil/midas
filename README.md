@@ -1,39 +1,51 @@
-# Midas (React + Vite)
+# Midas
 
-Design editor ported from the single-file `midas.html` into a React/Vite project.
-All work is saved directly to the browser's `localStorage` — no backend server required.
+Design editor (clone Figma di sisi canvas) + Code Builder. Spesifikasi: [docs/specs/development-spec.md](docs/specs/development-spec.md), alur pemakaian: [docs/specs/workflow.md](docs/specs/workflow.md).
 
-## Run
+## Struktur repo (npm workspaces)
+
+```text
+apps/
+├── studio/     # Midas Studio (React + Vite): editor canvas, engine di src/engine/midas.js
+└── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
+packages/       # paket bersama (CLI, library UI) — fase berikutnya
+infra/          # konfigurasi Verdaccio & SeaweedFS untuk docker-compose
+docs/specs/     # spesifikasi & workflow
+```
+
+## Menjalankan secara lokal
+
+Butuh Node 22 dan Docker.
 
 ```bash
 npm install
-npm run dev        # http://127.0.0.1:5173
+npm run infra:up                     # Postgres :5433, S3 (SeaweedFS) :8333, Verdaccio :4873
+cp apps/server/.env.example apps/server/.env
+npm run db:migrate
+npm run dev:server                   # API di http://127.0.0.1:4000
+npm run dev:studio                   # Studio di http://127.0.0.1:5173 (proxy /api → :4000)
 ```
 
-Production preview:
+Buka Studio, lalu buat akun pertama di layar login (akun pertama selalu diizinkan; akun berikutnya mengikuti `ALLOW_REGISTER`).
+
+Test API (butuh infra jalan):
 
 ```bash
-npm run build
-npm run preview
+npm test --workspace @midas/server
 ```
 
-## Storage
+## Penyimpanan
 
-All documents and preferences are stored directly in browser `localStorage`:
+Sejak backend tersedia, semua data disimpan di server (spec §7):
 
-| Key Prefix | Contents |
+| Data | Lokasi |
 | --- | --- |
-| `midas:kv:file:<id>` | Design document per file (JSON, same format as exported `.midas`) |
-| `midas:kv:index` | File library: names, dates, trash state, thumbnails |
-| `midas:kv:last` | ID of the last opened file |
-| `midas-options`, `midas-sidebars`, etc. | Editor preferences, plugin storage, sidebar widths |
+| Daftar file + metadata dokumen (pages, tokens, variables) | Postgres `design_files` |
+| Isi setiap page (`nodes`) | Postgres `design_file_pages` (satu baris per page) |
+| Aset gambar | Object storage S3 (`files/<id>/assets/<assetId>`) + metadata di `assets` |
+| State editor per user (file terakhir dibuka, daftar library lama) | Postgres `user_kv` |
+| Preferensi tampilan editor (tema, grid, lebar sidebar, plugin) | `localStorage` browser |
 
-## Structure
-
-- `index.html` – page head, vendor scripts, React root
-- `src/App.jsx`, `src/components/Shell.jsx` – React shell (top bar, panels, canvas, overlays)
-- `src/engine/midas.js` – the editor engine (renderer, document model, tools); starts once after the shell mounts
-- `src/storage.js` – storage adapter using browser `localStorage`
-- `public/vendor/` – fflate/kiwi/fzstd (Figma import) and polygon-clipping
-- `midas.html` – original single-file version, kept for reference
-# midas
+- Studio: `apps/studio/src/storage.js` = adapter API dengan bentuk `kv`/`projectStorage` yang sama seperti penyimpanan lama, jadi engine tidak perlu tahu datanya di server.
+- Autosave ±1,5 detik setelah perubahan terakhir, hanya page yang berubah. Setiap simpan membawa `version`; bila server punya versi lebih baru → 409 dan user memilih **reload** atau **simpan sebagai salinan**.
+- File lama di IndexedDB ditawarkan untuk di-import ke workspace setelah login (`apps/studio/src/legacyStorage.js`).
