@@ -2265,10 +2265,10 @@ function inlineRename(el, value, commit) {
 // ===== sidebar rail =====
 function syncRail() {
     for (const b of document.querySelectorAll('[data-rail]'))
-        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : state.leftTab === 'assets' ? 'assets' : state.leftTab === 'plugins' ? 'plugins' : 'design'));
+        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : ['assets', 'plugins', 'code-builder'].includes(state.leftTab) ? state.leftTab : 'design'));
 }
 function setLeftTab(k) {
-    state.leftTab = k === 'assets' ? 'assets' : k === 'plugins' ? 'plugins' : 'layers';
+    state.leftTab = ['assets', 'plugins', 'code-builder'].includes(k) ? k : 'layers';
     state.varCollMenu = false;
     $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
     renderLayers();
@@ -2283,7 +2283,7 @@ document.addEventListener('click', e => {
         else {
             if (vw.open)
                 toggleVarsWindow(false);
-            setLeftTab(k === 'assets' ? 'assets' : k === 'plugins' ? 'plugins' : 'layers');
+            setLeftTab(k);
         }
     }
     setTimeout(syncRail, 0);
@@ -6850,13 +6850,18 @@ function renamePageInline(id) {
     inlineRename(el, p.name, name => transaction('Rename page', () => { p.name = name; }));
 }
 function renderLayers() {
-    const pluginsMode = state.leftTab === 'plugins';
+    // Plugins dan Code Builder memakai seluruh panel kiri (tanpa pages/layers).
+    const pluginsMode = state.leftTab === 'plugins', builderMode = state.leftTab === 'code-builder';
     $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
-    $('#layers-heading').classList.toggle('hidden', pluginsMode);
-    if (pluginsMode) {
+    $('#code-builder-panel').classList.toggle('hidden', !builderMode);
+    $('#layers-heading').classList.toggle('hidden', pluginsMode || builderMode);
+    if (pluginsMode || builderMode) {
         for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layer-tree', '#assets-panel', '#layer-search-box', '#search-results'])
             $(id).classList.add('hidden');
-        renderPlugins();
+        if (pluginsMode)
+            renderPlugins();
+        else
+            renderCodeBuilder();
         return;
     }
     const assetsMode = state.leftTab === 'assets';
@@ -6951,10 +6956,6 @@ function renderInspector() {
         return;
     const ns = selected(), n = ns[0];
     let html = '';
-    if (state.inspectorTab === 'prototype') {
-        renderPrototype(n);
-        return;
-    }
     if (!n && state.tool === 'frame') {
         html += framePresetPanel();
     }
@@ -6992,7 +6993,6 @@ function renderInspector() {
         el.style.backgroundImage = `url("${src}")`; });
     lastInspector = performance.now();
 }
-function renderPrototype(n) { const frames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId); $('#inspector').innerHTML = section('Prototype', `<p>Connect a layer to a frame. In preview, clicking that layer navigates to the destination.</p>`) + (n ? section('Interaction', `<div class="field-label">On click → Navigate to</div>${selectField('prototypeTarget', n.prototypeTarget || '', [['', 'No destination'], ...frames.map(f => [f.id, f.name])])}<p>Transition: instant. Keyboard arrows also navigate between frames.</p>`) : section('Select a layer', '<p>Select a button, card, or other layer to add an interaction.</p>')) + section('Flow preview', `<button class="wide-button primary" data-action="present">${icon('play', 14)} Present frames</button><p>Preview is local. It does not publish or upload your design.</p>`); }
 function constrainChildren(n, oldW, oldH) {
     if (!['frame', 'group'].includes(n.type) && !n.booleanOp)
         return;
@@ -13403,6 +13403,10 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
+// ===== Code Builder (spec §4): frame → screen → kode. Untuk sekarang hanya panel kosong di rail kiri. =====
+function renderCodeBuilder() {
+    $('#code-builder-panel').innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">Register frames as screens and generate code — coming soon.</p></div>`;
+}
 function renderPlugins() {
     const list = loadPlugins();
     $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
@@ -13861,7 +13865,7 @@ const actions = { setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () =
         else
             addAutoLayout();
     }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
-const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Present frames', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Preview app', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
 function commandPalette() {
     modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
     let selectedIndex = 0, filtered = [];

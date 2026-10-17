@@ -2756,3 +2756,8 @@ select.vw-text { cursor: pointer }
 .lp-value .lp-input { width: 96px; min-height: 26px; padding: 3px 7px }
 .lp-code { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 11px }
 a.wide-button { text-decoration: none; color: inherit }
+
+/* ===== Code Builder panel ===== */
+.cb-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 20px; text-align: center; color: var(--text-secondary) }
+.cb-empty b { color: var(--text); font-size: 12px }
+.cb-empty p { margin: 0; max-width: 200px; line-height: 1.5 }

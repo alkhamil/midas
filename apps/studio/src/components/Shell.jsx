@@ -36,7 +36,8 @@ export function Topbar({ user }) {
             <div className="top-actions">
                 <button className="icon-button" id="open-variables" title="Variables" aria-label="Variables"><VariablesIcon size={17} /></button>
                 <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
-                <button className="icon-button" id="present" title="Present frames" aria-label="Present frames" data-icon="play"></button>
+                {/* Sementara masih presentasi frame; nanti menjadi Preview App milik Code Builder (spec §4.5). */}
+                <button className="icon-button" id="present" title="Preview app" aria-label="Preview app" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>
@@ -55,6 +56,9 @@ export function LeftRail() {
             <button className="rail-btn" data-rail="variables" title="Variables" aria-label="Variables"><VariablesIcon size={18} /></button>
             <button className="rail-btn" data-rail="plugins" title="Plugins" aria-label="Plugins">
                 <RailIcon><path d="M9 3v3.2a1.8 1.8 0 0 1-1.8 1.8H4v4h1.6a1.9 1.9 0 1 1 0 3.8H4V19a2 2 0 0 0 2 2h3.2v-1.6a1.9 1.9 0 1 1 3.8 0V21H16a2 2 0 0 0 2-2v-3.2h1.6a1.9 1.9 0 1 0 0-3.8H18V8a2 2 0 0 0-2-2h-1.2V4.4a1.9 1.9 0 1 0-3.8 0V3Z" /></RailIcon>
+            </button>
+            <button className="rail-btn" data-rail="code-builder" title="Code Builder" aria-label="Code Builder">
+                <RailIcon><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16" /></RailIcon>
             </button>
         </nav>
     );
@@ -89,6 +93,7 @@ export function LeftPanel() {
             <div id="layer-tree" className="layer-tree" role="tree" aria-label="Layers"></div>
             <div id="assets-panel" className="assets-panel hidden"></div>
             <div id="plugins-panel" className="assets-panel plugins-panel hidden"></div>
+            <div id="code-builder-panel" className="assets-panel code-builder-panel hidden"></div>
             <div className="left-footer">
                 <div className="engine-dot"></div>
                 <span id="engine-label">Starting renderer</span>
@@ -149,7 +154,6 @@ export function RightPanel() {
         <aside className="right-panel" id="right-panel" aria-label="Properties inspector">
             <div className="inspector-tabs">
                 <button className="active" data-inspector-tab="design">Design</button>
-                <button data-inspector-tab="prototype">Prototype</button>
                 <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>
