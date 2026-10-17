@@ -339,6 +339,86 @@ export const projectStorage = {
     }
 };
 
+/**
+ * Design system library di workspace (spec §3). Bentuk data mengikuti engine:
+ * `version` = nomor urut publish (dipakai untuk deteksi update), `semver` = versi paket kode.
+ */
+export const libraryApi = {
+    list: () => api('GET', '/api/libraries').then(r => r.libraries),
+    snapshot: async (id, seq) => {
+        try {
+            return await api('GET', `/api/libraries/${enc(id)}/snapshot${seq ? `?seq=${seq}` : ''}`);
+        } catch (e) {
+            if (e.status === 404) return null;
+            throw e;
+        }
+    },
+    history: id => api('GET', `/api/libraries/${enc(id)}`),
+    /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
+    draft: (id, name, snapshot) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot }),
+    packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
+    publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => r.library),
+    fileUses: async fileId => {
+        try {
+            return (await api('GET', `${fileUrl(fileId)}/libraries`)).libraries;
+        } catch (e) {
+            if (e.status === 404) return [];
+            throw e;
+        }
+    },
+    setFileUses: (fileId, uses) => api('PUT', `${fileUrl(fileId)}/libraries`, { libraries: uses.map(u => ({ id: u.id, version: u.version })) }).catch(e => {
+        if (e.status !== 404) throw e; // file belum pernah disimpan ke server
+    })
+};
+
+const LEGACY_LIBS_DONE = 'midas-legacy-libraries-migrated';
+
+/**
+ * Pindahkan library dari penyimpanan lama ke tabel library di server:
+ * kunci `libraries` / `library:<id>` / `libuse:<fileId>` di /api/kv (data sebelum fitur ini)
+ * dan, sekali per browser, dari IndexedDB lama. Library yang file sumbernya belum ada di server dilewati.
+ */
+export async function migrateLegacyLibraries(legacyKv) {
+    const snapshots = new Map(), uses = {}, kvKeys = [];
+    const collect = async (get, keys) => {
+        for (const k of await keys('library:')) {
+            try {
+                const snap = JSON.parse(await get(k) || 'null');
+                if (snap?.id && Array.isArray(snap.components)) snapshots.set(snap.id, snap);
+            } catch { }
+        }
+        for (const k of await keys('libuse:')) {
+            try {
+                const list = JSON.parse(await get(k) || '[]');
+                if (Array.isArray(list) && list.length) uses[k.slice('libuse:'.length)] = list.map(u => ({ id: u.id, version: u.version || 1 }));
+            } catch { }
+        }
+    };
+    const serverKeys = async prefix => (await api('GET', `/api/kv?prefix=${enc(prefix)}`)).keys;
+    const serverGet = key => api('GET', `/api/kv/${enc(key)}`).then(r => r.value, () => null);
+    await collect(serverGet, async prefix => {
+        const keys = await serverKeys(prefix);
+        kvKeys.push(...keys);
+        return keys;
+    });
+    let fromIdb = false;
+    if (legacyKv && !localStorage.getItem(LEGACY_LIBS_DONE)) {
+        fromIdb = true;
+        await collect(k => legacyKv.get(k), p => legacyKv.keys(p)).catch(() => { });
+    }
+    if (!snapshots.size && !Object.keys(uses).length) return;
+    const { missing } = await api('POST', '/api/libraries/import-legacy', { snapshots: [...snapshots.values()], uses });
+    // Data yang file sumbernya belum ada di server disimpan dulu, dicoba lagi saat login berikutnya.
+    const keep = new Set(missing);
+    for (const k of kvKeys) {
+        const id = k.startsWith('library:') ? k.slice('library:'.length) : null;
+        const pending = id ? keep.has(id) : (uses[k.slice('libuse:'.length)] || []).some(u => keep.has(u.id));
+        if (!pending) await api('DELETE', `/api/kv/${enc(k)}`).catch(() => { });
+    }
+    await api('DELETE', '/api/kv/libraries').catch(() => { });
+    if (fromIdb && !missing.length) localStorage.setItem(LEGACY_LIBS_DONE, '1');
+}
+
 let signedInUser = null;
 const remember = user => (signedInUser = user);
 

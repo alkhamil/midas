@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Topbar, LeftRail, LeftPanel, CanvasArea, RightPanel, Overlays } from './components/Shell.jsx';
 import { AuthScreen, LegacyImport, listLegacyFiles } from './components/Gate.jsx';
-import { auth } from './storage.js';
+import { auth, migrateLegacyLibraries } from './storage.js';
+import { kv as legacyKv } from './legacyStorage.js';
 
 let started = null;
 function startEngine() {
@@ -32,7 +33,9 @@ export default function App() {
     useEffect(check, []);
     useEffect(() => {
         if (phase !== 'ready') return;
-        startEngine().catch(e => { console.error(e); setError(e.message); });
+        // Library dari penyimpanan lama dipindahkan dulu, supaya panel Assets langsung membaca dari server.
+        migrateLegacyLibraries(legacyKv).catch(e => console.warn('Legacy library migration skipped:', e))
+            .then(startEngine).catch(e => { console.error(e); setError(e.message); });
         // Sesi habis saat editor terbuka: login ulang di atas editor tanpa menutup file.
         const onUnauthorized = () => setExpired(true);
         window.addEventListener('midas:unauthorized', onUnauthorized);

@@ -1,5 +1,5 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
-import { kv, settings as localStore, projectStorage, auth, getSignedInUser } from '../storage.js';
+import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi } from '../storage.js';
 
 
 // ===== document.js =====
@@ -6353,9 +6353,9 @@ async function save() {
             await resolveConflict();
             return;
         }
-        if (e instanceof TypeError) {
-            // Tidak terhubung ke server: perubahan tetap di memori dan dikirim ulang otomatis.
-            if (indicator) indicator.innerHTML = '<i style="background:var(--danger)"></i> Offline — changes pending';
+        if (e instanceof TypeError || e?.status >= 500) {
+            // Server tidak terjangkau / sedang restart: perubahan tetap di memori dan dikirim ulang otomatis.
+            if (indicator) indicator.innerHTML = `<i style="background:var(--danger)"></i> ${e instanceof TypeError ? 'Offline' : 'Server unavailable'} — changes pending`;
             retryTimer = setTimeout(save, 5000);
         }
         else {
@@ -9955,7 +9955,8 @@ async function ensureThumb(n) {
     catch { }
 }
 // ===== libraries: publish this file, use another file's components and variable collections =====
-// A published library is a snapshot kept in storage (library:<fileId>) plus an entry in the shared "libraries" list.
+// A published library is a versioned snapshot kept on the Midas server (/api/libraries), shared by the whole workspace;
+// its id is the id of the source file, and each publish also fixes the frontend package name and semver (spec §3).
 // Files that add a library get its variable collections (tagged with libId) and can place its components: the main
 // component is copied once into a "Library · name" page of the file (every copied layer remembers its origin in
 // libRef), and placed components are ordinary instances of that copy. Updating a library re-syncs those copies in place.
@@ -9965,16 +9966,14 @@ async function libsLoad(force = false) {
         return;
     LIBS.at = Date.now();
     try {
-        const idx = JSON.parse(await kvGet('libraries') || '[]');
-        LIBS.published = Array.isArray(idx) ? idx.filter(x => x && typeof x.id === 'string') : [];
+        LIBS.published = await libraryApi.list();
     }
     catch {
         LIBS.published = [];
     }
     if (LIBS.useFile !== lib.fileId) {
         try {
-            const u = JSON.parse(await kvGet('libuse:' + lib.fileId) || '[]');
-            LIBS.use = Array.isArray(u) ? u : [];
+            LIBS.use = await libraryApi.fileUses(lib.fileId);
         }
         catch {
             LIBS.use = [];
@@ -9987,7 +9986,7 @@ async function libSnap(id, fresh = false) {
         return LIBS.snaps.get(id);
     let snap = null;
     try {
-        snap = JSON.parse(await kvGet('library:' + id) || 'null');
+        snap = await libraryApi.snapshot(id);
     }
     catch { }
     if (snap)
@@ -10010,32 +10009,104 @@ function subtreeOf(rootId) {
     }
     return out;
 }
-async function publishLibrary() {
+// What a library version contains: the main components (and component sets) of this file plus its own variables.
+function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
     vars.collections = vars.collections.filter(c => !c.libId);
     vars.items = vars.items.filter(i => !i.libId && vars.collections.some(c => c.id === i.collectionId));
-    if (!roots.length && !vars.items.length) {
+    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, nodes: subtreeOf(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
+            c.parentId = null; return c; }) }));
+    return { components, variables: vars };
+}
+async function publishLibrary() {
+    const snapshot = librarySnapshot();
+    if (!snapshot.components.length && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
         return;
     }
-    await libsLoad(true);
-    const prev = LIBS.published.find(x => x.id === lib.fileId), version = (prev?.version || 0) + 1;
-    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, nodes: subtreeOf(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
-            c.parentId = null; return c; }) }));
-    const snap = { id: lib.fileId, name: doc.data.name, version, updated: Date.now(), components, variables: vars };
+    if (state.dirty)
+        await save();
+    let draft;
     try {
-        await kvPut('library:' + lib.fileId, JSON.stringify(snap));
-        LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), { id: lib.fileId, name: doc.data.name, version, updated: snap.updated, components: components.length, variables: vars.items.length }];
-        await kvPut('libraries', JSON.stringify(LIBS.published));
+        draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot);
     }
-    catch {
-        toast('Could not publish: browser storage is full.');
+    catch (e) {
+        toast(`Could not prepare the library: ${e?.message || e}`);
         return;
     }
-    LIBS.snaps.set(lib.fileId, snap);
-    toast(`Published “${doc.data.name}” as library v${version}: ${components.length} component${components.length === 1 ? '' : 's'}, ${vars.items.length} variable${vars.items.length === 1 ? '' : 's'}.`);
-    renderAssets();
+    publishDialog(snapshot, draft);
+}
+const semverBump = (v, part) => { const [M, m, p] = String(v).split('.').map(Number); return part === 'major' ? `${M + 1}.0.0` : part === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`; };
+// Publish Library form (spec §3.2): library + package name, version, release notes and the component → code mapping.
+function publishDialog(snapshot, draft) {
+    const isNew = !draft.library, latest = draft.latest;
+    const mappings = structuredClone(draft.mappings);
+    const include = mappings.map(m => !/^[_.]/.test(m.componentName));
+    const vars = snapshot.variables.items.length;
+    const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components and variables; developers get a frontend package with the same version.')}
+<form id="lp-form" class="lp-form" novalidate>
+<label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
+<label class="lp-field"><span>Frontend package</span><input class="lp-input lp-mono" id="lp-pkg" value="${esc(draft.packageName)}" ${isNew ? '' : 'disabled'} spellcheck="false" autocomplete="off"><small id="lp-pkg-msg">${isNew ? 'Locked after the first publish. Format: @midas/name' : 'Locked — set on the first publish.'}</small></label>
+<div class="lp-field"><span>Version</span><div class="lp-version"><input class="lp-input lp-mono" id="lp-version" value="${esc(draft.suggestedVersion)}" spellcheck="false" autocomplete="off">${latest ? ['patch', 'minor', 'major'].map(k => `<button type="button" class="cmp-btn" data-lp-bump="${k}">${k}</button>`).join('') : ''}</div><small>${latest ? `Latest: ${esc(latest.version)} · published ${timeAgo(latest.publishedAt)}` : 'First release.'}</small></div>
+${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a major version</b><ul>${draft.breaking.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
+<label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
+<div class="lp-field"><span>Components (${mappings.length}) · export name in code</span><div class="lp-comps">${mappings.length ? mappings.map(compRow).join('') : '<p class="small-label">No components — only variables are published.</p>'}</div><small>${vars} variable${vars === 1 ? '' : 's'} from this file are included.</small></div>
+<div id="lp-errors" class="lp-errors hidden" role="alert"></div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="lp-submit">Publish ${esc(draft.suggestedVersion)}</button></div>
+</form>`);
+    const form = $('#lp-form'), version = $('#lp-version'), submit = $('#lp-submit'), errorsBox = $('#lp-errors');
+    const showErrors = list => { errorsBox.innerHTML = list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; errorsBox.classList.toggle('hidden', !list.length); };
+    version.oninput = () => { submit.textContent = `Publish ${version.value.trim() || ''}`; };
+    let pkgTimer;
+    if (isNew)
+        $('#lp-pkg').oninput = e => {
+            clearTimeout(pkgTimer);
+            const name = e.target.value.trim(), msg = $('#lp-pkg-msg');
+            pkgTimer = setTimeout(async () => {
+                const r = await libraryApi.packageAvailable(name, lib.fileId).catch(() => null);
+                if (r && $('#lp-pkg')?.value.trim() === name) {
+                    msg.textContent = r.available ? `${name} is available. Locked after the first publish.` : r.reason;
+                    msg.classList.toggle('lp-bad', !r.available);
+                }
+            }, 300);
+        };
+    form.addEventListener('click', e => {
+        const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]');
+        if (bump) {
+            version.value = semverBump(latest.version, bump.dataset.lpBump);
+            version.oninput();
+        }
+        if (fold)
+            form.querySelector(`[data-lp-props="${fold.dataset.lpFold}"]`).classList.toggle('hidden');
+    });
+    form.onsubmit = async e => {
+        e.preventDefault();
+        form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
+        form.querySelectorAll('[data-lp-export]').forEach(el => { mappings[+el.dataset.lpExport].exportName = el.value.trim(); });
+        form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
+        form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });
+        const chosen = mappings.filter((_, i) => include[i]);
+        if (!chosen.length && !vars)
+            return showErrors(['Choose at least one component to publish.']);
+        submit.disabled = true;
+        submit.textContent = 'Publishing…';
+        try {
+            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot, mappings: chosen });
+            closeModal();
+            LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
+            LIBS.snaps.delete(lib.fileId);
+            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
+            renderAssets();
+        }
+        catch (err) {
+            showErrors(err?.body?.errors || [err?.message || String(err)]);
+            submit.disabled = false;
+            version.oninput();
+        }
+    };
 }
 function libSyncVariables(snap) {
     const store = varStore();
@@ -10063,7 +10134,7 @@ async function libUse(id, on) {
         LIBS.use = LIBS.use.filter(u => u.id !== id);
         toast('Library removed. Components and variables already used in this file stay.');
     }
-    await kvPut('libuse:' + lib.fileId, JSON.stringify(LIBS.use));
+    await libraryApi.setFileUses(lib.fileId, LIBS.use);
     renderAssets();
     renderInspector();
 }
@@ -10166,19 +10237,19 @@ async function libUpdate(libId) {
         u.version = snap.version;
         u.name = snap.name;
     }
-    await kvPut('libuse:' + lib.fileId, JSON.stringify(LIBS.use));
-    toast(`Library “${snap.name}” updated to v${snap.version}.`);
+    await libraryApi.setFileUses(lib.fileId, LIBS.use);
+    toast(`Library “${snap.name}” updated to ${snap.semver || `v${snap.version}`}.`);
     renderAssets();
     renderInspector();
 }
 function libPanelHtml() {
     const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
     const used = new Set(LIBS.use.map(u => u.id));
-    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (v${mine.version})` : 'Publish as library'}</button>${mine ? `<p class="small-label">Published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
     h += `<div class="lib-head"><b>Libraries</b></div>`;
     h += others.length ? others.map(l => {
         const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;
-        return `<div class="lib-row"><div class="lib-info"><span class="lib-name" title="${esc(l.name)}">${esc(l.name)}</span><small>v${l.version} · ${l.components} comp · ${l.variables} var</small></div>${stale ? `<button class="cmp-btn" data-lib-update="${l.id}">Update</button>` : ''}<button class="cmp-btn ${used.has(l.id) ? 'on' : ''}" data-lib-toggle="${l.id}">${used.has(l.id) ? 'Remove' : 'Add'}</button></div>`;
+        return `<div class="lib-row"><div class="lib-info"><span class="lib-name" title="${esc(l.name)}">${esc(l.name)}</span><small>${esc(l.semver || `v${l.version}`)} · ${l.components} comp · ${l.variables} var</small></div>${stale ? `<button class="cmp-btn" data-lib-update="${l.id}">Update</button>` : ''}<button class="cmp-btn ${used.has(l.id) ? 'on' : ''}" data-lib-toggle="${l.id}">${used.has(l.id) ? 'Remove' : 'Add'}</button></div>`;
     }).join('') : '<p class="small-label">No other published libraries yet. Publish another file to see it here.</p>';
     return h + '</div>';
 }

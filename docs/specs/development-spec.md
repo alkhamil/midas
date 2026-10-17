@@ -180,6 +180,8 @@ Code Builder project memilih @midas/ui-cms@1.2.0
 ```
 
 - Versi design dan versi paket kode **sama nomornya**.
+- Selain semver, setiap publish punya nomor urut `seq` (1, 2, 3, …). Studio memakai `seq` untuk mendeteksi "update tersedia" dan mencatat versi yang dipakai sebuah file; semver dipakai untuk paket kode.
+- `id` library = id file design system sumbernya (satu file = satu library). Layer salinan komponen library di file lain menyimpan `libRef = <libraryId>:<nodeId>`, sehingga instance tetap tersambung setelah update.
 - Status per komponen di menu Library: **Ready** (export ada dan props sesuai manifest), **Not implemented** (belum ada export), **Mismatch** (props kode berbeda dari manifest).
 - Code Builder hanya bisa memilih versi yang paketnya sudah ter-publish. Instance komponen berstatus *Not implemented* ditampilkan sebagai **Issue** (§4.6).
 - Breaking change (hapus komponen/prop, ganti nilai variant) memaksa kenaikan versi **major**.
@@ -558,13 +560,16 @@ assets               (id, file_id, storage_key, mime, size, hash, created_at)
 user_kv              (user_id, key, value)                          -- state editor per user
 sessions             (id, user_id, expires_at)                     -- sesi login (cookie httpOnly)
 
-libraries            (id, workspace_id, name, package_name UNIQUE, source_file_id → design_files)
-library_versions     (id, library_id, version, release_notes, snapshot_key, kit_key,
-                      manifest JSONB, design_status: published | deprecated,
+libraries            (id = id file sumber → design_files, workspace_id, name,
+                      package_name UNIQUE, created_by, created_at)
+library_versions     (id, library_id, seq, version (semver), release_notes, snapshot_key,
+                      components_count, variables_count, manifest JSONB,
+                      design_status: published | deprecated,
                       code_status: pending | ready | partial, bundle_url, published_by, published_at)
-component_mappings   (library_version_id, component_key, export_name, props_map JSONB,
+                      -- UNIQUE (library_id, seq) dan (library_id, version)
+component_mappings   (library_version_id, component_key, component_name, export_name, props_map JSONB,
                       code_status: ready | not_implemented | mismatch)
-file_libraries       (file_id, library_id, library_version_id)       -- library yang di-enable di file
+file_libraries       (file_id, library_id, seq)                       -- library yang di-enable di file + versi yang dipakai
 
 builder_projects     (id, workspace_id, name, library_version_id, config JSONB, version,
                       created_at, updated_at)
@@ -590,14 +595,18 @@ Catatan:
 | | `POST /api/files/:id/assets` | Upload aset (multipart) → `{ id, url }` |
 | | `GET /api/files/:id/export` | Unduh file portabel `.midas` (pengganti Export lokal) |
 | | `POST /api/files/import` | Import file `.midas` / migrasi dari IndexedDB (§7.7) |
-| Library | `GET /api/libraries`, `GET /api/libraries/:id` | Daftar library + versi + status |
-| | `POST /api/libraries` | Publish pertama: buat library + nama paket (cek unik) |
-| | `POST /api/libraries/:id/versions` | **Publish Library**: snapshot desain + mapping → generate Library Kit |
-| | `GET /api/libraries/:id/versions/:version` | Snapshot desain, mapping, manifest, status kode |
+| Library | `GET /api/libraries` | Daftar library di workspace + versi terbaru + status kode |
+| | `GET /api/libraries/:id` | Detail library + riwayat versi |
+| | `GET /api/libraries/:id/snapshot?seq=` | Snapshot desain (default versi terbaru) — dipakai file lain untuk menyalin komponen & variables |
+| | `POST /api/libraries/:id/draft` | Bahan form publish: mapping default (digabung dengan mapping versi sebelumnya), saran nama paket & versi, daftar breaking change |
+| | `GET /api/libraries/package-available?name=` | Cek format & ketersediaan nama paket |
+| | `POST /api/libraries/:id/versions` | **Publish Library**: buat library pada publish pertama (nama paket dikunci), validasi semver + breaking change, simpan snapshot & mapping |
+| | `GET /api/libraries/:id/versions/:version/mappings` | Component mapping satu versi |
+| | `POST /api/libraries/import-legacy` | Pindahkan library dari penyimpanan lama (`user_kv` / IndexedDB) |
 | | `GET /api/libraries/:id/versions/:version/kit` | Unduh Library Kit (dipakai `@midas/cli sync`) |
 | | `GET /api/libraries/:id/scaffold` | Unduh kerangka repo paket (§3.4) |
 | | `POST /api/libraries/:id/versions/:version/code` | Dipanggil CI setelah `npm publish` (token CI): daftar export + bundleUrl → hitung status kode |
-| | `PUT /api/files/:id/libraries` | Enable/disable library + versi untuk sebuah file desain |
+| | `GET/PUT /api/files/:id/libraries` | Library yang dipakai sebuah file desain + versi (`seq`) yang dipakai |
 | Code Builder | `GET/POST /api/builder-projects`, `GET/PUT /api/builder-projects/:id` | Konfigurasi project/module/screen; `PUT` membawa `version` |
 | | `POST /api/builder-projects/:id/push` | (Fase lanjut) push hasil generate ke Git; token Git disimpan di server |
 | State editor | `GET /api/kv?prefix=`, `GET/PUT/DELETE /api/kv/:key` | State editor per user (`user_kv`) |

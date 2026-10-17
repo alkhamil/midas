@@ -5,6 +5,7 @@ import { loadUser } from './lib/auth.js';
 import { authRoutes } from './routes/auth.js';
 import { fileRoutes } from './routes/files.js';
 import { kvRoutes } from './routes/kv.js';
+import { libraryRoutes } from './routes/libraries.js';
 
 export async function buildApp() {
     const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: config.bodyLimit });
@@ -14,5 +15,6 @@ export async function buildApp() {
     await app.register(authRoutes);
     await app.register(fileRoutes);
     await app.register(kvRoutes);
+    await app.register(libraryRoutes);
     return app;
 }
