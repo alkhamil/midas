@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { tableDefaults, type TableProps as DesignProps } from '../../generated/props';
-import { AltArrowDownIcon, AltArrowLeftIcon, AltArrowRightIcon } from '../../generated/icons';
+import { AltArrowLeftIcon, AltArrowRightIcon } from '../../generated/icons';
 import { cx } from '../../internal/cx';
+import { SelectField } from '../SelectField/SelectField';
 
 export interface Column<T> {
   key: string;
@@ -24,7 +25,7 @@ export type TableProps<T> = DesignProps & {
   page?: number;
   pageSize?: number;
   onPageChange?: (page: number) => void;
-  /** Pilihan baris per halaman; select muncul di footer bila `onPageSizeChange` diisi. */
+  /** Pilihan baris per halaman; SelectField "Rows per page" menggantikan teks "Showing…" di footer bila `onPageSizeChange` diisi. */
   pageSizeOptions?: number[];
   onPageSizeChange?: (size: number) => void;
   emptyText?: string;
@@ -37,8 +38,12 @@ export function Table<T>(props: TableProps<T>) {
   const pages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const from = totalRecords === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(totalRecords, from + data.length - 1);
+  const sizes = [...new Set([...pageSizeOptions, pageSize])].sort((a, b) => a - b).map(n => ({ label: String(n), value: String(n) }));
   return (
-    <div data-testid={testId} className={cx('overflow-hidden rounded-lg border border-border bg-background', className)}>
+    <div data-testid={testId} className={cx('rounded-lg border border-border bg-background', className)}>
+      <div className="rounded-t-lg border-b border-border px-4 py-3 text-sm text-muted-foreground">
+        Total records: <strong className="font-bold text-foreground">{totalRecords}</strong>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="bg-muted">
@@ -72,30 +77,16 @@ export function Table<T>(props: TableProps<T>) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
-        <span>{totalRecords === 0 ? 'No data' : `Showing ${from}–${to} of ${totalRecords}`}</span>
-        <div className="flex items-center gap-4">
-          {onPageSizeChange && (
-            <label className="flex items-center gap-2">
-              <span>Rows per page</span>
-              <span className="relative inline-flex">
-                <select
-                  aria-label="Rows per page"
-                  value={pageSize}
-                  onChange={e => onPageSizeChange(Number(e.target.value))}
-                  className="h-8 w-16 cursor-pointer appearance-none rounded-lg border border-border bg-background pl-2 pr-6 text-sm font-medium text-foreground outline-none focus:border-primary"
-                >
-                  {[...new Set([...pageSizeOptions, pageSize])].sort((a, b) => a - b).map(n => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <AltArrowDownIcon className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
-              </span>
-            </label>
-          )}
-          <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between rounded-b-lg border-t border-border px-4 py-2 text-sm text-muted-foreground">
+        {onPageSizeChange ? (
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <SelectField label="" fit menuPlacement="top" value={String(pageSize)} options={sizes} onChange={e => onPageSizeChange(Number(e.target.value))} />
+          </div>
+        ) : (
+          <span>{totalRecords === 0 ? 'No data' : `Showing ${from}–${to} of ${totalRecords}`}</span>
+        )}
+        <div className="flex items-center gap-1">
           <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowLeftIcon className="h-4 w-4" />
           </button>
@@ -103,7 +94,6 @@ export function Table<T>(props: TableProps<T>) {
           <button type="button" aria-label="Next page" disabled={page >= pages} onClick={() => onPageChange?.(page + 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowRightIcon className="h-4 w-4" />
           </button>
-          </div>
         </div>
       </div>
     </div>

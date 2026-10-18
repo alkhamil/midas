@@ -182,7 +182,7 @@ export const COMPONENTS = [
     {
         name: 'Table',
         group: 'Data Display',
-        description: 'Data list with a header, row actions, and pagination. The footer has a "Rows per page" select (10, 20, 50, 100; default 10) next to the pager. Columns and data are configured in Code Builder.',
+        description: 'Data list with a header, row actions, and pagination. A "Total records: N" line (bold count) sits above the header row; the footer has a "Rows per page" SelectField (10, 20, 50, 100; default 10) on the left and the pager on the right. Columns and data are configured in Code Builder.',
         variants: {},
         cprops: [],
         render: (_v, ctx) => table(ctx, 960),
@@ -414,6 +414,10 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
     const cols = [['Name', 'fill'], ['Email', 'fill'], ['Role', 160], ['Status', 120], ['Actions', 144]];
     const cell = (content, width, header) => row({ w: width, h: header ? 40 : 52, pad: [0, 16], name: 'Cell' }, [content]);
     return col({ w, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', clip: true, name: 'Table' }, [
+        row({ w: 'fill', pad: [12, 16], gap: 4, stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Total' }, [
+            text('Total records:', { size: 14, line: 20, color: MUTED_FG }),
+            text(String(rows.length), { size: 14, line: 20, weight: 700 }),
+        ]),
         row({ w: 'fill', fill: 'color/muted', name: 'Header' }, cols.map(([h, cw]) => cell(text(h, { size: 12, line: 16, weight: 600, color: MUTED_FG }), cw, true))),
         ...rows.map((r, i) => row({ w: 'fill', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: `Row ${i + 1}` }, [
             cell(text(r[0], { weight: 500 }), 'fill'),
@@ -422,22 +426,16 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
             cell(instance(ctx.variant('Badge', { Variant: r[3] === 'Active' ? 'Success' : 'Neutral' }), { Label: r[3] }), 120),
             cell(row({ gap: 4 }, ['View', 'Edit', 'Delete'].map(a => instance(ctx.variant('IconButton', { Action: a })))), 144),
         ])),
-        row({ w: 'fill', pad: [12, 16], justify: 'between', name: 'Pagination' }, [
-            text(`Showing 1–${rows.length} of ${rows.length}`, { size: 14, line: 20, color: MUTED_FG }),
-            row({ gap: 16, name: 'Pager' }, [
-                // Rows per page: a select with 10 / 20 / 50 / 100 (default 10).
-                row({ gap: 8, name: 'Page size' }, [
-                    text('Rows per page', { size: 14, line: 20, color: MUTED_FG }),
-                    row({ w: 64, h: 32, pad: [0, 8], gap: 4, justify: 'between', radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', name: 'Page size select' }, [
-                        text('10', { size: 14, line: 20, weight: 500 }),
-                        ico(ctx, 'alt-arrow-down', MUTED_FG, 14),
-                    ]),
-                ]),
-                row({ gap: 4, name: 'Pages' }, [
-                    ico(ctx, 'alt-arrow-left', MUTED_FG),
-                    row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', stroke: 'color/primary' }, [text('1', { size: 14, weight: 500, color: 'color/primary' })]),
-                    ico(ctx, 'alt-arrow-right', MUTED_FG),
-                ]),
+        row({ w: 'fill', pad: [8, 16], justify: 'between', name: 'Pagination' }, [
+            // Rows per page: the SelectField (no label, width fits its value) with 10 / 20 / 50 / 100, default 10.
+            row({ gap: 8, name: 'Page size' }, [
+                text('Rows per page', { size: 14, line: 20, color: MUTED_FG }),
+                { ...formField('SelectField', ctx, { bare: true, value: '10' }), w: 88, name: 'Page size select' },
+            ]),
+            row({ gap: 4, name: 'Pages' }, [
+                ico(ctx, 'alt-arrow-left', MUTED_FG),
+                row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', stroke: 'color/primary' }, [text('1', { size: 14, weight: 500, color: 'color/primary' })]),
+                ico(ctx, 'alt-arrow-right', MUTED_FG),
             ]),
         ]),
     ]);

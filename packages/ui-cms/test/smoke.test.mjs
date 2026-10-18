@@ -110,11 +110,15 @@ test('Topbar: avatar opens the user menu with Sign out (menu=open renders it)', 
     assert.doesNotMatch(render(h(ui.Topbar, { userName: 'Admin' })), /aria-haspopup/); // no items → not clickable
 });
 
-test('Table footer offers rows per page (10, 20, 50, 100) when a handler is given', () => {
-    const base = { columns: [{ key: 'n', header: 'N' }], data: [{ id: 1, n: 'a' }], rowKey: r => r.id };
-    assert.doesNotMatch(render(h(ui.Table, base)), /Rows per page/);
+test('Table shows total records above and a rows-per-page SelectField when a handler is given', () => {
+    const base = { columns: [{ key: 'n', header: 'N' }], data: [{ id: 1, n: 'a' }], rowKey: r => r.id, totalRecords: 25 };
+    const plain = render(h(ui.Table, base));
+    assert.match(plain, /Total records:[^<]*<strong[^>]*>25</);
+    assert.match(plain, /Showing 1–1 of 25/);
+    assert.doesNotMatch(plain, /Rows per page/);
     const html = render(h(ui.Table, { ...base, pageSize: 20, onPageSizeChange: () => {} }));
-    assert.match(html, /aria-label="Rows per page"/);
-    for (const n of [10, 20, 50, 100]) assert.match(html, new RegExp(`<option[^>]*value="${n}"`));
-    assert.match(html, /<option[^>]*value="20"[^>]*selected|selected=""[^>]*value="20"|value="20"[^>]*selected/);
+    assert.match(html, /Rows per page/);
+    assert.doesNotMatch(html, /Showing/);
+    assert.match(html, /role="combobox"/);
+    assert.match(html, /<span[^>]*>20<\/span>/);
 });
