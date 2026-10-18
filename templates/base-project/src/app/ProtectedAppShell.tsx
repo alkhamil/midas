@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppShell, Button } from '@midas/ui-cms';
 import { filterNavItems, resolveNavLabel } from '../shared/utils/navigation';
+import { appLayout } from './generated/layout';
 import { navItems } from './navigation';
 import { RequireAuth, useAuth } from './providers';
-
-const APP_NAME = 'Midas App';
 
 /** App shell terproteksi: guard session + menu (disaring permission) + user/logout dari auth. */
 function ProtectedAppShell() {
@@ -32,7 +31,7 @@ function ProtectedAppShell() {
         onNavigate={navigate}
         user={user ? { name: user.name, roleName: user.role } : null}
         title={current?.label}
-        appName={APP_NAME}
+        appName={appLayout.appName}
         topbarExtra={
           <Button variant="ghost" size="sm" onClick={logout}>
             {t('auth.logout')}

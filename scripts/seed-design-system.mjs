@@ -5,7 +5,8 @@
 // dan file yang memakai library tetap tersambung.
 //
 // Pakai:
-//   node scripts/seed-design-system.mjs [--server URL] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create] [--package @midas/ui-x]
+//   node scripts/seed-design-system.mjs [--server URL] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create] [--package @midas/ui-x] [--code-dir FOLDER]
+// --code-dir: folder paket kode library (default packages/ui-cms) — untuk menguji di workspace lain tanpa bentrok id.
 // File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
 // (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
@@ -21,11 +22,11 @@ const ROOT = resolve(import.meta.dirname, '..');
 const DEFAULT_FILE = 'CMS Design System';
 const PACKAGE = PACKAGE_NAME;
 /** Paket kode library (dibuat dengan `midas init`); bila ada, id library & versi awal mengikutinya. */
-const CODE_PACKAGE_DIR = join(ROOT, 'packages/ui-cms');
 /** Nama prop kode yang berbeda dari nama property desain. */
 const PROP_NAMES = { Button: { label: 'children' }, Badge: { label: 'children' } };
 
 const args = parseArgs();
+const CODE_PACKAGE_DIR = typeof args['code-dir'] === 'string' ? resolve(args['code-dir']) : join(ROOT, 'packages/ui-cms');
 const FILE_NAME = typeof args.file === 'string' ? args.file : DEFAULT_FILE;
 const { api } = connect(args);
 

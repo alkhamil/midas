@@ -23,4 +23,4 @@ Login demo (mock): `admin` / `admin123`.
 
 ## Modul baru
 
-Modul hasil Code Builder ditulis ke `src/modules/` dan didaftarkan otomatis di `src/app/router.tsx` & `src/app/navigation.tsx` lewat anchor `__GENERATOR_*`. Lihat `AGENTS.md` untuk pakem struktur.
+Modul hasil Code Builder ditulis ke `src/modules/` oleh `midas generate`, dan didaftarkan lewat `src/app/generated/{routes,navigation,locales,layout}` yang diimpor `router.tsx`, `navigation.tsx`, `moduleLocales.ts` dan `ProtectedAppShell.tsx` — file `generated/` dibangkitkan, jangan diedit manual. Lihat `AGENTS.md` untuk pakem struktur.

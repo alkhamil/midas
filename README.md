@@ -9,8 +9,9 @@ apps/
 ├── studio/     # Midas Studio (React + Vite): editor canvas, engine di src/engine/midas.js
 └── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
 packages/
-├── cli/        # @midas/cli: login, init, sync, report
-└── ui-cms/     # @midas/ui-cms: paket kode library "CMS Design System" (dibuat dengan `midas init`, komponennya ditulis developer)
+├── builder-core/  # @midas/builder-core: inti Code Builder (pemetaan node → screen, layout/properti, generator kode, zip); dipakai Studio & CLI
+├── cli/           # @midas/cli: login, init, sync, report, bundle, generate
+└── ui-cms/        # @midas/ui-cms: paket kode library "CMS Design System" (dibuat dengan `midas init`, komponennya ditulis developer)
 templates/
 └── base-project/   # base project aplikasi (spec §5.2); memakai @midas/ui-cms
 scripts/
@@ -68,10 +69,27 @@ cd ui-cms && npx midas sync --version <versi>
 
 Rail **Code Builder** di Studio (spec §4): buat project untuk file desain yang terbuka (pilih library + versi), tambah **module** (satu page sumber, nama folder kebab-case), pilih frame teratas di canvas lalu **Register frame** dengan role `list` / `create` / `edit` / `view` / `custom`, dan isi **entity fields** untuk module CRUD. Konfigurasi disimpan di server (`/api/builder-projects`).
 
-- Klik nama screen → **Live DOM Renderer**: frame dirender di iframe memakai komponen asli dari bundle library (perlu `midas bundle` untuk versi itu). Klik elemen → **Pilih di canvas**.
+- Klik nama screen → **workspace screen** (menutupi canvas): pratinjau **Live DOM Renderer** di tengah — dirender dengan komponen asli bundle library **di dalam layout aplikasi** (sidebar + topbar dari `AppShell` library) — **Layer** di kiri, dan **Properties Inspector** di kanan.
+- **Klik komponen di pratinjau** (atau di Layer) untuk mengatur: properti komponen dari mapping library (variant, size, teks, disabled, …) dengan penanda ↺ untuk nilai yang diubah dari desain; perilaku tombol (pindah ke screen / simpan form / kembali); tabel (kolom dari field entity + urutan, aksi per baris, ukuran halaman); binding field form ke field entity; teks; sembunyikan di aplikasi. Perubahan tersimpan di config project (`screens[].nodes`), desain tidak diubah.
+- **Klik sidebar / topbar** untuk mengatur layout aplikasi (`config.layout`): nama aplikasi, label/ikon/urutan/tampil menu per module, nama & peran pengguna di topbar. Klik tanpa seleksi menampilkan **Data module** (editor field entity: tipe `string/text/number/boolean/date/datetime/enum/relation/password`).
 - **Issues**: warna hex tanpa Variable, frame tanpa auto layout, shape/gambar bebas, komponen lokal / bagian internal (`_…`) / bukan dari library project, serta konfigurasi yang belum lengkap (module tanpa screen, CRUD tanpa field, frame terhapus, bundle belum diunggah).
 
-Kode: `apps/studio/src/codebuilder/` (`screen.js` pemetaan node → kode & issues, `loader.js` pemuat bundle, `Renderer.jsx`, `Panel.jsx`), `apps/server/src/routes/builder.ts`, `packages/cli/src/bundle.js`.
+### Mengambil source code (untuk developer)
+
+Tombol **Generate kode…** (panel Code Builder atau bar workspace) menampilkan dua cara:
+
+1. **CLI (disarankan)** — di repo aplikasi (hasil clone base project):
+
+   ```bash
+   npx midas login                                   # sekali
+   npx midas generate "CMS Demo" --out .             # nama/id project; `--list` melihat daftar; `--dry-run` hanya daftar file
+   npm install && npm run dev
+   ```
+
+   Aman diulang: generator menulis module di `src/modules/<nama>/` (types, `api/{mock,service,resolver,queries}`, `pages/`, `i18n/`, `index.ts`) dan `src/app/generated/{routes,navigation,locales,layout}`. File yang pernah dibangkitkan tapi tak lagi dihasilkan dihapus (manifest `.midas/generated.json`); kode tulisan tangan tidak disentuh. Versi library di `package.json` disamakan dengan versi project. Data masih **mock** (`USE_MOCK` di `api/mock.ts`) sampai endpoint backend dihubungkan.
+2. **Unduh .zip** — arsip folder `src/` hasil generate, dibangkitkan di browser.
+
+Kode: `packages/builder-core/` (`screen.js` pemetaan node → kode & issues, `model.js` layout/properti/entity, `generate.js` generator, `zip.js`), `apps/studio/src/codebuilder/` (`Panel.jsx`, `Workspace.jsx`, `Inspector.jsx`, `Generate.jsx`, `Renderer.jsx`, `loader.js`), `apps/server/src/{lib,routes}/builder.ts`, `packages/cli/src/{generate,bundle}.js`.
 
 ## Penyimpanan
 
@@ -119,6 +137,6 @@ Design system "CMS" (karakter tegas, rapi, fokus pada data; sidebar gelap, aksen
 
 Komponen berawalan `_` (atau `.`) adalah bagian internal: dirakit komponen lain dan ikut library, tetapi tidak diekspor ke kode dan tidak tampil di Assets file pemakai.
 
-**`seed-cms-demo.mjs`** membuat file desain "CMS Demo" persis seperti Studio membuatnya saat sebuah file memakai library (variabel library disalin bertanda `libId`, komponen disalin ke page `Library · …` dengan `libRef`), berisi 9 layar konten: User (daftar, form, detail), Role (daftar, form, detail), dan Dashboard. Lalu ia mendaftarkan project Code Builder dengan 3 module: `user` dan `role` (CRUD, lengkap dengan field entity) serta `dashboard` (custom). Layar adalah frame konten tanpa sidebar/topbar karena shell aplikasi datang dari base project.
+**`seed-cms-demo.mjs`** membuat file desain "CMS Demo" persis seperti Studio membuatnya saat sebuah file memakai library (variabel library disalin bertanda `libId`, komponen disalin ke page `Library · …` dengan `libRef`), berisi 9 layar konten: User (daftar, form, detail), Role (daftar, form, detail), dan Dashboard. Lalu ia mendaftarkan project Code Builder dengan 3 module: `user` dan `role` (CRUD, lengkap dengan field entity) serta `dashboard` (custom), plus layout aplikasi (nama app, urutan & ikon menu). Layar adalah frame konten tanpa sidebar/topbar: sidebar/topbar datang dari layout project (Studio) dan `AppShell` base project (aplikasi).
 
 Paket `@midas/ui-cms` tidak bergantung pada router: `Sidebar`/`AppShell` menerima `activePath` dan `onNavigate`, dan `Dialog` tidak memakai portal, sehingga komponen tetap benar saat dirender di iframe Live DOM Renderer.

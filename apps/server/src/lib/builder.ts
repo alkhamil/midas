@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const SCREEN_ROLES = ['list', 'create', 'edit', 'view', 'custom'] as const;
 export const CRUD_ROLES = ['list', 'create', 'edit', 'view'] as const;
-export const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation'] as const;
+export const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation', 'password'] as const;
 
 const MODULE_NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const FIELD_NAME_RE = /^[a-z][A-Za-z0-9]*$/;
@@ -23,6 +23,25 @@ const fieldShape = z.object({
     relation: z.string().optional(),
 });
 
+/** Konfigurasi satu node di screen (diatur lewat Properties Inspector): override properti, perilaku, binding data. */
+const nodeConfigShape = z.object({
+    /** Override props kode komponen (nama prop → nilai). */
+    props: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+    /** Override isi teks (node teks). */
+    text: z.string().optional(),
+    hidden: z.boolean().optional(),
+    /** Field entity yang dibinding ke komponen form. */
+    field: z.string().optional(),
+    /** Perilaku tombol. */
+    action: z.object({ type: z.enum(['none', 'navigate', 'submit', 'back']), screenId: z.string().optional() }).optional(),
+    /** Konfigurasi tabel list. */
+    table: z.object({
+        columns: z.array(z.string()).optional(),
+        rowActions: z.array(z.enum(['view', 'edit', 'delete'])).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
+    }).optional(),
+});
+
 const screenShape = z.object({
     id: z.string().min(1),
     /** id frame (layer root) di file desain project. */
@@ -31,6 +50,21 @@ const screenShape = z.object({
     pageId: z.string().min(1),
     name: z.string().min(1).max(120),
     role: z.enum(SCREEN_ROLES),
+    /** Konfigurasi per node (kunci = id node di desain). */
+    nodes: z.record(z.string(), nodeConfigShape).default({}),
+});
+
+/** Layout aplikasi: sidebar (urutan, label, ikon, sembunyi per module) dan identitas aplikasi/pengguna topbar. */
+const layoutShape = z.object({
+    appName: z.string().max(60).optional(),
+    userName: z.string().max(60).optional(),
+    userRole: z.string().max(60).optional(),
+    items: z.array(z.object({
+        moduleId: z.string().min(1),
+        label: z.string().max(60).optional(),
+        icon: z.string().max(40).optional(),
+        hidden: z.boolean().optional(),
+    })).default([]),
 });
 
 const moduleShape = z.object({
@@ -45,7 +79,7 @@ const moduleShape = z.object({
     screens: z.array(screenShape).default([]),
 });
 
-export const configShape = z.object({ modules: z.array(moduleShape).default([]) });
+export const configShape = z.object({ modules: z.array(moduleShape).default([]), layout: layoutShape.optional() });
 export type BuilderConfig = z.infer<typeof configShape>;
 export type BuilderModule = BuilderConfig['modules'][number];
 

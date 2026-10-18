@@ -103,7 +103,7 @@ Membuat file **CMS Demo** (layar User, Role, Dashboard dari komponen library) da
 
 ## 9. Cek hasil
 
-- Studio → **Recents / All files** → buka *CMS Demo* → rail **Code Builder**: klik nama screen untuk melihatnya di Live DOM Renderer.
+- Studio → **Recents / All files** → buka *CMS Demo* → rail **Code Builder**: klik nama screen → workspace dengan pratinjau + Properties Inspector. Klik komponen di pratinjau untuk mengatur propertinya; klik sidebar/topbar untuk mengatur layout aplikasi.
 - Base project (aplikasi contoh yang memakai `@midas/ui-cms`):
 
   ```bash
@@ -138,3 +138,16 @@ npm run build --workspace @midas/base-project
 | `npm run db:migrate` gagal koneksi | Docker belum jalan atau port `5433` dipakai aplikasi lain; cek `docker compose ps`. |
 | Studio kosong / 401 terus | API (`npm run dev:server`) belum jalan, atau sesi habis — login ulang. |
 | Port bentrok | Hentikan proses lain di port tersebut atau ubah `PORT` di `apps/server/.env` dan port Docker di `docker-compose.yml`. |
+
+## 10. Mengambil source code hasil Code Builder
+
+Di Studio, **Generate kode…** menampilkan perintah untuk project itu. Di repo aplikasi (salinan `templates/base-project`):
+
+```bash
+npx midas login --server http://127.0.0.1:4000     # sekali
+npx midas generate --list                           # daftar project di workspace
+npx midas generate "CMS Demo" --out .               # tulis module + route + menu + locale ke repo aplikasi
+npm install && npm run dev
+```
+
+Opsi: `--dry-run` (hanya daftar file), atau **Unduh .zip** di dialog Generate. Generate ulang aman: hanya file hasil generate yang ditimpa/dihapus.

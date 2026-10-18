@@ -164,11 +164,13 @@ function textStyle(ctx, n, issues) {
 const issue = (n, severity, message) => ({ nodeId: n.id, nodeName: n.name || n.type, severity, message });
 
 /** Pohon render + daftar issue untuk satu frame (screen). */
-export function screenTree(ctx, frameId) {
+export function screenTree(ctx, frameId, nodeCfg = {}) {
     const issues = [];
     const root = ctx.byId.get(frameId);
     if (!root) return { tree: null, issues: [{ nodeId: frameId, nodeName: 'Frame', severity: 'error', message: 'Frame screen tidak ditemukan — mungkin sudah dihapus' }] };
     const walk = (n, parent) => {
+        const cfg = nodeCfg[n.id] || {};
+        if (cfg.hidden && parent) return null;
         const box = sizing(n, parent);
         if (n.isInstance) {
             const comp = componentOf(ctx, n);
@@ -176,14 +178,18 @@ export function screenTree(ctx, frameId) {
                 issues.push(issue(n, 'error', comp.reason));
                 return { kind: 'unsupported', nodeId: n.id, name: n.name, box: { ...box, width: `${round(n.w)}px`, height: `${round(n.h)}px` }, reason: comp.reason };
             }
-            return { kind: 'component', exportName: comp.mapping.exportName, props: propsOf(n, comp), nodeId: n.id, name: n.name, box };
+            const base = propsOf(n, comp);
+            return {
+                kind: 'component', exportName: comp.mapping.exportName, props: { ...base, ...cfg.props }, baseProps: base, propDefs: comp.mapping.propsMap?.props || [],
+                cfg, nodeId: n.id, name: n.name, box,
+            };
         }
-        if (n.type === 'text') return { kind: 'text', text: n.text ?? '', style: { ...textStyle(ctx, n, issues), ...box }, nodeId: n.id, name: n.name };
+        if (n.type === 'text') return { kind: 'text', text: cfg.text ?? n.text ?? '', designText: n.text ?? '', cfg, style: { ...textStyle(ctx, n, issues), ...box }, nodeId: n.id, name: n.name };
         if (n.type === 'frame' || n.type === 'group' || n.type === 'section') {
             const kids = childrenOf(ctx, n.id);
             if (kids.length > 1 && !isAutoLayout(n))
                 issues.push(issue(n, 'warning', `${n.type === 'group' ? 'Group' : 'Frame'} tanpa auto layout — ubah ke auto layout supaya bisa di-generate`));
-            return { kind: 'box', style: { ...frameStyle(ctx, n, issues), ...box }, children: kids.map(k => walk(k, n)), nodeId: n.id, name: n.name };
+            return { kind: 'box', style: { ...frameStyle(ctx, n, issues), ...box }, children: kids.map(k => walk(k, n)).filter(Boolean), cfg, nodeId: n.id, name: n.name };
         }
         const what = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', path: 'Vector', image: 'Gambar', boolean: 'Boolean' }[n.type] || n.type;
         const reason = `${what} bebas tidak di-generate — jadikan komponen library atau aset`;
@@ -191,6 +197,7 @@ export function screenTree(ctx, frameId) {
         return { kind: 'unsupported', nodeId: n.id, name: n.name, box: { ...box, width: `${round(n.w)}px`, height: `${round(n.h)}px` }, reason };
     };
     const tree = walk(root, null);
+    tree.cfg = nodeCfg[root.id] || {};
     tree.style = { ...tree.style, width: `${round(root.w)}px`, minHeight: `${round(root.h)}px`, height: undefined };
     return { tree, issues };
 }

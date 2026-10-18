@@ -208,7 +208,8 @@ const config = {
                 str('name', 'Nama lengkap', { required: true, sortable: true, filterable: true }),
                 str('email', 'Email', { required: true, sortable: true, filterable: true }),
                 { name: 'role', label: 'Role', type: 'relation', relation: 'role', required: true, sortable: false, filterable: true },
-                { name: 'status', label: 'Status', type: 'enum', options: ['active', 'inactive'], required: true, sortable: false, filterable: true },
+                { name: 'password', label: 'Kata sandi', type: 'password', required: true, sortable: false, filterable: false },
+                { name: 'active', label: 'Akun aktif', type: 'boolean', required: false, sortable: false, filterable: true },
             ] },
             screens: [
                 screenOf('scr-user-list', 'User', 'User — Daftar', 'list'),
@@ -222,7 +223,7 @@ const config = {
             entity: { fields: [
                 str('name', 'Nama role', { required: true, sortable: true, filterable: true }),
                 { name: 'description', label: 'Deskripsi', type: 'text', required: false, sortable: false, filterable: false },
-                { name: 'status', label: 'Status', type: 'enum', options: ['active', 'inactive'], required: true, sortable: false, filterable: true },
+                { name: 'active', label: 'Role aktif', type: 'boolean', required: false, sortable: false, filterable: true },
             ] },
             screens: [
                 screenOf('scr-role-list', 'Role', 'Role — Daftar', 'list'),
@@ -236,6 +237,15 @@ const config = {
             screens: [screenOf('scr-dashboard', 'Dashboard', 'Dashboard', 'custom')],
         },
     ],
+    // Layout aplikasi: urutan & ikon menu sidebar, identitas topbar (diatur di Studio dengan klik sidebar/topbar).
+    layout: {
+        appName: 'CMS Demo', userName: 'Administrator', userRole: 'admin',
+        items: [
+            { moduleId: 'mod-dashboard', icon: 'widget' },
+            { moduleId: 'mod-user', icon: 'user' },
+            { moduleId: 'mod-role', icon: 'shield-check' },
+        ],
+    },
 };
 const { projects } = await api('GET', `/api/builder-projects?fileId=${enc(fileId)}`);
 const old = projects.find(p => p.name === FILE_NAME);

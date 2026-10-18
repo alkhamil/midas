@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cssVarOf, makeContext, projectIssues, screenTree } from '../src/codebuilder/screen.js';
+import { cssVarOf, makeContext, projectIssues, screenTree } from '../src/screen.js';
 
 const variables = { items: [{ id: 'v-primary', name: 'color/primary', type: 'color' }, { id: 'v-bg', name: 'color/background', type: 'color' }] };
 // Library "lib": Button (set, variant Variant=Primary|Secondary, cprop Label) disalin ke file app dengan libRef.

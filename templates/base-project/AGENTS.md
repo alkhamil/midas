@@ -10,7 +10,7 @@ Aturan project untuk coding agent (dan developer) di project hasil Midas.
 
 ## Struktur
 
-- `src/app/` — `router.tsx` (anchor `// __GENERATOR_IMPORTS__`, `// __GENERATOR_ROUTES__`), `navigation.tsx` (anchor `// __GENERATOR_NAV_ITEMS__`), `ProtectedAppShell.tsx`, `providers/` (auth, guard).
+- `src/app/` — `router.tsx`, `navigation.tsx`, `moduleLocales.ts`, `ProtectedAppShell.tsx`, `providers/` (auth, guard), dan `generated/` (`routes.tsx`, `navigation.tsx`, `locales.ts`, `layout.ts` — **dibangkitkan Code Builder, jangan diedit manual**; menu & route module baru ditambahkan di sana lewat `midas generate`).
 - `src/modules/<modul>/` — satu folder per modul bisnis: `pages/`, `components/`, `api/` (service + mock + resolver + queries/mutations), `hooks/`, `types/`, `validation/`, `i18n/`, `permissions.ts`. Parent-child: `src/modules/<parent>/<child>/`.
 - `src/shared/` — tipis: `components/form`, `lib` (axios, queryClient), `hooks`, `utils`, `types`, `constants`, `i18n`.
 
