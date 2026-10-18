@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { assets, designFilePages, designFiles } from '../db/schema.js';
+import { assets, designFilePages, designFiles, designFolders } from '../db/schema.js';
 import { requireUser } from '../lib/auth.js';
 import { assetKey, getObject, putObject } from '../lib/s3.js';
 
@@ -21,6 +21,9 @@ function summary(f: FileRow) {
         opened: ms(f.openedAt) ?? 0,
         thumb: f.thumbnail,
         trashed: ms(f.trashedAt) ?? undefined,
+        folder: f.folderId ?? null,
+        starred: f.starred,
+        hiddenRecent: f.hiddenRecent,
         version: f.version,
     };
 }
@@ -134,6 +137,9 @@ export async function fileRoutes(app: FastifyInstance) {
             opened: z.number().nullish(),
             thumb: z.string().nullish(),
             trashed: z.number().nullish(),
+            folder: z.string().nullish(),
+            starred: z.boolean().optional(),
+            hiddenRecent: z.boolean().optional(),
         }).safeParse(req.body);
         if (!body.success)
             return reply.code(400).send({ error: 'invalid' });
@@ -152,8 +158,79 @@ export async function fileRoutes(app: FastifyInstance) {
             set.thumbnail = b.thumb;
         if (b.trashed !== undefined)
             set.trashedAt = b.trashed ? new Date(b.trashed) : null;
+        if (b.folder !== undefined) {
+            if (b.folder) {
+                const [fo] = await db.select({ id: designFolders.id }).from(designFolders)
+                    .where(and(eq(designFolders.id, b.folder), eq(designFolders.workspaceId, req.user!.workspaceId))).limit(1);
+                if (!fo)
+                    return reply.code(404).send({ error: 'not_found', message: 'Folder not found' });
+            }
+            set.folderId = b.folder || null;
+        }
+        if (b.starred !== undefined)
+            set.starred = b.starred;
+        if (b.hiddenRecent !== undefined)
+            set.hiddenRecent = b.hiddenRecent;
         if (Object.keys(set).length)
             await db.update(designFiles).set(set).where(eq(designFiles.id, f.id));
+        return { ok: true };
+    });
+
+    // ----- Folder di Home -----
+    const folderOf = async (req: FastifyRequest, id: string) => (await db.select().from(designFolders)
+        .where(and(eq(designFolders.id, id), eq(designFolders.workspaceId, req.user!.workspaceId))).limit(1))[0] ?? null;
+
+    app.get('/api/folders', async req => {
+        const rows = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
+        return { folders: rows.map(f => ({ id: f.id, name: f.name, parent: f.parentId ?? null, created: ms(f.createdAt) })) };
+    });
+
+    app.post('/api/folders', async (req, reply) => {
+        const body = z.object({ id: z.string().min(1), name: z.string().trim().min(1).max(120), parent: z.string().nullish() }).safeParse(req.body);
+        if (!body.success)
+            return reply.code(400).send({ error: 'invalid' });
+        const b = body.data;
+        if (b.parent && !(await folderOf(req, b.parent)))
+            return reply.code(404).send({ error: 'not_found', message: 'Parent folder not found' });
+        await db.insert(designFolders).values({ id: b.id, workspaceId: req.user!.workspaceId, name: b.name, parentId: b.parent || null })
+            .onConflictDoNothing();
+        return { ok: true };
+    });
+
+    app.patch<{ Params: { id: string } }>('/api/folders/:id', async (req, reply) => {
+        const body = z.object({ name: z.string().trim().min(1).max(120).optional(), parent: z.string().nullish() }).safeParse(req.body);
+        if (!body.success)
+            return reply.code(400).send({ error: 'invalid' });
+        const f = await folderOf(req, req.params.id);
+        if (!f)
+            return reply.code(404).send({ error: 'not_found', message: 'Folder not found' });
+        const set: Partial<typeof designFolders.$inferInsert> = {};
+        if (body.data.name !== undefined)
+            set.name = body.data.name;
+        if (body.data.parent !== undefined) {
+            // A folder cannot move into itself or one of its own subfolders.
+            const all = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
+            const byId = new Map(all.map(x => [x.id, x]));
+            for (let cur = body.data.parent ? byId.get(body.data.parent) : undefined, i = 0; cur && i < 100; cur = cur.parentId ? byId.get(cur.parentId) : undefined, i++)
+                if (cur.id === f.id)
+                    return reply.code(400).send({ error: 'invalid', message: 'A folder cannot be moved into itself' });
+            if (body.data.parent && !byId.has(body.data.parent))
+                return reply.code(404).send({ error: 'not_found', message: 'Parent folder not found' });
+            set.parentId = body.data.parent || null;
+        }
+        if (Object.keys(set).length)
+            await db.update(designFolders).set(set).where(eq(designFolders.id, f.id));
+        return { ok: true };
+    });
+
+    // Deleting a folder keeps its contents: files and subfolders move up to its parent.
+    app.delete<{ Params: { id: string } }>('/api/folders/:id', async (req, reply) => {
+        const f = await folderOf(req, req.params.id);
+        if (!f)
+            return reply.code(404).send({ error: 'not_found', message: 'Folder not found' });
+        await db.update(designFiles).set({ folderId: f.parentId ?? null }).where(and(eq(designFiles.folderId, f.id), eq(designFiles.workspaceId, req.user!.workspaceId)));
+        await db.update(designFolders).set({ parentId: f.parentId ?? null }).where(and(eq(designFolders.parentId, f.id), eq(designFolders.workspaceId, req.user!.workspaceId)));
+        await db.delete(designFolders).where(eq(designFolders.id, f.id));
         return { ok: true };
     });
 

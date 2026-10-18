@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { choiceDialog, confirmDialog } from '../confirm.js';
-import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
+import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, assetsAsDataUrls } from '../storage.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
@@ -979,7 +979,25 @@ function cleanVariables(v) {
 }
 function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
 function varDisplayValue(item, node = null) { return varValue(doc, item, node); }
-function boundVarId(prop) { return activeNode()?.vars?.[prop]; }
+// A single-fill layer without a fills list keeps its colour binding under "fill"; the Fill row reads it as "fills.0".
+// The combined horizontal / vertical padding fields read as bound when both sides carry the same variable (as imported).
+function varIdOf(n, prop) {
+    const v = n?.vars;
+    if (!v)
+        return undefined;
+    if (v[prop] !== undefined)
+        return v[prop];
+    if (prop === 'fills.0' && !Array.isArray(n.fills))
+        return v.fill;
+    if (prop === 'radius' && v.rTL && v.rTL === v.rTR && v.rTL === v.rBL && v.rTL === v.rBR)
+        return v.rTL;
+    if (prop === 'padH' && v.padL && v.padL === v.padR)
+        return v.padL;
+    if (prop === 'padV' && v.padT && v.padT === v.padB)
+        return v.padT;
+    return undefined;
+}
+function boundVarId(prop) { return varIdOf(activeNode(), prop); }
 function boundVar(prop) { const id = boundVarId(prop); return id ? varItem(id) : null; }
 const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5" cy="5" r="2.6"/><circle cx="11" cy="5" r="2.6"/><circle cx="5" cy="11" r="2.6"/><circle cx="11" cy="11" r="2.6"/></svg>';
 function varBindButton(prop) { return bindType(prop) ? `<button class="var-btn" data-var-bind="${prop}" title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
@@ -1093,7 +1111,14 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
     const r = anchor.getBoundingClientRect(), w = 280;
     pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
     pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
-    pop.querySelector('[data-vpk-search]').focus();
+    pop.querySelector('[data-vpk-search]').focus({ preventScroll: true });
+    // Open on the variable that is bound: load more rows until it is in the list, then scroll it into view.
+    if (current)
+        for (let i = 0; i < 30 && !pop.querySelector('.vp-item.on, .vpk-sw.on') && pop.querySelector('[data-vpk-more]'); i++) {
+            limit += 400;
+            render();
+        }
+    pop.querySelector('.vp-item.on, .vpk-sw.on')?.scrollIntoView?.({ block: 'center' });
     pop.addEventListener('input', e => {
         if (!e.target.matches('[data-vpk-search]'))
             return;
@@ -1156,6 +1181,9 @@ function bindVariable(prop, id) {
             if (/^fills\./.test(prop))
                 materializeFills(n);
             n.vars = { ...(n.vars || {}), [prop]: id };
+            // One variable for all corners / both sides replaces the per-corner / per-side ones.
+            for (const k of prop === 'radius' ? ['rTL', 'rTR', 'rBL', 'rBR'] : prop === 'padH' ? ['padL', 'padR'] : prop === 'padV' ? ['padT', 'padB'] : [])
+                delete n.vars[k];
             if (prop === 'stroke' && !(n.strokeWidth > 0))
                 n.strokeWidth = 1;
             if (prop === 'w')
@@ -1171,6 +1199,19 @@ function detachVariable(prop) {
         for (const n of selected()) {
             if (n.vars) {
                 delete n.vars[prop];
+                if (prop === 'fills.0' && !Array.isArray(n.fills))
+                    delete n.vars.fill;
+                if (prop === 'radius' && n.vars.rTL && n.vars.rTL === n.vars.rTR && n.vars.rTL === n.vars.rBL && n.vars.rTL === n.vars.rBR)
+                    for (const k of ['rTL', 'rTR', 'rBL', 'rBR'])
+                        delete n.vars[k];
+                if (prop === 'padH' && n.vars.padL === n.vars.padR) {
+                    delete n.vars.padL;
+                    delete n.vars.padR;
+                }
+                if (prop === 'padV' && n.vars.padT === n.vars.padB) {
+                    delete n.vars.padT;
+                    delete n.vars.padB;
+                }
                 if (!Object.keys(n.vars).length)
                     delete n.vars;
             }
@@ -1181,6 +1222,21 @@ function detachVariable(prop) {
 // The picker opens on pointerdown: the inspector can re-render between pointerdown and click (autosave, binding refresh),
 // which used to swallow the click and leave the apply-variable icon dead until the next try.
 let varBindDownAt = 0;
+// A numeric field bound to a variable opens the variable window when pressed, instead of editing the number.
+document.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest?.('button, #var-picker'))
+        return;
+    const f = e.target.closest?.('.field.var-bound-num');
+    if (!f)
+        return;
+    const inp = f.querySelector('input[data-prop], input[data-lh]');
+    const prop = f.querySelector('[data-var-bind]')?.dataset.varBind || f.dataset.varField || inp?.dataset.prop || (inp?.hasAttribute('data-lh') ? 'lineHeight' : null);
+    if (!prop || !bindType(prop))
+        return;
+    e.preventDefault();
+    varBindDownAt = performance.now();
+    openVarBind(prop, f);
+}, true);
 document.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !e.target.closest?.('[data-var-bind]') || e.target.closest('#var-picker'))
         return;
@@ -1192,6 +1248,24 @@ document.addEventListener('click', e => {
         return;
     handleVarClick(e);
 });
+// Opens the variable window for a field: the variables of its type, the bound one highlighted and checked (and the
+// component's matching properties on top for text / visibility), with Detach at the bottom.
+function openVarBind(prop, el) {
+    const rect = el.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
+    const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
+    if (po.props.length) {
+        // Same window as the variable picker, with the component's matching properties on top.
+        const applyProp = pid => transaction('Apply property', () => { const p = po.props.find(x => x.id === pid); if (!p) return; an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); });
+        openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), props: po.props.map(p => ({ id: p.id, name: p.name, icon: CPROP_ICON[p.type], on: an0.propBind?.[CPROP_FIELD[p.type]] === p.id })), onPickProp: applyProp, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+        return;
+    }
+    if (prop === 'fill') {
+        const an = activeNode();
+        prop = an && getFills(an).length ? 'fills.0' : 'fill';
+    }
+    const cur = boundVarId(prop);
+    openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+}
 function handleVarClick(e) {
     const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
     const pd = e.target.closest('[data-prop-detach]');
@@ -1203,21 +1277,7 @@ function handleVarClick(e) {
         return;
     }
     if (bind) {
-        let prop = bind.dataset.varBind;
-        const rect = bind.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
-        const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
-        if (po.props.length) {
-            // Same window as the variable picker, with the component's matching properties on top.
-            const applyProp = pid => transaction('Apply property', () => { const p = po.props.find(x => x.id === pid); if (!p) return; an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); });
-            openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), props: po.props.map(p => ({ id: p.id, name: p.name, icon: CPROP_ICON[p.type], on: an0.propBind?.[CPROP_FIELD[p.type]] === p.id })), onPickProp: applyProp, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
-            return;
-        }
-        if (prop === 'fill') {
-            const an = activeNode();
-            prop = an && getFills(an).length ? 'fills.0' : 'fill';
-        }
-        const cur = boundVarId(prop);
-        openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+        openVarBind(bind.dataset.varBind, bind);
         return;
     }
     if (det)
@@ -1267,10 +1327,25 @@ document.addEventListener('click', e => {
             if (hasRadii(n)) {
                 n.radius = n.radii[0];
                 delete n.radii;
+                // The four corners bound to one variable become the single radius variable.
+                const v = n.vars;
+                if (v?.rTL && v.rTL === v.rTR && v.rTL === v.rBL && v.rTL === v.rBR) {
+                    v.radius = v.rTL;
+                    for (const k of ['rTL', 'rTR', 'rBL', 'rBR'])
+                        delete v[k];
+                }
+                // An instance keeps this choice instead of taking the corners back from its main component.
+                if (n.sourceId)
+                    (n.overrides ||= {}).radii = null;
             }
             else {
                 const r = n.radius || 0;
                 n.radii = [r, r, r, r];
+                if (n.vars?.radius) {
+                    for (const k of ['rTL', 'rTR', 'rBL', 'rBR'])
+                        n.vars[k] = n.vars.radius;
+                    delete n.vars.radius;
+                }
             }
             doc.touch(n);
         } });
@@ -1293,9 +1368,9 @@ function strokeSectionHtml(n) {
     const col = n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', bound = boundVar('stroke'), hidden = n.strokeVisible === false, so = n.strokeOpacity ?? 1;
     const sw = `<label class="fr-sw st-sw" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Stroke color"><input type="color" data-prop="stroke" value="${safeColor(col)}" aria-label="Stroke color"></label>`;
     const hex = bound
-        ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-detach="stroke" title="Detach variable" aria-label="Detach variable">${VAR_ICON}</button></div>`
+        ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
-    const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
+    const op = bound ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
@@ -1571,11 +1646,11 @@ function sizeFieldHtml(n, axis) {
         const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
         const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
         const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
-        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${szChevron(axis, word)}</div>`;
+        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${szChevron(axis, word)}</div>`;
     }
     const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
     const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
-    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${szChevron(axis, word)}</div>`;
+    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${szChevron(axis, word)}</div>`;
 }
 const MM_ICON = {
     min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
@@ -1833,7 +1908,32 @@ document.addEventListener('click', e => {
     }
 });
 // ----- Variables window -----
-const vw = { open: false, coll: null, search: '', collapsed: new Set(), menu: false, group: '', full: true, geom: null };
+const vw = { open: false, coll: null, search: '', type: '', collapsed: new Set(), menu: false, group: '', full: true, geom: null };
+// A-Z order for variables and groups: names starting with "_" or "." come first, then the rest alphabetically (per path segment).
+const vwSegCmp = (a, b) => {
+    const sa = /^[_.]/.test(a), sb = /^[_.]/.test(b);
+    return sa !== sb ? (sa ? -1 : 1) : a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+};
+const vwPathCmp = (a, b) => {
+    const pa = a.split('/').map(x => x.trim()), pb = b.split('/').map(x => x.trim());
+    for (let i = 0; i < Math.min(pa.length, pb.length); i++) {
+        const c = vwSegCmp(pa[i], pb[i]);
+        if (c)
+            return c;
+    }
+    return pa.length - pb.length;
+};
+function vwSortAZ(coll) {
+    const store = varStore(), slots = [], mine = [];
+    store.items.forEach((it, idx) => { if (it.collectionId === coll.id) {
+        slots.push(idx);
+        mine.push(it);
+    } });
+    mine.sort((x, y) => vwPathCmp(x.name, y.name));
+    slots.forEach((idx, k) => { store.items[idx] = mine[k]; });
+    coll.groupOrder = [...vwGroupsOf(coll)].sort(vwPathCmp);
+}
+const VW_TYPE_FILTERS = [['', 'All'], ['color', 'Colors'], ['number', 'Numbers'], ['string', 'Strings'], ['boolean', 'Booleans'], ['effect', 'Effects']];
 function ensureVarCollection() {
     const s = varStore();
     if (!s.collections.length)
@@ -1870,7 +1970,7 @@ function toggleVarsWindow(force) {
 }
 function varsRows(coll) {
     const q = vw.search.trim().toLowerCase();
-    const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!q || i.name.toLowerCase().includes(q)));
+    const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!vw.type || i.type === vw.type) && (!q || i.name.toLowerCase().includes(q)));
     const split = i => { const p = i.name.split('/').map(s => s.trim()); return { group: p.slice(0, -1).join('/'), leaf: p[p.length - 1] }; };
     const order = [];
     for (const i of items) {
@@ -1933,8 +2033,8 @@ function renderVarsWindow() {
     // Re-rendering replaces the lists; keep where the user had scrolled them (e.g. after Create variable).
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
-<div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
-<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+<div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
+<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -2205,6 +2305,26 @@ function wireVarsWindow(win) {
             // Bring the new collection into view and open it for renaming, text selected.
             document.querySelector(`#vars-window [data-vw-coll="${id}"]`)?.scrollIntoView({ block: 'nearest' });
             vwCollAction(`vwcoll:rename:${id}`);
+            return;
+        }
+        if ((el = t.closest('[data-vw-filter]'))) {
+            openPopMenu(el, VW_TYPE_FILTERS.map(([v, l]) => ({ label: l, checked: vw.type === v, run: () => { vw.type = v; renderVarsWindow(); } })));
+            return;
+        }
+        if (t.closest('[data-vw-sort-colls]')) {
+            vwTx('Sort collections A-Z', () => varStore().collections.sort((a, b) => vwSegCmp(a.name, b.name)));
+            return;
+        }
+        if (t.closest('[data-vw-sort-groups]')) {
+            const coll = varColl(vw.coll);
+            if (coll)
+                vwTx('Sort groups A-Z', () => { coll.groupOrder = [...vwGroupsOf(coll)].sort(vwPathCmp); });
+            return;
+        }
+        if (t.closest('[data-vw-sort]')) {
+            const coll = varColl(vw.coll);
+            if (coll)
+                vwTx('Sort variables A-Z', () => vwSortAZ(coll));
             return;
         }
         if (t.closest('[data-vw-create-toggle]')) {
@@ -2856,7 +2976,7 @@ function setFillType(f, t) {
     }
 }
 const hex6 = c => /^#[\da-f]{6}$/i.test(c) ? c : /^#[\da-f]{3}$/i.test(c) ? '#' + c.slice(1).split('').map(x => x + x).join('') : '#d9d9d9';
-function bindVarFor(prop) { const id = activeNode()?.vars?.[prop]; return id ? varItem(id) : null; }
+function bindVarFor(prop) { const id = varIdOf(activeNode(), prop); return id ? varItem(id) : null; }
 function fillsSection(n) {
     const fills = getFills(n), simple = n.type === 'text';
     const rows = fills.length ? fills.map((f, i) => fillRow(n, f, i, simple)).join('') : '<span class="small-label">No fills</span>';
@@ -3186,7 +3306,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== home / file library =====
-const lib = { index: [], fileId: null, view: 'recent', search: '', open: false, sel: new Set() };
+const lib = { index: [], folders: [], folder: null, fileId: null, view: 'recent', search: '', open: false, sel: new Set() };
 const TEMPLATES = [
     { id: 'blank', name: 'Design file', note: 'Start from an empty canvas' },
     { id: 'phone', name: 'Mobile app', frame: ['iPhone 16', 393, 852], note: 'iPhone 16 frame' },
@@ -3275,6 +3395,12 @@ async function libBoot() {
         }
     }
     catch { }
+    try {
+        lib.folders = await folderApi.list();
+    }
+    catch {
+        lib.folders = [];
+    }
     const last = deepLink && lib.index.some(m => m.id === deepLink.id && !m.trashed) ? deepLink.id : await kvGet('last');
     let json = null;
     if (last && lib.index.some(m => m.id === last && !m.trashed)) {
@@ -3422,6 +3548,7 @@ async function libOpen(id) {
         await loadIntoEditor(data, id);
     }
     meta.opened = Date.now();
+    delete meta.hiddenRecent;
     libSaveIndex().catch(() => { });
     hideHome();
 }
@@ -3429,26 +3556,61 @@ async function libNew(templateId = 'blank', { stay = false } = {}) {
     if (state.dirty)
         await save();
     const data = templateData(templateId), id = uid(), now = Date.now();
-    lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null });
+    const folder = lib.view === 'all' && lib.folder ? lib.folder : null;
+    lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null, folder });
     await loadIntoEditor(data, id);
     savedPageSigs.clear(); // a new file: every page still has to be written
     await save();
+    if (folder)
+        await libSaveIndex().catch(() => { }); // the file exists on the server now: record its folder
     if (!stay)
         hideHome();
     return id;
+}
+// A blocking progress dialog for long jobs (importing a file): nothing behind it can be clicked until it closes.
+// Resolves after the browser has painted (so a message shows before a long synchronous job); a hidden tab never paints, hence the timeout.
+const paintTick = () => new Promise(r => { const t = setTimeout(r, 120); requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); r(); })); });
+let busyEl = null;
+const busyGuard = e => { if (busyEl && !busyEl.contains(e.target))
+    e.preventDefault(); };
+const busyBeforeUnload = e => { e.preventDefault(); e.returnValue = ''; };
+function showBusy(title, message = '', pct = null) {
+    if (!busyEl) {
+        busyEl = document.createElement('div');
+        busyEl.id = 'busy-overlay';
+        busyEl.setAttribute('role', 'alertdialog');
+        busyEl.setAttribute('aria-busy', 'true');
+        busyEl.setAttribute('aria-live', 'polite');
+        busyEl.innerHTML = '<div class="busy-box"><i class="busy-spin"></i><b class="busy-title"></b><span class="busy-msg"></span><div class="busy-bar"><i></i></div></div>';
+        document.body.appendChild(busyEl);
+        document.addEventListener('keydown', busyGuard, true);
+        window.addEventListener('beforeunload', busyBeforeUnload);
+    }
+    busyEl.querySelector('.busy-title').textContent = title;
+    busyEl.querySelector('.busy-msg').textContent = message;
+    const bar = busyEl.querySelector('.busy-bar');
+    bar.classList.toggle('indeterminate', pct == null);
+    bar.firstElementChild.style.width = pct == null ? '' : Math.max(2, Math.min(100, pct)) + '%';
+}
+function hideBusy() {
+    busyEl?.remove();
+    busyEl = null;
+    document.removeEventListener('keydown', busyGuard, true);
+    window.removeEventListener('beforeunload', busyBeforeUnload);
 }
 async function libImportFile(file) {
     if (!file)
         return;
     // No size cap: importing whole Figma files is the migration path.
     const isFig = /\.fig$/i.test(file.name);
+    const label = `Importing ${file.name}`;
+    showBusy(label, isFig ? 'Reading the Figma file…' : 'Reading the file…');
     try {
         let data, report = null;
         if (isFig) {
-            toast('Reading Figma file…');
             await new Promise(r => setTimeout(r, 30));
             const progressToast = (p) => {
-                toast(`Importing Figma: Page ${p.pageIndex}/${p.totalPages} (${p.pageName}) · ${p.layers.toLocaleString()} layers`);
+                showBusy(label, `Page ${p.pageIndex} of ${p.totalPages}: ${String(p.pageName).trim()} \u00b7 ${p.layers.toLocaleString()} layers`, p.totalPages ? (p.pageIndex - 1) / p.totalPages * 50 : null);
             };
             const res = await figToMidas(file, progressToast);
             report = res.report;
@@ -3458,16 +3620,21 @@ async function libImportFile(file) {
         }
         else
             data = DocumentModel.parse(await file.text());
+        showBusy(label, 'Preparing the file…', isFig ? 50 : 10);
+        await paintTick();
         if (state.dirty)
             await save();
         const id = uid(), now = Date.now();
-        lib.index.unshift({ id, name: data.name || 'Imported file', created: now, updated: now, opened: now, thumb: null });
-        toast('Uploading project to the server…');
+        const folder = lib.view === 'all' && lib.folder ? lib.folder : null;
+        lib.index.unshift({ id, name: data.name || 'Imported file', created: now, updated: now, opened: now, thumb: null, folder });
+        showBusy(label, 'Uploading to the server…', 50);
         await projectStorage.saveProject(id, data, {
             onProgress: (p) => {
-                toast(`Uploading: Page ${p.savedPages}/${p.totalPages} (${p.pageName})`);
+                showBusy(label, `Uploading page ${p.savedPages} of ${p.totalPages}: ${String(p.pageName).trim()}`, 50 + (p.totalPages ? p.savedPages / p.totalPages * 45 : 0));
             }
         });
+        showBusy(label, 'Opening the file… this can take a moment for big files', 97);
+        await paintTick();
         await loadIntoEditor(data, id);
         libSaveIndex().catch(() => {});
         kvPut('last', id).catch(() => {});
@@ -3481,6 +3648,9 @@ async function libImportFile(file) {
     }
     catch (e) {
         toast(e.message || 'Could not open this file.');
+    }
+    finally {
+        hideBusy();
     }
 }
 async function libJson(id) { return id === lib.fileId ? doc.serialize() : await kvGet('file:' + id); }
@@ -3596,7 +3766,7 @@ function timeAgo(ts) {
     const d = Math.round(h / 24);
     return d < 30 ? `${d} day${d > 1 ? 's' : ''} ago` : new Date(ts).toLocaleDateString();
 }
-const HOME_ICONS = { recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>' };
+const HOME_ICONS = { star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>' };
 const homeIcon = n => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${HOME_ICONS[n]}</svg>`;
 function ensureHome() {
     let home = document.getElementById('home');
@@ -3640,8 +3810,29 @@ function ensureHome() {
         }
         else if (t.closest('[data-hf-bulk-delete]'))
             bulkDelete();
+        else if (t.closest('[data-hf-bulk-recent]'))
+            bulkHideRecent();
         else if ((el = t.closest('[data-home-view]'))) {
             lib.view = el.dataset.homeView;
+            if (lib.view === 'all')
+                lib.folder = null;
+            lib.sel.clear();
+            renderHome();
+        }
+        else if ((el = t.closest('[data-home-folder]'))) {
+            lib.view = 'all';
+            lib.folder = el.dataset.homeFolder || null;
+            lib.sel.clear();
+            renderHome();
+        }
+        else if (t.closest('[data-home-newfolder]'))
+            libNewFolder();
+        else if ((el = t.closest('[data-star-file]')))
+            libOpen(el.dataset.starFile);
+        else if ((el = t.closest('[data-hfolder]')) && !t.closest('input')) {
+            lib.view = 'all';
+            lib.folder = el.dataset.hfolder;
+            lib.search = '';
             lib.sel.clear();
             renderHome();
         }
@@ -3649,8 +3840,6 @@ function ensureHome() {
             libNew(el.dataset.homeNew);
         else if (t.closest('[data-home-import]'))
             input.click();
-        else if ((el = t.closest('[data-hf-menu]')))
-            openFileMenu(el, el.dataset.hfMenu);
         else if (t.closest('[data-home-empty-trash]')) {
             const gone = lib.index.filter(m => m.trashed);
             if (gone.length) {
@@ -3688,57 +3877,311 @@ function ensureHome() {
         if (e.target.matches('[data-hf-name]'))
             libRename(e.target.dataset.hfName, e.target.value);
     });
+    // Right-click menus on file cards, folder cards and starred items.
+    home.addEventListener('contextmenu', e => {
+        const card = e.target.closest('[data-hf]'), folder = e.target.closest('[data-hfolder]'), star = e.target.closest('[data-star-file]');
+        if (e.target.closest('input') || !(card || folder || star))
+            return;
+        e.preventDefault();
+        if (folder)
+            openFolderMenu(e.clientX, e.clientY, folder.dataset.hfolder);
+        else
+            openFileMenu(e.clientX, e.clientY, (card || star).dataset.hf || star.dataset.starFile);
+    });
+    // Drag a file (or folder) card onto a folder card, a path segment or "All files" to move it.
+    let dragging = null;
+    home.addEventListener('dragstart', e => {
+        const card = e.target.closest('[data-hf]'), folder = e.target.closest('[data-hfolder]');
+        dragging = card ? { file: card.dataset.hf } : folder ? { folder: folder.dataset.hfolder } : null;
+        if (dragging)
+            e.dataTransfer.setData('text/plain', dragging.file || dragging.folder);
+    });
+    home.addEventListener('dragend', () => { dragging = null; home.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over')); });
+    home.addEventListener('dragover', e => {
+        const t = e.target.closest('[data-drop-folder]');
+        home.querySelectorAll('.drop-over').forEach(x => { if (x !== t)
+            x.classList.remove('drop-over'); });
+        if (!dragging || !t || dragging.folder === t.dataset.dropFolder)
+            return;
+        e.preventDefault();
+        t.classList.add('drop-over');
+    });
+    home.addEventListener('drop', e => {
+        const t = e.target.closest('[data-drop-folder]');
+        if (!dragging || !t)
+            return;
+        e.preventDefault();
+        const to = t.dataset.dropFolder || null, d = dragging;
+        dragging = null;
+        t.classList.remove('drop-over');
+        if (d.file) {
+            // Dragging one of several selected files moves them all.
+            const ids = lib.sel.has(d.file) ? [...lib.sel] : [d.file];
+            libMove(ids, to);
+        }
+        else if (d.folder)
+            libMoveFolder(d.folder, to);
+    });
     home.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.matches('[data-hf-name]'))
+        if (e.key === 'Enter' && e.target.matches('[data-hf-name], [data-hfolder-name]'))
             e.target.blur();
     });
     return home;
 }
-function openFileMenu(anchor, id) {
-    const meta = lib.index.find(m => m.id === id);
+// The folder of the open file, shown under the file title (like Figma).
+function updateDocFolderLabel() {
+    const el = document.getElementById('left-heading-folder'), m = lib.index.find(x => x.id === lib.fileId);
+    if (!el)
+        return;
+    const f = m && fileFolder(m) ? folderById(fileFolder(m)) : null;
+    el.textContent = f ? f.name : 'All files';
+    el.title = f ? folderPath(f.id).map(x => x.name).join(' / ') : 'All files';
+}
+// Menu on the chevron next to the file title.
+function openDocMenu(anchor) {
+    const id = lib.fileId, meta = lib.index.find(m => m.id === id), r = anchor.getBoundingClientRect();
     if (!meta)
         return;
-    const items = meta.trashed ? [['Restore', 'restore'], ['Delete permanently', 'delete']] : [['Open', 'open'], ['Rename', 'rename'], ['Duplicate', 'duplicate'], ['Download .midas', 'download'], ['Move to trash', 'trash']];
+    openHomeMenu(r.left, r.bottom + 4, [
+        ['Publish library', () => publishLibrary()],
+        [meta.starred ? 'Remove from Starred' : 'Add to Starred', () => libStar(id)],
+        ['Duplicate', async () => { await libDuplicate(id); toast('Duplicated as \u201c' + meta.name + ' copy\u201d.'); }],
+        ['Rename', () => renameDocFrom($('#left-heading-title'))],
+        ['Go to folder', () => { lib.view = 'all'; lib.folder = fileFolder(meta); lib.search = ''; lib.sel.clear(); showHome(); }],
+        ['Move file', () => openMoveMenu(r.left, r.bottom + 4, [id])],
+        ['Move to trash', async () => {
+            if (state.dirty)
+                await save();
+            await libTrash(id, true);
+            await libLeaveDeleted([id]);
+            lib.view = 'recent';
+            showHome({ thumb: false });
+            toast('Moved to Trash.');
+        }, 'danger'],
+    ]);
+}
+// ----- Home: folders, starred files, right-click menus -----
+const folderById = id => lib.folders.find(f => f.id === id) || null;
+const fileFolder = m => m.folder && folderById(m.folder) ? m.folder : null;
+function folderPath(id) {
+    const out = [];
+    for (let f = folderById(id), i = 0; f && i < 50; f = f.parent ? folderById(f.parent) : null, i++)
+        out.unshift(f);
+    return out;
+}
+function closeHomeMenu() { document.getElementById('home-menu')?.remove(); }
+// A floating menu at a point: items are [label, run, 'danger'?, checked?, indent?] or '-'.
+function openHomeMenu(x, y, items) {
+    closeHomeMenu();
     const menu = document.createElement('div');
     menu.id = 'home-menu';
     menu.className = 'home-menu';
-    menu.innerHTML = items.map(([l, a]) => `<button data-a="${a}" class="${a === 'delete' || a === 'trash' ? 'danger' : ''}">${l}</button>`).join('');
+    menu.innerHTML = items.map((it, i) => it === '-' ? '<div class="menu-divider"></div>' : `<button data-i="${i}" class="${it[2] || ''}"><span class="chk">${it[3] ? '\u2713' : ''}</span>${it[4] ? '<span class="ind" style="width:' + it[4] * 12 + 'px"></span>' : ''}${esc(it[0])}</button>`).join('');
     document.body.appendChild(menu);
-    const r = anchor.getBoundingClientRect();
-    menu.style.left = Math.min(innerWidth - 190, r.right - 170) + 'px';
-    menu.style.top = Math.min(innerHeight - items.length * 34 - 16, r.bottom + 4) + 'px';
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + 'px';
+    menu.style.top = Math.max(8, Math.min(innerHeight - h - 8, y)) + 'px';
     menu.addEventListener('click', e => {
-        const a = e.target.closest('[data-a]')?.dataset.a;
-        menu.remove();
+        const b = e.target.closest('[data-i]');
+        if (!b)
+            return;
         e.stopPropagation();
-        if (a === 'open')
-            libOpen(id);
-        else if (a === 'rename') {
-            const nameEl = document.querySelector(`[data-hf="${id}"] .hf-name`);
-            if (nameEl) {
-                nameEl.outerHTML = `<input class="hf-rename" data-hf-name="${id}" value="${esc(meta.name)}" aria-label="File name" spellcheck="false">`;
-                const inp = document.querySelector(`[data-hf-name="${id}"]`);
-                inp.focus();
-                inp.select();
-                inp.addEventListener('blur', () => libRename(id, inp.value));
-            }
-        }
-        else if (a === 'duplicate')
-            libDuplicate(id);
-        else if (a === 'download')
-            libDownload(id);
-        else if (a === 'trash')
-            libTrash(id, true);
-        else if (a === 'restore')
-            libTrash(id, false);
-        else if (a === 'delete')
-            libDelete(id);
+        const it = items[+b.dataset.i];
+        closeHomeMenu();
+        it[1]();
     });
+    menu.addEventListener('contextmenu', e => e.preventDefault());
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!document.body.contains(menu) || !menu.contains(ev.target)) {
+            document.removeEventListener('pointerdown', away, true);
+            if (document.body.contains(menu))
+                menu.remove();
+        }
+    }, true), 0);
+    return menu;
+}
+function openFileMenu(x, y, id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    if (meta.trashed)
+        return openHomeMenu(x, y, [['Restore', () => libTrash(id, false)], ['Delete permanently', () => libDelete(id), 'danger']]);
+    openHomeMenu(x, y, [
+        ['Open', () => libOpen(id)],
+        ['Open in new tab', () => window.open('/file/' + encodeURIComponent(id), '_blank')],
+        ['Rename', () => libStartRename(id)],
+        [meta.starred ? 'Remove from sidebar' : 'Add to sidebar', () => libStar(id)],
+        ['Download', () => libDownload(id)],
+        ['Duplicate', () => libDuplicate(id)],
+        ['Move file', () => openMoveMenu(x, y, [id])],
+        ['Move to trash', () => libTrash(id, true), 'danger'],
+        ['Remove from recent', () => libHideRecent(id)],
+    ]);
+}
+function openFolderMenu(x, y, id) {
+    const f = folderById(id);
+    if (!f)
+        return;
+    openHomeMenu(x, y, [
+        ['Open', () => { lib.view = 'all'; lib.folder = id; lib.search = ''; renderHome(); }],
+        ['Rename', () => libStartFolderRename(id)],
+        ['Move folder', () => openMoveFolderMenu(x, y, id)],
+        ['Delete folder', () => libFolderDelete(id), 'danger'],
+    ]);
+}
+// Folder tree as menu rows (indented); `pick` runs with the folder id (null = top level).
+function folderMenuRows(pick, here, skipId = null) {
+    const rows = [['All files (no folder)', () => pick(null), '', here === null, 0]];
+    const walk = (parent, depth) => {
+        for (const f of lib.folders.filter(f => (f.parent || null) === parent && f.id !== skipId).sort((a, b) => a.name.localeCompare(b.name))) {
+            rows.push([f.name, () => pick(f.id), '', here === f.id, depth]);
+            walk(f.id, depth + 1);
+        }
+    };
+    walk(null, 1);
+    return rows;
+}
+function openMoveMenu(x, y, ids) {
+    const cur = new Set(ids.map(id => lib.index.find(m => m.id === id)).filter(Boolean).map(fileFolder));
+    openHomeMenu(x, y, folderMenuRows(f => libMove(ids, f), cur.size === 1 ? [...cur][0] : undefined));
+}
+function openMoveFolderMenu(x, y, id) {
+    openHomeMenu(x, y, folderMenuRows(p => libMoveFolder(id, p), folderById(id)?.parent || null, id));
+}
+function libStartRename(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    let nameEl = document.querySelector(`#home [data-hf="${id}"] .hf-name`);
+    if (!nameEl) {
+        lib.view = meta.trashed ? 'trash' : 'all';
+        lib.folder = fileFolder(meta);
+        lib.search = '';
+        renderHome();
+        nameEl = document.querySelector(`#home [data-hf="${id}"] .hf-name`);
+    }
+    if (!nameEl)
+        return;
+    nameEl.outerHTML = `<input class="hf-rename" data-hf-name="${id}" value="${esc(meta.name)}" aria-label="File name" spellcheck="false">`;
+    const inp = document.querySelector(`[data-hf-name="${id}"]`);
+    inp.focus();
+    inp.select();
+    inp.addEventListener('blur', () => libRename(id, inp.value));
+}
+async function libStar(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    meta.starred = !meta.starred;
+    await libSaveIndex().catch(() => toast('Could not update the sidebar.'));
+    renderHome();
+    toast(meta.starred ? 'Added to the sidebar.' : 'Removed from the sidebar.');
+}
+async function libHideRecent(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    meta.hiddenRecent = true;
+    await libSaveIndex().catch(() => { });
+    renderHome();
+}
+async function libMove(ids, folder) {
+    const moved = ids.map(id => lib.index.find(m => m.id === id)).filter(Boolean);
+    for (const m of moved)
+        m.folder = folder || null;
+    lib.sel.clear();
+    await libSaveIndex().catch(() => toast('Could not move the file.'));
+    renderHome();
+    toast(`Moved ${moved.length > 1 ? moved.length + ' files' : '\u201c' + moved[0]?.name + '\u201d'} to ${folder ? folderById(folder)?.name : 'All files'}.`);
+}
+async function libNewFolder() {
+    const parent = lib.folder, taken = new Set(lib.folders.filter(f => (f.parent || null) === parent).map(f => f.name));
+    let name = 'Untitled folder', i = 2;
+    while (taken.has(name))
+        name = `Untitled folder ${i++}`;
+    const f = { id: uid(), name, parent, created: Date.now() };
+    lib.folders.push(f);
+    lib.view = 'all';
+    lib.search = '';
+    renderHome();
+    libStartFolderRename(f.id);
+    try {
+        await folderApi.create(f.id, name, parent);
+    }
+    catch (e) {
+        lib.folders = lib.folders.filter(x => x.id !== f.id);
+        renderHome();
+        toast('Could not create the folder (' + (e.message || 'server error') + ').');
+    }
+}
+function libStartFolderRename(id) {
+    const f = folderById(id), nameEl = document.querySelector(`#home [data-hfolder="${id}"] .hf-name`);
+    if (!f || !nameEl)
+        return;
+    nameEl.outerHTML = `<input class="hf-rename" data-hfolder-name="${id}" value="${esc(f.name)}" aria-label="Folder name" spellcheck="false">`;
+    const inp = document.querySelector(`[data-hfolder-name="${id}"]`);
+    inp.focus();
+    inp.select();
+    inp.addEventListener('blur', () => libFolderRename(id, inp.value));
+}
+async function libFolderRename(id, name) {
+    const f = folderById(id);
+    name = name.trim();
+    if (!f || !name || name === f.name)
+        return renderHome();
+    const old = f.name;
+    f.name = name;
+    renderHome();
+    try {
+        await folderApi.update(id, { name });
+    }
+    catch (e) {
+        f.name = old;
+        renderHome();
+        toast('Could not rename the folder.');
+    }
+}
+async function libFolderDelete(id) {
+    const f = folderById(id);
+    if (!f || !(await confirmDialog({ title: `Delete the folder \u201c${f.name}\u201d?`, message: 'Files and folders inside it are kept and move up one level.', confirmLabel: 'Delete folder', danger: true })))
+        return;
+    try {
+        await folderApi.remove(id);
+    }
+    catch {
+        return toast('Could not delete the folder.');
+    }
+    const up = f.parent || null;
+    for (const m of lib.index)
+        if (m.folder === id)
+            m.folder = up;
+    lib.folders = lib.folders.filter(x => x.id !== id).map(x => x.parent === id ? { ...x, parent: up } : x);
+    if (lib.folder === id)
+        lib.folder = up;
+    renderHome();
+}
+async function libMoveFolder(id, parent) {
+    const f = folderById(id);
+    if (!f || id === parent || (f.parent || null) === (parent || null))
+        return;
+    if (parent && folderPath(parent).some(x => x.id === id))
+        return toast('A folder cannot be moved into itself.');
+    const old = f.parent;
+    f.parent = parent || null;
+    renderHome();
+    try {
+        await folderApi.update(id, { parent: parent || null });
+    }
+    catch {
+        f.parent = old;
+        renderHome();
+        toast('Could not move the folder.');
+    }
 }
 // The files the current Home view lists (after search), used by select-all.
 function homeShown() {
     const q = lib.search.trim().toLowerCase(), match = m => !q || (m.name || '').toLowerCase().includes(q);
-    return lib.view === 'trash' ? lib.index.filter(m => m.trashed && match(m)) : lib.view === 'templates' ? [] : lib.index.filter(m => !m.trashed && match(m));
+    return lib.view === 'trash' ? lib.index.filter(m => m.trashed && match(m)) : lib.view === 'templates' ? [] : lib.view === 'all' && !q ? lib.index.filter(m => !m.trashed && fileFolder(m) === lib.folder) : lib.view === 'recent' ? lib.index.filter(m => !m.trashed && !m.hiddenRecent && match(m)) : lib.index.filter(m => !m.trashed && match(m));
 }
 async function bulkDelete() {
     const ids = [...lib.sel].filter(id => lib.index.some(m => m.id === id));
@@ -3777,18 +4220,36 @@ async function bulkDelete() {
     renderHome();
     toast(inTrash ? 'Files deleted.' : `Moved ${ids.length} file${ids.length > 1 ? 's' : ''} to Trash.`);
 }
+// Recents only lists files: the selection leaves the list (the files themselves stay in All files).
+async function bulkHideRecent() {
+    const ids = [...lib.sel].filter(id => lib.index.some(m => m.id === id));
+    if (!ids.length)
+        return;
+    for (const id of ids)
+        lib.index.find(m => m.id === id).hiddenRecent = true;
+    lib.sel.clear();
+    await libSaveIndex().catch(() => toast('Could not update Recents.'));
+    renderHome();
+    toast(`Removed ${ids.length} file${ids.length > 1 ? 's' : ''} from Recents.`);
+}
 function bulkBar() {
     const shown = homeShown();
     if (!shown.length)
         return '';
     const n = shown.filter(m => lib.sel.has(m.id)).length;
-    return `<div class="home-bulk"><label><input type="checkbox" data-hf-all ${n === shown.length ? 'checked' : ''} data-partial="${n > 0 && n < shown.length}" aria-label="Select all files"><span>${n ? `${n} selected` : 'Select all'}</span></label>${n ? `<button class="home-link danger" data-hf-bulk-delete>Delete${lib.view === 'trash' ? ' permanently' : ''}</button>` : ''}</div>`;
+    return `<div class="home-bulk"><label><input type="checkbox" data-hf-all ${n === shown.length ? 'checked' : ''} data-partial="${n > 0 && n < shown.length}" aria-label="Select all files"><span>${n ? `${n} selected` : 'Select all'}</span></label>${n ? (lib.view === 'recent' ? '<button class="home-link danger" data-hf-bulk-recent>Remove from recent</button>' : `<button class="home-link danger" data-hf-bulk-delete>Delete${lib.view === 'trash' ? ' permanently' : ''}</button>`) : ''}</div>`;
 }
 function fileCard(m) {
     const initial = esc((m.name || '?').trim()[0]?.toUpperCase() || '?');
-    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div><button class="hf-menu" data-hf-menu="${m.id}" aria-label="File options" title="More">···</button></div></div>`;
+    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0" draggable="${m.trashed ? 'false' : 'true'}"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div>${m.starred ? `<span class="hf-star" title="In the sidebar">${homeIcon('star')}</span>` : ''}</div></div>`;
+}
+function folderCard(f) {
+    const files = lib.index.filter(m => !m.trashed && fileFolder(m) === f.id).length, subs = lib.folders.filter(x => (x.parent || null) === f.id).length;
+    const sub = [subs ? `${subs} folder${subs > 1 ? 's' : ''}` : '', `${files} file${files === 1 ? '' : 's'}`].filter(Boolean).join(' \u00b7 ');
+    return `<div class="hf folder" data-hfolder="${f.id}" data-drop-folder="${f.id}" tabindex="0" draggable="true"><div class="hf-thumb folder-thumb">${homeIcon('folder')}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="hf-sub">${sub}</div></div></div></div>`;
 }
 function renderHome() {
+    updateDocFolderLabel();
     const home = ensureHome();
     const q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed), trash = lib.index.filter(m => m.trashed);
     const match = m => !q || (m.name || '').toLowerCase().includes(q);
@@ -3801,11 +4262,15 @@ function renderHome() {
         main = `<div class="home-row"><h2>Trash</h2>${trash.length ? '<button class="home-link" data-home-empty-trash>Empty trash</button>' : ''}</div>${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : '<div class="home-empty">Trash is empty. Deleted files stay here until you remove them.</div>'}`;
     }
     else {
-        const list = live.filter(match).sort(lib.view === 'recent' ? (a, b) => (b.opened || b.updated) - (a.opened || a.updated) : (a, b) => b.updated - a.updated);
+        const inAll = lib.view === 'all';
+        const list = (lib.view === 'recent' ? live.filter(m => !m.hiddenRecent && match(m)) : q ? live.filter(match) : live.filter(m => fileFolder(m) === lib.folder)).sort(lib.view === 'recent' ? (a, b) => (b.opened || b.updated) - (a.opened || a.updated) : (a, b) => b.updated - a.updated);
+        const subfolders = inAll ? lib.folders.filter(f => q ? f.name.toLowerCase().includes(q) : (f.parent || null) === lib.folder).sort((a, b) => a.name.localeCompare(b.name)) : [];
+        const head = inAll ? `<div class="home-row"><nav class="home-crumbs" aria-label="Folder path"><button data-home-folder="" data-drop-folder="" class="${lib.folder ? '' : 'cur'}">All files</button>${folderPath(lib.folder).map(f => `<span>&rsaquo;</span><button data-home-folder="${f.id}" data-drop-folder="${f.id}" class="${f.id === lib.folder ? 'cur' : ''}">${esc(f.name)}</button>`).join('')}</nav><button class="home-link" data-home-newfolder>+ New folder</button></div>` : '<h2>Recently viewed</h2>';
+        const folderGrid = subfolders.length ? `<div class="home-grid home-folders">${subfolders.map(folderCard).join('')}</div>` : '';
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
-        main = `${create}<h2>${lib.view === 'recent' ? 'Recently viewed' : 'All files'}</h2>${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : `<div class="home-empty">${q ? 'No files match your search.' : 'No files yet. Create a design file to get started.'}</div>`}`;
+        main = `${create}${head}${folderGrid}${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : subfolders.length ? '' : `<div class="home-empty">${q ? 'No files match your search.' : inAll && lib.folder ? 'This folder is empty. Drag files here, or use Move file in a file\'s right-click menu.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
-    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}">${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${live.filter(m => m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
 }
 async function showHome({ thumb = true } = {}) {
@@ -4407,11 +4872,12 @@ function fillRow(n, f, i, simple) {
     let field;
     if (f.type === 'solid') {
         const bound = bindVarFor(`fills.${i}`);
-        field = `<div class="fr-field ${bound ? 'bound' : ''}"><input class="fr-hex-in" data-fill-hex="${i}" value="${esc(bound ? bound.name : col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Fill color: hex or variable name">${bound ? `<button class="fr-detach" data-var-detach="fills.${i}" title="Detach variable" aria-label="Detach variable">${VAR_ICON}</button>` : ''}</div>`;
+        field = `<div class="fr-field ${bound ? 'bound' : ''}"><input class="fr-hex-in" data-fill-hex="${i}" value="${esc(bound ? bound.name : col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Fill color: hex or variable name">${bound ? `<button class="fr-detach" data-var-bind="fills.${i}" title="Change variable" aria-label="Change variable">${VAR_ICON}</button>` : ''}</div>`;
     }
     else
         field = `<button class="fr-field static" data-fill-open="${i}">${({ linear: 'Linear gradient', radial: 'Radial gradient', angular: 'Angular gradient', diamond: 'Diamond gradient' })[f.type] || 'Image'}</button>`;
-    const opacity = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
+    // A fill bound to a variable takes its opacity from the variable, so there is no opacity field.
+    const opacity = f.type === 'solid' && bindVarFor(`fills.${i}`) ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
     const ops = simple ? '' : `<button class="icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
     const grip = simple ? '' : `<span class="fr-grip" data-fill-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>`;
     return `<div class="fr fr2 ${hidden ? 'off' : ''}" data-fill-row="${i}">${grip}${sw}${field}${opacity}${ops}</div>`;
@@ -4497,6 +4963,13 @@ function pickFillDD(idx) {
 document.addEventListener('focusin', e => {
     const el = e.target;
     if (el.matches?.('[data-fill-hex]')) {
+        // A fill or stroke bound to a variable opens the variable window (current one checked) instead of the hex list.
+        if (el.closest('.fr-field.bound')) {
+            const k = el.dataset.fillHex;
+            el.blur();
+            openVarBind(k === 'stroke' ? 'stroke' : 'fills.' + k, el);
+            return;
+        }
         el.dataset.sel = '1';
         el.select();
         openFillDropdown(el);
@@ -4607,7 +5080,7 @@ function renderFillPicker() {
     const { h, s, v } = FP.hsv, a = f.opacity ?? 1;
     let body = '';
     if (FP.tab === 'libs') {
-        const cur = activeNode()?.vars?.[`fills.${FP.i}`] || null;
+        const cur = varIdOf(activeNode(), `fills.${FP.i}`) || null;
         body = `<div class="pk-libwrap">${varListHead(FP.search, 'data-pk-search', ['color'])}<div class="pk-libs">${varListHtml({ types: ['color'], filter: v => varInScope(v, 'fill'), q: FP.search, current: cur, attr: 'data-pk-var', limit: FP.libLimit || 400 })}</div></div>`;
     }
     else if (f.type === 'image')
@@ -6692,7 +7165,7 @@ function invalidate() {
         $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
         $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
         const spacing = 20 * state.camera.zoom;
-        $('#canvas-world').style.backgroundImage = options.grid && spacing >= 5 ? 'radial-gradient(var(--dot) .7px, transparent .7px)' : 'none';
+        $('#canvas-world').style.backgroundImage = options.grid && spacing >= 5 ? 'radial-gradient(var(--page-dot) .7px, transparent .7px)' : 'none';
         $('#canvas-world').style.backgroundSize = `${spacing}px ${spacing}px`;
         $('#canvas-world').style.backgroundPosition = `${state.camera.x}px ${state.camera.y}px`;
         if (state.editing || state.pendingText)
@@ -6702,7 +7175,7 @@ function invalidate() {
 function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
     renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
-    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; updateDocFolderLabel(); $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
 function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
@@ -7273,7 +7746,7 @@ function renderInspector() {
         html += framePresetPanel();
     }
     else if (!n) {
-        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
+        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || '#e3e3e3'}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
         html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
         html += section('Saved to your workspace', `<p>This document is saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
     }
@@ -11342,6 +11815,111 @@ function libPanelHtml() {
     }).join('') : '<p class="small-label">No other published libraries yet. Publish another file to see it here.</p>';
     return h + '</div>';
 }
+// Snapshot of a library component for the Assets tab: its first variant (or the component itself) drawn as it looks,
+// not a label. A lone SVG image is used directly; anything else is rendered once from a temporary copy of its layers.
+const libThumbCache = new Map();
+function libThumbBase(c) {
+    return (c.set ? c.nodes.find(n => n.parentId === c.id && n.component) : null) || c.nodes.find(n => n.id === c.id) || null;
+}
+function libThumbTree(c, base) {
+    const out = [base], seen = new Set([base.id]);
+    for (let grew = true; grew;) {
+        grew = false;
+        for (const n of c.nodes)
+            if (!seen.has(n.id) && seen.has(n.parentId)) {
+                seen.add(n.id);
+                out.push(n);
+                grew = true;
+            }
+    }
+    return out;
+}
+function libThumbHtml(snap, c) {
+    const key = `${snap.id}:${snap.version}:${c.id}`, url = libThumbCache.get(key), base = libThumbBase(c);
+    if (url)
+        return `<img src="${url}" alt="">`;
+    if (base) {
+        const tree = libThumbTree(c, base), only = tree.length === 2 ? tree[1] : tree.length === 1 ? base : null, svg = only?.type === 'image' && snap.assets?.[only.assetId];
+        if (svg && (/^data:image\/svg\+xml/.test(svg) || svg.startsWith('/api/')))
+            return `<img src="${esc(svg)}" alt="" class="asset-svg">`;
+    }
+    return '<div class="asset-skel"></div>';
+}
+function renderLibThumb(snap, c) {
+    const key = `${snap.id}:${snap.version}:${c.id}`;
+    if (libThumbCache.has(key))
+        return Promise.resolve(libThumbCache.get(key));
+    const job = thumbJobs.then(async () => {
+        const base = libThumbBase(c);
+        if (!base)
+            return null;
+        const tree = libThumbTree(c, base), idFor = new Map(tree.map(n => [n.id, uid()]));
+        const nodes = tree.map(src => {
+            const n = structuredClone(src);
+            n.id = idFor.get(src.id);
+            n.parentId = src.id === base.id ? null : idFor.get(src.parentId);
+            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+                if (n[k] != null && idFor.has(n[k]))
+                    n[k] = idFor.get(n[k]);
+            if (src.id === base.id) {
+                n.x = 0;
+                n.y = 0;
+            }
+            return n;
+        });
+        const added = [];
+        for (const [id, url] of Object.entries(snap.assets || {}))
+            if (!doc.data.assets[id]) {
+                doc.data.assets[id] = url;
+                added.push(id);
+            }
+        const page = { id: uid(), name: '__libthumb', nodes }, prev = doc.data.pageId;
+        doc.data.pages.push(page);
+        doc.data.pageId = page.id;
+        doc.refresh();
+        try {
+            const root = nodes[0], src = await renderer.exportCanvas([root.id], Math.max(.05, Math.min(1, 240 / Math.max(root.w, root.h, 1))));
+            const out = document.createElement('canvas');
+            out.width = 220;
+            out.height = 130;
+            const g = out.getContext('2d'), k = Math.min(200 / src.width, 110 / src.height, 2), w = src.width * k, h = src.height * k;
+            g.drawImage(src, (220 - w) / 2, (130 - h) / 2, w, h);
+            return out.toDataURL('image/png');
+        }
+        finally {
+            doc.data.pageId = prev;
+            doc.data.pages = doc.data.pages.filter(x => x !== page);
+            for (const id of added)
+                delete doc.data.assets[id];
+            doc.refresh();
+        }
+    }).then(url => { if (url) libThumbCache.set(key, url); return url; }).catch(() => null);
+    thumbJobs = job.then(() => { });
+    return job;
+}
+// Cards are drawn lazily: only those scrolled into the panel get a snapshot.
+let libThumbObserver = null;
+function watchLibThumbs(box) {
+    libThumbObserver?.disconnect();
+    libThumbObserver = null;
+    const panel = $('#assets-panel');
+    if (!box || typeof IntersectionObserver === 'undefined')
+        return;
+    libThumbObserver = new IntersectionObserver(hits => {
+        for (const h of hits) {
+            if (!h.isIntersecting)
+                continue;
+            libThumbObserver?.unobserve(h.target);
+            const [uid_, cid] = h.target.dataset.libThumb.split(':'), snap = LIBS.snaps.get(uid_), c = snap?.components.find(x => x.id === cid);
+            if (c && h.target.querySelector('.asset-skel'))
+                renderLibThumb(snap, c).then(url => { if (url && h.target.isConnected)
+                    h.target.innerHTML = `<img src="${url}" alt="">`; });
+        }
+    }, { root: panel, rootMargin: '200px 0px' });
+    for (const el of box.querySelectorAll('[data-lib-thumb]'))
+        if (el.querySelector('.asset-skel'))
+            libThumbObserver.observe(el);
+}
 function libComponentsHtml() {
     let h = '';
     for (const u of LIBS.use) {
@@ -11353,7 +11931,7 @@ function libComponentsHtml() {
         const shown = snap.components.filter(c => !/^[_.]/.test(c.name));
         h += `<div class="lib-group"><button class="lib-group-head" data-lib-fold="${u.id}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>${esc(snap.name)}</span><small>${shown.length}</small></button>`;
         if (open)
-            h += shown.map(c => { const root = c.nodes.find(n => n.id === c.id); return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview"><div class="asset-button" style="background:${safeColor(root?.fill)}">${esc(c.name)}</div></div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
+            h += shown.map(c => { return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview" data-lib-thumb="${u.id}:${c.id}">${libThumbHtml(snap, c)}</div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
         h += '</div>';
     }
     return h;
@@ -11372,6 +11950,8 @@ function renderAssets() {
         const panel = $('#assets-panel'), box = panel?.querySelector('.lib-slot');
         if (box)
             box.innerHTML = libPanelHtml() + libComponentsHtml();
+        if (box)
+            watchLibThumbs(box);
     });
     const head = `<div class="asset-head"><button class="wide-button asset-create" data-cmp="create">${icon('component', 14)} Create component</button><button class="wide-button asset-create" data-cmp="import-icons" title="Import a folder of SVG icons, e.g. wds/<style>/<category>/<name>.svg">${icon('upload', 14)} Import icons</button></div><div class="lib-slot">${LIBS.useFile === lib.fileId ? libPanelHtml() + libComponentsHtml() : ''}</div>`;
     entries.splice(0, entries.length, ...entries.filter(en => !en.comp.libRef));
@@ -12905,25 +13485,30 @@ async function figToMidas(file, onProgress, abortSignal) {
                 }
             }
         }
-    for (const { item, mode, from, alpha } of composed) {
-        let v = null, cur = from;
-        for (let i = 0; i < 16 && cur && v === null; i++) {
-            const t = varItems.find(x => x.id === cur), raw = t && (Object.values(t.values).find(x => x !== undefined));
-            if (typeof raw === 'string')
-                v = raw;
-            else
-                cur = raw?.alias;
-        }
-        if (v)
-            item.values[mode] = v.slice(0, 7) + Math.round(Math.max(0, Math.min(1, alpha)) * 255).toString(16).padStart(2, '0');
-    }
-    // Figma's untouched default collection ("Collection", no variables) is not a real collection of the file.
+    // Kept as an alias with its own opacity (the alias chip's opacity in the Variables window), so it still follows the aliased variable.
+    for (const { item, mode, from, alpha } of composed)
+        if (from)
+            item.values[mode] = { alias: from, opacity: Math.round(Math.max(0, Math.min(1, alpha)) * 100) };
+    // A collection with no variables (Figma's untouched default "Collection", or a leftover like "Kit") is not shown in Figma either.
     for (let i = varCollections.length - 1; i >= 0; i--)
-        if (varCollections[i].name === 'Collection' && !varItems.some(v => v.collectionId === varCollections[i].id))
+        if (!varItems.some(v => v.collectionId === varCollections[i].id))
             varCollections.splice(i, 1);
     // The variable a paint / field is bound to (only variables defined in this file).
     // A boolean binding is often wrapped as IS_TRUTHY(variable): the single variable inside is the real binding.
-    const aliasOf = vd => vd?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
+    // Alpha of a colour variable's first-mode value (following aliases); null when it has no colour value.
+    const varAlpha = id => {
+        let k = 1;
+        for (let cur = id, i = 0; cur && i < 16; i++) {
+            const it = varItems.find(x => x.id === cur), raw = it && Object.values(it.values).find(x => x !== undefined);
+            if (typeof raw === 'string')
+                return k * (/^#[\da-f]{8}$/i.test(raw) ? parseInt(raw.slice(7, 9), 16) / 255 : 1);
+            if (raw?.opacity != null)
+                k *= raw.opacity / 100;
+            cur = raw?.alias;
+        }
+        return null;
+    };
+    const aliasOf = vd => vd?.value?.alias || vd?.value?.fontStyleValue?.asString?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
     const varFor = vd => { const a = aliasOf(vd); return a ? varByGuid.get(vkey(a)) || null : null; };
     const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
     const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
@@ -12947,6 +13532,8 @@ async function figToMidas(file, onProgress, abortSignal) {
             const prop = VAR_FIELD[e.variableField], id = varFor(e.variableData);
             if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
                 (n.vars ||= {})[prop] = id;
+            else if (prop && !e.variableData && n.vars)
+                delete n.vars[prop]; // an entry without a variable is a binding removed on this layer (e.g. on an instance)
         }
         // Variant properties bound to variables (instance: Type = variable ...).
         for (const e of f.variableConsumptionMap?.entries || [])
@@ -13005,7 +13592,15 @@ async function figToMidas(file, onProgress, abortSignal) {
                 continue;
             const vis = p.visible !== false, op = Math.round((p.opacity ?? 1) * 1000) / 1000;
             if (p.type === 'SOLID')
-                out.push({ type: 'solid', color: hexOf(p.color), opacity: Math.round(op * (p.color?.a ?? 1) * 1000) / 1000, visible: vis, varId: varFor(p.colorVar) });
+                {
+                    // A colour bound to a variable keeps its alpha in the colour (the variable's own), so switching the variable's
+                    // mode can make it opaque or transparent; the paint opacity stays the paint's own.
+                    const vid = varFor(p.colorVar);
+                    // Figma stores the variable's resolved alpha in the paint opacity: when it matches the variable's own alpha,
+                    // the alpha belongs to the variable (it follows the mode), not to the paint.
+                    const va = vid ? varAlpha(vid) : null, own = va !== null && va < 1 && Math.abs(va - op) < .01;
+                    out.push({ type: 'solid', color: vid ? hexOf(p.color, true) : hexOf(p.color), opacity: vid ? (own ? 1 : op) : Math.round(op * (p.color?.a ?? 1) * 1000) / 1000, visible: vis, varId: vid });
+                }
             else if (p.type === 'IMAGE') {
                 const id = imageAsset(p.image?.hash);
                 if (id)
@@ -13056,10 +13651,11 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         if (sp.type !== 'SOLID')
             note('gradient stroke approximated by a solid color');
-        n.stroke = sp.type === 'SOLID' ? hexOf(sp.color) : hexOf(sp.stops?.[0]?.color);
-        if (varFor(sp.colorVar))
-            (n.vars ||= {}).stroke = varFor(sp.colorVar);
-        n.strokeOpacity = Math.round((sp.opacity ?? 1) * (sp.type === 'SOLID' ? sp.color?.a ?? 1 : 1) * 1000) / 1000;
+        const strokeVar = sp.type === 'SOLID' && varFor(sp.colorVar);
+        n.stroke = sp.type === 'SOLID' ? hexOf(sp.color, !!strokeVar) : hexOf(sp.stops?.[0]?.color);
+        if (strokeVar)
+            (n.vars ||= {}).stroke = strokeVar;
+        n.strokeOpacity = strokeVar ? (varAlpha(strokeVar) !== null && varAlpha(strokeVar) < 1 && Math.abs(varAlpha(strokeVar) - (sp.opacity ?? 1)) < .01 ? 1 : sp.opacity ?? 1) : Math.round((sp.opacity ?? 1) * (sp.type === 'SOLID' ? sp.color?.a ?? 1 : 1) * 1000) / 1000;
         n.strokeWidth = weight;
         n.strokeAlign = { INSIDE: 'inside', OUTSIDE: 'outside' }[f.strokeAlign] || 'center';
         n.strokeJoin = { BEVEL: 'bevel', ROUND: 'round' }[f.strokeJoin] || 'miter';
@@ -14150,9 +14746,14 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (ov.fontSize)
                 c.fontSize = ov.fontSize;
             for (const key of Object.keys(c))
-                if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== before[key] || (typeof c[key] === 'object' && JSON.stringify(c[key]) !== JSON.stringify(before[key]))))
+                if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== null && typeof c[key] === 'object' ? JSON.stringify(c[key]) !== JSON.stringify(before[key]) : c[key] !== before[key]))
                     c.overrides[key] = structuredClone(c[key]);
         }
+        // The variable modes and bindings the instance itself carries (its Appearance in Figma) differ from the main component:
+        // keep them as overrides, otherwise syncing with the main component resets them to the defaults.
+        for (const key of ['varModes', 'vars'])
+            if (n[key] && JSON.stringify(n[key]) !== JSON.stringify(src[key]))
+                n.overrides[key] = structuredClone(n[key]);
     }
     // instances whose layers are stored in the file: link them to the main component and keep every difference as an override
     const OMIT = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'name', 'variant', 'componentSet']);
@@ -15973,6 +16574,7 @@ $('#assets-panel').addEventListener('click', e => {
 });
 $('#main-menu').onclick = () => showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
 $('#file-name').onclick = renameFile;
+$('#left-heading-menu').onclick = e => { e.stopPropagation(); openDocMenu(e.currentTarget); };
 $('#left-heading-title').addEventListener('dblclick', e => renameDocFrom(e.currentTarget));
 $('#crumb-home').onclick = () => showHome();
 $('#add-page').onclick = addPage;
