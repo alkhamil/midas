@@ -116,6 +116,7 @@ export const libraryVersions = pgTable('library_versions', {
     /** pending | ready | partial — dari laporan CI paket kode. */
     codeStatus: text('code_status').notNull().default('pending'),
     bundleUrl: text('bundle_url'),
+    codeReportedAt: timestamp('code_reported_at', { withTimezone: true }),
     publishedBy: uuid('published_by').references(() => users.id, { onDelete: 'set null' }),
     publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [uniqueIndex('library_versions_seq_idx').on(t.libraryId, t.seq), uniqueIndex('library_versions_version_idx').on(t.libraryId, t.version)]);
@@ -131,6 +132,8 @@ export const componentMappings = pgTable('component_mappings', {
     propsMap: jsonb('props_map').notNull(),
     /** ready | not_implemented | mismatch */
     codeStatus: text('code_status').notNull().default('not_implemented'),
+    /** Keterangan dari `midas report`, mis. "props tidak sesuai desain: size". */
+    codeDetail: text('code_detail'),
 }, t => [primaryKey({ columns: [t.libraryVersionId, t.componentKey] })]);
 
 /** Library yang dipakai sebuah file desain, beserta `seq` versi yang sedang dipakai. */

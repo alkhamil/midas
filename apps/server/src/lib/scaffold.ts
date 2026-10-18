@@ -75,7 +75,7 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
         }),
         'midas.config.json': json({ server: input.serverUrl, libraryId: input.libraryId, package: input.packageName }),
         '.npmrc': `@midas:registry=${input.registryUrl}\n${registryHost}:_authToken=\${MIDAS_REGISTRY_TOKEN}\n`,
-        '.gitignore': 'node_modules/\ndist/\n',
+        '.gitignore': 'node_modules/\ndist/\n.midas/\n',
         'tsconfig.json': json({
             compilerOptions: {
                 target: 'ES2022', lib: ['ES2022', 'DOM'], module: 'ESNext', moduleResolution: 'Bundler', jsx: 'react-jsx',
@@ -157,6 +157,7 @@ Komponen UI dari design system **${input.libraryName}** di Midas (spec §3.4).
 
    \`\`\`bash
    MIDAS_REGISTRY_TOKEN=... npm publish
+   npx midas report     # status kode tiap komponen (ready / not implemented / mismatch) → Midas
    \`\`\`
 
 ## Memakai di project
@@ -191,6 +192,10 @@ jobs:
       - run: npm publish
         env:
           MIDAS_REGISTRY_TOKEN: \${{ secrets.MIDAS_REGISTRY_TOKEN }}
+      # Laporkan status kode tiap komponen (ready / not_implemented / mismatch) ke Midas.
+      - run: npx midas report
+        env:
+          MIDAS_TOKEN: \${{ secrets.MIDAS_TOKEN }}
 `,
     };
     for (const m of input.mappings)

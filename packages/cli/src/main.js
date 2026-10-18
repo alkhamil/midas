@@ -3,7 +3,11 @@
 //   midas whoami                             tampilkan akun yang dipakai
 //   midas init <folder> --library <paket>    buat repo paket dari kerangka + Library Kit
 //   midas sync [--version X] [--library P]   timpa src/generated dengan Library Kit versi X (default terbaru)
+//   midas report [--no-upload] [--json]      setelah build: status kode tiap komponen (ready / not_implemented / mismatch)
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -18,6 +22,7 @@ Perintah:
   midas whoami
   midas init <folder> --library <@midas/paket> [--version X] [--force]
   midas sync [--version X] [--library <@midas/paket>] [--dir FOLDER]
+  midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
 
 Lingkungan:
   MIDAS_SERVER    URL Midas API (default dari midas.config.json / login)
@@ -176,9 +181,99 @@ async function sync(args) {
     if (!repo) writeFiles(dir, { 'midas.config.json': JSON.stringify({ server: connection(args, null).server, libraryId, package: kit.package }, null, 2) + '\n' });
     const manifest = JSON.parse(kit.files[`${GENERATED_DIR}/manifest.json`]);
     console.log(`Library Kit ${kit.package}@${kit.version} ditulis ke ${GENERATED_DIR}/ (${manifest.components.length} komponen, ${manifest.tokens.length} token).`);
-    const missing = manifest.components.filter(c => !existsSync(join(dir, 'src/components', c.exportName, `${c.exportName}.tsx`)));
-    if (missing.length) console.log(`Komponen baru tanpa file di src/components: ${missing.map(c => c.exportName).join(', ')}`);
+    console.log('Setelah build, jalankan `midas report` untuk melihat komponen yang belum diimplementasikan atau props-nya belum sesuai desain.');
     for (const w of manifest.warnings) console.log(`Peringatan: ${w}`);
+}
+
+// ---------------------------------------------------------------- report
+const CHECK_DIR = '.midas';
+
+/**
+ * File cek tipe: setiap prop desain (src/generated/props) harus bisa diterima props komponen.
+ * Hasilnya `true` bila cocok; bila tidak, tsc melaporkan `{ mismatch_a: true; mismatch_b: true }`.
+ */
+export function contractCheckSource(names) {
+    const lines = names.map(n => `export const ${n}_contract: Expect<Mismatched<D.${n}Props, PropsOf<typeof Lib.${n}>>> = true;`);
+    return `// Dibuat oleh \`midas report\` — boleh dihapus.
+import type { JSXElementConstructor } from 'react';
+import type * as Lib from '../src/index';
+import type * as D from '../src/generated/props';
+
+type PropsOf<C> = C extends JSXElementConstructor<infer P> ? P : never;
+type Mismatched<Design, Props> = {
+  [K in Exclude<keyof Design, 'testId'>]-?: K extends keyof Props
+    ? (NonNullable<Design[K]> extends NonNullable<Props[K]> ? never : K)
+    : K;
+}[Exclude<keyof Design, 'testId'>];
+// Kunci objek selalu dijabarkan tsc di pesan error → nama prop terbaca: { mismatch_size: true; … }
+type Expect<T> = [T] extends [never] ? true : { [K in T & string as \`mismatch_\${K}\`]: true };
+
+${lines.join('\n')}
+`;
+}
+
+/** Jalankan tsc repo pada file cek; kembalikan nama komponen → prop yang tidak cocok. */
+function contractMismatches(dir, names) {
+    let tsc;
+    try {
+        tsc = createRequire(join(dir, 'package.json')).resolve('typescript/bin/tsc');
+    } catch {
+        return null; // TypeScript tidak terpasang: lewati cek kontrak
+    }
+    mkdirSync(join(dir, CHECK_DIR), { recursive: true });
+    writeFileSync(join(dir, CHECK_DIR, 'contract.check.ts'), contractCheckSource(names));
+    writeFileSync(join(dir, CHECK_DIR, 'tsconfig.json'), JSON.stringify({ extends: '../tsconfig.json', compilerOptions: { noEmit: true }, include: ['contract.check.ts'] }, null, 2));
+    let out = '';
+    try {
+        execFileSync(process.execPath, [tsc, '-p', join(dir, CHECK_DIR, 'tsconfig.json'), '--pretty', 'false'], { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
+    } catch (e) {
+        out = `${e.stdout || ''}${e.stderr || ''}`;
+    }
+    const result = {};
+    for (const line of out.split('\n')) {
+        const m = /contract\.check\.ts\((\d+),\d+\): error TS\d+: (.*)$/.exec(line);
+        if (!m) continue;
+        const name = /export const (\w+)_contract/.exec(readFileSync(join(dir, CHECK_DIR, 'contract.check.ts'), 'utf8').split('\n')[Number(m[1]) - 1] || '')?.[1];
+        if (!name) continue;
+        const props = [...m[2].matchAll(/mismatch_(\w+)/g)].map(x => x[1]);
+        result[name] = props.length ? props : [m[2]];
+    }
+    return result;
+}
+
+async function report(args) {
+    const dir = resolve(args.dir || process.cwd());
+    const manifestFile = join(dir, GENERATED_DIR, 'manifest.json');
+    if (!existsSync(manifestFile)) throw new Error('src/generated/manifest.json tidak ada — jalankan `midas sync` dulu');
+    const dist = join(dir, 'dist/index.js');
+    if (!existsSync(dist)) throw new Error('dist/index.js tidak ada — jalankan `npm run build` dulu');
+    const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    const lib = await import(pathToFileURL(dist).href);
+    const exported = manifest.components.filter(c => lib[c.exportName] != null && !lib[c.exportName].midasStub).map(c => c.exportName);
+    const mismatches = exported.length ? contractMismatches(dir, exported) : {};
+    const components = manifest.components.map(c => {
+        const value = lib[c.exportName];
+        if (value == null) return { exportName: c.exportName, status: 'not_implemented', detail: 'tidak di-export dari src/index.ts' };
+        if (value.midasStub) return { exportName: c.exportName, status: 'not_implemented', detail: 'masih kerangka (midasStub)' };
+        const bad = mismatches?.[c.exportName];
+        if (bad?.length) return { exportName: c.exportName, status: 'mismatch', detail: `props tidak sesuai desain: ${bad.join(', ')}` };
+        return { exportName: c.exportName, status: 'ready' };
+    });
+    const count = s => components.filter(c => c.status === s).length;
+    if (args.json) console.log(JSON.stringify({ package: pkg.name, version: pkg.version, components }, null, 2));
+    else {
+        for (const c of components) console.log(`${{ ready: '✓', not_implemented: '·', mismatch: '✗' }[c.status]} ${c.exportName.padEnd(24)} ${c.status}${c.detail ? ` — ${c.detail}` : ''}`);
+        console.log(`\n${pkg.name}@${pkg.version}: ${count('ready')} ready, ${count('not_implemented')} not implemented, ${count('mismatch')} mismatch${mismatches === null ? ' (cek kontrak dilewati: typescript tidak terpasang)' : ''}`);
+    }
+    if (!args['no-upload']) {
+        const repo = readRepoConfig(dir);
+        if (!repo?.libraryId) throw new Error('midas.config.json tidak ada — pakai --no-upload atau jalankan `midas sync`');
+        const { request } = connection(args, repo);
+        const res = await request('POST', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/code`, { components });
+        if (!args.json) console.log(`Status dikirim ke Midas: kode ${res.codeStatus}.`);
+    }
+    return args.strict && (count('mismatch') || count('not_implemented')) ? 1 : 0;
 }
 
 export async function main(argv) {
@@ -192,6 +287,7 @@ export async function main(argv) {
     if (cmd === 'whoami') return whoami(args);
     if (cmd === 'init') return init(args);
     if (cmd === 'sync') return sync(args);
+    if (cmd === 'report') return report(args);
     console.error(`perintah tidak dikenal: ${cmd}\n\n${HELP}`);
     return 1;
 }

@@ -197,3 +197,19 @@ test('removing a published icon requires a major version', async () => {
     assert.match(minor.body.errors.join(), /minimal 2\.0\.0/);
     assert.ok(minor.body.breaking.includes('Ikon back dihapus'));
 });
+
+test('code status report from the package repo', async () => {
+    const before = await call('GET', `/api/libraries/${dsFile}/versions/2.0.0/code`);
+    assert.equal(before.body.codeStatus, 'pending');
+    assert.ok(before.body.components.every((c: { status: string }) => c.status === 'pending'));
+    const missing = await call('POST', `/api/libraries/${dsFile}/versions/9.9.9/code`, { components: [] });
+    assert.equal(missing.status, 404);
+    const partial = await call('POST', `/api/libraries/${dsFile}/versions/2.0.0/code`, { components: [{ exportName: 'Button', status: 'mismatch', detail: 'props tidak sesuai desain: type' }] });
+    assert.deepEqual(partial.body, { codeStatus: 'partial', ready: 0, notImplemented: 0, mismatch: 1 });
+    const ready = await call('POST', `/api/libraries/${dsFile}/versions/2.0.0/code`, { components: [{ exportName: 'Button', status: 'ready' }] });
+    assert.equal(ready.body.codeStatus, 'ready');
+    const after = await call('GET', `/api/libraries/${dsFile}/versions/2.0.0/code`);
+    assert.deepEqual(after.body.components.map((c: { exportName: string; status: string }) => [c.exportName, c.status]), [['Button', 'ready']]);
+    const list = await call('GET', '/api/libraries');
+    assert.equal(list.body.libraries.find((l: { id: string }) => l.id === dsFile).codeStatus, 'ready', 'list shows the status of the latest version');
+});

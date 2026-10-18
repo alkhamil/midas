@@ -287,6 +287,55 @@ export async function libraryRoutes(app: FastifyInstance) {
         return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: mappings.length, icons: iconKeys.size, variables: snapshot.variables?.items?.length ?? 0, codeStatus: 'pending' }, breaking };
     });
 
+    // Laporan status kode dari repo paket (`midas report`, biasanya di CI setelah build/publish).
+    app.post<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/code', async (req, reply) => {
+        const body = z.object({
+            components: z.array(z.object({
+                exportName: z.string().min(1),
+                status: z.enum(['ready', 'not_implemented', 'mismatch']),
+                detail: z.string().max(2000).optional(),
+            })),
+            bundleUrl: z.string().url().optional(),
+        }).safeParse(req.body);
+        if (!body.success)
+            return reply.code(400).send({ error: 'invalid', message: body.error.issues[0].message });
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: `Versi ${req.params.version} belum dipublish di Midas` });
+        const reported = new Map(body.data.components.map(c => [c.exportName, c]));
+        const mappings = await db.select().from(componentMappings).where(eq(componentMappings.libraryVersionId, v.id));
+        // Komponen di desain yang tidak ada di laporan dianggap belum diimplementasikan.
+        const statuses = mappings.map(m => reported.get(m.exportName) ?? { exportName: m.exportName, status: 'not_implemented' as const, detail: 'tidak ada di laporan' });
+        const codeStatus = !statuses.length || statuses.every(c => c.status === 'ready') ? 'ready' : 'partial';
+        await db.transaction(async tx => {
+            for (const m of mappings) {
+                const r = statuses.find(c => c.exportName === m.exportName)!;
+                await tx.update(componentMappings).set({ codeStatus: r.status, codeDetail: r.detail ?? null })
+                    .where(and(eq(componentMappings.libraryVersionId, v.id), eq(componentMappings.componentKey, m.componentKey)));
+            }
+            await tx.update(libraryVersions).set({ codeStatus, codeReportedAt: new Date(), ...(body.data.bundleUrl ? { bundleUrl: body.data.bundleUrl } : {}) })
+                .where(eq(libraryVersions.id, v.id));
+        });
+        const count = (st: string) => statuses.filter(c => c.status === st).length;
+        return { codeStatus, ready: count('ready'), notImplemented: count('not_implemented'), mismatch: count('mismatch') };
+    });
+
+    // Status kode per komponen untuk satu versi (panel Library / Developer kit di Studio).
+    app.get<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/code', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found' });
+        const rows = await db.select().from(componentMappings).where(eq(componentMappings.libraryVersionId, v.id));
+        return {
+            version: v.version,
+            codeStatus: v.codeStatus,
+            reportedAt: v.codeReportedAt?.getTime() ?? null,
+            components: rows.map(r => ({ exportName: r.exportName, componentName: r.componentName, status: v.codeReportedAt ? r.codeStatus : 'pending', detail: r.codeDetail })),
+        };
+    });
+
     // Cari library dari nama paket (dipakai `midas sync` / `midas init`).
     app.get<{ Querystring: { package?: string } }>('/api/libraries/resolve', async (req, reply) => {
         const [l] = await db.select().from(libraries)

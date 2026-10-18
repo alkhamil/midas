@@ -363,6 +363,8 @@ export const libraryApi = {
         }
     },
     history: id => api('GET', `/api/libraries/${enc(id)}`),
+    /** Status kode per komponen untuk satu versi (dari `midas report`). */
+    codeStatus: (id, version) => api('GET', `/api/libraries/${enc(id)}/versions/${enc(version)}/code`),
     /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
     draft: (id, name, snapshot, iconKeys = []) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot, iconKeys }),
     packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
