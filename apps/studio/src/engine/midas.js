@@ -2356,8 +2356,21 @@ function setLeftTab(k) {
     state.leftTab = ['assets', 'plugins', 'code-builder'].includes(k) ? k : 'layers';
     state.varCollMenu = false;
     $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
-    renderLayers();
     syncRail();
+    if (state.leftTab === 'assets' && doc.nodes.length + doc.data.pages.length > 400) {
+        // Big files: show the busy pill first, then build the (heavy) components list.
+        const busy = startBusy('Loading components…');
+        setTimeout(() => {
+            try {
+                renderLayers();
+            }
+            finally {
+                busy.done();
+            }
+        }, 40);
+        return;
+    }
+    renderLayers();
 }
 document.addEventListener('click', e => {
     const b = e.target.closest('[data-rail]');
@@ -8580,9 +8593,9 @@ function pointerDown(e) {
 }
 // Alt-drag copies. A variant of a component set becomes an instance of it, placed where the variant is.
 function altDuplicate(picked) {
-    const variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
+    const variant = picked.length === 1 && picked[0].component ? picked[0] : null;
     if (variant) {
-        const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
+        const set = parentSetOf(variant) || variant, wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
         inst.name = set.name;
         inst.parentId = set.parentId || null;
         const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
@@ -9371,8 +9384,10 @@ function pushToMain() {
                 const src = x.sourceId && (doc.get(x.sourceId) || componentById(x.sourceId));
                 if (!src || !x.overrides)
                     continue;
+                // Where the instance sits (and how it is turned) belongs to the instance: the main component stays put.
                 for (const [k, v] of Object.entries(x.overrides))
-                    src[k] = structuredClone(v);
+                    if (!(x === r && ['x', 'y', 'rotation', 'flipX', 'flipY'].includes(k)))
+                        src[k] = structuredClone(v);
                 x.overrides = {};
                 doc.touch(src);
                 doc.touch(x);
@@ -10745,9 +10760,13 @@ async function iconVariantSvg(v) {
     return exportSvgAnyPage(v.id);
 }
 // Sumber ikon untuk snapshot: satu entri per komponen ikon, gaya dari variant (tanpa variant → "default").
-async function iconSources(roots) {
+async function iconSources(roots, onProgress = null) {
     const out = [];
+    let done = 0;
     for (const r of roots) {
+        onProgress?.(done++, roots.length);
+        if (done % 8 === 0)
+            await nextPaint();
         const variants = r.componentSet ? setVariants(r) : [r], styles = {};
         for (const v of variants) {
             try {
@@ -10760,14 +10779,61 @@ async function iconSources(roots) {
     }
     return out;
 }
+// Busy indicator: a pill with a spinner, a label and (when the progress is known) a bar, so long work never looks like a freeze.
+const nextPaint = () => new Promise(r => setTimeout(r, 30));
+function startBusy(label, pct = null) {
+    let el = document.getElementById('busy-pill');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'busy-pill';
+        el.className = 'busy-pill';
+        el.setAttribute('role', 'status');
+        el.innerHTML = '<span class="busy-spin"></span><span class="busy-label"></span><span class="busy-bar"><i></i></span>';
+        document.body.appendChild(el);
+    }
+    el._n = (el._n || 0) + 1;
+    const api = {
+        set(text, p = null) {
+            el.querySelector('.busy-label').textContent = text;
+            const bar = el.querySelector('.busy-bar');
+            bar.classList.toggle('on', p !== null);
+            if (p !== null)
+                bar.firstElementChild.style.width = Math.max(0, Math.min(100, p)) + '%';
+        },
+        done() {
+            if (api.closed)
+                return;
+            api.closed = true;
+            el._n--;
+            if (el._n <= 0)
+                el.remove();
+        }
+    };
+    api.set(label, pct);
+    return api;
+}
 async function publishLibrary() {
+    const busy = startBusy('Preparing library…', 5);
+    try {
+        await nextPaint();
+        await publishLibraryInner(busy);
+    }
+    finally {
+        busy.done();
+    }
+}
+async function publishLibraryInner(busy) {
     const snapshot = librarySnapshot();
     if (!snapshot.components.length && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
         return;
     }
-    if (state.dirty)
+    if (state.dirty) {
+        busy.set('Saving the file…', 20);
         await save();
+    }
+    busy.set('Reading the images used by components…', 45);
+    await nextPaint();
     try {
         snapshot.assets = await snapshotAssets(snapshot.components);
     }
@@ -10778,6 +10844,8 @@ async function publishLibrary() {
     // Tebakan awal: komponen di page "Icons" atau bernama "Icon/…" adalah ikon; bisa diubah di form.
     const iconKeys = snapshot.components.filter(c => looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
     let draft;
+    busy.set('Comparing with the published version…', 75);
+    await nextPaint();
     try {
         draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot, iconKeys);
     }
@@ -10864,10 +10932,13 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             return showErrors(['Choose at least one component or icon to publish.']);
         submit.disabled = true;
         submit.textContent = iconRoots.length ? `Exporting ${iconRoots.length} icon${iconRoots.length === 1 ? '' : 's'}…` : 'Publishing…';
+        const busy = startBusy(iconRoots.length ? 'Exporting icons…' : 'Publishing…', iconRoots.length ? 0 : null);
         try {
-            const icons = await iconSources(iconRoots);
+            const icons = await iconSources(iconRoots, (i, total) => busy.set(`Exporting icons… ${i + 1} / ${total}`, (i / total) * 60));
+            busy.set(`Uploading ${chosen.length} component${chosen.length === 1 ? '' : 's'}${icons.length ? ` and ${icons.length} icon${icons.length === 1 ? '' : 's'}` : ''}…`, iconRoots.length ? 75 : null);
             submit.textContent = 'Publishing…';
             const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, icons }, mappings: chosen });
+            busy.done();
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
@@ -10875,6 +10946,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             renderAssets();
         }
         catch (err) {
+            busy.done();
             showErrors(err?.body?.errors || [err?.message || String(err)]);
             submit.disabled = false;
             version.oninput();
