@@ -20,7 +20,7 @@ export function studioEntry(pkg, { libEntry, cssEntry }) {
     const deps = { ...pkg.dependencies, ...pkg.peerDependencies, ...pkg.devDependencies };
     const used = RUNTIME.filter(([name]) => deps[name]);
     return [
-        `// Dibuat oleh \`midas bundle\` — boleh dihapus.`,
+        `// Created by \`midas bundle\` — safe to delete.`,
         cssEntry ? `import '${cssEntry}';` : null,
         `export * from '${libEntry}';`,
         ...used.map(([, imp]) => imp),
@@ -55,9 +55,9 @@ export function latinFontsOnly(css) {
 export async function buildStudioBundle(dir) {
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
     const libFile = join(dir, pkg.module || pkg.main || 'dist/index.js');
-    if (!existsSync(libFile)) throw new Error(`${relative(dir, libFile)} tidak ada — jalankan \`npm run build\` dulu`);
+    if (!existsSync(libFile)) throw new Error(`${relative(dir, libFile)} not found — run \`npm run build\` first`);
     const vite = await importFrom(dir, 'vite');
-    if (!vite?.build) throw new Error('vite tidak terpasang di repo paket (devDependency `vite`)');
+    if (!vite?.build) throw new Error('vite is not installed in the package repo (devDependency `vite`)');
     const work = join(dir, '.midas');
     mkdirSync(work, { recursive: true });
     // CSS: entry Tailwind paket (token + utility + CSS komponen) dikompilasi penuh, karena Studio tidak punya Tailwind.
@@ -65,7 +65,7 @@ export async function buildStudioBundle(dir) {
     let cssEntry = null, plugins = [];
     if (existsSync(twEntry)) {
         const tailwind = await importFrom(dir, '@tailwindcss/vite');
-        if (!tailwind) throw new Error('dist/tailwind.css butuh `@tailwindcss/vite` dan `tailwindcss` sebagai devDependency untuk `midas bundle`');
+        if (!tailwind) throw new Error('dist/tailwind.css needs `@tailwindcss/vite` and `tailwindcss` as devDependencies for `midas bundle`');
         // source(none): hanya kelas yang dipakai paket (lewat @source di dist/tailwind.css), bukan seluruh repo.
         writeFileSync(join(work, 'studio.css'), `@import 'tailwindcss' source(none);\n@import '${relative(work, twEntry).split('\\').join('/')}';\n`);
         cssEntry = './studio.css';

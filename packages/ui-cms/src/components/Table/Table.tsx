@@ -30,7 +30,7 @@ export type TableProps<T> = DesignProps & {
 
 /** Daftar data dengan header, aksi baris, dan paginasi. */
 export function Table<T>(props: TableProps<T>) {
-  const { columns, data, rowKey, renderAction, actionHeader = 'Aksi', totalRecords = data.length, page = 1, pageSize = 10, onPageChange, emptyText = 'Belum ada data.', testId, className } = { ...tableDefaults, ...props };
+  const { columns, data, rowKey, renderAction, actionHeader = 'Actions', totalRecords = data.length, page = 1, pageSize = 10, onPageChange, emptyText = 'No data yet.', testId, className } = { ...tableDefaults, ...props };
   const pages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const from = totalRecords === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(totalRecords, from + data.length - 1);
@@ -70,13 +70,13 @@ export function Table<T>(props: TableProps<T>) {
         </table>
       </div>
       <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
-        <span>{totalRecords === 0 ? 'Tidak ada data' : `Menampilkan ${from}–${to} dari ${totalRecords}`}</span>
+        <span>{totalRecords === 0 ? 'No data' : `Showing ${from}–${to} of ${totalRecords}`}</span>
         <div className="flex items-center gap-1">
-          <button type="button" aria-label="Halaman sebelumnya" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
+          <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowLeftIcon className="h-4 w-4" />
           </button>
           <span className="flex h-8 min-w-8 items-center justify-center rounded-lg border border-primary px-2 font-medium text-primary">{page}</span>
-          <button type="button" aria-label="Halaman berikutnya" disabled={page >= pages} onClick={() => onPageChange?.(page + 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
+          <button type="button" aria-label="Next page" disabled={page >= pages} onClick={() => onPageChange?.(page + 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowRightIcon className="h-4 w-4" />
           </button>
         </div>

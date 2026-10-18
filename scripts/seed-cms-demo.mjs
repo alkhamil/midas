@@ -26,7 +26,7 @@ const { api } = connect(args);
 // ---------------------------------------------------------------- library (versi terbaru yang dipublish)
 const lib = await api('GET', `/api/libraries/resolve?package=${enc(PACKAGE)}`);
 const snap = await api('GET', `/api/libraries/${enc(lib.id)}/snapshot`);
-console.log(`Library ${snap.packageName}@${snap.semver} (seq ${snap.version}): ${snap.components.length} komponen`);
+console.log(`Library ${snap.packageName}@${snap.semver} (seq ${snap.version}): ${snap.components.length} components`);
 
 // ---------------------------------------------------------------- id stabil dari file yang sudah ada
 const existingFile = await findFile(api, FILE_NAME);
@@ -40,7 +40,7 @@ const vars = {
     byName: new Map(items.map(i => [i.name, { item: i, first: i.values[firstMode.get(i.collectionId)] }])),
     ref(name) {
         const v = this.byName.get(name);
-        if (!v) throw new Error(`Variable ${name} tidak ada di library`);
+        if (!v) throw new Error(`Variable ${name} is not in the library`);
         return v;
     },
     toJSON: () => ({ collections, items }),
@@ -86,7 +86,7 @@ const ctx = {
     /** Ikon berwarna token untuk sidebar di canvas (aset SVG ikut disimpan di dokumen). */
     icon(name, style, colorRef) {
         const svg = UI_ICONS[name];
-        if (!svg) throw new Error(`Ikon ${name} tidak ada`);
+        if (!svg) throw new Error(`Icon ${name} does not exist`);
         const c = colorRef.startsWith('#') ? colorRef : vars.byName.get(colorRef).first;
         const id = `dsicon-${name}-${style}-${c.slice(1).toLowerCase()}`;
         extraAssets[id] ||= svgToDataUrl(svg.replace(/#1C274C/gi, c));
@@ -105,12 +105,12 @@ const ctx = {
     componentName: src => (src.variant ? byId.get(src.parentId)?.name : src.name),
     variant(name, v) {
         const id = variantIndex.get(`${name}|${Object.entries(v).map(([k, x]) => `${k}=${x}`).join(', ')}`);
-        if (!id) throw new Error(`Variant ${name} ${JSON.stringify(v)} tidak ada di library`);
+        if (!id) throw new Error(`Variant ${name} ${JSON.stringify(v)} is not in the library`);
         return id;
     },
     root(name) {
         const id = rootIndex.get(name);
-        if (!id) throw new Error(`Komponen ${name} tidak ada di library`);
+        if (!id) throw new Error(`Komponen ${name} is not in the library`);
         return id;
     },
 };
@@ -124,8 +124,8 @@ const content = (name, children) => col({ w: 'fill', h: 836, pad: 24, gap: 24, f
 // Topbar = komponen library (breadcrumb, judul halaman, pengguna + avatar); tidak ada page header di dalam konten.
 const topbarFor = name => {
     const [module, kind] = name.split(' — ');
-    const [title, crumb] = kind === 'Form' ? [`Tambah ${module}`, `Beranda / ${module} / Tambah`] : kind === 'Detail' ? [`Detail ${module}`, `Beranda / ${module} / Detail`]
-        : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Beranda / ${module}`];
+    const [title, crumb] = kind === 'Form' ? [`Add ${module}`, `Home / ${module} / Add`] : kind === 'Detail' ? [`Detail ${module}`, `Home / ${module} / Detail`]
+        : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Home / ${module}`];
     return R('Topbar', { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
 };
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
@@ -148,7 +148,7 @@ const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], ga
 ]);
 const screen = (name, children) => {
     const module = name.split(' — ')[0];
-    return row({ w: 1440, align: 'start', fill: 'color/surface', name: `Halaman · ${name}`, inner: name }, [
+    return row({ w: 1440, align: 'start', fill: 'color/surface', name: `Page · ${name}`, inner: name }, [
         sidebarFrame(module),
         col({ w: 'fill', name: 'Area utama' }, [topbarFor(name), content(name, children)]),
     ]);
@@ -157,62 +157,89 @@ const screen = (name, children) => {
 const header = (title, description, [variant, label]) => V('SectionHeader', { Action: variant }, { Title: title, Description: description, ActionLabel: label }, { w: 'fill', name: 'Header' });
 const panel = (children, name) => col({ w: 'fill', gap: 16, pad: 20, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', name }, children);
 const twoCols = (a, b) => row({ w: 'fill', gap: 24, align: 'start' }, [a, b]);
-const actions = (...buttons) => row({ w: 'fill', gap: 8, justify: 'end', pad: [16, 0, 0, 0], stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Aksi form' }, buttons);
+const actions = (...buttons) => row({ w: 'fill', gap: 8, justify: 'end', pad: [16, 0, 0, 0], stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Form actions' }, buttons);
 const detailRow = (label, value) => row({ w: 'fill', gap: 16, align: 'start', name: label }, [text(label, { w: 160, color: MUTED }), typeof value === 'string' ? text(value, { w: 'fill', weight: 500 }) : value]);
 const field = (name, label, placeholder) => R(name, { Label: label, Placeholder: placeholder }, { w: 'fill' });
-const list = (title, description, addLabel) => screen(`${title} — Daftar`, [
+const list = (title, description, addLabel) => screen(`${title} — List`, [
     header(title, description, ['Primary', addLabel]),
-    panel([R('FilterToolbar', {}, { w: 'fill' }), R('Table', {}, { w: 'fill' })], 'Daftar'),
+    panel([R('FilterToolbar', {}, { w: 'fill' }), R('Table', {}, { w: 'fill' })], 'List'),
+]);
+
+// Confirmation dialogs: library Dialog instances. Registered in the Code Builder as `dialog` screens — the generator
+// reads the title, message and button labels from these frames, so the texts you design are the texts the app shows.
+const confirmFrame = (name, tone, title, message, cancel, confirm) => col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name }, [
+    V('Dialog', { Size: 'Sm', Tone: tone }, { Title: title, Message: message, CancelLabel: cancel, ConfirmLabel: confirm }, { name: 'Dialog' }),
+]);
+// Filter dialog (reference design): fields come from the entity fields marked "filterable".
+const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Dialog · Filters' }, [
+    col({ w: 400, radius: 'radius/xl', fill: 'color/background', stroke: 'color/border', shadow: { x: 0, y: 12, blur: 32, opacity: 0.16 }, clip: true, name: 'Filters' }, [
+        row({ w: 'fill', pad: [16, 24], justify: 'between', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Header' }, [
+            text('Filters', { size: 18, line: 28, weight: 600 }),
+            icon(ctx.icon('close', 'outline', 'color/muted-foreground'), { size: 20, name: 'Icon' }),
+        ]),
+        col({ w: 'fill', pad: 24, gap: 16, name: 'Content' }, [
+            field('SelectField', 'Role', 'All'),
+            field('SelectField', 'Active account', 'All'),
+            R('SwitchField', { Label: 'Show deleted' }),
+        ]),
+        row({ w: 'fill', pad: [16, 24], gap: 8, justify: 'end', stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Footer' }, [btn('Secondary', 'Reset'), btn('Primary', 'Apply')]),
+    ]),
 ]);
 
 const userScreens = [
-    list('User', 'Kelola akun yang dapat masuk ke aplikasi', 'Tambah user'),
+    list('User', 'Manage the accounts that can sign in to the app', 'Add user'),
     screen('User — Form', [
-        header('Tambah User', 'Isi data akun baru', ['Secondary', 'Kembali']),
+        header('Add User', 'Fill in the new account details', ['Secondary', 'Back']),
         panel([
-            twoCols(field('TextField', 'Nama lengkap', 'Mis. Budi Santoso'), field('TextField', 'Email', 'nama@perusahaan.id')),
-            twoCols(field('SelectField', 'Role', 'Pilih role'), field('PasswordField', 'Kata sandi', 'Minimal 8 karakter')),
-            R('SwitchField', { Label: 'Akun aktif' }),
-            actions(btn('Secondary', 'Batal'), btn('Primary', 'Simpan')),
+            twoCols(field('TextField', 'Full name', 'e.g. John Smith'), field('TextField', 'Email', 'name@company.com')),
+            twoCols(field('SelectField', 'Role', 'Select a role'), field('PasswordField', 'Password', 'At least 8 characters')),
+            R('SwitchField', { Label: 'Active account' }),
+            actions(btn('Secondary', 'Cancel'), btn('Primary', 'Save')),
         ], 'Form'),
     ]),
     screen('User — Detail', [
-        header('Detail User', 'Informasi akun', ['Secondary', 'Ubah']),
+        header('Detail User', 'Account information', ['Secondary', 'Edit']),
         panel([
-            detailRow('Nama', 'Budi Santoso'), detailRow('Email', 'budi@contoh.id'), detailRow('Role', 'Administrator'),
-            detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Aktif' })), detailRow('Dibuat', '12/10/2026 09:30'),
+            detailRow('Name', 'John Smith'), detailRow('Email', 'john@example.com'), detailRow('Role', 'Administrator'),
+            detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Active' })), detailRow('Created', '10/12/2026 09:30'),
         ], 'Detail'),
     ]),
+    confirmFrame('Confirm · Delete user', 'Danger', 'Delete user?', 'The user is moved to deleted users and can no longer sign in. You can restore them later.', 'Cancel', 'Delete'),
+    confirmFrame('Confirm · Restore user', 'Primary', 'Restore user?', 'The user can sign in to the app again.', 'Cancel', 'Restore'),
+    confirmFrame('Confirm · Discard changes (user)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
+    filterFrame,
 ];
 const roleScreens = [
-    list('Role', 'Atur role dan hak akses pengguna', 'Tambah role'),
+    list('Role', 'Manage roles and user permissions', 'Add role'),
     screen('Role — Form', [
-        header('Tambah Role', 'Isi data role baru', ['Secondary', 'Kembali']),
+        header('Add Role', 'Fill in the new role details', ['Secondary', 'Back']),
         panel([
-            field('TextField', 'Nama role', 'Mis. Editor'),
-            field('TextAreaField', 'Deskripsi', 'Jelaskan hak akses role ini'),
-            R('SwitchField', { Label: 'Role aktif' }),
-            actions(btn('Secondary', 'Batal'), btn('Primary', 'Simpan')),
+            field('TextField', 'Role name', 'e.g. Editor'),
+            field('TextAreaField', 'Description', 'Describe this role\'s permissions'),
+            R('SwitchField', { Label: 'Active role' }),
+            actions(btn('Secondary', 'Cancel'), btn('Primary', 'Save')),
         ], 'Form'),
     ]),
     screen('Role — Detail', [
-        header('Detail Role', 'Informasi role', ['Secondary', 'Ubah']),
+        header('Detail Role', 'Role information', ['Secondary', 'Edit']),
         panel([
-            detailRow('Nama role', 'Editor'), detailRow('Deskripsi', 'Mengelola konten, tanpa akses pengaturan'),
-            detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Aktif' })), detailRow('Jumlah user', '12'),
+            detailRow('Role name', 'Editor'), detailRow('Description', 'Manages content, without access to settings'),
+            detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Active' })), detailRow('Users', '12'),
         ], 'Detail'),
     ]),
+    confirmFrame('Confirm · Delete role', 'Danger', 'Delete role?', 'Users with this role lose its permissions. This cannot be undone.', 'Cancel', 'Delete'),
+    confirmFrame('Confirm · Discard changes (role)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
 ];
 const dashboard = screen('Dashboard', [
-    header('Dashboard', 'Ringkasan aktivitas aplikasi', ['Secondary', 'Unduh laporan']),
+    header('Dashboard', 'Overview of app activity', ['Secondary', 'Download report']),
     row({ w: 'fill', gap: 16, align: 'start', name: 'Statistik' }, [
-        V('StatCard', { Trend: 'Up' }, { Label: 'Total user', Value: '1.248', Caption: '12% dari bulan lalu' }, { w: 'fill' }),
-        V('StatCard', { Trend: 'Up' }, { Label: 'User aktif', Value: '1.032', Caption: '83% dari total' }, { w: 'fill' }),
-        V('StatCard', { Trend: 'Neutral' }, { Label: 'Role', Value: '4', Caption: 'Tidak berubah' }, { w: 'fill' }),
-        V('StatCard', { Trend: 'Down' }, { Label: 'Menunggu verifikasi', Value: '47', Caption: '5 lebih banyak dari kemarin' }, { w: 'fill' }),
+        V('StatCard', { Trend: 'Up' }, { Label: 'Total users', Value: '1,248', Caption: '12% vs last month' }, { w: 'fill' }),
+        V('StatCard', { Trend: 'Up' }, { Label: 'Active users', Value: '1,032', Caption: '83% of total' }, { w: 'fill' }),
+        V('StatCard', { Trend: 'Neutral' }, { Label: 'Role', Value: '4', Caption: 'No change' }, { w: 'fill' }),
+        V('StatCard', { Trend: 'Down' }, { Label: 'Pending verification', Value: '47', Caption: '5 more than yesterday' }, { w: 'fill' }),
     ]),
-    V('Alert', { Variant: 'Warning' }, { Message: '47 user menunggu verifikasi email.' }, { w: 'fill' }),
-    panel([text('User terbaru', { size: 18, line: 28, weight: 600 }), R('Table', {}, { w: 'fill' })], 'User terbaru'),
+    V('Alert', { Variant: 'Warning' }, { Message: '47 users are waiting for email verification.' }, { w: 'fill' }),
+    panel([text('Recent users', { size: 18, line: 28, weight: 600 }), R('Table', {}, { w: 'fill' })], 'Recent users'),
 ]);
 
 // ---------------------------------------------------------------- dokumen
@@ -240,43 +267,48 @@ console.log(`CMS Demo: ${pages.map(p => `${p.name} (${p.nodes.length})`).join(',
 
 const saved = await saveDocument(api, { name: FILE_NAME, doc, existing: existingFile, idPrefix: 'cms-demo' });
 const fileId = saved.fileId;
-console.log(saved.created ? `File dibuat: ${fileId}` : `File diperbarui: ${fileId} (${saved.newAssets} aset baru)`);
+console.log(saved.created ? `File created: ${fileId}` : `File updated: ${fileId} (${saved.newAssets} new assets)`);
 await api('PUT', `/api/files/${enc(fileId)}/libraries`, { libraries: [{ id: lib.id, version: snap.version }] });
 
 // ---------------------------------------------------------------- project Code Builder
 if (args['no-project']) process.exit(0);
 const str = (name, label, extra = {}) => ({ name, label, type: 'string', required: false, sortable: false, filterable: false, ...extra });
-const screenOf = (id, page, name, role) => ({ id, frameId: frameOf(page, name), pageId: pageOf(page), name, role });
+const screenOf = (id, page, name, role, purpose) => ({ id, frameId: frameOf(page, name), pageId: pageOf(page), name, role, ...(purpose ? { purpose } : {}) });
 const config = {
     modules: [
         {
             id: 'mod-user', name: 'user', label: 'User', parentId: null, permissionKey: 'user', pageId: pageOf('User'),
             entity: { fields: [
-                str('name', 'Nama lengkap', { required: true, sortable: true, filterable: true, rules: ['min:3', 'max:100', 'withoutemoticon'] }),
+                str('name', 'Full name', { required: true, sortable: true, filterable: true, rules: ['min:3', 'max:100', 'withoutemoticon'] }),
                 str('email', 'Email', { required: true, sortable: true, filterable: true, rules: ['email'] }),
                 { name: 'role', label: 'Role', type: 'relation', relation: { moduleId: 'mod-role', labelField: 'name' }, required: true, sortable: false, filterable: true },
-                { name: 'password', label: 'Kata sandi', type: 'password', required: true, rules: ['min:8'], sortable: false, filterable: false },
-                { name: 'active', label: 'Akun aktif', type: 'boolean', required: false, sortable: false, filterable: true },
-            ] },
+                { name: 'password', label: 'Password', type: 'password', required: true, rules: ['min:8'], sortable: false, filterable: false },
+                { name: 'active', label: 'Active account', type: 'boolean', required: false, sortable: false, filterable: true },
+            ], softDelete: true },
             screens: [
-                screenOf('scr-user-list', 'User', 'User — Daftar', 'list'),
+                screenOf('scr-user-list', 'User', 'User — List', 'list'),
                 screenOf('scr-user-create', 'User', 'User — Form', 'create'),
                 screenOf('scr-user-edit', 'User', 'User — Form', 'edit'),
                 screenOf('scr-user-view', 'User', 'User — Detail', 'view'),
+                screenOf('scr-user-dlg-delete', 'User', 'Confirm · Delete user', 'dialog', 'delete'),
+                screenOf('scr-user-dlg-restore', 'User', 'Confirm · Restore user', 'dialog', 'restore'),
+                screenOf('scr-user-dlg-discard', 'User', 'Confirm · Discard changes (user)', 'dialog', 'discard'),
             ],
         },
         {
             id: 'mod-role', name: 'role', label: 'Role', parentId: null, permissionKey: 'role', pageId: pageOf('Role'),
             entity: { fields: [
-                str('name', 'Nama role', { required: true, sortable: true, filterable: true }),
-                { name: 'description', label: 'Deskripsi', type: 'text', required: false, sortable: false, filterable: false },
-                { name: 'active', label: 'Role aktif', type: 'boolean', required: false, sortable: false, filterable: true },
+                str('name', 'Role name', { required: true, sortable: true, filterable: true }),
+                { name: 'description', label: 'Description', type: 'text', required: false, sortable: false, filterable: false },
+                { name: 'active', label: 'Active role', type: 'boolean', required: false, sortable: false, filterable: true },
             ] },
             screens: [
-                screenOf('scr-role-list', 'Role', 'Role — Daftar', 'list'),
+                screenOf('scr-role-list', 'Role', 'Role — List', 'list'),
                 screenOf('scr-role-create', 'Role', 'Role — Form', 'create'),
                 screenOf('scr-role-edit', 'Role', 'Role — Form', 'edit'),
                 screenOf('scr-role-view', 'Role', 'Role — Detail', 'view'),
+                screenOf('scr-role-dlg-delete', 'Role', 'Confirm · Delete role', 'dialog', 'delete'),
+                screenOf('scr-role-dlg-discard', 'Role', 'Confirm · Discard changes (role)', 'dialog', 'discard'),
             ],
         },
         {
@@ -306,4 +338,4 @@ else {
     project = (await api('PUT', `/api/builder-projects/${created.id}`, { version: created.version, config })).project;
 }
 const count = project.config.modules.reduce((t, m) => t + m.screens.length, 0);
-console.log(`Project Code Builder "${project.name}": ${project.config.modules.length} module, ${count} screen · ${project.library.packageName}@${project.library.version}`);
+console.log(`Project Code Builder "${project.name}": ${project.config.modules.length} modules, ${count} screens · ${project.library.packageName}@${project.library.version}`);

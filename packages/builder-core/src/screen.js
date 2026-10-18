@@ -8,7 +8,8 @@
 //   { kind: 'unsupported', nodeId, name, box, reason }                       — tidak di-generate (→ Issue)
 
 export const CRUD_ROLES = ['list', 'create', 'edit', 'view'];
-export const ROLE_LABEL = { list: 'List', create: 'Create', edit: 'Edit', view: 'View', custom: 'Custom' };
+export const ROLE_LABEL = { list: 'List', create: 'Create', edit: 'Edit', view: 'View', custom: 'Custom', dialog: 'Dialog' };
+export const FORM_FIELD_COMPONENTS = ['TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField'];
 
 const words = s => String(s).replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean);
 export function camelCase(s) {
@@ -53,21 +54,21 @@ function paint(ctx, n, prop) {
 /** Komponen library dari instance: { key, mapping, variant, holder } atau { reason }. */
 export function componentOf(ctx, inst) {
     const main = ctx.byId.get(inst.sourceId);
-    if (!main) return { reason: 'Main component tidak ditemukan di file ini' };
+    if (!main) return { reason: 'Main component not found in this file' };
     const parent = main.variant ? ctx.byId.get(main.parentId) : null;
     const holder = parent?.componentSet ? parent : main;
     let key = null;
     if (holder.libRef) {
         const prefix = `${ctx.libraryId}:`;
-        if (!ctx.libraryId || !holder.libRef.startsWith(prefix)) return { reason: `Komponen ${holder.name} dari library lain, bukan library project`, name: holder.name };
+        if (!ctx.libraryId || !holder.libRef.startsWith(prefix)) return { reason: `Component ${holder.name} is from another library, not the project's library`, name: holder.name };
         key = holder.libRef.slice(prefix.length);
     }
     else if (ctx.libraryId && ctx.fileId === ctx.libraryId) key = holder.id; // file sumber library itu sendiri
-    else return { reason: `Komponen lokal ${holder.name} — bukan dari library project`, name: holder.name };
+    else return { reason: `Local component ${holder.name} — not from the project's library`, name: holder.name };
     const mapping = ctx.mappings.get(key);
     if (!mapping) {
         const internal = /^[_.]/.test(holder.name);
-        return { reason: internal ? `${holder.name} adalah bagian internal library; pakai komponen induknya` : `Komponen ${holder.name} tidak ada di versi library project`, name: holder.name };
+        return { reason: internal ? `${holder.name} is an internal library part; use its parent component` : `Component ${holder.name} is not in the project's library version`, name: holder.name };
     }
     return { key, mapping, variant: main.variant || {}, holder };
 }
@@ -126,7 +127,7 @@ function frameStyle(ctx, n, issues) {
     if (fill) {
         s.background = fill.css;
         if (n.fillOpacity != null && n.fillOpacity < 1) s.background = `color-mix(in srgb, ${fill.css} ${round(n.fillOpacity * 100)}%, transparent)`;
-        if (fill.raw) issues.push(issue(n, 'warning', `Warna fill ${n.fill} tidak memakai Variable (token tema)`));
+        if (fill.raw) issues.push(issue(n, 'warning', `Fill color ${n.fill} does not use a Variable (theme token)`));
     }
     if (n.strokeWidth > 0 && n.stroke && n.stroke !== 'none' && n.strokeVisible !== false) {
         const stroke = paint(ctx, n, 'stroke');
@@ -136,7 +137,7 @@ function frameStyle(ctx, n, issues) {
         s.borderStyle = 'solid';
         s.borderColor = stroke.css;
         s.borderWidth = sides.map(x => `${x}px`).join(' ');
-        if (stroke.raw) issues.push(issue(n, 'warning', `Warna stroke ${n.stroke} tidak memakai Variable (token tema)`));
+        if (stroke.raw) issues.push(issue(n, 'warning', `Stroke color ${n.stroke} does not use a Variable (theme token)`));
     }
     const r = n.radius;
     if (r) s.borderRadius = `${r >= 999 ? 9999 : r}px`;
@@ -154,7 +155,7 @@ function textStyle(ctx, n, issues) {
     const fill = paint(ctx, n, 'fill');
     if (fill) {
         s.color = fill.css;
-        if (fill.raw) issues.push(issue(n, 'warning', `Warna teks ${n.fill} tidak memakai Variable (token tema)`));
+        if (fill.raw) issues.push(issue(n, 'warning', `Text color ${n.fill} does not use a Variable (theme token)`));
     }
     if (n.letterSpacing) s.letterSpacing = `${n.letterSpacing}px`;
     if (n.opacity != null && n.opacity < 1) s.opacity = n.opacity;
@@ -167,7 +168,7 @@ const issue = (n, severity, message) => ({ nodeId: n.id, nodeName: n.name || n.t
 export function screenTree(ctx, frameId, nodeCfg = {}) {
     const issues = [];
     const root = ctx.byId.get(frameId);
-    if (!root) return { tree: null, issues: [{ nodeId: frameId, nodeName: 'Frame', severity: 'error', message: 'Frame screen tidak ditemukan — mungkin sudah dihapus' }] };
+    if (!root) return { tree: null, issues: [{ nodeId: frameId, nodeName: 'Frame', severity: 'error', message: 'Screen frame not found — it may have been deleted' }] };
     const walk = (n, parent) => {
         const cfg = nodeCfg[n.id] || {};
         if (cfg.hidden && parent) return null;
@@ -188,16 +189,17 @@ export function screenTree(ctx, frameId, nodeCfg = {}) {
         if (n.type === 'frame' || n.type === 'group' || n.type === 'section') {
             const kids = childrenOf(ctx, n.id);
             if (kids.length > 1 && !isAutoLayout(n))
-                issues.push(issue(n, 'warning', `${n.type === 'group' ? 'Group' : 'Frame'} tanpa auto layout — ubah ke auto layout supaya bisa di-generate`));
+                issues.push(issue(n, 'warning', `${n.type === 'group' ? 'Group' : 'Frame'} without auto layout — switch to auto layout so it can be generated`));
             return { kind: 'box', style: { ...frameStyle(ctx, n, issues), ...box }, children: kids.map(k => walk(k, n)).filter(Boolean), cfg, nodeId: n.id, name: n.name };
         }
-        const what = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', path: 'Vector', image: 'Gambar', boolean: 'Boolean' }[n.type] || n.type;
-        const reason = `${what} bebas tidak di-generate — jadikan komponen library atau aset`;
+        const what = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', path: 'Vector', image: 'Image', boolean: 'Boolean' }[n.type] || n.type;
+        const reason = `A free ${what} is not generated — make it a library component or an asset`;
         issues.push(issue(n, 'warning', reason));
         return { kind: 'unsupported', nodeId: n.id, name: n.name, box: { ...box, width: `${round(n.w)}px`, height: `${round(n.h)}px` }, reason };
     };
     const tree = walk(root, null);
     tree.cfg = nodeCfg[root.id] || {};
+    groupFormFields(tree, nodeCfg);
     tree.style = { ...tree.style, width: `${round(root.w)}px`, minHeight: `${round(root.h)}px`, height: undefined };
     return { tree, issues };
 }
@@ -210,26 +212,62 @@ export function projectIssues(project, { byId, pages }) {
     const out = [];
     const add = (severity, message, ref = {}) => out.push({ severity, message, ...ref });
     const lib = project.library;
-    if (!lib) add('error', 'Pilih library + versi untuk project ini');
-    else if (lib.missing) add('error', `Versi ${lib.version} library ${lib.packageName} tidak ditemukan`);
+    if (!lib) add('error', 'Choose a library + version for this project');
+    else if (lib.missing) add('error', `Version ${lib.version} of library ${lib.packageName} not found`);
     else {
-        if (!lib.bundleUrl) add('warning', `Bundle ${lib.packageName}@${lib.version} belum diunggah — jalankan \`npm run bundle\` (midas bundle) di repo paket`);
-        if (lib.codeStatus && lib.codeStatus !== 'ready') add('warning', `Kode ${lib.packageName}@${lib.version} belum lengkap (status ${lib.codeStatus})`);
+        if (!lib.bundleUrl) add('warning', `Bundle ${lib.packageName}@${lib.version} has not been uploaded — run \`npm run bundle\` (midas bundle) in the package repo`);
+        if (lib.codeStatus && lib.codeStatus !== 'ready') add('warning', `Code for ${lib.packageName}@${lib.version} is incomplete (status ${lib.codeStatus})`);
     }
     const pageIds = new Set(pages.map(p => p.id));
     for (const m of project.config.modules) {
         const ref = { moduleId: m.id };
-        if (!pageIds.has(m.pageId)) add('error', `Page sumber module ${m.name} sudah dihapus`, ref);
-        if (!m.screens.length) add('warning', `Module ${m.name} belum punya screen`, ref);
+        if (!pageIds.has(m.pageId)) add('error', `Source page of module ${m.name} was deleted`, ref);
+        if (!m.screens.length) add('warning', `Module ${m.name} has no screens yet`, ref);
         const crud = m.screens.some(s => CRUD_ROLES.includes(s.role));
-        if (crud && !m.entity?.fields?.length) add('warning', `Module ${m.name} (CRUD) belum punya field entity`, ref);
+        if (crud && !m.entity?.fields?.length) add('warning', `Module ${m.name} (CRUD) has no entity fields yet`, ref);
         if (m.screens.some(s => s.role === 'edit' || s.role === 'create') && !m.screens.some(s => s.role === 'list'))
-            add('warning', `Module ${m.name} punya form tanpa screen list`, ref);
+            add('warning', `Module ${m.name} has a form without a list screen`, ref);
         for (const s of m.screens) {
             const f = byId.get(s.frameId);
-            if (!f) add('error', `Frame screen ${s.name} (${s.role}) sudah dihapus`, { ...ref, screenId: s.id });
-            else if (f.parentId && byId.get(f.parentId)?.type !== 'frame') add('warning', `Screen ${s.name} harus frame teratas di page atau berada di dalam frame (mis. layout halaman)`, { ...ref, screenId: s.id });
+            if (!f) add('error', `Screen frame ${s.name} (${s.role}) was deleted`, { ...ref, screenId: s.id });
+            else if (f.parentId && byId.get(f.parentId)?.type !== 'frame') add('warning', `Screen ${s.name} must be a top-level frame on the page or sit inside a frame (e.g. a page layout)`, { ...ref, screenId: s.id });
         }
     }
     return out;
+}
+
+const isFieldNode = n => n.kind === 'component' && FORM_FIELD_COMPONENTS.includes(n.exportName);
+const isFieldRow = n => n.kind === 'box' && n.children.length > 0 && n.children.every(isFieldNode);
+
+/**
+ * Form fields live on a 12-column grid (like the base project's form layout). Consecutive fields — directly in a frame, or in
+ * a "row" frame that only contains fields — are merged into one `formgrid` node. Each field gets a column span: the node's
+ * own `cfg.form.span`, else an equal share of its design row (2 fields → 6, 3 → 4, …), else 12 (full width).
+ * `formgrid.children` are the field nodes (so tree traversal keeps working); `spans[nodeId]` holds the spans.
+ */
+function groupFormFields(node, nodeCfg) {
+    if (node.kind !== 'box') return;
+    const out = [];
+    let run = null;
+    const flush = () => { if (run) { out.push(run); run = null; } };
+    const grid = (id, rowGap, colGap) => (run ??= { kind: 'formgrid', nodeId: `formgrid-${id}`, name: 'Fields', children: [], spans: {}, rowGap, colGap });
+    for (const c of node.children) {
+        if (isFieldNode(c)) {
+            const g = grid(c.nodeId, parseFloat(node.style?.gap) || 16, 24);
+            g.children.push(c);
+            g.spans[c.nodeId] = c.cfg?.form?.span || 12;
+        }
+        else if (isFieldRow(c)) {
+            const share = Math.max(1, Math.floor(12 / c.children.length));
+            const g = grid(c.children[0].nodeId, parseFloat(node.style?.gap) || 16, parseFloat(c.style?.gap) || 24);
+            for (const f of c.children) { g.children.push(f); g.spans[f.nodeId] = f.cfg?.form?.span || share; }
+        }
+        else {
+            flush();
+            groupFormFields(c, nodeCfg);
+            out.push(c);
+        }
+    }
+    flush();
+    node.children = out;
 }

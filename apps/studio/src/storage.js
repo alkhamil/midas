@@ -19,7 +19,7 @@ export class ApiError extends Error {
 }
 
 export class ConflictError extends Error {
-    constructor(message = 'File ini diubah di tempat lain.') {
+    constructor(message = 'This file was changed elsewhere.') {
         super(message);
         this.name = 'ConflictError';
     }

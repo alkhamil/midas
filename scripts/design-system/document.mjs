@@ -75,7 +75,7 @@ export function buildDocument({ existing = new Map() }) {
     const spacing = vars.collection('Spacing', ['Base']);
     for (const [name, v] of Object.entries(SPACING)) vars.add(spacing, name, 'number', [v]);
     const typo = vars.collection('Typography', ['Base']);
-    vars.add(typo, 'font/family', 'string', [FONT_FAMILY], 'Font utama UI');
+    vars.add(typo, 'font/family', 'string', [FONT_FAMILY], 'Primary UI font');
 
     // ---- konteks generator
     const allNodes = [];
@@ -96,14 +96,14 @@ export function buildDocument({ existing = new Map() }) {
         componentName: src => (src.variant ? allNodes.find(n => n.id === src.parentId)?.name : src.name),
         variant: (name, v) => {
             const id = variantIndex.get(`${name}|${variantName(v)}`);
-            if (!id) throw new Error(`Variant ${name} ${variantName(v)} belum ada`);
+            if (!id) throw new Error(`Variant ${name} ${variantName(v)} does not exist yet`);
             return id;
         },
         root: name => rootIndex.get(name),
         /** Ikon berwarna untuk dipakai di dalam desain (gambar SVG dengan warna token). */
         icon(name, style, colorRef) {
             const svg = UI_ICONS[name];
-            if (!svg) throw new Error(`Ikon ${name} tidak ada`);
+            if (!svg) throw new Error(`Icon ${name} does not exist`);
             const c = hex(colorRef);
             const id = `dsicon-${name}-${style}-${c.slice(1).toLowerCase()}`;
             assets[id] ||= svgToDataUrl(svg.replace(/#1C274C/gi, c));
@@ -141,7 +141,7 @@ export function buildDocument({ existing = new Map() }) {
         const header = place(build(col({ gap: 6, w: 720, name: `Header — ${spec.name}` }, [
             text(spec.name, { size: internal ? 18 : 32, line: internal ? 28 : 40, weight: 600 }),
             text(spec.description, { w: 720, color: MUTED_FG }),
-            text(internal ? 'Bagian internal — dirakit oleh komponen lain, tidak diekspor ke kode.' : `import { ${spec.name} } from '${PACKAGE_NAME}';`, { size: 12, line: 16, color: internal ? MUTED_FG : 'color/primary', name: 'Code' }),
+            text(internal ? 'Internal part — assembled by other components, not exported to code.' : `import { ${spec.name} } from '${PACKAGE_NAME}';`, { size: 12, line: 16, color: internal ? MUTED_FG : 'color/primary', name: 'Code' }),
         ]), ctx, { key: `doc:${spec.name}/header` }));
         y += header.h + 32;
         // `def` = nilai default component property di engine Midas.
@@ -215,10 +215,10 @@ export function buildDocument({ existing = new Map() }) {
         };
         main.forEach(shift);
         if (parts.length) {
-            const h = add(build(col({ gap: 4, w: 720, name: 'Bagian internal' }, [
+            const h = add(build(col({ gap: 4, w: 720, name: 'Internal parts' }, [
                 frame({ w: 720, h: 1, fill: 'color/border' }),
-                text('Bagian internal', { size: 20, line: 28, weight: 600 }),
-                text(`Atom yang dirakit ${name}. Ubah di sini, semua instance ikut berubah.`, { color: MUTED_FG }),
+                text('Internal parts', { size: 20, line: 28, weight: 600 }),
+                text(`Atoms that ${name} is built from. Change them here and every instance follows.`, { color: MUTED_FG }),
             ]), ctx, { y, key: `doc:${name}/parts` }));
             out.push(...h);
             y += h[0].h + 48;
@@ -236,16 +236,16 @@ export function buildDocument({ existing = new Map() }) {
                 text('CMS', { size: 18, weight: 600, color: MUTED_FG }),
             ]),
             text('Design System', { size: 56, line: 64, weight: 700 }),
-            text('Komponen dan token untuk aplikasi CMS: daftar data, form, detail, dan dashboard.', { w: 720, size: 18, line: 28, color: MUTED_FG }),
+            text('Components and tokens for CMS apps: data lists, forms, details, and dashboards.', { w: 720, size: 18, line: 28, color: MUTED_FG }),
         ]),
         row({ w: 'fill', gap: 24, align: 'start' }, [
-            ['Fokus pada data', 'Tabel, filter, dan aksi baris dibuat jelas dulu; hiasan seperlunya.'],
-            ['Satu aksen', 'Indigo untuk aksi dan item aktif; warna status hanya untuk makna.'],
-            ['Satu sumber kebenaran', 'Warna, radius, dan ikon berasal dari Variables & komponen — itulah yang menjadi paket kode.'],
+            ['Focused on data', 'Tables, filters, and row actions come first; decoration only where needed.'],
+            ['One accent', 'Indigo for actions and active items; status colors only carry meaning.'],
+            ['One source of truth', 'Colors, radii, and icons come from Variables and components — that is what becomes the code package.'],
         ].map(([t, d]) => col({ w: 'fill', gap: 8, pad: 24, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border' }, [text(t, { size: 16, line: 24, weight: 600 }), text(d, { w: 352, color: MUTED_FG })]))),
         col({ gap: 8 }, [
-            text('Isi file', { size: 14, weight: 600 }),
-            ...['Foundations — warna, tipografi, spacing, radius, elevasi, ikon', `Components — ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} komponen, satu page per komponen (Actions, Forms, Feedback, Data Display, Navigation, Layout)`, `Icons — ${Object.keys(UI_ICONS).length} ikon outline`].map(t => text(`•  ${t}`, { color: MUTED_FG })),
+            text('In this file', { size: 14, weight: 600 }),
+            ...['Foundations — colors, typography, spacing, radius, elevation, icons', `Components — ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} components, one page per component (Actions, Forms, Feedback, Data Display, Navigation, Layout)`, `Icons — ${Object.keys(UI_ICONS).length} outline icons`].map(t => text(`•  ${t}`, { color: MUTED_FG })),
         ]),
     ]), ctx, { key: 'page:cover' })));
 
@@ -261,21 +261,21 @@ export function buildDocument({ existing = new Map() }) {
         ])))),
     ]);
     page('Foundations', add(build(col({ w: 1440, pad: 64, gap: 64, fill: 'color/surface', name: 'Foundations' }, [
-        col({ gap: 8 }, [text('Foundations', { size: 40, line: 48, weight: 700 }), text('Token dasar design system. Semua nilai di sini adalah Variables — dipakai komponen dan menjadi token CSS --theme-* di kode.', { w: 760, size: 16, line: 24, color: MUTED_FG })]),
-        section('Warna', 'Collection "Color" dengan mode Light & Dark. Komponen hanya memakai warna semantik ini — tidak ada nilai hex lepas.', col({ w: 'fill', gap: 24 }, [swatches('Light'), swatches('Dark')])),
-        section('Tipografi', `${FONT_FAMILY} untuk seluruh UI. Skala mengikuti kelas Tailwind yang dipakai komponen.`, col({ w: 'fill', gap: 0, radius: 12, fill: 'color/background', stroke: 'color/border', clip: true },
+        col({ gap: 8 }, [text('Foundations', { size: 40, line: 48, weight: 700 }), text('Base tokens of the design system. Every value here is a Variable — used by components and exported as --theme-* CSS tokens in code.', { w: 760, size: 16, line: 24, color: MUTED_FG })]),
+        section('Warna', 'Collection "Color" with Light & Dark modes. Components only use these semantic colors — no loose hex values.', col({ w: 'fill', gap: 24 }, [swatches('Light'), swatches('Dark')])),
+        section('Tipografi', `${FONT_FAMILY} for the entire UI. The scale follows the Tailwind classes used by components.`, col({ w: 'fill', gap: 0, radius: 12, fill: 'color/background', stroke: 'color/border', clip: true },
             TYPE_SCALE.map(t => row({ w: 'fill', pad: [16, 24], gap: 24, stroke: 'color/border', strokeSides: [0, 0, 1, 0] }, [
                 text(t.name, { w: 'fill', size: t.size, line: t.line, weight: t.weight }),
                 text(`${t.size}/${t.line} · ${t.weight === 600 ? 'Semibold' : t.weight === 500 ? 'Medium' : 'Regular'}`, { w: 160, size: 12, line: 16, color: MUTED_FG }),
                 text(t.use, { w: 280, size: 12, line: 16, color: MUTED_FG }),
             ])))),
-        section('Spacing', 'Spacing semantik untuk padding halaman, padding card, dan jarak antar elemen.', col({ gap: 12 },
+        section('Spacing', 'Semantic spacing for page padding, card padding, and the gaps between elements.', col({ gap: 12 },
             Object.entries(SPACING).map(([name, v]) => row({ gap: 16 }, [text(name, { w: 160, size: 12, line: 16, weight: 600 }), frame({ w: v * 4, h: 16, radius: 4, fill: 'color/primary', fillOpacity: 0.25 }), text(`${v}px`, { size: 12, line: 16, color: MUTED_FG })])))),
-        section('Radius', 'lg untuk kontrol (button, input, card), xl untuk dialog & button besar, sm/md untuk elemen kecil.', row({ gap: 32, align: 'end' },
+        section('Radius', 'lg for controls (button, input, card), xl for dialogs and large buttons, sm/md for small elements.', row({ gap: 32, align: 'end' },
             Object.entries(RADIUS).map(([name, v]) => col({ gap: 8, align: 'center' }, [frame({ w: 96, h: 96, radius: `radius/${name}`, fill: 'color/background', stroke: 'color/primary', strokeWidth: 2 }), text(`radius/${name} · ${v}px`, { size: 12, line: 16, color: MUTED_FG })])))),
-        section('Elevasi', 'Bayangan hanya untuk elemen yang mengambang di atas halaman.', row({ gap: 32 },
+        section('Elevasi', 'Shadows only for elements that float above the page.', row({ gap: 32 },
             ELEVATION.map(e => col({ w: 240, h: 120, pad: 20, gap: 4, radius: 'radius/lg', fill: 'color/background', stroke: e.shadow ? undefined : 'color/border', shadow: e.shadow }, [text(e.name, { size: 14, weight: 600 }), text(e.use, { w: 200, size: 12, line: 16, color: MUTED_FG })])))),
-        section('Ikonografi', 'Satu gaya outline (garis 1,5 px, ujung bulat). Ukuran 16 px di dalam kontrol, 20 px di navigasi. Warna mengikuti teks (currentColor).', row({ gap: 24 },
+        section('Ikonografi', 'A single outline style (1.5 px stroke, round caps). 16 px inside controls, 20 px in navigation. Color follows the text (currentColor).', row({ gap: 24 },
             ['widget', 'user', 'shield-check', 'eye', 'pen', 'trash-bin', 'add', 'magnifer', 'filter', 'settings', 'chart', 'info-circle'].map(n => col({ gap: 8, align: 'center' }, [
                 icon(ctx.icon(n, 'outline', 'color/foreground'), { size: 24 }),
                 text(n, { size: 11, line: 14, color: MUTED_FG }),
@@ -293,7 +293,7 @@ export function buildDocument({ existing = new Map() }) {
     ];
     const grouped = GROUPS.flatMap(([, names]) => names);
     const missing = COMPONENTS.filter(c => !c.name.startsWith('_') && !grouped.includes(c.name)).map(c => c.name);
-    if (missing.length) throw new Error(`Komponen belum masuk grup page: ${missing.join(', ')}`);
+    if (missing.length) throw new Error(`Components not in a page group yet: ${missing.join(', ')}`);
     const componentPages = [page('---', [])];
     for (const [group, names] of GROUPS) {
         const folder = page(group, []);

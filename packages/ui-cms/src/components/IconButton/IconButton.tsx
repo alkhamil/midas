@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { iconButtonDefaults, type IconButtonProps as DesignProps } from '../../generated/props';
-import { EyeIcon, PenIcon, TrashBinIcon } from '../../generated/icons';
+import { EyeIcon, PenIcon, RestartIcon, TrashBinIcon } from '../../generated/icons';
 import { cx } from '../../internal/cx';
 
 export type IconButtonProps = DesignProps & {
@@ -9,9 +9,10 @@ export type IconButtonProps = DesignProps & {
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, keyof DesignProps | 'children'>;
 
 const actions = {
-  view: { Icon: EyeIcon, label: 'Lihat', tone: 'text-muted-foreground hover:text-foreground' },
-  edit: { Icon: PenIcon, label: 'Ubah', tone: 'text-muted-foreground hover:text-foreground' },
-  delete: { Icon: TrashBinIcon, label: 'Hapus', tone: 'text-danger hover:opacity-80' },
+  view: { Icon: EyeIcon, label: 'View', tone: 'text-muted-foreground hover:text-foreground' },
+  edit: { Icon: PenIcon, label: 'Edit', tone: 'text-muted-foreground hover:text-foreground' },
+  delete: { Icon: TrashBinIcon, label: 'Delete', tone: 'text-danger hover:opacity-80' },
+  restore: { Icon: RestartIcon, label: 'Restore', tone: 'text-success hover:opacity-80' },
 } as const;
 
 /** Aksi baris tabel: lihat, ubah, hapus. Hanya ikon, jadi `label` wajib terbaca oleh pembaca layar. */

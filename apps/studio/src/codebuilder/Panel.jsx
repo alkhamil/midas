@@ -6,10 +6,12 @@ import { builderApi, libraryApi } from '../storage.js';
 import { cleanNodeCfg, CRUD_ROLES, kebabCase, makeContext, projectIssues, resolveLayout, ROLE_LABEL, screenTree } from '@midas/builder-core';
 import { GenerateDialog } from './Generate.jsx';
 import { EntityEditor } from './Inspector.jsx';
+import { confirmDialog } from '../confirm.js';
 import { Select } from './Select.jsx';
 import { Workspace } from './Workspace.jsx';
 
-const ROLES = ['list', 'create', 'edit', 'view', 'custom'];
+const ROLES = ['list', 'create', 'edit', 'view', 'custom', 'dialog'];
+const PURPOSES = [['delete', 'Delete confirmation'], ['restore', 'Restore confirmation'], ['discard', 'Discard changes']];
 const uid = p => `${p}-${Math.random().toString(36).slice(2, 10)}`;
 const LAST_KEY = fileId => `midas-builder-project:${fileId}`;
 
@@ -58,19 +60,19 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         const next = pending.current;
         if (!next) return;
         pending.current = null;
-        setStatus('Menyimpan…');
+        setStatus('Saving…');
         try {
             const saved = await builderApi.save(next.id, { version: next.version, name: next.name, config: next.config });
             setProject(p => (p?.id === saved.id ? { ...saved, config: pending.current?.config ?? saved.config } : p));
             if (pending.current) pending.current.version = saved.version;
-            setStatus('Tersimpan');
+            setStatus('Saved');
         }
         catch (e) {
             if (e.status === 409 && e.body?.project) {
                 setProject(e.body.project);
-                setStatus('Project diubah di tempat lain — versi terbaru dimuat');
+                setStatus('Project changed elsewhere — latest version loaded');
             }
-            else setStatus(`Gagal menyimpan: ${e.message}`);
+            else setStatus(`Save failed: ${e.message}`);
         }
     }, []);
     const update = useCallback(change => {
@@ -109,6 +111,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         return { config: { ...p.config, layout: { ...next, items: next.items.map(i => ({ ...i, label: i.label && i.label !== labelOf(i.moduleId) ? i.label : undefined })) } } };
     }), [update]);
     const setScreen = useCallback((screenId, patch) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => ({ ...m, screens: m.screens.map(s => (s.id === screenId ? { ...s, ...patch } : s)) })) } })), [update]);
+    const setEntity = useCallback((moduleId, patch) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => (m.id === moduleId ? { ...m, entity: { fields: [], ...m.entity, ...cleanNodeCfg(patch) } } : m)) } })), [update]);
     const setFields = useCallback((moduleId, fields) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => (m.id === moduleId ? { ...m, entity: { fields } } : m)) } })), [update]);
 
     // ---------------------------------------------------------------- dokumen & issues
@@ -134,7 +137,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
     }, [project, ctx, pages, screens, trees, mapped]);
 
     if (error) return <div className="cb-panel"><p className="cb-error">{error}</p><button className="wide-button" onClick={load}>Coba lagi</button></div>;
-    if (!projects) return <div className="cb-panel"><p className="small-label">Memuat project…</p></div>;
+    if (!projects) return <div className="cb-panel"><p className="small-label">Loading projects…</p></div>;
 
     const selectProject = async id => {
         await flush();
@@ -151,10 +154,10 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         <div className="cb-panel">
             <div className="cb-head">
                 <Select className="cb-select" value={project?.id || ''} onChange={e => selectProject(e.target.value)} aria-label="Code Builder project">
-                    {!project && <option value="">Belum ada project</option>}
+                    {!project && <option value="">No projects yet</option>}
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </Select>
-                <button className="icon-button small" title="Project baru" aria-label="Project baru" onClick={() => setForm('project')}>＋</button>
+                <button className="icon-button small" title="New project" aria-label="New project" onClick={() => setForm('project')}>＋</button>
             </div>
             {form === 'project' && <ProjectForm fileName={bridge.fileName()} bridge={bridge} onCancel={() => setForm(null)} onCreate={async body => {
                 const p = await builderApi.create({ ...body, fileId });
@@ -164,7 +167,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                 setForm(null);
             }} />}
             {!project && form !== 'project' && (
-                <div className="cb-empty"><b>Code Builder</b><p className="small-label">Buat project untuk mendaftarkan frame di file ini sebagai screen aplikasi.</p><button className="wide-button" onClick={() => setForm('project')}>Buat project</button></div>
+                <div className="cb-empty"><b>Code Builder</b><p className="small-label">Create a project to register frames in this file as app screens.</p><button className="wide-button" onClick={() => setForm('project')}>Create project</button></div>
             )}
             {project && (
                 <>
@@ -175,7 +178,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                         setOpen(s => new Set(s).add(m.name));
                         setForm(null);
                     }} />}
-                    {!project.config.modules.length && form !== 'module' && <p className="small-label cb-pad">Belum ada module. Satu module bersumber dari satu page (mis. page User).</p>}
+                    {!project.config.modules.length && form !== 'module' && <p className="small-label cb-pad">No modules yet. Each module comes from one page (e.g. the User page).</p>}
                     <ModuleTree
                         modules={project.config.modules} pages={pages} open={open} setOpen={setOpen} screenId={screenId} issues={issues}
                         onOpenScreen={id => setScreenId(id)} onReveal={id => bridge.reveal(id)}
@@ -184,13 +187,13 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                         onRemove={id => updateModules(list => list.filter(m => m.id !== id && m.parentId !== id))}
                     />
                     <IssuesList issues={issues} onReveal={id => bridge.reveal(id)} onOpenScreen={setScreenId} />
-                    <button className="wide-button primary cb-generate" onClick={() => setForm('generate')}>Generate kode…</button>
+                    <button className="wide-button primary cb-generate" onClick={() => setForm('generate')}>Generate code…</button>
                     <div className="cb-foot"><span className="small-label">{status}</span><button className="cb-link danger" onClick={async () => {
-                        if (!confirm(`Hapus project "${project.name}"? Frame di desain tidak ikut terhapus.`)) return;
+                        if (!(await confirmDialog({ title: `Delete project "${project.name}"?`, message: 'Frames in the design are not deleted.', confirmLabel: 'Delete', danger: true }))) return;
                         await builderApi.remove(project.id);
                         localStorage.removeItem(LAST_KEY(fileId));
                         load();
-                    }}>Hapus project</button></div>
+                    }}>Delete project</button></div>
                 </>
             )}
             {activeScreen && canvasHost && createPortal(
@@ -198,7 +201,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                     screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={{ ...activeScreen.module.entity, moduleName: activeScreen.module.name }} layout={layout}
                     title={layout.items.find(i => i.moduleId === rootOf(allModules, activeScreen.module).id)?.label || activeScreen.module.label}
                     module={activeScreen.module} screens={screens} modules={allModules}
-                    actions={{ setNode, setLayout, setFields, setScreen }} onSwitch={setScreenId} onGenerate={() => setForm('generate')}
+                    actions={{ setNode, setLayout, setFields, setScreen, setEntity }} onSwitch={setScreenId} onGenerate={() => setForm('generate')}
                     onClose={() => setScreenId(null)} onReveal={id => { setScreenId(null); bridge.reveal(id); }}
                 />,
                 canvasHost,
@@ -230,17 +233,17 @@ function ProjectForm({ fileName, bridge, onCancel, onCreate }) {
                 setErr(x.message);
             }
         }}>
-            <b>Project baru</b>
-            <label>Nama<input value={name} onChange={e => setName(e.target.value)} required /></label>
+            <b>New project</b>
+            <label>Name<input value={name} onChange={e => setName(e.target.value)} required /></label>
             <label>Library<Select value={libraryId} onChange={e => setLibraryId(e.target.value)}>
-                <option value="">— pilih nanti —</option>
+                <option value="">— choose later —</option>
                 {(libs || []).map(l => <option key={l.id} value={l.id}>{l.packageName || l.name}</option>)}
             </Select></label>
-            {libraryId && <label>Versi<Select value={version} onChange={e => setVersion(e.target.value)}>
-                {versions.map(v => <option key={v.version} value={v.version}>{v.version}{v.codeStatus === 'ready' ? '' : ` (kode ${v.codeStatus})`}</option>)}
+            {libraryId && <label>Version<Select value={version} onChange={e => setVersion(e.target.value)}>
+                {versions.map(v => <option key={v.version} value={v.version}>{v.version}{v.codeStatus === 'ready' ? '' : ` (code ${v.codeStatus})`}</option>)}
             </Select></label>}
             {err && <p className="cb-error">{err}</p>}
-            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary">Buat</button></div>
+            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Cancel</button><button className="wide-button primary">Create</button></div>
         </form>
     );
 }
@@ -250,14 +253,14 @@ function LibraryLine({ project, onChange }) {
     const [edit, setEdit] = useState(false);
     const [versions, setVersions] = useState([]);
     useEffect(() => { if (edit && lib?.id) libraryApi.history(lib.id).then(r => setVersions(r.versions), () => {}); }, [edit, lib?.id]);
-    if (!lib) return <p className="small-label cb-pad">Library belum dipilih.</p>;
+    if (!lib) return <p className="small-label cb-pad">No library selected yet.</p>;
     return (
         <div className="cb-lib">
             <span className="cb-mono" title={lib.name}>{lib.packageName}@{lib.version}</span>
-            <span className={`cb-badge ${lib.bundleUrl ? 'ok' : 'warn'}`} title={lib.bundleUrl ? 'Bundle tersedia untuk Live DOM Renderer' : 'Bundle belum diunggah'}>{lib.bundleUrl ? 'bundle' : 'tanpa bundle'}</span>
+            <span className={`cb-badge ${lib.bundleUrl ? 'ok' : 'warn'}`} title={lib.bundleUrl ? 'Bundle available for the Live DOM Renderer' : 'Bundle not uploaded yet'}>{lib.bundleUrl ? 'bundle' : 'no bundle'}</span>
             {edit
                 ? <Select className="cb-select small" value={lib.version} onChange={e => { onChange(lib.id, e.target.value); setEdit(false); }}>{versions.map(v => <option key={v.version}>{v.version}</option>)}</Select>
-                : <button className="cb-link" onClick={() => setEdit(true)}>Ganti versi</button>}
+                : <button className="cb-link" onClick={() => setEdit(true)}>Change version</button>}
         </div>
     );
 }
@@ -279,22 +282,22 @@ function ModuleForm({ pages, modules, currentPage, initial, onCancel, onSave }) 
             if (!valid || taken) return;
             onSave({ pageId, label: label.trim() || name, name, parentId: parentId || null, ...(permissionKey ? { permissionKey } : {}) });
         }}>
-            <b>{initial ? 'Ubah module' : 'Module baru'}</b>
-            <label>Page sumber<Select value={pageId} onChange={e => {
+            <b>{initial ? 'Edit module' : 'New module'}</b>
+            <label>Source page<Select value={pageId} onChange={e => {
                 setPageId(e.target.value);
                 const n = usable.find(p => p.id === e.target.value)?.name || '';
                 if (!touched) { setLabel(n); setName(kebabCase(n)); }
             }}>{usable.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>
             <label>Label<input value={label} onChange={e => { setLabel(e.target.value); if (!touched) setName(kebabCase(e.target.value)); }} /></label>
-            <label>Nama folder (kebab-case)<input className={valid && !taken ? '' : 'invalid'} value={name} onChange={e => { setName(e.target.value); setTouched(true); }} /></label>
+            <label>Folder name (kebab-case)<input className={valid && !taken ? '' : 'invalid'} value={name} onChange={e => { setName(e.target.value); setTouched(true); }} /></label>
             {!valid && <small className="cb-error">Huruf kecil & tanda hubung, mis. user-management</small>}
-            {taken && <small className="cb-error">Nama sudah dipakai di level ini</small>}
+            {taken && <small className="cb-error">Name already used at this level</small>}
             <label>Parent<Select value={parentId} onChange={e => setParentId(e.target.value)}>
-                <option value="">— tidak ada —</option>
+                <option value="">— none —</option>
                 {modules.filter(m => m.id !== initial?.id).map(m => <option key={m.id} value={m.id}>{m.label} ({m.name})</option>)}
             </Select></label>
             <label>Permission key<input placeholder={name} value={permissionKey} onChange={e => setPermissionKey(e.target.value)} /></label>
-            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary" disabled={!valid || taken}>Simpan</button></div>
+            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Cancel</button><button className="wide-button primary" disabled={!valid || taken}>Save</button></div>
         </form>
     );
 }
@@ -320,7 +323,7 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
             <div className="cb-module-row" onClick={() => setOpen(s => { const n = new Set(s); n.has(m.name) ? n.delete(m.name) : n.add(m.name); return n; })}>
                 <span className="cb-caret">{isOpen ? '▾' : '▸'}</span>
                 <span className="cb-module-name" title={`${m.name} · page ${pageName}`}>{m.label}</span>
-                <span className="cb-badge">{m.screens.length ? (crud ? 'CRUD' : 'custom') : 'kosong'}</span>
+                <span className="cb-badge">{m.screens.length ? (crud ? 'CRUD' : 'custom') : 'empty'}</span>
                 {count > 0 && <span className="cb-badge warn" title={`${count} issue`}>{count}</span>}
             </div>
             {isOpen && (
@@ -329,20 +332,20 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
                     {m.screens.map(s => (
                         <div key={s.id} className={`cb-screen ${screenId === s.id ? 'active' : ''}`}>
                             <span className={`cb-role r-${s.role}`}>{ROLE_LABEL[s.role]}</span>
-                            <button className="cb-screen-name" title="Buka di Live DOM Renderer" onClick={() => onOpenScreen(s.id)}>{s.name}{!byId.has(s.frameId) && ' ⚠'}</button>
-                            <button className="icon-button small" title="Tampilkan frame di canvas" aria-label="Tampilkan frame" onClick={() => onReveal(s.frameId)}>◎</button>
-                            <button className="icon-button small" title="Lepas screen" aria-label="Lepas screen" onClick={() => onUpdate(m.id, mm => ({ screens: mm.screens.filter(x => x.id !== s.id) }))}>×</button>
+                            <button className="cb-screen-name" title="Open in the Live DOM Renderer" onClick={() => onOpenScreen(s.id)}>{s.name}{!byId.has(s.frameId) && ' ⚠'}</button>
+                            <button className="icon-button small" title="Show frame on the canvas" aria-label="Show frame" onClick={() => onReveal(s.frameId)}>◎</button>
+                            <button className="icon-button small" title="Unregister screen" aria-label="Unregister screen" onClick={() => onUpdate(m.id, mm => ({ screens: mm.screens.filter(x => x.id !== s.id) }))}>×</button>
                         </div>
                     ))}
                     {registering
                         ? <ScreenForm module={m} selection={selection} onCancel={() => setForm(null)} onSave={s => { onUpdate(m.id, mm => ({ screens: [...mm.screens, { id: uid('scr'), ...s }] })); setForm(null); }} />
                         : <button className="cb-link" onClick={() => setForm({ screenFor: m.id })}>＋ Register frame</button>}
                     {crud && (fields
-                        ? <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Selesai</button></>
+                        ? <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Done</button></>
                         : <button className="cb-link" onClick={() => setForm({ fieldsFor: m.id })}>Entity fields ({m.entity?.fields?.length || 0})</button>)}
                     {editing
                         ? <ModuleForm pages={pages} modules={modules} initial={m} onCancel={() => setForm(null)} onSave={v => { onUpdate(m.id, () => v); setForm(null); }} />
-                        : <div className="cb-row-actions"><button className="cb-link" onClick={() => setForm({ editModule: m.id })}>Ubah</button><button className="cb-link danger" onClick={() => confirm(`Hapus module ${m.name}?`) && onRemove(m.id)}>Hapus</button></div>}
+                        : <div className="cb-row-actions"><button className="cb-link" onClick={() => setForm({ editModule: m.id })}>Edit</button><button className="cb-link danger" onClick={async () => (await confirmDialog({ title: `Delete module ${m.name}?`, message: 'Its screens and entity fields are removed from the project. Frames in the design are not deleted.', confirmLabel: 'Delete', danger: true })) && onRemove(m.id)}>Delete</button></div>}
                 </div>
             )}
         </div>
@@ -350,25 +353,31 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
 }
 
 function ScreenForm({ module: m, selection, onCancel, onSave }) {
-    const frame = selection.length === 1 && selection[0].top ? selection[0] : null;
+    const frame = selection.length === 1 && selection[0].type === 'frame' ? selection[0] : null;
     const onPage = frame && frame.pageId === m.pageId;
     const used = new Set(m.screens.map(s => s.role).filter(r => CRUD_ROLES.includes(r)));
-    const [role, setRole] = useState(() => ROLES.find(r => !used.has(r)) || 'custom');
+    const [role, setRole] = useState(() => ROLES.find(r => !used.has(r) && r !== 'dialog') || 'custom');
+    const usedPurposes = new Set(m.screens.filter(s => s.role === 'dialog').map(s => s.purpose));
+    const [purpose, setPurpose] = useState(() => PURPOSES.find(([p]) => !usedPurposes.has(p))?.[0] || 'delete');
     const [name, setName] = useState('');
     return (
         <form className="cb-form" onSubmit={e => {
             e.preventDefault();
-            if (frame && onPage) onSave({ frameId: frame.id, pageId: frame.pageId, role, name: name.trim() || frame.name });
+            if (frame && onPage) onSave({ frameId: frame.id, pageId: frame.pageId, role, ...(role === 'dialog' ? { purpose } : {}), name: name.trim() || frame.name });
         }}>
             <b>Register frame</b>
-            {!frame && <p className="small-label">Pilih satu frame teratas di canvas (page sumber module ini).</p>}
-            {frame && !onPage && <p className="cb-error">Frame "{frame.name}" bukan dari page sumber module.</p>}
+            {!frame && <p className="small-label">Select one top-level frame on the canvas (this module's source page).</p>}
+            {frame && !onPage && <p className="cb-error">Frame "{frame.name}" is not from this module's source page.</p>}
             {frame && onPage && <p className="small-label">Frame: <b>{frame.name}</b></p>}
             <label>Role<Select value={role} onChange={e => setRole(e.target.value)}>
-                {ROLES.map(r => <option key={r} value={r} disabled={used.has(r)}>{ROLE_LABEL[r]}{used.has(r) ? ' (sudah ada)' : ''}</option>)}
+                {ROLES.map(r => <option key={r} value={r} disabled={used.has(r)}>{ROLE_LABEL[r]}{used.has(r) ? ' (already used)' : ''}</option>)}
             </Select></label>
-            <label>Nama screen<input placeholder={frame?.name || ''} value={name} onChange={e => setName(e.target.value)} /></label>
-            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary" disabled={!frame || !onPage}>Register</button></div>
+            {role === 'dialog' && <label>Dialog for<Select value={purpose} onChange={e => setPurpose(e.target.value)}>
+                {PURPOSES.map(([p, l]) => <option key={p} value={p} disabled={usedPurposes.has(p)}>{l}{usedPurposes.has(p) ? ' (already used)' : ''}</option>)}
+            </Select></label>}
+            {role === 'dialog' && <p className="small-label">The frame should contain a Dialog component: its title, message and button labels are used by the app.</p>}
+            <label>Screen name<input placeholder={frame?.name || ''} value={name} onChange={e => setName(e.target.value)} /></label>
+            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Cancel</button><button className="wide-button primary" disabled={!frame || !onPage}>Register</button></div>
         </form>
     );
 }
@@ -388,7 +397,7 @@ function IssuesList({ issues, onReveal, onOpenScreen }) {
                         <span className="cb-issue-dot" />{i.message}
                     </button>
                 ))
-                : <p className="small-label cb-pad">Tidak ada issue.</p>)}
+                : <p className="small-label cb-pad">No issues.</p>)}
         </div>
     );
 }

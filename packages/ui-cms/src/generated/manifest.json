@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T13:52:07.029Z",
+  "publishedAt": "2026-10-18T14:16:49.936Z",
   "themes": [
     "light",
     "dark"
@@ -238,8 +238,8 @@
         }
       ],
       "defaults": {
-        "title": "Judul halaman",
-        "breadcrumb": "Beranda / Halaman",
+        "title": "Page title",
+        "breadcrumb": "Home / Page",
         "userName": "Administrator",
         "userRole": "admin"
       }
@@ -281,9 +281,9 @@
       ],
       "defaults": {
         "action": "primary",
-        "title": "Judul bagian",
-        "description": "Keterangan singkat bagian ini",
-        "actionLabel": "Tambah"
+        "title": "Section title",
+        "description": "Short description of this section",
+        "actionLabel": "Add"
       }
     },
     {
@@ -299,7 +299,8 @@
           "values": [
             "edit",
             "view",
-            "delete"
+            "delete",
+            "restore"
           ]
         },
         {
@@ -397,7 +398,7 @@
       ],
       "defaults": {
         "variant": "success",
-        "message": "Pesan untuk pengguna"
+        "message": "Message for the user"
       }
     },
     {
@@ -419,7 +420,7 @@
         }
       ],
       "defaults": {
-        "title": "Judul card"
+        "title": "Card title"
       }
     },
     {
@@ -459,9 +460,9 @@
       ],
       "defaults": {
         "trend": "up",
-        "label": "Total user",
+        "label": "Total users",
         "value": "1.248",
-        "caption": "12% dari bulan lalu"
+        "caption": "12% vs last month"
       }
     },
     {
@@ -489,8 +490,8 @@
         }
       ],
       "defaults": {
-        "label": "Nama lengkap",
-        "placeholder": "Ketik di sini…",
+        "label": "Full name",
+        "placeholder": "Type here…",
         "disabled": false
       }
     },
@@ -519,8 +520,8 @@
         }
       ],
       "defaults": {
-        "label": "Catatan",
-        "placeholder": "Ketik di sini…",
+        "label": "Notes",
+        "placeholder": "Type here…",
         "disabled": false
       }
     },
@@ -549,8 +550,8 @@
         }
       ],
       "defaults": {
-        "label": "Kata sandi",
-        "placeholder": "Ketik di sini…",
+        "label": "Password",
+        "placeholder": "Type here…",
         "disabled": false
       }
     },
@@ -580,7 +581,7 @@
       ],
       "defaults": {
         "label": "Role",
-        "placeholder": "Pilih…",
+        "placeholder": "Select…",
         "disabled": false
       }
     },
@@ -603,7 +604,7 @@
         }
       ],
       "defaults": {
-        "label": "Aktif",
+        "label": "Active",
         "disabled": false
       }
     },
@@ -623,10 +624,38 @@
           ]
         },
         {
+          "name": "tone",
+          "type": "enum",
+          "source": "variant",
+          "label": "Tone",
+          "values": [
+            "danger",
+            "primary"
+          ]
+        },
+        {
           "name": "title",
           "type": "string",
           "source": "text",
           "label": "Title"
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        },
+        {
+          "name": "cancelLabel",
+          "type": "string",
+          "source": "text",
+          "label": "CancelLabel"
+        },
+        {
+          "name": "confirmLabel",
+          "type": "string",
+          "source": "text",
+          "label": "ConfirmLabel"
         },
         {
           "name": "children",
@@ -637,7 +666,11 @@
       ],
       "defaults": {
         "size": "sm",
-        "title": "Judul dialog"
+        "tone": "danger",
+        "title": "Dialog title",
+        "message": "Deleted data cannot be restored.",
+        "cancelLabel": "Cancel",
+        "confirmLabel": "Delete"
       }
     },
     {
@@ -855,6 +888,14 @@
       "name": "pen",
       "category": "ui",
       "exportName": "PenIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "restart",
+      "category": "ui",
+      "exportName": "RestartIcon",
       "styles": [
         "outline"
       ]

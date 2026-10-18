@@ -52,10 +52,10 @@ async function libraryInfo(req: FastifyRequest, libraryId: string | null, versio
 
 /** Pastikan library milik workspace dan versinya sudah dipublish. */
 async function checkLibrary(req: FastifyRequest, libraryId?: string | null, version?: string | null): Promise<string | null> {
-    if (!libraryId) return version ? 'Pilih library sebelum memilih versi' : null;
+    if (!libraryId) return version ? 'Choose a library before choosing a version' : null;
     const info = await libraryInfo(req, libraryId, version ?? null);
-    if (!info) return 'Library tidak ditemukan di workspace ini';
-    if (info.missing) return version ? `Versi ${version} belum dipublish` : 'Library belum punya versi';
+    if (!info) return 'Library not found in this workspace';
+    if (info.missing) return version ? `Version ${version} has not been published` : 'The library has no versions yet';
     return null;
 }
 
@@ -92,7 +92,7 @@ export async function builderRoutes(app: FastifyInstance) {
         const body = createBody.safeParse(req.body);
         if (!body.success) return reply.code(400).send({ error: 'invalid', message: body.error.issues[0].message });
         const f = await fileInWorkspace(req, body.data.fileId);
-        if (!f) return reply.code(404).send({ error: 'not_found', message: 'File desain tidak ditemukan' });
+        if (!f) return reply.code(404).send({ error: 'not_found', message: 'Design file not found' });
         const libError = await checkLibrary(req, body.data.libraryId, body.data.libraryVersion);
         if (libError) return reply.code(400).send({ error: 'invalid', message: libError });
         const [p] = await db.insert(builderProjects).values({
@@ -116,7 +116,7 @@ export async function builderRoutes(app: FastifyInstance) {
         const p = await projectOf(req, req.params.id);
         if (!p) return reply.code(404).send({ error: 'not_found' });
         if (body.data.version !== p.version)
-            return reply.code(409).send({ error: 'conflict', message: 'Project diubah di tempat lain', project: await present(req, p) });
+            return reply.code(409).send({ error: 'conflict', message: 'Project changed elsewhere', project: await present(req, p) });
         const errors = body.data.config ? validateConfig(body.data.config) : [];
         const libraryId = body.data.libraryId !== undefined ? body.data.libraryId : p.libraryId;
         const libraryVersion = body.data.libraryVersion !== undefined ? body.data.libraryVersion : p.libraryVersion;
@@ -129,7 +129,7 @@ export async function builderRoutes(app: FastifyInstance) {
             name: body.data.name ?? p.name, libraryId, libraryVersion,
             config: body.data.config ?? p.config, version: p.version + 1, updatedAt: new Date(),
         }).where(and(eq(builderProjects.id, p.id), eq(builderProjects.version, p.version))).returning();
-        if (!next) return reply.code(409).send({ error: 'conflict', message: 'Project diubah di tempat lain' });
+        if (!next) return reply.code(409).send({ error: 'conflict', message: 'Project changed elsewhere' });
         return { project: await present(req, next) };
     });
 

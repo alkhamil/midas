@@ -19,7 +19,7 @@ function parse(children, group = null, out = []) {
 const Chevron = () => <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const Check = () => <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.6 9.5 3.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
-export function Select({ value, onChange, children, className = '', disabled, placeholder = 'Pilih…', title, 'aria-label': ariaLabel }) {
+export function Select({ value, onChange, children, className = '', disabled, placeholder = 'Select…', title, 'aria-label': ariaLabel }) {
     const options = useMemo(() => parse(children), [children]);
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(-1);
@@ -110,7 +110,7 @@ export function Select({ value, onChange, children, className = '', disabled, pl
                             </div>
                         </div>
                     ))}
-                    {!options.length && <div className="cb-dd-empty">Tidak ada pilihan</div>}
+                    {!options.length && <div className="cb-dd-empty">No options</div>}
                 </div>,
                 document.body,
             )}

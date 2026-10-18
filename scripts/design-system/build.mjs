@@ -208,7 +208,7 @@ function color(ctx, value, node, prop) {
 
 function emit(spec, ctx, out, parentId, x, y, id, key) {
     const r = v => Math.round(v * 100) / 100;
-    const node = { ...BASE, id, name: spec.name || (spec.kind === 'frame' ? (spec.layout === 'h' ? 'Baris' : spec.layout === 'v' ? 'Kolom' : 'Frame') : spec.kind), parentId, x: r(x), y: r(y), w: r(spec._w), h: r(spec._h), ...(key ? { dsKey: key } : {}) };
+    const node = { ...BASE, id, name: spec.name || (spec.kind === 'frame' ? (spec.layout === 'h' ? 'Row' : spec.layout === 'v' ? 'Column' : 'Frame') : spec.kind), parentId, x: r(x), y: r(y), w: r(spec._w), h: r(spec._h), ...(key ? { dsKey: key } : {}) };
     if (spec.kind === 'text') {
         Object.assign(node, {
             type: 'text', name: spec.name || spec.text.slice(0, 40), text: spec.text, fontFamily: FONT_FAMILY, fontSize: spec.size, fontWeight: spec.weight, fontStyle: 'normal',

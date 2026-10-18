@@ -25,7 +25,7 @@ export function connect(args = {}) {
     })();
     const server = (args.server || process.env.MIDAS_SERVER || userCfg.server || 'http://127.0.0.1:4000').replace(/\/+$/, '');
     const token = process.env.MIDAS_TOKEN || userCfg.token;
-    if (!token) throw new Error('Belum login: jalankan `node packages/cli/bin/midas.js login` atau set MIDAS_TOKEN');
+    if (!token) throw new Error('Not signed in: run `node packages/cli/bin/midas.js login` or set MIDAS_TOKEN');
     async function api(method, path, body) {
         const isBlob = body instanceof Blob;
         const res = await fetch(server + path, {

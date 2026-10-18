@@ -35,7 +35,7 @@ async function findFile(req: FastifyRequest, id: string): Promise<FileRow | null
 async function fileOr404(req: FastifyRequest, reply: FastifyReply, id: string): Promise<FileRow | null> {
     const f = await findFile(req, id);
     if (!f)
-        reply.code(404).send({ error: 'not_found', message: 'File tidak ditemukan' });
+        reply.code(404).send({ error: 'not_found', message: 'File not found' });
     return f;
 }
 
@@ -114,7 +114,7 @@ export async function fileRoutes(app: FastifyInstance) {
             return { version: 1 };
         }
         if (any.deletedAt)
-            return reply.code(410).send({ error: 'gone', message: 'File sudah dihapus' });
+            return reply.code(410).send({ error: 'gone', message: 'File has been deleted' });
         const cond = baseVersion == null ? eq(designFiles.id, id) : and(eq(designFiles.id, id), eq(designFiles.version, baseVersion));
         const [row] = await db.update(designFiles)
             .set({ name, meta, version: sql`${designFiles.version} + 1`, updatedAt: new Date() })
@@ -122,7 +122,7 @@ export async function fileRoutes(app: FastifyInstance) {
             .returning({ version: designFiles.version });
         if (!row) {
             const f = await findFile(req, id);
-            return reply.code(409).send({ error: 'conflict', message: 'File diubah di tempat lain', version: f?.version });
+            return reply.code(409).send({ error: 'conflict', message: 'File changed elsewhere', version: f?.version });
         }
         return { version: row.version };
     });
@@ -212,7 +212,7 @@ export async function fileRoutes(app: FastifyInstance) {
         if (version === undefined) {
             const [cur] = await db.select({ version: designFilePages.version }).from(designFilePages)
                 .where(and(eq(designFilePages.fileId, f.id), eq(designFilePages.pageId, pageId))).limit(1);
-            return reply.code(409).send({ error: 'conflict', message: 'Page diubah di tempat lain', version: cur?.version ?? null });
+            return reply.code(409).send({ error: 'conflict', message: 'Page changed elsewhere', version: cur?.version ?? null });
         }
         await db.update(designFiles).set({ updatedAt: new Date() }).where(eq(designFiles.id, f.id));
         return { version };
@@ -239,7 +239,7 @@ export async function fileRoutes(app: FastifyInstance) {
         if (!f)
             return;
         if (!Buffer.isBuffer(req.body) || !req.body.length)
-            return reply.code(400).send({ error: 'invalid', message: 'Body aset kosong' });
+            return reply.code(400).send({ error: 'invalid', message: 'Asset body is empty' });
         await storeAsset(f.id, req.params.assetId, req.headers['content-type'] ?? 'application/octet-stream', req.body);
         return { url: assetUrl(f.id, req.params.assetId) };
     });
@@ -280,7 +280,7 @@ export async function fileRoutes(app: FastifyInstance) {
         const data = body.data.data;
         const [exists] = await db.select({ id: designFiles.id }).from(designFiles).where(eq(designFiles.id, id)).limit(1);
         if (exists)
-            return reply.code(409).send({ error: 'exists', message: 'File dengan id ini sudah ada' });
+            return reply.code(409).send({ error: 'exists', message: 'A file with this id already exists' });
         const meta: Record<string, unknown> = metaOf(data);
         const assetUrls: Record<string, string> = {};
         const binary: [string, { mime: string; buf: Buffer }][] = [];

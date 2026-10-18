@@ -3074,3 +3074,34 @@ button.cb-section-head { cursor: pointer }
 .cb-field-top .cb-dd { flex: 1; min-width: 100px; width: auto }
 .cb-menu-bottom .cb-dd { flex: 1; min-width: 0; width: auto }
 .cb-insp-section > .cb-dd { width: 100% }
+
+/* Preview app (interactive live preview) */
+.cb-preview { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; background: var(--canvas); color: var(--text); font-size: 12px }
+.cb-preview-bar { display: flex; align-items: center; gap: 10px; height: 48px; flex: none; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--panel) }
+.cb-preview-bar .wide-button { width: auto; padding: 0 12px; height: 28px }
+.cb-preview-bar .cb-back:disabled { opacity: .4; cursor: default }
+.cb-preview-url { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px }
+.cb-preview-body { position: relative; flex: 1; min-height: 0; display: flex }
+.cb-preview-toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px; background: #0F172A; color: #fff; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.3) }
+
+/* Confirmation dialog (confirm.js) */
+.mc-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(0,0,0,.45) }
+.mc-dialog { width: min(420px, 92vw); padding: 20px 22px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); box-shadow: 0 24px 64px rgba(0,0,0,.4); font-size: 13px }
+.mc-dialog h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600 }
+.mc-dialog p { margin: 0; color: var(--text-secondary); line-height: 1.5 }
+.mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px }
+.mc-btn { height: 30px; padding: 0 14px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-weight: 500; cursor: pointer }
+.mc-btn:hover { background: rgba(127,127,127,.14) }
+.mc-btn.primary { border-color: #0D99FF; background: #0D99FF; color: #fff }
+.mc-btn.danger { border-color: #E5484D; background: #E5484D; color: #fff }
+.mc-btn:focus-visible { outline: 2px solid #0D99FF88; outline-offset: 2px }
+
+/* Table column editor + dialog role */
+.cb-colrows { display: flex; flex-direction: column; gap: 6px }
+.cb-colrow { display: flex; align-items: center; gap: 4px }
+.cb-colrow input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg, var(--canvas)); color: var(--text); font: inherit; box-sizing: border-box }
+.cb-colrow input.narrow { flex: none; width: 58px }
+.cb-colrow button { flex: none; width: 22px; height: 22px; border: 0; border-radius: 4px; background: none; color: var(--text-secondary); cursor: pointer }
+.cb-colrow button:hover:not(:disabled) { background: rgba(127,127,127,.18); color: var(--text) }
+.cb-colrow button:disabled { opacity: .3; cursor: default }
+.cb-role.r-dialog { background: #E5484D22; color: #E5484D }

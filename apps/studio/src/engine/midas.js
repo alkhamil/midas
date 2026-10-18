@@ -1,4 +1,5 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
+import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -3495,7 +3496,7 @@ async function libLeaveDeleted(ids) {
 }
 async function libDelete(id) {
     const meta = lib.index.find(m => m.id === id);
-    if (!meta || !confirm(`Delete “${meta.name}” permanently? This can't be undone.`))
+    if (!meta || !(await confirmDialog({ title: `Delete “${meta.name}” permanently?`, message: "This can't be undone.", confirmLabel: 'Delete', danger: true })))
         return;
     await libLeaveDeleted([id]);
     try {
@@ -3579,8 +3580,10 @@ function ensureHome() {
             openFileMenu(el, el.dataset.hfMenu);
         else if (t.closest('[data-home-empty-trash]')) {
             const gone = lib.index.filter(m => m.trashed);
-            if (gone.length && confirm(`Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`)) {
+            if (gone.length) {
                 (async () => {
+                    if (!(await confirmDialog({ title: `Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`, message: "This can't be undone.", confirmLabel: 'Delete', danger: true })))
+                        return;
                     await libLeaveDeleted(gone.map(m => m.id));
                     // Hanya yang benar-benar terhapus di server yang dibuang dari daftar; sisanya tetap di Trash.
                     const results = await Promise.all(gone.map(m => projectStorage.deleteProject(m.id).then(() => m.id, () => null)));
@@ -3669,7 +3672,7 @@ async function bulkDelete() {
     if (!ids.length)
         return;
     const inTrash = lib.view === 'trash';
-    if (inTrash && !confirm(`Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}? This can't be undone.`))
+    if (inTrash && !(await confirmDialog({ title: `Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}?`, message: "This can't be undone.", confirmLabel: 'Delete', danger: true })))
         return;
     if (inTrash) {
         await libLeaveDeleted(ids);
@@ -6572,7 +6575,7 @@ async function resolveConflict() {
         return;
     conflictOpen = true;
     try {
-        const reload = confirm('This file was changed somewhere else (another tab or device).\n\nOK — reload the latest version from the server (your unsaved edits in this tab are discarded).\nCancel — keep your edits and save them as a new copy.');
+        const reload = (await choiceDialog({ title: 'This file was changed somewhere else', message: 'Another tab or device saved a newer version. Reload the latest version (your unsaved edits in this tab are discarded), or keep your edits and save them as a new copy.', actions: [{ label: 'Keep my edits as a copy', value: false }, { label: 'Reload latest', value: true, primary: true }] })) === true;
         if (reload) {
             projectStorage.forget(lib.fileId);
             const data = await projectStorage.loadProject(lib.fileId);
@@ -11145,7 +11148,7 @@ function componentBlockHtml(n) {
         return `<div class="cmp-block"><button class="cmp-btn wide" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
     return '';
 }
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
     const goto = e.target.closest('[data-cmp-goto]');
     if (goto) {
         e.stopPropagation();
@@ -11184,7 +11187,7 @@ document.addEventListener('click', e => {
     }
     else if (act === 'remove') {
         const inst = instancesOf(n.id);
-        if (inst.length && !confirm(`${inst.length} instance${inst.length === 1 ? '' : 's'} will be detached and become regular layers. Continue?`))
+        if (inst.length && !(await confirmDialog({ title: 'Remove component?', message: `${inst.length} instance${inst.length === 1 ? '' : 's'} will be detached and become regular layers.`, confirmLabel: 'Remove', danger: true })))
             return;
         transaction('Remove component', () => { for (const i of inst)
             detachNodeTree(pageOfNode(i.id), i.id); n.component = false; doc.touch(n); doc.refresh(); });
@@ -11445,12 +11448,12 @@ function addVariantValue(set, prop) {
         layoutVariantSet(set);
     });
 }
-function removeVariantValue(set, prop, value) {
+async function removeVariantValue(set, prop, value) {
     const gone = setVariants(set).filter(v => v.variant?.[prop] === value);
     if (!gone.length || variantValues(set, prop).length < 2)
         return;
     const inst = gone.reduce((t, v) => t + instancesOf(v.id).length, 0);
-    if (inst && !confirm(`${inst} instance${inst === 1 ? '' : 's'} of the removed variant${gone.length === 1 ? '' : 's'} will be detached. Continue?`))
+    if (inst && !(await confirmDialog({ title: 'Remove variant value?', message: `${inst} instance${inst === 1 ? '' : 's'} of the removed variant${gone.length === 1 ? '' : 's'} will be detached.`, confirmLabel: 'Remove', danger: true })))
         return;
     transaction('Remove variant value', () => {
         for (const v of gone)
@@ -14768,7 +14771,7 @@ document.addEventListener('click', e => {
                     const d = JSON.parse(await f.text());
                     if (d.format !== 'midas-plugin' || typeof d.code !== 'string')
                         throw new Error('This is not a Midas plugin file.');
-                    if (!confirm(`Import plugin “${d.name || 'Untitled'}”?\n\nPlugins can read and change your designs. Only import code you trust.`))
+                    if (!(await confirmDialog({ title: `Import plugin “${d.name || 'Untitled'}”?`, message: 'Plugins can read and change your designs. Only import code you trust.', confirmLabel: 'Import' })))
                         return;
                     loadPlugins().push({ id: uid(), name: String(d.name || 'Imported plugin'), description: String(d.description || ''), code: d.code });
                     savePlugins();
@@ -14819,13 +14822,15 @@ document.addEventListener('click', e => {
         }
         else if (act === 'delete') {
             const p = loadPlugins().find(x => x.id === PL.editing);
-            if (p && confirm(`Delete plugin “${p.name}”?`)) {
+            if (p) confirmDialog({ title: `Delete plugin “${p.name}”?`, confirmLabel: 'Delete', danger: true }).then(ok => {
+                if (!ok)
+                    return;
                 PL.list = loadPlugins().filter(x => x.id !== p.id);
                 savePlugins();
                 renderPlugins();
                 document.getElementById('plugin-editor')?.remove();
                 PL.editing = null;
-            }
+            });
         }
     }
 });
@@ -14842,7 +14847,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -15484,19 +15489,27 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-$('#present').onclick = () => present();
+// Preview app: interactive live preview of the Code Builder project; falls back to the frame slideshow when the file has none.
+$('#present').onclick = async () => {
+    const m = await import('../codebuilder/preview.jsx');
+    if (!(await m.openAppPreview(builderBridge)))
+        present();
+};
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#command-button').onclick = commandPalette;
-$('#profile').onclick = async () => {
-    const user = await auth.me().catch(() => null);
-    if (!user)
-        return location.reload();
-    if (!confirm(`Signed in as ${user.name} (${user.email}).\n\nSign out?`))
-        return;
+// Account menu: a dropdown (no browser confirm) with the signed-in user, Settings and Sign out.
+async function signOut() {
     if (state.dirty)
         await save();
     await auth.logout().catch(() => { });
     location.reload();
+}
+$('#profile').onclick = async e => {
+    const btn = e.currentTarget, user = await auth.me().catch(() => null);
+    if (!user)
+        return location.reload();
+    const r = btn.getBoundingClientRect();
+    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Settings', action: 'settings' }, '-', { label: 'Sign out', action: 'signOut' }], r.right - 210, r.bottom + 8);
 };
 $('#canvas-status').onclick = () => toast('Saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.');
 $('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');

@@ -165,21 +165,21 @@ export function validateMappings(mappings: ComponentMapping[]): string[] {
     const exports = new Map<string, string>();
     for (const m of mappings) {
         if (!EXPORT_NAME_RE.test(m.exportName))
-            errors.push(`${m.componentName}: nama export "${m.exportName}" harus PascalCase (mis. Button)`);
+            errors.push(`${m.componentName}: export name "${m.exportName}" must be PascalCase (e.g. Button)`);
         if (exports.has(m.exportName))
-            errors.push(`${m.componentName}: nama export "${m.exportName}" sudah dipakai ${exports.get(m.exportName)}`);
+            errors.push(`${m.componentName}: export name "${m.exportName}" is already used by ${exports.get(m.exportName)}`);
         exports.set(m.exportName, m.componentName);
         const names = new Set<string>();
         for (const p of m.propsMap.props) {
             if (!PROP_NAME_RE.test(p.name))
-                errors.push(`${m.exportName}.${p.name}: nama prop harus camelCase`);
+                errors.push(`${m.exportName}.${p.name}: prop name must be camelCase`);
             if (names.has(p.name))
-                errors.push(`${m.exportName}.${p.name}: nama prop dipakai lebih dari sekali`);
+                errors.push(`${m.exportName}.${p.name}: prop name is used more than once`);
             names.add(p.name);
             if (p.type === 'enum')
                 for (const [k, v] of Object.entries(p.values ?? {}))
                     if (!v.trim())
-                        errors.push(`${m.exportName}.${p.name}: nilai kode untuk "${k}" kosong`);
+                        errors.push(`${m.exportName}.${p.name}: code value for "${k}" is empty`);
         }
     }
     return errors;
@@ -192,27 +192,27 @@ export function breakingChanges(prev: ComponentMapping[], next: ComponentMapping
     for (const p of prev) {
         const n = nextBy.get(p.componentKey);
         if (!n) {
-            out.push(`Komponen ${p.exportName} dihapus`);
+            out.push(`Component ${p.exportName} was removed`);
             continue;
         }
         if (n.exportName !== p.exportName)
-            out.push(`Komponen ${p.exportName} diganti nama menjadi ${n.exportName}`);
+            out.push(`Component ${p.exportName} was renamed to ${n.exportName}`);
         const nProps = new Map(n.propsMap.props.map(x => [`${x.source}:${x.key}`, x]));
         for (const pp of p.propsMap.props) {
             const np = nProps.get(`${pp.source}:${pp.key}`);
             if (!np) {
-                out.push(`${p.exportName}: prop ${pp.name} dihapus`);
+                out.push(`${p.exportName}: prop ${pp.name} was removed`);
                 continue;
             }
             if (np.name !== pp.name)
-                out.push(`${p.exportName}: prop ${pp.name} diganti nama menjadi ${np.name}`);
+                out.push(`${p.exportName}: prop ${pp.name} was renamed to ${np.name}`);
             if (np.type !== pp.type)
-                out.push(`${p.exportName}.${pp.name}: tipe berubah dari ${pp.type} ke ${np.type}`);
+                out.push(`${p.exportName}.${pp.name}: type changed from ${pp.type} to ${np.type}`);
             else if (pp.type === 'enum') {
                 const nv = new Set(Object.values(np.values ?? {}));
                 for (const v of new Set(Object.values(pp.values ?? {})))
                     if (!nv.has(v))
-                        out.push(`${p.exportName}.${pp.name}: nilai "${v}" dihapus`);
+                        out.push(`${p.exportName}.${pp.name}: value "${v}" was removed`);
             }
         }
     }
