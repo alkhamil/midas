@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-base",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "library": "Midas Base Design System",
-  "publishedAt": "2026-10-18T00:56:08.430Z",
+  "publishedAt": "2026-10-18T01:37:52.626Z",
   "themes": [
     "light",
     "dark"
@@ -220,96 +220,47 @@
       }
     },
     {
-      "exportName": "Badge",
-      "componentKey": "base-39z-9e1k45",
-      "componentName": "Badge",
+      "exportName": "RowActionButton",
+      "componentKey": "base-3eb-gifxx8",
+      "componentName": "RowActionButton",
       "props": [
         {
-          "name": "variant",
+          "name": "action",
           "type": "enum",
           "source": "variant",
-          "label": "Variant",
+          "label": "Action",
           "values": [
-            "info",
-            "error",
-            "primary",
-            "success",
-            "warning",
-            "secondary"
+            "edit",
+            "view",
+            "delete",
+            "restore"
           ]
         },
         {
-          "name": "children",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        }
-      ],
-      "defaults": {
-        "variant": "success",
-        "children": "Badge"
-      }
-    },
-    {
-      "exportName": "Alert",
-      "componentKey": "base-3ak-e13qjv",
-      "componentName": "Alert",
-      "props": [
-        {
-          "name": "variant",
+          "name": "color",
           "type": "enum",
           "source": "variant",
-          "label": "Variant",
+          "label": "Color",
           "values": [
             "info",
-            "error",
+            "muted",
+            "danger",
+            "default",
             "success",
             "warning"
           ]
         },
         {
-          "name": "message",
-          "type": "string",
-          "source": "text",
-          "label": "Message"
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
         }
       ],
       "defaults": {
-        "variant": "success",
-        "message": "Pesan untuk pengguna"
-      }
-    },
-    {
-      "exportName": "Card",
-      "componentKey": "base-3b0-fxrivg",
-      "componentName": "Card",
-      "props": [
-        {
-          "name": "size",
-          "type": "enum",
-          "source": "variant",
-          "label": "Size",
-          "values": [
-            "md",
-            "sm"
-          ]
-        },
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Content"
-        }
-      ],
-      "defaults": {
-        "size": "sm",
-        "title": "Judul card"
+        "action": "view",
+        "color": "default",
+        "disabled": false
       }
     },
     {
@@ -467,6 +418,48 @@
       }
     },
     {
+      "exportName": "SelectMultipleField",
+      "componentKey": "ds-48-bzloq5",
+      "componentName": "SelectMultipleField",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "source": "text",
+          "label": "Error"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "placeholder": "Pilih…",
+        "disabled": false,
+        "error": ""
+      }
+    },
+    {
       "exportName": "CheckboxField",
       "componentKey": "base-3ct-tz3qa3",
       "componentName": "CheckboxField",
@@ -544,39 +537,63 @@
       }
     },
     {
-      "exportName": "Dialog",
-      "componentKey": "base-3dj-fb1opm",
-      "componentName": "Dialog",
+      "exportName": "Alert",
+      "componentKey": "base-3ak-e13qjv",
+      "componentName": "Alert",
       "props": [
         {
-          "name": "maxWidth",
+          "name": "variant",
           "type": "enum",
           "source": "variant",
-          "label": "Max Width",
+          "label": "Variant",
           "values": [
-            "lg",
-            "md",
-            "sm",
-            "xl",
-            "2xl"
+            "info",
+            "error",
+            "success",
+            "warning"
           ]
         },
         {
-          "name": "title",
+          "name": "message",
           "type": "string",
           "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Content"
+          "label": "Message"
         }
       ],
       "defaults": {
-        "maxWidth": "sm",
-        "title": "Judul dialog"
+        "variant": "success",
+        "message": "Pesan untuk pengguna"
+      }
+    },
+    {
+      "exportName": "Badge",
+      "componentKey": "base-39z-9e1k45",
+      "componentName": "Badge",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "error",
+            "primary",
+            "success",
+            "warning",
+            "secondary"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "children": "Badge"
       }
     },
     {
@@ -613,48 +630,149 @@
       }
     },
     {
-      "exportName": "RowActionButton",
-      "componentKey": "base-3eb-gifxx8",
-      "componentName": "RowActionButton",
+      "exportName": "Dialog",
+      "componentKey": "base-3dj-fb1opm",
+      "componentName": "Dialog",
       "props": [
         {
-          "name": "action",
+          "name": "maxWidth",
           "type": "enum",
           "source": "variant",
-          "label": "Action",
+          "label": "Max Width",
           "values": [
-            "edit",
-            "view",
-            "delete",
-            "restore"
+            "lg",
+            "md",
+            "sm",
+            "xl",
+            "2xl"
           ]
         },
         {
-          "name": "color",
-          "type": "enum",
-          "source": "variant",
-          "label": "Color",
-          "values": [
-            "info",
-            "muted",
-            "danger",
-            "default",
-            "success",
-            "warning"
-          ]
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
         },
         {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
         }
       ],
       "defaults": {
-        "action": "view",
-        "color": "default",
-        "disabled": false
+        "maxWidth": "sm",
+        "title": "Judul dialog"
       }
+    },
+    {
+      "exportName": "Avatar",
+      "componentKey": "ds-a-tlqc09",
+      "componentName": "Avatar",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "lg",
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "initial",
+          "type": "string",
+          "source": "text",
+          "label": "Initial"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "initial": "A"
+      }
+    },
+    {
+      "exportName": "Card",
+      "componentKey": "base-3b0-fxrivg",
+      "componentName": "Card",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "title": "Judul card"
+      }
+    },
+    {
+      "exportName": "DetailCard",
+      "componentKey": "base-3g0-1df9q4",
+      "componentName": "DetailCard",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "Table",
+      "componentKey": "base-3fu-1ks1zh",
+      "componentName": "Table",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "Breadcrumb",
+      "componentKey": "ds-l-dv1ork",
+      "componentName": "Breadcrumb",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "Sidebar",
+      "componentKey": "base-3g3-jpm3xf",
+      "componentName": "Sidebar",
+      "props": [
+        {
+          "name": "collapsed",
+          "type": "boolean",
+          "source": "variant",
+          "label": "Collapsed",
+          "values": [
+            "true",
+            "false"
+          ]
+        }
+      ],
+      "defaults": {
+        "collapsed": false
+      }
+    },
+    {
+      "exportName": "AvatarUser",
+      "componentKey": "ds-70-djv2wl",
+      "componentName": "AvatarUser",
+      "props": [],
+      "defaults": {}
     },
     {
       "exportName": "PageHeader",
@@ -679,30 +797,9 @@
       }
     },
     {
-      "exportName": "Table",
-      "componentKey": "base-3fu-1ks1zh",
-      "componentName": "Table",
-      "props": [],
-      "defaults": {}
-    },
-    {
       "exportName": "FilterToolbar",
       "componentKey": "base-3fx-fglhav",
       "componentName": "FilterToolbar",
-      "props": [],
-      "defaults": {}
-    },
-    {
-      "exportName": "DetailCard",
-      "componentKey": "base-3g0-1df9q4",
-      "componentName": "DetailCard",
-      "props": [],
-      "defaults": {}
-    },
-    {
-      "exportName": "Sidebar",
-      "componentKey": "base-3g3-jpm3xf",
-      "componentName": "Sidebar",
       "props": [],
       "defaults": {}
     },

@@ -115,7 +115,7 @@ function Sidebar({
             onClick={onToggle}
             className={[
               'flex h-7 w-7 items-center justify-center rounded bg-primary-foreground text-primary shadow transition-colors hover:bg-primary-foreground/80 max-md:hidden',
-              collapsed ? 'absolute left-1/2 -translate-x-1/2' : 'absolute right-0 translate-x-1/2',
+              collapsed ? 'absolute left-1/2 -translate-x-1/2' : 'absolute right-2',
             ].join(' ')}
           >
             {collapsed ? (

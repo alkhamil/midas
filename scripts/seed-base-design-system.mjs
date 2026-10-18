@@ -5,7 +5,9 @@
 // dan file yang memakai library tetap tersambung.
 //
 // Pakai:
-//   node scripts/seed-base-design-system.mjs [--server URL] [--icons DIR] [--version X.Y.Z] [--notes TEKS] [--no-publish]
+//   node scripts/seed-base-design-system.mjs [--server URL] [--icons DIR] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create]
+// File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
+// (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -15,7 +17,7 @@ import { COMPONENTS } from './design-system/components.mjs';
 import { buildDocument, existingIds } from './design-system/document.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const FILE_NAME = 'Midas Base Design System';
+const DEFAULT_FILE = 'Midas Base Design System';
 const PACKAGE = '@midas/ui-base';
 /** Nama prop kode yang berbeda dari nama property desain. */
 const PROP_NAMES = { Button: { label: 'children' }, Badge: { label: 'children' } };
@@ -31,6 +33,7 @@ const userCfg = (() => {
         return {};
     }
 })();
+const FILE_NAME = typeof args.file === 'string' ? args.file : DEFAULT_FILE;
 const SERVER = (args.server || process.env.MIDAS_SERVER || userCfg.server || 'http://127.0.0.1:4000').replace(/\/+$/, '');
 const TOKEN = process.env.MIDAS_TOKEN || userCfg.token;
 if (!TOKEN) throw new Error('Belum login: jalankan `node packages/cli/bin/midas.js login` atau set MIDAS_TOKEN');
@@ -64,9 +67,13 @@ console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`
 
 // ---------------------------------------------------------------- simpan ke Midas
 let fileId = file?.id;
+if (!fileId && !args.create) {
+    const me = await api('GET', '/api/auth/me').catch(() => null);
+    throw new Error(`File "${FILE_NAME}" tidak ada di workspace ${me?.user?.email ?? 'akun ini'}. Login dengan akun pemilik file, atau tambahkan --create untuk membuat file baru.`);
+}
 if (!fileId) {
     fileId = `midas-base-ds-${Math.random().toString(36).slice(2, 10)}`;
-    await api('POST', '/api/files/import', { id: fileId, data: doc });
+    await api('POST', '/api/files/import', { id: fileId, data: { ...doc, name: FILE_NAME } });
     console.log(`File dibuat: ${fileId}`);
 }
 else {
@@ -81,7 +88,7 @@ else {
     const versions = new Map(currentPages.map(p => [p.pageId, p.version]));
     for (const p of doc.pages) await api('PUT', `/api/files/${fileId}/pages/${enc(p.id)}`, { data: p, baseVersion: versions.get(p.id) ?? null });
     const { pages: _p, assets: _a, ...meta } = doc;
-    await api('PUT', `/api/files/${fileId}`, { name: FILE_NAME, meta: { ...meta, pageMeta: doc.pages.map(p => ({ id: p.id, name: p.name, parentId: null })) }, baseVersion: current.version });
+    await api('PUT', `/api/files/${fileId}`, { name: FILE_NAME, meta: { ...meta, pageMeta: doc.pages.map(p => ({ id: p.id, name: p.name, parentId: p.parentId ?? null })) }, baseVersion: current.version });
     console.log(`File diperbarui: ${fileId} (${newAssets} aset baru)`);
 }
 if (args['no-publish']) process.exit(0);
@@ -117,7 +124,8 @@ const snapshot = { components, variables: doc.variables, assets: Object.fromEntr
 const iconKeys = icons.map(i => i.componentKey);
 const draft = await api('POST', `/api/libraries/${fileId}/draft`, { name: FILE_NAME, snapshot, iconKeys });
 const keys = new Set(iconKeys);
-const mappings = draft.mappings.filter(m => !keys.has(m.componentKey)).map(m => {
+// Seperti Studio: komponen berawalan _ atau . = bagian internal, ikut snapshot tapi tidak dipetakan ke kode.
+const mappings = draft.mappings.filter(m => !keys.has(m.componentKey) && !/^[_.]/.test(m.componentName)).map(m => {
     for (const p of m.propsMap.props) if (PROP_NAMES[m.componentName]?.[p.name]) p.name = PROP_NAMES[m.componentName][p.name];
     return m;
 });

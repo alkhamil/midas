@@ -10449,9 +10449,11 @@ function libComponentsHtml() {
         if (!snap)
             continue;
         const open = !LIBS.open.has(u.id);
-        h += `<div class="lib-group"><button class="lib-group-head" data-lib-fold="${u.id}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>${esc(snap.name)}</span><small>${snap.components.length}</small></button>`;
+        // Komponen berawalan _ atau . adalah bagian internal library (dipakai komponen lain), tidak ditawarkan di Assets.
+        const shown = snap.components.filter(c => !/^[_.]/.test(c.name));
+        h += `<div class="lib-group"><button class="lib-group-head" data-lib-fold="${u.id}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>${esc(snap.name)}</span><small>${shown.length}</small></button>`;
         if (open)
-            h += snap.components.map(c => { const root = c.nodes.find(n => n.id === c.id); return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview"><div class="asset-button" style="background:${safeColor(root?.fill)}">${esc(c.name)}</div></div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
+            h += shown.map(c => { const root = c.nodes.find(n => n.id === c.id); return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview"><div class="asset-button" style="background:${safeColor(root?.fill)}">${esc(c.name)}</div></div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
         h += '</div>';
     }
     return h;

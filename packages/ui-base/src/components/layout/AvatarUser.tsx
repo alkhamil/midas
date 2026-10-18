@@ -4,6 +4,7 @@ import { NavLink } from 'react-router';
 import { LogoutIcon as LogOut, SettingsIcon as Settings } from '../../generated/icons';
 import { useClickOutside } from '../../internal/hooks';
 import LanguageSwitch from '../../internal/LanguageSwitch';
+import Avatar from '../ui/Avatar';
 
 export interface AvatarUserData {
   name: string;
@@ -57,9 +58,7 @@ function AvatarUser({
             {user?.roleName ?? 'User'}
           </p>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
-          {initial}
-        </div>
+        <Avatar size="md" initial={initial} />
       </button>
 
       {dropdownOpen && (

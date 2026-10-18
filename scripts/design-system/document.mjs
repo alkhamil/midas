@@ -24,6 +24,7 @@ export function existingIds(doc) {
         }
         if (n.component && parent?.componentSet) map.set(`variant:${parent.name}/${n.name}`, n.id);
     }
+    for (const p of doc?.pages || []) if (p?.name) map.set(`page:${p.name}`, p.id);
     const vars = doc?.variables || { collections: [], items: [] };
     for (const c of vars.collections || []) {
         map.set(`coll:${c.name}`, c.id);
@@ -83,7 +84,7 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
     const components = new Map(), variantIndex = new Map(), rootIndex = new Map();
     const hex = ref => (ref.startsWith('#') ? ref : vars.ref(ref).first);
     const ctx = {
-        ids, vars, components,
+        ids, vars, components, hex,
         subtree(id) {
             const out = [], queue = [id];
             for (let i = 0; i < queue.length; i++) {
@@ -122,78 +123,110 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
     };
 
     const pages = [];
-    const page = (name, nodes) => {
-        pages.push({ id: ids.get(`page:${name}`), name, nodes });
+    const page = (name, nodes, { parentId = null, key = `page:${name}` } = {}) => {
+        pages.push({ id: ids.get(key), name, nodes, parentId });
         return pages.at(-1);
     };
 
-    // ---- Components (dibangun dulu: page lain memakai instance-nya)
-    const compNodes = [];
-    let y = 0;
+    // ---- Components (dibangun dulu: page lain memakai instance-nya). Satu page per komponen; bagian internal
+    // (_Nama) didokumentasikan di page komponen pemiliknya.
+    const blocks = new Map(); // nama page → [{ spec, nodes, roots, h }]
     for (const spec of COMPONENTS) {
-        const header = add(build(col({ gap: 6, w: 720, name: `Header — ${spec.name}` }, [
-            text(spec.name, { size: 24, line: 32, weight: 600 }),
+        const internal = spec.name.startsWith('_');
+        const roots = [], nodes = [];
+        const place = list => {
+            nodes.push(...add(list));
+            roots.push(list[0]);
+            return list[0];
+        };
+        let y = 0;
+        const header = place(build(col({ gap: 6, w: 720, name: `Header — ${spec.name}` }, [
+            text(spec.name, { size: internal ? 18 : 32, line: internal ? 28 : 40, weight: 600 }),
             text(spec.description, { w: 720, color: MUTED_FG }),
-        ]), ctx, { x: 0, y, key: `doc:${spec.name}/header` }));
-        compNodes.push(...header);
-        y += header[0].h + 40;
+            text(internal ? 'Bagian internal — dirakit oleh komponen lain, tidak diekspor ke kode.' : `import { ${spec.name} } from '@midas/ui-base';`, { size: 12, line: 16, color: internal ? MUTED_FG : 'color/primary', name: 'Code' }),
+        ]), ctx, { key: `doc:${spec.name}/header` }));
+        y += header.h + 32;
         // `def` = nilai default component property di engine Midas.
         const cprops = spec.cprops.map(c => ({ id: ids.get(`cprop:${spec.name}/${c.name}`), name: c.name, type: c.type, def: c.default ?? null }));
         const cp = Object.fromEntries(cprops.map(c => [c.name, c.id]));
-        let blockW, blockH;
         if (Object.keys(spec.variants).length) {
             const setId = ids.get(`component:${spec.name}`), gap = 24;
             const built = combos(spec.variants).map(v => {
                 const name = variantName(v), key = `variant:${spec.name}/${name}`;
-                const nodes = build(spec.render(v, ctx, cp), ctx, { parentId: setId, id: ids.get(key), key });
-                Object.assign(nodes[0], { component: true, variant: v, name });
-                variantIndex.set(`${spec.name}|${name}`, nodes[0].id);
-                components.set(nodes[0].id, nodes[0]);
-                return nodes;
+                const vn = build(spec.render(v, ctx, cp), ctx, { parentId: setId, id: ids.get(key), key });
+                Object.assign(vn[0], { component: true, variant: v, name });
+                variantIndex.set(`${spec.name}|${name}`, vn[0].id);
+                components.set(vn[0].id, vn[0]);
+                return vn;
             });
             // Kolom = nilai property pertama; baris = kombinasi property lainnya.
             const propNames = Object.keys(spec.variants), firstProp = propNames[0], multi = propNames.length > 1;
-            const roots = built.map(b => b[0]);
-            const colW = Math.max(...roots.map(r => r.w)), rowH = Math.max(...roots.map(r => r.h));
+            const vroots = built.map(b => b[0]);
+            const colW = Math.max(...vroots.map(r => r.w)), rowH = Math.max(...vroots.map(r => r.h));
             const restKey = r => propNames.slice(1).map(p => r.variant[p]).join('|');
-            const restKeys = [...new Set(roots.map(restKey))];
-            const perRow = multi ? spec.variants[firstProp].length : Math.min(roots.length, 6);
-            roots.forEach((r, i) => {
+            const restKeys = [...new Set(vroots.map(restKey))];
+            const perRow = multi ? spec.variants[firstProp].length : Math.min(vroots.length, 6);
+            vroots.forEach((r, i) => {
                 const c = multi ? spec.variants[firstProp].indexOf(r.variant[firstProp]) : i % perRow;
                 const rr = multi ? restKeys.indexOf(restKey(r)) : Math.floor(i / perRow);
                 r.x = gap + c * (colW + gap);
                 r.y = gap + rr * (rowH + gap);
             });
-            const cols = multi ? perRow : Math.min(roots.length, perRow), rows = multi ? restKeys.length : Math.ceil(roots.length / perRow);
+            const cols = multi ? perRow : Math.min(vroots.length, perRow), rows = multi ? restKeys.length : Math.ceil(vroots.length / perRow);
             const set = {
                 rotation: 0, opacity: 1, visible: true, locked: false, shadow: false, version: 0, fillType: 'solid', fillOpacity: 1, clip: false,
                 id: setId, type: 'frame', name: spec.name, parentId: null, x: 0, y, w: gap + cols * (colW + gap), h: gap + rows * (rowH + gap),
                 fill: 'none', stroke: '#9747FF', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', radius: 8, componentSet: true, cprops, dsKey: `component:${spec.name}`,
             };
+            // Set berlatar token (mis. primary) bila variannya putih dan tidak terbaca di kanvas.
+            if (spec.setFill) Object.assign(set, { fill: vars.ref(spec.setFill).first, vars: { fill: vars.ref(spec.setFill).item.id } });
             add([set, ...built.flat()]);
-            compNodes.push(set, ...built.flat());
-            blockW = set.w;
-            blockH = set.h;
+            nodes.push(set, ...built.flat());
+            roots.push(set);
+            y += set.h + 40;
         }
         else {
-            const nodes = add(build(spec.render({}, ctx, cp), ctx, { x: 0, y, id: ids.get(`component:${spec.name}`), key: `component:${spec.name}` }));
-            Object.assign(nodes[0], { component: true, cprops, name: spec.name });
-            components.set(nodes[0].id, nodes[0]);
-            rootIndex.set(spec.name, nodes[0].id);
-            compNodes.push(...nodes);
-            blockW = nodes[0].w;
-            blockH = nodes[0].h;
+            const cn = build(spec.render({}, ctx, cp), ctx, { y, id: ids.get(`component:${spec.name}`), key: `component:${spec.name}` });
+            Object.assign(cn[0], { component: true, cprops, name: spec.name });
+            components.set(cn[0].id, cn[0]);
+            rootIndex.set(spec.name, cn[0].id);
+            place(cn);
+            y += cn[0].h + 40;
         }
         if (spec.states) {
-            const states = add(build(col({ gap: 12, pad: 24, radius: 12, fill: 'color/surface', name: `States — ${spec.name}` }, [
+            const st = place(build(col({ gap: 12, pad: 24, radius: 12, fill: 'color/surface', name: `States — ${spec.name}` }, [
                 text('State', { size: 12, line: 16, weight: 600, color: MUTED_FG, letterSpacing: 0.5 }),
-                row({ gap: 24, align: 'start' }, spec.states(ctx).map(s => col({ gap: 8 }, [s.spec, text(s.label, { size: 12, line: 16, color: MUTED_FG })]))),
-            ]), ctx, { x: blockW + 64, y, key: `doc:${spec.name}/states` }));
-            compNodes.push(...states);
-            blockH = Math.max(blockH, states[0].h);
+                row({ gap: 32, align: 'start' }, spec.states(ctx).map(s => col({ gap: 8 }, [s.spec, text(s.label, { size: 12, line: 16, color: MUTED_FG })]))),
+            ]), ctx, { y, key: `doc:${spec.name}/states` }));
+            y += st.h + 40;
         }
-        y += blockH + 96;
+        const pageName = spec.page || spec.name;
+        (blocks.get(pageName) || blocks.set(pageName, []).get(pageName)).push({ spec, nodes, roots, h: y - 40 });
     }
+    /** Susun blok di page: komponen utama dulu, lalu "Bagian internal". */
+    const componentPage = name => {
+        const list = blocks.get(name) || [];
+        const main = list.filter(b => !b.spec.name.startsWith('_')), parts = list.filter(b => b.spec.name.startsWith('_'));
+        const out = [];
+        let y = 0;
+        const shift = b => {
+            for (const r of b.roots) r.y += y;
+            out.push(...b.nodes);
+            y += b.h + 96;
+        };
+        main.forEach(shift);
+        if (parts.length) {
+            const h = add(build(col({ gap: 4, w: 720, name: 'Bagian internal' }, [
+                frame({ w: 720, h: 1, fill: 'color/border' }),
+                text('Bagian internal', { size: 20, line: 28, weight: 600 }),
+                text(`Atom yang dirakit ${name}. Ubah di sini, semua instance ikut berubah.`, { color: MUTED_FG }),
+            ]), ctx, { y, key: `doc:${name}/parts` }));
+            out.push(...h);
+            y += h[0].h + 48;
+            parts.forEach(shift);
+        }
+        return out;
+    };
 
     // ---- Cover
     const coverW = 1440;
@@ -213,7 +246,7 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
         ].map(([t, d]) => col({ w: 'fill', gap: 8, pad: 24, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border' }, [text(t, { size: 16, line: 24, weight: 600 }), text(d, { w: 352, color: MUTED_FG })]))),
         col({ gap: 8 }, [
             text('Isi file', { size: 14, weight: 600 }),
-            ...['Foundations — warna, tipografi, spacing, radius, elevasi, ikonografi', `Components — ${COMPONENTS.length} komponen dengan variant & state`, 'Icons — set ikon outline & bold-duotone', 'Templates — contoh layar List, Form, Detail, Dashboard'].map(s => text(`•  ${s}`, { color: MUTED_FG })),
+            ...['Foundations — warna, tipografi, spacing, radius, elevasi, ikonografi', `Components — ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} komponen, satu page per komponen (Actions, Forms, Feedback, Data Display, Navigation, Layout)`, 'Icons — set ikon outline & bold-duotone', 'Templates — contoh layar List, Form, Detail, Dashboard, sidebar dilipat'].map(s => text(`•  ${s}`, { color: MUTED_FG })),
         ]),
     ]), ctx, { key: 'page:cover' })));
 
@@ -250,20 +283,37 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
             ])))),
     ]), ctx, { key: 'page:foundations' })));
 
-    page('Components', compNodes);
+    // Komponen per page, dikelompokkan dalam folder (page tanpa isi yang punya anak page).
+    const GROUPS = [
+        ['Actions', ['Button', 'RowActionButton']],
+        ['Forms', ['TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SelectMultipleField', 'CheckboxField', 'SwitchField']],
+        ['Feedback', ['Alert', 'Badge', 'Tooltip', 'Dialog']],
+        ['Data Display', ['Avatar', 'Card', 'DetailCard', 'Table']],
+        ['Navigation', ['Breadcrumb', 'Sidebar']],
+        ['Layout', ['AvatarUser', 'PageHeader', 'FilterToolbar', 'AppShell']],
+    ];
+    const grouped = GROUPS.flatMap(([, names]) => names);
+    const missing = COMPONENTS.filter(c => !c.name.startsWith('_') && !grouped.includes(c.name)).map(c => c.name);
+    if (missing.length) throw new Error(`Komponen belum masuk grup page: ${missing.join(', ')}`);
+    const componentPages = [page('---', [])];
+    for (const [group, names] of GROUPS) {
+        const folder = page(group, []);
+        componentPages.push(folder);
+        for (const name of names) componentPages.push(page(name, componentPage(name), { parentId: folder.id }));
+    }
 
     // ---- Icons (outline + bold-duotone)
     const iconPage = buildIconPage([...wds, ...uiIconFiles()], { uid: () => ids.fresh() });
     stabilizeIconIds(iconPage, assets);
-    pages.push({ ...iconPage.page, id: ids.get('page:Icons'), name: 'Icons' });
+    pages.push({ ...iconPage.page, id: ids.get('page:Icons'), name: 'Icons', parentId: null });
 
     // ---- Templates (instance komponen)
     const btn = (variant, label) => instance(ctx.variant('Button', { Variant: variant, Size: 'Md' }), { Label: label });
-    // Sidebar instance menandai "Dashboard" aktif; layar lain memakai susunan yang sama dengan item aktifnya sendiri.
-    const screen = (name, title, content, active = 'Dashboard') => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true, name }, [
-        active === 'Dashboard' ? instance(ctx.root('Sidebar')) : sidebar(ctx, active),
+    // Instance Sidebar menandai "Dashboard" aktif; layar lain merakit _SidebarItem dengan item aktifnya sendiri.
+    const screen = (name, title, content, active = 'Dashboard', collapsed = false) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true, name }, [
+        active === 'Dashboard' ? instance(ctx.variant('Sidebar', { Collapsed: String(collapsed) })) : sidebar(ctx, active, collapsed),
         col({ w: 'fill', h: 'fill' }, [
-            instance(ctx.root('PageHeader'), { Title: title }),
+            instance(ctx.root('PageHeader'), { Title: title }, { w: 'fill' }),
             col({ w: 'fill', pad: 24, gap: 16, name: 'Content' }, content),
         ]),
     ]);
@@ -306,6 +356,14 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
             instance(ctx.variant('Alert', { Variant: 'Warning' }), { Message: '47 user menunggu verifikasi email.' }),
             card(1136, ctx, { title: 'User terbaru' }, [instance(ctx.root('Table'))]),
         ]),
+        // Sidebar dilipat: konten melebar mengisi ruang (1440 − 64).
+        screen('List — sidebar dilipat', 'Daftar User', [
+            col({ w: 'fill', radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', pad: 20, gap: 16, name: 'Card' }, [
+                row({ w: 'fill', justify: 'between' }, [text('Daftar User', { size: 18, line: 28, weight: 600 }), row({ gap: 8 }, [btn('Secondary', 'Export'), btn('Primary', 'Tambah user')])]),
+                instance(ctx.root('FilterToolbar'), {}, { w: 'fill' }),
+                instance(ctx.root('Table'), {}, { w: 'fill' }),
+            ]),
+        ], 'User', true),
     ];
     let tx = 0;
     const templateNodes = templates.flatMap((t, i) => {
@@ -315,9 +373,12 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
     });
     page('Templates', templateNodes);
 
-    // Urutan page: Cover, Foundations, Components, Icons, Templates
-    const order = ['Cover', 'Foundations', 'Components', 'Icons', 'Templates'];
-    pages.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+    // Urutan page: Cover, Foundations, Icons, --- folder komponen ---, Templates
+    const head = ['Cover', 'Foundations', 'Icons'].map(n => pages.find(p => p.name === n));
+    const templatesPage = pages.find(p => p.name === 'Templates');
+    const divider = page('----', []);
+    const ordered = [...head, ...componentPages, divider, templatesPage];
+    pages.splice(0, pages.length, ...ordered);
     const doc = { format: 'midas', version: 1, name: 'Midas Base Design System', pageId: pages[0].id, pages, tokens: {}, variables: vars.toJSON(), assets };
     return { doc, iconCount: iconPage.count, iconStyles: iconPage.styles };
 }

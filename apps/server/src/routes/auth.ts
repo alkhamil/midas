@@ -64,8 +64,9 @@ export async function authRoutes(app: FastifyInstance) {
         let userId = req.user?.id;
         if (!userId) {
             const body = credentials.safeParse(req.body);
+            // Tanpa sesi: body wajib email + password; isian kosong/pendek dilaporkan seperti kredensial salah.
             if (!body.success)
-                return reply.code(401).send({ error: 'unauthorized', message: 'Login required' });
+                return reply.code(401).send({ error: 'invalid_credentials', message: 'Email atau password salah' });
             const [u] = await db.select().from(users).where(eq(users.email, body.data.email)).limit(1);
             if (!u || !(await bcrypt.compare(body.data.password, u.passwordHash)))
                 return reply.code(401).send({ error: 'invalid_credentials', message: 'Email atau password salah' });

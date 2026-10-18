@@ -9,6 +9,7 @@ export type { RowActionKind, RowActionColor, RowActionButtonProps } from './RowA
 export { default as ErrorStatePage } from './ErrorStatePage';
 export type { ErrorStateType } from './ErrorStatePage';
 export { default as Badge } from './Badge';
+export { default as Avatar } from './Avatar';
 export { default as FilterToolbar } from './FilterToolbar';
 export { default as Dialog } from './Dialog';
 export { default as Drawer } from './Drawer';

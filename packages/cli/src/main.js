@@ -87,6 +87,8 @@ export function client(server, token) {
         } catch {
             data = { message: text };
         }
+        // Login gagal: tampilkan pesan server ("Email atau password salah"), bukan saran login ulang.
+        if (res.status === 401 && data?.error === 'invalid_credentials') throw new Error(data.message);
         if (res.status === 401) throw new Error('belum login atau token kedaluwarsa — jalankan `midas login`');
         if (!res.ok) throw new Error(data?.message || `request gagal (${res.status})`);
         return data;

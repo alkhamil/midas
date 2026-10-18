@@ -223,6 +223,7 @@ Code Builder project memilih @midas/ui-cms@1.2.0
 - `id` library = id file design system sumbernya (satu file = satu library). Layer salinan komponen library di file lain menyimpan `libRef = <libraryId>:<nodeId>`, sehingga instance tetap tersambung setelah update.
 - Status per komponen (`midas report`, dijalankan setelah build): **Ready** (di-export dan props sesuai desain), **Not implemented** (tidak di-export, atau masih kerangka `midasStub`), **Mismatch** (ada prop desain yang tidak diterima props komponen — dicek dengan TypeScript: untuk setiap prop di `src/generated/props`, tipe desainnya harus bisa diberikan ke prop komponen dengan nama sama; `testId` tidak dicek). Status versi: **ready** bila semua komponen ready, **partial** bila tidak, **pending** sebelum ada laporan. Ditampilkan di panel Library dan dialog **Developer kit** di Studio.
 - Code Builder hanya bisa memilih versi yang paketnya sudah ter-publish. Instance komponen berstatus *Not implemented* ditampilkan sebagai **Issue** (§4.6).
+- Komponen berawalan `_` atau `.` = **bagian internal** (atom yang dirakit komponen lain, mis. `_Option` di SelectField): ikut snapshot library agar instance tetap tersambung, tetapi tidak dipetakan ke kode, tidak masuk Library Kit, dan disembunyikan dari Assets file pemakai.
 - Breaking change memaksa kenaikan versi **major**: komponen/prop dihapus atau diganti nama, nilai variant dihapus, tipe prop berubah, **token (Variable) dihapus**, **ikon atau gaya ikon dihapus**.
 
 ### 3.6. Private Registry (Verdaccio)

@@ -307,6 +307,12 @@ function instantiate(spec, ctx, out, parentId, node) {
         else n.parentId = map.get(s.parentId);
         const bound = s.propBind?.text && Object.hasOwn(propValues, s.propBind.text);
         if (bound) n.text = propValues[s.propBind.text];
+        // Override per layer (mis. ganti ikon: { Icon: { assetId } }), dicatat seperti override di engine.
+        const ov = s.id !== src.id && spec.set?.[s.name];
+        if (ov) for (const [k, v] of Object.entries(ov)) {
+            n[k] = v;
+            n.overrides[k] = structuredClone(v);
+        }
         // Layer berukuran penuh lebar root ikut melebar bila instance dilebarkan.
         if (s.id !== src.id && n.w === src.w && node.w !== src.w && s.parentId === src.id) n.w = node.w - (s.x * 2);
         out.push(n);

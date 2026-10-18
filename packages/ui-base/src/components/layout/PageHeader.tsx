@@ -1,13 +1,8 @@
 import { type ReactNode } from 'react';
-import { NavLink } from 'react-router';
 import { HamburgerMenuIcon as Menu } from '../../generated/icons';
+import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
 
-export interface BreadcrumbItem {
-  label: string;
-  /** General-namespace key for the label; falls back to `label`. */
-  labelKey?: string;
-  path?: string;
-}
+export type { BreadcrumbItem };
 
 interface PageHeaderProps {
   title: string;
@@ -40,22 +35,7 @@ function PageHeader({
 
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-lg font-semibold leading-tight">{title}</h1>
-        {breadcrumb && breadcrumb.length > 0 && (
-          <nav aria-label="Breadcrumb" className="mt-0.5 flex items-center gap-1 text-xs">
-            {breadcrumb.map((item, i) => (
-              <span key={item.label} className="flex items-center gap-1">
-                {i > 0 && <span className="text-muted-foreground">/</span>}
-                {item.path ? (
-                  <NavLink to={item.path} className="text-primary hover:underline">
-                    {item.label}
-                  </NavLink>
-                ) : (
-                  <span className="text-muted-foreground">{item.label}</span>
-                )}
-              </span>
-            ))}
-          </nav>
-        )}
+        {breadcrumb && breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} className="mt-0.5" />}
       </div>
 
       {actions && <div className="ml-4 flex items-center gap-2">{actions}</div>}

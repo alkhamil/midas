@@ -1,4 +1,4 @@
-# Library Kit — @midas/ui-base@2.0.1
+# Library Kit — @midas/ui-base@2.1.0
 
 Folder ini dibangkitkan oleh Midas dari library **Midas Base Design System** dan ditimpa setiap `npx @midas/cli sync`. Jangan diedit manual: ubah desain di Midas, publish versi baru, lalu sync.
 

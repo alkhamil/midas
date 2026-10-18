@@ -90,9 +90,11 @@ Design system "Midas Base" (karakter profesional & tenang, primary `#0058CA`, fo
 | File | Isi |
 | --- | --- |
 | `tokens.mjs` | Variables: Color (Light/Dark), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
-| `components.mjs` | 19 komponen dengan variant, component property, dan state |
+| `components.mjs` | 23 komponen + bagian internal (`_Option`, `_Dropdown`, `_Chip`, `_SidebarItem`) dengan variant, component property, dan state (mis. SelectField Open) |
 | `icons.mjs` | Ikon UI tambahan; set ikon hanya 2 gaya: `outline` & `bold-duotone` |
 | `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
-| `document.mjs` | Page Cover, Foundations, Components, Icons, Templates (List, Form, Detail, Dashboard) |
+| `document.mjs` | Page Cover, Foundations, Icons, satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout), Templates |
 
-Seed berikutnya memakai ulang id yang sudah ada (komponen, variant, property, Variable, ikon), jadi update tidak memutus file yang memakai library dan aset ikon tidak diunggah ulang. `font/family` menjadi `--font-sans` di `tailwind-theme.css`; `@midas/ui-base/tailwind.css` ikut memuat Inter (`@fontsource/inter`).
+Komponen berawalan `_` (atau `.`) adalah bagian internal: dirakit komponen lain dan ikut library, tetapi tidak diekspor ke kode dan tidak tampil di Assets file pemakai (Studio juga tidak mencentangnya saat publish).
+
+Seed mencari file berdasarkan nama di workspace akun yang login (`--file NAMA`) dan berhenti bila tidak ada, kecuali `--create`. Seed berikutnya memakai ulang id yang sudah ada (komponen, variant, property, Variable, ikon), jadi update tidak memutus file yang memakai library dan aset ikon tidak diunggah ulang. `font/family` menjadi `--font-sans` di `tailwind-theme.css`; `@midas/ui-base/tailwind.css` ikut memuat Inter (`@fontsource/inter`).

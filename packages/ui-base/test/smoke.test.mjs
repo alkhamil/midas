@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as ui from '../dist/index.js';
@@ -11,7 +12,7 @@ await i18next.use(initReactI18next).init({ lng: 'id', resources: { id: { transla
 ui.registerUiLocales(i18next);
 
 test('exports components, icons, theme and locales', () => {
-    for (const name of ['Button', 'Badge', 'Alert', 'Card', 'Table', 'TextField', 'SelectField', 'Dialog', 'Sidebar', 'AppShell', 'ToastProvider', 'Icon', 'AltArrowDownIcon', 'ThemeProvider', 'applyTheme'])
+    for (const name of ['Avatar', 'Breadcrumb', 'SelectMultipleField', 'AvatarUser', 'Button', 'Badge', 'Alert', 'Card', 'Table', 'TextField', 'SelectField', 'Dialog', 'Sidebar', 'AppShell', 'ToastProvider', 'Icon', 'AltArrowDownIcon', 'ThemeProvider', 'applyTheme'])
         assert.ok(ui[name], `${name} di-export`);
     assert.ok(ui.iconNames.length >= 300);
     assert.deepEqual(ui.themeNames, ['light', 'dark']);
@@ -50,4 +51,11 @@ test('Table renders headers, rows and translated pagination', () => {
     assert.match(html, /Budi/);
     assert.match(html, /data-icon="trash-bin"/);
     assert.doesNotMatch(html, /table\.(totalRecords|rowsPerPage|action)/, 'translation keys are resolved');
+});
+
+test('Avatar shows an initial and Breadcrumb marks the current page', () => {
+    assert.match(renderToStaticMarkup(h(ui.Avatar, { name: 'budi santoso', size: 'lg' })), />B<\/span>/);
+    const html = renderToStaticMarkup(h(MemoryRouter, null, h(ui.Breadcrumb, { items: [{ label: 'Beranda', path: '/' }, { label: 'User' }] })));
+    assert.match(html, /href="\/"[^>]*>Beranda<\/a>/);
+    assert.match(html, /aria-current="page"[^>]*>User</);
 });
