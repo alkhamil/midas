@@ -172,9 +172,11 @@ const confirmFrame = (name, tone, title, message, cancel, confirm) => col({ w: 5
 ]);
 // Filter drawer (library Drawer): the generated list page opens it from the Filter button; its fields come from the entity
 // fields marked "filterable".
-const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Drawer · Filters' }, [
+const filterFrameOf = name => col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name }, [
     instance(ctx.root('Drawer'), { Title: 'Filters', SecondaryLabel: 'Reset', PrimaryLabel: 'Apply' }, { name: 'Drawer' }),
 ]);
+const filterFrame = filterFrameOf('Drawer · Filters');
+const roleFilterFrame = filterFrameOf('Drawer · Filters (role)');
 
 const userScreens = [
     list('User', 'Manage the accounts that can sign in to the app', 'Add user'),
@@ -219,6 +221,7 @@ const roleScreens = [
     ]),
     confirmFrame('Confirm · Delete role', 'Danger', 'Delete role?', 'Users with this role lose its permissions. This cannot be undone.', 'Cancel', 'Delete'),
     confirmFrame('Confirm · Discard changes (role)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
+    roleFilterFrame,
 ];
 // Reference frame: the user menu opened from the avatar (Topbar variant Menu = Open).
 const userMenuFrame = col({ w: 1440, pad: [0, 0, 48, 0], fill: 'color/surface', name: 'Topbar · User menu' }, [
