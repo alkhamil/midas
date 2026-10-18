@@ -7143,7 +7143,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}${multi ? '' : headerChevronHtml(n)}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -11225,11 +11225,11 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${ns.length} layers selected</span>`;
     if (n.component && parentSetOf(n))
         return `<span class="selection-name">${esc(n.name)}</span>`;
-    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200" style="width:${Math.min(Math.max(String(n.name).length + 1, 4), 28)}ch">`;
     // Frame / section / group can switch kind from a chevron next to the name.
-    return input;
+    return input + headerChevronHtml(n);
 }
-// Chevrons that sit right before the "···" button: kind switcher for frames / groups, instance swap for instances.
+// Chevrons that sit right next to the layer name: the "···" button: kind switcher for frames / groups, instance swap for instances.
 function headerChevronHtml(n) {
     if (n.isInstance && n.sourceId && !insideInstance(n))
         return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
@@ -15977,6 +15977,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Control' || e.key === '
 window.addEventListener('keyup', e => { if (e.key === 'Control' || e.key === 'Meta')
     state.ctrlDown = false; });
 window.addEventListener('blur', () => { state.ctrlDown = false; });
+// Ctrl + wheel (and trackpad pinch) never zooms the browser page, in the side panels or anywhere else; only the canvas handler uses it.
+document.addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
 area.addEventListener('wheel', e => {
     if (!$('#modal-backdrop').classList.contains('hidden'))
         return;
