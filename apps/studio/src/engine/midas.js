@@ -64,6 +64,11 @@ function runLayout(d) {
             kids.set(k, []);
         kids.get(k).push(n);
     }
+    for (const [k, list] of kids) {
+        const p = k && d.get(k);
+        if (p?.layoutFlip && isAutoLayout(p))
+            list.reverse();
+    }
     const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
     const parentOf = n => d.get(n.parentId);
     // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
@@ -382,6 +387,10 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
 }
 function addAutoLayout() {
     const roots = selectedRoots();
+    if (roots.some(r => r.isInstance || insideInstance(r))) {
+        toast('Layout is changed on the main component; instances follow it.');
+        return;
+    }
     if (!roots.length) {
         toast('Select a frame or layers first to add auto layout.');
         return;
@@ -633,6 +642,10 @@ function setLayoutMode(mode) {
         f.layoutWrap = false; });
 }
 function lyEach(label, fn) {
+    if (selected().some(r => r.isInstance || insideInstance(r)) && /mode|direction|auto layout|wrap/i.test(label)) {
+        toast('Layout is changed on the main component; instances follow it.');
+        return;
+    }
     transaction(label, () => { for (const f of selected().filter(isAutoLayout)) { fn(f); doc.touch(f); } });
 }
 document.addEventListener('click', e => {
@@ -726,6 +739,10 @@ function nodeMode(d, n, coll) {
             return m;
         cur = d.get(cur.parentId);
     }
+    // Variable collections connected to the page itself apply to everything on it.
+    const pm = d.page?.varModes?.[coll.id];
+    if (pm && coll.modes.some(x => x.id === pm))
+        return pm;
     return coll.modes[0]?.id;
 }
 function varValue(d, item, node, depth = 0) {
@@ -937,7 +954,23 @@ function varChip(prop, v) {
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
     return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
+// Component property a layer is bound to (visibility ↔ boolean property, text ↔ text property).
+function holderForLayer(n) {
+    for (let c = n.component || n.componentSet ? doc.get(n.parentId) : n, i = 0; c && i < 100; c = doc.get(c.parentId), i++)
+        if (c.component || c.componentSet)
+            return propHolderOf(c);
+    return null;
+}
+function layerPropOptions(n, prop) {
+    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && !n.component && !n.componentSet && !insideInstance(n) && holderForLayer(n);
+    return holder ? { holder, props: cpropsOf(holder).filter(p => p.type === type) } : { holder: null, props: [] };
+}
 function varRow(label, prop) {
+    const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { holder, props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
+    // The property is looked up by id across the file, so layers inside instances (copied from the main component) show their binding too.
+    const bp = pid && (props.find(p => p.id === pid) || (() => { for (const pg of doc.data.pages) for (const x of pg.nodes) { const p = x.cprops?.find(q => q.id === pid); if (p) return p; } return null; })());
+    if (bp)
+        return `<div class="field-label"><span>${label}</span></div><div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>`;
     const v = boundVar(prop);
     return `<div class="field-label"><span>${label}</span>${v ? '' : varBindButton(prop)}</div>${v ? varChip(prop, v) : ''}`;
 }
@@ -1008,7 +1041,7 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
         html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
     return html || `<div class="vp-empty">No variables${ql ? ' match your search' : ' yet. Create some in the Variables window'}.</div>`;
 }
-function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null }) {
+function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null, props = null, onPickProp = null }) {
     closeVarPicker();
     const pop = document.createElement('div'), want = types || [type];
     pop.id = 'var-picker';
@@ -1017,7 +1050,8 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
     const filter = i => varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude));
     const render = () => { pop.querySelector('.vp-list').innerHTML = varListHtml({ types: want, filter, q, current, limit }); };
     const build = () => {
-        pop.innerHTML = `${varListHead(q, '', want)}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
+        const propsHtml = props?.length ? `<div class="vpk-coll">Properties</div>${props.map(p => `<button class="vp-item vpk-item ${p.on ? 'on' : ''}" data-pick-prop="${esc(p.id)}"><i class="vc-glyph" style="color:#9747FF">${p.icon}</i><span class="vp-name">${esc(p.name)}</span>${p.on ? icon('check', 12) : ''}</button>`).join('')}<div class="menu-divider"></div>` : '';
+        pop.innerHTML = `${varListHead(q, '', want)}${propsHtml}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
         render();
     };
     build();
@@ -1052,8 +1086,12 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
         }
     });
     pop.addEventListener('click', e => {
-        const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]');
-        if (e.target.closest('[data-pick-create]')) {
+        const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]'), pp = e.target.closest('[data-pick-prop]');
+        if (pp && onPickProp) {
+            closeVarPicker();
+            onPickProp(pp.dataset.pickProp);
+        }
+        else if (e.target.closest('[data-pick-create]')) {
             closeVarPicker();
             onCreate();
         }
@@ -1122,15 +1160,27 @@ document.addEventListener('click', e => {
 });
 function handleVarClick(e) {
     const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
+    const pd = e.target.closest('[data-prop-detach]');
+    if (pd) {
+        const n = activeNode(), field = pd.dataset.propDetach;
+        if (n?.propBind) {
+            transaction('Detach property', () => { delete n.propBind[field]; if (!Object.keys(n.propBind).length) delete n.propBind; doc.touch(n); });
+        }
+        return;
+    }
     if (bind) {
         let prop = bind.dataset.varBind;
         const rect = bind.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
-        // The Fill header icon targets the top fill row (fills.0), which is where the hex field shows the bound variable.
+        const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
+        if (po.props.length) {
+            // Same window as the variable picker, with the component's matching properties on top.
+            const applyProp = pid => transaction('Apply property', () => { const p = po.props.find(x => x.id === pid); if (!p) return; an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); });
+            openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), props: po.props.map(p => ({ id: p.id, name: p.name, icon: CPROP_ICON[p.type], on: an0.propBind?.[CPROP_FIELD[p.type]] === p.id })), onPickProp: applyProp, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
+            return;
+        }
         if (prop === 'fill') {
             const an = activeNode();
-            if (an && !getFills(an).length && an.type !== 'text')
-                addFill();
-            prop = 'fills.0';
+            prop = an && getFills(an).length ? 'fills.0' : 'fill';
         }
         const cur = boundVarId(prop);
         openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
@@ -1139,11 +1189,13 @@ function handleVarClick(e) {
     if (det)
         detachVariable(det.dataset.varDetach);
 }
+// Variable-mode targets: the selected layers, or the page itself when nothing is selected.
+function modeTargets() { return selected().length ? selected() : doc.page ? [doc.page] : []; }
 document.addEventListener('change', e => {
     const el = e.target;
     if (el.matches?.('[data-var-mode]')) {
         transaction('Set variable mode', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 n.varModes = { ...(n.varModes || {}) };
                 if (el.value)
                     n.varModes[el.dataset.varMode] = el.value;
@@ -1617,12 +1669,12 @@ function closeCollMenu() {
 }
 function openCollMenu(anchor) {
     closeCollMenu();
-    const store = varStore(), n = activeNode();
+    const store = varStore(), n = activeNode() || doc.page, onPage = !activeNode();
     if (!n)
         return;
     const el = document.createElement('div');
     el.className = 'coll-menu';
-    el.innerHTML = `<div class="cm-head">Created in this file</div>` + relevantCollections(n).map(c => `<button class="cm-item" data-cm="${c.id}"><span>${esc(c.name)}</span><i>${icon('chevronRight', 12)}</i></button>`).join('');
+    el.innerHTML = `<div class="cm-head">Created in this file</div>` + (onPage ? store.collections : relevantCollections(n)).map(c => `<button class="cm-item" data-cm="${c.id}"><span>${esc(c.name)}</span><i>${icon('chevronRight', 12)}</i></button>`).join('');
     document.body.appendChild(el);
     const a = anchor.getBoundingClientRect();
     el.style.left = Math.max(8, a.right - el.offsetWidth) + 'px';
@@ -1633,7 +1685,7 @@ function openCollMenu(anchor) {
     collMenu = { el, anchor, sub: null, away };
     const pick = (cid, modeId) => {
         transaction('Set variable mode', () => {
-            for (const x of selected()) {
+            for (const x of modeTargets()) {
                 const next = { ...(x.varModes || {}) };
                 if (modeId === null)
                     delete next[cid];
@@ -1654,7 +1706,7 @@ function openCollMenu(anchor) {
             return;
         collMenu.sub?.remove();
         el.querySelectorAll('.cm-item').forEach(b => b.classList.toggle('on', b === btn));
-        const explicit = n.varModes?.[c.id], parent = doc.get(n.parentId), inh = parent ? nodeMode(doc, parent, c) : c.modes[0]?.id, inhName = c.modes.find(m => m.id === inh)?.name || c.modes[0]?.name;
+        const explicit = n.varModes?.[c.id], parent = onPage ? null : doc.get(n.parentId), inh = parent ? nodeMode(doc, parent, c) : c.modes[0]?.id, inhName = c.modes.find(m => m.id === inh)?.name || c.modes[0]?.name;
         const sub = document.createElement('div');
         sub.className = 'coll-menu coll-sub';
         sub.innerHTML = `<button class="cm-item" data-cm-mode=""><span class="chk">${explicit === undefined ? '✓' : ''}</span><span>Auto (${esc(inhName)})</span></button><div class="menu-divider"></div><div class="cm-head">Mode</div>` + c.modes.map(m => `<button class="cm-item" data-cm-mode="${m.id}"><span class="chk">${explicit === m.id ? '✓' : ''}</span><span>${esc(m.name)}</span></button>`).join('');
@@ -1696,7 +1748,7 @@ function varCollectionsHtml(n) {
     return h;
 }
 function varCollectionsButton(n) {
-    if (!relevantCollections(n).length)
+    if (n && !relevantCollections(n).length)
         return '';
     return `<button class=\"icon-button small ${state.varCollMenu ? 'active' : ''}\" data-var-coll-toggle title=\"Connect variable collection\" aria-label=\"Connect variable collection\">${VAR_ICON}</button>`;
 }
@@ -1719,7 +1771,7 @@ document.addEventListener('click', e => {
         if (!coll)
             return;
         transaction('Connect variable collection', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 n.varModes = { ...(n.varModes || {}), [cid]: nodeMode(doc, n, coll) || coll.modes[0].id };
                 doc.touch(n);
             }
@@ -1731,7 +1783,7 @@ document.addEventListener('click', e => {
     if ((el = e.target.closest('[data-var-mode-del]'))) {
         const cid = el.dataset.varModeDel;
         transaction('Disconnect variable collection', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 if (!n.varModes)
                     continue;
                 n.varModes = { ...n.varModes };
@@ -1824,7 +1876,7 @@ function renderVarsWindow() {
         return;
     ensureVarCollection();
     const store = varStore(), coll = varColl(vw.coll), cols = 'grid-template-columns: ' + vwCols(coll);
-    const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
+    const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''} ${vw.selColls?.has(c.id) ? 'multi' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
     const head = `<div class="vw-row vw-head-row" style="${cols}"><div class="vw-hcell">Name<span class="vw-colres" data-vw-colres="name"></span></div>${coll.modes.map(m => `<div class="vw-hcell mode" data-vw-mode-cell="${m.id}" title="${coll.modes.length > 1 ? 'Drag to reorder' : ''}"><span class="vw-colres" data-vw-colres="${m.id}"></span><input class="vw-mode-name" value="${esc(m.name)}" data-vw-mode-name="${m.id}" spellcheck="false" aria-label="Mode name"><span class="vw-actions"><button class="vw-mini" data-vw-dup-mode="${m.id}" title="Duplicate mode" aria-label="Duplicate mode">${icon('copy', 12)}</button>${coll.modes.length > 1 ? `<button class="vw-mini" data-vw-del-mode="${m.id}" title="Delete mode" aria-label="Delete mode">${icon('close', 12)}</button>` : ''}</span></div>`).join('')}<div class="vw-hcell"><button class="vw-mini add" data-vw-add-mode title="Add mode" aria-label="Add mode">+</button></div></div>`;
     const groups = varsRows(coll);
     let body = '';
@@ -1840,7 +1892,7 @@ function renderVarsWindow() {
     if (!body)
         body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
     const allGroups = vwGroupsOf(coll), inGroupCount = g => store.items.filter(i => i.collectionId === coll.id && (!g || i.name.startsWith(g + '/'))).length;
-    const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
+    const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''} ${vw.selGroups?.has(g) ? 'multi' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
     const fullIcon = vw.full ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 6.5l4-4M6.5 9.5l-4 4"/></svg>' : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9.5 6.5M2.5 13.5l4-4"/></svg>';
     // Re-rendering replaces the lists; keep where the user had scrolled them (e.g. after Create variable).
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
@@ -2932,9 +2984,11 @@ document.addEventListener('change', e => {
 // ===== constraints + float =====
 const constraintSizes = new WeakMap();
 function applyConstraints(d) {
-    for (const f of d.nodes) {
-        if (f.type !== 'frame')
-            continue;
+    // Outer frames first: a parent that grows resizes its Scale / Left & Right children before those children resize their own.
+    const depth = n => { let k = 0; for (let c = d.get(n.parentId); c && k < 100; c = d.get(c.parentId))
+        k++; return k; };
+    const frames = d.nodes.filter(n => n.type === 'frame').map(n => [depth(n), n]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+    for (const f of frames) {
         const last = constraintSizes.get(f);
         if (!last) {
             constraintSizes.set(f, { w: f.w, h: f.h });
@@ -3020,8 +3074,8 @@ function frameSection(ns) {
         for (const [name, w, h] of items)
             if ((n.w === w && n.h === h) || (n.w === h && n.h === w))
                 cur ||= group + '|' + name;
-    const opts = FRAME_PRESETS.map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(([name, w, h]) => `<option value="${esc(group + '|' + name)}" ${cur === group + '|' + name ? 'selected' : ''}>${esc(name)} · ${w}×${h}</option>`).join('')}</optgroup>`).join('');
-    return section('Frame', `<select class="full-width" data-frame-preset aria-label="Frame preset"><option value="" ${cur ? '' : 'selected'}>Custom size</option>${opts}</select><div class="ly-row" style="margin-top:8px"><div class="segmented ly-dir"><button data-frame-orient="portrait" class="${n.h >= n.w ? 'active' : ''}" title="Portrait">▯</button><button data-frame-orient="landscape" class="${n.w > n.h ? 'active' : ''}" title="Landscape">▭</button></div></div>`);
+    const opts = FRAME_PRESETS.filter(g => ['Phone', 'Tablet', 'Desktop'].includes(g[0])).map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(([name, w, h]) => `<option value="${esc(group + '|' + name)}" ${cur === group + '|' + name ? 'selected' : ''}>${esc(name)} · ${w}×${h}</option>`).join('')}</optgroup>`).join('');
+    return section('Size preset', `<select class="full-width" data-frame-preset aria-label="Size preset"><option value="" disabled ${cur ? '' : 'selected'} hidden>Choose a size</option>${opts}</select>`);
 }
 function createPresetFrame(key) {
     const p = findPreset(key);
@@ -4745,7 +4799,7 @@ const POS_ICONS = {
 };
 function positionSectionHtml(n) {
     const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
-    const p = doc.get(n.parentId), cons = !!p && p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute');
+    const p = doc.get(n.parentId), cons = !!p && (p.type === 'group' || p.booleanOp || p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute'));
     const h = n.constraintH || 'left', v = n.constraintV || 'top';
     const flips = `<div class="pos-flips"><button data-rotate90 title="Rotate 90°" aria-label="Rotate 90 degrees">${POS_ICONS.rot90}</button><button data-flip="x" class="${n.flipX ? 'on' : ''}" title="Flip horizontal" aria-label="Flip horizontal">${POS_ICONS.flipH}</button><button data-flip="y" class="${n.flipY ? 'on' : ''}" title="Flip vertical" aria-label="Flip vertical">${POS_ICONS.flipV}</button></div>`;
     const left = (cons ? cnSelect('constraintH', h, [['left', 'Left'], ['right', 'Right'], ['stretch', 'Left & Right'], ['center', 'Center'], ['scale', 'Scale']], '⊢⊣') + cnSelect('constraintV', v, [['top', 'Top'], ['bottom', 'Bottom'], ['stretch', 'Top & Bottom'], ['center', 'Center'], ['scale', 'Scale']], '⌶') : '') + field(icon('rotate', 12), 'rotation', n.rotation, { unit: '°', title: 'Rotation' });
@@ -4909,13 +4963,26 @@ class DocumentModel {
             if (depth > 500) // cycle guard only
                 return;
             // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
-            let clips = parentClips;
             // Auto layout "Canvas stacking: First on top" paints the children in reverse order (layer order is unchanged).
             const kidsOf = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
+            // Mask entries, built once per parent: a visible mask clips every sibling stacked below it (Figma: the mask sits above what it masks).
+            const maskFor = new Map();
+            let active = null;
+            const flipped = !!pn?.layoutFlip;
+            for (let j = 0; j < kidsOf.length; j++) {
+                const i = flipped ? kidsOf.length - 1 - j : j, k = kidsOf[i];
+                if (k.isMask && k.visible) {
+                    const mm = multiply(m, localMatrix(k));
+                    active = { mask: k, matrix: mm, inverse: inverse(mm), w: k.w, h: k.h, radius: k.type === 'ellipse' ? Math.min(k.w, k.h) / 2 : k.radius || 0, radii: k.type === 'ellipse' ? null : cornerRadii(k) };
+                }
+                else
+                    maskFor.set(k.id, active);
+            }
             for (const n of pn?.layoutReverseZ && isAutoLayout(pn) ? [...kidsOf].reverse() : kidsOf) {
                 if (visited.has(n.id))
                     continue;
                 visited.add(n.id);
+                const clips = maskFor.get(n.id) ? [...parentClips, maskFor.get(n.id)] : parentClips;
                 const mat = multiply(m, localMatrix(n)), box = boxOf(mat, n.w, n.h), o = opacity * n.opacity, hide = hidden || !n.visible, lock = locked || n.locked;
                 const item = { node: n, matrix: mat, inverse: inverse(mat), box, opacity: o, clips, hidden: hide, locked: lock, boolChild: boolInside.has(pid) };
                 world.set(n.id, item);
@@ -4925,9 +4992,6 @@ class DocumentModel {
                 if (n.booleanOp || boolInside.has(pid))
                     boolInside.add(n.id);
                 walk(n.id, mat, o, next, hide, lock, depth + 1);
-                if (n.isMask && n.visible)
-                    // radius/radii let the GPU path approximate the mask with its rounded box (or ellipse) on huge scenes.
-                    clips = [...parentClips, { mask: n, matrix: mat, inverse: inverse(mat), w: n.w, h: n.h, radius: n.type === 'ellipse' ? Math.min(n.w, n.h) / 2 : n.radius || 0, radii: n.type === 'ellipse' ? null : cornerRadii(n) }];
             }
         };
         walk(null, identity(), 1, [], false, false, 0);
@@ -5369,7 +5433,7 @@ function strokeNeedsRaster(n) {
 function needsRasterShape(n) {
     if (['text', 'group'].includes(n.type))
         return false;
-    return hasRadii(n) || strokeNeedsRaster(n);
+    return hasRadii(n) || strokeNeedsRaster(n) || arcActive(n);
 }
 function paintStroke(ctx, n, path) {
     if (!strokeIsOn(n) || n.type === 'text')
@@ -5421,6 +5485,8 @@ function paintStroke(ctx, n, path) {
 }
 // SVG: element for the node geometry with arbitrary attributes.
 function svgShapeEl(n, f, a) {
+    if (arcActive(n))
+        return `<path d="${arcD(n, f)}" fill-rule="evenodd" ${a}/>`;
     if (n.type === 'ellipse')
         return `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${a}/>`;
     if (n.type === 'path' || n.type === 'line')
@@ -5465,8 +5531,78 @@ function svgStrokeExtra(n, f, e, prefix) {
     return { defs, el };
 }
 
+// ----- ellipse arc mode: Start (degrees), Sweep (% of the full turn), Ratio (% inner radius) -----
+function arcActive(n) { return n.type === 'ellipse' && ((n.arcSweep ?? 100) < 100 || (n.arcRatio || 0) > 0); }
+function arcParams(n) {
+    const a0 = (n.arcStart || 0) * Math.PI / 180, sweep = clamp((n.arcSweep ?? 100), 0, 100) / 100 * Math.PI * 2, ratio = clamp((n.arcRatio || 0) / 100, 0, .99);
+    return { a0, sweep, ratio, full: sweep >= Math.PI * 2 - 1e-6 };
+}
+// Local-space polygon of the arc shape (used for boolean operations).
+function arcPoly(n, steps = 96) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2, pt = (a, k) => [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k];
+    const out = [];
+    const nOuter = Math.max(2, Math.ceil(steps * sweep / (Math.PI * 2)));
+    for (let i = 0; i <= nOuter; i++)
+        out.push(pt(a0 + sweep * i / nOuter, 1));
+    if (full && ratio > 0)
+        return [out.slice(0, -1), Array.from({ length: steps }, (_, i) => pt(a0 - Math.PI * 2 * i / steps, ratio))];
+    if (ratio > 0)
+        for (let i = nOuter; i >= 0; i--)
+            out.push(pt(a0 + sweep * i / nOuter, ratio));
+    else if (!full)
+        out.push([cx, cy]);
+    return [out];
+}
+function arcPath(p, n) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = Math.max(.001, n.w / 2), ry = Math.max(.001, n.h / 2);
+    if (sweep <= 0)
+        return p;
+    if (full) {
+        p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
+        p.ellipse(cx, cy, rx, ry, 0, a0, a0 + Math.PI * 2);
+        p.closePath();
+        if (ratio > 0) {
+            p.moveTo(cx + Math.cos(a0) * rx * ratio, cy + Math.sin(a0) * ry * ratio);
+            p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a0, a0 - Math.PI * 2, true);
+            p.closePath();
+        }
+        return p;
+    }
+    const a1 = a0 + sweep;
+    p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
+    p.ellipse(cx, cy, rx, ry, 0, a0, a1);
+    if (ratio > 0) {
+        p.lineTo(cx + Math.cos(a1) * rx * ratio, cy + Math.sin(a1) * ry * ratio);
+        p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a1, a0, true);
+    }
+    else
+        p.lineTo(cx, cy);
+    p.closePath();
+    return p;
+}
+function arcD(n, f = v => Math.round(v * 100) / 100) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2;
+    const P = (a, k) => `${f(cx + Math.cos(a) * rx * k)} ${f(cy + Math.sin(a) * ry * k)}`;
+    if (sweep <= 0)
+        return '';
+    if (full) {
+        let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0 + Math.PI, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0, 1)}Z`;
+        if (ratio > 0)
+            d += `M${P(a0, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0 + Math.PI, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0, ratio)}Z`;
+        return d;
+    }
+    const large = sweep > Math.PI ? 1 : 0, a1 = a0 + sweep;
+    let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 ${large} 1 ${P(a1, 1)}`;
+    if (ratio > 0)
+        d += `L${P(a1, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 ${large} 0 ${P(a0, ratio)}Z`;
+    else
+        d += `L${f(cx)} ${f(cy)}Z`;
+    return d;
+}
 function pathFor(n) {
     const p = new Path2D();
+    if (n.type === 'ellipse' && arcActive(n))
+        return arcPath(p, n);
     if (n.type === 'ellipse')
         p.ellipse(n.w / 2, n.h / 2, Math.max(.001, n.w / 2), Math.max(.001, n.h / 2), 0, 0, Math.PI * 2);
     else if (n.type === 'line') {
@@ -5832,6 +5968,7 @@ class Renderer {
                 return;
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
+                // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
                 const entry = this.atlas.get(n, resolution, this.images);
                 if (!entry) {
                     count--;
@@ -6200,7 +6337,7 @@ function exportSVG(doc, ids) {
             if (strokeIsOn(n))
                 item += sx.el || svgShapeEl(n, f, `fill="none" ${svgStrokeAttrs(n, f, e)}`);
         }
-        else if (n.type === 'ellipse')
+        else if (n.type === 'ellipse' && !arcActive(n))
             item = `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${attrs}/>`;
         else if (n.type === 'path' || n.type === 'line')
             item = `<path d="${dFor(n)}" ${attrs}/>`;
@@ -6460,6 +6597,11 @@ function syncComponents(activeOnly = true) {
             const src = components.get(n.sourceId) || pmap.get(n.sourceId);
             if (!src)
                 continue;
+            // Layers that were copied from a nested instance but lost their instance flag are repaired here.
+            if (src.isInstance && !n.isInstance && !n.component && !src.component) {
+                n.isInstance = true;
+                n.version = (n.version || 0) + 1;
+            }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
             const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
@@ -6731,7 +6873,8 @@ function switchPage(id) {
     invalidate();
 }
 // ----- pages: nesting folders, dividers, drag reordering -----
-function pageChildren(pid) { return doc.data.pages.filter(p => (p.parentId || null) === (pid || null)); }
+// Pages flagged `internal` hold library components pulled in from Figma's hidden canvas; they are not shown in the page list.
+function pageChildren(pid) { return doc.data.pages.filter(p => !p.internal && (p.parentId || null) === (pid || null)); }
 function pageHasNodes(p) { return (p.nodes?.length || 0) > 0; }
 function isPageDivider(p) { return /^-{2,}$/.test(String(p.name || '').trim()); }
 function pageIsFolder(p) { return pageChildren(p.id).length > 0; }
@@ -6751,7 +6894,7 @@ function renderPages() {
                 continue;
             }
             const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
-            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
             if (folder && open)
                 walk(p.id, depth + 1);
         }
@@ -6759,10 +6902,8 @@ function renderPages() {
     walk(null, 0);
     $('#page-list').innerHTML = out.join('') || '<div class="empty-state" style="padding:14px">No pages yet.</div>';
 }
-function movePage(srcId, targetId, mode) {
-    const pages = doc.data.pages, src = pages.find(p => p.id === srcId);
-    if (!src)
-        return;
+function movePage(srcIds, targetId, mode) {
+    const pages = doc.data.pages, ids = String(srcIds).split(',').filter(Boolean);
     const isDescendantOf = (id, of) => {
         let c = pages.find(p => p.id === id);
         while (c && c.parentId) {
@@ -6772,84 +6913,43 @@ function movePage(srcId, targetId, mode) {
         }
         return false;
     };
-    if (targetId && (targetId === srcId || isDescendantOf(targetId, srcId)))
+    // Keep the pages' current order, drop the target itself and anything already moving along with its own parent.
+    const srcs = pages.filter(p => ids.includes(p.id) && p.id !== targetId && !(targetId && isDescendantOf(targetId, p.id)) && !ids.includes(p.parentId));
+    if (!srcs.length)
         return;
     transaction('Reorder pages', () => {
-        pages.splice(pages.indexOf(src), 1);
-        if (!targetId) {
-            src.parentId = null;
-            pages.push(src);
+        // A moved page drags its own sub-pages along; they stay right behind it in the array.
+        const take = p => { const group = [p]; for (const c of pages) if (c.parentId === p.id) group.push(...take(c)); return group; };
+        const blocks = srcs.map(take), moving = new Set(blocks.flat());
+        for (const p of moving)
+            pages.splice(pages.indexOf(p), 1);
+        const t = targetId && pages.find(p => p.id === targetId);
+        if (!t) {
+            for (const b of blocks) { b[0].parentId = null; pages.push(...b); }
+            return;
+        }
+        let at;
+        if (mode === 'into') {
+            for (const b of blocks)
+                b[0].parentId = t.id;
+            state.expandedPages.add(t.id);
+            at = pages.indexOf(t) + 1;
+            while (pages[at] && isDescendantOf(pages[at].id, t.id))
+                at++;
         }
         else {
-            const t = pages.find(p => p.id === targetId);
-            if (!t) {
-                src.parentId = null;
-                pages.push(src);
-            }
-            else if (mode === 'into' && !pageHasNodes(t)) {
-                src.parentId = t.id;
-                pages.splice(pages.indexOf(t) + 1, 0, src);
-                state.expandedPages.add(t.id);
-            }
-            else {
-                src.parentId = t.parentId || null;
-                pages.splice(pages.indexOf(t) + (mode === 'after' ? 1 : 0), 0, src);
+            for (const b of blocks)
+                b[0].parentId = t.parentId || null;
+            at = pages.indexOf(t);
+            if (mode === 'after') {
+                at++;
+                while (pages[at] && isDescendantOf(pages[at].id, t.id))
+                    at++;
             }
         }
+        pages.splice(at, 0, ...blocks.flat());
+        state.pageSel = new Set();
     });
-}
-function deletePage(id) {
-    const p = doc.data.pages.find(x => x.id === id);
-    if (!p)
-        return;
-    if (doc.data.pages.length <= 1) {
-        toast('A document needs at least one page.');
-        return;
-    }
-    // No confirmation: the delete is a normal history step, so Ctrl+Z brings the page back.
-    toast(`Deleted “${p.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
-    transaction('Delete page', () => {
-        for (const c of doc.data.pages)
-            if (c.parentId === id)
-                c.parentId = p.parentId || null;
-        doc.data.pages = doc.data.pages.filter(x => x.id !== id);
-        state.pageViews.delete(id);
-        if (doc.data.pageId === id) {
-            doc.data.pageId = doc.data.pages[0].id;
-            state.selection.clear();
-            state.camera = { x: 60, y: 70, zoom: .6 };
-        }
-        doc.refresh();
-    });
-    setTimeout(() => fit(), 0);
-}
-// Copy a page with all of its layers. References inside the page (parents, instances of components on
-// this page, swaps, prototype links) point at the copies; references to other pages stay as they are.
-function duplicatePage(id) {
-    const src = doc.data.pages.find(x => x.id === id);
-    if (!src)
-        return;
-    const ids = new Map(src.nodes.map(n => [n.id, uid()])), remap = v => ids.get(v) ?? v;
-    const nodes = src.nodes.map(n => {
-        const c = structuredClone(n);
-        c.id = ids.get(n.id);
-        for (const k of ['parentId', 'sourceId', 'swapOf', 'prototypeTarget'])
-            if (c[k] != null)
-                c[k] = remap(c[k]);
-        if (Array.isArray(c.exposedNested))
-            c.exposedNested = c.exposedNested.map(remap);
-        c.version = 0;
-        return c;
-    });
-    const names = new Set(doc.data.pages.map(p => p.name));
-    let name = `${src.name} copy`, k = 2;
-    while (names.has(name))
-        name = `${src.name} copy ${k++}`;
-    const page = { ...structuredClone({ ...src, nodes: [] }), id: uid(), name, nodes };
-    transaction('Duplicate page', () => {
-        doc.data.pages.splice(doc.data.pages.indexOf(src) + 1, 0, page);
-    });
-    switchPage(page.id);
 }
 function renamePageInline(id) {
     const p = doc.data.pages.find(x => x.id === id);
@@ -6860,6 +6960,38 @@ function renamePageInline(id) {
     if (!el)
         return;
     inlineRename(el, p.name, name => transaction('Rename page', () => { p.name = name; }));
+}
+// Layer icon for vectors: a miniature of the real shape, scaled to fit a 13px box (like Figma).
+function vectorThumb(n) {
+    if (n.type !== 'path' && n.type !== 'line')
+        return '';
+    const W = Math.max(.001, n.type === 'path' ? n.pathW || n.w : n.w), H = Math.max(.001, n.type === 'path' ? n.pathH || n.h : n.h);
+    let d = '', count = 0;
+    const num = v => Math.round(v * 100) / 100;
+    if (n.type === 'line')
+        d = `M0 ${num(n.h / 2)}L${num(n.w)} ${num(n.h / 2)}`;
+    else
+        for (const c of pathContours(n)) {
+            const pts = c.points || [];
+            count += pts.length;
+            if (!pts.length)
+                continue;
+            if (count > 600)
+                return '';
+            d += `M${num(pts[0].x)} ${num(pts[0].y)}`;
+            const seg = (a, b) => { d += a.out || b.in ? `C${num(a.out?.x ?? a.x)} ${num(a.out?.y ?? a.y)} ${num(b.in?.x ?? b.x)} ${num(b.in?.y ?? b.y)} ${num(b.x)} ${num(b.y)}` : `L${num(b.x)} ${num(b.y)}`; };
+            for (let i = 1; i < pts.length; i++)
+                seg(pts[i - 1], pts[i]);
+            if (c.closed) {
+                seg(pts.at(-1), pts[0]);
+                d += 'Z';
+            }
+        }
+    if (!d)
+        return '';
+    const filled = n.type === 'path' && n.fill && n.fill !== 'none' && n.closed !== false;
+    // Vector-effect keeps hairline strokes visible however much the shape is shrunk.
+    return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 function renderLayers() {
     // Plugins dan Code Builder memakai seluruh panel kiri (tanpa pages/layers).
@@ -6893,7 +7025,7 @@ function renderLayers() {
         return;
     }
     // While a search is open with a query, the results list takes the place of pages and layers.
-    const searching = !$('#layer-search-box').classList.contains('hidden') && $('#search-layers').value.trim() !== '';
+    const searching = !$('#layer-search-box').classList.contains('hidden');
     for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layers-heading'])
         $(id).classList.toggle('hidden', searching);
     $('#layer-tree').classList.toggle('hidden', searching);
@@ -6928,7 +7060,7 @@ function renderLayers() {
             const children = doc.children(n.id), hasChildren = children.length > 0, open = state.expanded.has(n.id) || !!q;
             if (depth === 0)
                 html += '<div class="layer-group">';
-            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${n.component || n.isInstance || n.componentSet ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
+            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${inComponentTree(n) ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || (n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13))}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
             if (hasChildren && open)
                 walk(n.id, depth + 1);
             if (depth === 0)
@@ -6972,7 +7104,7 @@ function renderInspector() {
         html += framePresetPanel();
     }
     else if (!n) {
-        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>`);
+        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
         html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
         html += section('Saved to your workspace', `<p>This document is saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
     }
@@ -6987,6 +7119,8 @@ function renderInspector() {
         html += section('Position', positionSectionHtml(n));
         html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
         html += section('Appearance', `${appearanceTopHtml(n)}${varRow('Visibility', 'visible')}${varCollectionsHtml(n)}`, varCollectionsButton(n));
+        if (!multi && n.type === 'ellipse')
+            html += section('Arc', `<div class="arc-row"><div class="arc-cell"><span class="small-label">Start</span>${field('', 'arcStart', n.arcStart || 0, { unit: '°', title: 'Arc start angle' })}</div><div class="arc-cell"><span class="small-label">Sweep</span>${field('', 'arcSweep', n.arcSweep ?? 100, { unit: '%', min: 0, max: 100, title: 'Arc sweep' })}</div><div class="arc-cell"><span class="small-label">Ratio</span>${field('', 'arcRatio', n.arcRatio || 0, { unit: '%', min: 0, max: 99, title: 'Arc ratio (inner radius)' })}</div></div>`);
         if (ns.every(x => x.type === 'text')) {
             const vAlign = n.textAlignV || 'top';
             html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented">${[['top', 'Align top'], ['center', 'Align middle'], ['bottom', 'Align bottom']].map(([a, t]) => `<button data-text-valign="${a}" class="${vAlign === a ? 'active' : ''}" title="${t}" aria-label="${t}">${TX_VALIGN_ICONS[a]}</button>`).join('')}</div></div><div class="property-grid"><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div><div class="tx-set-row"><button class="wh-lock ${textSettingsActive(n) ? 'active' : ''}" data-text-settings title="Text settings" aria-label="Text settings">${icon('sliders', 14)}</button></div></div><div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
@@ -7001,6 +7135,36 @@ function renderInspector() {
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
     $('#inspector').innerHTML = html;
+    // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
+    if (ns.length === 1 && n.isInstance && !insideInstance(n))
+        $('#inspector').querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
+    if (ns.length === 1 && insideInstance(n))
+        $('#inspector').querySelectorAll('section.inspector-section').forEach(sec => {
+            const title = (sec.querySelector('.section-heading')?.textContent || '').trim();
+            if (!/^(Position|Layout|Auto layout)/.test(title))
+                return;
+            const inBool = !!doc.get(n.parentId)?.booleanOp;
+            if (!inBool)
+                sec.querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
+            sec.querySelectorAll('input,select,button').forEach(el => {
+                if (inBool) {
+                    // Operands of a union / subtract / intersect / exclude: position and layout belong to the operation.
+                    if (!el.matches('[data-cmp]')) {
+                        el.disabled = true;
+                        el.classList.add('inst-locked');
+                    }
+                    return;
+                }
+                if (el.tagName === 'INPUT' && el.matches('[data-prop="x"],[data-prop="y"],[data-prop="rotation"],[data-prop="w"],[data-prop="h"]'))
+                    el.readOnly = true;
+                if (el.tagName === 'INPUT' && el.matches('[data-prop="w"],[data-prop="h"]'))
+                    el.dataset.sizeWindow = el.dataset.prop === 'w' ? 'h' : 'v';
+                else if (el.matches('[data-align],[data-flip],[data-rotate90],[data-ly-pos],[data-cn-pin],select[data-prop^="constraint"]')) {
+                    el.disabled = true;
+                    el.classList.add('inst-locked');
+                }
+            });
+        });
     $('#inspector').querySelectorAll('[data-img-asset]').forEach(el => { const src = doc.data.assets[el.dataset.imgAsset]; if (src)
         el.style.backgroundImage = `url("${src}")`; });
     lastInspector = performance.now();
@@ -7014,10 +7178,32 @@ function constrainChildren(n, oldW, oldH) {
             continue;
         if (n.type === 'group' || n.booleanOp) {
             const sx = n.w / (oldW || 1), sy = n.h / (oldH || 1), cw = c.w, ch = c.h;
-            c.x *= sx;
-            c.y *= sy;
-            c.w *= sx;
-            c.h *= sy;
+            // Children of a group scale with it, unless they carry an explicit constraint (Left, Right, Center, Left & Right).
+            const ch0 = c.constraintH, cv0 = c.constraintV;
+            if (ch0 && ch0 !== 'scale') {
+                if (ch0 === 'right')
+                    c.x += dx;
+                else if (ch0 === 'center')
+                    c.x += dx / 2;
+                else if (ch0 === 'stretch')
+                    c.w = Math.max(1, c.w + dx);
+            }
+            else {
+                c.x *= sx;
+                c.w *= sx;
+            }
+            if (cv0 && cv0 !== 'scale') {
+                if (cv0 === 'bottom')
+                    c.y += dy;
+                else if (cv0 === 'center')
+                    c.y += dy / 2;
+                else if (cv0 === 'stretch')
+                    c.h = Math.max(1, c.h + dy);
+            }
+            else {
+                c.y *= sy;
+                c.h *= sy;
+            }
             if (c.type === 'text')
                 c.fontSize *= Math.min(sx, sy);
             constrainChildren(c, cw, ch);
@@ -7076,6 +7262,10 @@ function setProperty(prop, value, { live = false } = {}) {
             v = +v;
         if (['w', 'h'].includes(prop))
             v = Math.max(.1, +v);
+        if (prop === 'arcSweep')
+            v = clamp(+v, 0, 100);
+        if (prop === 'arcRatio')
+            v = clamp(+v, 0, 99);
         if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'gap', 'gapCross', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
             v = Math.max(0, +v);
         if (prop === 'fontSize')
@@ -7204,7 +7394,9 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
             if (asInstance) {
                 copy.sourceId = src.id;
                 copy.component = false;
-                copy.isInstance = src.id === root.id;
+                // A nested instance stays an instance when its component is placed.
+                copy.isInstance = src.id === root.id || !!src.isInstance;
+                delete copy.swapOf; // the copy's slot is the layer it was copied from
                 copy.overrides = {};
             }
             doc.add(copy);
@@ -7496,7 +7688,8 @@ function instantiate(id, at = null) {
                 n.parentId = src === id ? null : ids.get(n.parentId);
                 n.sourceId = src;
                 n.component = false;
-                n.isInstance = src === id;
+                n.isInstance = src === id || !!n.isInstance;
+                delete n.swapOf;
                 n.overrides = {};
                 doc.add(n);
                 if (src === id)
@@ -7630,6 +7823,31 @@ async function importImage(file, location = null) {
         toast(e.message || 'Could not read the image.');
     }
 }
+// Arc handles on a selected circle (Start / Sweep / Ratio), shown while the outline is hovered.
+function arcHandles(n) {
+    const { a0, sweep, ratio } = arcParams(n), m = doc.world(n.id)?.matrix;
+    if (!m)
+        return [];
+    // Handles sit slightly inside the outline so the bounding box never covers them.
+    const inset = Math.min(1 - 14 / Math.max(28, Math.min(n.w, n.h) / 2 * state.camera.zoom), .9);
+    const at = (a, k) => { const q = point(m, n.w / 2 + Math.cos(a) * n.w / 2 * k, n.h / 2 + Math.sin(a) * n.h / 2 * k); return worldToScreen(q.x, q.y); };
+    return [{ name: 'arc-end', ...at(a0 + sweep, inset) }, { name: 'arc-ratio', ...at(a0, ratio) }, { name: 'arc-start', ...at(a0, inset) }];
+}
+function arcSelected() {
+    const roots = selectedRoots();
+    return roots.length === 1 && roots[0].type === 'ellipse' ? roots[0] : null;
+}
+// Pointer position in the ellipse's unit space (radius 1 = the outline).
+function arcLocal(n, w) {
+    const inv = doc.world(n.id).inverse, q = point(inv, w.x, w.y);
+    return { nx: (q.x - n.w / 2) / Math.max(.001, n.w / 2), ny: (q.y - n.h / 2) / Math.max(.001, n.h / 2) };
+}
+function arcNearOutline(n, p, w) {
+    const { nx, ny } = arcLocal(n, w), r = Math.hypot(nx, ny), tolPx = 12, rad = Math.max(1, Math.min(n.w, n.h) / 2 * state.camera.zoom);
+    if (Math.abs(r - 1) * rad < tolPx)
+        return true;
+    return arcHandles(n).some(h => Math.hypot(h.x - p.x, h.y - p.y) < 9);
+}
 function selectionGeometry() {
     const roots = selectedRoots();
     if (!roots.length)
@@ -7725,6 +7943,18 @@ function drawOverlay() {
     const z = state.camera.zoom, blue = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
     const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
     const accent = selNodes.length && selNodes.every(inComponentTree) ? COMPONENT_PURPLE : blue;
+    // Pixel grid: from 800% up every 1px is outlined with a thin grey line, like Figma.
+    if (z >= 8) {
+        const W = area.clientWidth, H = area.clientHeight, x0 = Math.floor(-state.camera.x / z), x1 = Math.ceil((W - state.camera.x) / z), y0 = Math.floor(-state.camera.y / z), y1 = Math.ceil((H - state.camera.y) / z);
+        c.save();
+        c.lineWidth = 1;
+        c.strokeStyle = options.theme === 'dark' ? 'rgba(160,160,170,.28)' : 'rgba(120,120,130,.28)';
+        c.beginPath();
+        for (let x = x0; x <= x1; x++) { const sx = Math.round(x * z + state.camera.x) + .5; c.moveTo(sx, 0); c.lineTo(sx, H); }
+        for (let y = y0; y <= y1; y++) { const sy = Math.round(y * z + state.camera.y) + .5; c.moveTo(0, sy); c.lineTo(W, sy); }
+        c.stroke();
+        c.restore();
+    }
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     for (const s of doc.scene()) {
         if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
@@ -7734,16 +7964,75 @@ function drawOverlay() {
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
         c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
-        c.fillText(s.node.name, p.x, p.y - 12);
+        // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
+        const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0));
+        let label = s.node.name;
+        if (c.measureText(label).width > maxW) {
+            while (label.length > 1 && c.measureText(label + '…').width > maxW)
+                label = label.slice(0, -1);
+            label = maxW < 12 ? '' : label + '…';
+        }
+        if (label && s.node.isSection) {
+            const tw = c.measureText(label).width;
+            c.fillStyle = '#ffffff';
+            c.beginPath();
+            c.roundRect(p.x, p.y - 22, tw + 12, 18, 4);
+            c.fill();
+            c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : '#5b5566';
+            c.fillText(label, p.x + 6, p.y - 10);
+        }
+        else
+            c.fillText(label, p.x, p.y - 12);
     }
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
         if (s)
             outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, inComponentTree(s.node) ? COMPONENT_PURPLE : '#5b9cf0', .8);
     }
+    const arcNode = arcSelected();
     const g = selectionGeometry();
     if (g && !state.editing && !state.pathEdit) {
         const corners = outline(c, g, accent, 1.2);
+        // Selected text shows the baseline of every line inside its bounding box.
+        if (g.node?.type === 'text' && !state.editing) {
+            try {
+                const lt = layoutText(g.node), nl = Math.max(1, lt.lines?.length || 1);
+                c.save();
+                c.strokeStyle = accent;
+                c.globalAlpha = .55;
+                c.lineWidth = 1;
+                c.setLineDash([3, 3]);
+                for (let i = 0; i < nl; i++) {
+                    const y = lt.baseline + i * lt.lineHeight;
+                    if (y > g.h + 1)
+                        break;
+                    const a = point(g.matrix, 0, y), b = point(g.matrix, g.w, y), pa = worldToScreen(a.x, a.y), pb = worldToScreen(b.x, b.y);
+                    c.beginPath();
+                    c.moveTo(pa.x, pa.y);
+                    c.lineTo(pb.x, pb.y);
+                    c.stroke();
+                }
+                c.restore();
+            }
+            catch { }
+        }
+        if (arcNode && (state.arcShow || state.gesture?.kind === 'arc')) {
+            // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line.
+            c.save();
+            c.lineWidth = 1.5;
+            c.strokeStyle = accent;
+            c.fillStyle = '#ffffff';
+            const hs = arcHandles(arcNode), pr = arcParams(arcNode);
+            for (const h of hs) {
+                if (h.name === 'arc-start' && pr.full)
+                    continue;
+                c.beginPath();
+                c.arc(h.x, h.y, 4.5, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            }
+            c.restore();
+        }
         if (!state.gesture || !['move', 'marquee'].includes(state.gesture.kind)) {
             const handles = handlesFor(g);
             c.strokeStyle = accent;
@@ -7926,7 +8215,7 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             continue;
         // A top-level frame or section that already holds layers is only picked through its label or the layers panel,
         // so clicking its empty area no longer grabs (and drags) the whole frame.
-        if (!framesOnly && !deep && n.type === 'frame' && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
+        if (!framesOnly && !deep && n.type === 'frame' && !n.componentSet && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
             continue;
         let clipped = false;
         for (const clip of s.clips) {
@@ -7940,7 +8229,9 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             continue;
         const p = point(s.inverse, world.x, world.y);
         let hit = false;
-        if (n.type === 'ellipse')
+        if (arcActive(n))
+            hit = hitCtx.isPointInPath(pathFor(n), p.x, p.y) || (n.strokeWidth > 0 && hitCtx.isPointInStroke(pathFor(n), p.x, p.y));
+        else if (n.type === 'ellipse')
             hit = ((p.x - n.w / 2) / (n.w / 2 + tol)) ** 2 + ((p.y - n.h / 2) / (n.h / 2 + tol)) ** 2 <= 1;
         else if (n.type === 'path' || n.type === 'line') {
             hitCtx.lineWidth = Math.max(n.strokeWidth, 8 / state.camera.zoom);
@@ -7950,9 +8241,16 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
         if (hit) {
             if (!deep && !framesOnly) {
-                const groups = doc.ancestors(n).filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                const anc = doc.ancestors(n), variantOf = [n, ...anc].find(a => a.component && doc.get(a.parentId)?.componentSet);
+                if (variantOf)
+                    return variantOf;
+                const groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                // Inside an auto layout frame a click always picks that frame first (the outermost one); Ctrl/Cmd reaches the smallest node.
                 if (groups.length)
                     return groups[0];
+                const auto = anc.filter(isAutoLayout).pop();
+                if (auto)
+                    return auto;
             }
             return n;
         }
@@ -8108,9 +8406,21 @@ function pointerDown(e) {
         const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
         state.selection = new Set([n.id]);
         state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
+        // Frames/sections show only their bounding box while drawing; the background comes back on release.
+        if (type === 'frame') { state.gesture.origFill = n.fill; n.fill = 'none'; }
         refreshUI();
         invalidate();
         return;
+    }
+    const arcN = state.tool === 'select' && state.arcShow ? arcSelected() : null;
+    if (arcN) {
+        const ah = arcHandles(arcN).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 9 && !(h.name === 'arc-start' && arcParams(arcN).full));
+        if (ah) {
+            history.begin('Edit arc');
+            const pr = arcParams(arcN);
+            state.gesture = { kind: 'arc', id: arcN.id, which: ah.name, endAngle: pr.a0 + pr.sweep, lastSweep: pr.sweep, moved: false };
+            return;
+        }
     }
     const geo = selectionGeometry();
     if (geo) {
@@ -8127,7 +8437,19 @@ function pointerDown(e) {
             return;
         }
     }
-    const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    // A single selected layer that sits deeper inside the hit stays selected when pressed again (multi-click descent, like Figma).
+    if (hit && !e.shiftKey && !e.altKey && !(e.metaKey || e.ctrlKey) && state.selection.size === 1 && !state.selection.has(hit.id)) {
+        const inner0 = hitTest(w, { deep: true }), selId = [...state.selection][0];
+        if (inner0 && [inner0, ...doc.ancestors(inner0)].some(a => a.id === selId) && doc.ancestors(doc.get(selId)).some(a => a.id === hit.id))
+            hit = doc.get(selId);
+    }
+    // With several layers selected, pressing on any of them (or inside one) drags the whole selection instead of picking another layer.
+    if (hit && !e.shiftKey && state.selection.size > 1 && !state.selection.has(hit.id)) {
+        const inner = hitTest(w, { deep: true }), owner = inner && [inner, ...doc.ancestors(inner)].find(a => state.selection.has(a.id));
+        if (owner)
+            hit = owner;
+    }
     if (hit) {
         if (e.shiftKey) {
             if (state.selection.has(hit.id))
@@ -8144,11 +8466,10 @@ function pointerDown(e) {
             select([hit.id]);
         if (e.altKey) {
             history.begin('Duplicate and move');
-            const clones = cloneNodes(selectedRoots(), 0);
-            select(clones.map(n => n.id));
+            select(altDuplicate(selectedRoots()).map(n => n.id));
         }
         const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
-        state.gesture = { kind: 'move', start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
+        state.gesture = { kind: 'move', altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
     }
     else if (keepTextId && state.tool === 'select' && !e.shiftKey) {
         // Clicking empty canvas while typing only exits edit mode; the text layer stays selected (like Figma).
@@ -8165,6 +8486,20 @@ function pointerDown(e) {
         state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
         invalidate();
     }
+}
+// Alt-drag copies. A variant of a component set becomes an instance of it, placed where the variant is.
+function altDuplicate(picked) {
+    const variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
+    if (variant) {
+        const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
+        inst.name = set.name;
+        inst.parentId = set.parentId || null;
+        const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
+        setFromMatrix(inst, multiply(inverse(pm), wm));
+        doc.touch(inst);
+        return [inst];
+    }
+    return cloneNodes(picked, 0);
 }
 function smartSnap(dx, dy, g, disabled) {
     state.guides = [];
@@ -8251,6 +8586,11 @@ function pointerMove(e) {
                 state.altDown = !!e.altKey;
                 invalidate();
             }
+            const arcN = arcSelected(), arcOn = !!arcN && (arcNearOutline(arcN, p, w) || hitTest(w, { deep: true })?.id === arcN.id);
+            if (arcOn !== !!state.arcShow) {
+                state.arcShow = arcOn;
+                invalidate();
+            }
             const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
@@ -8329,6 +8669,38 @@ function pointerMove(e) {
         invalidate();
         return;
     }
+    if (g.kind === 'arc') {
+        const n = doc.get(g.id);
+        if (!n)
+            return;
+        const { nx, ny } = arcLocal(n, w), TAU = Math.PI * 2, snap = a => e.shiftKey ? Math.round(a / (Math.PI / 12)) * (Math.PI / 12) : a;
+        const norm = a => ((a % TAU) + TAU) % TAU;
+        if (g.which === 'arc-ratio')
+            n.arcRatio = Math.round(clamp(Math.hypot(nx, ny), 0, .99) * 100);
+        else {
+            const ang = snap(Math.atan2(ny, nx)), pr = arcParams(n);
+            if (g.which === 'arc-end') {
+                let d = norm(ang - pr.a0);
+                // Keep the sweep continuous when the handle passes the start line.
+                if (g.lastSweep > TAU * .75 && d < TAU * .25)
+                    d = TAU;
+                else if (g.lastSweep < TAU * .25 && d > TAU * .75)
+                    d = 0;
+                g.lastSweep = d;
+                n.arcSweep = Math.round(d / TAU * 1000) / 10;
+            }
+            else {
+                // Start handle: the end stays where it is, the sweep absorbs the change.
+                const s = norm(g.endAngle - ang);
+                n.arcStart = Math.round((norm(ang) * 180 / Math.PI) * 10) / 10 % 360;
+                n.arcSweep = Math.round((s === 0 && pr.sweep > 0 ? TAU : s) / TAU * 1000) / 10;
+            }
+        }
+        g.moved = true;
+        doc.touch(n);
+        changed({ ui: false });
+        return;
+    }
     if (g.kind === 'line-end') {
         const n = doc.get(g.id);
         if (!n)
@@ -8395,6 +8767,26 @@ function pointerMove(e) {
         }
         changed({ ui: false });
         return;
+    }
+    if (g.kind === 'move' && e.altKey && !g.altDone && g.moved) {
+        // Alt pressed mid-drag: put the originals back and carry copies instead (same result as Alt first, then drag).
+        g.altDone = true;
+        for (const [id, o] of g.originals) {
+            const n = doc.get(id);
+            if (n) {
+                n.x = o.x;
+                n.y = o.y;
+                delete n._drag;
+                doc.touch(n);
+            }
+        }
+        const copies = altDuplicate(g.roots.map(id => doc.get(id)).filter(Boolean));
+        select(copies.map(n => n.id));
+        const roots = selectedRoots();
+        g.roots = roots.map(n => n.id);
+        g.originals = saveOriginals(roots);
+        g.bounds = doc.bounds(g.roots);
+        g.parentMatrices = new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()]));
     }
     if (g.kind === 'move') {
         let dx = w.x - g.start.x, dy = w.y - g.start.y;
@@ -8588,8 +8980,9 @@ function pointerUp(e) {
     }
     if (g.kind === 'create') {
         const n = doc.get(g.id);
+        if (n && g.origFill !== undefined) { n.fill = g.origFill; doc.touch(n); }
         if (n && n.w < 3 && n.h < 3) {
-            n.w = n.type === 'frame' ? 400 : 120;
+            n.w = n.type === 'frame' ? 400 : 100;
             n.h = n.type === 'frame' ? 300 : n.type === 'line' ? 0.1 : 100;
             doc.touch(n);
         }
@@ -8600,7 +8993,9 @@ function pointerUp(e) {
     if (g.kind === 'path-edit') {
         normalizePath(doc.get(g.id));
     }
-    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end'].includes(g.kind)) {
+    if (g.kind === 'arc')
+        renderInspector();
+    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end', 'arc'].includes(g.kind)) {
         if (g.originals)
             for (const [id, orig] of g.originals) {
                 const n = doc.get(id);
@@ -8846,9 +9241,29 @@ function finishText(cancel = false) {
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
 function showMenu(items, x, y) { const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
+// A layer inside an instance (not the instance's own root).
+function insideInstance(n) { return !!n && doc.ancestors(n).some(a => a.isInstance); }
+// Copy what an instance overrides back into its main component, then clear the overrides.
+function pushToMain() {
+    transaction('Push changes to main component', () => {
+        for (const r of selectedRoots().filter(x => x.isInstance)) {
+            const page = pageOfNode(r.id);
+            for (const x of [r, ...pageTree(page, r.id)]) {
+                const src = x.sourceId && (doc.get(x.sourceId) || componentById(x.sourceId));
+                if (!src || !x.overrides)
+                    continue;
+                for (const [k, v] of Object.entries(x.overrides))
+                    src[k] = structuredClone(v);
+                x.overrides = {};
+                doc.touch(src);
+                doc.touch(x);
+            }
+        }
+        syncComponents(true);
+    });
+}
 function instanceMenuItems(n) {
-    const has = Object.keys(n.overrides || {}).length > 0;
-    return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, ...(has ? [{ label: 'Reset overrides', action: 'resetOverrides' }] : []), '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
+    return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Push changes to main component', action: 'pushToMain' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, { label: 'Reset instance', action: 'resetOverrides' }, '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
 }
 function detachSelectedInstances() { transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
     detachNodeTree(pageOfNode(x.id), x.id); }); }
@@ -8861,8 +9276,8 @@ function resetSelectedOverrides() { transaction('Reset overrides', () => { for (
     }
 } }); }
 function createFromInstance() { detachSelectedInstances(); makeComponent(); }
-function flattenPathOf(n) {
-    const pts = n.points || [], sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
+function flattenPathOf(n, ptsIn = null, closedIn = null) {
+    const pts = ptsIn || n.points || [], closedFlag = closedIn ?? n.closed, sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
     const seg = (a, b) => {
         if (a.out || b.in) {
             const p0 = { x: a.x * sx, y: a.y * sy }, p1 = { x: (a.out?.x ?? a.x) * sx, y: (a.out?.y ?? a.y) * sy }, p2 = { x: (b.in?.x ?? b.x) * sx, y: (b.in?.y ?? b.y) * sy }, p3 = { x: b.x * sx, y: b.y * sy };
@@ -8879,13 +9294,25 @@ function flattenPathOf(n) {
     out.push({ x: pts[0].x * sx, y: pts[0].y * sy });
     for (let i = 1; i < pts.length; i++)
         seg(pts[i - 1], pts[i]);
-    if (n.closed && pts.length > 1)
+    if (closedFlag && pts.length > 1)
         seg(pts.at(-1), pts[0]);
     return out;
 }
 function nodePolys(n) {
+    // A frame / group operand contributes the shapes inside it (an instance of an icon, for example), not its own box.
+    if ((n.type === 'frame' || n.type === 'group') && doc.children(n.id).length) {
+        const out = [];
+        for (const c of doc.children(n.id))
+            if (c.visible !== false)
+                out.push(...(nodePolys(c) || []));
+        return out.length ? out : null;
+    }
     const m = doc.world(n.id).matrix, tp = (x, y) => { const q = point(m, x, y); return [q.x, q.y]; };
     let ring = null;
+    if (n.type === 'ellipse' && arcActive(n)) {
+        const polys = arcPoly(n).map(r => r.map(([x, y]) => tp(x, y)));
+        return [polys];
+    }
     if (n.type === 'ellipse') {
         ring = [];
         for (let i = 0; i < 128; i++) {
@@ -8896,7 +9323,26 @@ function nodePolys(n) {
     else if (n.type === 'path') {
         if (!n.closed)
             return null;
-        ring = flattenPathOf(n).map(p => tp(p.x, p.y));
+        // Every closed sub-path counts: rings inside other rings become holes (even-odd), so icons keep their counters.
+        const rings = [flattenPathOf(n).map(p => tp(p.x, p.y))];
+        for (const c of n.contours || [])
+            if (c.closed !== false && (c.points || []).length > 2)
+                rings.push(flattenPathOf(n, c.points, true).map(p => tp(p.x, p.y)));
+        if (rings.length > 1) {
+            const area = r => Math.abs(r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
+            const inside = (pt, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
+            const info = rings.map((r, i) => ({ r, a: area(r), cont: rings.map((o, j) => j !== i && inside(r[0], o) ? j : -1).filter(j => j >= 0) }));
+            const polys = [];
+            const owner = new Map();
+            for (const x of info.filter(x => x.cont.length % 2 === 0)) { const p = [x.r]; polys.push(p); owner.set(x, p); }
+            for (const x of info.filter(x => x.cont.length % 2 === 1)) {
+                const parent = info.filter(o => o.cont.length === x.cont.length - 1 && x.cont.includes(info.indexOf(o))).sort((a, b) => a.a - b.a)[0];
+                if (parent && owner.get(parent))
+                    owner.get(parent).push(x.r);
+            }
+            return polys.filter(p => p[0].length >= 3);
+        }
+        ring = rings[0];
     }
     else if (['rect', 'frame', 'image'].includes(n.type))
         ring = [tp(0, 0), tp(n.w, 0), tp(n.w, n.h), tp(0, n.h)];
@@ -8911,8 +9357,10 @@ function buildPathNode(res, first, name) {
     const xs = rings.flat().map(p => p.x), ys = rings.flat().map(p => p.y), minX = Math.min(...xs), minY = Math.min(...ys), w = Math.max(1, Math.max(...xs) - minX), h = Math.max(1, Math.max(...ys) - minY);
     const rel = r => r.map(p => ({ x: p.x - minX, y: p.y - minY }));
     const props = { name, x: minX, y: minY, w, h, pathW: w, pathH: h, points: rel(rings[0]), closed: true, parentId: first.parentId || null, stroke: first.stroke, strokeWidth: first.strokeWidth, opacity: first.opacity };
-    if (rings.length > 1)
+    if (rings.length > 1) {
         props.contours = rings.slice(1).map(r => ({ points: rel(r), closed: true }));
+        props.fillRule = 'evenodd';
+    }
     if (Array.isArray(first.fills))
         props.fills = structuredClone(first.fills);
     props.fill = first.fill && first.fill !== 'none' ? first.fill : '#8fbcf0';
@@ -9072,6 +9520,15 @@ const MENU_ICONS = (() => {
 // The ··· menu in the inspector header: masking and boolean operations only.
 function selectionMenu(x = window.innerWidth - 295, y = 113) {
     const one = state.selection.size === 1 && activeNode();
+    // Inside an instance only resetting (and detaching a nested instance) makes sense.
+    if (one && insideInstance(one)) {
+        showMenu([...(one.isInstance ? [{ label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }] : []), { label: 'Reset instance', action: 'resetOverrides' }], x, y);
+        return;
+    }
+    if (one && one.isInstance) {
+        showMenu(instanceMenuItems(one), x, y);
+        return;
+    }
     showMenu([
         { label: one?.isMask ? 'Remove mask' : 'Use as mask', action: 'useAsMask', icon: 'mask', key: kbd('⌥⌘M', 'Ctrl+Alt+M'), disabled: !state.selection.size },
         '-',
@@ -9105,7 +9562,7 @@ function useAsMask() {
     transaction('Use as mask', () => {
         g.name = 'Mask group';
         doc.refresh(); // the parent index is stale right after grouping
-        const bottom = doc.nodes.find(n => n.parentId === g.id);
+        const inGroup = doc.nodes.filter(n => n.parentId === g.id), bottom = inGroup[0];
         if (bottom) {
             bottom.isMask = true;
             doc.touch(bottom);
@@ -9118,7 +9575,10 @@ function useAsMask() {
     select([g.id]);
 }
 // Right-click menu on the canvas and layer list keeps the full command set.
-function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an?.isInstance) {
+function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an && insideInstance(an)) {
+    selectionMenu(x, y);
+    return;
+} if (state.selection.size === 1 && an?.isInstance) {
     showMenu(instanceMenuItems(an), x, y);
     return;
 } showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
@@ -9150,15 +9610,24 @@ function renameLayer() {
 function renameFile() { inlineRename($('#file-name'), doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
 function renameDocFrom(el) { inlineRename(el, doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
 function addPage() {
+    let created = null;
     transaction('Add page', () => {
         const nums = doc.data.pages.map(p => /^Page (\d+)$/.exec(p.name)).filter(Boolean).map(m => +m[1]);
-        const p = { id: uid(), name: `Page ${(nums.length ? Math.max(...nums) : 0) + 1}`, nodes: [], parentId: null };
-        doc.data.pages.push(p);
+        const cur = doc.page, p = { id: uid(), name: `Page ${(nums.length ? Math.max(...nums) : 0) + 1}`, nodes: [], parentId: cur?.parentId || null };
+        // The new page lands right below the page that is open (after its sub-pages), not at the bottom of the list.
+        let at = cur ? doc.data.pages.indexOf(cur) + 1 : doc.data.pages.length;
+        const under = id => { for (let c = doc.data.pages.find(x => x.id === id); c && c.parentId; c = doc.data.pages.find(x => x.id === c.parentId)) if (c.parentId === cur.id) return true; return false; };
+        while (cur && doc.data.pages[at] && under(doc.data.pages[at].id))
+            at++;
+        doc.data.pages.splice(at, 0, p);
         doc.data.pageId = p.id;
         doc.refresh();
         state.selection.clear();
         fit();
+        created = p;
     });
+    if (created)
+        setTimeout(() => renamePageInline(created.id), 0);
 }
 function editTokens() {
     modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
@@ -9514,6 +9983,37 @@ document.addEventListener('pointerdown', e => {
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
 }, true);
+// Ctrl / Cmd + click toggles one collection or group, Alt / Shift + click selects the range from the anchor (like the page list).
+document.addEventListener('click', e => {
+    const row = e.target.closest?.('#vars-window [data-vw-coll], #vars-window [data-vw-gsel]');
+    if (!row || e.target.closest('input, button'))
+        return;
+    const isGroup = row.dataset.vwGsel !== undefined, id = isGroup ? row.dataset.vwGsel : row.dataset.vwColl, key = isGroup ? 'selGroups' : 'selColls', ak = key + 'Anchor';
+    if (isGroup && id === '')
+        return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
+        e.stopPropagation();
+        e.preventDefault();
+        vw[key] ||= new Set();
+        const ids = [...document.querySelectorAll(isGroup ? '#vars-window .vw-groups [data-vw-gsel]' : '#vars-window .vw-colls [data-vw-coll]')].map(r => isGroup ? r.dataset.vwGsel : r.dataset.vwColl).filter(x => x !== '');
+        const anchor = vw[ak] || (isGroup ? vw.group : vw.coll);
+        if (!vw[key].size && anchor)
+            vw[key].add(anchor);
+        if (e.ctrlKey || e.metaKey) {
+            vw[key].has(id) ? vw[key].delete(id) : vw[key].add(id);
+            vw[ak] = id;
+        }
+        else {
+            const a = ids.indexOf(anchor), b = ids.indexOf(id);
+            if (a >= 0 && b >= 0)
+                vw[key] = new Set(ids.slice(Math.min(a, b), Math.max(a, b) + 1));
+        }
+        renderVarsWindow();
+        return;
+    }
+    vw[key] = new Set();
+    vw[ak] = id;
+}, true);
 // Press and drag a collection or group in the variables sidebar to reorder it. Groups dropped on the middle
 // of another group nest inside it (their variables are renamed to the new path).
 document.addEventListener('pointerdown', e => {
@@ -9560,30 +10060,43 @@ document.addEventListener('pointerdown', e => {
         if (!drop)
             return;
         if (!isGroup) {
-            const s = varStore(), from = s.collections.findIndex(c => c.id === id), t = s.collections.findIndex(c => c.id === drop.target);
-            if (from < 0 || t < 0)
+            const s = varStore(), picked = vw.selColls?.has(id) && vw.selColls.size > 1 ? vw.selColls : new Set([id]);
+            if (picked.has(drop.target) || s.collections.findIndex(c => c.id === drop.target) < 0)
                 return;
             vwTx('Reorder collections', () => {
-                const [c] = s.collections.splice(from, 1);
+                const moving = s.collections.filter(c => picked.has(c.id));
+                s.collections = s.collections.filter(c => !picked.has(c.id));
                 const ti = s.collections.findIndex(x => x.id === drop.target);
-                s.collections.splice(drop.where === 'after' ? ti + 1 : ti, 0, c);
+                s.collections.splice(drop.where === 'after' ? ti + 1 : ti, 0, ...moving);
             });
             return;
         }
-        const coll = varColl(vw.coll), leaf = id.split('/').pop();
-        const parent = drop.where === 'into' ? drop.target : drop.where === 'root' ? '' : vwParentGroup(drop.target);
-        const nn = parent ? `${parent}/${leaf}` : leaf;
-        if (nn !== id && vwGroupsOf(coll).includes(nn)) {
-            toast(`A group named “${nn}” already exists there.`);
+        const coll = varColl(vw.coll);
+        const chosen = vw.selGroups?.has(id) && vw.selGroups.size > 1 ? [...vw.selGroups] : [id];
+        // A group chosen together with its own parent just travels with it.
+        const list = vwGroupsOf(coll).filter(g => chosen.includes(g) && !chosen.some(o => o !== g && g.startsWith(o + '/')) && g !== drop.target && !drop.target.startsWith(g + '/'));
+        if (!list.length)
             return;
-        }
+        const parent = drop.where === 'into' ? drop.target : drop.where === 'root' ? '' : vwParentGroup(drop.target);
+        for (const g of list)
+            if (g.split('/').pop() && (parent ? parent + '/' : '') + g.split('/').pop() !== g && vwGroupsOf(coll).includes((parent ? parent + '/' : '') + g.split('/').pop())) {
+                toast('A group with that name already exists there.');
+                return;
+            }
         vwTx('Move group', () => {
-            if (nn !== id)
-                vwRenameGroup(coll, id, nn);
-            const order = vwGroupsOf(coll).filter(g => g !== nn);
-            const at = drop.where === 'before' ? order.indexOf(drop.target) : drop.where === 'after' ? order.indexOf(drop.target) + 1 : drop.where === 'root' ? 0 : order.length;
-            order.splice(Math.max(0, at), 0, nn);
-            coll.groupOrder = order;
+            let insertAt = null;
+            for (const g of list) {
+                const leaf = g.split('/').pop(), nn = parent ? parent + '/' + leaf : leaf;
+                if (nn !== g)
+                    vwRenameGroup(coll, g, nn);
+                const order = vwGroupsOf(coll).filter(x => x !== nn);
+                let at = insertAt ?? (drop.where === 'before' ? order.indexOf(drop.target) : drop.where === 'after' ? order.indexOf(drop.target) + 1 : drop.where === 'root' ? 0 : order.length);
+                at = Math.max(0, at);
+                order.splice(at, 0, nn);
+                coll.groupOrder = order;
+                insertAt = at + 1;
+            }
+            vw.selGroups = new Set();
         });
     };
     addEventListener('pointermove', move);
@@ -9864,7 +10377,8 @@ function syncInstanceStructure(activeOnly = true) {
                 c.parentId = parent.id;
                 c.sourceId = s.id;
                 c.component = false;
-                c.isInstance = false;
+                c.isInstance = !!s.isInstance; // a nested instance stays an instance when its container is synced
+                delete c.swapOf;
                 c.overrides = {};
                 c.version = 0;
                 page.nodes.push(c);
@@ -9927,10 +10441,47 @@ function createComponentFromSelection() {
     }
     makeComponent();
 }
-function goToMainComponent(id) {
+// Figma-style floating "Return to instance" after jumping to a main component.
+function showReturnBar() {
+    let bar = document.getElementById('return-bar');
+    if (!state.returnTo) {
+        bar?.remove();
+        return;
+    }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'return-bar';
+        bar.className = 'return-bar';
+        bar.innerHTML = '<button type="button" data-return-instance>Return to instance</button><button type="button" class="icon-button small" data-return-close aria-label="Close">' + icon('close', 12) + '</button>';
+        document.body.appendChild(bar);
+        bar.addEventListener('click', ev => {
+            if (ev.target.closest('[data-return-close]')) {
+                state.returnTo = null;
+                showReturnBar();
+            }
+            else if (ev.target.closest('[data-return-instance]')) {
+                const r = state.returnTo;
+                state.returnTo = null;
+                showReturnBar();
+                if (r && pageOfNode(r.id)) {
+                    const pg = pageOfNode(r.id);
+                    if (pg.id !== doc.page.id)
+                        switchPage(pg.id);
+                    select([r.id]);
+                    fit([r.id]);
+                }
+            }
+        });
+    }
+}
+function goToMainComponent(id, fromId = null) {
     const page = pageOfNode(id);
     if (!page)
         return;
+    if (fromId && fromId !== id) {
+        state.returnTo = { id: fromId };
+        showReturnBar();
+    }
     if (page.id !== doc.page.id)
         switchPage(page.id);
     select([id]);
@@ -10504,7 +11055,7 @@ function svgThumbOf(n) {
 }
 function componentBlockHtml(n) {
     if (n.isInstance && n.sourceId) {
-        const src = componentById(n.sourceId), set = src && parentSetOf(src);
+        const src = chainComponent(n), set = src && parentSetOf(src);
         const rows = set ? variantProps(set).map(pr => {
             const vals = variantValues(set, pr), bp = binaryPair(vals), key = 'vprop:' + pr, bv = n.vars?.[key] && varItem(n.vars[key]);
             let ctl;
@@ -10513,17 +11064,17 @@ function componentBlockHtml(n) {
             else if (bp)
                 ctl = `<label class="vsw"><input type="checkbox" role="switch" class="variant-bool" data-variant-swap="${esc(pr)}" data-variant-true="${esc(bp.t)}" data-variant-false="${esc(bp.f)}" ${src.variant?.[pr] === bp.t ? 'checked' : ''} aria-label="${esc(pr)}"></label><span class="vsw-spacer"></span>${varBindButton(key)}`;
             else
-                ctl = `${comboField(`data-variant-swap="${esc(pr)}"`, src.variant?.[pr], vals, pr)}${varBindButton(key)}`;
+                ctl = `${variantSelect(`data-variant-swap="${esc(pr)}"`, src.variant?.[pr], vals, pr)}${varBindButton(key)}`;
             return `<div class="cmp-prop2"><span title="${esc(pr)}">${esc(pr)}</span><div class="cmp-ctl">${ctl}</div></div>`;
         }).join('') : '';
         const own = src ? instancePropsHtml(n, propHolderOf(src)) : '';
         return rows || own ? `<div class="cmp-block instance-props"><div class="cmp-props">${rows}${own}</div></div>` : '';
     }
     if (n.component) {
-        const count = instancesOf(n.id).length, set = parentSetOf(n), common = `<button class="cmp-btn" data-cmp="place">Place instance</button><button class="cmp-btn" data-cmp="select-instances" ${count ? '' : 'disabled'}>Select instances</button>`;
+        const set = parentSetOf(n);
         if (set)
             return `<div class="cmp-block main">${variantEditorHtml(set, n)}</div>`;
-        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div><div class="cmp-actions"><button class="cmp-btn" data-cmp="add-variant">+ Variant</button>${common}<button class="cmp-btn" data-cmp="remove">Remove component</button></div></div>`;
+        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div></div>`;
     }
     if (n.componentSet) {
         const vs = setVariants(n);
@@ -10537,7 +11088,7 @@ document.addEventListener('click', e => {
     const goto = e.target.closest('[data-cmp-goto]');
     if (goto) {
         e.stopPropagation();
-        goToMainComponent(goto.dataset.cmpGoto);
+        goToMainComponent(chainComponent(doc.get(goto.dataset.cmpGoto) || { sourceId: goto.dataset.cmpGoto })?.id || goto.dataset.cmpGoto, activeNode()?.id);
         return;
     }
     const b = e.target.closest('[data-cmp]');
@@ -10551,7 +11102,7 @@ document.addEventListener('click', e => {
     else if (!n)
         return;
     else if (act === 'goto' && n.sourceId)
-        goToMainComponent(n.sourceId);
+        goToMainComponent(chainComponent(n)?.id || n.sourceId, n.id);
     else if (act === 'reset')
         transaction('Reset overrides', () => { const page = pageOfNode(n.id); for (const x of [n, ...pageTree(page, n.id)]) {
             if (x.sourceId)
@@ -10588,8 +11139,61 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${ns.length} layers selected</span>`;
     if (n.component && parentSetOf(n))
         return `<span class="selection-name">${esc(n.name)}</span>`;
-    return `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    // Frame / section / group can switch kind from a chevron next to the name.
+    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
+        return input + `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
+    return input;
 }
+function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
+function convertKind(kind) {
+    const targets = selected().filter(n => kindOf(n) && kindOf(n) !== kind && !n.component && !n.componentSet && !n.isInstance && !n.sourceId);
+    if (!targets.length)
+        return;
+    if (kind === 'section' && targets.some(n => n.parentId && !doc.get(n.parentId)?.isSection)) {
+        toast('A section can only sit on the page or inside another section.');
+        return;
+    }
+    transaction('Change type to ' + kind, () => {
+        for (const n of targets) {
+            const was = kindOf(n);
+            const generic = ['Frame', 'Group', 'Section'].includes(n.name);
+            if (kind === 'group') {
+                delete n.isSection;
+                n.type = 'group';
+                n.layout = 'none';
+                n.fill = 'none';
+                n.clip = false;
+                if (generic) n.name = 'Group';
+            }
+            else if (kind === 'frame') {
+                n.type = 'frame';
+                delete n.isSection;
+                if (was === 'group' || n.fill === 'none' || n.fill === '#f1f0f4')
+                    n.fill = '#ffffff';
+                n.clip = true;
+                if (generic) n.name = 'Frame';
+            }
+            else {
+                n.type = 'frame';
+                n.isSection = true;
+                n.layout = 'none';
+                n.clip = false;
+                n.fill = '#f1f0f4';
+                if (generic) n.name = 'Section';
+            }
+            doc.touch(n);
+        }
+        doc.refresh();
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-kind-menu]');
+    if (!b)
+        return;
+    const cur = kindOf(activeNode() || {}), r = b.getBoundingClientRect();
+    showMenu([['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k })), Math.max(8, r.right - 160), r.bottom + 4);
+});
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
         return '';
@@ -10641,6 +11245,10 @@ document.addEventListener('keydown', e => {
 });
 function setOfNode(n) { return !n ? null : n.componentSet ? n : n.component ? parentSetOf(n) : null; }
 // A dropdown you can also type into: the field takes free text, the chevron lists the existing values.
+// Instance level: a fixed list of values to pick from (typing is only for the component set).
+function variantSelect(attrs, value, options, label) {
+    return `<select class="full-width" ${attrs} aria-label="${esc(label)}">${options.map(o => `<option value="${esc(o)}" ${o === value ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+}
 function comboField(attrs, value, options, label) {
     return `<span class="cmp-combo"><input type="text" ${attrs} value="${esc(value ?? '')}" spellcheck="false" aria-label="${esc(label)}"><button type="button" class="cmp-combo-btn" data-combo-options="${esc(JSON.stringify(options))}" tabindex="-1" aria-label="Show values">${icon('chevronDown', 12)}</button></span>`;
 }
@@ -10668,7 +11276,8 @@ function variantEditorHtml(set, cur) {
             const ctl = comboField(`data-vprop-val="${esc(k)}"`, cur.variant?.[k], vals, k);
             return `<div class="cmp-prop2"><span title="${esc(k)}">${esc(k)}</span><div class="cmp-ctl">${ctl}</div></div>`;
         }).join('');
-        return `<div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div><div class="cmp-props">${sels}</div>${cpropRowsHtml(set)}</div>`;
+        // A variant shows only its own variant values (no property editing here: that happens on the component set).
+        return `<div class="vp-section"><div class="vp-head"><span>Current variant</span></div><div class="cmp-props">${sels}</div></div>`;
     }
     const rows = props.map(k => {
         const vals = variantValues(set, k), open = propPop && propPop.prop === k && propPop.setId === set.id;
@@ -11075,7 +11684,7 @@ function bindLayer(holder, p, layerId) {
 }
 // Instance-swap picker: the same searchable, grouped list as the variable picker (page ≙ library, name path ≙ group).
 function swapEntries() {
-    const out = [];
+    const out = [], seenSets = new Set();
     for (const p of doc.data.pages)
         for (const c of p.nodes) {
             if (!c.component)
@@ -11083,8 +11692,13 @@ function swapEntries() {
             const set = parentSetOf(c);
             let group, leaf;
             if (set) {
-                group = set.name;
-                leaf = c.name;
+                // A component set is one entry (its first variant); variants are chosen on the instance afterwards.
+                if (seenSets.has(set.id))
+                    continue;
+                seenSets.add(set.id);
+                const parts = set.name.split('/').map(s => s.trim());
+                leaf = parts.pop();
+                group = parts.join(' / ');
             }
             else {
                 const parts = c.name.split('/').map(s => s.trim());
@@ -11185,12 +11799,18 @@ function swapButtonHtml(attrs, compId) {
     return `<button class="swap-btn" ${attrs} title="${esc(label)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(label)}</span>${CHEV_SVG}</button>`;
 }
 function swappableComponents() {
-    const out = [];
+    // One entry per component (a component set counts once, represented by its first variant); variants are picked on the instance itself.
+    const out = [], seenSets = new Set();
     for (const p of doc.data.pages) {
         for (const c of p.nodes) {
             if (c.component) {
                 const set = parentSetOf(c);
-                out.push({ id: c.id, label: set ? `${set.name} / ${c.name}` : c.name });
+                if (set) {
+                    if (seenSets.has(set.id))
+                        continue;
+                    seenSets.add(set.id);
+                }
+                out.push({ id: c.id, label: set ? set.name : c.name });
             }
         }
     }
@@ -11218,7 +11838,7 @@ function swapNestedNode(y, targetId) {
         delete y.swapOf;
         y.isInstance = false;
     }
-    else if (y.isInstance && !y.swapOf)
+    else if (y.isInstance && !y.swapOf && idx.get(y.sourceId)?.component)
         y.sourceId = target.id; // a real instance, e.g. the nested instance inside the main component
     else {
         y.swapOf = y.swapOf || y.sourceId;
@@ -11250,7 +11870,8 @@ function addComponentProp(n, type) {
     const cands = layerCandidates(holder, type), sel = selected().find(s => cands.includes(s));
     transaction(`Add ${CPROP_LABEL[type].toLowerCase()} property`, () => {
         holder.cprops = [...cpropsOf(holder), p];
-        bindLayer(holder, p, (sel || cands[0])?.id);
+        if (type !== 'boolean')
+            bindLayer(holder, p, (sel || cands[0])?.id);
         doc.touch(holder);
     });
     openCpropPop(document.querySelector('[data-cmp="add-prop"]'), holder, p.id);
@@ -11415,7 +12036,7 @@ function openFloatingPop(anchor, state) {
             else if (t.matches('[data-cp-layer]'))
                 transaction('Bind property', () => { bindLayer(holder, p, t.value); doc.touch(holder); });
             else if (t.matches('[data-cp-def]'))
-                setPropDefault(holder, p.id, p.type === 'boolean' ? t.value === 'true' : t.value);
+                setPropDefault(holder, p.id, p.type === 'boolean' ? (t.type === 'checkbox' ? t.checked : t.value === 'true') : t.value);
         }
         renderCpropPop();
     });
@@ -11455,14 +12076,14 @@ function renderCpropPop() {
     if (p.type === 'text')
         def = `<input data-cp-def value="${esc(p.def ?? '')}" spellcheck="false" aria-label="Default value">`;
     else if (p.type === 'boolean')
-        def = `<select data-cp-def aria-label="Default value"><option value="true" ${p.def !== false ? 'selected' : ''}>True</option><option value="false" ${p.def === false ? 'selected' : ''}>False</option></select>`;
+        def = `<label class="vsw pp-toggle"><input type="checkbox" role="switch" data-cp-def ${p.def !== false ? 'checked' : ''} aria-label="Value"></label><span class="pp-tval">${p.def !== false ? 'True' : 'False'}</span>`;
     else if (p.type === 'instance')
         def = swapButtonHtml('data-swap-def', p.def);
     const layerLabel = { text: 'Text layer', boolean: 'Layer', instance: 'Instance', slot: 'Slot frame' }[p.type];
     pp.el.innerHTML = head(`${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
         `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
-        `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>` +
-        (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Default (visible)' : 'Default value'}</label>${def}</div>` : '') +
+        (p.type === 'boolean' ? '' : `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>`) +
+        (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Value' : 'Default value'}</label>${def}</div>` : '') +
         (p.type === 'slot' ? '<p class="pp-note">Instances can drop their own layers into this frame.</p>' : '') +
         `<div class="pp-foot"><button class="cmp-btn wide" data-cp-delete>Delete property</button></div>`;
 }
@@ -11489,7 +12110,7 @@ function instancePropsHtml(owner, holder) {
         const comp = chainComponent(x), set = comp && parentSetOf(comp), nh = propHolderOf(comp);
         let inner = '';
         if (set)
-            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${comboField(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
+            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${variantSelect(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
         if (nh)
             inner += cpropsOf(nh).filter(p => p.type !== 'slot').map(p => row(x, p, `data-owner="${x.id}"`)).join('');
         html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
@@ -11754,7 +12375,8 @@ async function figToMidas(file, onProgress, abortSignal) {
     const varCollections = [], varItems = [], varByGuid = new Map(), modeByGuid = new Map(), collByGuid = new Map();
     const vkey = v => v?.guid ? gkey(v.guid) : null;
     for (const nc of fig.values()) {
-        if (nc.type !== 'VARIABLE_SET')
+        // Collections deleted in Figma stay in the file as soft-deleted records: they are not part of the document.
+        if (nc.type !== 'VARIABLE_SET' || nc.isSoftDeleted)
             continue;
         const c = { id: uid(), name: (nc.name || 'Collection').trim(), modes: [] };
         const modes = [...(nc.variableSetModes || [])].sort((a, b) => String(a.sortPosition ?? '') < String(b.sortPosition ?? '') ? -1 : 1);
@@ -11771,7 +12393,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     const VTYPE = { COLOR: 'color', FLOAT: 'number', STRING: 'string', BOOLEAN: 'boolean' };
     const varSources = [];
     for (const nc of fig.values()) {
-        if (nc.type !== 'VARIABLE')
+        if (nc.type !== 'VARIABLE' || nc.isSoftDeleted)
             continue;
         const coll = collByGuid.get(vkey(nc.variableSetID)), type = VTYPE[nc.variableResolvedType];
         if (!coll) {
@@ -11815,16 +12437,46 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (mode && val !== undefined)
                 item.values[mode] = val;
         }
+    // Figma's untouched default collection ("Collection", no variables) is not a real collection of the file.
+    for (let i = varCollections.length - 1; i >= 0; i--)
+        if (varCollections[i].name === 'Collection' && !varItems.some(v => v.collectionId === varCollections[i].id))
+            varCollections.splice(i, 1);
     // The variable a paint / field is bound to (only variables defined in this file).
-    const varFor = vd => vd?.value?.alias ? varByGuid.get(vkey(vd.value.alias)) || null : null;
+    // A boolean binding is often wrapped as IS_TRUTHY(variable): the single variable inside is the real binding.
+    const aliasOf = vd => vd?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
+    const varFor = vd => { const a = aliasOf(vd); return a ? varByGuid.get(vkey(a)) || null : null; };
     const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
     const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
+    // Newer files keep property references AND variable bindings (visibility as IS_TRUTHY(variable)) in parameterConsumptionMap too.
+    const applyParamBindings = (n, f) => {
+        for (const e of f.parameterConsumptionMap?.entries || []) {
+            const ref = e.variableData?.value?.propRefValue?.defId;
+            if (ref) {
+                const info = defInfo.get(gkey(ref)), field = PROP_FIELD[e.variableField];
+                if (info && field)
+                    n.propBind = { ...(n.propBind || {}), [field]: info.pid };
+                continue;
+            }
+            const prop = VAR_FIELD[e.variableField], id = prop && varFor(e.variableData);
+            if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
+                n.vars = { ...(n.vars || {}), [prop]: id };
+        }
+    };
     const applyVarBindings = (n, f) => {
         for (const e of f.variableConsumptionMap?.entries || []) {
             const prop = VAR_FIELD[e.variableField], id = varFor(e.variableData);
             if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
                 (n.vars ||= {})[prop] = id;
         }
+        // Variant properties bound to variables (instance: Type = variable ...).
+        for (const e of f.variableConsumptionMap?.entries || [])
+            if (e.variableField === 'VARIANT_PROPERTIES')
+                for (const a of e.variableData?.value?.expressionValue?.expressionArguments || [])
+                    for (const kv of a?.value?.mapValue?.values || []) {
+                        const id = varFor(kv.value);
+                        if (id && kv.key)
+                            (n.vars ||= {})['vprop:' + kv.key] = id;
+                    }
         // Explicit mode per collection ("Appearance → mode" in Figma).
         for (const e of f.variableModeBySetMap?.entries || []) {
             const c = collByGuid.get(vkey(e.variableSetID)), mode = modeByGuid.get(gkey(e.variableModeID));
@@ -12082,14 +12734,17 @@ async function figToMidas(file, onProgress, abortSignal) {
         // Auto layout settings
         if (f.strokesIncludedInLayout)
             n.strokesIncluded = true;
-        if (f.stackReverseZIndex)
+        // Children are stored reversed (see above): lay them out back-to-front again, and paint "last on top" by reversing.
+        n.layoutFlip = true;
+        if (!f.stackReverseZIndex)
             n.layoutReverseZ = true;
         if (f.stackCounterAlignItems === 'BASELINE' && horiz)
             n.alignBaseline = true;
         const ca = f.stackCounterAlignItems || 'MIN';
         n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
         const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
-        const prim = hug(f.stackPrimarySizing), counter = hug(f.stackCounterSizing);
+        // An omitted stackPrimarySizing is Figma's default (RESIZE_TO_FIT = hug); an omitted stackCounterSizing is FIXED.
+        const prim = hug(f.stackPrimarySizing ?? 'RESIZE_TO_FIT'), counter = hug(f.stackCounterSizing);
         n.layoutSizingH = horiz ? prim : counter;
         n.layoutSizingV = horiz ? counter : prim;
         if (f.stackWrap) {
@@ -12111,7 +12766,14 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (f.stackChildAlignSelf === 'STRETCH')
             n[horiz ? 'layoutSizingV' : 'layoutSizingH'] = 'fill';
     };
-    const applyConstraints = (n, f) => {
+    const applyConstraints = (n, f0) => {
+        // Groups and boolean operations have no constraints of their own in the file: Figma shows the ones of their layers.
+        let f = f0;
+        if (!f0.horizontalConstraint && !f0.verticalConstraint && (f0.type === 'BOOLEAN_OPERATION' || f0.type === 'GROUP')) {
+            const first = (kids.get(gkey(f0.guid)) || []).find(c => c.horizontalConstraint || c.verticalConstraint);
+            if (first)
+                f = first;
+        }
         const h = { MIN: 'left', MAX: 'right', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.horizontalConstraint], v = { MIN: 'top', MAX: 'bottom', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.verticalConstraint];
         if (h && h !== 'left')
             n.constraintH = h;
@@ -12431,6 +13093,15 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         else if (type === 'rect' || type === 'ellipse') {
             applyFills(n, f);
+            // Ellipse arc (pie / donut): start angle, sweep and inner radius ratio.
+            if (type === 'ellipse' && f.arcData) {
+                const TAU = Math.PI * 2, a0 = f.arcData.startingAngle || 0, a1 = f.arcData.endingAngle ?? TAU, sweep = Math.max(0, Math.min(TAU, a1 - a0)), ratio = f.arcData.innerRadius || 0;
+                if (sweep < TAU - 1e-4 || ratio > 1e-4) {
+                    n.arcStart = Math.round((((a0 * 180 / Math.PI) % 360) + 360) % 360 * 100) / 100;
+                    n.arcSweep = Math.round(sweep / TAU * 10000) / 100;
+                    n.arcRatio = Math.round(ratio * 10000) / 100;
+                }
+            }
         }
         else if (type === 'text') {
             applyFills(n, f);
@@ -12484,6 +13155,10 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (info && field)
                 (n.propBind ||= {})[field] = info.pid;
         }
+        applyParamBindings(n, f);
+        // A boolean result is a set of non-overlapping rings: even-odd keeps the counters open whatever their winding.
+        if (isBool && (n.contours || []).length)
+            n.fillRule = 'evenodd';
         walkedFigs.push(f);
         idMap.set(k, n.id);
         figOfMidas.set(n.id, f);
@@ -12559,7 +13234,9 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (['VECTOR', 'STAR', 'REGULAR_POLYGON'].includes(f.type))
             return;
         const cur = midasById.get(n.id) === n ? n : midasById.get(n.id);
-        for (const c of kids.get(gkey(f.guid)) || [])
+        // Figma's layer list shows the first child at the top only inside auto layout frames (elsewhere the last child is on top, as in Midas), so only those siblings go in reversed.
+        const sibs = kids.get(gkey(f.guid)) || [], autoParent = f.stackMode === 'HORIZONTAL' || f.stackMode === 'VERTICAL';
+        for (const c of autoParent && !f.isStateGroup ? [...sibs].reverse() : sibs)
             walk(c, cur && cur.type !== 'path' ? cur : n, f, out);
     };
     const doc = [...fig.values()].find(n => n.type === 'DOCUMENT');
@@ -12596,7 +13273,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     const canvasOf = f => { let x = f, i = 0; while (x && x.type !== 'CANVAS' && i++ < 300)
         x = fig.get(gkey(x.parentIndex?.guid)); return x; };
     const isInternal = f => { const c = canvasOf(f); return !!c && (c.internalOnly || c.name === 'Internal Only Canvas'); };
-    const lib = { id: uid(), name: 'Library components', nodes: [], canvas: null }, libPos = { x: 0, y: 0, rowH: 0 };
+    const lib = { id: uid(), name: 'Library components', nodes: [], canvas: null, internal: true }, libPos = { x: 0, y: 0, rowH: 0 };
     const wantSymbol = guid => {
         const g = realGuid(guid), key = g && gkey(g);
         if (!key || idMap.has(key))
@@ -12820,7 +13497,9 @@ async function figToMidas(file, onProgress, abortSignal) {
             c.parentId = s.parentId === src.id ? n.id : clones.get(s.parentId)?.id;
             c.sourceId = s.id;
             c.component = false;
-            c.isInstance = false;
+            // A nested instance stays an instance (Figma shows it with the instance icon too).
+            c.isInstance = !!s.isInstance;
+            delete c.swapOf;
             c.overrides = {};
             c.version = 0;
             if (!c.parentId)
@@ -12872,6 +13551,11 @@ async function figToMidas(file, onProgress, abortSignal) {
                 c.text = ov.textData.characters;
             if (ov.visible !== undefined)
                 c.visible = ov.visible !== false;
+            c.vars = { ...(c.vars || {}) };
+            applyVarBindings(c, { variableConsumptionMap: ov.variableConsumptionMap });
+            applyParamBindings(c, ov);
+            if (c.vars && !Object.keys(c.vars).length)
+                delete c.vars;
             if (ov.opacity !== undefined)
                 c.opacity = ov.opacity;
             if (ov.fillPaints)
@@ -12889,7 +13573,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     }
     // instances whose layers are stored in the file: link them to the main component and keep every difference as an override
     const OMIT = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'name', 'variant', 'componentSet']);
-    const linkPair = (inst, src, root) => {
+    const linkPair = (inst, src, root, props = inst.propValues) => {
         inst.sourceId = src.id;
         inst.component = false;
         inst.isInstance = root;
@@ -12900,10 +13584,15 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (JSON.stringify(inst[k]) !== JSON.stringify(src[k]))
                 inst.overrides[k] = structuredClone(inst[k]);
         }
+        // A layer driven by a text / visibility property takes the instance's property value, not the stale text Figma kept on it.
+        if (!root && props && src.propBind)
+            for (const field of ['text', 'visible'])
+                if (src.propBind[field] && Object.hasOwn(props, src.propBind[field]))
+                    delete inst.overrides[field];
         const a = byParent.get(inst.id) || [], b = byParent.get(src.id) || [];
         if (a.length === b.length)
             a.forEach((c, i) => { if (c.name === b[i].name && c.type === b[i].type)
-                linkPair(c, b[i], false); });
+                linkPair(c, b[i], false, props); });
     };
     for (const { f, n } of linked) {
         assignProps(n, f);
@@ -12972,7 +13661,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.version = 0;
         }
     const name = (meta?.file_name || file.name.replace(/\.fig$/i, '') || 'Figma import').toString().slice(0, 120);
-    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes })), tokens: defaultTokens(), assets, variables: { collections: varCollections, items: varItems } };
+    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes, ...(p.internal ? { internal: true } : {}) })), tokens: defaultTokens(), assets, variables: { collections: varCollections, items: varItems } };
     if (varItems.length)
         note(`imported ${varItems.length} variable${varItems.length === 1 ? '' : 's'} in ${varCollections.length} collection${varCollections.length === 1 ? '' : 's'}`);
     const notes = [...rep.notes].map(([k, v]) => v > 1 ? `${v}× ${k}` : k), skipped = [...rep.skipped].map(([k, v]) => `${v}× ${k.toLowerCase().replace(/_/g, ' ')}`);
@@ -14020,7 +14709,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -14152,6 +14841,29 @@ document.addEventListener('click', e => {
         const p = doc.data.pages.find(x => x.id === page.dataset.page);
         if (!p || isPageDivider(p))
             return;
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+            // Ctrl / Cmd + click adds or removes one page; Alt / Shift + click selects every page between the anchor and the click.
+            state.pageSel ||= new Set();
+            const anchor = state.pageAnchor || doc.page.id;
+            if (!state.pageSel.size)
+                state.pageSel.add(anchor);
+            if (e.ctrlKey || e.metaKey) {
+                state.pageSel.has(p.id) ? state.pageSel.delete(p.id) : state.pageSel.add(p.id);
+                state.pageAnchor = p.id;
+            }
+            else {
+                const order = [...document.querySelectorAll('#page-list [data-page]')].map(r => r.dataset.page).filter(id => !isPageDivider(doc.data.pages.find(x => x.id === id) || {})), a = order.indexOf(anchor), b = order.indexOf(p.id);
+                if (a >= 0 && b >= 0) {
+                    state.pageSel = new Set(order.slice(Math.min(a, b), Math.max(a, b) + 1));
+                }
+            }
+            renderPages();
+            return;
+        }
+        if (state.pageSel?.size) {
+            state.pageSel.clear();
+            renderPages();
+        }
         const now = performance.now(), last = state.lastPageClick;
         if (last && last.id === p.id && now - last.t < 420) {
             state.lastPageClick = null;
@@ -14159,6 +14871,7 @@ document.addEventListener('click', e => {
             return;
         }
         state.lastPageClick = { id: p.id, t: now };
+        state.pageAnchor = p.id;
         setTimeout(() => {
             if (state.lastPageClick && state.lastPageClick.id === p.id && performance.now() - state.lastPageClick.t >= 400) {
                 state.lastPageClick = null;
@@ -14281,6 +14994,113 @@ document.addEventListener('click', e => {
         return;
     }
 });
+// ----- math in number fields: 100/2, 24+8, (10+2)*3 ... (Figma-style) -----
+// A number input rejects non-numeric text, so a focused field is switched to text mode; the result is written back (and the
+// type restored) in the capture phase of 'change', before the regular handlers read valueAsNumber.
+function evalMathExpr(src) {
+    const s = String(src).replace(/,/g, '.').replace(/px/gi, '').replace(/\s+/g, '');
+    if (!s || !/^[\d+\-*/().x×÷]+$/i.test(s))
+        return NaN;
+    let i = 0;
+    const peek = () => s[i];
+    const number = () => {
+        const m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+        if (!m)
+            return NaN;
+        i += m[0].length;
+        return parseFloat(m[0]);
+    };
+    const factor = () => {
+        if (peek() === '+') { i++; return factor(); }
+        if (peek() === '-') { i++; return -factor(); }
+        if (peek() === '(') {
+            i++;
+            const v = expr();
+            if (peek() !== ')')
+                return NaN;
+            i++;
+            return v;
+        }
+        return number();
+    };
+    const term = () => {
+        let v = factor();
+        while (peek() === '*' || peek() === '/' || peek() === 'x' || peek() === '×' || peek() === '÷') {
+            const op = s[i++], r = factor();
+            v = op === '/' || op === '÷' ? v / r : v * r;
+        }
+        return v;
+    };
+    function expr() {
+        let v = term();
+        while (peek() === '+' || peek() === '-') {
+            const op = s[i++], r = term();
+            v = op === '+' ? v + r : v - r;
+        }
+        return v;
+    }
+    const v = expr();
+    return i === s.length && Number.isFinite(v) ? v : NaN;
+}
+const exprEligible = el => el instanceof HTMLInputElement && (el.type === 'number' || el.dataset.expr) && !el.closest('.vars-window') && !el.matches('[data-vw],[data-vd-val],[data-ve]');
+document.addEventListener('pointerdown', e => {
+    const el = e.target.closest?.('input[data-size-window]');
+    if (el) {
+        e.preventDefault();
+        openSizeMenu(el, el.dataset.sizeWindow);
+    }
+}, true);
+document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (el.readOnly || !exprEligible(el) || el.dataset.expr || el.type !== 'number')
+        return;
+    el.dataset.expr = '1';
+    el.dataset.exprMin = el.min;
+    el.dataset.exprMax = el.max;
+    el.dataset.exprStep = el.step || '1';
+    el.type = 'text';
+    el.setAttribute('inputmode', 'decimal');
+    el.select();
+});
+const exprRestore = el => { if (el.dataset.expr) { el.type = 'number'; delete el.dataset.expr; } };
+window.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.dataset?.expr)
+        return;
+    let v = evalMathExpr(el.value);
+    if (!Number.isFinite(v)) {
+        exprRestore(el);
+        renderInspector();
+        e.stopImmediatePropagation();
+        return;
+    }
+    const min = el.dataset.exprMin, max = el.dataset.exprMax;
+    if (min !== '' && Number.isFinite(+min))
+        v = Math.max(+min, v);
+    if (max !== '' && Number.isFinite(+max))
+        v = Math.min(+max, v);
+    exprRestore(el);
+    el.value = String(Math.round(v * 1000) / 1000);
+}, true);
+document.addEventListener('focusout', e => {
+    const el = e.target;
+    if (el.dataset?.expr)
+        setTimeout(() => exprRestore(el), 0);
+});
+document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (!el.dataset?.expr || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown'))
+        return;
+    e.preventDefault();
+    const cur = evalMathExpr(el.value), step = (+el.dataset.exprStep || 1) * (e.shiftKey ? 10 : e.altKey ? .1 : 1) * (e.key === 'ArrowUp' ? 1 : -1);
+    if (!Number.isFinite(cur))
+        return;
+    el.value = String(Math.round((cur + step) * 1000) / 1000);
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dataset.expr = '1';
+    el.type = 'text';
+    el.select();
+});
 document.addEventListener('input', e => {
     const el = e.target;
     if (el.matches('[data-prop]') && el.type !== 'checkbox' && el.tagName !== 'SELECT') {
@@ -14360,7 +15180,8 @@ $('#page-list').addEventListener('dragstart', e => {
     const row = e.target.closest('[data-page]');
     if (!row || row.dataset.divider)
         return;
-    e.dataTransfer.setData('application/x-midas-page', row.dataset.page);
+    const group = state.pageSel?.has(row.dataset.page) && state.pageSel.size > 1 ? [...state.pageSel] : [row.dataset.page];
+    e.dataTransfer.setData('application/x-midas-page', group.join(','));
     e.dataTransfer.effectAllowed = 'move';
 });
 $('#page-list').addEventListener('dragover', e => {
@@ -14376,7 +15197,7 @@ $('#page-list').addEventListener('dragover', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     const r = row.getBoundingClientRect(), rel = (e.clientY - r.top) / Math.max(1, r.height);
     let mode = rel < .28 ? 'before' : rel > .72 ? 'after' : 'into';
-    if (mode === 'into' && (!p || pageHasNodes(p)))
+    if (mode === 'into' && (!p || isPageDivider(p)))
         mode = rel < .5 ? 'before' : 'after';
     row.classList.add('drop-' + mode);
     state.pageDrop = { targetId: row.dataset.page, mode };
@@ -14402,36 +15223,67 @@ $('#layer-tree').addEventListener('dragstart', e => {
     e.dataTransfer.setData('application/x-midas-layer', row.dataset.layer);
     e.dataTransfer.effectAllowed = 'move';
 });
+// Drop position inside the layer tree: top quarter of a row = above it, bottom quarter = below it, middle = inside (containers only).
+// Below the last row of the tree it means "below the bottom-most layer".
+function layerDropTarget(e) {
+    const row = e.target.closest('[data-layer]');
+    if (!row) {
+        const roots = doc.children(null);
+        const last = $$('#layer-tree .layer-row').at(-1);
+        if (!roots.length || !last || e.clientY < last.getBoundingClientRect().bottom)
+            return null;
+        return { row: last, target: roots[0], pos: 'below', root: true };
+    }
+    const target = doc.get(row.dataset.layer), r = row.getBoundingClientRect(), y = (e.clientY - r.top) / Math.max(1, r.height);
+    const container = target && ['frame', 'group'].includes(target.type) && !target.isInstance;
+    const pos = y < (container ? .25 : .5) ? 'above' : y > (container ? .75 : .5) || !container ? 'below' : 'inside';
+    return { row, target, pos };
+}
+function clearLayerDrop() {
+    $$('.drop-target,.drop-above,.drop-below,.drop-inside').forEach(n => n.classList.remove('drop-target', 'drop-above', 'drop-below', 'drop-inside'));
+}
 $('#layer-tree').addEventListener('dragover', e => {
     if (![...e.dataTransfer.types].includes('application/x-midas-layer'))
         return;
-    const row = e.target.closest('[data-layer]');
-    if (row) {
-        e.preventDefault();
-        $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
-        row.classList.add('drop-target');
-    }
+    e.preventDefault();
+    clearLayerDrop();
+    const d = layerDropTarget(e);
+    if (d)
+        d.row.classList.add('drop-' + d.pos);
 });
-$('#layer-tree').addEventListener('dragleave', e => e.target.closest('.drop-target')?.classList.remove('drop-target'));
+$('#layer-tree').addEventListener('dragleave', e => { if (!e.relatedTarget || !$('#layer-tree').contains(e.relatedTarget)) clearLayerDrop(); });
 $('#layer-tree').addEventListener('drop', e => {
     e.preventDefault();
-    $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
-    const id = e.dataTransfer.getData('application/x-midas-layer'), row = e.target.closest('[data-layer]');
-    if (!id || !row)
+    const d = layerDropTarget(e);
+    clearLayerDrop();
+    const id = e.dataTransfer.getData('application/x-midas-layer');
+    if (!id || !d)
         return;
-    const source = doc.get(id), target = doc.get(row.dataset.layer);
-    if (!source || !target || source === target || doc.descendants(id).some(n => n.id === target.id))
+    const dragged = state.selection.has(id) ? [...state.selection] : [id];
+    const sources = doc.roots(dragged).filter(n => n && n !== d.target && !doc.descendants(n.id).some(c => c.id === d.target.id)).sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
+    if (!sources.length)
         return;
     transaction('Reorder layer', () => {
-        const world = doc.world(id).matrix, parentId = e.shiftKey && ['frame', 'group'].includes(target.type) ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
-        source.parentId = parentId;
-        setFromMatrix(source, multiply(inverse(parentMatrix), world));
-        doc.nodes.splice(doc.nodes.indexOf(source), 1);
-        doc.nodes.splice(doc.nodes.indexOf(target) + 1, 0, source);
+        const target = d.target, parentId = d.pos === 'inside' ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
+        let anchor = target;
+        for (const source of sources) {
+            const world = doc.world(source.id).matrix;
+            source.parentId = parentId;
+            setFromMatrix(source, multiply(inverse(parentMatrix), world));
+            doc.nodes.splice(doc.nodes.indexOf(source), 1);
+            if (d.pos === 'inside')
+                doc.nodes.push(source);
+            else if (d.pos === 'above') {
+                doc.nodes.splice(doc.nodes.indexOf(anchor) + 1, 0, source);
+                anchor = source;
+            }
+            else
+                doc.nodes.splice(doc.nodes.indexOf(target), 0, source);
+        }
         doc.refresh();
         if (parentId)
             state.expanded.add(parentId);
-        select([id]);
+        select(sources.map(n => n.id));
     });
 });
 $('#assets-panel').addEventListener('click', e => {
@@ -14589,6 +15441,10 @@ function srSnippet(text, q) {
 }
 function renderSearchResults() {
     const box = $('#search-results'), { q, results, pageHits } = srCompute();
+    if (!q) {
+        box.innerHTML = '<div class="sr-empty">Search layers and pages by name or text.</div>';
+        return;
+    }
     const LIMIT = 1000, scopeLabel = SR.scope === 'all' ? 'All pages' : 'This page';
     const countLabel = results.length ? `${results.length.toLocaleString()} result${results.length === 1 ? '' : 's'}` : SR.scope === 'all' ? 'No results' : 'No results on this page';
     let html = `<div class="sr-head"><span>${countLabel} · </span><button class="sr-scope" data-sr-scope>${scopeLabel}${icon('chevronDown', 10)}</button><span class="sr-nav"><button class="icon-button small" data-sr-step="-1" title="Previous result (Shift+Enter)" aria-label="Previous result">${icon('chevronDown', 12)}</button><button class="icon-button small" data-sr-step="1" title="Next result (Enter)" aria-label="Next result">${icon('chevronDown', 12)}</button></span></div>`;
@@ -14824,9 +15680,24 @@ $('#search-results').addEventListener('click', e => {
     if (row)
         focusSearchResult(+row.dataset.sr);
 });
-$('#zoom-in').onclick = () => zoomAt(1.25);
-$('#zoom-out').onclick = () => zoomAt(.8);
-$('#zoom-value').onclick = e => showMenu([{ label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 150);
+$('#zoom-in').onclick = () => zoomToPercent(zoomStep(1));
+$('#zoom-out').onclick = () => zoomToPercent(zoomStep(-1));
+const ZOOM_PRESETS = [2, 5, 10, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600];
+function zoomToPercent(pct) { if (!(pct > 0)) return; zoomAt(clamp(pct / 100, .02, 256) / state.camera.zoom); }
+function zoomStep(dir) { const cur = Math.round(state.camera.zoom * 100); return dir > 0 ? (ZOOM_PRESETS.find(v => v > cur) || cur) : ([...ZOOM_PRESETS].reverse().find(v => v < cur) || cur); }
+function showZoomMenu(e) {
+    showMenu([{ label: 'Zoom in', action: 'zoomIn', key: 'Ctrl +' }, { label: 'Zoom out', action: 'zoomOut', key: 'Ctrl -' }, '-', { label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 50%', action: 'zoom50' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: 'Zoom to 200%', action: 'zoom200' }, { label: 'Zoom to 400%', action: 'zoom400' }, { label: 'Zoom to 800%', action: 'zoom800' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 330);
+    const menu = $('#context-menu'), box = document.createElement('div');
+    box.className = 'zoom-custom';
+    box.innerHTML = '<span>Custom zoom</span><input id="zoom-custom-input" type="text" inputmode="decimal" autocomplete="off" aria-label="Custom zoom percent"><span>%</span>';
+    menu.prepend(box);
+    const input = box.querySelector('input');
+    input.value = String(Math.round(state.camera.zoom * 100));
+    input.onclick = ev => ev.stopPropagation();
+    input.onkeydown = ev => { ev.stopPropagation(); if (ev.key === 'Enter') { const v = parseFloat(input.value.replace('%', '').replace(',', '.')); if (v > 0) zoomToPercent(v); menu.classList.add('hidden'); } else if (ev.key === 'Escape') menu.classList.add('hidden'); };
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+$('#zoom-value').onclick = e => showZoomMenu(e);
 $('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
 $('#image-input').onchange = e => { importImage(e.target.files[0]); e.target.value = ''; };
 $('#modal-backdrop').onclick = e => {
@@ -14902,7 +15773,21 @@ overlay.addEventListener('dblclick', e => {
         renameOnCanvas(labelHit);
         return;
     }
-    const hit = hitTest(eventWorld(e), { deep: true });
+    const w0 = eventWorld(e);
+    let hit = hitTest(w0, { deep: true });
+    // In auto layout (and inside components) a double-click goes one level deeper, toward the cursor, instead of jumping to the leaf.
+    if (hit && state.tool === 'select') {
+        const chain = [hit, ...doc.ancestors(hit)];
+        if (chain.some(a => isAutoLayout(a) || a.component || a.isInstance)) {
+            const only = state.selection.size === 1 ? [...state.selection][0] : null, i = only ? chain.findIndex(a => a.id === only) : -1;
+            if (i > 0)
+                hit = chain[i - 1];
+            else if (i < 0) {
+                const base = hitTest(w0), j = base ? chain.findIndex(a => a.id === base.id) : -1;
+                hit = j > 0 ? chain[j - 1] : hit;
+            }
+        }
+    }
     if (state.tool === 'pen') {
         finishPen(false);
         return;
@@ -14920,6 +15805,22 @@ overlay.addEventListener('dblclick', e => {
     }
     else if (hit) {
         select([hit.id]);
+    }
+});
+// Third, fourth ... click in a row keeps going one level deeper toward the cursor (the double-click handles the first step).
+overlay.addEventListener('click', e => {
+    if (e.detail < 3 || state.tool !== 'select' || state.selection.size !== 1)
+        return;
+    const w0 = eventWorld(e), deepHit = hitTest(w0, { deep: true });
+    if (!deepHit)
+        return;
+    const chain = [deepHit, ...doc.ancestors(deepHit)], i = chain.findIndex(a => a.id === [...state.selection][0]);
+    if (i > 0) {
+        const target = chain[i - 1];
+        select([target.id]);
+        // Reaching a text layer goes straight into editing with everything selected.
+        if (target.type === 'text')
+            startText(target, true);
     }
 });
 overlay.addEventListener('contextmenu', e => {
@@ -14962,15 +15863,9 @@ area.addEventListener('wheel', e => {
     e.preventDefault();
     const p = eventPoint(e);
     if ((e.ctrlKey || e.metaKey) && state.ctrlDown) {
-        // Ctrl + mouse wheel: one notch = 3%; the faster the wheel spins, the bigger each step gets.
-        const now = performance.now(), dt = now - (state.zoomT || 0), raw = e.deltaY || e.deltaX;
-        state.zoomT = now;
-        state.zoomStreak = dt < 140 ? Math.min((state.zoomStreak || 0) + 1, 60) : 0;
-        const mag = Math.min(Math.abs(raw) / 100, 3) || 1, dir = -Math.sign(raw) || 1, z = state.camera.zoom;
-        let f = Math.max(.01, z + dir * 3 * mag / 100) / z;
-        if (state.zoomStreak > 1)
-            f = Math.pow(f, 1 + state.zoomStreak * .35);
-        zoomAt(clamp(f, .5, 2), p.x, p.y);
+        // Ctrl + mouse wheel: multiplicative like Figma, 1.0409 per notch (100% -> 104%).
+        const raw = e.deltaY || e.deltaX, ticks = Math.min(Math.max(Math.abs(raw) / 100, 1), 3);
+        zoomAt(Math.pow(1.0409, -Math.sign(raw) * ticks), p.x, p.y);
     }
     else if (e.ctrlKey || e.metaKey || e.altKey)
         zoomAt(Math.exp(-clamp(e.deltaY, -100, 100) * .012), p.x, p.y);
@@ -15612,6 +16507,31 @@ document.addEventListener('keydown', e => {
     }
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
         e.preventDefault();
+        // Inside an auto layout the arrows swap the layer with its neighbour (vertical: up/down, horizontal: left/right, grid: all four).
+        const only = state.selection.size === 1 ? selectedRoots()[0] : null, alp = only && doc.get(only.parentId);
+        if (only && alp && isAutoLayout(alp) && only.layoutPositioning !== 'absolute' && !only.locked) {
+            const kids = doc.children(alp.id).filter(c => c.layoutPositioning !== 'absolute'), visual = alp.layoutFlip ? [...kids].reverse() : kids, i = visual.indexOf(only);
+            const grid = alp.layout === 'grid', horiz = alp.layout === 'horizontal', cols = Math.max(1, Math.round(alp.gridCols || 2));
+            let delta = 0;
+            if (e.key === 'ArrowLeft' && (horiz || grid))
+                delta = -1;
+            else if (e.key === 'ArrowRight' && (horiz || grid))
+                delta = 1;
+            else if (e.key === 'ArrowUp' && (!horiz || grid))
+                delta = grid ? -cols : -1;
+            else if (e.key === 'ArrowDown' && (!horiz || grid))
+                delta = grid ? cols : 1;
+            const other = visual[i + delta];
+            if (delta && other)
+                transaction('Reorder in auto layout', () => {
+                    const a = doc.nodes.indexOf(only), b = doc.nodes.indexOf(other);
+                    doc.nodes[a] = other;
+                    doc.nodes[b] = only;
+                    doc.refresh();
+                    doc.touch(alp);
+                });
+            return;
+        }
         if (state.selection.size)
             transaction('Nudge layers', () => {
                 const d = e.shiftKey ? options.bigNudge : options.nudge;

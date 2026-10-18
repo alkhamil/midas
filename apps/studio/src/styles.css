@@ -656,7 +656,7 @@ button svg {
   opacity: .4
 }
 
-.layer-row.component .layer-icon {
+.layer-row.component-old .layer-icon {
   color: #6fa9f5
 }
 
@@ -2776,3 +2776,89 @@ a.wide-button { text-decoration: none; color: inherit }
 .dk-code { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto }
 .dk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px }
 .dk-detail { color: var(--muted); font-size: 10px; padding-left: 4px }
+
+.zoom-custom { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; font-size: 12px; color: var(--muted, inherit) }
+.zoom-custom input { width: 64px; margin-left: auto; text-align: right; height: 26px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: inherit; font: inherit }
+
+/* Components and everything inside them are purple in the layer tree */
+.layer-row.component .layer-icon { color: #9747FF }
+.layer-row.component .layer-name { color: #9747FF }
+.layer-row .vector-thumb { width: 13px; height: 13px; overflow: visible }
+.layer-row.drop-above::after, .layer-row.drop-below::after { content: ''; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; z-index: 3 }
+.layer-row.drop-above::after { top: -1px }
+.layer-row.drop-below::after { bottom: -1px }
+.layer-row.drop-inside { outline: 2px solid var(--accent); outline-offset: -2px; background: color-mix(in srgb, var(--accent) 14%, transparent) }
+
+/* Page list: compact rows with a real gap so neighbouring hovers no longer touch (text spacing unchanged) */
+.page-row { padding-top: 7px; padding-bottom: 7px; margin-bottom: 4px; position: relative }
+.page-list .page-row { margin-bottom: 4px }
+.page-row.multi:not(.active) { background: var(--accent-bg) }
+.page-row.drop-before, .page-row.drop-after { box-shadow: none }
+.page-row.drop-before::after, .page-row.drop-after::after { content: ''; position: absolute; left: calc(9px + var(--depth,0) * 14px); right: 4px; height: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; z-index: 2 }
+.page-row.drop-before::after { top: -3px }
+.page-row.drop-after::after { bottom: -3px }
+.page-row.drop-before::before, .page-row.drop-after::before { content: ''; position: absolute; left: calc(3px + var(--depth,0) * 14px); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); pointer-events: none; z-index: 2 }
+.page-row.drop-before::before { top: -5px }
+.page-row.drop-after::before { bottom: -5px }
+.page-row.drop-into { background: var(--accent-bg); outline: 2px solid var(--accent); outline-offset: -2px }
+.sr-empty { padding: 18px 14px; font-size: 11px; color: var(--muted); text-align: center }
+
+.selection-name-input { min-width: 0 }
+.kind-chevron { flex: none; margin-left: 2px }
+
+/* Constraint dropdowns: no box inside a box, focus ring on the whole field */
+.cn-select select { background: transparent; border: 0; outline: 0; box-shadow: none; border-radius: 6px }
+.cn-select select option { background: var(--panel-3); color: var(--text) }
+.cn-select:focus-within { box-shadow: inset 0 0 0 1px var(--accent) }
+
+/* Library panel header buttons: icon and label on one line, wrapping to separate rows instead of breaking */
+.asset-head { flex-wrap: wrap }
+.asset-head .wide-button { flex: 1 1 130px; flex-direction: row; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; width: auto; min-width: 0; padding: 0 10px; overflow: hidden; text-overflow: ellipsis }
+.asset-head .wide-button svg { flex: none }
+
+.arc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.arc-cell { display: grid; gap: 4px; min-width: 0 }
+.arc-cell .field { min-width: 0 }
+
+/* long property labels truncate instead of scrolling the panel sideways */
+.vp-row2 { min-width: 0 }
+.vp-row2 .vp-pill { flex: 1 1 0; min-width: 0 }
+.vp-section, .cmp-block, .cmp-props { min-width: 0; max-width: 100% }
+#inspector { overflow-x: hidden }
+.inst-locked { opacity: .5; pointer-events: none }
+
+/* panel chrome is not selectable text */
+#right-panel, #left-panel, .left-rail, .topbar, header { user-select: none; -webkit-user-select: none }
+#right-panel input, #right-panel textarea, #left-panel input, #left-panel textarea, [contenteditable] { user-select: text; -webkit-user-select: text }
+
+.stp-menu { max-height: 60vh; overflow-y: auto }
+.pp-toggle { margin-right: 8px }
+.prop-chip .vc-glyph { color: #9747FF }
+
+/* switches (component properties) */
+input[type=checkbox][role=switch] { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--border); position: relative; cursor: pointer; border: 0; margin: 0; transition: background .15s }
+input[type=checkbox][role=switch]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s }
+input[type=checkbox][role=switch]:checked { background: var(--accent-strong, #0058CA) }
+input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
+.pp-row .vsw { display: inline-flex; align-items: center }
+.pp-row .pp-tval { margin-left: 8px }
+
+/* Collections / groups in the variables window use the same drop indicators as pages and layers */
+.vw-side .vw-coll { position: relative }
+.vw-side .vw-coll.vw-drop-before, .vw-side .vw-coll.vw-drop-after { box-shadow: none }
+.vw-side .vw-coll.vw-drop-before::after, .vw-side .vw-coll.vw-drop-after::after { content: ''; position: absolute; left: 6px; right: 4px; height: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; z-index: 2 }
+.vw-side .vw-coll.vw-drop-before::after { top: -1px }
+.vw-side .vw-coll.vw-drop-after::after { bottom: -1px }
+.vw-side .vw-coll.vw-drop-into { background: var(--accent-bg); outline: 2px solid var(--accent); outline-offset: -2px }
+
+#vars-window, #vars-window * { user-select: none; -webkit-user-select: none }
+#vars-window input, #vars-window textarea, #vars-window [contenteditable] { user-select: text; -webkit-user-select: text }
+.return-bar { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: #9747FF; color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
+.return-bar button { color: inherit; font-size: 12px; font-weight: 500 }
+.return-bar .icon-button { width: 22px; height: 22px; border-radius: 50%; color: #fff }
+.return-bar .icon-button:hover { background: rgba(255,255,255,.2) }
+
+/* Collections / groups: same row height and gap as the page list, with multi-select */
+.vw-side .vw-coll { height: 32px; margin-bottom: 4px; box-sizing: border-box }
+.vw-side .vw-coll.multi:not(.on) { background: var(--accent-bg) }
+.vw-side .vw-coll.multi { box-shadow: inset 0 0 0 1px var(--accent) }

@@ -1,7 +1,7 @@
 // Ikon design system: 2 gaya — outline (garis 1.5px) dan bold-duotone (bentuk isi 50% + detail solid),
 // mengikuti set WDS. Ikon "ui" di bawah melengkapi kebutuhan komponen yang tidak ada di set WDS lokal.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 export const ICON_STYLES = ['outline', 'bold-duotone'];
 const C = '#1C274C';
@@ -113,7 +113,7 @@ export function wdsIconFiles(dir) {
         for (const f of readdirSync(d)) {
             const p = join(d, f);
             if (statSync(p).isDirectory()) walk(p);
-            else if (f.endsWith('.svg')) out.push({ path: `wds/${relative(dir, p)}`, svg: readFileSync(p, 'utf8') });
+            else if (f.endsWith('.svg')) out.push({ path: `wds/${relative(dir, p).split(sep).join('/')}`, svg: readFileSync(p, 'utf8') });
         }
     };
     for (const style of ICON_STYLES) if (existsSync(join(dir, style))) walk(join(dir, style));
