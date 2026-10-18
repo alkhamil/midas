@@ -2802,3 +2802,6 @@ a.wide-button { text-decoration: none; color: inherit }
 .page-row.drop-after::before { bottom: -5px }
 .page-row.drop-into { background: var(--accent-bg); outline: 2px solid var(--accent); outline-offset: -2px }
 .sr-empty { padding: 18px 14px; font-size: 11px; color: var(--muted); text-align: center }
+
+.selection-name-input { min-width: 0 }
+.kind-chevron { flex: none; margin-left: 2px }

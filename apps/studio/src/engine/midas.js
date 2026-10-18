@@ -726,6 +726,10 @@ function nodeMode(d, n, coll) {
             return m;
         cur = d.get(cur.parentId);
     }
+    // Variable collections connected to the page itself apply to everything on it.
+    const pm = d.page?.varModes?.[coll.id];
+    if (pm && coll.modes.some(x => x.id === pm))
+        return pm;
     return coll.modes[0]?.id;
 }
 function varValue(d, item, node, depth = 0) {
@@ -1139,11 +1143,13 @@ function handleVarClick(e) {
     if (det)
         detachVariable(det.dataset.varDetach);
 }
+// Variable-mode targets: the selected layers, or the page itself when nothing is selected.
+function modeTargets() { return selected().length ? selected() : doc.page ? [doc.page] : []; }
 document.addEventListener('change', e => {
     const el = e.target;
     if (el.matches?.('[data-var-mode]')) {
         transaction('Set variable mode', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 n.varModes = { ...(n.varModes || {}) };
                 if (el.value)
                     n.varModes[el.dataset.varMode] = el.value;
@@ -1617,12 +1623,12 @@ function closeCollMenu() {
 }
 function openCollMenu(anchor) {
     closeCollMenu();
-    const store = varStore(), n = activeNode();
+    const store = varStore(), n = activeNode() || doc.page, onPage = !activeNode();
     if (!n)
         return;
     const el = document.createElement('div');
     el.className = 'coll-menu';
-    el.innerHTML = `<div class="cm-head">Created in this file</div>` + relevantCollections(n).map(c => `<button class="cm-item" data-cm="${c.id}"><span>${esc(c.name)}</span><i>${icon('chevronRight', 12)}</i></button>`).join('');
+    el.innerHTML = `<div class="cm-head">Created in this file</div>` + (onPage ? store.collections : relevantCollections(n)).map(c => `<button class="cm-item" data-cm="${c.id}"><span>${esc(c.name)}</span><i>${icon('chevronRight', 12)}</i></button>`).join('');
     document.body.appendChild(el);
     const a = anchor.getBoundingClientRect();
     el.style.left = Math.max(8, a.right - el.offsetWidth) + 'px';
@@ -1633,7 +1639,7 @@ function openCollMenu(anchor) {
     collMenu = { el, anchor, sub: null, away };
     const pick = (cid, modeId) => {
         transaction('Set variable mode', () => {
-            for (const x of selected()) {
+            for (const x of modeTargets()) {
                 const next = { ...(x.varModes || {}) };
                 if (modeId === null)
                     delete next[cid];
@@ -1654,7 +1660,7 @@ function openCollMenu(anchor) {
             return;
         collMenu.sub?.remove();
         el.querySelectorAll('.cm-item').forEach(b => b.classList.toggle('on', b === btn));
-        const explicit = n.varModes?.[c.id], parent = doc.get(n.parentId), inh = parent ? nodeMode(doc, parent, c) : c.modes[0]?.id, inhName = c.modes.find(m => m.id === inh)?.name || c.modes[0]?.name;
+        const explicit = n.varModes?.[c.id], parent = onPage ? null : doc.get(n.parentId), inh = parent ? nodeMode(doc, parent, c) : c.modes[0]?.id, inhName = c.modes.find(m => m.id === inh)?.name || c.modes[0]?.name;
         const sub = document.createElement('div');
         sub.className = 'coll-menu coll-sub';
         sub.innerHTML = `<button class="cm-item" data-cm-mode=""><span class="chk">${explicit === undefined ? '✓' : ''}</span><span>Auto (${esc(inhName)})</span></button><div class="menu-divider"></div><div class="cm-head">Mode</div>` + c.modes.map(m => `<button class="cm-item" data-cm-mode="${m.id}"><span class="chk">${explicit === m.id ? '✓' : ''}</span><span>${esc(m.name)}</span></button>`).join('');
@@ -1696,7 +1702,7 @@ function varCollectionsHtml(n) {
     return h;
 }
 function varCollectionsButton(n) {
-    if (!relevantCollections(n).length)
+    if (n && !relevantCollections(n).length)
         return '';
     return `<button class=\"icon-button small ${state.varCollMenu ? 'active' : ''}\" data-var-coll-toggle title=\"Connect variable collection\" aria-label=\"Connect variable collection\">${VAR_ICON}</button>`;
 }
@@ -1719,7 +1725,7 @@ document.addEventListener('click', e => {
         if (!coll)
             return;
         transaction('Connect variable collection', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 n.varModes = { ...(n.varModes || {}), [cid]: nodeMode(doc, n, coll) || coll.modes[0].id };
                 doc.touch(n);
             }
@@ -1731,7 +1737,7 @@ document.addEventListener('click', e => {
     if ((el = e.target.closest('[data-var-mode-del]'))) {
         const cid = el.dataset.varModeDel;
         transaction('Disconnect variable collection', () => {
-            for (const n of selected()) {
+            for (const n of modeTargets()) {
                 if (!n.varModes)
                     continue;
                 n.varModes = { ...n.varModes };
@@ -3020,8 +3026,8 @@ function frameSection(ns) {
         for (const [name, w, h] of items)
             if ((n.w === w && n.h === h) || (n.w === h && n.h === w))
                 cur ||= group + '|' + name;
-    const opts = FRAME_PRESETS.map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(([name, w, h]) => `<option value="${esc(group + '|' + name)}" ${cur === group + '|' + name ? 'selected' : ''}>${esc(name)} · ${w}×${h}</option>`).join('')}</optgroup>`).join('');
-    return section('Frame', `<select class="full-width" data-frame-preset aria-label="Frame preset"><option value="" ${cur ? '' : 'selected'}>Custom size</option>${opts}</select><div class="ly-row" style="margin-top:8px"><div class="segmented ly-dir"><button data-frame-orient="portrait" class="${n.h >= n.w ? 'active' : ''}" title="Portrait">▯</button><button data-frame-orient="landscape" class="${n.w > n.h ? 'active' : ''}" title="Landscape">▭</button></div></div>`);
+    const opts = FRAME_PRESETS.filter(g => ['Phone', 'Tablet', 'Desktop'].includes(g[0])).map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(([name, w, h]) => `<option value="${esc(group + '|' + name)}" ${cur === group + '|' + name ? 'selected' : ''}>${esc(name)} · ${w}×${h}</option>`).join('')}</optgroup>`).join('');
+    return section('Size preset', `<select class="full-width" data-frame-preset aria-label="Size preset"><option value="" disabled ${cur ? '' : 'selected'} hidden>Choose a size</option>${opts}</select>`);
 }
 function createPresetFrame(key) {
     const p = findPreset(key);
@@ -6961,7 +6967,7 @@ function renderInspector() {
         html += framePresetPanel();
     }
     else if (!n) {
-        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>`);
+        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
         html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
         html += section('Saved to your workspace', `<p>This document is saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
     }
@@ -10629,8 +10635,61 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${ns.length} layers selected</span>`;
     if (n.component && parentSetOf(n))
         return `<span class="selection-name">${esc(n.name)}</span>`;
-    return `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    // Frame / section / group can switch kind from a chevron next to the name.
+    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp)
+        return input + `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
+    return input;
 }
+function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
+function convertKind(kind) {
+    const targets = selected().filter(n => kindOf(n) && kindOf(n) !== kind && !n.component && !n.componentSet && !n.isInstance && !n.sourceId);
+    if (!targets.length)
+        return;
+    if (kind === 'section' && targets.some(n => n.parentId && !doc.get(n.parentId)?.isSection)) {
+        toast('A section can only sit on the page or inside another section.');
+        return;
+    }
+    transaction('Change type to ' + kind, () => {
+        for (const n of targets) {
+            const was = kindOf(n);
+            const generic = ['Frame', 'Group', 'Section'].includes(n.name);
+            if (kind === 'group') {
+                delete n.isSection;
+                n.type = 'group';
+                n.layout = 'none';
+                n.fill = 'none';
+                n.clip = false;
+                if (generic) n.name = 'Group';
+            }
+            else if (kind === 'frame') {
+                n.type = 'frame';
+                delete n.isSection;
+                if (was === 'group' || n.fill === 'none' || n.fill === '#f1f0f4')
+                    n.fill = '#ffffff';
+                n.clip = true;
+                if (generic) n.name = 'Frame';
+            }
+            else {
+                n.type = 'frame';
+                n.isSection = true;
+                n.layout = 'none';
+                n.clip = false;
+                n.fill = '#f1f0f4';
+                if (generic) n.name = 'Section';
+            }
+            doc.touch(n);
+        }
+        doc.refresh();
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-kind-menu]');
+    if (!b)
+        return;
+    const cur = kindOf(activeNode() || {}), r = b.getBoundingClientRect();
+    showMenu([['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k })), Math.max(8, r.right - 160), r.bottom + 4);
+});
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
         return '';
@@ -14061,7 +14120,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -14337,6 +14396,106 @@ document.addEventListener('click', e => {
         insertAsset(asset.dataset.asset);
         return;
     }
+});
+// ----- math in number fields: 100/2, 24+8, (10+2)*3 ... (Figma-style) -----
+// A number input rejects non-numeric text, so a focused field is switched to text mode; the result is written back (and the
+// type restored) in the capture phase of 'change', before the regular handlers read valueAsNumber.
+function evalMathExpr(src) {
+    const s = String(src).replace(/,/g, '.').replace(/px/gi, '').replace(/\s+/g, '');
+    if (!s || !/^[\d+\-*/().x×÷]+$/i.test(s))
+        return NaN;
+    let i = 0;
+    const peek = () => s[i];
+    const number = () => {
+        const m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+        if (!m)
+            return NaN;
+        i += m[0].length;
+        return parseFloat(m[0]);
+    };
+    const factor = () => {
+        if (peek() === '+') { i++; return factor(); }
+        if (peek() === '-') { i++; return -factor(); }
+        if (peek() === '(') {
+            i++;
+            const v = expr();
+            if (peek() !== ')')
+                return NaN;
+            i++;
+            return v;
+        }
+        return number();
+    };
+    const term = () => {
+        let v = factor();
+        while (peek() === '*' || peek() === '/' || peek() === 'x' || peek() === '×' || peek() === '÷') {
+            const op = s[i++], r = factor();
+            v = op === '/' || op === '÷' ? v / r : v * r;
+        }
+        return v;
+    };
+    function expr() {
+        let v = term();
+        while (peek() === '+' || peek() === '-') {
+            const op = s[i++], r = term();
+            v = op === '+' ? v + r : v - r;
+        }
+        return v;
+    }
+    const v = expr();
+    return i === s.length && Number.isFinite(v) ? v : NaN;
+}
+const exprEligible = el => el instanceof HTMLInputElement && (el.type === 'number' || el.dataset.expr) && !el.closest('.vars-window') && !el.matches('[data-vw],[data-vd-val],[data-ve]');
+document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (!exprEligible(el) || el.dataset.expr || el.type !== 'number')
+        return;
+    el.dataset.expr = '1';
+    el.dataset.exprMin = el.min;
+    el.dataset.exprMax = el.max;
+    el.dataset.exprStep = el.step || '1';
+    el.type = 'text';
+    el.setAttribute('inputmode', 'decimal');
+    el.select();
+});
+const exprRestore = el => { if (el.dataset.expr) { el.type = 'number'; delete el.dataset.expr; } };
+window.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.dataset?.expr)
+        return;
+    let v = evalMathExpr(el.value);
+    if (!Number.isFinite(v)) {
+        exprRestore(el);
+        renderInspector();
+        e.stopImmediatePropagation();
+        return;
+    }
+    const min = el.dataset.exprMin, max = el.dataset.exprMax;
+    if (min !== '' && Number.isFinite(+min))
+        v = Math.max(+min, v);
+    if (max !== '' && Number.isFinite(+max))
+        v = Math.min(+max, v);
+    exprRestore(el);
+    el.value = String(Math.round(v * 1000) / 1000);
+}, true);
+document.addEventListener('focusout', e => {
+    const el = e.target;
+    if (el.dataset?.expr)
+        setTimeout(() => exprRestore(el), 0);
+});
+document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (!el.dataset?.expr || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown'))
+        return;
+    e.preventDefault();
+    const cur = evalMathExpr(el.value), step = (+el.dataset.exprStep || 1) * (e.shiftKey ? 10 : e.altKey ? .1 : 1) * (e.key === 'ArrowUp' ? 1 : -1);
+    if (!Number.isFinite(cur))
+        return;
+    el.value = String(Math.round((cur + step) * 1000) / 1000);
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dataset.expr = '1';
+    el.type = 'text';
+    el.select();
 });
 document.addEventListener('input', e => {
     const el = e.target;
