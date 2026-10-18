@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
+import { assembleProject, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -247,4 +247,17 @@ test('generator emits delete/restore confirm dialogs, filters and soft delete fr
     assert.match(files['src/modules/user/i18n/en.json'], /Remove this user\?/); // text from the dialog design
     assert.match(files['src/modules/user/api/mock.ts'], /mockRestore/);
     assert.ok(!Object.keys(files).some(f => /pages\/.*Delete/.test(f)), 'dialog screens do not become pages');
+});
+
+test('assembleProject makes a standalone project with the vendored library', () => {
+    const files = assembleProject({ 'package.json': '{"name":"x","dependencies":{"@midas/ui-cms":"2.3.0","react":"1"}}', '.npmrc': '@midas:registry=x', 'src/a.ts': 'a' }, { 'src/b.ts': 'b' }, { appName: 'CMS Demo', libraryName: '@midas/ui-cms', tarballName: 'midas-ui-cms-2.3.0.tgz', tarball: new Uint8Array([1, 2, 3]) });
+    const pkg = JSON.parse(files['package.json']);
+    assert.equal(pkg.name, 'cms-demo');
+    assert.equal(pkg.dependencies['@midas/ui-cms'], 'file:vendor/midas-ui-cms-2.3.0.tgz');
+    assert.equal(pkg.dependencies.react, '1');
+    assert.ok(!('.npmrc' in files));
+    assert.deepEqual([...files['vendor/midas-ui-cms-2.3.0.tgz']], [1, 2, 3]);
+    assert.ok(files['src/a.ts'] && files['src/b.ts']);
+    const zip = zipFiles(files);
+    assert.equal(new DataView(zip.buffer).getUint16(zip.length - 12, true), Object.keys(files).length);
 });

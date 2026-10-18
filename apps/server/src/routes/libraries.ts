@@ -19,6 +19,7 @@ type VersionRow = typeof libraryVersions.$inferSelect;
 
 const snapshotKey = (libraryId: string, seq: number) => `libraries/${libraryId}/${seq}.json`;
 const bundleKey = (libraryId: string, version: string, file: string) => `libraries/${libraryId}/bundles/${version}/${file}`;
+const packageKey = (libraryId: string, version: string) => `libraries/${libraryId}/packages/${version}/package.tgz`;
 
 const snapshotShape = z.object({
     components: z.array(z.object({ id: z.string().min(1), name: z.string(), set: z.boolean().optional(), nodes: z.array(z.object({ id: z.string() }).passthrough()) }).passthrough()),
@@ -356,6 +357,35 @@ export async function libraryRoutes(app: FastifyInstance) {
         }
         catch {
             return reply.code(404).send({ error: 'not_found' });
+        }
+    });
+
+    // The built npm package (`npm pack` tarball) of one version, uploaded by `midas bundle`. "Download project" in Studio embeds it
+    // as a local `file:` dependency, so a downloaded app installs with plain `npm install` (no registry login).
+    app.addContentTypeParser('application/gzip', { parseAs: 'buffer', bodyLimit: 64 * 1024 * 1024 }, (_req, body, done) => done(null, body));
+    app.put<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/package', { bodyLimit: 64 * 1024 * 1024 }, async (req, reply) => {
+        if (!Buffer.isBuffer(req.body) || req.body.length < 100)
+            return reply.code(400).send({ error: 'invalid', message: 'Package tarball is empty' });
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
+        await putObject(packageKey(l.id, v.version), req.body, 'application/gzip');
+        return { size: req.body.length };
+    });
+
+    app.get<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/package', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: 'Library version not found' });
+        try {
+            const data = await getObject(packageKey(l.id, v.version));
+            const file = `${(l.packageName ?? l.id).replace(/^@/, '').replace('/', '-')}-${v.version}.tgz`;
+            return reply.header('content-type', 'application/gzip').header('content-disposition', `attachment; filename="${file}"`).header('x-package-file', file).send(data);
+        }
+        catch {
+            return reply.code(404).send({ error: 'not_found', message: 'Package not uploaded yet (run `midas bundle` in the package repo)' });
         }
     });
 

@@ -82,9 +82,16 @@ Rail **Code Builder** di Studio (spec §4): buat project untuk file desain yang 
 
 ### Mengambil source code (untuk developer)
 
-Tombol **Generate kode…** (panel Code Builder atau bar workspace) menampilkan dua cara:
+Tombol **Generate code…** (panel Code Builder atau bar workspace):
 
-1. **CLI (disarankan)** — di repo aplikasi (hasil clone base project):
+0. **Download project (.zip) — termudah.** Berisi app lengkap: base project + module hasil generate + paket library UI (`vendor/*.tgz`, dari `midas bundle`). Developer cukup unzip lalu:
+
+   ```bash
+   npm install && npm run dev
+   ```
+
+   Tanpa login registry. (Syarat: `midas bundle` sudah dijalankan di repo paket library untuk versi itu.)
+1. **CLI** — memperbarui app yang sudah ada (hasil clone base project):
 
    ```bash
    npx midas login                                   # sekali
@@ -93,7 +100,7 @@ Tombol **Generate kode…** (panel Code Builder atau bar workspace) menampilkan 
    ```
 
    Aman diulang: generator menulis module di `src/modules/<nama>/` (types, `api/{mock,service,resolver,queries}`, `pages/`, `i18n/`, `index.ts`) dan `src/app/generated/{routes,navigation,locales,layout}`. File yang pernah dibangkitkan tapi tak lagi dihasilkan dihapus (manifest `.midas/generated.json`); kode tulisan tangan tidak disentuh. Versi library di `package.json` disamakan dengan versi project. Data masih **mock** (`USE_MOCK` di `api/mock.ts`) sampai endpoint backend dihubungkan.
-2. **Unduh .zip** — arsip folder `src/` hasil generate, dibangkitkan di browser.
+2. **Unduh hanya file hasil generate (.zip)** — folder `src/` saja, dibangkitkan di browser.
 
 Kode: `packages/builder-core/` (`screen.js` pemetaan node → kode & issues, `model.js` layout/properti/entity, `generate.js` generator, `zip.js`), `apps/studio/src/codebuilder/` (`Panel.jsx`, `Workspace.jsx`, `Inspector.jsx`, `Generate.jsx`, `Renderer.jsx`, `loader.js`), `apps/server/src/{lib,routes}/builder.ts`, `packages/cli/src/{generate,bundle}.js`.
 
