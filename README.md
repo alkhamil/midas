@@ -85,7 +85,7 @@ cd packages/ui-base && npm run sync && npm run build && npx midas report
 npm run dev --workspace @midas/base-project        # login demo: admin / admin123
 ```
 
-`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `contoh_base_code/public/icons/wds` bila ada (`--icons DIR` untuk folder lain). Opsi lain: `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`.
+`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `scripts/design-system/icons/wds` (gaya outline & bold-duotone; `--icons DIR` untuk folder lain). Opsi lain: `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`.
 
 Design system "Midas Base" (karakter profesional & tenang, primary `#0058CA`, font Inter) ditulis sebagai kode di `scripts/design-system/`:
 
@@ -94,6 +94,7 @@ Design system "Midas Base" (karakter profesional & tenang, primary `#0058CA`, fo
 | `tokens.mjs` | Variables: Color (Light/Dark), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
 | `components.mjs` | 23 komponen + bagian internal (`_Option`, `_Dropdown`, `_Chip`, `_SidebarItem`) dengan variant, component property, dan state (mis. SelectField Open) |
 | `icons.mjs` | Ikon UI tambahan; set ikon hanya 2 gaya: `outline` & `bold-duotone` |
+| `icons/wds/` | Set ikon WDS (SVG) per gaya & kategori |
 | `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
 | `document.mjs` | Page Cover, Foundations, Icons, satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout), Templates |
 

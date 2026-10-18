@@ -62,7 +62,8 @@ if (file) {
     existing = existingIds({ pages: currentPages.map(p => p.data), variables: current.meta.variables });
 }
 
-const wdsDir = args.icons || join(ROOT, 'contoh_base_code/public/icons/wds');
+// Ikon WDS: salinan di repo (scripts/design-system/icons/wds), atau folder referensi lama contoh_base_code.
+const wdsDir = args.icons || [join(ROOT, 'scripts/design-system/icons/wds'), join(ROOT, 'contoh_base_code/public/icons/wds')].find(d => existsSync(d)) || join(ROOT, 'scripts/design-system/icons/wds');
 if (!existsSync(wdsDir)) console.warn(`Peringatan: folder ikon WDS ${wdsDir} tidak ada — hanya ikon UI bawaan yang dipakai. Pakai --icons DIR untuk set lengkap.`);
 const { doc, iconCount, iconStyles } = buildDocument({ existing, wdsDir });
 console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')} · ${iconCount} ikon (${iconStyles.join(', ')}) · ${doc.variables.items.length} variables`);

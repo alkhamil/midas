@@ -71,10 +71,9 @@ node packages/cli/bin/midas.js login --server http://127.0.0.1:4000 --email EMAI
 
 Berhasil bila muncul `Login sebagai … <EMAIL_KAMU>`. Token disimpan di `~/.midas/config.json`.
 
-## 7. Ikon WDS (opsional tapi disarankan)
+## 7. Ikon
 
-Set ikon WDS ada di folder `contoh_base_code/` yang **tidak ada di Git**. Minta folder itu ke pemilik repo dan taruh di root repo, sehingga ada `contoh_base_code/public/icons/wds/`.
-Tanpa folder ini seed tetap jalan, tetapi library hanya berisi 20 ikon UI bawaan (seed memberi peringatan).
+Set ikon WDS (gaya outline & bold-duotone) sudah ada di repo: `scripts/design-system/icons/wds/`. Tidak perlu langkah tambahan.
 
 ## 8. Seed design system "Midas Base"
 
@@ -106,7 +105,7 @@ Jalankan ulang tanpa `--create` untuk memperbarui file yang sudah ada (id kompon
   npm test --workspace @midas/ui-base
   ```
 
-> Jangan jalankan `midas sync` di `packages/ui-base` bila folder ikon WDS tidak ada: sync menulis ulang `src/generated/` dari library di servermu, sehingga ikon WDS akan terhapus dari kode.
+> `midas sync` di `packages/ui-base` menulis ulang `src/generated/` dari library di servermu. Jalankan hanya setelah seed, supaya isinya sama dengan desain.
 
 ## 10. Test lainnya (infra harus jalan)
 
