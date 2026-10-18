@@ -7109,7 +7109,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}<span class="head-actions">${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}${multi ? '' : headerChevronHtml(n)}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -8433,7 +8433,7 @@ function pointerDown(e) {
         }
         if (handle) {
             history.begin(handle.name === 'rotate' ? 'Rotate layers' : 'Resize layers');
-            state.gesture = { kind: handle.name === 'rotate' ? 'rotate' : 'resize', handle: handle.name, start: w, geometry: structuredClone(geo), originals: saveOriginals(selectedRoots()), roots: selectedRoots().map(n => n.id), center: point(geo.matrix, geo.w / 2, geo.h / 2) };
+            state.gesture = { kind: handle.name === 'rotate' ? 'rotate' : 'resize', descOrig: new Map(selectedRoots().flatMap(r => doc.descendants(r.id)).map(c => [c.id, { x: c.x, y: c.y, w: c.w, h: c.h, ...(c.fontSize !== undefined ? { fontSize: c.fontSize } : {}) }])), handle: handle.name, start: w, geometry: structuredClone(geo), originals: saveOriginals(selectedRoots()), roots: selectedRoots().map(n => n.id), center: point(geo.matrix, geo.w / 2, geo.h / 2) };
             return;
         }
     }
@@ -8908,6 +8908,12 @@ function pointerMove(e) {
                 n.version = version;
             }
         }
+        // Children go back to where they were when the drag began, so each frame is computed from the start (no drift).
+        for (const [cid, o] of g.descOrig || []) {
+            const c = doc.get(cid);
+            if (c)
+                Object.assign(c, o);
+        }
         doc.touch();
         if (g.roots.length === 1) {
             const n = doc.get(g.roots[0]), orig = g.originals.get(n.id), worldTL = point(g.geometry.matrix, left, top), parentInv = n.parentId ? doc.world(n.parentId).inverse : identity(), tl = point(parentInv, worldTL.x, worldTL.y);
@@ -8929,7 +8935,21 @@ function pointerMove(e) {
             Object.assign(n, xyForTopLeft(n, tl));
             n.x = Math.round(n.x);
             n.y = Math.round(n.y);
-            constrainChildren(n, orig.w, orig.h, e.ctrlKey || e.metaKey);
+            if ((e.ctrlKey || e.metaKey) && ['frame', 'group'].includes(n.type) && !isAutoLayout(n)) {
+                // Ctrl / Cmd: only the frame changes; its content stays exactly where it is on the canvas, constraints ignored.
+                for (const c of doc.children(n.id)) {
+                    const o = g.descOrig?.get(c.id);
+                    if (o) {
+                        c.x = o.x - left;
+                        c.y = o.y - top;
+                        doc.touch(c);
+                    }
+                }
+                if (n.type === 'frame')
+                    constraintSizes.set(n, { w: n.w, h: n.h });
+            }
+            else
+                constrainChildren(n, orig.w, orig.h);
             if (n.type === 'text')
                 n.h = textModeOf(n) === 'auto-h' ? Math.ceil(Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height))) : Math.max(n.h, Math.ceil(n.fontSize * n.lineHeight));
             doc.touch(n);
@@ -8943,7 +8963,7 @@ function pointerMove(e) {
                 n.h = Math.max(1, Math.round(orig.h * sy));
                 if (n.type === 'text')
                     n.fontSize = orig.fontSize * Math.min(sx, sy);
-                constrainChildren(n, orig.w, orig.h, e.ctrlKey || e.metaKey);
+                constrainChildren(n, orig.w, orig.h);
                 doc.touch(n);
             }
         }
@@ -11158,10 +11178,41 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${esc(n.name)}</span>`;
     const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
     // Frame / section / group can switch kind from a chevron next to the name.
-    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
-        return input + `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
     return input;
 }
+// Chevrons that sit right before the "···" button: kind switcher for frames / groups, instance swap for instances.
+function headerChevronHtml(n) {
+    if (n.isInstance && n.sourceId && !insideInstance(n))
+        return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
+    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
+        return `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
+    return '';
+}
+// Point an instance at another component, rebuilding its layers.
+function swapInstanceTo(inst, compId) {
+    const target = componentById(compId);
+    if (!target || chainComponent(inst)?.id === target.id)
+        return;
+    transaction('Swap instance', () => {
+        const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(x => x.id));
+        page.nodes = page.nodes.filter(x => !gone.has(x.id));
+        inst.sourceId = target.id;
+        inst.overrides = {};
+        delete inst.propValues;
+        inst.w = target.w;
+        inst.h = target.h;
+        doc.refresh();
+        syncComponents(true);
+        doc.touch(inst);
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-instance-swap]');
+    const n = b && activeNode();
+    if (!n)
+        return;
+    openSwapPicker(b, { current: chainComponent(n)?.id, onPick: id => swapInstanceTo(n, id) });
+});
 function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
 function convertKind(kind) {
     const targets = selected().filter(n => kindOf(n) && kindOf(n) !== kind && !n.component && !n.componentSet && !n.isInstance && !n.sourceId);

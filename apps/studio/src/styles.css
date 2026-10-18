@@ -2862,3 +2862,7 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .vw-side .vw-coll { height: 32px; margin-bottom: 4px; box-sizing: border-box }
 .vw-side .vw-coll.multi:not(.on) { background: var(--accent-bg) }
 .vw-side .vw-coll.multi { box-shadow: inset 0 0 0 1px var(--accent) }
+
+.head-actions { display: inline-flex; align-items: center; gap: 0; flex: none }
+.head-actions .icon-button { margin: -4px 0 -4px 0 !important }
+.head-actions .icon-button:last-child { margin-right: -4px !important }
