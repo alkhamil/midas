@@ -73,7 +73,7 @@ test('publish first version, then the package name is locked', async () => {
     assert.equal(ok.body.library.version, 1);
     const locked = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', packageName: '@midas/other', version: '1.1.0', snapshot: snapshot(), mappings: d.body.mappings });
     assert.equal(locked.status, 400);
-    assert.match(locked.body.errors.join(), /terkunci/);
+    assert.match(locked.body.errors.join(), /is locked/);
     const avail = await call('GET', `/api/libraries/package-available?name=${encodeURIComponent(pkg)}`);
     assert.equal(avail.body.available, false);
 });
@@ -86,7 +86,7 @@ test('version must increase; removing a variant value requires a major bump', as
     assert.equal(same.status, 400);
     const minor = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', packageName: pkg, version: '1.1.0', snapshot: snapshot(['Primary']), mappings: d.body.mappings });
     assert.equal(minor.status, 400);
-    assert.match(minor.body.errors.join(), /minimal 2\.0\.0/);
+    assert.match(minor.body.errors.join(), /minimum version is 2\.0\.0/);
     const major = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', packageName: pkg, version: '2.0.0', snapshot: snapshot(['Primary']), mappings: d.body.mappings });
     assert.equal(major.status, 200);
     assert.equal(major.body.library.version, 2);
@@ -138,7 +138,7 @@ test('legacy libraries are imported once', async () => {
 
 test('breakingChanges reports renamed exports', () => {
     const a = deriveMapping(button());
-    assert.deepEqual(breakingChanges([a], [{ ...a, exportName: 'Btn' }]), ['Komponen Button diganti nama menjadi Btn']);
+    assert.deepEqual(breakingChanges([a], [{ ...a, exportName: 'Btn' }]), ['Component Button was renamed to Btn']);
 });
 
 test('resolve, kit and scaffold zip for a published version', async () => {
@@ -172,7 +172,7 @@ test('icons drawn as vectors are published from snapshot.icons', async () => {
     const icons = [{ componentKey: 'ic-back', name: 'back', category: 'navigation', styles: { default: vectorSvg('#1C274C') } }];
     const both = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.0.0', snapshot: { ...snap, icons }, mappings: d.body.mappings });
     assert.equal(both.status, 400);
-    assert.match(both.body.errors.join(), /sekaligus menjadi ikon dan komponen/);
+    assert.match(both.body.errors.join(), /cannot be both an icon and a component/);
     const ok = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.0.0', snapshot: { ...snap, icons }, mappings: buttonMapping });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.equal(ok.body.library.components, 1);
@@ -194,8 +194,8 @@ test('removing a published icon requires a major version', async () => {
     const d = await call('POST', `/api/libraries/${dsIcons}/draft`, { snapshot: snap, iconKeys: [] });
     const minor = await call('POST', `/api/libraries/${dsIcons}/versions`, { name: 'Icon DS', packageName: `@midas/ui-icons-${stamp}`, version: '1.1.0', snapshot: snap, mappings: d.body.mappings });
     assert.equal(minor.status, 400);
-    assert.match(minor.body.errors.join(), /minimal 2\.0\.0/);
-    assert.ok(minor.body.breaking.includes('Ikon back dihapus'));
+    assert.match(minor.body.errors.join(), /minimum version is 2\.0\.0/);
+    assert.ok(minor.body.breaking.includes('Icon back was removed'));
 });
 
 test('code status report from the package repo', async () => {

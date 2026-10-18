@@ -18,7 +18,7 @@ export type FilterToolbarProps = DesignProps & {
 
 /** Pencarian di kiri, tombol Filter di kanan, di atas tabel. */
 export function FilterToolbar(props: FilterToolbarProps) {
-  const { searchValue = '', onSearchChange, searchPlaceholder = 'Cari…', onFilterClick, filterLabel = 'Filter', actions, testId, className } = { ...filterToolbarDefaults, ...props };
+  const { searchValue = '', onSearchChange, searchPlaceholder = 'Search…', onFilterClick, filterLabel = 'Filter', actions, testId, className } = { ...filterToolbarDefaults, ...props };
   return (
     <div data-testid={testId} className={cx('flex items-center justify-between gap-3', className)}>
       <div className="relative w-80 max-w-full">

@@ -1,5 +1,5 @@
-// Kerangka repo paket frontend (spec §3.4). Dibuat sekali; setelah itu repo milik developer.
-// Folder `src/generated` (Library Kit) ditimpa oleh `midas sync`, sisanya tidak.
+// Frontend package repo scaffold (spec §3.4). Created once; after that the repo belongs to the developer.
+// The `src/generated` folder (Library Kit) is overwritten by `midas sync`; the rest is not.
 import type { ComponentMapping } from './library.js';
 import { buildKit, type KitFiles, type KitInput } from './kit.js';
 
@@ -19,7 +19,7 @@ function componentStub(m: ComponentMapping): string {
 import { ${m.exportName[0].toLowerCase() + m.exportName.slice(1)}Defaults } from '../../generated/props';
 
 /**
- * ${m.exportName} — komponen desain "${m.componentName}".
+ * ${m.exportName} — design component "${m.componentName}".
  * TODO: implementasikan sesuai desain di Midas, lalu hapus \`midasStub\` di bawah.
  * Props wajib mengikuti \`${m.exportName}Props\` (dibangkitkan dari desain).
  */
@@ -29,7 +29,7 @@ export function ${m.exportName}(props: ${m.exportName}Props) {
   return <div data-testid={testId} data-midas-component="${m.exportName}">${hasChildren ? '{children}' : `${m.componentName.replace(/[{}<>]/g, '')}`}</div>;
 }
 
-/** Penanda kerangka yang belum diimplementasikan — dibaca CI untuk status "Not implemented". */
+/** Marker for scaffolded, not-yet-implemented components — read by CI for the "Not implemented" status. */
 ${m.exportName}.midasStub = true;
 `;
 }
@@ -41,7 +41,7 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
         'package.json': json({
             name: input.packageName,
             version: input.version,
-            description: `Komponen UI dari design system "${input.libraryName}" di Midas`,
+            description: `UI components from the "${input.libraryName}" design system in Midas`,
             type: 'module',
             main: './dist/index.js',
             module: './dist/index.js',
@@ -92,7 +92,7 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
         'vite.config.ts': `import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Build library: React tidak ikut dibundel (peer dependency).
+// Library build: React is not bundled (peer dependency).
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -102,7 +102,7 @@ export default defineConfig({
   },
 });
 `,
-        'scripts/copy-assets.mjs': `// Salin CSS token + manifest Library Kit dan entry Tailwind ke dist/.
+        'scripts/copy-assets.mjs': `// Copy the Library Kit token CSS + manifest and the Tailwind entry to dist/.
 import { copyFileSync, mkdirSync } from 'node:fs';
 
 mkdirSync('dist', { recursive: true });
@@ -110,11 +110,11 @@ for (const f of ['tokens.css', 'tailwind-theme.css', 'manifest.json']) copyFileS
 copyFileSync('src/tailwind.css', 'dist/tailwind.css');
 `,
         'src/tailwind.css': `/*
- * Satu import untuk aplikasi Tailwind CSS v4:
+ * One import for a Tailwind CSS v4 app:
  *   @import 'tailwindcss';
  *   @import '${input.packageName}/tailwind.css';
- * Berisi token tema, utility Tailwind dari token, dan @source agar class yang dipakai
- * komponen library ikut dibangkitkan (path relatif terhadap file ini).
+ * Contains the theme tokens, the Tailwind utilities from the tokens, and @source so the classes used
+ * by the library components are generated too (path relative to this file).
  */
 @import './tokens.css';
 @import './tailwind-theme.css';
@@ -131,7 +131,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-/** Terapkan token tema (dari Variables design system) ke dokumen. */
+/** Apply the theme tokens (from the design system Variables) to the document. */
 export function ThemeProvider({ initialTheme = defaultTheme, children }: { initialTheme?: ThemeName; children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeName>(initialTheme in themes ? initialTheme : defaultTheme);
   useEffect(() => applyTheme(theme), [theme]);
@@ -141,7 +141,7 @@ export function ThemeProvider({ initialTheme = defaultTheme, children }: { initi
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useTheme harus dipakai di dalam <ThemeProvider>');
+  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
   return ctx;
 }
 `,
@@ -152,31 +152,31 @@ ${input.mappings.map(m => `export { ${m.exportName} } from './components/${m.exp
 `,
         'README.md': `# ${input.packageName}
 
-Komponen UI dari design system **${input.libraryName}** di Midas (spec §3.4).
+UI components from the **${input.libraryName}** design system in Midas (spec §3.4).
 
-## Alur kerja
+## Workflow
 
-1. Desainer publish versi baru library di Midas.
-2. Ambil Library Kit versi itu:
+1. The designer publishes a new library version in Midas.
+2. Pull the Library Kit for that version:
 
    \`\`\`bash
-   npx midas sync --version <versi>
+   npx midas sync --version <version>
    \`\`\`
 
-   Ini menimpa \`src/generated/\` (token tema, tipe props, manifest) dan menyamakan \`version\` di \`package.json\`.
-3. Implementasikan / sesuaikan komponen di \`src/components/\`. Props wajib memakai tipe dari \`src/generated/props\`.
-   Komponen kerangka ditandai \`midasStub = true\` — hapus penanda itu setelah komponen selesai.
-4. \`npm run build\`, lalu publish ke Midas Registry:
+   This overwrites \`src/generated/\` (theme tokens, props types, manifest) and aligns \`version\` in \`package.json\`.
+3. Implement / adjust the components in \`src/components/\`. Props must use the types from \`src/generated/props\`.
+   Scaffolded components are marked \`midasStub = true\` — remove the marker once the component is done.
+4. Run \`npm run build\`, then publish to the Midas Registry:
 
    \`\`\`bash
    MIDAS_REGISTRY_TOKEN=... npm publish
-   npx midas report     # status kode tiap komponen (ready / not implemented / mismatch) → Midas
+   npx midas report     # code status of each component (ready / not implemented / mismatch) → Midas
    \`\`\`
 
-## Memakai di project
+## Using it in a project
 
 \`\`\`css
-/* src/index.css aplikasi (Tailwind CSS v4) */
+/* the app's src/index.css (Tailwind CSS v4) */
 @import 'tailwindcss';
 @import '${input.packageName}/tailwind.css';
 \`\`\`
@@ -187,7 +187,7 @@ import { ThemeProvider${input.mappings[0] ? `, ${input.mappings[0].exportName}` 
 
 Folder: \`${pkgDir}/\` · Library id di Midas: \`${input.libraryId}\`.
 `,
-        '.github/workflows/release.yml': `# Rilis paket saat tag v* dipush: sync Library Kit versi yang sama → build → publish ke Midas Registry.
+        '.github/workflows/release.yml': `# Release the package when a v* tag is pushed: sync the same Library Kit version → build → publish to the Midas Registry.
 name: release
 on:
   push:
@@ -210,7 +210,7 @@ jobs:
       - run: npm publish
         env:
           MIDAS_REGISTRY_TOKEN: \${{ secrets.MIDAS_REGISTRY_TOKEN }}
-      # Laporkan status kode tiap komponen (ready / not_implemented / mismatch) ke Midas.
+      # Report each component's code status (ready / not_implemented / mismatch) to Midas.
       - run: npx midas report
         env:
           MIDAS_TOKEN: \${{ secrets.MIDAS_TOKEN }}

@@ -2933,8 +2933,8 @@ button.cb-section-head { cursor: pointer }
 .cb-screen-bar .wide-button { width: auto; padding: 0 12px; height: 28px }
 .cb-spacer { flex: 1 }
 .cb-screen-body { flex: 1; min-height: 0; display: flex }
-.cb-live-wrap { position: relative; flex: 1; min-width: 0; overflow: auto; padding: 16px }
-.cb-live-stage { margin: 0 auto; position: relative; box-shadow: 0 0 0 1px var(--border), var(--shadow); background: #fff }
+.cb-live-wrap { position: relative; flex: 1; min-width: 0; overflow: auto; padding: 20px; display: flex; align-items: flex-start; background: var(--canvas) }
+.cb-live-stage { flex: none; margin: 0 auto; position: relative; box-shadow: 0 0 0 1px var(--border), var(--shadow); background: #fff }
 .cb-live-iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff }
 .cb-live-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-secondary) }
 .cb-screen-issues { width: 240px; flex: none; overflow: auto; border-left: 1px solid var(--border); background: var(--panel); padding: 10px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text) }
@@ -2999,5 +2999,125 @@ button.cb-section-head { cursor: pointer }
 .cb-code { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas) }
 .cb-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px }
 .cb-files li { display: flex; justify-content: space-between; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px }
-.cb-minmax { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-.cb-minmax .cb-prop { grid-template-columns: 1fr; gap: 2px }
+
+/* ---- Code Builder · rapikan bar workspace & Properties Inspector ---- */
+.cb-screen-bar { gap: 10px; height: 48px; padding: 0 14px }
+.cb-back { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text); font: inherit; cursor: pointer }
+.cb-back:hover { background: rgba(127,127,127,.14) }
+.cb-screen-switch { height: 28px; max-width: 300px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--text); font: inherit; font-weight: 600 }
+.cb-zoom { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary) }
+.cb-zoom select { height: 28px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--text); font: inherit }
+.cb-left { width: 208px }
+.cb-right { width: 320px; background: var(--panel) }
+.cb-insp-head { padding: 12px 16px; gap: 10px; background: var(--panel) }
+.cb-insp-head b { font-size: 13px }
+.cb-insp-section { padding: 14px 16px; gap: 10px }
+.cb-insp-section > header { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--text-secondary) }
+.cb-insp-section > header b { font-weight: 700 }
+.cb-prop { grid-template-columns: 92px minmax(0, 1fr); gap: 10px; min-height: 28px }
+.cb-prop-label { font-size: 12px }
+.cb-prop-control { display: flex; align-items: center; min-width: 0 }
+.cb-prop-control > * { min-width: 0 }
+.cb-prop-control input:not([type=checkbox]), .cb-prop-control select, .cb-insp textarea, .cb-insp-section > select { height: 28px; border-radius: 6px; padding: 0 8px; background: var(--input-bg, var(--canvas)) }
+.cb-prop-control input[type=checkbox] { width: 16px; height: 16px; margin: 0 }
+.cb-prop-control input:focus, .cb-prop-control select:focus, .cb-insp textarea:focus, .cb-field-top input:focus, .cb-field-top select:focus { outline: 2px solid #0D99FF55; border-color: #0D99FF }
+.cb-subhead { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary) }
+.cb-check { gap: 8px }
+.cb-check input { width: 15px; height: 15px; margin: 0 }
+.cb-field-card { background: rgba(127,127,127,.07); border-radius: 8px; padding: 8px; gap: 8px }
+.cb-field-card.open { background: rgba(13,153,255,.06) }
+.cb-field-top input { flex: 1.3 }
+.cb-field-more { gap: 10px; padding-top: 10px }
+.cb-minmax { gap: 10px }
+.cb-menu-item { background: rgba(127,127,127,.07); border-radius: 8px; padding: 8px }
+.cb-cols li { background: rgba(127,127,127,.07); border-color: transparent }
+.cb-insp .wide-button { width: 100%; height: 30px }
+.cb-insp-section p.small-label { line-height: 1.5; margin: 0 }
+
+.cb-tabs { position: sticky; top: 45px; z-index: 1; display: flex; gap: 2px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--border) }
+.cb-tabs button { flex: 1; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font: inherit; font-weight: 600; cursor: pointer }
+.cb-tabs button:hover { background: rgba(127,127,127,.14); color: var(--text) }
+.cb-tabs button.on { background: rgba(13,153,255,.16); color: #0D99FF }
+
+/* Tab Validasi */
+.cb-rules { display: flex; flex-direction: column; gap: 12px }
+.cb-rule-summary { display: flex; flex-wrap: wrap; gap: 6px; min-height: 22px; align-items: center }
+.cb-chip { padding: 2px 8px; border-radius: 999px; background: rgba(13,153,255,.16); color: #0D99FF; font-size: 11px; font-weight: 600 }
+.cb-rule { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; background: rgba(127,127,127,.05) }
+.cb-rule.on { border-color: #0D99FF66; background: rgba(13,153,255,.07) }
+.cb-rule-text { display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.cb-rule-text b { font-weight: 600 }
+.cb-rule-text small { color: var(--text-secondary); font-size: 11px }
+.cb-switch { appearance: none; flex: none; width: 32px; height: 18px; margin: 0; border-radius: 999px; background: rgba(127,127,127,.4); position: relative; cursor: pointer; transition: background .15s }
+.cb-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s }
+.cb-switch:checked { background: #0D99FF }
+.cb-switch:checked::after { transform: translateX(14px) }
+.cb-rule-group { display: flex; flex-direction: column; gap: 8px }
+.cb-rule-title { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary) }
+.cb-minmax { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.cb-minmax label, .cb-regex { display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+.cb-minmax span, .cb-regex span { color: var(--text-secondary); font-size: 11px }
+.cb-unit { position: relative }
+.cb-unit input, .cb-regex input { width: 100%; box-sizing: border-box; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg, var(--canvas)); color: var(--text); font: inherit }
+.cb-unit input { padding-right: 62px }
+.cb-unit em { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 10.5px; color: var(--text-secondary); pointer-events: none }
+.cb-regex input { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px }
+.cb-regex input.invalid { border-color: #E5484D }
+
+/* Dropdown kustom Code Builder */
+.cb-dd { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; height: 28px; padding: 0 8px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg, var(--canvas)); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .12s, background .12s }
+.cb-dd:hover:not(:disabled) { border-color: rgba(127,127,127,.55) }
+.cb-dd:focus-visible, .cb-dd.open { outline: 2px solid #0D99FF55; border-color: #0D99FF }
+.cb-dd:disabled { opacity: .5; cursor: default }
+.cb-dd svg { flex: none; color: var(--text-secondary); transition: transform .15s }
+.cb-dd.open svg { transform: rotate(180deg) }
+.cb-dd-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cb-dd-label.placeholder { color: var(--text-secondary) }
+.cb-dd.small { flex: none; width: 90px; height: 24px }
+.cb-select.cb-dd { flex: 1 }
+.cb-screen-switch.cb-dd { width: auto; min-width: 220px; max-width: 320px; font-weight: 600 }
+.cb-zoom .cb-dd { width: 84px }
+.cb-dd-pop { position: fixed; z-index: 400; overflow-y: auto; padding: 4px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); font-size: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.35) }
+.cb-dd-group { padding: 8px 8px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary) }
+.cb-dd-item { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer }
+.cb-dd-item.grouped { padding-left: 8px }
+.cb-dd-item.act { background: rgba(127,127,127,.16) }
+.cb-dd-item.sel { color: #0D99FF; font-weight: 600 }
+.cb-dd-item.off { opacity: .4; cursor: default }
+.cb-dd-check { width: 14px; flex: none; display: inline-flex }
+.cb-dd-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cb-dd-empty { padding: 10px; color: var(--text-secondary) }
+.cb-field-top .cb-dd { flex: 1; min-width: 100px; width: auto }
+.cb-menu-bottom .cb-dd { flex: 1; min-width: 0; width: auto }
+.cb-insp-section > .cb-dd { width: 100% }
+
+/* Preview app (interactive live preview) */
+.cb-preview { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; background: var(--canvas); color: var(--text); font-size: 12px }
+.cb-preview-bar { display: flex; align-items: center; gap: 10px; height: 48px; flex: none; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--panel) }
+.cb-preview-bar .wide-button { width: auto; padding: 0 12px; height: 28px }
+.cb-preview-bar .cb-back:disabled { opacity: .4; cursor: default }
+.cb-preview-url { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px }
+.cb-preview-body { position: relative; flex: 1; min-height: 0; display: flex }
+.cb-preview-toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px; background: #0F172A; color: #fff; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.3) }
+
+/* Confirmation dialog (confirm.js) */
+.mc-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(0,0,0,.45) }
+.mc-dialog { width: min(420px, 92vw); padding: 20px 22px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); box-shadow: 0 24px 64px rgba(0,0,0,.4); font-size: 13px }
+.mc-dialog h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600 }
+.mc-dialog p { margin: 0; color: var(--text-secondary); line-height: 1.5 }
+.mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px }
+.mc-btn { height: 30px; padding: 0 14px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-weight: 500; cursor: pointer }
+.mc-btn:hover { background: rgba(127,127,127,.14) }
+.mc-btn.primary { border-color: #0D99FF; background: #0D99FF; color: #fff }
+.mc-btn.danger { border-color: #E5484D; background: #E5484D; color: #fff }
+.mc-btn:focus-visible { outline: 2px solid #0D99FF88; outline-offset: 2px }
+
+/* Table column editor + dialog role */
+.cb-colrows { display: flex; flex-direction: column; gap: 6px }
+.cb-colrow { display: flex; align-items: center; gap: 4px }
+.cb-colrow input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg, var(--canvas)); color: var(--text); font: inherit; box-sizing: border-box }
+.cb-colrow input.narrow { flex: none; width: 58px }
+.cb-colrow button { flex: none; width: 22px; height: 22px; border: 0; border-radius: 4px; background: none; color: var(--text-secondary); cursor: pointer }
+.cb-colrow button:hover:not(:disabled) { background: rgba(127,127,127,.18); color: var(--text) }
+.cb-colrow button:disabled { opacity: .3; cursor: default }
+.cb-role.r-dialog { background: #E5484D22; color: #E5484D }

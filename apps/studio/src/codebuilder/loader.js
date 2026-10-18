@@ -37,7 +37,7 @@ export function loadBundle(url) {
     if (!loaded.has(url)) {
         loaded.set(url, (async () => {
             const res = await fetch(url, { credentials: 'same-origin' });
-            if (!res.ok) throw new Error(res.status === 404 ? 'Bundle library belum diunggah (jalankan `midas bundle` di repo paket)' : `Gagal memuat bundle (${res.status})`);
+            if (!res.ok) throw new Error(res.status === 404 ? 'Library bundle not uploaded yet (run `midas bundle` in the package repo)' : `Failed to load bundle (${res.status})`);
             const code = rewriteImports(await res.text(), shimUrl);
             const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
             return import(/* @vite-ignore */ blobUrl);

@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "1.1.1",
+  "version": "2.2.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T08:21:44.902Z",
+  "publishedAt": "2026-10-18T14:16:49.936Z",
   "themes": [
     "light",
     "dark"
@@ -208,6 +208,85 @@
       }
     },
     {
+      "exportName": "Topbar",
+      "componentKey": "ds-1k-vle2pq",
+      "componentName": "Topbar",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "breadcrumb",
+          "type": "string",
+          "source": "text",
+          "label": "Breadcrumb"
+        },
+        {
+          "name": "userName",
+          "type": "string",
+          "source": "text",
+          "label": "UserName"
+        },
+        {
+          "name": "userRole",
+          "type": "string",
+          "source": "text",
+          "label": "UserRole"
+        }
+      ],
+      "defaults": {
+        "title": "Page title",
+        "breadcrumb": "Home / Page",
+        "userName": "Administrator",
+        "userRole": "admin"
+      }
+    },
+    {
+      "exportName": "SectionHeader",
+      "componentKey": "ds-1l-f2zglf",
+      "componentName": "SectionHeader",
+      "props": [
+        {
+          "name": "action",
+          "type": "enum",
+          "source": "variant",
+          "label": "Action",
+          "values": [
+            "none",
+            "primary",
+            "secondary"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "source": "text",
+          "label": "Description"
+        },
+        {
+          "name": "actionLabel",
+          "type": "string",
+          "source": "text",
+          "label": "ActionLabel"
+        }
+      ],
+      "defaults": {
+        "action": "primary",
+        "title": "Section title",
+        "description": "Short description of this section",
+        "actionLabel": "Add"
+      }
+    },
+    {
       "exportName": "IconButton",
       "componentKey": "ds-2g-nnx1nl",
       "componentName": "IconButton",
@@ -220,7 +299,8 @@
           "values": [
             "edit",
             "view",
-            "delete"
+            "delete",
+            "restore"
           ]
         },
         {
@@ -233,178 +313,6 @@
       "defaults": {
         "action": "view",
         "disabled": false
-      }
-    },
-    {
-      "exportName": "TextField",
-      "componentKey": "ds-52-drc2jk",
-      "componentName": "TextField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "placeholder",
-          "type": "string",
-          "source": "text",
-          "label": "Placeholder"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Nama lengkap",
-        "placeholder": "Ketik di sini…",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "TextAreaField",
-      "componentKey": "ds-6b-fnk7ng",
-      "componentName": "TextAreaField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "placeholder",
-          "type": "string",
-          "source": "text",
-          "label": "Placeholder"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Catatan",
-        "placeholder": "Ketik di sini…",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "PasswordField",
-      "componentKey": "ds-7k-4qo0v8",
-      "componentName": "PasswordField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "placeholder",
-          "type": "string",
-          "source": "text",
-          "label": "Placeholder"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Kata sandi",
-        "placeholder": "Ketik di sini…",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "SelectField",
-      "componentKey": "ds-8z-4tp3od",
-      "componentName": "SelectField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "placeholder",
-          "type": "string",
-          "source": "text",
-          "label": "Placeholder"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Role",
-        "placeholder": "Pilih…",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "SwitchField",
-      "componentKey": "ds-as-lrpuhb",
-      "componentName": "SwitchField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Aktif",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "Alert",
-      "componentKey": "ds-3i-71787e",
-      "componentName": "Alert",
-      "props": [
-        {
-          "name": "variant",
-          "type": "enum",
-          "source": "variant",
-          "label": "Variant",
-          "values": [
-            "info",
-            "danger",
-            "success",
-            "warning"
-          ]
-        },
-        {
-          "name": "message",
-          "type": "string",
-          "source": "text",
-          "label": "Message"
-        }
-      ],
-      "defaults": {
-        "variant": "success",
-        "message": "Pesan untuk pengguna"
       }
     },
     {
@@ -438,39 +346,6 @@
       }
     },
     {
-      "exportName": "Dialog",
-      "componentKey": "ds-bn-lj4uvt",
-      "componentName": "Dialog",
-      "props": [
-        {
-          "name": "size",
-          "type": "enum",
-          "source": "variant",
-          "label": "Size",
-          "values": [
-            "md",
-            "sm"
-          ]
-        },
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Content"
-        }
-      ],
-      "defaults": {
-        "size": "sm",
-        "title": "Judul dialog"
-      }
-    },
-    {
       "exportName": "Avatar",
       "componentKey": "ds-38-ep6lj1",
       "componentName": "Avatar",
@@ -498,6 +373,35 @@
       }
     },
     {
+      "exportName": "Alert",
+      "componentKey": "ds-3i-71787e",
+      "componentName": "Alert",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "danger",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "message": "Message for the user"
+      }
+    },
+    {
       "exportName": "Card",
       "componentKey": "ds-41-u4jnra",
       "componentName": "Card",
@@ -516,7 +420,7 @@
         }
       ],
       "defaults": {
-        "title": "Judul card"
+        "title": "Card title"
       }
     },
     {
@@ -556,9 +460,217 @@
       ],
       "defaults": {
         "trend": "up",
-        "label": "Total user",
+        "label": "Total users",
         "value": "1.248",
-        "caption": "12% dari bulan lalu"
+        "caption": "12% vs last month"
+      }
+    },
+    {
+      "exportName": "TextField",
+      "componentKey": "ds-52-drc2jk",
+      "componentName": "TextField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Full name",
+        "placeholder": "Type here…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "TextAreaField",
+      "componentKey": "ds-6b-fnk7ng",
+      "componentName": "TextAreaField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Notes",
+        "placeholder": "Type here…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "PasswordField",
+      "componentKey": "ds-7k-4qo0v8",
+      "componentName": "PasswordField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Password",
+        "placeholder": "Type here…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "SelectField",
+      "componentKey": "ds-8z-4tp3od",
+      "componentName": "SelectField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Role",
+        "placeholder": "Select…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "SwitchField",
+      "componentKey": "ds-as-lrpuhb",
+      "componentName": "SwitchField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Active",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "Dialog",
+      "componentKey": "ds-bn-lj4uvt",
+      "componentName": "Dialog",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "tone",
+          "type": "enum",
+          "source": "variant",
+          "label": "Tone",
+          "values": [
+            "danger",
+            "primary"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        },
+        {
+          "name": "cancelLabel",
+          "type": "string",
+          "source": "text",
+          "label": "CancelLabel"
+        },
+        {
+          "name": "confirmLabel",
+          "type": "string",
+          "source": "text",
+          "label": "ConfirmLabel"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "tone": "danger",
+        "title": "Dialog title",
+        "message": "Deleted data cannot be restored.",
+        "cancelLabel": "Cancel",
+        "confirmLabel": "Delete"
       }
     },
     {
@@ -586,35 +698,6 @@
       ],
       "defaults": {
         "collapsed": false
-      }
-    },
-    {
-      "exportName": "PageHeader",
-      "componentKey": "ds-fy-otdjp3",
-      "componentName": "PageHeader",
-      "props": [
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "description",
-          "type": "string",
-          "source": "text",
-          "label": "Description"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Actions"
-        }
-      ],
-      "defaults": {
-        "title": "Judul halaman",
-        "description": "Keterangan singkat halaman"
       }
     },
     {
@@ -805,6 +888,14 @@
       "name": "pen",
       "category": "ui",
       "exportName": "PenIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "restart",
+      "category": "ui",
+      "exportName": "RestartIcon",
       "styles": [
         "outline"
       ]

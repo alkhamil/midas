@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import { matchPath, Outlet, useLocation, useNavigate } from 'react-router';
 import { AppShell, Button } from '@midas/ui-cms';
 import { filterNavItems, resolveNavLabel } from '../shared/utils/navigation';
 import { appLayout } from './generated/layout';
+import { generatedPages } from './generated/pages';
 import { navItems } from './navigation';
 import { RequireAuth, useAuth } from './providers';
 
@@ -23,6 +24,8 @@ function ProtectedAppShell() {
     [permissions, t],
   );
   const current = [...items].sort((a, b) => b.path.length - a.path.length).find((i) => (i.path === '/' ? pathname === '/' : pathname === i.path || pathname.startsWith(`${i.path}/`)));
+  // Judul & breadcrumb dari konfigurasi Code Builder; halaman bawaan memakai label menu.
+  const page = generatedPages.find((p) => matchPath({ path: p.path, end: true }, pathname));
   return (
     <RequireAuth>
       <AppShell
@@ -30,7 +33,8 @@ function ProtectedAppShell() {
         activePath={pathname}
         onNavigate={navigate}
         user={user ? { name: user.name, roleName: user.role } : null}
-        title={current?.label}
+        title={page?.title ?? current?.label}
+        breadcrumbs={page?.breadcrumbs}
         appName={appLayout.appName}
         topbarExtra={
           <Button variant="ghost" size="sm" onClick={logout}>

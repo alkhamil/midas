@@ -41,20 +41,20 @@ export function GenerateDialog({ project, ctx, onClose }) {
     // Di-portal ke body: panel kiri & workspace punya stacking context sendiri, jadi dialog bisa tertutup/bertumpuk tanpa ini.
     return createPortal(
         <div className="cb-modal-backdrop" onClick={onClose}>
-            <div className="cb-modal" role="dialog" aria-label="Generate kode" onClick={e => e.stopPropagation()}>
-                <header><b>Generate kode — {project.name}</b><button type="button" className="icon-button small" aria-label="Tutup" onClick={onClose}>×</button></header>
+            <div className="cb-modal" role="dialog" aria-label="Generate code" onClick={e => e.stopPropagation()}>
+                <header><b>Generate code — {project.name}</b><button type="button" className="icon-button small" aria-label="Close" onClick={onClose}>×</button></header>
                 {result.error && <p className="cb-error">{result.error}</p>}
                 <div className="cb-modal-body">
-                    <h4>Cara 1 · Ambil lewat CLI (disarankan)</h4>
-                    <p className="small-label">Jalankan di folder repo aplikasi (hasil <code>git clone</code> base project, sudah <code>midas login</code>). Aman diulang: hanya file hasil generate yang ditimpa, kode tulisan tangan tidak disentuh.</p>
-                    <div className="cb-code"><code>{cmd}</code><button type="button" className="cb-link" onClick={() => navigator.clipboard?.writeText(cmd).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })}>{copied ? 'Tersalin' : 'Salin'}</button></div>
-                    <h4>Cara 2 · Unduh .zip</h4>
-                    <p className="small-label">Berisi folder <code>src/</code> hasil generate; gabungkan ke repo aplikasi.</p>
-                    <button type="button" className="wide-button primary" disabled={!names.length} onClick={download}>Unduh .zip ({names.length} file)</button>
-                    <h4>Yang dibangkitkan</h4>
-                    {groups.length ? <ul className="cb-files">{groups.map(([k, n]) => <li key={k}><code>{k}</code><span>{n} file</span></li>)}</ul> : <p className="small-label">Belum ada yang bisa dibangkitkan — daftarkan screen ke module dan lengkapi field entity.</p>}
+                    <h4>Option 1 · Pull with the CLI (recommended)</h4>
+                    <p className="small-label">Run in your app repo folder (a <code>git clone</code> of the base project, already signed in with <code>midas login</code>). Safe to repeat: only generated files are overwritten; hand-written code is never touched.</p>
+                    <div className="cb-code"><code>{cmd}</code><button type="button" className="cb-link" onClick={() => navigator.clipboard?.writeText(cmd).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })}>{copied ? 'Copied' : 'Copy'}</button></div>
+                    <h4>Option 2 · Download .zip</h4>
+                    <p className="small-label">Contains the generated <code>src/</code> folder; merge it into your app repo.</p>
+                    <button type="button" className="wide-button primary" disabled={!names.length} onClick={download}>Download .zip ({names.length} files)</button>
+                    <h4>What gets generated</h4>
+                    {groups.length ? <ul className="cb-files">{groups.map(([k, n]) => <li key={k}><code>{k}</code><span>{n} files</span></li>)}</ul> : <p className="small-label">Nothing to generate yet — register screens in a module and complete its entity fields.</p>}
                     {result.warnings.map((w, i) => <p key={i} className="cb-warn">⚠ {w}</p>)}
-                    <p className="small-label">Setelah itu: <code>npm install && npm run dev</code>. Data masih mock (<code>USE_MOCK</code> di <code>api/mock.ts</code>) sampai endpoint backend dihubungkan.</p>
+                    <p className="small-label">Then run <code>npm install && npm run dev</code>. Data is still mocked (<code>USE_MOCK</code> in <code>api/mock.ts</code>) until the backend endpoints are connected.</p>
                 </div>
             </div>
         </div>,

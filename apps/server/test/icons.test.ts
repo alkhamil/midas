@@ -91,7 +91,7 @@ test('removing a token, an icon or an icon style is a breaking change', async ()
     const outline = buildIconPage([files[0]], { uid });
     const onlyOutline = snapshotFrom(outline.page, outline.assets);
     const out = kitBreakingChanges(prev, onlyOutline);
-    assert.ok(out.includes('Token primary dihapus'));
-    assert.ok(out.includes('Ikon arrow-left: gaya bold dihapus'));
-    assert.deepEqual(kitBreakingChanges(prev, { components: [], variables: snapshot.variables, assets: {} }), ['Ikon arrow-left dihapus']);
+    assert.ok(out.includes('Token primary was removed'));
+    assert.ok(out.includes('Icon arrow-left: style bold was removed'));
+    assert.deepEqual(kitBreakingChanges(prev, { components: [], variables: snapshot.variables, assets: {} }), ['Icon arrow-left was removed']);
 });

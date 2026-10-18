@@ -19,6 +19,6 @@ export function ThemeProvider({ initialTheme = defaultTheme, children }: { initi
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useTheme harus dipakai di dalam <ThemeProvider>');
+  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
   return ctx;
 }

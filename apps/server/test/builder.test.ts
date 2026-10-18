@@ -47,14 +47,14 @@ after(async () => {
 test('validateConfig: duplicate names, parent cycles and duplicate CRUD roles', () => {
     assert.deepEqual(validateConfig({ modules: [userModule()] }), []);
     const dup = validateConfig({ modules: [userModule(), userModule({ id: 'm-2' })] });
-    assert.match(dup.join('\n'), /Nama module user sudah dipakai/);
+    assert.match(dup.join('\n'), /Module name user is already used/);
     const cycle = validateConfig({ modules: [userModule({ id: 'a', name: 'a', parentId: 'b' }), userModule({ id: 'b', name: 'b', parentId: 'a' })] });
-    assert.match(cycle.join('\n'), /siklus/);
+    assert.match(cycle.join('\n'), /cycle/);
     const roles = validateConfig({ modules: [userModule({ screens: [
         { id: 's1', frameId: 'f1', pageId: 'p', name: 'A', role: 'list' },
         { id: 's2', frameId: 'f2', pageId: 'p', name: 'B', role: 'list' },
     ] })] });
-    assert.match(roles.join('\n'), /lebih dari satu screen list/);
+    assert.match(roles.join('\n'), /more than one list screen/);
     // Frame yang sama boleh dipakai create + edit (spec §4.1).
     assert.deepEqual(validateConfig({ modules: [userModule({ screens: [
         { id: 's1', frameId: 'f1', pageId: 'p', name: 'Form', role: 'create' },
@@ -110,9 +110,20 @@ test('node config, layout and password fields round-trip through the project con
     assert.equal(back.modules[0].entity.fields[0].type, 'password');
     const bad = await call('PUT', `/api/builder-projects/${p.id}`, { version: saved.body.project.version, config: { modules: [{ ...mod, screens: [{ ...mod.screens[0], nodes: { n1: { action: { type: 'explode' } } } }] }] } });
     assert.equal(bad.status, 400);
+    // dialog screens need a unique purpose; soft delete and the new table / form config round-trip
+    const dlg = (id: string, purpose?: string) => ({ id, frameId: `f-${id}`, pageId: 'p', name: id, role: 'dialog', ...(purpose ? { purpose } : {}), nodes: {} });
+    const withScreens = (screens: object[]) => ({ modules: [{ ...mod, entity: { fields: [{ name: 'a', type: 'string' }], softDelete: true }, screens }] });
+    const okCfg = withScreens([dlg('d1', 'delete'), dlg('d2', 'restore'), { id: 's9', frameId: 'f9', pageId: 'p', name: 'Form', role: 'create', nodes: { n1: { form: { span: 6, layout: 'horizontal', labelWidth: 200, align: 'center', tooltip: 'Hint' }, table: { headers: { a: 'Alpha' }, widths: { a: 120 }, emptyText: 'None', skipConfirm: true, rowActions: ['view', 'restore'] }, filter: { fields: ['a'] } } } }]);
+    const dv = saved.body.project.version;
+    const okRes = await call('PUT', `/api/builder-projects/${p.id}`, { version: dv, config: okCfg });
+    assert.equal(okRes.status, 200, JSON.stringify(okRes.body));
+    assert.equal(okRes.body.project.config.modules[0].entity.softDelete, true);
+    assert.equal(okRes.body.project.config.modules[0].screens[0].purpose, 'delete');
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: okRes.body.project.version, config: withScreens([dlg('d1')]) })).status, 400); // purpose required
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: okRes.body.project.version, config: withScreens([dlg('d1', 'delete'), dlg('d2', 'delete')]) })).status, 400); // purpose used twice
     // validasi: aturan tak dikenal / regex rusak / relasi ke module yang tidak ada ditolak
     const withField = (field: object) => ({ modules: [{ ...mod, entity: { fields: [field] } }] });
-    const v = saved.body.project.version;
+    const v = okRes.body.project.version;
     assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v, config: withField({ name: 'a', type: 'string', rules: ['min:3', 'email', 'pattern:^a'] }) })).status, 200);
     assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['bogus'] }) })).status, 400);
     assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['pattern:('] }) })).status, 400);
@@ -124,7 +135,7 @@ test('invalid config, unknown library version and unknown file are rejected', as
     assert.equal((await call('POST', '/api/builder-projects', { name: 'X', fileId: 'nope' })).status, 404);
     const badVersion = await call('POST', '/api/builder-projects', { name: 'X', fileId: appFile, libraryId: dsFile, libraryVersion: '9.9.9' });
     assert.equal(badVersion.status, 400);
-    assert.match(badVersion.body.message, /9\.9\.9 belum dipublish/);
+    assert.match(badVersion.body.message, /9\.9\.9 has not been published/);
     const p = (await call('POST', '/api/builder-projects', { name: 'X', fileId: appFile })).body.project;
     const badName = await call('PUT', `/api/builder-projects/${p.id}`, { version: p.version, config: { modules: [userModule({ name: 'User Management' })] } });
     assert.equal(badName.status, 400);

@@ -16,7 +16,7 @@ const mappings = [{ componentKey: 'btn', exportName: 'Button', propsMap: { props
 const screen = [
     { id: 'f', name: 'User List', type: 'frame', w: 1440, h: 900, layout: 'vertical', gap: 16, padT: 24, padR: 24, padB: 24, padL: 24, fill: '#FFFFFF', vars: { fill: 'v-bg' } },
     { id: 'title', parentId: 'f', type: 'text', text: 'Daftar User', fontSize: 18, fontWeight: 600, fill: '#0F172A', autoW: true, w: 100, h: 28 },
-    { id: 'btn', parentId: 'f', type: 'frame', isInstance: true, sourceId: 'v1', w: 120, h: 42, propValues: { 'cp-label': 'Tambah user' } },
+    { id: 'btn', parentId: 'f', type: 'frame', isInstance: true, sourceId: 'v1', w: 120, h: 42, propValues: { 'cp-label': 'Add user' } },
     { id: 'card', parentId: 'f', type: 'frame', isInstance: true, sourceId: 'local', w: 200, h: 100 },
     { id: 'shape', parentId: 'f', type: 'rect', w: 10, h: 10, fill: '#FF0000' },
     { id: 'free', parentId: 'f', type: 'frame', w: 300, h: 100, layoutSizingH: 'fill' },
@@ -38,19 +38,19 @@ test('screenTree maps instances to library components with code props', () => {
     assert.equal(tree.style.flexDirection, 'column');
     assert.equal(tree.style.background, 'var(--theme-background, #FFFFFF)');
     const btn = tree.children.find(c => c.nodeId === 'btn');
-    assert.deepEqual(btn, { ...btn, kind: 'component', exportName: 'Button', props: { variant: 'primary', children: 'Tambah user' } });
+    assert.deepEqual(btn, { ...btn, kind: 'component', exportName: 'Button', props: { variant: 'primary', children: 'Add user' } });
     assert.equal(tree.children.find(c => c.nodeId === 'free').style.alignSelf, 'stretch');
 });
 
 test('screenTree reports issues: raw hex, local component, free shape, frame without auto layout', () => {
     const { issues } = screenTree(ctx(), 'f');
     const by = id => issues.filter(i => i.nodeId === id).map(i => i.message).join(' | ');
-    assert.match(by('title'), /Warna teks #0F172A tidak memakai Variable/);
-    assert.match(by('card'), /Komponen lokal Card lokal/);
-    assert.match(by('shape'), /Rectangle bebas/);
-    assert.match(by('free'), /tanpa auto layout/);
+    assert.match(by('title'), /Text color #0F172A does not use a Variable/);
+    assert.match(by('card'), /Local component Card lokal/);
+    assert.match(by('shape'), /free Rectangle/);
+    assert.match(by('free'), /without auto layout/);
     assert.equal(by('btn'), '');
-    assert.match(screenTree(ctx(), 'missing').issues[0].message, /tidak ditemukan/);
+    assert.match(screenTree(ctx(), 'missing').issues[0].message, /not found/);
 });
 
 test('projectIssues checks library, empty modules, entity fields and missing frames', () => {
@@ -63,10 +63,10 @@ test('projectIssues checks library, empty modules, entity fields and missing fra
         ] },
     };
     const msgs = projectIssues(project, { byId: ctx().byId, pages: [{ id: 'p1' }] }).map(i => i.message).join('\n');
-    assert.match(msgs, /Bundle @midas\/ui-cms@1\.1\.1 belum diunggah/);
-    assert.match(msgs, /user \(CRUD\) belum punya field entity/);
-    assert.match(msgs, /Page sumber module report sudah dihapus/);
-    assert.match(msgs, /Frame screen Report \(custom\) sudah dihapus/);
-    assert.match(msgs, /Module empty belum punya screen/);
-    assert.match(projectIssues({ library: null, config: { modules: [] } }, { byId: new Map(), pages: [] })[0].message, /Pilih library/);
+    assert.match(msgs, /Bundle @midas\/ui-cms@1\.1\.1 has not been uploaded/);
+    assert.match(msgs, /user \(CRUD\) has no entity fields yet/);
+    assert.match(msgs, /Source page of module report was deleted/);
+    assert.match(msgs, /Screen frame Report \(custom\) was deleted/);
+    assert.match(msgs, /Module empty has no screens yet/);
+    assert.match(projectIssues({ library: null, config: { modules: [] } }, { byId: new Map(), pages: [] })[0].message, /Choose a library/);
 });
