@@ -1,6 +1,6 @@
 # Base project Midas
 
-Kerangka aplikasi yang dipakai Midas Code Builder untuk project baru (spec §5.2): shell aplikasi (router, navigasi, auth mock, guard permission), modul `auth/login` + `dashboard`, dan `shared/` tipis. Komponen UI dari `@midas/ui-base`.
+Kerangka aplikasi yang dipakai Midas Code Builder untuk project baru (spec §5.2): shell aplikasi (router, navigasi, auth mock, guard permission), modul `auth/login` + `dashboard`, dan `shared/` tipis. Komponen UI dari library design system (saat ini `@midas/ui-cms`).
 
 ## Menjalankan
 
@@ -18,9 +18,9 @@ Login demo (mock): `admin` / `admin123`.
 
 ```css
 @import 'tailwindcss';
-@import '@midas/ui-base/tailwind.css';   /* token tema, utility, CSS & class komponen library */
+@import '@midas/ui-cms/tailwind.css';   /* font, token tema, utility Tailwind & utilitas spacing library */
 ```
 
 ## Modul baru
 
-Modul hasil Code Builder ditulis ke `src/modules/` dan didaftarkan otomatis di `src/app/router.tsx` & `src/app/navigation.tsx` lewat anchor `__GENERATOR_*`. Lihat `AGENTS.md` untuk pakem struktur.
+Modul hasil Code Builder ditulis ke `src/modules/` oleh `midas generate`, dan didaftarkan lewat `src/app/generated/{routes,navigation,locales,layout}` yang diimpor `router.tsx`, `navigation.tsx`, `moduleLocales.ts` dan `ProtectedAppShell.tsx` — file `generated/` dibangkitkan, jangan diedit manual. Lihat `AGENTS.md` untuk pakem struktur.

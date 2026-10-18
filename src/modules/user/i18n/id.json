@@ -1,0 +1,30 @@
+{
+  "user": {
+    "list": {
+      "t1": "Tambah user"
+    },
+    "create": {
+      "t1": "Kembali",
+      "t2": "Batal",
+      "t3": "Simpan"
+    },
+    "edit": {
+      "t1": "Kembali",
+      "t2": "Batal",
+      "t3": "Simpan"
+    },
+    "view": {
+      "t1": "Ubah",
+      "t2": "Nama",
+      "t3": "Budi Santoso",
+      "t4": "Email",
+      "t5": "budi@contoh.id",
+      "t6": "Role",
+      "t7": "Administrator",
+      "t8": "Status",
+      "t9": "Aktif",
+      "t10": "Dibuat",
+      "t11": "12/10/2026 09:30"
+    }
+  }
+}

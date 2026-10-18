@@ -5,6 +5,7 @@
 //   midas sync [--version X] [--library P]   timpa src/generated dengan Library Kit versi X (default terbaru)
 //   midas report [--no-upload] [--json]      setelah build: status kode tiap komponen (ready / not_implemented / mismatch)
 //   midas bundle [--no-upload]               setelah build: bundle ESM + CSS untuk Live DOM Renderer di Studio
+//   midas generate [project] [--out DIR]     ambil kode hasil Code Builder (module, route, menu) ke repo aplikasi
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -13,6 +14,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { buildStudioBundle } from './bundle.js';
+import { generateFromServer, listProjects } from './generate.js';
 
 const GENERATED_DIR = 'src/generated';
 const DEFAULT_SERVER = 'http://127.0.0.1:4000';
@@ -26,6 +28,7 @@ Perintah:
   midas sync [--version X] [--library <@midas/paket>] [--dir FOLDER]
   midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
   midas bundle [--dir FOLDER] [--no-upload]
+  midas generate [<project>] [--out FOLDER] [--list] [--dry-run]
 
 Lingkungan:
   MIDAS_SERVER    URL Midas API (default dari midas.config.json / login)
@@ -296,6 +299,13 @@ async function bundle(args) {
     return 0;
 }
 
+async function generate(args) {
+    const out = resolve(args.out || process.cwd());
+    const { request } = connection(args, readRepoConfig(out));
+    if (args.list) return listProjects(request);
+    return generateFromServer(request, { out, project: args._[1], dryRun: !!args['dry-run'] });
+}
+
 export async function main(argv) {
     const args = parseArgs(argv);
     const cmd = args._[0];
@@ -309,6 +319,7 @@ export async function main(argv) {
     if (cmd === 'sync') return sync(args);
     if (cmd === 'report') return report(args);
     if (cmd === 'bundle') return bundle(args);
+    if (cmd === 'generate') return generate(args);
     console.error(`perintah tidak dikenal: ${cmd}\n\n${HELP}`);
     return 1;
 }

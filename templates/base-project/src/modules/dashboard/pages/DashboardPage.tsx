@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Card } from '@midas/ui-base';
+import { Card } from '@midas/ui-cms';
 import { useAuth } from '../../../app/providers';
 
 function DashboardPage() {

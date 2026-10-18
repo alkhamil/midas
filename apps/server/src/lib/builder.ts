@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const SCREEN_ROLES = ['list', 'create', 'edit', 'view', 'custom'] as const;
 export const CRUD_ROLES = ['list', 'create', 'edit', 'view'] as const;
-export const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation'] as const;
+export const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation', 'password'] as const;
 
 const MODULE_NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const FIELD_NAME_RE = /^[a-z][A-Za-z0-9]*$/;
@@ -19,8 +19,29 @@ const fieldShape = z.object({
     filterable: z.boolean().default(false),
     /** Nilai untuk tipe enum. */
     options: z.array(z.string().min(1)).optional(),
-    /** Module tujuan untuk tipe relation. */
-    relation: z.string().optional(),
+    /** Aturan validasi tambahan (selain `required`): `min:N`, `max:N`, `email`, `pattern:REGEX`, `withoutemoticon`. */
+    rules: z.array(z.string().max(300)).optional(),
+    /** Relasi (tipe relation): module tujuan + field label opsi. String = nama module (format lama). */
+    relation: z.union([z.string(), z.object({ moduleId: z.string().min(1), labelField: z.string().optional() })]).optional(),
+});
+
+/** Konfigurasi satu node di screen (diatur lewat Properties Inspector): override properti, perilaku, binding data. */
+const nodeConfigShape = z.object({
+    /** Override props kode komponen (nama prop → nilai). */
+    props: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+    /** Override isi teks (node teks). */
+    text: z.string().optional(),
+    hidden: z.boolean().optional(),
+    /** Field entity yang dibinding ke komponen form. */
+    field: z.string().optional(),
+    /** Perilaku tombol. */
+    action: z.object({ type: z.enum(['none', 'navigate', 'submit', 'back']), screenId: z.string().optional() }).optional(),
+    /** Konfigurasi tabel list. */
+    table: z.object({
+        columns: z.array(z.string()).optional(),
+        rowActions: z.array(z.enum(['view', 'edit', 'delete'])).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
+    }).optional(),
 });
 
 const screenShape = z.object({
@@ -31,6 +52,21 @@ const screenShape = z.object({
     pageId: z.string().min(1),
     name: z.string().min(1).max(120),
     role: z.enum(SCREEN_ROLES),
+    /** Konfigurasi per node (kunci = id node di desain). */
+    nodes: z.record(z.string(), nodeConfigShape).default({}),
+});
+
+/** Layout aplikasi: sidebar (urutan, label, ikon, sembunyi per module) dan identitas aplikasi/pengguna topbar. */
+const layoutShape = z.object({
+    appName: z.string().max(60).optional(),
+    userName: z.string().max(60).optional(),
+    userRole: z.string().max(60).optional(),
+    items: z.array(z.object({
+        moduleId: z.string().min(1),
+        label: z.string().max(60).optional(),
+        icon: z.string().max(40).optional(),
+        hidden: z.boolean().optional(),
+    })).default([]),
 });
 
 const moduleShape = z.object({
@@ -45,9 +81,25 @@ const moduleShape = z.object({
     screens: z.array(screenShape).default([]),
 });
 
-export const configShape = z.object({ modules: z.array(moduleShape).default([]) });
+export const configShape = z.object({ modules: z.array(moduleShape).default([]), layout: layoutShape.optional() });
 export type BuilderConfig = z.infer<typeof configShape>;
 export type BuilderModule = BuilderConfig['modules'][number];
+
+/** Format aturan validasi yang dikenal; mengembalikan pesan error atau null. */
+function ruleError(rule: string): string | null {
+    if (/^(required|email|withoutemoticon)$/.test(rule)) return null;
+    if (/^(min|max):-?\d+(\.\d+)?$/.test(rule)) return null;
+    if (rule.startsWith('pattern:') && rule.length > 8) {
+        try {
+            new RegExp(rule.slice(8));
+            return null;
+        }
+        catch {
+            return `pola regex tidak valid: ${rule.slice(8)}`;
+        }
+    }
+    return `aturan validasi tidak dikenal: ${rule}`;
+}
 
 export const emptyConfig = (): BuilderConfig => ({ modules: [] });
 
@@ -95,6 +147,17 @@ export function validateConfig(config: BuilderConfig): string[] {
             if (fieldNames.has(f.name)) errors.push(`Field ${f.name} dipakai dua kali di module ${m.name}`);
             fieldNames.add(f.name);
             if (f.type === 'enum' && !f.options?.length) errors.push(`Field ${f.name} (enum) belum punya pilihan`);
+            for (const r of f.rules ?? []) {
+                const bad = ruleError(r);
+                if (bad) errors.push(`Field ${f.name} di module ${m.name}: ${bad}`);
+            }
+            if (f.type === 'relation' && f.relation && typeof f.relation === 'object') {
+                const rel = f.relation;
+                const target = byId.get(rel.moduleId);
+                if (!target) errors.push(`Field ${f.name} di module ${m.name}: module tujuan relasi tidak ditemukan`);
+                else if (rel.labelField && !(target.entity?.fields ?? []).some(x => x.name === rel.labelField))
+                    errors.push(`Field ${f.name} di module ${m.name}: field label ${rel.labelField} tidak ada di module ${target.name}`);
+            }
         }
     }
     return errors;

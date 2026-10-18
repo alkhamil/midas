@@ -176,13 +176,13 @@ ui-cms/
 └── .github/workflows/release.yml   # CI: sync → build → publish → midas report
 ```
 
-Contoh nyata: `packages/ui-base` (`@midas/ui-base`) — komponen dari `contoh_base_code` (struktur `components/ui`, `ui/fields`, `layout` dipertahankan), ikon lucide diganti ikon Library Kit, hooks/utils yang dipakai komponen disalin ke `src/internal` (tanpa xlsx), teks bawaan komponen en/id di `src/i18n` (`registerUiLocales(i18n, ns)` — tidak menimpa teks aplikasi). Peer dependency: `react`, `react-dom`, `react-router`, `react-i18next`, `i18next`, `react-hook-form`; CSS dependency (mis. react-datepicker) dibundel ke `styles.css`. Design system-nya ditulis di `scripts/design-system/` dan di-seed dengan `scripts/seed-base-design-system.mjs` (v2: primary `#0058CA`, Inter, ikon outline & bold-duotone).
+Contoh nyata: `packages/ui-cms` (`@midas/ui-cms`) — dibuat dengan `midas init` dari library "CMS Design System": desainer membuat desainnya di Midas (`scripts/design-system/` menuliskannya sebagai kode untuk demo), developer menulis 18 komponennya di `src/components/` mengikuti tipe props hasil generate, ikon dan token berasal dari Library Kit. Komponen tidak bergantung pada router/i18n (`Sidebar`/`AppShell` menerima `activePath` + `onNavigate`, `Dialog` tanpa portal) sehingga tetap benar di Live DOM Renderer. Contoh data untuk renderer ada di export `midasPreview`. Peer dependency hanya `react` dan `react-dom`.
 
 Aplikasi cukup:
 
 ```css
 @import 'tailwindcss';
-@import '@midas/ui-base/tailwind.css';
+@import '@midas/ui-cms/tailwind.css';
 ```
 
 Isi minimal sebuah library frontend mengikuti apa yang di `contoh_base_code` sekarang berada di `src/shared/components/ui`, `src/shared/components/layout`, dan `src/shared/theme`:
@@ -313,7 +313,7 @@ Satu Module boleh mencampur screen CRUD dan `custom` (mis. modul `order` punya l
 
 ### 4.4. Properties Inspector
 
-Inspector hanya mengatur **props fungsional, data, dan behavior** — properti visual tetap diatur di tab Design. Kontrol inspector dibangkitkan dari **manifest props** komponen library (§3.3). Contoh:
+Inspector bekerja pada **node yang diklik di Live DOM Renderer** (atau dipilih di Layer), termasuk **layout aplikasi** (klik sidebar/topbar: nama aplikasi, label/ikon/urutan menu, identitas pengguna) dan **Data module** (field entity) saat tidak ada seleksi. Perubahan disimpan sebagai konfigurasi project (`screens[].nodes[nodeId]`, `layout`, `entity`), bukan mengubah desain. Inspector hanya mengatur **props fungsional, data, dan behavior** — properti visual tetap diatur di tab Design. Kontrol inspector dibangkitkan dari **manifest props** komponen library (§3.3). Contoh:
 
 - **Button**
   - Props: `variant` (`primary`, `secondary`, `destructive`, `outline`, `ghost`), `disabled`, `loading`, label (i18n key), `icon` + posisi.
@@ -368,7 +368,7 @@ React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Hook Form, rea
 
 ### 5.2. Base project (ikut setiap project baru)
 
-Saat Code Builder Project dibuat, sistem menyiapkan base project bersih: tooling + shell, **tanpa** komponen UI/layout (keduanya dari library). Template-nya ada di `templates/base-project` (workspace monorepo, ikut typecheck & build): login mock (`admin` / `admin123`), dashboard, `AppShell` dari library, i18n en/id dengan `registerUiLocales(i18n, 'general')`, dan `src/index.css` cukup `@import 'tailwindcss'; @import '@midas/ui-base/tailwind.css';`.
+Saat Code Builder Project dibuat, sistem menyiapkan base project bersih: tooling + shell, **tanpa** komponen UI/layout (keduanya dari library). Template-nya ada di `templates/base-project` (workspace monorepo, ikut typecheck & build): login mock (`admin` / `admin123`), dashboard, `AppShell` dari library, i18n en/id dengan `registerUiLocales(i18n, 'general')`, dan `src/index.css` cukup `@import 'tailwindcss'; @import '@midas/ui-cms/tailwind.css';`.
 
 ```text
 <project>/
@@ -536,12 +536,12 @@ Saat klik **Generate**:
 
 1. Validasi: tidak ada Issue blocking (§4.6), semua screen punya role, CRUD module punya entity fields, nama modul unik.
 2. Tulis file modul sesuai §5.4 / §5.5. Target tulis dibatasi di `src/modules/`; file yang sudah ada tidak ditimpa tanpa konfirmasi overwrite.
-3. Registrasi otomatis di shell:
-   - Import + routes di `src/app/router.tsx` (anchor `// __GENERATOR_IMPORTS__`, `// __GENERATOR_ROUTES__`), dengan `handle.breadcrumb` dan `handle.requiredPermission`.
-   - Item menu di `src/app/navigation.tsx` (anchor `// __GENERATOR_NAV_ITEMS__`), di bawah parent bila ada.
-4. Tulis paket library yang dipilih project beserta versinya (versi pasti, mis. `"@midas/ui-cms": "1.2.0"`) di `package.json`, plus `.npmrc` (§3.6). Semua import komponen di kode hasil generate memakai nama paket tersebut.
-5. Generator berjalan **di browser** (TypeScript murni, tanpa backend) dan menghasilkan **Download .zip** project lengkap (JSZip). **Push ke repo** dijalankan lewat backend (§7.4) pada fase lanjut.
-6. Hasil wajib lolos `npm run lint` dan `npm run build`.
+3. Registrasi otomatis di shell lewat **file hasil generate** (bukan menyunting router/navigasi tulisan tangan):
+   - `src/app/generated/routes.tsx` (route tiap screen; path dari nama module/role), `navigation.tsx` (menu sidebar dari `config.layout`: urutan, label, ikon, tampil), `locales.ts` (i18n tiap module), `layout.ts` (nama aplikasi). `router.tsx`, `navigation.tsx` dan `moduleLocales.ts` base project hanya mengimpor file-file ini, jadi regenerate tidak pernah bercampur dengan kode tulisan tangan.
+   - Module bernama `dashboard` di level atas menjadi beranda (`/`) dan menggantikan placeholder bawaan.
+4. Versi library project di-pin di `package.json` aplikasi (versi pasti, mis. `"@midas/ui-cms": "1.2.0"`); `.npmrc` dari base project (§3.6).
+5. Generator adalah paket **`@midas/builder-core`** (JavaScript murni, tanpa backend) dan dijalankan di dua tempat: **Studio** (Generate → *Unduh .zip*) dan **CLI** (`midas generate <project> --out <repo>` — mengambil config project, ekspor file desain, dan mapping library dari server lalu menulis file; file yang tidak lagi dihasilkan dihapus lewat manifest `.midas/generated.json`). **Push ke repo** dijalankan lewat backend (§7.4) pada fase lanjut.
+6. Hasil wajib lolos `npm run typecheck` dan `npm run build` (diverifikasi pada demo CMS).
 
 Generate ulang modul yang sama menimpa file hasil generate milik modul itu (setelah konfirmasi) dan tidak menggandakan registrasi route/nav.
 
@@ -695,7 +695,7 @@ Live DOM Renderer (§4.3) dan Preview App (§4.5) butuh komponen library asli di
 1. **Phase 1 — Design System Library & Registry** ✅ (kecuali bundle ESM untuk Studio — dipindah ke Phase 2 bersama Live DOM Renderer)
    - Fitur **Publish Library** di Midas: form nama library + nama paket + versi + Component Mapping; library bisa di-enable di file lain (Assets → Libraries).
    - Generator **Library Kit** (theme dari Variables, tipe props + manifest dari component properties) + kerangka repo paket + `@midas/cli sync`.
-   - Library pertama: pindahkan UI/layout dari `contoh_base_code` ke repo paket (mis. `@midas/ui-cms`) memakai Library Kit.
+   - Library pertama: `@midas/ui-cms` — desain di Midas → publish → `midas init` → komponen ditulis developer → `midas report` ready.
    - Setup Verdaccio + CI publish library (build, manifest props, bundle ESM untuk Studio).
    - Midas API tahap 1 (§7.8): auth, Postgres + object storage, file desain & aset di server (autosave per page), migrasi dari IndexedDB, Library + versi + nama paket, Component Mapping, status kode per komponen.
    - Base project template (§5.2) yang memakai library lewat `.npmrc`.

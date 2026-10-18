@@ -93,6 +93,33 @@ test('create, read, update with version, conflict and delete', async () => {
     assert.equal((await call('GET', `/api/builder-projects/${p.id}`)).status, 404);
 });
 
+test('node config, layout and password fields round-trip through the project config', async () => {
+    const created = await call('POST', '/api/builder-projects', { name: 'Props', fileId: appFile, libraryId: dsFile, libraryVersion: '1.0.0' });
+    const p = created.body.project;
+    const mod = userModule({
+        entity: { fields: [{ name: 'password', type: 'password' }, { name: 'name', type: 'string' }] },
+        screens: [{ id: 's1', frameId: 'f1', pageId: 'p', name: 'List', role: 'list', nodes: { n1: { props: { children: 'Buat', size: 'lg', disabled: false }, action: { type: 'navigate', screenId: 's2' }, table: { columns: ['name'], rowActions: ['view'], pageSize: 25 }, hidden: true } } }],
+    });
+    const layout = { appName: 'Acme', userName: 'Admin', items: [{ moduleId: mod.id, label: 'Pengguna', icon: 'user', hidden: false }] };
+    const saved = await call('PUT', `/api/builder-projects/${p.id}`, { version: p.version, config: { modules: [mod], layout } });
+    assert.equal(saved.status, 200, JSON.stringify(saved.body));
+    const back = (await call('GET', `/api/builder-projects/${p.id}`)).body.project.config;
+    assert.deepEqual(back.modules[0].screens[0].nodes.n1.table, { columns: ['name'], rowActions: ['view'], pageSize: 25 });
+    assert.equal(back.modules[0].screens[0].nodes.n1.props.children, 'Buat');
+    assert.equal(back.layout.appName, 'Acme');
+    assert.equal(back.modules[0].entity.fields[0].type, 'password');
+    const bad = await call('PUT', `/api/builder-projects/${p.id}`, { version: saved.body.project.version, config: { modules: [{ ...mod, screens: [{ ...mod.screens[0], nodes: { n1: { action: { type: 'explode' } } } }] }] } });
+    assert.equal(bad.status, 400);
+    // validasi: aturan tak dikenal / regex rusak / relasi ke module yang tidak ada ditolak
+    const withField = (field: object) => ({ modules: [{ ...mod, entity: { fields: [field] } }] });
+    const v = saved.body.project.version;
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v, config: withField({ name: 'a', type: 'string', rules: ['min:3', 'email', 'pattern:^a'] }) })).status, 200);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['bogus'] }) })).status, 400);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['pattern:('] }) })).status, 400);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'r', type: 'relation', relation: { moduleId: 'nope' } }) })).status, 400);
+    await call('DELETE', `/api/builder-projects/${p.id}`);
+});
+
 test('invalid config, unknown library version and unknown file are rejected', async () => {
     assert.equal((await call('POST', '/api/builder-projects', { name: 'X', fileId: 'nope' })).status, 404);
     const badVersion = await call('POST', '/api/builder-projects', { name: 'X', fileId: appFile, libraryId: dsFile, libraryVersion: '9.9.9' });

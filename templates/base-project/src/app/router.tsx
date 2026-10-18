@@ -1,10 +1,9 @@
 import { createBrowserRouter } from 'react-router';
-import { ErrorStatePage } from '@midas/ui-base';
+import ErrorStatePage from '../shared/components/ErrorStatePage';
 import { AuthProvider, PermissionGate } from './providers';
 import ProtectedAppShell from './ProtectedAppShell';
-import { DashboardPage } from '../modules/dashboard';
 import { LoginPage } from '../modules/auth/login';
-// __GENERATOR_IMPORTS__
+import { generatedRoutes } from './generated/routes';
 
 export const router = createBrowserRouter([
   {
@@ -16,8 +15,7 @@ export const router = createBrowserRouter([
           {
             element: <PermissionGate />,
             children: [
-              { index: true, element: <DashboardPage /> },
-              // __GENERATOR_ROUTES__
+              ...generatedRoutes,
               { path: '*', element: <ErrorStatePage type="404" /> },
             ],
           },

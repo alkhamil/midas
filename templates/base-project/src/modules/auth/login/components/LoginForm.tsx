@@ -6,7 +6,7 @@ import {
   Card,
   PasswordField,
   TextField,
-} from '@midas/ui-base';
+} from '@midas/ui-cms';
 
 interface LoginFormProps {
   username: string;
@@ -34,27 +34,23 @@ function LoginForm({
   return (
     <Card title={t('auth.loginTitle')}>
       <form data-testid={testId} onSubmit={onSubmit} className="flex flex-col stack-gap">
-        {error && <Alert variant="error" message={error} />}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">{t('auth.username')}</label>
-          <TextField
-            value={username}
-            onChange={(e) => onUsernameChange(e.target.value)}
-            placeholder="admin"
-            maxLength={50}
-            autoComplete="username"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">{t('auth.password')}</label>
-          <PasswordField
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            placeholder="••••••••"
-            maxLength={100}
-            autoComplete="current-password"
-          />
-        </div>
+        {error && <Alert variant="danger" message={error} />}
+        <TextField
+          label={t('auth.username')}
+          value={username}
+          onChange={(e) => onUsernameChange(e.target.value)}
+          placeholder="admin"
+          maxLength={50}
+          autoComplete="username"
+        />
+        <PasswordField
+          label={t('auth.password')}
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          placeholder="••••••••"
+          maxLength={100}
+          autoComplete="current-password"
+        />
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? t('auth.processing') : t('auth.login')}
         </Button>

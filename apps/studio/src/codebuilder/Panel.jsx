@@ -3,12 +3,12 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { builderApi, libraryApi } from '../storage.js';
-import { cssUrlOf, loadBundle } from './loader.js';
-import { LiveFrame } from './Renderer.jsx';
-import { CRUD_ROLES, kebabCase, makeContext, projectIssues, ROLE_LABEL, screenTree } from './screen.js';
+import { cleanNodeCfg, CRUD_ROLES, kebabCase, makeContext, projectIssues, resolveLayout, ROLE_LABEL, screenTree } from '@midas/builder-core';
+import { GenerateDialog } from './Generate.jsx';
+import { EntityEditor } from './Inspector.jsx';
+import { Workspace } from './Workspace.jsx';
 
 const ROLES = ['list', 'create', 'edit', 'view', 'custom'];
-const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation'];
 const uid = p => `${p}-${Math.random().toString(36).slice(2, 10)}`;
 const LAST_KEY = fileId => `midas-builder-project:${fileId}`;
 
@@ -82,25 +82,54 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         });
     }, [flush]);
     const updateModules = fn => update(p => ({ config: { ...p.config, modules: fn(p.config.modules) } }));
+    // Konfigurasi node screen (Properties Inspector): `fn` menerima konfigurasi lama dan mengembalikan yang baru.
+    const setNode = useCallback((screenId, nodeId, fn) => update(p => ({
+        config: {
+            ...p.config,
+            modules: p.config.modules.map(m => ({
+                ...m,
+                screens: m.screens.map(s => {
+                    if (s.id !== screenId) return s;
+                    const nodes = { ...s.nodes };
+                    const next = cleanNodeCfg(fn(nodes[nodeId] || {}));
+                    if (Object.keys(next).length) nodes[nodeId] = next;
+                    else delete nodes[nodeId];
+                    return { ...s, nodes };
+                }),
+            })),
+        },
+    })), [update]);
+    const setLayout = useCallback(fn => update(p => {
+        const resolved = resolveLayout(p.config);
+        const labelOf = id => p.config.modules.find(m => m.id === id)?.label;
+        const base = { appName: resolved.appName, userName: resolved.userName, userRole: resolved.userRole, items: resolved.items.map(({ moduleId, label, icon, hidden }) => ({ moduleId, label, icon, hidden: hidden || undefined })) };
+        const next = fn(base);
+        // Label yang sama dengan label module tidak disimpan sebagai override (supaya ikut berubah bila module diganti nama).
+        return { config: { ...p.config, layout: { ...next, items: next.items.map(i => ({ ...i, label: i.label && i.label !== labelOf(i.moduleId) ? i.label : undefined })) } } };
+    }), [update]);
+    const setFields = useCallback((moduleId, fields) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => (m.id === moduleId ? { ...m, entity: { fields } } : m)) } })), [update]);
 
     // ---------------------------------------------------------------- dokumen & issues
     const pages = useMemo(() => bridge.pages(), [tick, bridge]);
     const docNodes = useMemo(() => bridge.nodes(), [tick, bridge]);
     const [mappings, setMappings] = useState([]);
+    const [mapped, setMapped] = useState(false); // mapping versi library sudah dimuat (sebelumnya semua komponen tampak "tidak ada")
     const lib = project?.library;
     useEffect(() => {
         setMappings([]);
-        if (lib?.id && lib.version && !lib.missing) builderApi.mappings(lib.id, lib.version).then(setMappings, () => setMappings([]));
+        setMapped(false);
+        if (lib?.id && lib.version && !lib.missing) builderApi.mappings(lib.id, lib.version).then(m => { setMappings(m); setMapped(true); }, () => { setMappings([]); setMapped(true); });
+        else setMapped(true);
     }, [lib?.id, lib?.version, lib?.missing]);
     const ctx = useMemo(() => makeContext({ nodes: docNodes, variables: bridge.variables(), mappings, libraryId: lib?.id, fileId }), [docNodes, mappings, lib?.id, fileId, bridge]);
     const screens = useMemo(() => (project?.config.modules || []).flatMap(m => m.screens.map(s => ({ ...s, module: m }))), [project]);
-    const trees = useMemo(() => new Map(screens.map(s => [s.id, screenTree(ctx, s.frameId)])), [screens, ctx]);
+    const trees = useMemo(() => new Map(screens.map(s => [s.id, screenTree(ctx, s.frameId, s.nodes)])), [screens, ctx]);
     const issues = useMemo(() => {
         if (!project) return [];
         const out = projectIssues(project, { byId: ctx.byId, pages });
-        for (const s of screens) for (const i of trees.get(s.id).issues) out.push({ ...i, screenId: s.id, message: `${s.name}: ${i.message}` });
+        if (mapped) for (const s of screens) for (const i of trees.get(s.id).issues) out.push({ ...i, screenId: s.id, message: `${s.name}: ${i.message}` });
         return out;
-    }, [project, ctx, pages, screens, trees]);
+    }, [project, ctx, pages, screens, trees, mapped]);
 
     if (error) return <div className="cb-panel"><p className="cb-error">{error}</p><button className="wide-button" onClick={load}>Coba lagi</button></div>;
     if (!projects) return <div className="cb-panel"><p className="small-label">Memuat project…</p></div>;
@@ -113,6 +142,8 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
     };
     const activeScreen = screens.find(s => s.id === screenId);
     const selection = bridge.selection();
+    const layout = resolveLayout(project?.config || { modules: [] });
+    const allModules = project?.config.modules || [];
 
     return (
         <div className="cb-panel">
@@ -151,6 +182,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                         onRemove={id => updateModules(list => list.filter(m => m.id !== id && m.parentId !== id))}
                     />
                     <IssuesList issues={issues} onReveal={id => bridge.reveal(id)} onOpenScreen={setScreenId} />
+                    <button className="wide-button primary cb-generate" onClick={() => setForm('generate')}>Generate kode…</button>
                     <div className="cb-foot"><span className="small-label">{status}</span><button className="cb-link danger" onClick={async () => {
                         if (!confirm(`Hapus project "${project.name}"? Frame di desain tidak ikut terhapus.`)) return;
                         await builderApi.remove(project.id);
@@ -160,9 +192,16 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                 </>
             )}
             {activeScreen && canvasHost && createPortal(
-                <ScreenView screen={activeScreen} tree={trees.get(activeScreen.id)} library={lib} onClose={() => setScreenId(null)} onReveal={id => { setScreenId(null); bridge.reveal(id); }} />,
+                <Workspace
+                    screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={{ ...activeScreen.module.entity, moduleName: activeScreen.module.name }} layout={layout}
+                    title={layout.items.find(i => i.moduleId === rootOf(allModules, activeScreen.module).id)?.label || activeScreen.module.label}
+                    module={activeScreen.module} screens={screens} modules={allModules}
+                    actions={{ setNode, setLayout, setFields }} onGenerate={() => setForm('generate')}
+                    onClose={() => setScreenId(null)} onReveal={id => { setScreenId(null); bridge.reveal(id); }}
+                />,
                 canvasHost,
             )}
+            {form === 'generate' && project && <GenerateDialog project={project} ctx={ctx} onClose={() => setForm(null)} />}
         </div>
     );
 }
@@ -297,7 +336,7 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
                         ? <ScreenForm module={m} selection={selection} onCancel={() => setForm(null)} onSave={s => { onUpdate(m.id, mm => ({ screens: [...mm.screens, { id: uid('scr'), ...s }] })); setForm(null); }} />
                         : <button className="cb-link" onClick={() => setForm({ screenFor: m.id })}>＋ Register frame</button>}
                     {crud && (fields
-                        ? <FieldsForm module={m} onClose={() => setForm(null)} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} />
+                        ? <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Selesai</button></>
                         : <button className="cb-link" onClick={() => setForm({ fieldsFor: m.id })}>Entity fields ({m.entity?.fields?.length || 0})</button>)}
                     {editing
                         ? <ModuleForm pages={pages} modules={modules} initial={m} onCancel={() => setForm(null)} onSave={v => { onUpdate(m.id, () => v); setForm(null); }} />
@@ -332,34 +371,6 @@ function ScreenForm({ module: m, selection, onCancel, onSave }) {
     );
 }
 
-function FieldsForm({ module: m, onChange, onClose }) {
-    const fields = m.entity?.fields || [];
-    const set = (i, patch) => onChange(fields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
-    return (
-        <div className="cb-form">
-            <b>Entity fields</b>
-            <p className="small-label">Dipakai untuk types, validasi, mock, dan kolom tabel.</p>
-            {fields.map((f, i) => (
-                <div key={i} className="cb-field">
-                    <input aria-label="Nama field" className={/^[a-z][A-Za-z0-9]*$/.test(f.name) ? '' : 'invalid'} value={f.name} onChange={e => set(i, { name: e.target.value })} />
-                    <select aria-label="Tipe" value={f.type} onChange={e => set(i, { type: e.target.value })}>{FIELD_TYPES.map(t => <option key={t}>{t}</option>)}</select>
-                    <button className="icon-button small" aria-label="Hapus field" onClick={() => onChange(fields.filter((_, j) => j !== i))}>×</button>
-                    <div className="cb-field-flags">
-                        {[['required', 'wajib'], ['sortable', 'sort'], ['filterable', 'filter']].map(([k, l]) => (
-                            <label key={k}><input type="checkbox" checked={!!f[k]} onChange={e => set(i, { [k]: e.target.checked })} />{l}</label>
-                        ))}
-                    </div>
-                    {f.type === 'enum' && <input aria-label="Pilihan enum" placeholder="pilihan, dipisah koma" value={(f.options || []).join(', ')} onChange={e => set(i, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} />}
-                </div>
-            ))}
-            <div className="cb-form-actions">
-                <button className="wide-button" onClick={() => onChange([...fields, { name: `field${fields.length + 1}`, type: 'string', required: false, sortable: false, filterable: false }])}>＋ Field</button>
-                <button className="wide-button primary" onClick={onClose}>Selesai</button>
-            </div>
-        </div>
-    );
-}
-
 function IssuesList({ issues, onReveal, onOpenScreen }) {
     const [open, setOpen] = useState(true);
     const errors = issues.filter(i => i.severity === 'error').length;
@@ -380,61 +391,8 @@ function IssuesList({ issues, onReveal, onOpenScreen }) {
     );
 }
 
-/** Area tengah: Live DOM Renderer screen yang dibuka (menutupi canvas). */
-function ScreenView({ screen, tree, library, onClose, onReveal }) {
-    const [lib, setLib] = useState(null);
-    const [err, setErr] = useState(null);
-    const [picked, setPicked] = useState(null);
-    const [runtime, setRuntime] = useState([]);
-    useEffect(() => {
-        setLib(null);
-        setErr(null);
-        if (!library?.bundleUrl) return setErr(`Bundle ${library ? `${library.packageName}@${library.version}` : 'library'} belum tersedia. Jalankan \`npm run bundle\` (midas bundle) di repo paket.`);
-        loadBundle(library.bundleUrl).then(setLib, e => setErr(e.message));
-    }, [library?.bundleUrl]);
-    const onError = useCallback((nodeId, e) => setRuntime(r => (r.some(x => x.nodeId === nodeId) ? r : [...r, { nodeId, message: e.message }])), []);
-    useEffect(() => setRuntime([]), [tree]);
-    // Menutupi canvas + panel kanan (inspector Design tidak dipakai saat melihat screen).
-    const view = useRef(null);
-    useEffect(() => {
-        const area = document.getElementById('canvas-area');
-        const place = () => {
-            const r = area.getBoundingClientRect();
-            Object.assign(view.current.style, { top: `${r.top}px`, left: `${r.left}px` });
-        };
-        place();
-        const ro = new ResizeObserver(place);
-        ro.observe(area);
-        window.addEventListener('resize', place);
-        return () => {
-            ro.disconnect();
-            window.removeEventListener('resize', place);
-        };
-    }, []);
-    const all = [...tree.issues, ...runtime.map(r => ({ ...r, severity: 'error', message: `Error saat render: ${r.message}` }))];
-    return (
-        <div className="cb-screen-view" ref={view}>
-            <div className="cb-screen-bar">
-                <span className={`cb-role r-${screen.role}`}>{ROLE_LABEL[screen.role]}</span>
-                <b>{screen.name}</b>
-                <span className="small-label">src/modules/{screen.module.name}</span>
-                <span className="cb-spacer" />
-                {picked && <button className="wide-button" onClick={() => onReveal(picked)}>Pilih di canvas</button>}
-                <button className="wide-button" onClick={() => onReveal(screen.frameId)}>Buka frame</button>
-                <button className="wide-button primary" onClick={onClose}>Kembali ke canvas</button>
-            </div>
-            <div className="cb-screen-body">
-                {err ? <div className="cb-empty"><b>Live DOM Renderer</b><p className="small-label">{err}</p></div>
-                    : !lib ? <div className="cb-empty"><p className="small-label">Memuat {library.packageName}@{library.version}…</p></div>
-                        : tree.tree ? <LiveFrame tree={tree.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} selectedId={picked} onPick={setPicked} onError={onError} />
-                            : <div className="cb-empty"><p className="small-label">{tree.issues[0]?.message}</p></div>}
-                {all.length > 0 && (
-                    <div className="cb-screen-issues">
-                        <b>{all.length} issue</b>
-                        {all.map((i, k) => <button key={k} className={`cb-issue ${i.severity}`} title="Sorot di renderer" onClick={() => setPicked(i.nodeId)}><span className="cb-issue-dot" />{i.nodeName ? `${i.nodeName}: ` : ''}{i.message}</button>)}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
+const rootOf = (modules, m) => {
+    let c = m;
+    for (let n = 0; c.parentId && n < 20; n++) c = modules.find(x => x.id === c.parentId) || c;
+    return c;
+};

@@ -5,7 +5,6 @@
  */
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { registerUiLocales } from '@midas/ui-base';
 import enGeneral from './locales/en/general.json';
 import idGeneral from './locales/id/general.json';
 
@@ -84,7 +83,6 @@ export async function setAppLanguage(lng: AppLanguage): Promise<void> {
 export default i18n;
 
 // Teks bawaan komponen library (tidak menimpa key milik aplikasi).
-registerUiLocales(i18n, 'general');
 
 // Bahasa yang dipilih lewat LanguageSwitch (library) ikut disimpan & diterapkan ke <html lang>.
 i18n.on('languageChanged', (lng) => {
