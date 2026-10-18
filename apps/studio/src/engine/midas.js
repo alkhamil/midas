@@ -1875,7 +1875,7 @@ function renderVarsWindow() {
         return;
     ensureVarCollection();
     const store = varStore(), coll = varColl(vw.coll), cols = 'grid-template-columns: ' + vwCols(coll);
-    const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
+    const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''} ${vw.selColls?.has(c.id) ? 'multi' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
     const head = `<div class="vw-row vw-head-row" style="${cols}"><div class="vw-hcell">Name<span class="vw-colres" data-vw-colres="name"></span></div>${coll.modes.map(m => `<div class="vw-hcell mode" data-vw-mode-cell="${m.id}" title="${coll.modes.length > 1 ? 'Drag to reorder' : ''}"><span class="vw-colres" data-vw-colres="${m.id}"></span><input class="vw-mode-name" value="${esc(m.name)}" data-vw-mode-name="${m.id}" spellcheck="false" aria-label="Mode name"><span class="vw-actions"><button class="vw-mini" data-vw-dup-mode="${m.id}" title="Duplicate mode" aria-label="Duplicate mode">${icon('copy', 12)}</button>${coll.modes.length > 1 ? `<button class="vw-mini" data-vw-del-mode="${m.id}" title="Delete mode" aria-label="Delete mode">${icon('close', 12)}</button>` : ''}</span></div>`).join('')}<div class="vw-hcell"><button class="vw-mini add" data-vw-add-mode title="Add mode" aria-label="Add mode">+</button></div></div>`;
     const groups = varsRows(coll);
     let body = '';
@@ -1891,7 +1891,7 @@ function renderVarsWindow() {
     if (!body)
         body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
     const allGroups = vwGroupsOf(coll), inGroupCount = g => store.items.filter(i => i.collectionId === coll.id && (!g || i.name.startsWith(g + '/'))).length;
-    const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
+    const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''} ${vw.selGroups?.has(g) ? 'multi' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
     const fullIcon = vw.full ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 6.5l4-4M6.5 9.5l-4 4"/></svg>' : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9.5 6.5M2.5 13.5l4-4"/></svg>';
     // Re-rendering replaces the lists; keep where the user had scrolled them (e.g. after Create variable).
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
@@ -9356,8 +9356,10 @@ function buildPathNode(res, first, name) {
     const xs = rings.flat().map(p => p.x), ys = rings.flat().map(p => p.y), minX = Math.min(...xs), minY = Math.min(...ys), w = Math.max(1, Math.max(...xs) - minX), h = Math.max(1, Math.max(...ys) - minY);
     const rel = r => r.map(p => ({ x: p.x - minX, y: p.y - minY }));
     const props = { name, x: minX, y: minY, w, h, pathW: w, pathH: h, points: rel(rings[0]), closed: true, parentId: first.parentId || null, stroke: first.stroke, strokeWidth: first.strokeWidth, opacity: first.opacity };
-    if (rings.length > 1)
+    if (rings.length > 1) {
         props.contours = rings.slice(1).map(r => ({ points: rel(r), closed: true }));
+        props.fillRule = 'evenodd';
+    }
     if (Array.isArray(first.fills))
         props.fills = structuredClone(first.fills);
     props.fill = first.fill && first.fill !== 'none' ? first.fill : '#8fbcf0';
@@ -9980,6 +9982,37 @@ document.addEventListener('pointerdown', e => {
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
 }, true);
+// Ctrl / Cmd + click toggles one collection or group, Alt / Shift + click selects the range from the anchor (like the page list).
+document.addEventListener('click', e => {
+    const row = e.target.closest?.('#vars-window [data-vw-coll], #vars-window [data-vw-gsel]');
+    if (!row || e.target.closest('input, button'))
+        return;
+    const isGroup = row.dataset.vwGsel !== undefined, id = isGroup ? row.dataset.vwGsel : row.dataset.vwColl, key = isGroup ? 'selGroups' : 'selColls', ak = key + 'Anchor';
+    if (isGroup && id === '')
+        return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
+        e.stopPropagation();
+        e.preventDefault();
+        vw[key] ||= new Set();
+        const ids = [...document.querySelectorAll(isGroup ? '#vars-window .vw-groups [data-vw-gsel]' : '#vars-window .vw-colls [data-vw-coll]')].map(r => isGroup ? r.dataset.vwGsel : r.dataset.vwColl).filter(x => x !== '');
+        const anchor = vw[ak] || (isGroup ? vw.group : vw.coll);
+        if (!vw[key].size && anchor)
+            vw[key].add(anchor);
+        if (e.ctrlKey || e.metaKey) {
+            vw[key].has(id) ? vw[key].delete(id) : vw[key].add(id);
+            vw[ak] = id;
+        }
+        else {
+            const a = ids.indexOf(anchor), b = ids.indexOf(id);
+            if (a >= 0 && b >= 0)
+                vw[key] = new Set(ids.slice(Math.min(a, b), Math.max(a, b) + 1));
+        }
+        renderVarsWindow();
+        return;
+    }
+    vw[key] = new Set();
+    vw[ak] = id;
+}, true);
 // Press and drag a collection or group in the variables sidebar to reorder it. Groups dropped on the middle
 // of another group nest inside it (their variables are renamed to the new path).
 document.addEventListener('pointerdown', e => {
@@ -10026,30 +10059,43 @@ document.addEventListener('pointerdown', e => {
         if (!drop)
             return;
         if (!isGroup) {
-            const s = varStore(), from = s.collections.findIndex(c => c.id === id), t = s.collections.findIndex(c => c.id === drop.target);
-            if (from < 0 || t < 0)
+            const s = varStore(), picked = vw.selColls?.has(id) && vw.selColls.size > 1 ? vw.selColls : new Set([id]);
+            if (picked.has(drop.target) || s.collections.findIndex(c => c.id === drop.target) < 0)
                 return;
             vwTx('Reorder collections', () => {
-                const [c] = s.collections.splice(from, 1);
+                const moving = s.collections.filter(c => picked.has(c.id));
+                s.collections = s.collections.filter(c => !picked.has(c.id));
                 const ti = s.collections.findIndex(x => x.id === drop.target);
-                s.collections.splice(drop.where === 'after' ? ti + 1 : ti, 0, c);
+                s.collections.splice(drop.where === 'after' ? ti + 1 : ti, 0, ...moving);
             });
             return;
         }
-        const coll = varColl(vw.coll), leaf = id.split('/').pop();
-        const parent = drop.where === 'into' ? drop.target : drop.where === 'root' ? '' : vwParentGroup(drop.target);
-        const nn = parent ? `${parent}/${leaf}` : leaf;
-        if (nn !== id && vwGroupsOf(coll).includes(nn)) {
-            toast(`A group named “${nn}” already exists there.`);
+        const coll = varColl(vw.coll);
+        const chosen = vw.selGroups?.has(id) && vw.selGroups.size > 1 ? [...vw.selGroups] : [id];
+        // A group chosen together with its own parent just travels with it.
+        const list = vwGroupsOf(coll).filter(g => chosen.includes(g) && !chosen.some(o => o !== g && g.startsWith(o + '/')) && g !== drop.target && !drop.target.startsWith(g + '/'));
+        if (!list.length)
             return;
-        }
+        const parent = drop.where === 'into' ? drop.target : drop.where === 'root' ? '' : vwParentGroup(drop.target);
+        for (const g of list)
+            if (g.split('/').pop() && (parent ? parent + '/' : '') + g.split('/').pop() !== g && vwGroupsOf(coll).includes((parent ? parent + '/' : '') + g.split('/').pop())) {
+                toast('A group with that name already exists there.');
+                return;
+            }
         vwTx('Move group', () => {
-            if (nn !== id)
-                vwRenameGroup(coll, id, nn);
-            const order = vwGroupsOf(coll).filter(g => g !== nn);
-            const at = drop.where === 'before' ? order.indexOf(drop.target) : drop.where === 'after' ? order.indexOf(drop.target) + 1 : drop.where === 'root' ? 0 : order.length;
-            order.splice(Math.max(0, at), 0, nn);
-            coll.groupOrder = order;
+            let insertAt = null;
+            for (const g of list) {
+                const leaf = g.split('/').pop(), nn = parent ? parent + '/' + leaf : leaf;
+                if (nn !== g)
+                    vwRenameGroup(coll, g, nn);
+                const order = vwGroupsOf(coll).filter(x => x !== nn);
+                let at = insertAt ?? (drop.where === 'before' ? order.indexOf(drop.target) : drop.where === 'after' ? order.indexOf(drop.target) + 1 : drop.where === 'root' ? 0 : order.length);
+                at = Math.max(0, at);
+                order.splice(at, 0, nn);
+                coll.groupOrder = order;
+                insertAt = at + 1;
+            }
+            vw.selGroups = new Set();
         });
     };
     addEventListener('pointermove', move);
@@ -12400,6 +12446,21 @@ async function figToMidas(file, onProgress, abortSignal) {
     const varFor = vd => { const a = aliasOf(vd); return a ? varByGuid.get(vkey(a)) || null : null; };
     const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
     const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
+    // Newer files keep property references AND variable bindings (visibility as IS_TRUTHY(variable)) in parameterConsumptionMap too.
+    const applyParamBindings = (n, f) => {
+        for (const e of f.parameterConsumptionMap?.entries || []) {
+            const ref = e.variableData?.value?.propRefValue?.defId;
+            if (ref) {
+                const info = defInfo.get(gkey(ref)), field = PROP_FIELD[e.variableField];
+                if (info && field)
+                    n.propBind = { ...(n.propBind || {}), [field]: info.pid };
+                continue;
+            }
+            const prop = VAR_FIELD[e.variableField], id = prop && varFor(e.variableData);
+            if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
+                n.vars = { ...(n.vars || {}), [prop]: id };
+        }
+    };
     const applyVarBindings = (n, f) => {
         for (const e of f.variableConsumptionMap?.entries || []) {
             const prop = VAR_FIELD[e.variableField], id = varFor(e.variableData);
@@ -13093,12 +13154,10 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (info && field)
                 (n.propBind ||= {})[field] = info.pid;
         }
-        // Newer files keep the same link in parameterConsumptionMap (property reference per field).
-        for (const e of f.parameterConsumptionMap?.entries || []) {
-            const ref = e.variableData?.value?.propRefValue?.defId, info = ref && defInfo.get(gkey(ref)), field = PROP_FIELD[e.variableField];
-            if (info && field)
-                (n.propBind ||= {})[field] = info.pid;
-        }
+        applyParamBindings(n, f);
+        // A boolean result is a set of non-overlapping rings: even-odd keeps the counters open whatever their winding.
+        if (isBool && (n.contours || []).length)
+            n.fillRule = 'evenodd';
         walkedFigs.push(f);
         idMap.set(k, n.id);
         figOfMidas.set(n.id, f);
@@ -13491,6 +13550,11 @@ async function figToMidas(file, onProgress, abortSignal) {
                 c.text = ov.textData.characters;
             if (ov.visible !== undefined)
                 c.visible = ov.visible !== false;
+            c.vars = { ...(c.vars || {}) };
+            applyVarBindings(c, { variableConsumptionMap: ov.variableConsumptionMap });
+            applyParamBindings(c, ov);
+            if (c.vars && !Object.keys(c.vars).length)
+                delete c.vars;
             if (ov.opacity !== undefined)
                 c.opacity = ov.opacity;
             if (ov.fillPaints)
