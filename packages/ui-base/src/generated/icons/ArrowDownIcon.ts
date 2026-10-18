@@ -4,21 +4,9 @@ import { createIcon } from './createIcon';
 
 // PURE: ikon yang tidak dipakai bisa dibuang bundler aplikasi (tree-shaking).
 export const ArrowDownIcon = /* @__PURE__ */ createIcon("arrow-down", {
-  "bold": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M12.75 4C12.75 3.58579 12.4142 3.25 12 3.25C11.5858 3.25 11.25 3.58579 11.25 4L11.25 13.25H6.00002C5.69668 13.25 5.4232 13.4327 5.30711 13.713C5.19103 13.9932 5.25519 14.3158 5.46969 14.5303L11.4697 20.5303C11.6103 20.671 11.8011 20.75 12 20.75C12.1989 20.75 12.3897 20.671 12.5304 20.5303L18.5304 14.5303C18.7449 14.3158 18.809 13.9932 18.6929 13.713C18.5768 13.4327 18.3034 13.25 18 13.25H12.75L12.75 4Z\" fill=\"currentColor\"/>"
-  },
   "bold-duotone": {
     "viewBox": "0 0 24 24",
     "body": "<path opacity=\"0.5\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12 3.25C12.4142 3.25 12.75 3.58579 12.75 4L12.75 13.25H11.25L11.25 4C11.25 3.58579 11.5858 3.25 12 3.25Z\" fill=\"currentColor\"/><path d=\"M6.00002 13.25C5.69667 13.25 5.4232 13.4327 5.30711 13.713C5.19103 13.9932 5.25519 14.3158 5.46969 14.5303L11.4697 20.5303C11.6103 20.671 11.8011 20.75 12 20.75C12.1989 20.75 12.3897 20.671 12.5304 20.5303L18.5304 14.5303C18.7449 14.3158 18.809 13.9932 18.6929 13.713C18.5768 13.4327 18.3034 13.25 18 13.25L6.00002 13.25Z\" fill=\"currentColor\"/>"
-  },
-  "broken": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M6 14L12 20L18 14M12 20L12 9.5M12 4V6.5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
-  },
-  "line-duotone": {
-    "viewBox": "0 0 24 24",
-    "body": "<path opacity=\"0.5\" d=\"M12.75 4C12.75 3.58579 12.4142 3.25 12 3.25C11.5858 3.25 11.25 3.58579 11.25 4L12 4L12.75 4ZM12 4L11.25 4L11.25 20H12H12.75L12.75 4L12 4Z\" fill=\"currentColor\"/><path d=\"M18 14L12 20L6 14\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
   },
   "outline": {
     "viewBox": "0 0 24 24",

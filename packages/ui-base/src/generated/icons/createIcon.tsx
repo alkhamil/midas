@@ -2,8 +2,8 @@
 // Dibangkitkan oleh Midas dari library — JANGAN diedit manual; jalankan `npx @midas/cli sync` untuk memperbarui.
 import type { SVGProps } from 'react';
 
-export type IconStyle = "bold" | "bold-duotone" | "broken" | "line-duotone" | "outline";
-export const iconStyles: IconStyle[] = ["bold", "bold-duotone", "broken", "line-duotone", "outline"];
+export type IconStyle = "bold-duotone" | "outline";
+export const iconStyles: IconStyle[] = ["bold-duotone", "outline"];
 export const defaultIconStyle: IconStyle = "outline";
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'ref' | 'children' | 'dangerouslySetInnerHTML'> {

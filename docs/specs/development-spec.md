@@ -140,7 +140,7 @@ src/generated/                # JANGAN diedit manual — ditimpa setiap sync
 
 Aturan pembangkitan:
 - **Tema** = nama mode dari collection Variables yang punya lebih dari satu mode (mis. Light/Dark → `light`, `dark`); collection satu mode berlaku untuk semua tema. Alias di-resolve per tema.
-- **Nama token** = path Variable dalam camelCase, tanpa grup awal `color/` untuk warna: `color/primary-foreground` → `primaryForeground` → `--theme-primary-foreground`; `radius/md` → `radiusMd`. Number → `px`. Variable `effect` belum didukung (muncul sebagai peringatan).
+- **Nama token** = path Variable dalam camelCase, tanpa grup awal `color/` untuk warna: `color/primary-foreground` → `primaryForeground` → `--theme-primary-foreground`; `radius/md` → `radiusMd`. Number → `px`. Utility Tailwind (`tailwind-theme.css`): warna → `--color-*`, `radius/*` → `--radius-*`, `font/family` → `--font-sans` (font default UI), `font/mono` → `--font-mono`. Variable `effect` belum didukung (muncul sebagai peringatan).
 - **Props**: variant → union string (`"primary" | "ghost"`) atau boolean bila nilainya true/false; property text → `string`, boolean → `boolean`, instance swap / slot → `ReactNode` (slot pertama → `children`). Semua prop opsional; default = varian pertama dan default component property. Setiap komponen juga punya `testId`.
 - **Ikon**: komponen yang dipublish sebagai ikon tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkan komponen ikon React dari SVG hasil export (`snapshot.icons`). Gaya = nilai variant (tanpa variant → `default`). Warna yang paling banyak dipakai di SVG diganti `currentColor` (ikon ikut warna teks), opacity/duotone dan warna lain dipertahankan; `<script>`, atribut `on*`, serta `<title>`/`<desc>`/`<metadata>` dari export dibuang. Default gaya = `outline` bila ada. Setiap ikon diberi anotasi `/* @__PURE__ */` sehingga aplikasi hanya membundel ikon yang dipakai.
 - Snapshot library membawa aset yang dipakai komponen (data URL), sehingga file lain yang memakai library dan Library Kit mendapat gambar/ikon yang sama.
@@ -176,7 +176,7 @@ ui-cms/
 └── .github/workflows/release.yml   # CI: sync → build → publish → midas report
 ```
 
-Contoh nyata: `packages/ui-base` (`@midas/ui-base`) — komponen dari `contoh_base_code` (struktur `components/ui`, `ui/fields`, `layout` dipertahankan), ikon lucide diganti ikon Library Kit, hooks/utils yang dipakai komponen disalin ke `src/internal` (tanpa xlsx), teks bawaan komponen en/id di `src/i18n` (`registerUiLocales(i18n, ns)` — tidak menimpa teks aplikasi). Peer dependency: `react`, `react-dom`, `react-router`, `react-i18next`, `i18next`, `react-hook-form`; CSS dependency (mis. react-datepicker) dibundel ke `styles.css`. Design system-nya di-seed dengan `scripts/seed-base-design-system.mjs`.
+Contoh nyata: `packages/ui-base` (`@midas/ui-base`) — komponen dari `contoh_base_code` (struktur `components/ui`, `ui/fields`, `layout` dipertahankan), ikon lucide diganti ikon Library Kit, hooks/utils yang dipakai komponen disalin ke `src/internal` (tanpa xlsx), teks bawaan komponen en/id di `src/i18n` (`registerUiLocales(i18n, ns)` — tidak menimpa teks aplikasi). Peer dependency: `react`, `react-dom`, `react-router`, `react-i18next`, `i18next`, `react-hook-form`; CSS dependency (mis. react-datepicker) dibundel ke `styles.css`. Design system-nya ditulis di `scripts/design-system/` dan di-seed dengan `scripts/seed-base-design-system.mjs` (v2: primary `#0058CA`, Inter, ikon outline & bold-duotone).
 
 Aplikasi cukup:
 

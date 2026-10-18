@@ -19,6 +19,8 @@ const variables = {
         { id: 'primary', collectionId: 'c-color', name: 'color/primary', type: 'color', values: { 'm-light': { alias: 'blue' }, 'm-dark': { alias: 'blue' } }, description: 'Warna aksi utama' },
         { id: 'fg', collectionId: 'c-color', name: 'color/primary-foreground', type: 'color', values: { 'm-light': '#ffffff', 'm-dark': '#0f172a' } },
         { id: 'r', collectionId: 'c-size', name: 'radius/md', type: 'number', values: { 'm-base': 6 } },
+        { id: 'ff', collectionId: 'c-size', name: 'font/family', type: 'string', values: { 'm-base': 'Inter' } },
+        { id: 'fm', collectionId: 'c-size', name: 'font/mono', type: 'string', values: { 'm-base': 'JetBrains Mono' } },
         { id: 'fx', collectionId: 'c-size', name: 'shadow/card', type: 'effect', values: { 'm-base': [] } },
     ],
 };
@@ -57,6 +59,8 @@ test('kit files contain theme, css, props and manifest', () => {
     assert.match(files['src/generated/tokens.css'], /\[data-theme="dark"\] \{[^}]*--theme-primary: #3b82f6;/);
     assert.match(files['src/generated/tailwind-theme.css'], /--color-primary: var\(--theme-primary\);/);
     assert.match(files['src/generated/tailwind-theme.css'], /--radius-md: var\(--theme-radius-md\);/);
+    assert.match(files['src/generated/tailwind-theme.css'], /--font-sans: var\(--theme-font-family\), ui-sans-serif, system-ui, sans-serif;/);
+    assert.match(files['src/generated/tailwind-theme.css'], /--font-mono: var\(--theme-font-mono\);/);
     const props = files['src/generated/props/Button.ts'];
     assert.match(props, /variant\?: "primary" \| "ghost";/);
     assert.match(props, /label\?: string;/);

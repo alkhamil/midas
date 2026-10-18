@@ -17,4 +17,6 @@
   --radius-sm: var(--theme-radius-sm);
   --radius-md: var(--theme-radius-md);
   --radius-lg: var(--theme-radius-lg);
+  --radius-xl: var(--theme-radius-xl);
+  --font-sans: var(--theme-font-family), ui-sans-serif, system-ui, sans-serif;
 }

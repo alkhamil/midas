@@ -4,21 +4,9 @@ import { createIcon } from './createIcon';
 
 // PURE: ikon yang tidak dipakai bisa dibuang bundler aplikasi (tree-shaking).
 export const AltArrowRightIcon = /* @__PURE__ */ createIcon("alt-arrow-right", {
-  "bold": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M15.8351 11.6296L9.20467 5.1999C8.79094 4.79869 8 5.04189 8 5.5703L8 18.4297C8 18.9581 8.79094 19.2013 9.20467 18.8001L15.8351 12.3704C16.055 12.1573 16.0549 11.8427 15.8351 11.6296Z\" fill=\"currentColor\"/>"
-  },
   "bold-duotone": {
     "viewBox": "0 0 24 24",
     "body": "<path d=\"M12.4044 8.30273L15.8351 11.6296C16.0549 11.8428 16.0549 12.1573 15.8351 12.3704L9.20467 18.8001C8.79094 19.2013 8 18.9581 8 18.4297V12.7071L12.4044 8.30273Z\" fill=\"currentColor\"/><path opacity=\"0.5\" d=\"M8 11.2929L8 5.5703C8 5.04189 8.79094 4.79869 9.20467 5.1999L11.6864 7.60648L8 11.2929Z\" fill=\"currentColor\"/>"
-  },
-  "broken": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M9 5L11 7.33333M9 19L15 12L13.5 10.25\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
-  },
-  "line-duotone": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M9 5L15 12L9 19\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
   },
   "outline": {
     "viewBox": "0 0 24 24",

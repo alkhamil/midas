@@ -1,4 +1,4 @@
-// 306 ikon dalam gaya: bold, bold-duotone, broken, line-duotone, outline.
+// 310 ikon dalam gaya: bold-duotone, outline.
 // Dibangkitkan oleh Midas dari library — JANGAN diedit manual; jalankan `npx @midas/cli sync` untuk memperbarui.
 export * from './createIcon';
 export * from './registry';
@@ -39,6 +39,7 @@ export { CardSendIcon } from './CardSendIcon';
 export { CardTransferIcon } from './CardTransferIcon';
 export { CardholderIcon } from './CardholderIcon';
 export { CashOutIcon } from './CashOutIcon';
+export { ChartIcon } from './ChartIcon';
 export { ChatDotsIcon } from './ChatDotsIcon';
 export { ChatLineIcon } from './ChatLineIcon';
 export { ChatRoundIcon } from './ChatRoundIcon';
@@ -235,6 +236,7 @@ export { SafeSquareIcon } from './SafeSquareIcon';
 export { SaleIcon } from './SaleIcon';
 export { SaleSquareIcon } from './SaleSquareIcon';
 export { SettingsIcon } from './SettingsIcon';
+export { ShieldCheckIcon } from './ShieldCheckIcon';
 export { ShuffleIcon } from './ShuffleIcon';
 export { SignpostIcon } from './SignpostIcon';
 export { Signpost2Icon } from './Signpost2Icon';
@@ -286,6 +288,7 @@ export { TrashBinIcon } from './TrashBinIcon';
 export { UnreadIcon } from './UnreadIcon';
 export { UploadTrackIcon } from './UploadTrackIcon';
 export { UploadTrack2Icon } from './UploadTrack2Icon';
+export { UserIcon } from './UserIcon';
 export { VerifiedCheckIcon } from './VerifiedCheckIcon';
 export { VideoFrameIcon } from './VideoFrameIcon';
 export { VideoFrame2Icon } from './VideoFrame2Icon';
@@ -309,3 +312,4 @@ export { WalletIcon } from './WalletIcon';
 export { Wallet2Icon } from './Wallet2Icon';
 export { WalletMoneyIcon } from './WalletMoneyIcon';
 export { WallpaperIcon } from './WallpaperIcon';
+export { WidgetIcon } from './WidgetIcon';

@@ -7,7 +7,8 @@ export interface SnapshotNode {
     component?: boolean;
     componentSet?: boolean;
     variant?: Record<string, string>;
-    cprops?: { id: string; name: string; type: string; default?: unknown }[];
+    /** Component property; nilai default di `def` (engine Midas), `default` pada data lama. */
+    cprops?: { id: string; name: string; type: string; def?: unknown; default?: unknown }[];
     [k: string]: unknown;
 }
 export interface SnapshotComponent {

@@ -4,17 +4,9 @@ import { createIcon } from './createIcon';
 
 // PURE: ikon yang tidak dipakai bisa dibuang bundler aplikasi (tree-shaking).
 export const SkipPreviousIcon = /* @__PURE__ */ createIcon("skip-previous", {
-  "bold": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M8.09015 14.6474C6.30328 13.4935 6.30328 10.5065 8.09015 9.35258L18.8792 2.38548C20.6158 1.26402 22.75 2.72368 22.75 5.0329V18.9671C22.75 21.2763 20.6158 22.736 18.8792 21.6145L8.09015 14.6474Z\" fill=\"currentColor\"/><path d=\"M2 5C2 4.58579 2.33579 4.25 2.75 4.25C3.16421 4.25 3.5 4.58579 3.5 5V19C3.5 19.4142 3.16421 19.75 2.75 19.75C2.33579 19.75 2 19.4142 2 19V5Z\" fill=\"currentColor\"/>"
-  },
   "bold-duotone": {
     "viewBox": "0 0 24 24",
     "body": "<path opacity=\"0.5\" d=\"M2 5C2 4.58579 2.33579 4.25 2.75 4.25C3.16421 4.25 3.5 4.58579 3.5 5V19C3.5 19.4142 3.16421 19.75 2.75 19.75C2.33579 19.75 2 19.4142 2 19V5Z\" fill=\"currentColor\"/><path d=\"M8.09015 14.6474C6.30328 13.4935 6.30328 10.5065 8.09016 9.35258L18.8792 2.38548C20.6158 1.26402 22.75 2.72368 22.75 5.0329V18.9671C22.75 21.2763 20.6158 22.736 18.8792 21.6145L8.09015 14.6474Z\" fill=\"currentColor\"/>"
-  },
-  "line-duotone": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M7.34016 9.35258C5.55328 10.5065 5.55328 13.4935 7.34015 14.6474L18.1292 21.6145C19.8658 22.736 22 21.2763 22 18.9671L22 5.0329C22 2.72368 19.8658 1.26402 18.1292 2.38548L7.34016 9.35258Z\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path opacity=\"0.5\" d=\"M2 5V19\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/>"
   },
   "outline": {
     "viewBox": "0 0 24 24",

@@ -2,23 +2,24 @@
 
 :root,
 [data-theme="light"] {
-  --theme-primary: #2563eb;
-  --theme-primary-foreground: #ffffff;
-  --theme-secondary: #0f766e;
-  --theme-secondary-foreground: #ffffff;
-  --theme-success: #15803d;
-  --theme-warning: #b45309;
-  --theme-danger: #dc2626;
-  --theme-info: #0284c7;
-  --theme-background: #ffffff;
-  --theme-surface: #f1f5f9;
-  --theme-muted: #e2e8f0;
-  --theme-border: #cbd5e1;
-  --theme-foreground: #0f172a;
-  --theme-muted-foreground: #64748b;
-  --theme-radius-sm: 2px;
-  --theme-radius-md: 4px;
+  --theme-primary: #0058CA;
+  --theme-primary-foreground: #FFFFFF;
+  --theme-secondary: #475569;
+  --theme-secondary-foreground: #FFFFFF;
+  --theme-success: #15803D;
+  --theme-warning: #B45309;
+  --theme-danger: #C62828;
+  --theme-info: #0369A1;
+  --theme-background: #FFFFFF;
+  --theme-surface: #F5F7FA;
+  --theme-muted: #E9EDF3;
+  --theme-border: #D5DCE5;
+  --theme-foreground: #0F172A;
+  --theme-muted-foreground: #5B6677;
+  --theme-radius-sm: 4px;
+  --theme-radius-md: 6px;
   --theme-radius-lg: 8px;
+  --theme-radius-xl: 12px;
   --theme-page-padding: 16px;
   --theme-page-padding-lg: 24px;
   --theme-card-padding-x: 20px;
@@ -26,26 +27,28 @@
   --theme-section-gap: 24px;
   --theme-stack-gap: 16px;
   --theme-field-gap: 12px;
+  --theme-font-family: Inter;
 }
 
 [data-theme="dark"] {
-  --theme-primary: #3b82f6;
-  --theme-primary-foreground: #0f172a;
-  --theme-secondary: #2dd4bf;
-  --theme-secondary-foreground: #0f172a;
-  --theme-success: #4ade80;
-  --theme-warning: #fbbf24;
-  --theme-danger: #f87171;
-  --theme-info: #38bdf8;
-  --theme-background: #0f172a;
-  --theme-surface: #1e293b;
-  --theme-muted: #334155;
-  --theme-border: #475569;
-  --theme-foreground: #f1f5f9;
-  --theme-muted-foreground: #94a3b8;
-  --theme-radius-sm: 2px;
-  --theme-radius-md: 4px;
+  --theme-primary: #5B9BF5;
+  --theme-primary-foreground: #0B1220;
+  --theme-secondary: #94A3B8;
+  --theme-secondary-foreground: #0B1220;
+  --theme-success: #4ADE80;
+  --theme-warning: #FBBF24;
+  --theme-danger: #F87171;
+  --theme-info: #38BDF8;
+  --theme-background: #0B1220;
+  --theme-surface: #111A2B;
+  --theme-muted: #1E293B;
+  --theme-border: #2B384C;
+  --theme-foreground: #E6EBF2;
+  --theme-muted-foreground: #9AA6B8;
+  --theme-radius-sm: 4px;
+  --theme-radius-md: 6px;
   --theme-radius-lg: 8px;
+  --theme-radius-xl: 12px;
   --theme-page-padding: 16px;
   --theme-page-padding-lg: 24px;
   --theme-card-padding-x: 20px;
@@ -53,4 +56,5 @@
   --theme-section-gap: 24px;
   --theme-stack-gap: 16px;
   --theme-field-gap: 12px;
+  --theme-font-family: Inter;
 }

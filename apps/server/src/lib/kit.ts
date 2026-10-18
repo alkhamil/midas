@@ -161,6 +161,12 @@ function tailwindCss(t: Tokens): string {
             return `  --color-${cssVar(k.key).slice('--theme-'.length)}: var(${cssVar(k.key)});`;
         if (k.type === 'number' && /^radius/.test(k.key))
             return `  --radius-${cssVar(k.key).slice('--theme-radius-'.length) || 'default'}: var(${cssVar(k.key)});`;
+        // `font/family` → font-sans (font default seluruh UI); `font/family/mono` atau `font/mono` → font-mono.
+        const font = k.type === 'string' && /^font(?:Family([A-Z]\w*)?|(Sans|Serif|Mono))$/.exec(k.key);
+        if (font) {
+            const name = (font[1] || font[2] || 'Sans').replace(/[A-Z]/g, (c, i) => `${i ? '-' : ''}${c.toLowerCase()}`);
+            return `  --font-${name}: var(${cssVar(k.key)})${name === 'sans' ? ', ui-sans-serif, system-ui, sans-serif' : ''};`;
+        }
         return null;
     }).filter(Boolean);
     return `/* Utility Tailwind v4 dari token tema. Dibangkitkan oleh Midas — JANGAN diedit manual. */\n@theme inline {\n${lines.join('\n')}\n}\n`;
@@ -189,7 +195,8 @@ function propDefaults(m: ComponentMapping, snapshot: LibrarySnapshot): Record<st
                 out[p.name] = p.type === 'boolean' ? p.values[v] === 'true' : p.values[v];
         }
         else if (p.type === 'string' || p.type === 'boolean') {
-            const d = root?.cprops?.find(c => c.id === p.key)?.default;
+            const cp = root?.cprops?.find(c => c.id === p.key);
+            const d = cp?.def ?? cp?.default;
             if (p.type === 'string' && typeof d === 'string')
                 out[p.name] = d;
             if (p.type === 'boolean' && typeof d === 'boolean')

@@ -14,6 +14,7 @@ packages/
 templates/
 └── base-project/   # base project aplikasi (spec §5.2) yang memakai @midas/ui-base
 scripts/
+├── design-system/                # isi design system "Midas Base": tokens, komponen, ikon, halaman (generator)
 └── seed-base-design-system.mjs   # seed + publish design system "Midas Base" di Midas
 infra/          # konfigurasi Verdaccio & SeaweedFS untuk docker-compose
 docs/specs/     # spesifikasi & workflow
@@ -82,4 +83,16 @@ cd packages/ui-base && npm run sync && npm run build && npx midas report
 npm run dev --workspace @midas/base-project        # login demo: admin / admin123
 ```
 
-`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `contoh_base_code/public/icons/wds` bila ada (`--icons DIR` untuk folder lain).
+`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `contoh_base_code/public/icons/wds` bila ada (`--icons DIR` untuk folder lain). Opsi lain: `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`.
+
+Design system "Midas Base" (karakter profesional & tenang, primary `#0058CA`, font Inter) ditulis sebagai kode di `scripts/design-system/`:
+
+| File | Isi |
+| --- | --- |
+| `tokens.mjs` | Variables: Color (Light/Dark), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
+| `components.mjs` | 19 komponen dengan variant, component property, dan state |
+| `icons.mjs` | Ikon UI tambahan; set ikon hanya 2 gaya: `outline` & `bold-duotone` |
+| `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
+| `document.mjs` | Page Cover, Foundations, Components, Icons, Templates (List, Form, Detail, Dashboard) |
+
+Seed berikutnya memakai ulang id yang sudah ada (komponen, variant, property, Variable, ikon), jadi update tidak memutus file yang memakai library dan aset ikon tidak diunggah ulang. `font/family` menjadi `--font-sans` di `tailwind-theme.css`; `@midas/ui-base/tailwind.css` ikut memuat Inter (`@fontsource/inter`).

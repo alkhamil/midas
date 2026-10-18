@@ -4,21 +4,9 @@ import { createIcon } from './createIcon';
 
 // PURE: ikon yang tidak dipakai bisa dibuang bundler aplikasi (tree-shaking).
 export const RoundAltArrowRightIcon = /* @__PURE__ */ createIcon("round-alt-arrow-right", {
-  "bold": {
-    "viewBox": "0 0 24 24",
-    "body": "<path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM9.96967 8.46967C10.2626 8.17678 10.7374 8.17678 11.0303 8.46967L14.0303 11.4697C14.3232 11.7626 14.3232 12.2374 14.0303 12.5303L11.0303 15.5303C10.7374 15.8232 10.2626 15.8232 9.96967 15.5303C9.67678 15.2374 9.67678 14.7626 9.96967 14.4697L12.4393 12L9.96967 9.53033C9.67678 9.23744 9.67678 8.76256 9.96967 8.46967Z\" fill=\"currentColor\"/>"
-  },
   "bold-duotone": {
     "viewBox": "0 0 24 24",
     "body": "<path opacity=\"0.5\" d=\"M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z\" fill=\"currentColor\"/><path d=\"M11.0303 8.46967C10.7374 8.17678 10.2626 8.17678 9.96967 8.46967C9.67678 8.76256 9.67678 9.23744 9.96967 9.53033L12.4393 12L9.96967 14.4697C9.67678 14.7626 9.67678 15.2374 9.96967 15.5303C10.2626 15.8232 10.7374 15.8232 11.0303 15.5303L14.0303 12.5303C14.3232 12.2374 14.3232 11.7626 14.0303 11.4697L11.0303 8.46967Z\" fill=\"currentColor\"/>"
-  },
-  "broken": {
-    "viewBox": "0 0 24 24",
-    "body": "<path d=\"M10.5 9L13.5 12L10.5 15\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/>"
-  },
-  "line-duotone": {
-    "viewBox": "0 0 24 24",
-    "body": "<circle opacity=\"0.5\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M10.5 9L13.5 12L10.5 15\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
   },
   "outline": {
     "viewBox": "0 0 24 24",

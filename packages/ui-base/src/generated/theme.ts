@@ -4,23 +4,38 @@
 export type ThemeName = "light" | "dark";
 
 export interface ThemeTokens {
+  /** Aksi utama, link, fokus, elemen aktif */
   primary: string;
+  /** Teks/ikon di atas primary */
   primaryForeground: string;
+  /** Aksi & status netral */
   secondary: string;
+  /** Teks/ikon di atas secondary */
   secondaryForeground: string;
+  /** Berhasil, aktif */
   success: string;
+  /** Perlu perhatian */
   warning: string;
+  /** Hapus, gagal, error */
   danger: string;
+  /** Informasi */
   info: string;
+  /** Latar kartu, dialog, input */
   background: string;
+  /** Latar halaman */
   surface: string;
+  /** Latar hover, header tabel, chip */
   muted: string;
+  /** Garis & pembatas */
   border: string;
+  /** Teks utama */
   foreground: string;
+  /** Teks sekunder, placeholder */
   mutedForeground: string;
   radiusSm: string;
   radiusMd: string;
   radiusLg: string;
+  radiusXl: string;
   pagePadding: string;
   pagePaddingLg: string;
   cardPaddingX: string;
@@ -28,6 +43,8 @@ export interface ThemeTokens {
   sectionGap: string;
   stackGap: string;
   fieldGap: string;
+  /** Font utama UI */
+  fontFamily: string;
 }
 
 export const themeNames: ThemeName[] = ["light", "dark"];
@@ -35,23 +52,24 @@ export const defaultTheme: ThemeName = "light";
 
 export const themes: Record<ThemeName, Partial<ThemeTokens>> = {
   "light": {
-    primary: "#2563eb",
-    primaryForeground: "#ffffff",
-    secondary: "#0f766e",
-    secondaryForeground: "#ffffff",
-    success: "#15803d",
-    warning: "#b45309",
-    danger: "#dc2626",
-    info: "#0284c7",
-    background: "#ffffff",
-    surface: "#f1f5f9",
-    muted: "#e2e8f0",
-    border: "#cbd5e1",
-    foreground: "#0f172a",
-    mutedForeground: "#64748b",
-    radiusSm: "2px",
-    radiusMd: "4px",
+    primary: "#0058CA",
+    primaryForeground: "#FFFFFF",
+    secondary: "#475569",
+    secondaryForeground: "#FFFFFF",
+    success: "#15803D",
+    warning: "#B45309",
+    danger: "#C62828",
+    info: "#0369A1",
+    background: "#FFFFFF",
+    surface: "#F5F7FA",
+    muted: "#E9EDF3",
+    border: "#D5DCE5",
+    foreground: "#0F172A",
+    mutedForeground: "#5B6677",
+    radiusSm: "4px",
+    radiusMd: "6px",
     radiusLg: "8px",
+    radiusXl: "12px",
     pagePadding: "16px",
     pagePaddingLg: "24px",
     cardPaddingX: "20px",
@@ -59,25 +77,27 @@ export const themes: Record<ThemeName, Partial<ThemeTokens>> = {
     sectionGap: "24px",
     stackGap: "16px",
     fieldGap: "12px",
+    fontFamily: "Inter",
   },
   "dark": {
-    primary: "#3b82f6",
-    primaryForeground: "#0f172a",
-    secondary: "#2dd4bf",
-    secondaryForeground: "#0f172a",
-    success: "#4ade80",
-    warning: "#fbbf24",
-    danger: "#f87171",
-    info: "#38bdf8",
-    background: "#0f172a",
-    surface: "#1e293b",
-    muted: "#334155",
-    border: "#475569",
-    foreground: "#f1f5f9",
-    mutedForeground: "#94a3b8",
-    radiusSm: "2px",
-    radiusMd: "4px",
+    primary: "#5B9BF5",
+    primaryForeground: "#0B1220",
+    secondary: "#94A3B8",
+    secondaryForeground: "#0B1220",
+    success: "#4ADE80",
+    warning: "#FBBF24",
+    danger: "#F87171",
+    info: "#38BDF8",
+    background: "#0B1220",
+    surface: "#111A2B",
+    muted: "#1E293B",
+    border: "#2B384C",
+    foreground: "#E6EBF2",
+    mutedForeground: "#9AA6B8",
+    radiusSm: "4px",
+    radiusMd: "6px",
     radiusLg: "8px",
+    radiusXl: "12px",
     pagePadding: "16px",
     pagePaddingLg: "24px",
     cardPaddingX: "20px",
@@ -85,6 +105,7 @@ export const themes: Record<ThemeName, Partial<ThemeTokens>> = {
     sectionGap: "24px",
     stackGap: "16px",
     fieldGap: "12px",
+    fontFamily: "Inter",
   },
 };
 

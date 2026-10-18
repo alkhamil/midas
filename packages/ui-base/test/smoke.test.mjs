@@ -15,7 +15,9 @@ test('exports components, icons, theme and locales', () => {
         assert.ok(ui[name], `${name} di-export`);
     assert.ok(ui.iconNames.length >= 300);
     assert.deepEqual(ui.themeNames, ['light', 'dark']);
-    assert.equal(ui.themes.dark.primary, '#3b82f6');
+    assert.equal(ui.themes.light.primary, '#0058CA');
+    assert.equal(ui.themes.dark.primary, '#5B9BF5');
+    assert.equal(ui.themes.light.fontFamily, 'Inter');
 });
 
 test('registerUiLocales does not override app translations', () => {
