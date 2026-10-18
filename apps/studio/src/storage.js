@@ -64,7 +64,7 @@ const assetsOf = id => uploadedAssets.get(id) ?? uploadedAssets.set(id, new Set(
 
 // Snapshot daftar file dari server, untuk menerjemahkan kv.put('index') menjadi PATCH per file.
 let indexSnapshot = new Map();               // fileId → { name, opened, thumb, trashed }
-const indexFields = m => ({ name: m.name, opened: m.opened || 0, thumb: m.thumb ?? null, trashed: m.trashed ?? null });
+const indexFields = m => ({ name: m.name, opened: m.opened || 0, thumb: m.thumb ?? null, trashed: m.trashed ?? null, folder: m.folder ?? null, starred: !!m.starred, hiddenRecent: !!m.hiddenRecent });
 
 async function loadIndex() {
     const { files } = await api('GET', '/api/files');
@@ -192,7 +192,7 @@ async function saveMeta(fileId, docData) {
     try {
         const { version } = await api('PUT', fileUrl(fileId), { name: meta.name, meta, baseVersion: fileVersions.get(fileId) ?? null });
         fileVersions.set(fileId, version);
-        if (!indexSnapshot.has(fileId)) indexSnapshot.set(fileId, { name: meta.name, opened: Date.now(), thumb: null, trashed: null });
+        if (!indexSnapshot.has(fileId)) indexSnapshot.set(fileId, { name: meta.name, opened: Date.now(), thumb: null, trashed: null, folder: null, starred: false, hiddenRecent: false });
         else indexSnapshot.get(fileId).name = meta.name;
     } catch (e) {
         if (e.status === 409) throw new ConflictError();
@@ -258,7 +258,7 @@ export const projectStorage = {
             for (const [pageId, v] of Object.entries(res.pageVersions || {})) known.set(pageId, v);
             for (const [id, url] of Object.entries(docData.assets || {}))
                 if (typeof url === 'string' && url.startsWith('data:')) assetsOf(fileId).add(id);
-            indexSnapshot.set(fileId, { name: docData.name || 'Untitled', opened: Date.now(), thumb: null, trashed: null });
+            indexSnapshot.set(fileId, { name: docData.name || 'Untitled', opened: Date.now(), thumb: null, trashed: null, folder: null, starred: false, hiddenRecent: false });
             pages.forEach((p, i) => onProgress?.({ savedPages: i + 1, totalPages: pages.length, pageName: p.name }));
             return;
         } catch (e) {
@@ -352,6 +352,14 @@ export const projectStorage = {
  * Design system library di workspace (spec §3). Bentuk data mengikuti engine:
  * `version` = nomor urut publish (dipakai untuk deteksi update), `semver` = versi paket kode.
  */
+/** Folders on the Home page. */
+export const folderApi = {
+    list: () => api('GET', '/api/folders').then(r => r.folders),
+    create: (id, name, parent = null) => api('POST', '/api/folders', { id, name, parent }),
+    update: (id, patch) => api('PATCH', `/api/folders/${enc(id)}`, patch),
+    remove: id => api('DELETE', `/api/folders/${enc(id)}`),
+};
+
 export const templateApi = {
     /** Base project template as { path: text }. */
     get: name => api('GET', `/api/templates/${enc(name)}`).then(r => r.files),

@@ -1,4 +1,4 @@
-import { bigint, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -47,7 +47,22 @@ export const designFiles = pgTable('design_files', {
     openedAt: timestamp('opened_at', { withTimezone: true }),
     trashedAt: timestamp('trashed_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /** Folder di Home (`design_folders.id`); null = di root "All files". */
+    folderId: text('folder_id'),
+    /** Muncul di sidebar Home (Starred). */
+    starred: boolean('starred').notNull().default(false),
+    /** Disembunyikan dari Recents ("Remove from recent"); kembali bila file dibuka lagi. */
+    hiddenRecent: boolean('hidden_recent').notNull().default(false),
 }, t => [index('design_files_workspace_idx').on(t.workspaceId)]);
+
+/** Folder untuk menata file desain di Home; bisa bersarang lewat `parentId`. */
+export const designFolders = pgTable('design_folders', {
+    id: text('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    parentId: text('parent_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [index('design_folders_workspace_idx').on(t.workspaceId)]);
 
 /** Satu baris per page: `data` = objek page lengkap (termasuk `nodes`). */
 export const designFilePages = pgTable('design_file_pages', {

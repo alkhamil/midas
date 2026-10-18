@@ -30,7 +30,6 @@ export function Topbar({ user }) {
                 <button className="crumb-link" id="crumb-home" title="Back to all files">Workspace</button>
                 <span className="crumb-slash">/</span>
                 <button id="file-name" title="Rename document">Untitled</button>
-                <span className="file-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
                 <span className="save-indicator" id="save-indicator"><i></i> Saved</span>
             </div>
             <div className="top-actions">
@@ -67,7 +66,13 @@ export function LeftPanel() {
     return (
         <aside className="left-panel" id="left-panel" aria-label="Pages and layers">
             <div className="left-heading">
-                <span id="left-heading-title" title="Double-click to rename">Design file</span>
+                <div className="lh-text">
+                    <div className="lh-row">
+                        <span id="left-heading-title" title="Double-click to rename">Design file</span>
+                        <button className="lh-chev" id="left-heading-menu" title="File options" aria-label="File options" aria-haspopup="menu"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+                    </div>
+                    <small id="left-heading-folder"></small>
+                </div>
             </div>
             <div className="layer-search-box hidden" id="layer-search-box">
                 <div className="layer-search" id="layer-search">

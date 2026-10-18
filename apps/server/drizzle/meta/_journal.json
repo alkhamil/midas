@@ -29,6 +29,13 @@
       "when": 1792288758190,
       "tag": "0003_builder_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792345965427,
+      "tag": "0004_home_folders",
+      "breakpoints": true
     }
   ]
 }
