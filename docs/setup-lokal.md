@@ -1,6 +1,6 @@
 # Setup lokal Midas (developer baru)
 
-Panduan dari nol sampai Studio bisa dibuka, ada akun, dan design system "Midas Base" sudah ter-seed.
+Panduan dari nol sampai Studio bisa dibuka, ada akun, dan design system "CMS" beserta project demo-nya sudah ter-seed.
 Semua data (akun, file desain, library) disimpan di server lokal masing-masing — tidak ikut Git.
 
 ## 1. Prasyarat
@@ -71,27 +71,40 @@ node packages/cli/bin/midas.js login --server http://127.0.0.1:4000 --email EMAI
 
 Berhasil bila muncul `Login sebagai … <EMAIL_KAMU>`. Token disimpan di `~/.midas/config.json`.
 
-## 7. Ikon
-
-Set ikon WDS (gaya outline & bold-duotone) sudah ada di repo: `scripts/design-system/icons/wds/`. Tidak perlu langkah tambahan.
-
-## 8. Seed design system "Midas Base"
+## 7. Seed design system dan paket kodenya
 
 ```bash
-node scripts/seed-base-design-system.mjs --create
+node scripts/seed-design-system.mjs --create
 ```
 
-Script ini:
+Script ini membuat file **CMS Design System** di workspace akunmu (Cover, Foundations, Icons, page per komponen) dan mempublish library `@midas/ui-cms`. Ikon digambar di `scripts/design-system/icons.mjs`, tidak ada berkas yang perlu dibagikan terpisah.
 
-- membuat file **Midas Base Design System** di workspace akunmu (Cover, Foundations, Icons, page per komponen, Templates);
-- publish library `@midas/ui-base` dengan versi yang sama dengan `packages/ui-base/package.json`.
+Lalu siapkan paket kodenya supaya status kode **ready** dan Live DOM Renderer di Code Builder bisa memuat komponennya:
 
-Jalankan ulang tanpa `--create` untuk memperbarui file yang sudah ada (id komponen dipertahankan, versi naik otomatis).
+```bash
+cd packages/ui-cms
+npm run sync        # Library Kit dari library di servermu
+npm run build
+npm test
+npx midas report    # status kode 18/18 ready
+npm run bundle      # bundle untuk Live DOM Renderer
+cd ../..
+```
+
+> Versi di `packages/ui-cms/package.json` harus sama dengan versi library yang baru dipublish. Di server baru versi pertama mengikuti versi paket itu; setelah mempublish versi berikutnya, naikkan versinya lalu `npm run sync`.
+
+## 8. Project demo untuk menguji Code Builder
+
+```bash
+node scripts/seed-cms-demo.mjs
+```
+
+Membuat file **CMS Demo** (layar User, Role, Dashboard dari komponen library) dan project Code Builder-nya: module `user` dan `role` (CRUD) serta `dashboard` (custom), 9 screen.
 
 ## 9. Cek hasil
 
-- Studio → **Recents / All files** → buka *Midas Base Design System*.
-- Base project (aplikasi contoh yang memakai `@midas/ui-base`):
+- Studio → **Recents / All files** → buka *CMS Demo* → rail **Code Builder**: klik nama screen → workspace dengan pratinjau + Properties Inspector. Klik komponen di pratinjau untuk mengatur propertinya; klik sidebar/topbar untuk mengatur layout aplikasi.
+- Base project (aplikasi contoh yang memakai `@midas/ui-cms`):
 
   ```bash
   npm run dev --workspace @midas/base-project
@@ -101,17 +114,16 @@ Jalankan ulang tanpa `--create` untuk memperbarui file yang sudah ada (id kompon
 - Paket UI:
 
   ```bash
-  npm run build --workspace @midas/ui-base
-  npm test --workspace @midas/ui-base
+  npm run build --workspace @midas/ui-cms
+  npm test --workspace @midas/ui-cms
   ```
-
-> `midas sync` di `packages/ui-base` menulis ulang `src/generated/` dari library di servermu. Jalankan hanya setelah seed, supaya isinya sama dengan desain.
 
 ## 10. Test lainnya (infra harus jalan)
 
 ```bash
 npm test --workspace @midas/server
 npm test --workspace @midas/cli
+npm test --workspace @midas/studio
 npm run build --workspace @midas/base-project
 ```
 
@@ -120,7 +132,22 @@ npm run build --workspace @midas/base-project
 | Gejala | Penyebab / solusi |
 | --- | --- |
 | `Email atau password salah` saat `midas login` | Email/password tidak cocok dengan akun di Studio, atau password kurang dari 8 karakter. Ketik password langsung di terminal. |
-| `File "Midas Base Design System" tidak ada di workspace …` | Seed belum pernah dijalankan untuk akun ini — tambahkan `--create`. |
+| `File "CMS Design System" tidak ada di workspace …` | Seed belum pernah dijalankan untuk akun ini — tambahkan `--create`. |
+| `Library @midas/ui-cms tidak ditemukan` saat `seed-cms-demo.mjs` | Library belum dipublish di workspace akun ini — jalankan `seed-design-system.mjs` dulu. |
+| Code Builder: "Route … not found" | Yang melayani port 4000 adalah build server lama. Hentikan lalu jalankan `npm run dev:server` (atau build ulang lalu start). |
 | `npm run db:migrate` gagal koneksi | Docker belum jalan atau port `5433` dipakai aplikasi lain; cek `docker compose ps`. |
 | Studio kosong / 401 terus | API (`npm run dev:server`) belum jalan, atau sesi habis — login ulang. |
 | Port bentrok | Hentikan proses lain di port tersebut atau ubah `PORT` di `apps/server/.env` dan port Docker di `docker-compose.yml`. |
+
+## 10. Mengambil source code hasil Code Builder
+
+Di Studio, **Generate kode…** menampilkan perintah untuk project itu. Di repo aplikasi (salinan `templates/base-project`):
+
+```bash
+npx midas login --server http://127.0.0.1:4000     # sekali
+npx midas generate --list                           # daftar project di workspace
+npx midas generate "CMS Demo" --out .               # tulis module + route + menu + locale ke repo aplikasi
+npm install && npm run dev
+```
+
+Opsi: `--dry-run` (hanya daftar file), atau **Unduh .zip** di dialog Generate. Generate ulang aman: hanya file hasil generate yang ditimpa/dihapus.

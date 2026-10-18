@@ -1,5 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
+import { AtlasPacker } from './atlasPacker.js';
+import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
 
 
@@ -3288,9 +3290,9 @@ async function libBoot() {
         lib.index = lib.index.filter(m => keep.includes(m));
     }
     if (!json) {
+        // Tidak ada file yang bisa dibuka: editor memakai dokumen kosong yang belum disimpan. Ia baru masuk Recents &
+        // server saat pertama kali diedit (save() menambahkannya), jadi file yang sudah dihapus tidak "hidup lagi".
         lib.fileId = uid();
-        const now = Date.now();
-        lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     }
     // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
     // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
@@ -3513,14 +3515,43 @@ async function libTrash(id, on) {
     await libSaveIndex();
     renderHome();
 }
+/**
+ * Dipanggil sebelum file dihapus permanen. Bila file yang sedang terbuka ikut dihapus, editor pindah ke file terbaru yang
+ * masih ada, atau ke dokumen kosong yang BELUM disimpan (dibuat di server saat pertama kali diedit). Dulu editor langsung
+ * membuat dan menyimpan "Untitled" pengganti, sehingga setelah Delete/Empty trash ada file baru yang muncul lagi di Recents.
+ */
+async function libLeaveDeleted(ids) {
+    if (!ids.includes(lib.fileId))
+        return;
+    // Jangan sampai autosave file yang akan dihapus (atau dokumen pengganti) berjalan setelah ini.
+    clearTimeout(saveTimer);
+    clearTimeout(retryTimer);
+    state.dirty = false;
+    const next = lib.index.filter(m => !m.trashed && !ids.includes(m.id)).sort((a, b) => (b.opened || 0) - (a.opened || 0))[0];
+    let data = null;
+    if (next) {
+        try {
+            data = await projectStorage.loadProject(next.id);
+        }
+        catch { }
+    }
+    if (data)
+        return loadIntoEditor(data, next.id);
+    await loadIntoEditor(templateData('blank'), uid());
+}
 async function libDelete(id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta || !confirm(`Delete “${meta.name}” permanently? This can't be undone.`))
         return;
-    if (id === lib.fileId)
-        await libNew('blank', { stay: true });
+    await libLeaveDeleted([id]);
+    try {
+        await projectStorage.deleteProject(id);
+    }
+    catch (e) {
+        toast(`Could not delete the file on the server (${e.message}). It was kept.`);
+        return renderHome();
+    }
     lib.index = lib.index.filter(m => m.id !== id);
-    await projectStorage.deleteProject(id);
     await libSaveIndex();
     renderHome();
 }
@@ -3595,7 +3626,17 @@ function ensureHome() {
         else if (t.closest('[data-home-empty-trash]')) {
             const gone = lib.index.filter(m => m.trashed);
             if (gone.length && confirm(`Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`)) {
-                Promise.all(gone.map(m => kvDel('file:' + m.id))).then(() => { lib.index = lib.index.filter(m => !m.trashed); return libSaveIndex(); }).then(renderHome);
+                (async () => {
+                    await libLeaveDeleted(gone.map(m => m.id));
+                    // Hanya yang benar-benar terhapus di server yang dibuang dari daftar; sisanya tetap di Trash.
+                    const results = await Promise.all(gone.map(m => projectStorage.deleteProject(m.id).then(() => m.id, () => null)));
+                    const removed = new Set(results.filter(Boolean));
+                    lib.index = lib.index.filter(m => !removed.has(m.id));
+                    await libSaveIndex();
+                    renderHome();
+                    if (removed.size < gone.length)
+                        toast(`${gone.length - removed.size} file${gone.length - removed.size > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+                })();
             }
         }
         else if (t.closest('[data-home-back]'))
@@ -3677,12 +3718,23 @@ async function bulkDelete() {
     if (inTrash && !confirm(`Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}? This can't be undone.`))
         return;
     if (inTrash) {
+        await libLeaveDeleted(ids);
+        const failed = [];
         for (const id of ids) {
-            if (id === lib.fileId)
-                await libNew('blank', { stay: true });
-            await projectStorage.deleteProject(id);
+            try {
+                await projectStorage.deleteProject(id);
+            }
+            catch {
+                failed.push(id);
+            }
         }
-        lib.index = lib.index.filter(m => !ids.includes(m.id));
+        lib.index = lib.index.filter(m => !ids.includes(m.id) || failed.includes(m.id));
+        if (failed.length) {
+            lib.sel.clear();
+            await libSaveIndex();
+            renderHome();
+            return toast(`${failed.length} file${failed.length > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+        }
     }
     else
         for (const id of ids) {
@@ -5758,8 +5810,8 @@ fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let t
  return vec4(rgb,alpha)*item.props.w*clipAlpha;
 }`;
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 6; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch = 0; this.canvas = document.createElement('canvas'); }
-    reset() { this.entries.clear(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch++; }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.canvas = document.createElement('canvas'); }
+    reset() { this.entries.clear(); this.packer.reset(); this.epoch++; }
     get(n, res, images) {
         const key = `${n.id}:${n.version}:${res}`;
         if (this.entries.has(key))
@@ -5773,23 +5825,16 @@ class Atlas {
         const width = n.w + padding * 2, height = n.h + padding * 2;
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
-        let page = this.shelves.length - 1, shelf = this.shelves[page];
-        if (shelf.x + w + 2 > this.size) {
-            shelf.x = 1;
-            shelf.y += shelf.h + 2;
-            shelf.h = 0;
+        let slot = this.packer.alloc(w, h);
+        if (!slot) {
+            // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
+            this.entries.clear();
+            this.packer.reset();
+            slot = this.packer.alloc(w, h);
+            if (!slot)
+                return null;
         }
-        if (shelf.y + h + 2 > this.size) {
-            if (this.shelves.length >= this.layers) {
-                // Recycling pages mid-frame would overwrite shapes already queued for this frame (garbled, missing shapes):
-                // the renderer catches this, resets the atlas and draws the frame again at a lower resolution.
-                throw new Error('ATLAS_FULL');
-            } else {
-                page++;
-                shelf = { x: 1, y: 1, h: 0 };
-                this.shelves.push(shelf);
-            }
-        }
+        const { x, y, page } = slot;
         this.canvas.width = w;
         this.canvas.height = h;
         const ctx = this.canvas.getContext('2d');
@@ -5815,10 +5860,8 @@ class Atlas {
             ctx.globalAlpha = 1;
             paintStroke(ctx, n, path);
         }
-        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [shelf.x, shelf.y, page], premultipliedAlpha: true }, [w, h]);
-        const entry = { u: shelf.x / this.size, v: shelf.y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
-        shelf.x += w + 2;
-        shelf.h = Math.max(shelf.h, h);
+        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w, h]);
+        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
         this.entries.set(key, entry);
         return entry;
     }
@@ -5992,8 +6035,9 @@ class Renderer {
         this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
         let count = 0, clipN = 0;
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
-        // Zoomed far out (big canvases) the bitmaps shrink with the zoom instead of staying at half size, so thousands of vectors fit in the atlas.
-        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .0625, 32) * quality;
+        // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
+        // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
+        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), 1 / 16, 32) * quality;
         const push = (s, n, clipId, shadow = false) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
@@ -6462,7 +6506,8 @@ async function openDB() { return null; }
 
 
 
-function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), 32000000); }
+// Toast singkat: 2,5 dtk, ditambah ±40 ms per huruf di atas 40 karakter (maks. 6 dtk) supaya pesan panjang tetap terbaca.
+function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), Math.min(6000, 2500 + Math.max(0, String(message).length - 40) * 40)); }
 const saved = await libBoot();
 let initial;
 try {
@@ -6622,7 +6667,7 @@ function invalidate() {
 function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
     renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
-    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
 function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
@@ -6855,6 +6900,7 @@ function select(ids, { reveal = true } = {}) {
     renderInspector();
     scrollSelectionIntoView();
     invalidate();
+    notifyBuilder();
 }
 function scrollSelectionIntoView() {
     requestAnimationFrame(() => {
@@ -10331,15 +10377,22 @@ function nodeIndex() {
     _cachedNodeIndexRev = doc.revision;
     return _cachedNodeIndex;
 }
-let _compMap = null, _instMap = null, _pageMap = null, _globalRev = -1;
+let _compMap = null, _instMap = null, _pageMap = null, _nodeMap = null, _kidsMap = null, _globalRev = -1;
 function ensureGlobalIndexes() {
     if (_compMap && _globalRev === doc.revision)
         return;
     _compMap = new Map();
     _instMap = new Map();
     _pageMap = new Map();
+    // Indeks id → node dan induk → anak untuk seluruh dokumen. subtreeOf/parentSetOf/setVariants dulu memindai
+    // semua node (84 ribu pada file besar) di setiap pemanggilan; panel Components memanggilnya ratusan kali.
+    _nodeMap = new Map();
+    _kidsMap = new Map();
     for (const p of doc.data.pages) {
         for (const n of p.nodes) {
+            _nodeMap.set(n.id, n);
+            if (n.parentId)
+                (_kidsMap.get(n.parentId) || _kidsMap.set(n.parentId, []).get(n.parentId)).push(n);
             _pageMap.set(n.id, p);
             if (n.component)
                 _compMap.set(n.id, n);
@@ -10374,12 +10427,8 @@ function pageOfNode(id) {
 function pageTree(page, rootId) {
     if (!page || !rootId)
         return [];
-    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
-        const k = new Map();
-        for (const n of page.nodes)
-            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
-        return k;
-    })();
+    // Page aktif punya indeks sendiri; page lain memakai indeks induk → anak global (bukan membangun peta satu page tiap panggilan).
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (ensureGlobalIndexes(), _kidsMap);
     const out = [], queue = [rootId], seen = new Set([rootId]);
     while (queue.length) {
         const id = queue.shift();
@@ -10446,12 +10495,8 @@ function markSelectedOverrides() {
 function instanceTree(page, rootId) {
     if (!page || !rootId)
         return [];
-    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
-        const k = new Map();
-        for (const n of page.nodes)
-            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
-        return k;
-    })();
+    // Page aktif punya indeks sendiri; page lain memakai indeks induk → anak global (bukan membangun peta satu page tiap panggilan).
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (ensureGlobalIndexes(), _kidsMap);
     const out = [], queue = [rootId], seen = new Set([rootId]);
     while (queue.length) {
         const id = queue.shift();
@@ -10691,22 +10736,9 @@ async function libSnap(id, fresh = false) {
     return snap;
 }
 function subtreeOf(rootId) {
-    const nodes = allNodes(), kids = new Map();
-    for (const n of nodes)
-        if (n.parentId)
-            (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
-    const out = [], root = nodes.find(n => n.id === rootId);
-    if (!root)
-        return out;
-    const stack = [root];
-    while (stack.length) {
-        const n = stack.pop();
-        out.push(n);
-        stack.push(...(kids.get(n.id) || []));
-    }
-    return out;
+    ensureGlobalIndexes();
+    return subtreeFrom({ nodeMap: _nodeMap, kidsMap: _kidsMap }, rootId);
 }
-// What a library version contains: the main components (and component sets) of this file plus its own variables.
 function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
@@ -11233,9 +11265,39 @@ function renderAssets() {
     const iconsOpen = state.assetIconsOpen === true;
     const iconGroup = iconEntries.length ? `<div class="asset-group"><button class="lib-group-head" data-asset-icons>${icon(iconsOpen ? 'chevronDown' : 'chevronRight', 10)}<span>Icons</span><small>${iconEntries.length}</small></button>${iconsOpen ? `<div class="asset-icon-grid">${iconEntries.map(card).join('')}</div>` : ''}</div>` : '';
     $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + compEntries.map(card).join('') + iconGroup;
-    for (const en of [...compEntries, ...(iconsOpen ? iconEntries : [])])
-        if (!svgThumbOf(en.comp))
-            ensureThumb(en.comp);
+    watchAssetThumbs([...compEntries, ...(iconsOpen ? iconEntries : [])]);
+}
+// Thumbnail komponen mahal (tiap thumbnail merender layer-nya, dan komponen di page lain mengharuskan pindah page sementara),
+// sedangkan file design system bisa punya ratusan komponen. Jadi hanya kartu yang terlihat di panel yang dibuat; sisanya
+// menunggu sampai di-scroll ke dalam viewport.
+let assetThumbObserver = null;
+function watchAssetThumbs(entries) {
+    assetThumbObserver?.disconnect();
+    assetThumbObserver = null;
+    const panel = $('#assets-panel');
+    const todo = new Map(entries.filter(en => !svgThumbOf(en.comp) && !thumbCache.get(en.comp.id)?.url).map(en => [en.comp.id, en.comp]));
+    if (!panel || !todo.size)
+        return;
+    if (typeof IntersectionObserver === 'undefined') {
+        for (const n of [...todo.values()].slice(0, 24))
+            ensureThumb(n);
+        return;
+    }
+    assetThumbObserver = new IntersectionObserver(hits => {
+        for (const h of hits) {
+            if (!h.isIntersecting)
+                continue;
+            const id = h.target.dataset.thumb, n = todo.get(id);
+            assetThumbObserver?.unobserve(h.target);
+            if (n) {
+                todo.delete(id);
+                ensureThumb(n);
+            }
+        }
+    }, { root: panel, rootMargin: '200px 0px' });
+    for (const el of panel.querySelectorAll('.asset-preview[data-thumb]'))
+        if (todo.has(el.dataset.thumb))
+            assetThumbObserver.observe(el);
 }
 // Thumbnail cepat untuk komponen yang isinya satu gambar SVG (mis. ikon hasil import): pakai gambarnya langsung.
 function svgThumbOf(n) {
@@ -11322,7 +11384,10 @@ document.addEventListener('click', e => {
 });
 // ===== variants (component sets) =====
 function parentSetOf(n) {
-    const page = pageOfNode(n.id), p = page && n.parentId ? page.nodes.find(x => x.id === n.parentId) : null;
+    if (!n.parentId)
+        return null;
+    ensureGlobalIndexes();
+    const p = _nodeMap.get(n.parentId);
     return p && p.componentSet ? p : null;
 }
 function selNameHtml(n, multi, ns) {
@@ -11686,8 +11751,8 @@ function combineAsVariants() {
     }
 }
 function setVariants(set) {
-    const page = pageOfNode(set.id);
-    return page ? page.nodes.filter(x => x.parentId === set.id && x.component) : [];
+    ensureGlobalIndexes();
+    return (_kidsMap.get(set.id) || []).filter(x => x.component);
 }
 function variantProps(set) {
     const props = [];
@@ -12501,26 +12566,53 @@ function setAsThumbnail() {
 }
 // Render a layer from any page (temporarily switches the page for the export).
 let thumbJobs = Promise.resolve();
+// Thumbnail/preview layer di page lain mengharuskan pindah page sementara, dan setiap perpindahan membuat doc.scene()
+// page tujuan dihitung ulang (layout + variabel seluruh page: 14–200 ms). Permintaan yang datang bersamaan dikumpulkan
+// dan dikelompokkan per page supaya satu kali pindah page melayani semuanya.
+const thumbQueue = [];
 function renderNodeAnyPage(id, scale) {
-    const job = thumbJobs.then(async () => {
-        const page = pageOfNode(id);
-        if (!page)
-            throw new Error('Layer not found.');
-        if (page.id === doc.page.id)
-            return renderer.exportCanvas([id], scale);
+    return new Promise((resolve, reject) => {
+        thumbQueue.push({ id, scale, resolve, reject });
+        if (thumbQueue.length === 1)
+            thumbJobs = thumbJobs.then(() => new Promise(r => setTimeout(r, 0))).then(runThumbQueue).catch(() => { });
+    });
+}
+async function runThumbQueue() {
+    const byPage = new Map();
+    for (const j of thumbQueue.splice(0)) {
+        const page = pageOfNode(j.id);
+        if (!page) {
+            j.reject(new Error('Layer not found.'));
+            continue;
+        }
+        (byPage.get(page) || byPage.set(page, []).get(page)).push(j);
+    }
+    const run = async list => {
+        for (const j of list) {
+            try {
+                j.resolve(await renderer.exportCanvas([j.id], j.scale));
+            }
+            catch (e) {
+                j.reject(e);
+            }
+        }
+    };
+    for (const [page, list] of byPage) {
+        if (page.id === doc.page.id) {
+            await run(list);
+            continue;
+        }
         const prev = doc.data.pageId;
         doc.data.pageId = page.id;
         doc.refresh();
         try {
-            return await renderer.exportCanvas([id], scale);
+            await run(list);
         }
         finally {
             doc.data.pageId = prev;
             doc.refresh();
         }
-    });
-    thumbJobs = job.catch(() => { });
-    return job;
+    }
 }
 
 // ===== Figma (.fig) import =====
@@ -14532,9 +14624,51 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
-// ===== Code Builder (spec §4): frame → screen → kode. Untuk sekarang hanya panel kosong di rail kiri. =====
+// ===== Code Builder (spec §4): frame → screen → kode. UI-nya modul React terpisah (src/codebuilder/), dipasang
+// sekali ke panel kiri; engine hanya menyediakan jembatan baca dokumen + navigasi canvas.
+const builderBridge = {
+    fileId: () => lib.fileId,
+    fileName: () => doc.data.name,
+    currentPageId: () => doc.page.id,
+    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p) })),
+    /** Semua node file (lintas page), termasuk salinan komponen library. */
+    nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    pageOf: id => pageOfNode(id)?.id ?? null,
+    variables: () => doc.data.variables || { collections: [], items: [] },
+    /** Layer terpilih: { id, name, type, pageId, top } (top = frame teratas di page). */
+    selection: () => [...state.selection].map(id => doc.get(id)).filter(Boolean).map(n => ({ id: n.id, name: n.name, type: n.type, pageId: doc.page.id, top: !n.parentId && n.type === 'frame' })),
+    /** Buka page node, pilih, dan zoom ke node. */
+    reveal(id) {
+        const page = pageOfNode(id);
+        if (!page) return false;
+        if (page.id !== doc.page.id) switchPage(page.id);
+        select([id]);
+        fit([id]);
+        refreshUI();
+        return true;
+    },
+    libraries: async () => {
+        await libsLoad(true);
+        return LIBS.published;
+    },
+};
+let builderMounted = null;
 function renderCodeBuilder() {
-    $('#code-builder-panel').innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">Register frames as screens and generate code — coming soon.</p></div>`;
+    const host = $('#code-builder-panel');
+    builderMounted ??= import('../codebuilder/mount.jsx').then(m => m.mountCodeBuilder(host, builderBridge)).catch(e => {
+        console.error(e);
+        builderMounted = null;
+        host.innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">${esc(e.message || 'Failed to load')}</p></div>`;
+    });
+}
+// Panel Code Builder mendengarkan perubahan dokumen/seleksi (digabung per frame).
+let builderTick = 0;
+function notifyBuilder() {
+    if (!builderMounted || builderTick) return;
+    builderTick = requestAnimationFrame(() => {
+        builderTick = 0;
+        window.dispatchEvent(new CustomEvent('midas:change'));
+    });
 }
 function renderPlugins() {
     const list = loadPlugins();
@@ -16953,11 +17087,11 @@ else
 if (options.canvasColor)
     $('#canvas-world').style.backgroundColor = options.canvasColor;
 if (initial)
-    markPagesSaved(); // everything on disk matches what was just loaded; a fresh starter document still has to be written
+    markPagesSaved(); // everything on disk matches what was just loaded
 refreshUI();
 invalidate();
-if (!initial)
-    saveSoon();
+// Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
+// kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
 window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 

@@ -143,3 +143,22 @@ export const fileLibraries = pgTable('file_libraries', {
     seq: integer('seq').notNull(),
     addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [primaryKey({ columns: [t.fileId, t.libraryId] })]);
+
+/**
+ * Code Builder project (spec §4): satu aplikasi hasil generate. Screen-nya adalah frame di file desain `fileId`,
+ * komponennya dari library `libraryId` versi `libraryVersion` (semver). `config` = { modules: [...] } — module,
+ * entity, dan screen terdaftar (lihat lib/builder.ts). `version` naik setiap simpan (deteksi konflik).
+ */
+export const builderProjects = pgTable('builder_projects', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    fileId: text('file_id').notNull().references(() => designFiles.id, { onDelete: 'cascade' }),
+    libraryId: text('library_id').references(() => libraries.id, { onDelete: 'set null' }),
+    libraryVersion: text('library_version'),
+    config: jsonb('config').notNull(),
+    version: integer('version').notNull().default(1),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [index('builder_projects_workspace_idx').on(t.workspaceId), index('builder_projects_file_idx').on(t.fileId)]);

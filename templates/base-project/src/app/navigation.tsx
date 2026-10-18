@@ -1,12 +1,5 @@
-import { WidgetIcon } from '@midas/ui-base';
+import { generatedNavItems } from './generated/navigation';
 import type { NavItemType } from '../shared/types/navigation';
 
-export const navItems: NavItemType[] = [
-  {
-    label: 'Dashboard',
-    labelKey: 'nav.dashboard',
-    path: '/',
-    icon: <WidgetIcon className="h-5 w-5" />,
-  },
-  // __GENERATOR_NAV_ITEMS__
-];
+/** Menu sidebar. Item di bawah ini ditulis tangan; menu module hasil Code Builder ada di `generated/navigation.tsx`. */
+export const navItems: NavItemType[] = [...generatedNavItems];

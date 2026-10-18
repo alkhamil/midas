@@ -1,0 +1,23 @@
+# Rilis paket saat tag v* dipush: sync Library Kit versi yang sama → build → publish ke Midas Registry.
+name: release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        env:
+          MIDAS_REGISTRY_TOKEN: ${{ secrets.MIDAS_REGISTRY_TOKEN }}
+      - run: npx midas sync --version "${GITHUB_REF_NAME#v}"
+        env:
+          MIDAS_TOKEN: ${{ secrets.MIDAS_TOKEN }}
+      - run: npm run build
+      - run: npm publish
+        env:
+          MIDAS_REGISTRY_TOKEN: ${{ secrets.MIDAS_REGISTRY_TOKEN }}

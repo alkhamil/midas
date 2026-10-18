@@ -1,0 +1,16 @@
+/* Utilitas spacing semantik dari token desain (Variables "Spacing"): dipakai aplikasi agar jarak seragam. */
+.page-padding {
+  padding: var(--theme-page-padding, 24px);
+}
+.stack-gap {
+  gap: var(--theme-stack-gap, 16px);
+}
+.field-gap {
+  gap: var(--theme-field-gap, 12px);
+}
+.section-gap {
+  gap: var(--theme-section-gap, 24px);
+}
+.card-padding {
+  padding: var(--theme-card-padding, 20px);
+}
