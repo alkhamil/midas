@@ -9,7 +9,12 @@ apps/
 ├── studio/     # Midas Studio (React + Vite): editor canvas, engine di src/engine/midas.js
 └── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
 packages/
-└── cli/        # @midas/cli: login, init, sync Library Kit ke repo paket design system
+├── cli/        # @midas/cli: login, init, sync, report
+└── ui-base/    # @midas/ui-base: library UI pertama (komponen contoh_base_code + ikon & token dari desain)
+templates/
+└── base-project/   # base project aplikasi (spec §5.2) yang memakai @midas/ui-base
+scripts/
+└── seed-base-design-system.mjs   # seed + publish design system "Midas Base" di Midas
 infra/          # konfigurasi Verdaccio & SeaweedFS untuk docker-compose
 docs/specs/     # spesifikasi & workflow
 ```
@@ -34,6 +39,8 @@ Test (API butuh infra jalan):
 ```bash
 npm test --workspace @midas/server
 npm test --workspace @midas/cli
+npm run build --workspace @midas/ui-base && npm test --workspace @midas/ui-base
+npm run build --workspace @midas/base-project
 ```
 
 ## Design system library → paket frontend
@@ -47,7 +54,8 @@ node packages/cli/bin/midas.js init ui-cms --library @midas/ui-cms
 cd ui-cms && npx midas sync --version <versi>
 ```
 
-3. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
+3. Setelah build: `npx midas report` mengirim status kode tiap komponen (ready / not implemented / mismatch) — tampil di panel Library & dialog Developer kit.
+4. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
 
 ## Penyimpanan
 
@@ -64,3 +72,14 @@ Sejak backend tersedia, semua data disimpan di server (spec §7):
 - Studio: `apps/studio/src/storage.js` = adapter API dengan bentuk `kv`/`projectStorage` yang sama seperti penyimpanan lama, jadi engine tidak perlu tahu datanya di server.
 - Autosave ±1,5 detik setelah perubahan terakhir, hanya page yang berubah. Setiap simpan membawa `version`; bila server punya versi lebih baru → 409 dan user memilih **reload** atau **simpan sebagai salinan**.
 - File lama di IndexedDB ditawarkan untuk di-import ke workspace setelah login (`apps/studio/src/legacyStorage.js`).
+
+## Design system Midas Base & base project
+
+```bash
+node packages/cli/bin/midas.js login --server http://127.0.0.1:4000
+node scripts/seed-base-design-system.mjs          # buat/perbarui file "Midas Base Design System" + publish @midas/ui-base
+cd packages/ui-base && npm run sync && npm run build && npx midas report
+npm run dev --workspace @midas/base-project        # login demo: admin / admin123
+```
+
+`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `contoh_base_code/public/icons/wds` bila ada (`--icons DIR` untuk folder lain).

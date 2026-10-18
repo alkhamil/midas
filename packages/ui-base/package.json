@@ -14,7 +14,8 @@
     "./styles.css": "./dist/styles.css",
     "./tokens.css": "./dist/tokens.css",
     "./tailwind-theme.css": "./dist/tailwind-theme.css",
-    "./manifest.json": "./dist/manifest.json"
+    "./manifest.json": "./dist/manifest.json",
+    "./tailwind.css": "./dist/tailwind.css"
   },
   "files": [
     "dist"

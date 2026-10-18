@@ -171,8 +171,18 @@ ui-cms/
 │   │   ├── Button/Button.tsx #   function Button(props: ButtonProps) { … }
 │   │   └── TextField/TextField.tsx
 │   ├── layout/               # AppShell, Sidebar, PageHeader, PageContent, …
-│   └── index.ts              # export semua komponen + ThemeProvider + tokens.css
-└── .github/workflows/release.yml   # CI: sync → lint → build → publish
+│   ├── tailwind.css          # entry CSS untuk aplikasi: token + utility Tailwind + @source './index.js'
+│   └── index.ts              # export semua komponen + ThemeProvider + ikon + token
+└── .github/workflows/release.yml   # CI: sync → build → publish → midas report
+```
+
+Contoh nyata: `packages/ui-base` (`@midas/ui-base`) — komponen dari `contoh_base_code` (struktur `components/ui`, `ui/fields`, `layout` dipertahankan), ikon lucide diganti ikon Library Kit, hooks/utils yang dipakai komponen disalin ke `src/internal` (tanpa xlsx), teks bawaan komponen en/id di `src/i18n` (`registerUiLocales(i18n, ns)` — tidak menimpa teks aplikasi). Peer dependency: `react`, `react-dom`, `react-router`, `react-i18next`, `i18next`, `react-hook-form`; CSS dependency (mis. react-datepicker) dibundel ke `styles.css`. Design system-nya di-seed dengan `scripts/seed-base-design-system.mjs`.
+
+Aplikasi cukup:
+
+```css
+@import 'tailwindcss';
+@import '@midas/ui-base/tailwind.css';
 ```
 
 Isi minimal sebuah library frontend mengikuti apa yang di `contoh_base_code` sekarang berada di `src/shared/components/ui`, `src/shared/components/layout`, dan `src/shared/theme`:
@@ -200,10 +210,10 @@ Desainer: Publish Library v1.2.0 (design)
    ▼
 Developer: sync Kit v1.2.0 → lengkapi/ubah komponen → git tag v1.2.0
    ▼
-CI: lint + build + bundle ESM untuk Studio → npm publish @midas/ui-cms@1.2.0
+CI: build → npm publish @midas/ui-cms@1.2.0 → npx midas report
    │  POST /api/libraries/:id/versions/1.2.0/code
    ▼
-Midas: cocokkan export paket dengan manifest → status code: ready / partial
+Midas: status kode per komponen + per versi (ready / partial)
    ▼
 Code Builder project memilih @midas/ui-cms@1.2.0
 ```
@@ -211,7 +221,7 @@ Code Builder project memilih @midas/ui-cms@1.2.0
 - Versi design dan versi paket kode **sama nomornya**.
 - Selain semver, setiap publish punya nomor urut `seq` (1, 2, 3, …). Studio memakai `seq` untuk mendeteksi "update tersedia" dan mencatat versi yang dipakai sebuah file; semver dipakai untuk paket kode.
 - `id` library = id file design system sumbernya (satu file = satu library). Layer salinan komponen library di file lain menyimpan `libRef = <libraryId>:<nodeId>`, sehingga instance tetap tersambung setelah update.
-- Status per komponen di menu Library: **Ready** (export ada dan props sesuai manifest), **Not implemented** (belum ada export), **Mismatch** (props kode berbeda dari manifest).
+- Status per komponen (`midas report`, dijalankan setelah build): **Ready** (di-export dan props sesuai desain), **Not implemented** (tidak di-export, atau masih kerangka `midasStub`), **Mismatch** (ada prop desain yang tidak diterima props komponen — dicek dengan TypeScript: untuk setiap prop di `src/generated/props`, tipe desainnya harus bisa diberikan ke prop komponen dengan nama sama; `testId` tidak dicek). Status versi: **ready** bila semua komponen ready, **partial** bila tidak, **pending** sebelum ada laporan. Ditampilkan di panel Library dan dialog **Developer kit** di Studio.
 - Code Builder hanya bisa memilih versi yang paketnya sudah ter-publish. Instance komponen berstatus *Not implemented* ditampilkan sebagai **Issue** (§4.6).
 - Breaking change memaksa kenaikan versi **major**: komponen/prop dihapus atau diganti nama, nilai variant dihapus, tipe prop berubah, **token (Variable) dihapus**, **ikon atau gaya ikon dihapus**.
 
@@ -357,7 +367,7 @@ React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Hook Form, rea
 
 ### 5.2. Base project (ikut setiap project baru)
 
-Saat Code Builder Project dibuat, sistem menyiapkan base project bersih: tooling + shell, **tanpa** komponen UI/layout (keduanya dari library).
+Saat Code Builder Project dibuat, sistem menyiapkan base project bersih: tooling + shell, **tanpa** komponen UI/layout (keduanya dari library). Template-nya ada di `templates/base-project` (workspace monorepo, ikut typecheck & build): login mock (`admin` / `admin123`), dashboard, `AppShell` dari library, i18n en/id dengan `registerUiLocales(i18n, 'general')`, dan `src/index.css` cukup `@import 'tailwindcss'; @import '@midas/ui-base/tailwind.css';`.
 
 ```text
 <project>/
@@ -636,7 +646,8 @@ Catatan:
 | | `GET /api/libraries/resolve?package=` | Cari library dari nama paket (dipakai CLI) |
 | | `GET /api/libraries/:id/kit?version=` | Library Kit satu versi (default terbaru) sebagai `{ files }` — dipakai `midas sync` |
 | | `GET /api/libraries/:id/scaffold?version=&format=zip` | Kerangka repo paket (§3.4) + Library Kit; JSON untuk `midas init`, zip untuk tombol **Developer kit** di Studio |
-| | `POST /api/libraries/:id/versions/:version/code` | Dipanggil CI setelah `npm publish` (token CI): daftar export + bundleUrl → hitung status kode |
+| | `POST /api/libraries/:id/versions/:version/code` | Laporan `midas report` (token CI): `{ components: [{ exportName, status, detail? }], bundleUrl? }` → status per komponen + versi |
+| | `GET /api/libraries/:id/versions/:version/code` | Status kode per komponen satu versi (Studio) |
 | | `GET/PUT /api/files/:id/libraries` | Library yang dipakai sebuah file desain + versi (`seq`) yang dipakai |
 | Code Builder | `GET/POST /api/builder-projects`, `GET/PUT /api/builder-projects/:id` | Konfigurasi project/module/screen; `PUT` membawa `version` |
 | | `POST /api/builder-projects/:id/push` | (Fase lanjut) push hasil generate ke Git; token Git disimpan di server |
@@ -674,7 +685,7 @@ Live DOM Renderer (§4.3) dan Preview App (§4.5) butuh komponen library asli di
 
 ## 8. Milestones
 
-1. **Phase 1 — Design System Library & Registry**
+1. **Phase 1 — Design System Library & Registry** ✅ (kecuali bundle ESM untuk Studio — dipindah ke Phase 2 bersama Live DOM Renderer)
    - Fitur **Publish Library** di Midas: form nama library + nama paket + versi + Component Mapping; library bisa di-enable di file lain (Assets → Libraries).
    - Generator **Library Kit** (theme dari Variables, tipe props + manifest dari component properties) + kerangka repo paket + `@midas/cli sync`.
    - Library pertama: pindahkan UI/layout dari `contoh_base_code` ke repo paket (mis. `@midas/ui-cms`) memakai Library Kit.
@@ -682,7 +693,8 @@ Live DOM Renderer (§4.3) dan Preview App (§4.5) butuh komponen library asli di
    - Midas API tahap 1 (§7.8): auth, Postgres + object storage, file desain & aset di server (autosave per page), migrasi dari IndexedDB, Library + versi + nama paket, Component Mapping, status kode per komponen.
    - Base project template (§5.2) yang memakai library lewat `.npmrc`.
 2. **Phase 2 — Midas Shell & Code Builder Workspace**
-   - Hapus tab Prototype; tambah menu Code Builder di bawah Plugins.
+   - ✅ Hapus tab Prototype; tambah menu Code Builder di bawah Plugins.
+   - Bundle ESM library untuk Studio (upload dari CI, dimuat Live DOM Renderer).
    - Project → Module → Register Frame + role; Live DOM Renderer; Issues panel.
 3. **Phase 3 — Properties Inspector & Behavior**
    - Inspector dari manifest props; data binding entity/custom endpoint; behavior (navigate, submit, action); permission per aksi; i18n teks.

@@ -50,6 +50,7 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
                 '.': { types: './dist/index.d.ts', import: './dist/index.js' },
                 './tokens.css': './dist/tokens.css',
                 './tailwind-theme.css': './dist/tailwind-theme.css',
+                './tailwind.css': './dist/tailwind.css',
                 './manifest.json': './dist/manifest.json',
             },
             files: ['dist'],
@@ -101,11 +102,23 @@ export default defineConfig({
   },
 });
 `,
-        'scripts/copy-assets.mjs': `// Salin CSS token + manifest Library Kit ke dist/.
+        'scripts/copy-assets.mjs': `// Salin CSS token + manifest Library Kit dan entry Tailwind ke dist/.
 import { copyFileSync, mkdirSync } from 'node:fs';
 
 mkdirSync('dist', { recursive: true });
 for (const f of ['tokens.css', 'tailwind-theme.css', 'manifest.json']) copyFileSync(\`src/generated/\${f}\`, \`dist/\${f}\`);
+copyFileSync('src/tailwind.css', 'dist/tailwind.css');
+`,
+        'src/tailwind.css': `/*
+ * Satu import untuk aplikasi Tailwind CSS v4:
+ *   @import 'tailwindcss';
+ *   @import '${input.packageName}/tailwind.css';
+ * Berisi token tema, utility Tailwind dari token, dan @source agar class yang dipakai
+ * komponen library ikut dibangkitkan (path relatif terhadap file ini).
+ */
+@import './tokens.css';
+@import './tailwind-theme.css';
+@source './index.js';
 `,
         'src/theme/ThemeProvider.tsx': `import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { applyTheme, defaultTheme, themeNames, themes, type ThemeName } from '../generated/theme';
@@ -162,8 +175,13 @@ Komponen UI dari design system **${input.libraryName}** di Midas (spec §3.4).
 
 ## Memakai di project
 
+\`\`\`css
+/* src/index.css aplikasi (Tailwind CSS v4) */
+@import 'tailwindcss';
+@import '${input.packageName}/tailwind.css';
+\`\`\`
+
 \`\`\`tsx
-import '${input.packageName}/tokens.css';
 import { ThemeProvider${input.mappings[0] ? `, ${input.mappings[0].exportName}` : ''} } from '${input.packageName}';
 \`\`\`
 

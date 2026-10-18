@@ -1,0 +1,35 @@
+{
+  "name": "@midas/base-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Base project Midas (spec §5.2): shell aplikasi + mesin form; komponen UI dari library design system.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@midas/ui-base": "1.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.104.0",
+    "axios": "^1.20.0",
+    "i18next": "^26.4.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.89.0",
+    "react-i18next": "^17.0.15",
+    "react-router": "^7.18.4",
+    "tailwindcss": "^4.3.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.9.0",
+    "vite": "^6.0.7"
+  }
+}
