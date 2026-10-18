@@ -8438,6 +8438,15 @@ function pointerDown(e) {
         }
     }
     let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    // Ctrl / Cmd pressed on a component or instance starts a marquee that reaches the layers inside; a plain Ctrl-click still picks the one under the cursor.
+    let ctrlClickId = null;
+    if (hit && (e.ctrlKey || e.metaKey) && !e.shiftKey && state.tool === 'select') {
+        const inner = hitTest(w, { deep: true });
+        if (inner && [inner, ...doc.ancestors(inner)].some(a => a.component || a.isInstance || a.componentSet)) {
+            ctrlClickId = inner.id;
+            hit = null;
+        }
+    }
     // A single selected layer that sits deeper inside the hit stays selected when pressed again (multi-click descent, like Figma).
     if (hit && !e.shiftKey && !e.altKey && !(e.metaKey || e.ctrlKey) && state.selection.size === 1 && !state.selection.has(hit.id)) {
         const inner0 = hitTest(w, { deep: true }), selId = [...state.selection][0];
@@ -8482,7 +8491,7 @@ function pointerDown(e) {
         const old = e.shiftKey ? new Set(state.selection) : new Set();
         if (!e.shiftKey)
             select([]);
-        state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey };
+        state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey, clickId: ctrlClickId };
         state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
         invalidate();
     }
@@ -8642,6 +8651,8 @@ function pointerMove(e) {
     }
     if (g.kind === 'marquee') {
         state.marquee = { x: Math.min(g.start.x, p.x), y: Math.min(g.start.y, p.y), w: Math.abs(p.x - g.start.x), h: Math.abs(p.y - g.start.y) };
+        if (state.marquee.w > 3 || state.marquee.h > 3)
+            g.dragged = true;
         const tl = screenToWorld(state.marquee.x, state.marquee.y), b = { ...tl, w: state.marquee.w / state.camera.zoom, h: state.marquee.h / state.camera.zoom };
         state.selection = new Set(g.old);
         // Figma-style: a frame the marquee fully encloses is selected as one; a frame it only overlaps is entered, so its
@@ -8656,7 +8667,8 @@ function pointerMove(e) {
                 if (!hit)
                     continue;
                 const enclosed = s.box.x >= b.x && s.box.y >= b.y && s.box.x + s.box.w <= b.x + b.w && s.box.y + s.box.h <= b.y + b.h;
-                const container = n.type === 'frame' && !n.isInstance && !n.component && doc.children(n.id).length > 0;
+                // With Ctrl held the marquee also goes inside components, instances and groups.
+                const container = (n.type === 'frame' || n.type === 'group' && g.deep) && (g.deep || !n.isInstance && !n.component && !n.componentSet) && doc.children(n.id).length > 0;
                 if (container && (!enclosed || g.deep))
                     visit(n.id);
                 else if (!container || enclosed)
@@ -8970,6 +8982,11 @@ function pointerUp(e) {
     state.marquee = null;
     if (!g)
         return;
+    if (g.kind === 'marquee' && g.clickId && !g.dragged) {
+        select([g.clickId]);
+        invalidate();
+        return;
+    }
     if (g.kind === 'guide') {
         const gd = pageGuides().find(x => x.id === g.id), q = eventPoint(e);
         if (gd && (gd.axis === 'x' ? q.x < RULER : q.y < RULER))
