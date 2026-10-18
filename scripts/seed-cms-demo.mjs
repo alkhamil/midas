@@ -170,20 +170,10 @@ const list = (title, description, addLabel) => screen(`${title} — List`, [
 const confirmFrame = (name, tone, title, message, cancel, confirm) => col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name }, [
     V('Dialog', { Size: 'Sm', Tone: tone }, { Title: title, Message: message, CancelLabel: cancel, ConfirmLabel: confirm }, { name: 'Dialog' }),
 ]);
-// Filter dialog (reference design): fields come from the entity fields marked "filterable".
-const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Dialog · Filters' }, [
-    col({ w: 400, radius: 'radius/xl', fill: 'color/background', stroke: 'color/border', shadow: { x: 0, y: 12, blur: 32, opacity: 0.16 }, clip: true, name: 'Filters' }, [
-        row({ w: 'fill', pad: [16, 24], justify: 'between', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Header' }, [
-            text('Filters', { size: 18, line: 28, weight: 600 }),
-            icon(ctx.icon('close', 'outline', 'color/muted-foreground'), { size: 20, name: 'Icon' }),
-        ]),
-        col({ w: 'fill', pad: 24, gap: 16, name: 'Content' }, [
-            field('SelectField', 'Role', 'All'),
-            field('SelectField', 'Active account', 'All'),
-            R('SwitchField', { Label: 'Show deleted' }),
-        ]),
-        row({ w: 'fill', pad: [16, 24], gap: 8, justify: 'end', stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Footer' }, [btn('Secondary', 'Reset'), btn('Primary', 'Apply')]),
-    ]),
+// Filter drawer (library Drawer): the generated list page opens it from the Filter button; its fields come from the entity
+// fields marked "filterable".
+const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Drawer · Filters' }, [
+    instance(ctx.root('Drawer'), { Title: 'Filters', SecondaryLabel: 'Reset', PrimaryLabel: 'Apply' }, { name: 'Drawer' }),
 ]);
 
 const userScreens = [

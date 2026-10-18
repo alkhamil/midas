@@ -1,6 +1,6 @@
 {
   "name": "@midas/ui-cms",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Komponen UI dari design system \"CMS Design System\" di Midas (React + Tailwind CSS v4)",
   "type": "module",
   "main": "./dist/index.js",

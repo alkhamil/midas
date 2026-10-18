@@ -14,6 +14,7 @@ export * from './TextField';
 export * from './TextAreaField';
 export * from './PasswordField';
 export * from './SelectField';
+export * from './Drawer';
 export * from './SwitchField';
 export * from './Dialog';
 export * from './Table';

@@ -286,7 +286,7 @@ export function buildDocument({ existing = new Map() }) {
     const GROUPS = [
         ['Actions', ['Button', 'IconButton']],
         ['Forms', ['TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField']],
-        ['Feedback', ['Alert', 'Badge', 'Dialog']],
+        ['Feedback', ['Alert', 'Badge', 'Dialog', 'Drawer']],
         ['Data Display', ['Avatar', 'Card', 'StatCard', 'Table']],
         ['Navigation', ['Sidebar']],
         ['Layout', ['Topbar', 'SectionHeader', 'FilterToolbar', 'AppShell']],

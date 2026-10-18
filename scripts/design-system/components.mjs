@@ -154,6 +154,32 @@ export const COMPONENTS = [
         },
     },
     {
+        name: 'Drawer',
+        group: 'Feedback',
+        description: 'Side panel that slides in from the right, e.g. for list filters. Title and the Reset / Apply labels are properties; the Content slot holds the fields.',
+        variants: {},
+        cprops: [
+            { name: 'Title', type: 'text', default: 'Filters' },
+            { name: 'SecondaryLabel', type: 'text', default: 'Reset' },
+            { name: 'PrimaryLabel', type: 'text', default: 'Apply' },
+            { name: 'Content', type: 'slot' },
+        ],
+        render: (_v, ctx, cp) => col({ w: 400, h: 640, fill: 'color/background', stroke: 'color/border', shadow: { x: -8, y: 0, blur: 32, opacity: 0.12 }, clip: true }, [
+            row({ w: 'fill', pad: [16, 24], justify: 'between', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Header' }, [
+                text('Filters', { size: 18, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
+                ico(ctx, 'close', MUTED_FG, 20),
+            ]),
+            col({ w: 'fill', h: 'fill', pad: 24, gap: 16, name: 'Content' }, [
+                { ...formField('SelectField', ctx, { label: 'Status', value: 'All' }), w: 'fill' },
+                { ...formField('SelectField', ctx, { label: 'Role', value: 'All' }), w: 'fill' },
+            ]),
+            row({ w: 'fill', pad: [16, 24], gap: 8, justify: 'end', stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Footer' }, [
+                { ...button('Secondary', 'Md', ctx, { label: 'Reset', bind: cp.SecondaryLabel }), name: 'Secondary' },
+                { ...button('Primary', 'Md', ctx, { label: 'Apply', bind: cp.PrimaryLabel }), name: 'Primary' },
+            ]),
+        ]),
+    },
+    {
         name: 'Table',
         group: 'Data Display',
         description: 'Data list with a header, row actions, and pagination. Columns and data are configured in Code Builder.',

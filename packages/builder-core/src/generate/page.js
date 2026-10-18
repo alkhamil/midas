@@ -345,7 +345,7 @@ export function pageFile(gctx, mod, screen, tree) {
         }
         // filter dialog
         if (hasFilter) {
-            b.ui.add('Dialog'); b.ui.add('Button');
+            b.ui.add('Drawer');
             lines.push(`  const [filterOpen, setFilterOpen] = useState(false);`, `  const [draft, setDraft] = useState<${E}Filters>({});`, '  const openFilter = () => { setDraft(filters); setFilterOpen(true); };');
             const fieldsJsx = ffields.map(f => {
                 const set = `onChange={(e) => setDraft((d) => ({ ...d, ${f.name}: e.target.value }))}`;
@@ -371,21 +371,19 @@ export function pageFile(gctx, mod, screen, tree) {
                 b.ui.add('SwitchField');
                 fieldsJsx.push(`          <SwitchField label={${b.t('Show deleted')}} checked={draft.showDeleted === 'true'} onCheckedChange={(on) => setDraft((d) => ({ ...d, showDeleted: on ? 'true' : '' }))} />`);
             }
-            extraDialogs.push(`      <Dialog
+            extraDialogs.push(`      <Drawer
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
         title={${b.t('Filters')}}
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => { setDraft({}); setFilters({}); setPage(1); setFilterOpen(false); }}>{${b.t('Reset')}}</Button>
-            <Button onClick={() => { setFilters(draft); setPage(1); setFilterOpen(false); }}>{${b.t('Apply')}}</Button>
-          </>
-        }
+        secondaryLabel={${b.t('Reset')}}
+        primaryLabel={${b.t('Apply')}}
+        onSecondary={() => { setDraft({}); setFilters({}); setPage(1); setFilterOpen(false); }}
+        onPrimary={() => { setFilters(draft); setPage(1); setFilterOpen(false); }}
       >
         <div className="flex flex-col gap-4">
 ${fieldsJsx.join('\n')}
         </div>
-      </Dialog>`);
+      </Drawer>`);
         }
         if (b.usesFilterToolbar && !hasFilter) lines.push('  const openFilter = () => {};');
     }

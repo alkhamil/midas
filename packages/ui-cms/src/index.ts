@@ -11,6 +11,7 @@ export { SwitchField } from './components/SwitchField/SwitchField';
 export { Alert } from './components/Alert/Alert';
 export { Badge } from './components/Badge/Badge';
 export { Dialog } from './components/Dialog/Dialog';
+export { Drawer } from './components/Drawer/Drawer';
 export { Avatar } from './components/Avatar/Avatar';
 export { Card } from './components/Card/Card';
 export { StatCard } from './components/StatCard/StatCard';

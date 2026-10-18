@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T14:16:49.936Z",
+  "publishedAt": "2026-10-18T14:43:19.011Z",
   "themes": [
     "light",
     "dark"
@@ -583,6 +583,42 @@
         "label": "Role",
         "placeholder": "Select…",
         "disabled": false
+      }
+    },
+    {
+      "exportName": "Drawer",
+      "componentKey": "ds-9-12jmf0",
+      "componentName": "Drawer",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "secondaryLabel",
+          "type": "string",
+          "source": "text",
+          "label": "SecondaryLabel"
+        },
+        {
+          "name": "primaryLabel",
+          "type": "string",
+          "source": "text",
+          "label": "PrimaryLabel"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "title": "Filters",
+        "secondaryLabel": "Reset",
+        "primaryLabel": "Apply"
       }
     },
     {
