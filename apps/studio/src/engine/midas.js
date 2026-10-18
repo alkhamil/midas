@@ -967,7 +967,8 @@ function layerPropOptions(n, prop) {
 }
 function varRow(label, prop) {
     const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { holder, props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
-    const bp = pid && holder && props.find(p => p.id === pid);
+    // The property is looked up by id across the file, so layers inside instances (copied from the main component) show their binding too.
+    const bp = pid && (props.find(p => p.id === pid) || (() => { for (const pg of doc.data.pages) for (const x of pg.nodes) { const p = x.cprops?.find(q => q.id === pid); if (p) return p; } return null; })());
     if (bp)
         return `<div class="field-label"><span>${label}</span></div><div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>`;
     const v = boundVar(prop);
