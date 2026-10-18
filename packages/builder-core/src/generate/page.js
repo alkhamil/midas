@@ -261,7 +261,7 @@ class PageBuilder {
         if (acts.length) this.ui.add('IconButton');
         return [
             `<Table${attrs.length ? ` ${attrs.join(' ')}` : ''}`,
-            `  columns={columns} data={rows} rowKey={(row) => row.id} totalRecords={total} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} emptyText=${q(t.emptyText)} actionHeader=${q(t.actionHeader)}`,
+            `  columns={columns} data={rows} rowKey={(row) => row.id} totalRecords={total} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} emptyText=${q(t.emptyText)} actionHeader=${q(t.actionHeader)}`,
             ...(acts.length ? [`  renderAction={(row) => (<div className="flex gap-1">${acts.join('')}</div>)}`] : []),
             '/>',
         ].join('\n');
@@ -299,7 +299,7 @@ export function pageFile(gctx, mod, screen, tree) {
         react.add('useState');
         apiHooks.push(`use${E}List`);
         typeNames.push(E, `${E}Filters`);
-        lines.push('  const [page, setPage] = useState(1);', b.usesFilterToolbar ? "  const [search, setSearch] = useState('');" : "  const search = '';");
+        lines.push('  const [page, setPage] = useState(1);', '  const [pageSize, setPageSize] = useState(PAGE_SIZE);', b.usesFilterToolbar ? "  const [search, setSearch] = useState('');" : "  const search = '';");
         lines.push(`  const [filters, setFilters] = useState<${E}Filters>({});`);
         const ffields = filterFields(b.entity, b.tree.cfg);
         const hasFilter = b.usesFilterToolbar && (ffields.length > 0 || tm.softDelete);
@@ -307,7 +307,7 @@ export function pageFile(gctx, mod, screen, tree) {
         if (b.needDelete) { apiHooks.push(`useDelete${E}`); lines.push(`  const remove = useDelete${E}();`); if (tm.confirm) confirms.push('delete'); }
         if (b.needRestore) { apiHooks.push(`useRestore${E}`); lines.push(`  const restoreRow = useRestore${E}();`); if (tm.confirm) confirms.push('restore'); }
         if (confirms.length) lines.push("  const [pending, setPending] = useState<{ kind: 'delete' | 'restore'; id: string } | null>(null);");
-        lines.push(`  const { data } = use${E}List({ page, size: PAGE_SIZE, search, filters });`, '  const rows = data?.rows ?? [];', '  const total = data?.total ?? 0;');
+        lines.push(`  const { data } = use${E}List({ page, size: pageSize, search, filters });`, '  const rows = data?.rows ?? [];', '  const total = data?.total ?? 0;');
         // relation columns resolve ids to labels with the target module's list
         const relCols = new Map();
         for (const c of tm.columns) {

@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T15:50:04.268Z",
+  "publishedAt": "2026-10-18T15:58:10.242Z",
   "themes": [
     "light",
     "dark"

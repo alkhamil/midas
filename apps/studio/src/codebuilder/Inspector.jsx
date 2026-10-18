@@ -201,7 +201,7 @@ function TableProps({ cfg, setCfg, entity }) {
             <Section title="Table">
                 <Row label="Empty text"><input value={t.emptyText ?? ''} placeholder={model.emptyText} onChange={e => patch({ emptyText: e.target.value || undefined })} /></Row>
                 <Row label="Action header"><input value={t.actionHeader ?? ''} placeholder={model.actionHeader} onChange={e => patch({ actionHeader: e.target.value || undefined })} /></Row>
-                <Row label="Rows per page"><input type="number" min="1" max="200" value={model.pageSize} onChange={e => patch({ pageSize: Number(e.target.value) || undefined })} /></Row>
+                <Row label="Default page size"><Select value={String(model.pageSize)} onChange={e => patch({ pageSize: Number(e.target.value) === 10 ? undefined : Number(e.target.value) })}>{[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</Select></Row>
             </Section>
         </>
     );

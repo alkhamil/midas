@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { tableDefaults, type TableProps as DesignProps } from '../../generated/props';
-import { AltArrowLeftIcon, AltArrowRightIcon } from '../../generated/icons';
+import { AltArrowDownIcon, AltArrowLeftIcon, AltArrowRightIcon } from '../../generated/icons';
 import { cx } from '../../internal/cx';
 
 export interface Column<T> {
@@ -24,13 +24,16 @@ export type TableProps<T> = DesignProps & {
   page?: number;
   pageSize?: number;
   onPageChange?: (page: number) => void;
+  /** Pilihan baris per halaman; select muncul di footer bila `onPageSizeChange` diisi. */
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (size: number) => void;
   emptyText?: string;
   className?: string;
 };
 
 /** Daftar data dengan header, aksi baris, dan paginasi. */
 export function Table<T>(props: TableProps<T>) {
-  const { columns, data, rowKey, renderAction, actionHeader = 'Actions', totalRecords = data.length, page = 1, pageSize = 10, onPageChange, emptyText = 'No data yet.', testId, className } = { ...tableDefaults, ...props };
+  const { columns, data, rowKey, renderAction, actionHeader = 'Actions', totalRecords = data.length, page = 1, pageSize = 10, onPageChange, pageSizeOptions = [10, 20, 50, 100], onPageSizeChange, emptyText = 'No data yet.', testId, className } = { ...tableDefaults, ...props };
   const pages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const from = totalRecords === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(totalRecords, from + data.length - 1);
@@ -71,7 +74,28 @@ export function Table<T>(props: TableProps<T>) {
       </div>
       <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
         <span>{totalRecords === 0 ? 'No data' : `Showing ${from}–${to} of ${totalRecords}`}</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-4">
+          {onPageSizeChange && (
+            <label className="flex items-center gap-2">
+              <span>Rows per page</span>
+              <span className="relative inline-flex">
+                <select
+                  aria-label="Rows per page"
+                  value={pageSize}
+                  onChange={e => onPageSizeChange(Number(e.target.value))}
+                  className="h-8 w-16 cursor-pointer appearance-none rounded-lg border border-border bg-background pl-2 pr-6 text-sm font-medium text-foreground outline-none focus:border-primary"
+                >
+                  {[...new Set([...pageSizeOptions, pageSize])].sort((a, b) => a - b).map(n => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <AltArrowDownIcon className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+              </span>
+            </label>
+          )}
+          <div className="flex items-center gap-1">
           <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowLeftIcon className="h-4 w-4" />
           </button>
@@ -79,6 +103,7 @@ export function Table<T>(props: TableProps<T>) {
           <button type="button" aria-label="Next page" disabled={page >= pages} onClick={() => onPageChange?.(page + 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
             <AltArrowRightIcon className="h-4 w-4" />
           </button>
+          </div>
         </div>
       </div>
     </div>

@@ -38,6 +38,7 @@ export const midasPreview: Record<string, Record<string, unknown>> = {
     page: 1,
     pageSize: 10,
     onPageChange: noop,
+    onPageSizeChange: noop,
     renderAction: () => (
       <div className="flex gap-1">
         <IconButton action="view" />

@@ -182,7 +182,7 @@ export const COMPONENTS = [
     {
         name: 'Table',
         group: 'Data Display',
-        description: 'Data list with a header, row actions, and pagination. Columns and data are configured in Code Builder.',
+        description: 'Data list with a header, row actions, and pagination. The footer has a "Rows per page" select (10, 20, 50, 100; default 10) next to the pager. Columns and data are configured in Code Builder.',
         variants: {},
         cprops: [],
         render: (_v, ctx) => table(ctx, 960),
@@ -424,10 +424,20 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
         ])),
         row({ w: 'fill', pad: [12, 16], justify: 'between', name: 'Pagination' }, [
             text(`Showing 1–${rows.length} of ${rows.length}`, { size: 14, line: 20, color: MUTED_FG }),
-            row({ gap: 4 }, [
-                ico(ctx, 'alt-arrow-left', MUTED_FG),
-                row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', stroke: 'color/primary' }, [text('1', { size: 14, weight: 500, color: 'color/primary' })]),
-                ico(ctx, 'alt-arrow-right', MUTED_FG),
+            row({ gap: 16, name: 'Pager' }, [
+                // Rows per page: a select with 10 / 20 / 50 / 100 (default 10).
+                row({ gap: 8, name: 'Page size' }, [
+                    text('Rows per page', { size: 14, line: 20, color: MUTED_FG }),
+                    row({ w: 64, h: 32, pad: [0, 8], gap: 4, justify: 'between', radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', name: 'Page size select' }, [
+                        text('10', { size: 14, line: 20, weight: 500 }),
+                        ico(ctx, 'alt-arrow-down', MUTED_FG, 14),
+                    ]),
+                ]),
+                row({ gap: 4, name: 'Pages' }, [
+                    ico(ctx, 'alt-arrow-left', MUTED_FG),
+                    row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', stroke: 'color/primary' }, [text('1', { size: 14, weight: 500, color: 'color/primary' })]),
+                    ico(ctx, 'alt-arrow-right', MUTED_FG),
+                ]),
             ]),
         ]),
     ]);

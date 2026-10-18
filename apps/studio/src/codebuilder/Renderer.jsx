@@ -95,7 +95,7 @@ function RenderNode({ node, rc }) {
             else if (name === 'SectionHeader') props = { ...props, onAction: () => ix.press(node) };
             else if (name === 'FilterToolbar') props = { ...props, searchValue: ix.search, onSearchChange: ix.setSearch, onFilterClick: ix.openFilter };
             else if (isTable && entity?.fields?.length && props.columns?.length)
-                props = { ...props, data: ix.pageRows, totalRecords: ix.total, page: ix.page, pageSize: t.pageSize, onPageChange: ix.setPage };
+                props = { ...props, data: ix.pageRows, totalRecords: ix.total, page: ix.page, pageSize: ix.pageSize ?? t.pageSize, onPageChange: ix.setPage, onPageSizeChange: ix.setPageSize };
         }
         const body = h(Comp, props);
         return h('div', { ...data, className: 'midas-component', style: node.box },
