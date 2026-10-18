@@ -2862,3 +2862,63 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .vw-side .vw-coll { height: 32px; margin-bottom: 4px; box-sizing: border-box }
 .vw-side .vw-coll.multi:not(.on) { background: var(--accent-bg) }
 .vw-side .vw-coll.multi { box-shadow: inset 0 0 0 1px var(--accent) }
+
+/* ===== Code Builder (spec §4.3) ===== */
+.code-builder-panel { padding: 0 }
+.cb-panel { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 14px; font-size: 12px; color: var(--text) }
+.cb-head { display: flex; gap: 6px; align-items: center }
+.cb-select { flex: 1; min-width: 0; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--field); color: var(--text); padding: 0 6px; font: inherit }
+.cb-select.small { flex: none; width: 90px; height: 24px }
+.cb-lib { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 2px }
+.cb-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cb-badge { flex: none; border-radius: 999px; padding: 1px 7px; font-size: 10px; background: var(--panel-3); color: var(--text-secondary) }
+.cb-badge.ok { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success) }
+.cb-badge.warn { background: color-mix(in srgb, #f5a524 22%, transparent); color: #f5a524 }
+.cb-badge.err { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger) }
+.cb-section-head { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 6px; padding: 6px 2px; border: 0; border-top: 1px solid var(--border-soft); background: none; color: var(--text-secondary); font: 600 11px var(--ui-font); text-transform: uppercase; letter-spacing: .04em; cursor: default }
+button.cb-section-head { cursor: pointer }
+.cb-link { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 3px 0; text-align: left }
+.cb-link:hover { text-decoration: underline }
+.cb-link.danger { color: var(--danger) }
+.cb-pad { padding: 2px 2px 6px }
+.cb-error { color: var(--danger); margin: 0 }
+.cb-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); margin: 4px 0 }
+.cb-form label { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); font-size: 11px }
+.cb-form input:not([type=checkbox]), .cb-form select { height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--field); color: var(--text); padding: 0 6px; font: 12px var(--ui-font) }
+.cb-form input.invalid { border-color: var(--danger) }
+.cb-form-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px }
+.cb-form-actions .wide-button { width: auto; padding: 0 12px }
+.wide-button.primary { background: var(--accent-strong); color: #fff; border-color: var(--accent-strong) }
+.cb-module { padding-left: calc(var(--depth, 0) * 12px) }
+.cb-module-row { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; border-radius: 6px; cursor: pointer }
+.cb-module-row:hover { background: var(--hover) }
+.cb-caret { width: 10px; color: var(--muted) }
+.cb-module-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500 }
+.cb-module-body { display: flex; flex-direction: column; gap: 3px; padding: 2px 0 8px 16px }
+.cb-screen { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px }
+.cb-screen.active, .cb-screen:hover { background: var(--hover) }
+.cb-screen-name { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 0 }
+.cb-role { flex: none; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 5px; background: var(--accent-bg); color: var(--accent) }
+.cb-role.r-custom { background: var(--panel-3); color: var(--text-secondary) }
+.cb-row-actions { display: flex; gap: 12px }
+.cb-field { display: grid; grid-template-columns: 1fr 86px 24px; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft) }
+.cb-field-flags { grid-column: 1 / -1; display: flex; gap: 10px }
+.cb-field-flags label { flex-direction: row; align-items: center; gap: 3px }
+.cb-field > input[aria-label="Pilihan enum"] { grid-column: 1 / -1 }
+.cb-issues { display: flex; flex-direction: column; gap: 2px }
+.cb-issue { display: flex; align-items: flex-start; gap: 6px; width: 100%; border: 0; background: none; color: var(--text-secondary); font: 11px/1.4 var(--ui-font); text-align: left; padding: 4px; border-radius: 6px; cursor: pointer }
+.cb-issue:hover { background: var(--hover); color: var(--text) }
+.cb-issue-dot { flex: none; width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; background: #f5a524 }
+.cb-issue.error .cb-issue-dot { background: var(--danger) }
+.cb-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft) }
+/* Live DOM Renderer: menutupi canvas selama screen dibuka. */
+.cb-screen-view { position: fixed; right: 0; bottom: 0; z-index: 60; display: flex; flex-direction: column; background: var(--canvas) }
+.cb-screen-bar { display: flex; align-items: center; gap: 8px; height: 44px; flex: none; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--panel); font-size: 12px; color: var(--text) }
+.cb-screen-bar .wide-button { width: auto; padding: 0 12px; height: 28px }
+.cb-spacer { flex: 1 }
+.cb-screen-body { flex: 1; min-height: 0; display: flex }
+.cb-live-wrap { position: relative; flex: 1; min-width: 0; overflow: auto; padding: 16px }
+.cb-live-stage { margin: 0 auto; position: relative; box-shadow: 0 0 0 1px var(--border), var(--shadow); background: #fff }
+.cb-live-iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff }
+.cb-live-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-secondary) }
+.cb-screen-issues { width: 240px; flex: none; overflow: auto; border-left: 1px solid var(--border); background: var(--panel); padding: 10px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text) }

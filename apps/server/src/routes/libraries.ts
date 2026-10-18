@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ import { zipFiles } from '../lib/zip.js';
 type VersionRow = typeof libraryVersions.$inferSelect;
 
 const snapshotKey = (libraryId: string, seq: number) => `libraries/${libraryId}/${seq}.json`;
+const bundleKey = (libraryId: string, version: string, file: string) => `libraries/${libraryId}/bundles/${version}/${file}`;
 
 const snapshotShape = z.object({
     components: z.array(z.object({ id: z.string().min(1), name: z.string(), set: z.boolean().optional(), nodes: z.array(z.object({ id: z.string() }).passthrough()) }).passthrough()),
@@ -319,6 +321,42 @@ export async function libraryRoutes(app: FastifyInstance) {
         });
         const count = (st: string) => statuses.filter(c => c.status === st).length;
         return { codeStatus, ready: count('ready'), notImplemented: count('not_implemented'), mismatch: count('mismatch') };
+    });
+
+    // Bundle ESM + CSS satu versi untuk Live DOM Renderer Studio (spec §7.5), diunggah oleh `midas bundle`.
+    // React tidak ikut dibundel: Studio menyuplai React miliknya saat memuat bundle.
+    app.put<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/bundle', async (req, reply) => {
+        const body = z.object({ js: z.string().min(1), css: z.string().default(''), preview: z.array(z.string()).optional() }).safeParse(req.body);
+        if (!body.success)
+            return reply.code(400).send({ error: 'invalid', message: body.error.issues[0].message });
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: `Versi ${req.params.version} belum dipublish di Midas` });
+        await putObject(bundleKey(l.id, v.version, 'index.js'), Buffer.from(body.data.js), 'text/javascript');
+        await putObject(bundleKey(l.id, v.version, 'style.css'), Buffer.from(body.data.css), 'text/css');
+        // Hash isi di URL: unggah ulang versi yang sama (mis. perbaikan bundle) tidak terhalang cache immutable browser.
+        const hash = createHash('sha1').update(body.data.js).update(body.data.css).digest('hex').slice(0, 12);
+        const base = `/api/libraries/${encodeURIComponent(l.id)}/versions/${encodeURIComponent(v.version)}/bundle`;
+        const bundleUrl = `${base}/index.js?h=${hash}`;
+        await db.update(libraryVersions).set({ bundleUrl }).where(eq(libraryVersions.id, v.id));
+        return { bundleUrl, cssUrl: `${base}/style.css?h=${hash}`, size: body.data.js.length + body.data.css.length };
+    });
+
+    app.get<{ Params: { id: string; version: string; file: string } }>('/api/libraries/:id/versions/:version/bundle/:file', async (req, reply) => {
+        const type = { 'index.js': 'text/javascript; charset=utf-8', 'style.css': 'text/css; charset=utf-8' }[req.params.file];
+        const l = type ? await libraryOf(req, req.params.id) : null;
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v?.bundleUrl)
+            return reply.code(404).send({ error: 'not_found', message: 'Bundle belum diunggah (jalankan `midas bundle` di repo paket)' });
+        try {
+            const data = await getObject(bundleKey(l.id, v.version, req.params.file));
+            // Versi library immutable → bundle boleh di-cache selamanya oleh browser.
+            return reply.header('content-type', type).header('cache-control', 'private, max-age=31536000, immutable').send(data);
+        }
+        catch {
+            return reply.code(404).send({ error: 'not_found' });
+        }
     });
 
     // Status kode per komponen untuk satu versi (panel Library / Developer kit di Studio).

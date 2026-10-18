@@ -14,3 +14,6 @@ export { default as LanguageSwitch } from './internal/LanguageSwitch';
 export type { NavItemType, SubItem } from './internal/types/navigation';
 export { filterNavItems, hasPermissionKey, resolveNavLabel } from './internal/utils';
 export { registerUiLocales, uiLocales } from './i18n';
+
+// Contoh props untuk Live DOM Renderer Midas Studio (Code Builder).
+export { midasPreview } from './preview';

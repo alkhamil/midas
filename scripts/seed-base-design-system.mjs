@@ -5,7 +5,7 @@
 // dan file yang memakai library tetap tersambung.
 //
 // Pakai:
-//   node scripts/seed-base-design-system.mjs [--server URL] [--icons DIR] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create]
+//   node scripts/seed-base-design-system.mjs [--server URL] [--icons DIR] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create] [--package @midas/ui-x]
 // File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
 // (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
@@ -155,7 +155,7 @@ const codeVersion = (() => {
 })();
 const version = args.version || (draft.latest ? draft.suggestedVersion : codeVersion || draft.suggestedVersion);
 const res = await api('POST', `/api/libraries/${fileId}/versions`, {
-    name: FILE_NAME, packageName: draft.library?.packageName || PACKAGE, version,
+    name: FILE_NAME, packageName: draft.library?.packageName || (typeof args.package === 'string' ? args.package : PACKAGE), version,
     releaseNotes: args.notes || `Design system Midas Base: ${COMPONENTS.length} komponen, ${iconCount} ikon (${iconStyles.join(' & ')}), foundations & templates`,
     snapshot, mappings,
 });

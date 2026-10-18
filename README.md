@@ -42,6 +42,7 @@ Test (API butuh infra jalan):
 ```bash
 npm test --workspace @midas/server
 npm test --workspace @midas/cli
+npm test --workspace @midas/studio
 npm run build --workspace @midas/ui-base && npm test --workspace @midas/ui-base
 npm run build --workspace @midas/base-project
 ```
@@ -58,7 +59,17 @@ cd ui-cms && npx midas sync --version <versi>
 ```
 
 3. Setelah build: `npx midas report` mengirim status kode tiap komponen (ready / not implemented / mismatch) — tampil di panel Library & dialog Developer kit.
-4. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
+4. `npx midas bundle` (atau `npm run bundle`) membangun bundle ESM + CSS untuk **Live DOM Renderer** Code Builder dan mengunggahnya ke Midas. Data contoh untuk renderer (kolom tabel, menu, handler) diambil dari export `midasPreview` paket.
+5. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
+
+## Code Builder
+
+Rail **Code Builder** di Studio (spec §4): buat project untuk file desain yang terbuka (pilih library + versi), tambah **module** (satu page sumber, nama folder kebab-case), pilih frame teratas di canvas lalu **Register frame** dengan role `list` / `create` / `edit` / `view` / `custom`, dan isi **entity fields** untuk module CRUD. Konfigurasi disimpan di server (`/api/builder-projects`).
+
+- Klik nama screen → **Live DOM Renderer**: frame dirender di iframe memakai komponen asli dari bundle library (perlu `midas bundle` untuk versi itu). Klik elemen → **Pilih di canvas**.
+- **Issues**: warna hex tanpa Variable, frame tanpa auto layout, shape/gambar bebas, komponen lokal / bagian internal (`_…`) / bukan dari library project, serta konfigurasi yang belum lengkap (module tanpa screen, CRUD tanpa field, frame terhapus, bundle belum diunggah).
+
+Kode: `apps/studio/src/codebuilder/` (`screen.js` pemetaan node → kode & issues, `loader.js` pemuat bundle, `Renderer.jsx`, `Panel.jsx`), `apps/server/src/routes/builder.ts`, `packages/cli/src/bundle.js`.
 
 ## Penyimpanan
 

@@ -4,6 +4,7 @@
 //   midas init <folder> --library <paket>    buat repo paket dari kerangka + Library Kit
 //   midas sync [--version X] [--library P]   timpa src/generated dengan Library Kit versi X (default terbaru)
 //   midas report [--no-upload] [--json]      setelah build: status kode tiap komponen (ready / not_implemented / mismatch)
+//   midas bundle [--no-upload]               setelah build: bundle ESM + CSS untuk Live DOM Renderer di Studio
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -11,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
+import { buildStudioBundle } from './bundle.js';
 
 const GENERATED_DIR = 'src/generated';
 const DEFAULT_SERVER = 'http://127.0.0.1:4000';
@@ -23,6 +25,7 @@ Perintah:
   midas init <folder> --library <@midas/paket> [--version X] [--force]
   midas sync [--version X] [--library <@midas/paket>] [--dir FOLDER]
   midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
+  midas bundle [--dir FOLDER] [--no-upload]
 
 Lingkungan:
   MIDAS_SERVER    URL Midas API (default dari midas.config.json / login)
@@ -278,6 +281,21 @@ async function report(args) {
     return args.strict && (count('mismatch') || count('not_implemented')) ? 1 : 0;
 }
 
+async function bundle(args) {
+    const dir = resolve(args.dir || process.cwd());
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    const { js, css } = await buildStudioBundle(dir);
+    const kb = n => `${Math.round(n / 1024)} KB`;
+    console.log(`Bundle Studio ${pkg.name}@${pkg.version}: index.js ${kb(js.length)}, style.css ${kb(css.length)} (.midas/studio-bundle/)`);
+    if (args['no-upload']) return 0;
+    const repo = readRepoConfig(dir);
+    if (!repo?.libraryId) throw new Error('midas.config.json tidak ada — pakai --no-upload atau jalankan `midas sync`');
+    const { request } = connection(args, repo);
+    const res = await request('PUT', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/bundle`, { js, css });
+    console.log(`Diunggah ke Midas: ${res.bundleUrl}`);
+    return 0;
+}
+
 export async function main(argv) {
     const args = parseArgs(argv);
     const cmd = args._[0];
@@ -290,6 +308,7 @@ export async function main(argv) {
     if (cmd === 'init') return init(args);
     if (cmd === 'sync') return sync(args);
     if (cmd === 'report') return report(args);
+    if (cmd === 'bundle') return bundle(args);
     console.error(`perintah tidak dikenal: ${cmd}\n\n${HELP}`);
     return 1;
 }

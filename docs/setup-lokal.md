@@ -88,6 +88,16 @@ Script ini:
 
 Jalankan ulang tanpa `--create` untuk memperbarui file yang sudah ada (id komponen dipertahankan, versi naik otomatis).
 
+Lalu unggah kode & bundle paket UI supaya status kode **ready** dan Live DOM Renderer di Code Builder bisa memuat komponennya:
+
+```bash
+cd packages/ui-base
+npm run build
+npx midas report
+npm run bundle
+cd ../..
+```
+
 ## 9. Cek hasil
 
 - Studio → **Recents / All files** → buka *Midas Base Design System*.
@@ -112,6 +122,7 @@ Jalankan ulang tanpa `--create` untuk memperbarui file yang sudah ada (id kompon
 ```bash
 npm test --workspace @midas/server
 npm test --workspace @midas/cli
+npm test --workspace @midas/studio
 npm run build --workspace @midas/base-project
 ```
 

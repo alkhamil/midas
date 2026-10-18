@@ -611,8 +611,10 @@ component_mappings   (library_version_id, component_key, component_name, export_
                       code_status: ready | not_implemented | mismatch)
 file_libraries       (file_id, library_id, seq)                       -- library yang di-enable di file + versi yang dipakai
 
-builder_projects     (id, workspace_id, name, library_version_id, config JSONB, version,
-                      created_at, updated_at)
+builder_projects     (id, workspace_id, name, file_id → design_files, library_id → libraries, library_version (semver),
+                      config JSONB, version, created_by, created_at, updated_at)
+                      -- config = { modules: [{ id, name (kebab), label, parentId, permissionKey, pageId,
+                      --            entity: { fields: [...] }, screens: [{ id, frameId, pageId, name, role }] }] }
 ```
 
 Catatan:
@@ -650,7 +652,9 @@ Catatan:
 | | `POST /api/libraries/:id/versions/:version/code` | Laporan `midas report` (token CI): `{ components: [{ exportName, status, detail? }], bundleUrl? }` → status per komponen + versi |
 | | `GET /api/libraries/:id/versions/:version/code` | Status kode per komponen satu versi (Studio) |
 | | `GET/PUT /api/files/:id/libraries` | Library yang dipakai sebuah file desain + versi (`seq`) yang dipakai |
-| Code Builder | `GET/POST /api/builder-projects`, `GET/PUT /api/builder-projects/:id` | Konfigurasi project/module/screen; `PUT` membawa `version` |
+| | `PUT /api/libraries/:id/versions/:version/bundle` | Unggah bundle ESM + CSS untuk Studio (`midas bundle`) → `bundle_url` (dengan hash isi) |
+| | `GET /api/libraries/:id/versions/:version/bundle/index.js\|style.css` | Sajikan bundle (cache `immutable`) |
+| Code Builder | `GET/POST /api/builder-projects`, `GET/PUT/DELETE /api/builder-projects/:id` | Konfigurasi project/module/screen; `GET ?fileId=` per file; `PUT` membawa `version` (409 bila basi) |
 | | `POST /api/builder-projects/:id/push` | (Fase lanjut) push hasil generate ke Git; token Git disimpan di server |
 | State editor | `GET /api/kv?prefix=`, `GET/PUT/DELETE /api/kv/:key` | State editor per user (`user_kv`) |
 | | `GET /api/auth/status`, `POST /api/auth/register` | Cek apakah pendaftaran dibuka; akun pertama selalu boleh daftar |
@@ -658,8 +662,10 @@ Catatan:
 ### 7.5. Library di dalam Midas Studio
 
 Live DOM Renderer (§4.3) dan Preview App (§4.5) butuh komponen library asli di browser:
-- CI menghasilkan juga **bundle ESM** library (+ CSS) per versi, diunggah ke object storage; URL-nya disimpan di `library_versions.bundle_url`.
-- Studio memuat bundle sesuai library + versi yang dipilih Code Builder project (dynamic `import()`). Bundle bersifat immutable per versi sehingga di-cache browser (HTTP cache / Cache Storage) tanpa perlu diunduh ulang.
+- `midas bundle` (di repo paket, setelah `npm run build`) membangun **bundle ESM** + CSS per versi dengan Vite milik repo: semua dependency ikut dibundel **kecuali React** (`react`, `react-dom`, `react/jsx-runtime`). CSS Tailwind paket dikompilasi penuh (`source(none)` + `@source` paket); font yang di-inline dipangkas ke subset latin. Hasil diunggah ke object storage; URL-nya (dengan hash isi) disimpan di `library_versions.bundle_url`.
+- Studio memuat bundle sesuai library + versi Code Builder project: import React di bundle diarahkan ke modul shim yang mengekspor React milik Studio (satu instance, hook & context bekerja), lalu `import()` dari blob URL. Bundle immutable per versi sehingga di-cache browser.
+- Entry bundle juga mengekspor `__midasRuntime` (router data `createMemoryRouter`/`RouterProvider`, `I18nextProvider`, `i18next`) bila paket memakainya, untuk membungkus screen.
+- Komponen yang butuh data di kode (kolom tabel, menu sidebar, handler) mengambil contoh props dari export **`midasPreview`** paket (`{ [exportName]: props }`); props dari desain menimpanya.
 - Manifest props dari versi yang sama dipakai untuk merender kontrol Properties Inspector.
 
 ### 7.6. Autosave & konflik
@@ -693,10 +699,10 @@ Live DOM Renderer (§4.3) dan Preview App (§4.5) butuh komponen library asli di
    - Setup Verdaccio + CI publish library (build, manifest props, bundle ESM untuk Studio).
    - Midas API tahap 1 (§7.8): auth, Postgres + object storage, file desain & aset di server (autosave per page), migrasi dari IndexedDB, Library + versi + nama paket, Component Mapping, status kode per komponen.
    - Base project template (§5.2) yang memakai library lewat `.npmrc`.
-2. **Phase 2 — Midas Shell & Code Builder Workspace**
+2. **Phase 2 — Midas Shell & Code Builder Workspace** ✅
    - ✅ Hapus tab Prototype; tambah menu Code Builder di bawah Plugins.
-   - Bundle ESM library untuk Studio (upload dari CI, dimuat Live DOM Renderer).
-   - Project → Module → Register Frame + role; Live DOM Renderer; Issues panel.
+   - ✅ Bundle ESM library untuk Studio (`midas bundle` → `PUT …/bundle`, dimuat Live DOM Renderer).
+   - ✅ Project → Module → Register Frame + role, entity fields (backend tahap 2: `builder_projects`); Live DOM Renderer (iframe, komponen asli library, klik → pilih layer di canvas); Issues panel (pemetaan §4.6 + konfigurasi project).
 3. **Phase 3 — Properties Inspector & Behavior**
    - Inspector dari manifest props; data binding entity/custom endpoint; behavior (navigate, submit, action); permission per aksi; i18n teks.
    - Preview App (routing + mock).

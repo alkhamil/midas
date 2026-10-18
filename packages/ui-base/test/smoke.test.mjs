@@ -59,3 +59,13 @@ test('Avatar shows an initial and Breadcrumb marks the current page', () => {
     assert.match(html, /href="\/"[^>]*>Beranda<\/a>/);
     assert.match(html, /aria-current="page"[^>]*>User</);
 });
+
+test('every midasPreview entry renders without errors (Live DOM Renderer in Studio)', () => {
+    assert.ok(Object.keys(ui.midasPreview).length >= 15);
+    for (const [name, props] of Object.entries(ui.midasPreview)) {
+        // Dialog (portal) & AppShell (window.matchMedia, data router) hanya bisa dirender di browser.
+        if (name === 'Dialog' || name === 'AppShell') continue;
+        assert.ok(ui[name], `${name} di-export`);
+        assert.doesNotThrow(() => renderToStaticMarkup(h(MemoryRouter, null, h(ui[name], props))), `${name} gagal dirender dengan midasPreview`);
+    }
+});

@@ -3242,9 +3242,9 @@ async function libBoot() {
         lib.index = lib.index.filter(m => keep.includes(m));
     }
     if (!json) {
+        // Tidak ada file yang bisa dibuka: editor memakai dokumen kosong yang belum disimpan. Ia baru masuk Recents &
+        // server saat pertama kali diedit (save() menambahkannya), jadi file yang sudah dihapus tidak "hidup lagi".
         lib.fileId = uid();
-        const now = Date.now();
-        lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     }
     // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
     // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
@@ -3467,14 +3467,43 @@ async function libTrash(id, on) {
     await libSaveIndex();
     renderHome();
 }
+/**
+ * Dipanggil sebelum file dihapus permanen. Bila file yang sedang terbuka ikut dihapus, editor pindah ke file terbaru yang
+ * masih ada, atau ke dokumen kosong yang BELUM disimpan (dibuat di server saat pertama kali diedit). Dulu editor langsung
+ * membuat dan menyimpan "Untitled" pengganti, sehingga setelah Delete/Empty trash ada file baru yang muncul lagi di Recents.
+ */
+async function libLeaveDeleted(ids) {
+    if (!ids.includes(lib.fileId))
+        return;
+    // Jangan sampai autosave file yang akan dihapus (atau dokumen pengganti) berjalan setelah ini.
+    clearTimeout(saveTimer);
+    clearTimeout(retryTimer);
+    state.dirty = false;
+    const next = lib.index.filter(m => !m.trashed && !ids.includes(m.id)).sort((a, b) => (b.opened || 0) - (a.opened || 0))[0];
+    let data = null;
+    if (next) {
+        try {
+            data = await projectStorage.loadProject(next.id);
+        }
+        catch { }
+    }
+    if (data)
+        return loadIntoEditor(data, next.id);
+    await loadIntoEditor(templateData('blank'), uid());
+}
 async function libDelete(id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta || !confirm(`Delete “${meta.name}” permanently? This can't be undone.`))
         return;
-    if (id === lib.fileId)
-        await libNew('blank', { stay: true });
+    await libLeaveDeleted([id]);
+    try {
+        await projectStorage.deleteProject(id);
+    }
+    catch (e) {
+        toast(`Could not delete the file on the server (${e.message}). It was kept.`);
+        return renderHome();
+    }
     lib.index = lib.index.filter(m => m.id !== id);
-    await projectStorage.deleteProject(id);
     await libSaveIndex();
     renderHome();
 }
@@ -3549,7 +3578,17 @@ function ensureHome() {
         else if (t.closest('[data-home-empty-trash]')) {
             const gone = lib.index.filter(m => m.trashed);
             if (gone.length && confirm(`Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`)) {
-                Promise.all(gone.map(m => kvDel('file:' + m.id))).then(() => { lib.index = lib.index.filter(m => !m.trashed); return libSaveIndex(); }).then(renderHome);
+                (async () => {
+                    await libLeaveDeleted(gone.map(m => m.id));
+                    // Hanya yang benar-benar terhapus di server yang dibuang dari daftar; sisanya tetap di Trash.
+                    const results = await Promise.all(gone.map(m => projectStorage.deleteProject(m.id).then(() => m.id, () => null)));
+                    const removed = new Set(results.filter(Boolean));
+                    lib.index = lib.index.filter(m => !removed.has(m.id));
+                    await libSaveIndex();
+                    renderHome();
+                    if (removed.size < gone.length)
+                        toast(`${gone.length - removed.size} file${gone.length - removed.size > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+                })();
             }
         }
         else if (t.closest('[data-home-back]'))
@@ -3631,12 +3670,23 @@ async function bulkDelete() {
     if (inTrash && !confirm(`Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}? This can't be undone.`))
         return;
     if (inTrash) {
+        await libLeaveDeleted(ids);
+        const failed = [];
         for (const id of ids) {
-            if (id === lib.fileId)
-                await libNew('blank', { stay: true });
-            await projectStorage.deleteProject(id);
+            try {
+                await projectStorage.deleteProject(id);
+            }
+            catch {
+                failed.push(id);
+            }
         }
-        lib.index = lib.index.filter(m => !ids.includes(m.id));
+        lib.index = lib.index.filter(m => !ids.includes(m.id) || failed.includes(m.id));
+        if (failed.length) {
+            lib.sel.clear();
+            await libSaveIndex();
+            renderHome();
+            return toast(`${failed.length} file${failed.length > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+        }
     }
     else
         for (const id of ids) {
@@ -6417,7 +6467,8 @@ async function openDB() { return null; }
 
 
 
-function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), 32000000); }
+// Toast singkat: 2,5 dtk, ditambah ±40 ms per huruf di atas 40 karakter (maks. 6 dtk) supaya pesan panjang tetap terbaca.
+function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), Math.min(6000, 2500 + Math.max(0, String(message).length - 40) * 40)); }
 const saved = await libBoot();
 let initial;
 try {
@@ -6577,7 +6628,7 @@ function invalidate() {
 function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
     renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
-    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
 function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
@@ -6776,6 +6827,7 @@ function select(ids, { reveal = true } = {}) {
     renderInspector();
     scrollSelectionIntoView();
     invalidate();
+    notifyBuilder();
 }
 function scrollSelectionIntoView() {
     requestAnimationFrame(() => {
@@ -14268,9 +14320,51 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
-// ===== Code Builder (spec §4): frame → screen → kode. Untuk sekarang hanya panel kosong di rail kiri. =====
+// ===== Code Builder (spec §4): frame → screen → kode. UI-nya modul React terpisah (src/codebuilder/), dipasang
+// sekali ke panel kiri; engine hanya menyediakan jembatan baca dokumen + navigasi canvas.
+const builderBridge = {
+    fileId: () => lib.fileId,
+    fileName: () => doc.data.name,
+    currentPageId: () => doc.page.id,
+    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p) })),
+    /** Semua node file (lintas page), termasuk salinan komponen library. */
+    nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    pageOf: id => pageOfNode(id)?.id ?? null,
+    variables: () => doc.data.variables || { collections: [], items: [] },
+    /** Layer terpilih: { id, name, type, pageId, top } (top = frame teratas di page). */
+    selection: () => [...state.selection].map(id => doc.get(id)).filter(Boolean).map(n => ({ id: n.id, name: n.name, type: n.type, pageId: doc.page.id, top: !n.parentId && n.type === 'frame' })),
+    /** Buka page node, pilih, dan zoom ke node. */
+    reveal(id) {
+        const page = pageOfNode(id);
+        if (!page) return false;
+        if (page.id !== doc.page.id) switchPage(page.id);
+        select([id]);
+        fit([id]);
+        refreshUI();
+        return true;
+    },
+    libraries: async () => {
+        await libsLoad(true);
+        return LIBS.published;
+    },
+};
+let builderMounted = null;
 function renderCodeBuilder() {
-    $('#code-builder-panel').innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">Register frames as screens and generate code — coming soon.</p></div>`;
+    const host = $('#code-builder-panel');
+    builderMounted ??= import('../codebuilder/mount.jsx').then(m => m.mountCodeBuilder(host, builderBridge)).catch(e => {
+        console.error(e);
+        builderMounted = null;
+        host.innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">${esc(e.message || 'Failed to load')}</p></div>`;
+    });
+}
+// Panel Code Builder mendengarkan perubahan dokumen/seleksi (digabung per frame).
+let builderTick = 0;
+function notifyBuilder() {
+    if (!builderMounted || builderTick) return;
+    builderTick = requestAnimationFrame(() => {
+        builderTick = 0;
+        window.dispatchEvent(new CustomEvent('midas:change'));
+    });
 }
 function renderPlugins() {
     const list = loadPlugins();
@@ -16685,11 +16779,11 @@ else
 if (options.canvasColor)
     $('#canvas-world').style.backgroundColor = options.canvasColor;
 if (initial)
-    markPagesSaved(); // everything on disk matches what was just loaded; a fresh starter document still has to be written
+    markPagesSaved(); // everything on disk matches what was just loaded
 refreshUI();
 invalidate();
-if (!initial)
-    saveSoon();
+// Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
+// kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
 window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
