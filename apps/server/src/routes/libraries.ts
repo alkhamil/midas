@@ -192,7 +192,7 @@ export async function libraryRoutes(app: FastifyInstance) {
             return reply.code(400).send({ error: 'invalid', message: body.error.issues[0].message });
         const f = await sourceFile(req, req.params.id);
         if (!f)
-            return reply.code(404).send({ error: 'not_found', message: 'File sumber tidak ditemukan' });
+            return reply.code(404).send({ error: 'not_found', message: 'Source file not found' });
         const l = await libraryOf(req, f.id);
         const latest = l ? await latestVersion(l.id) : null;
         const previous = latest ? await mappingsOf(latest.id) : [];
@@ -217,8 +217,8 @@ export async function libraryRoutes(app: FastifyInstance) {
     app.get<{ Querystring: { name?: string; library?: string } }>('/api/libraries/package-available', async req => {
         const name = req.query.name ?? '';
         if (!PACKAGE_NAME_RE.test(name))
-            return { available: false, reason: 'Format nama paket: @midas/nama-paket (huruf kecil, angka, tanda minus)' };
-        return (await packageTaken(name, req.query.library)) ? { available: false, reason: 'Nama paket sudah dipakai library lain' } : { available: true };
+            return { available: false, reason: 'Package name format: @midas/package-name (lowercase letters, digits, hyphens)' };
+        return (await packageTaken(name, req.query.library)) ? { available: false, reason: 'Package name is already used by another library' } : { available: true };
     });
 
     // Publish Library: versi baru dari file design system.
@@ -236,40 +236,40 @@ export async function libraryRoutes(app: FastifyInstance) {
         const b = body.data;
         const f = await sourceFile(req, req.params.id);
         if (!f)
-            return reply.code(404).send({ error: 'not_found', message: 'File sumber tidak ditemukan' });
+            return reply.code(404).send({ error: 'not_found', message: 'Source file not found' });
         const l = await libraryOf(req, f.id);
         const errors: string[] = [];
         if (l && b.packageName !== l.packageName)
-            errors.push(`Nama paket sudah terkunci sebagai ${l.packageName}`);
+            errors.push(`Package name is locked to ${l.packageName}`);
         if (!l && !PACKAGE_NAME_RE.test(b.packageName))
-            errors.push('Format nama paket: @midas/nama-paket (huruf kecil, angka, tanda minus)');
+            errors.push('Package name format: @midas/package-name (lowercase letters, digits, hyphens)');
         if (!l && PACKAGE_NAME_RE.test(b.packageName) && await packageTaken(b.packageName))
-            return reply.code(409).send({ error: 'package_taken', message: 'Nama paket sudah dipakai library lain', errors: ['Nama paket sudah dipakai library lain'] });
+            return reply.code(409).send({ error: 'package_taken', message: 'Package name is already used by another library', errors: ['Package name is already used by another library'] });
         if (!SEMVER_RE.test(b.version))
-            errors.push('Versi harus berformat semver, mis. 1.2.0');
+            errors.push('Version must be semver, e.g. 1.2.0');
         const snapshotIds = new Set(b.snapshot.components.map(c => c.id));
         const mappings = b.mappings as ComponentMapping[];
         const iconKeys = iconKeysOf(b.snapshot as LibrarySnapshot);
         if (!mappings.length && !(b.snapshot.variables.items?.length) && !iconKeys.size)
-            errors.push('Pilih minimal satu komponen, atau buat Variables / ikon dulu');
+            errors.push('Select at least one component, or create Variables / icons first');
         for (const m of mappings) {
             if (!snapshotIds.has(m.componentKey))
-                errors.push(`Komponen ${m.componentName} tidak ada di snapshot`);
+                errors.push(`Component ${m.componentName} is not in the snapshot`);
             if (iconKeys.has(m.componentKey))
-                errors.push(`${m.componentName} tidak bisa sekaligus menjadi ikon dan komponen`);
+                errors.push(`${m.componentName} cannot be both an icon and a component`);
         }
         for (const i of b.snapshot.icons ?? [])
             if (!snapshotIds.has(i.componentKey))
-                errors.push(`Ikon ${i.name} tidak ada di snapshot`);
+                errors.push(`Icon ${i.name} is not in the snapshot`);
         errors.push(...validateMappings(mappings));
         const latest = l ? await latestVersion(l.id) : null;
         const previous = latest ? await mappingsOf(latest.id) : [];
         const breaking = [...breakingChanges(previous, mappings), ...(latest ? kitBreakingChanges(latest.manifest, b.snapshot as LibrarySnapshot) : [])];
         if (latest && SEMVER_RE.test(b.version)) {
             if (compareSemver(b.version, latest.version) <= 0)
-                errors.push(`Versi harus lebih besar dari versi terakhir (${latest.version})`);
+                errors.push(`Version must be greater than the latest version (${latest.version})`);
             else if (breaking.length && compareSemver(b.version, bumpSemver(latest.version, 'major')) < 0)
-                errors.push(`Ada breaking change, versi minimal ${bumpSemver(latest.version, 'major')}`);
+                errors.push(`There are breaking changes; the minimum version is ${bumpSemver(latest.version, 'major')}`);
         }
         if (errors.length)
             return reply.code(400).send({ error: 'invalid', message: errors[0], errors, breaking });
@@ -304,11 +304,11 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = await libraryOf(req, req.params.id);
         const v = l ? await versionOf(l.id, req.params.version) : null;
         if (!l || !v)
-            return reply.code(404).send({ error: 'not_found', message: `Versi ${req.params.version} belum dipublish di Midas` });
+            return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
         const reported = new Map(body.data.components.map(c => [c.exportName, c]));
         const mappings = await db.select().from(componentMappings).where(eq(componentMappings.libraryVersionId, v.id));
         // Komponen di desain yang tidak ada di laporan dianggap belum diimplementasikan.
-        const statuses = mappings.map(m => reported.get(m.exportName) ?? { exportName: m.exportName, status: 'not_implemented' as const, detail: 'tidak ada di laporan' });
+        const statuses = mappings.map(m => reported.get(m.exportName) ?? { exportName: m.exportName, status: 'not_implemented' as const, detail: 'not in the report' });
         const codeStatus = !statuses.length || statuses.every(c => c.status === 'ready') ? 'ready' : 'partial';
         await db.transaction(async tx => {
             for (const m of mappings) {
@@ -332,7 +332,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = await libraryOf(req, req.params.id);
         const v = l ? await versionOf(l.id, req.params.version) : null;
         if (!l || !v)
-            return reply.code(404).send({ error: 'not_found', message: `Versi ${req.params.version} belum dipublish di Midas` });
+            return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
         await putObject(bundleKey(l.id, v.version, 'index.js'), Buffer.from(body.data.js), 'text/javascript');
         await putObject(bundleKey(l.id, v.version, 'style.css'), Buffer.from(body.data.css), 'text/css');
         // Hash isi di URL: unggah ulang versi yang sama (mis. perbaikan bundle) tidak terhalang cache immutable browser.
@@ -348,7 +348,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = type ? await libraryOf(req, req.params.id) : null;
         const v = l ? await versionOf(l.id, req.params.version) : null;
         if (!l || !v?.bundleUrl)
-            return reply.code(404).send({ error: 'not_found', message: 'Bundle belum diunggah (jalankan `midas bundle` di repo paket)' });
+            return reply.code(404).send({ error: 'not_found', message: 'Bundle not uploaded yet (run `midas bundle` in the package repo)' });
         try {
             const data = await getObject(bundleKey(l.id, v.version, req.params.file));
             // Versi library immutable → bundle boleh di-cache selamanya oleh browser.
@@ -379,7 +379,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const [l] = await db.select().from(libraries)
             .where(and(eq(libraries.packageName, req.query.package ?? ''), eq(libraries.workspaceId, req.user!.workspaceId))).limit(1);
         if (!l)
-            return reply.code(404).send({ error: 'not_found', message: `Library ${req.query.package} tidak ditemukan di workspace ini` });
+            return reply.code(404).send({ error: 'not_found', message: `Library ${req.query.package} not found in this workspace` });
         const v = await latestVersion(l.id);
         return { id: l.id, name: l.name, packageName: l.packageName, latest: v?.version ?? null };
     });
@@ -389,7 +389,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = await libraryOf(req, req.params.id);
         const v = l ? await versionOf(l.id, req.query.version) : null;
         if (!l || !v)
-            return reply.code(404).send({ error: 'not_found', message: req.query.version ? `Versi ${req.query.version} tidak ditemukan` : 'Library tidak ditemukan' });
+            return reply.code(404).send({ error: 'not_found', message: req.query.version ? `Version ${req.query.version} not found` : 'Library not found' });
         return { libraryId: l.id, package: l.packageName, version: v.version, files: buildKit(await kitInput(l, v)) };
     });
 
@@ -398,7 +398,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const l = await libraryOf(req, req.params.id);
         const v = l ? await versionOf(l.id, req.query.version) : null;
         if (!l || !v)
-            return reply.code(404).send({ error: 'not_found', message: 'Library tidak ditemukan' });
+            return reply.code(404).send({ error: 'not_found', message: 'Library not found' });
         const files = buildScaffold({ ...(await kitInput(l, v)), libraryId: l.id, serverUrl: config.publicUrl, registryUrl: config.registryUrl });
         if (req.query.format !== 'zip')
             return { libraryId: l.id, package: l.packageName, version: v.version, files };
@@ -461,7 +461,7 @@ export async function libraryRoutes(app: FastifyInstance) {
             await storeVersion({
                 libraryId: s.id, workspaceId: req.user!.workspaceId, userId: req.user!.id, name: s.name || f.name,
                 packageName: await uniquePackageName(`@midas/ui-${packageSlug(s.name || f.name)}`), isNew: true,
-                seq: s.version, version: '1.0.0', releaseNotes: 'Dipindahkan dari penyimpanan lama', snapshot, mappings: deriveMappings(snapshot),
+                seq: s.version, version: '1.0.0', releaseNotes: 'Migrated from legacy storage', snapshot, mappings: deriveMappings(snapshot),
             });
             imported.push(s.id);
         }

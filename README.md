@@ -76,6 +76,10 @@ Rail **Code Builder** di Studio (spec §4): buat project untuk file desain yang 
 - **Relasi**: field bertipe `relation` memilih **module tujuan** + **field label**. Memilih SelectField → *Sumber opsi* = pilihan tetap atau relasi ke module lain; opsi select dan label kolom tabel diambil dari query module tujuan (`use<Target>List`). Nilai yang tersimpan adalah id baris.
 - **Issues**: warna hex tanpa Variable, frame tanpa auto layout, shape/gambar bebas, komponen lokal / bagian internal (`_…`) / bukan dari library project, serta konfigurasi yang belum lengkap (module tanpa screen, CRUD tanpa field, frame terhapus, bundle belum diunggah).
 
+- **Preview app** (tombol ▶ di header): preview live yang bisa diklik dan meniru app hasil generate — sidebar, breadcrumb, tombol, pencarian, **filter**, pagination, **form dengan validasi** (aturan & pesan sama dengan app), simpan/ubah/hapus/**restore** baris contoh, dialog konfirmasi, dan penjaga perubahan belum tersimpan. Tidak ada yang disimpan.
+- **Dialog konfirmasi dari desain**: daftarkan frame berisi komponen `Dialog` sebagai screen role **Dialog** (untuk *Delete*, *Restore*, *Discard changes*). Judul, pesan, dan label tombolnya dipakai app (list: konfirmasi hapus/restore; form: konfirmasi keluar saat ada perubahan). Tanpa frame dialog, teks default dipakai. Tabel punya *soft delete* (baris bisa di-restore) dan filter dialog dari field entity yang `filterable`.
+- **Form layout**: field form berada di grid 12 kolom (lebar ikut baris desain, bisa diubah per field) dan memakai `FormGroup`/`FormItem` base project: label di atas atau di samping (lebar label, align, tooltip) dari tab **Layout** inspector.
+
 ### Mengambil source code (untuk developer)
 
 Tombol **Generate kode…** (panel Code Builder atau bar workspace) menampilkan dua cara:
@@ -132,7 +136,7 @@ Design system "CMS" (karakter tegas, rapi, fokus pada data; sidebar gelap, aksen
 | File | Isi |
 | --- | --- |
 | `tokens.mjs` | Variables: Color (Light/Dark, termasuk `sidebar`), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
-| `components.mjs` | 18 komponen (Button, IconButton, Badge, Avatar, Alert, Card, StatCard, TextField, TextAreaField, PasswordField, SelectField, SwitchField, Dialog, Table, Sidebar, PageHeader, FilterToolbar, AppShell) + bagian internal `_SidebarItem`, dengan variant, component property, dan state |
+| `components.mjs` | 19 komponen (Button, IconButton, Badge, Avatar, Alert, Card, StatCard, TextField, TextAreaField, PasswordField, SelectField, SwitchField, Dialog, Table, Sidebar, Topbar, SectionHeader, FilterToolbar, AppShell) + bagian internal `_SidebarItem`, dengan variant, component property, dan state |
 | `icons.mjs` | 27 ikon outline (garis 1,5 px) yang digambar di kotak 24 × 24 |
 | `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
 | `document.mjs` | Page Cover, Foundations, Icons, dan satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout) |

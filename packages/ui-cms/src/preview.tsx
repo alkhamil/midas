@@ -8,9 +8,9 @@ import type { NavItem } from './components/Sidebar/Sidebar';
 
 const noop = () => {};
 const users = [
-  { id: 1, name: 'Budi Santoso', email: 'budi@contoh.id', role: 'Administrator', status: 'Aktif' },
-  { id: 2, name: 'Ani Wijaya', email: 'ani@contoh.id', role: 'Editor', status: 'Aktif' },
-  { id: 3, name: 'Citra Lestari', email: 'citra@contoh.id', role: 'Viewer', status: 'Nonaktif' },
+  { id: 1, name: 'John Smith', email: 'john@example.com', role: 'Administrator', status: 'Active' },
+  { id: 2, name: 'Anna Johnson', email: 'anna@example.com', role: 'Editor', status: 'Active' },
+  { id: 3, name: 'Carlos Rivera', email: 'carlos@example.com', role: 'Viewer', status: 'Inactive' },
 ];
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: <WidgetIcon className="h-5 w-5" /> },
@@ -26,10 +26,10 @@ const options = [
 export const midasPreview: Record<string, Record<string, unknown>> = {
   Table: {
     columns: [
-      { key: 'name', header: 'Nama' },
+      { key: 'name', header: 'Name' },
       { key: 'email', header: 'Email' },
       { key: 'role', header: 'Role', width: 160 },
-      { key: 'status', header: 'Status', width: 120, render: (u: (typeof users)[number]) => <Badge variant={u.status === 'Aktif' ? 'success' : 'neutral'}>{u.status}</Badge> },
+      { key: 'status', header: 'Status', width: 120, render: (u: (typeof users)[number]) => <Badge variant={u.status === 'Active' ? 'success' : 'neutral'}>{u.status}</Badge> },
     ],
     data: users,
     rowKey: (u: (typeof users)[number]) => u.id,
@@ -46,10 +46,11 @@ export const midasPreview: Record<string, Record<string, unknown>> = {
     ),
   },
   Sidebar: { items: navItems, activePath: '/', appName: 'CMS Admin', onToggle: noop },
-  AppShell: { navItems, activePath: '/', user: { name: 'Administrator', roleName: 'admin' }, title: 'Dashboard', appName: 'CMS Admin' },
+  AppShell: { navItems, activePath: '/', user: { name: 'Administrator', roleName: 'admin' }, title: 'Dashboard', breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Dashboard' }], appName: 'CMS Admin' },
+  Topbar: { breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'User' }] },
   SelectField: { options },
   FilterToolbar: { searchValue: '', onSearchChange: noop, onFilterClick: noop },
-  Dialog: { open: true, onClose: noop, children: 'Data yang dihapus tidak dapat dikembalikan.' },
-  Card: { children: 'Isi card: tabel, form, atau detail.' },
-  StatCard: { label: 'Total user', value: '1.248', caption: '12% dari bulan lalu' },
+  Dialog: { open: true, onClose: noop, children: 'Deleted data cannot be restored.' },
+  Card: { children: 'Card content: a table, form, or detail view.' },
+  StatCard: { label: 'Total user', value: '1.248', caption: '12% vs last month' },
 };

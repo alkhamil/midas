@@ -33,7 +33,7 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(fu
           type="button"
           tabIndex={-1}
           disabled={disabled}
-          aria-label={visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+          aria-label={visible ? 'Hide password' : 'Show password'}
           onClick={() => setVisible(v => !v)}
           className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
         >

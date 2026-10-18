@@ -1,4 +1,4 @@
-// Foundations design system "CMS" — karakter: tegas, rapi, fokus pada data.
+// Foundations of the "CMS" design system — character: firm, tidy, focused on data.
 // Sidebar gelap (slate) memisahkan navigasi dari konten; satu aksen indigo; warna status hanya untuk makna.
 // Kontras teks ≥ 4.5:1 di kedua tema.
 
@@ -25,20 +25,20 @@ export const COLORS = {
 
 /** Penjelasan pemakaian tiap warna (tampil di page Foundations & deskripsi Variable). */
 export const COLOR_NOTES = {
-    primary: 'Aksi utama, link, fokus, item menu aktif',
-    'primary-foreground': 'Teks/ikon di atas primary',
-    success: 'Berhasil, aktif',
-    warning: 'Perlu perhatian',
-    danger: 'Hapus, gagal, error',
-    info: 'Informasi',
-    background: 'Latar card, dialog, input',
-    surface: 'Latar halaman',
-    muted: 'Latar hover, header tabel, chip',
-    border: 'Garis & pembatas',
-    foreground: 'Teks utama',
-    'muted-foreground': 'Teks sekunder, placeholder',
-    sidebar: 'Latar sidebar',
-    'sidebar-foreground': 'Teks & ikon menu di sidebar',
+    primary: 'Main actions, links, focus, active menu items',
+    'primary-foreground': 'Text/icons on top of primary',
+    success: 'Success, active',
+    warning: 'Needs attention',
+    danger: 'Delete, failed, error',
+    info: 'Information',
+    background: 'Card, dialog, and input background',
+    surface: 'Page background',
+    muted: 'Hover, table header, and chip background',
+    border: 'Lines and dividers',
+    foreground: 'Primary text',
+    'muted-foreground': 'Secondary text, placeholder',
+    sidebar: 'Sidebar background',
+    'sidebar-foreground': 'Menu text and icons in the sidebar',
 };
 
 /** Radius (px). lg = kontrol (button, input, card); xl = dialog. */
@@ -57,17 +57,17 @@ export const FONT_FAMILY = 'Inter';
 
 /** Skala tipografi (ukuran px / line-height px / weight). Selaras dengan kelas Tailwind di komponen. */
 export const TYPE_SCALE = [
-    { name: 'Display', size: 30, line: 36, weight: 600, use: 'Angka besar di StatCard' },
-    { name: 'Heading 1', size: 24, line: 32, weight: 600, use: 'Judul halaman (text-2xl)' },
-    { name: 'Heading 2', size: 18, line: 28, weight: 600, use: 'Judul card & dialog (text-lg)' },
-    { name: 'Body', size: 14, line: 20, weight: 400, use: 'Teks utama, isi tabel (text-sm)' },
-    { name: 'Body Medium', size: 14, line: 20, weight: 500, use: 'Label tombol & field' },
-    { name: 'Small', size: 12, line: 16, weight: 400, use: 'Keterangan, badge, error (text-xs)' },
+    { name: 'Display', size: 30, line: 36, weight: 600, use: 'Large number in StatCard' },
+    { name: 'Heading 1', size: 24, line: 32, weight: 600, use: 'Page title (text-2xl)' },
+    { name: 'Heading 2', size: 18, line: 28, weight: 600, use: 'Card and dialog title (text-lg)' },
+    { name: 'Body', size: 14, line: 20, weight: 400, use: 'Body text, table cells (text-sm)' },
+    { name: 'Body Medium', size: 14, line: 20, weight: 500, use: 'Button and field labels' },
+    { name: 'Small', size: 12, line: 16, weight: 400, use: 'Captions, badges, errors (text-xs)' },
 ];
 
 /** Elevasi (bayangan) — hanya untuk elemen yang mengambang di atas halaman. */
 export const ELEVATION = [
-    { name: 'Level 0', use: 'Card di halaman (hanya border)', shadow: null },
+    { name: 'Level 0', use: 'Card on the page (border only)', shadow: null },
     { name: 'Level 1', use: 'Dropdown, popover', shadow: { x: 0, y: 4, blur: 12, opacity: 0.08 } },
     { name: 'Level 2', use: 'Dialog', shadow: { x: 0, y: 12, blur: 32, opacity: 0.16 } },
 ];

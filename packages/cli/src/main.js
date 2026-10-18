@@ -1,11 +1,11 @@
-// midas — CLI untuk repo paket design system (spec §3.3–§3.4).
-//   midas login [--server URL] [--email E]   simpan token akses di ~/.midas/config.json
-//   midas whoami                             tampilkan akun yang dipakai
-//   midas init <folder> --library <paket>    buat repo paket dari kerangka + Library Kit
-//   midas sync [--version X] [--library P]   timpa src/generated dengan Library Kit versi X (default terbaru)
-//   midas report [--no-upload] [--json]      setelah build: status kode tiap komponen (ready / not_implemented / mismatch)
-//   midas bundle [--no-upload]               setelah build: bundle ESM + CSS untuk Live DOM Renderer di Studio
-//   midas generate [project] [--out DIR]     ambil kode hasil Code Builder (module, route, menu) ke repo aplikasi
+// midas — CLI for design system package repos and Code Builder apps (spec §3.3–§3.4).
+//   midas login [--server URL] [--email E]   store the access token in ~/.midas/config.json
+//   midas whoami                             show the account in use
+//   midas init <folder> --library <paket>    create a package repo from the scaffold + Library Kit
+//   midas sync [--version X] [--library P]   overwrite src/generated with the Library Kit of version X (default: latest)
+//   midas report [--no-upload] [--json]      after build: code status of each component (ready / not_implemented / mismatch)
+//   midas bundle [--no-upload]               after build: ESM + CSS bundle for the Studio Live DOM Renderer
+//   midas generate [project] [--out DIR]     pull Code Builder output (modules, routes, menu) into an app repo
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -19,21 +19,21 @@ import { generateFromServer, listProjects } from './generate.js';
 const GENERATED_DIR = 'src/generated';
 const DEFAULT_SERVER = 'http://127.0.0.1:4000';
 
-const HELP = `midas — CLI design system Midas
+const HELP = `midas — Midas design system CLI
 
-Perintah:
+Commands:
   midas login [--server URL] [--email EMAIL]
   midas whoami
-  midas init <folder> --library <@midas/paket> [--version X] [--force]
-  midas sync [--version X] [--library <@midas/paket>] [--dir FOLDER]
+  midas init <folder> --library <@midas/package> [--version X] [--force]
+  midas sync [--version X] [--library <@midas/package>] [--dir FOLDER]
   midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
   midas bundle [--dir FOLDER] [--no-upload]
   midas generate [<project>] [--out FOLDER] [--list] [--dry-run]
 
-Lingkungan:
-  MIDAS_SERVER    URL Midas API (default dari midas.config.json / login)
-  MIDAS_TOKEN     token akses (untuk CI), menggantikan token dari login
-  MIDAS_PASSWORD  password untuk \`midas login\` tanpa prompt
+Environment:
+  MIDAS_SERVER    Midas API URL (default from midas.config.json / login)
+  MIDAS_TOKEN     access token (for CI), replaces the token from login
+  MIDAS_PASSWORD  password for \`midas login\` without a prompt
 `;
 
 export function parseArgs(argv) {
@@ -84,7 +84,7 @@ export function client(server, token) {
                 body: body ? JSON.stringify(body) : undefined,
             });
         } catch (e) {
-            throw new Error(`tidak bisa terhubung ke ${base} (${e.cause?.code || e.message})`);
+            throw new Error(`cannot connect to ${base} (${e.cause?.code || e.message})`);
         }
         const text = await res.text();
         let data = null;
@@ -93,10 +93,10 @@ export function client(server, token) {
         } catch {
             data = { message: text };
         }
-        // Login gagal: tampilkan pesan server ("Email atau password salah"), bukan saran login ulang.
+        // Login gagal: tampilkan pesan server ("Wrong email or password"), bukan saran login ulang.
         if (res.status === 401 && data?.error === 'invalid_credentials') throw new Error(data.message);
-        if (res.status === 401) throw new Error('belum login atau token kedaluwarsa — jalankan `midas login`');
-        if (!res.ok) throw new Error(data?.message || `request gagal (${res.status})`);
+        if (res.status === 401) throw new Error('not signed in or the token has expired — run `midas login`');
+        if (!res.ok) throw new Error(data?.message || `request failed (${res.status})`);
         return data;
     };
 }
@@ -125,7 +125,7 @@ export function writeFiles(root, files) {
     const base = resolve(root);
     for (const [rel, content] of Object.entries(files)) {
         const target = resolve(base, rel);
-        if (target !== base && !target.startsWith(base + sep)) throw new Error(`path tidak valid dari server: ${rel}`);
+        if (target !== base && !target.startsWith(base + sep)) throw new Error(`invalid path from the server: ${rel}`);
         mkdirSync(dirname(target), { recursive: true });
         writeFileSync(target, content);
     }
@@ -138,7 +138,7 @@ async function login(args) {
     const { token, expiresAt } = await client(server)('POST', '/api/auth/tokens', { email, password });
     writeUserConfig({ ...readUserConfig(), server, token });
     const me = await client(server, token)('GET', '/api/auth/me');
-    console.log(`Login sebagai ${me.user.name} <${me.user.email}> di ${server} (token berlaku sampai ${new Date(expiresAt).toLocaleDateString()}).`);
+    console.log(`Signed in as ${me.user.name} <${me.user.email}> at ${server} (token valid until ${new Date(expiresAt).toLocaleDateString()}).`);
 }
 
 async function whoami(args) {
@@ -153,17 +153,17 @@ async function resolveLibrary(request, pkg) {
 
 async function init(args) {
     const dir = args._[1];
-    if (!dir || !args.library) throw new Error('pakai: midas init <folder> --library <@midas/paket> [--version X]');
+    if (!dir || !args.library) throw new Error('usage: midas init <folder> --library <@midas/package> [--version X]');
     const target = resolve(dir);
     if (existsSync(target) && readdirSync(target).length && !args.force)
-        throw new Error(`folder ${dir} tidak kosong (pakai --force untuk menimpa)`);
+        throw new Error(`folder ${dir} is not empty (use --force to overwrite)`);
     const { request } = connection(args, null);
     const lib = await resolveLibrary(request, args.library);
     const q = args.version ? `?version=${encodeURIComponent(args.version)}` : '';
     const res = await request('GET', `/api/libraries/${encodeURIComponent(lib.id)}/scaffold${q}`);
     writeFiles(target, res.files);
-    console.log(`Repo ${res.package}@${res.version} dibuat di ${dir} (${Object.keys(res.files).length} file).`);
-    console.log(`Berikutnya: cd ${dir} && npm install, lalu implementasikan komponen di src/components/.`);
+    console.log(`Repo ${res.package}@${res.version} created in ${dir} (${Object.keys(res.files).length} files).`);
+    console.log(`Next: cd ${dir} && npm install, then implement the components in src/components/.`);
 }
 
 async function sync(args) {
@@ -175,7 +175,7 @@ async function sync(args) {
     let libraryId = repo?.libraryId;
     const wanted = args.library || repo?.package || pkg?.name;
     if (args.library || !libraryId) {
-        if (!wanted) throw new Error('tidak ada midas.config.json — pakai --library <@midas/paket>');
+        if (!wanted) throw new Error('midas.config.json not found — use --library <@midas/package>');
         libraryId = (await resolveLibrary(request, wanted)).id;
     }
     const q = args.version ? `?version=${encodeURIComponent(args.version)}` : '';
@@ -188,9 +188,9 @@ async function sync(args) {
     }
     if (!repo) writeFiles(dir, { 'midas.config.json': JSON.stringify({ server: connection(args, null).server, libraryId, package: kit.package }, null, 2) + '\n' });
     const manifest = JSON.parse(kit.files[`${GENERATED_DIR}/manifest.json`]);
-    console.log(`Library Kit ${kit.package}@${kit.version} ditulis ke ${GENERATED_DIR}/ (${manifest.components.length} komponen, ${manifest.tokens.length} token).`);
-    console.log('Setelah build, jalankan `midas report` untuk melihat komponen yang belum diimplementasikan atau props-nya belum sesuai desain.');
-    for (const w of manifest.warnings) console.log(`Peringatan: ${w}`);
+    console.log(`Library Kit ${kit.package}@${kit.version} written to ${GENERATED_DIR}/ (${manifest.components.length} components, ${manifest.tokens.length} tokens).`);
+    console.log('After building, run `midas report` to see components that are not implemented yet or whose props do not match the design.');
+    for (const w of manifest.warnings) console.log(`Warning: ${w}`);
 }
 
 // ---------------------------------------------------------------- report
@@ -202,7 +202,7 @@ const CHECK_DIR = '.midas';
  */
 export function contractCheckSource(names) {
     const lines = names.map(n => `export const ${n}_contract: Expect<Mismatched<D.${n}Props, PropsOf<typeof Lib.${n}>>> = true;`);
-    return `// Dibuat oleh \`midas report\` — boleh dihapus.
+    return `// Created by \`midas report\` — safe to delete.
 import type { JSXElementConstructor } from 'react';
 import type * as Lib from '../src/index';
 import type * as D from '../src/generated/props';
@@ -252,9 +252,9 @@ function contractMismatches(dir, names) {
 async function report(args) {
     const dir = resolve(args.dir || process.cwd());
     const manifestFile = join(dir, GENERATED_DIR, 'manifest.json');
-    if (!existsSync(manifestFile)) throw new Error('src/generated/manifest.json tidak ada — jalankan `midas sync` dulu');
+    if (!existsSync(manifestFile)) throw new Error('src/generated/manifest.json not found — run `midas sync` first');
     const dist = join(dir, 'dist/index.js');
-    if (!existsSync(dist)) throw new Error('dist/index.js tidak ada — jalankan `npm run build` dulu');
+    if (!existsSync(dist)) throw new Error('dist/index.js not found — run `npm run build` first');
     const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
     const lib = await import(pathToFileURL(dist).href);
@@ -262,24 +262,24 @@ async function report(args) {
     const mismatches = exported.length ? contractMismatches(dir, exported) : {};
     const components = manifest.components.map(c => {
         const value = lib[c.exportName];
-        if (value == null) return { exportName: c.exportName, status: 'not_implemented', detail: 'tidak di-export dari src/index.ts' };
+        if (value == null) return { exportName: c.exportName, status: 'not_implemented', detail: 'not exported from src/index.ts' };
         if (value.midasStub) return { exportName: c.exportName, status: 'not_implemented', detail: 'masih kerangka (midasStub)' };
         const bad = mismatches?.[c.exportName];
-        if (bad?.length) return { exportName: c.exportName, status: 'mismatch', detail: `props tidak sesuai desain: ${bad.join(', ')}` };
+        if (bad?.length) return { exportName: c.exportName, status: 'mismatch', detail: `props do not match the design: ${bad.join(', ')}` };
         return { exportName: c.exportName, status: 'ready' };
     });
     const count = s => components.filter(c => c.status === s).length;
     if (args.json) console.log(JSON.stringify({ package: pkg.name, version: pkg.version, components }, null, 2));
     else {
         for (const c of components) console.log(`${{ ready: '✓', not_implemented: '·', mismatch: '✗' }[c.status]} ${c.exportName.padEnd(24)} ${c.status}${c.detail ? ` — ${c.detail}` : ''}`);
-        console.log(`\n${pkg.name}@${pkg.version}: ${count('ready')} ready, ${count('not_implemented')} not implemented, ${count('mismatch')} mismatch${mismatches === null ? ' (cek kontrak dilewati: typescript tidak terpasang)' : ''}`);
+        console.log(`\n${pkg.name}@${pkg.version}: ${count('ready')} ready, ${count('not_implemented')} not implemented, ${count('mismatch')} mismatch${mismatches === null ? ' (contract check skipped: typescript is not installed)' : ''}`);
     }
     if (!args['no-upload']) {
         const repo = readRepoConfig(dir);
-        if (!repo?.libraryId) throw new Error('midas.config.json tidak ada — pakai --no-upload atau jalankan `midas sync`');
+        if (!repo?.libraryId) throw new Error('midas.config.json not found — use --no-upload or run `midas sync`');
         const { request } = connection(args, repo);
         const res = await request('POST', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/code`, { components });
-        if (!args.json) console.log(`Status dikirim ke Midas: kode ${res.codeStatus}.`);
+        if (!args.json) console.log(`Status sent to Midas: code ${res.codeStatus}.`);
     }
     return args.strict && (count('mismatch') || count('not_implemented')) ? 1 : 0;
 }
@@ -289,13 +289,13 @@ async function bundle(args) {
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
     const { js, css } = await buildStudioBundle(dir);
     const kb = n => `${Math.round(n / 1024)} KB`;
-    console.log(`Bundle Studio ${pkg.name}@${pkg.version}: index.js ${kb(js.length)}, style.css ${kb(css.length)} (.midas/studio-bundle/)`);
+    console.log(`Studio bundle ${pkg.name}@${pkg.version}: index.js ${kb(js.length)}, style.css ${kb(css.length)} (.midas/studio-bundle/)`);
     if (args['no-upload']) return 0;
     const repo = readRepoConfig(dir);
-    if (!repo?.libraryId) throw new Error('midas.config.json tidak ada — pakai --no-upload atau jalankan `midas sync`');
+    if (!repo?.libraryId) throw new Error('midas.config.json not found — use --no-upload or run `midas sync`');
     const { request } = connection(args, repo);
     const res = await request('PUT', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/bundle`, { js, css });
-    console.log(`Diunggah ke Midas: ${res.bundleUrl}`);
+    console.log(`Uploaded to Midas: ${res.bundleUrl}`);
     return 0;
 }
 
@@ -320,6 +320,6 @@ export async function main(argv) {
     if (cmd === 'report') return report(args);
     if (cmd === 'bundle') return bundle(args);
     if (cmd === 'generate') return generate(args);
-    console.error(`perintah tidak dikenal: ${cmd}\n\n${HELP}`);
+    console.error(`unknown command: ${cmd}\n\n${HELP}`);
     return 1;
 }

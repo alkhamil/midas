@@ -1,8 +1,10 @@
-// Konfigurasi Code Builder project (spec §4.1–4.2): module (folder di src/modules/), entity (untuk CRUD),
+// Code Builder project configuration (spec §4.1–4.2): modules (folders in src/modules/), entities (for CRUD),
 // dan screen = frame di file desain yang didaftarkan dengan role tertentu.
 import { z } from 'zod';
 
-export const SCREEN_ROLES = ['list', 'create', 'edit', 'view', 'custom'] as const;
+export const SCREEN_ROLES = ['list', 'create', 'edit', 'view', 'custom', 'dialog'] as const;
+/** What a `dialog` screen is used for (its Dialog component supplies the title, message and button labels). */
+export const DIALOG_PURPOSES = ['delete', 'restore', 'discard'] as const;
 export const CRUD_ROLES = ['list', 'create', 'edit', 'view'] as const;
 export const FIELD_TYPES = ['string', 'text', 'number', 'boolean', 'date', 'datetime', 'enum', 'relation', 'password'] as const;
 
@@ -11,7 +13,7 @@ const FIELD_NAME_RE = /^[a-z][A-Za-z0-9]*$/;
 const PERMISSION_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*$/;
 
 const fieldShape = z.object({
-    name: z.string().regex(FIELD_NAME_RE, 'Nama field harus camelCase, mis. `fullName`'),
+    name: z.string().regex(FIELD_NAME_RE, 'Field name must be camelCase, e.g. `fullName`'),
     label: z.string().max(120).optional(),
     type: z.enum(FIELD_TYPES),
     required: z.boolean().default(false),
@@ -36,11 +38,27 @@ const nodeConfigShape = z.object({
     field: z.string().optional(),
     /** Perilaku tombol. */
     action: z.object({ type: z.enum(['none', 'navigate', 'submit', 'back']), screenId: z.string().optional() }).optional(),
-    /** Konfigurasi tabel list. */
+    /** Table configuration (list screens). */
     table: z.object({
         columns: z.array(z.string()).optional(),
-        rowActions: z.array(z.enum(['view', 'edit', 'delete'])).optional(),
+        rowActions: z.array(z.enum(['view', 'edit', 'delete', 'restore'])).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
+        headers: z.record(z.string(), z.string().max(80)).optional(),
+        widths: z.record(z.string(), z.number().int().min(40).max(800)).optional(),
+        emptyText: z.string().max(120).optional(),
+        actionHeader: z.string().max(60).optional(),
+        /** Skip the confirmation dialog for delete / restore. */
+        skipConfirm: z.boolean().optional(),
+    }).optional(),
+    /** Filter dialog of a FilterToolbar: which entity fields can be filtered. */
+    filter: z.object({ fields: z.array(z.string()).optional() }).optional(),
+    /** FormItem settings of a form field (12-column grid + label layout). */
+    form: z.object({
+        span: z.number().int().min(1).max(12).optional(),
+        layout: z.enum(['vertical', 'horizontal']).optional(),
+        labelWidth: z.number().int().min(80).max(480).optional(),
+        align: z.enum(['start', 'center']).optional(),
+        tooltip: z.string().max(200).optional(),
     }).optional(),
 });
 
@@ -51,7 +69,11 @@ const screenShape = z.object({
     /** Page tempat frame berada — dipakai Studio untuk membuka frame. */
     pageId: z.string().min(1),
     name: z.string().min(1).max(120),
+    /** Judul di topbar; kosong = otomatis dari role + label module. */
+    title: z.string().max(120).optional(),
     role: z.enum(SCREEN_ROLES),
+    /** Only for role `dialog`. */
+    purpose: z.enum(DIALOG_PURPOSES).optional(),
     /** Konfigurasi per node (kunci = id node di desain). */
     nodes: z.record(z.string(), nodeConfigShape).default({}),
 });
@@ -71,13 +93,13 @@ const layoutShape = z.object({
 
 const moduleShape = z.object({
     id: z.string().min(1),
-    name: z.string().regex(MODULE_NAME_RE, 'Nama module harus kebab-case, mis. `user-management`'),
+    name: z.string().regex(MODULE_NAME_RE, 'Module name must be kebab-case, e.g. `user-management`'),
     label: z.string().min(1).max(120),
     parentId: z.string().nullable().default(null),
-    permissionKey: z.string().regex(PERMISSION_RE, 'Permission key: huruf kecil, dipisah titik, mis. `user` atau `master.user`').optional(),
+    permissionKey: z.string().regex(PERMISSION_RE, 'Permission key: lowercase, dot-separated, e.g. `user` or `master.user`').optional(),
     /** Page sumber module (spec §4.1: satu Module bersumber dari satu Page). */
     pageId: z.string().min(1),
-    entity: z.object({ fields: z.array(fieldShape).default([]) }).optional(),
+    entity: z.object({ fields: z.array(fieldShape).default([]), softDelete: z.boolean().optional() }).optional(),
     screens: z.array(screenShape).default([]),
 });
 
@@ -95,10 +117,10 @@ function ruleError(rule: string): string | null {
             return null;
         }
         catch {
-            return `pola regex tidak valid: ${rule.slice(8)}`;
+            return `invalid regex pattern: ${rule.slice(8)}`;
         }
     }
-    return `aturan validasi tidak dikenal: ${rule}`;
+    return `unknown validation rule: ${rule}`;
 }
 
 export const emptyConfig = (): BuilderConfig => ({ modules: [] });
@@ -118,45 +140,51 @@ export function validateConfig(config: BuilderConfig): string[] {
     const byId = new Map(config.modules.map(m => [m.id, m]));
     const seenId = new Set<string>(), seenName = new Map<string, string>();
     for (const m of config.modules) {
-        if (seenId.has(m.id)) errors.push(`Id module ${m.id} dipakai dua kali`);
+        if (seenId.has(m.id)) errors.push(`Module id ${m.id} is used twice`);
         seenId.add(m.id);
         // Nama module = nama folder; harus unik di parent yang sama.
         const scope = `${m.parentId ?? ''}/${m.name}`;
-        if (seenName.has(scope)) errors.push(`Nama module ${m.name} sudah dipakai di level yang sama`);
+        if (seenName.has(scope)) errors.push(`Module name ${m.name} is already used at the same level`);
         seenName.set(scope, m.id);
         if (m.parentId) {
-            if (!byId.has(m.parentId)) errors.push(`Parent module ${m.name} tidak ditemukan`);
+            if (!byId.has(m.parentId)) errors.push(`Parent of module ${m.name} not found`);
             const seen = new Set([m.id]);
             for (let p = byId.get(m.parentId); p; p = p.parentId ? byId.get(p.parentId) : undefined) {
                 if (seen.has(p.id)) {
-                    errors.push(`Module ${m.name} membentuk siklus parent`);
+                    errors.push(`Module ${m.name} forms a parent cycle`);
                     break;
                 }
                 seen.add(p.id);
             }
         }
         for (const role of CRUD_ROLES)
-            if (m.screens.filter(s => s.role === role).length > 1) errors.push(`Module ${m.name} punya lebih dari satu screen ${role}`);
+            if (m.screens.filter(s => s.role === role).length > 1) errors.push(`Module ${m.name} has more than one ${role} screen`);
         const screenIds = new Set<string>();
+        const purposes = new Set<string>();
         for (const s of m.screens) {
-            if (screenIds.has(s.id)) errors.push(`Id screen ${s.id} dipakai dua kali di module ${m.name}`);
+            if (s.role === 'dialog') {
+                if (!s.purpose) errors.push(`Dialog screen ${s.name} in module ${m.name} needs a purpose`);
+                else if (purposes.has(s.purpose)) errors.push(`Module ${m.name} has more than one ${s.purpose} dialog`);
+                else purposes.add(s.purpose);
+            }
+            if (screenIds.has(s.id)) errors.push(`Screen id ${s.id} is used twice in module ${m.name}`);
             screenIds.add(s.id);
         }
         const fieldNames = new Set<string>();
         for (const f of m.entity?.fields ?? []) {
-            if (fieldNames.has(f.name)) errors.push(`Field ${f.name} dipakai dua kali di module ${m.name}`);
+            if (fieldNames.has(f.name)) errors.push(`Field ${f.name} is used twice in module ${m.name}`);
             fieldNames.add(f.name);
-            if (f.type === 'enum' && !f.options?.length) errors.push(`Field ${f.name} (enum) belum punya pilihan`);
+            if (f.type === 'enum' && !f.options?.length) errors.push(`Field ${f.name} (enum) has no options yet`);
             for (const r of f.rules ?? []) {
                 const bad = ruleError(r);
-                if (bad) errors.push(`Field ${f.name} di module ${m.name}: ${bad}`);
+                if (bad) errors.push(`Field ${f.name} in module ${m.name}: ${bad}`);
             }
             if (f.type === 'relation' && f.relation && typeof f.relation === 'object') {
                 const rel = f.relation;
                 const target = byId.get(rel.moduleId);
-                if (!target) errors.push(`Field ${f.name} di module ${m.name}: module tujuan relasi tidak ditemukan`);
+                if (!target) errors.push(`Field ${f.name} in module ${m.name}: relation target module not found`);
                 else if (rel.labelField && !(target.entity?.fields ?? []).some(x => x.name === rel.labelField))
-                    errors.push(`Field ${f.name} di module ${m.name}: field label ${rel.labelField} tidak ada di module ${target.name}`);
+                    errors.push(`Field ${f.name} in module ${m.name}: label field ${rel.labelField} does not exist in module ${target.name}`);
             }
         }
     }

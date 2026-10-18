@@ -34,11 +34,11 @@ export function Sidebar(props: SidebarProps) {
             <span className="truncate text-base font-semibold text-white">{appName}</span>
           </div>
         )}
-        <button type="button" aria-label={collapsed ? 'Perluas sidebar' : 'Lipat sidebar'} onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded-md border border-sidebar-foreground/40 hover:bg-white/10">
+        <button type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded-md border border-sidebar-foreground/40 hover:bg-white/10">
           {collapsed ? <DoubleAltArrowRightIcon className="h-3.5 w-3.5" /> : <DoubleAltArrowLeftIcon className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <nav aria-label="Menu utama" className="flex flex-col gap-1">
+      <nav aria-label="Main menu" className="flex flex-col gap-1">
         {items.map(item => {
           const active = isActive(item.path, activePath);
           return (

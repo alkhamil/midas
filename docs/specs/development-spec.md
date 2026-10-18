@@ -170,7 +170,7 @@ ui-cms/
 │   ├── components/           # isi komponen — ditulis developer (awalnya kerangka bertanda midasStub)
 │   │   ├── Button/Button.tsx #   function Button(props: ButtonProps) { … }
 │   │   └── TextField/TextField.tsx
-│   ├── layout/               # AppShell, Sidebar, PageHeader, PageContent, …
+│   ├── layout/               # AppShell, Sidebar, Topbar, PageContent, …
 │   ├── tailwind.css          # entry CSS untuk aplikasi: token + utility Tailwind + @source './index.js'
 │   └── index.ts              # export semua komponen + ThemeProvider + ikon + token
 └── .github/workflows/release.yml   # CI: sync → build → publish → midas report
@@ -192,7 +192,7 @@ Isi minimal sebuah library frontend mengikuti apa yang di `contoh_base_code` sek
 | UI | `Button`, `Card`, `Table` (+ `Column`), `Badge`, `Dialog`, `Drawer`, `Alert`, `Tooltip`, `FilterToolbar`, `DetailCard`, `RowActionButton`, `RelationLabel`, `LoadingOverlay`, `FormSkeleton`, `ErrorStatePage`, `NavigationGuard`, `Toast` (`ToastProvider`, `useToast`) |
 | Ikon | Dari Library Kit (`src/generated/icons`): `<NamaIcon>` per ikon + `<Icon name>`. Komponen library memakai ikon ini, bukan paket ikon pihak ketiga. |
 | Field | `TextField`, `PasswordField`, `TextAreaField`, `SelectField`, `SelectMultipleField`, `CheckboxField`, `CheckboxGroupField`, `RadioButtonField`, `RadioGroupField`, `SwitchField`, `DatePickerField`, `DateRangeField`, `FileUploadField`, `ColorField`, `EditorField`, `FormArrayField` |
-| Layout | `AppShell`, `Sidebar`, `PageHeader`, `PageContent`, `AvatarUser` |
+| Layout | `AppShell`, `Sidebar`, `Topbar`, `PageContent`, `AvatarUser` |
 | Theme | `ThemeProvider`, `theme.ts`, `tokens.css` (dari Library Kit) |
 
 Yang **tidak** masuk library (tetap di base code, lihat §5.2): `FormGroup`, `FormItem`, `FormArray`, `FormDefaultValuesWatcher` (mesin form tanpa visual), lib API, i18n, auth.

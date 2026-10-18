@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Bangun design system "CMS" di Midas lalu publish sebagai library @midas/ui-cms.
-// Isi desain ada di scripts/design-system/ (tokens, komponen, ikon, halaman). File yang sudah ada diperbarui
-// dengan id yang sama (komponen, variant, property, Variable), sehingga update tidak menjadi breaking change
+// The design lives in scripts/design-system/ (tokens, components, icons, pages). An existing file is updated
+// with the same ids (components, variants, properties, Variables), so an update is not a breaking change
 // dan file yang memakai library tetap tersambung.
 //
 // Pakai:
@@ -35,12 +35,12 @@ const existingFile = await findFile(api, FILE_NAME);
 const existing = existingFile ? existingIds({ pages: existingFile.currentPages.map(p => p.data), variables: existingFile.current.meta.variables }) : new Map();
 
 const { doc, iconCount, iconStyles } = buildDocument({ existing });
-console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')} · ${iconCount} ikon (${iconStyles.join(', ')}) · ${doc.variables.items.length} variables`);
+console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')} · ${iconCount} icons (${iconStyles.join(', ')}) · ${doc.variables.items.length} variables`);
 
 // ---------------------------------------------------------------- simpan ke Midas
 if (!existingFile && !args.create) {
     const me = await whoami(api);
-    throw new Error(`File "${FILE_NAME}" tidak ada di workspace ${me?.email ?? 'akun ini'}. Login dengan akun pemilik file, atau tambahkan --create untuk membuat file baru.`);
+    throw new Error(`File "${FILE_NAME}" not found in the workspace of ${me?.email ?? 'this account'}. Sign in with the file owner's account, or add --create to create a new file.`);
 }
 // File default memakai id library di packages/ui-cms/midas.config.json (bila paket kodenya sudah ada) supaya `midas sync` langsung tersambung.
 const kitId = !existingFile && FILE_NAME === DEFAULT_FILE ? (() => {
@@ -52,7 +52,7 @@ const kitId = !existingFile && FILE_NAME === DEFAULT_FILE ? (() => {
 })() : null;
 const saved = await saveDocument(api, { name: FILE_NAME, doc, existing: existingFile, id: kitId, idPrefix: 'midas-ds' });
 const fileId = saved.fileId;
-console.log(saved.created ? `File dibuat: ${fileId}` : `File diperbarui: ${fileId} (${saved.newAssets} aset baru)`);
+console.log(saved.created ? `File created: ${fileId}` : `File updated: ${fileId} (${saved.newAssets} new assets)`);
 if (args['no-publish']) process.exit(0);
 
 // ---------------------------------------------------------------- publish (sama seperti publishLibrary() di Studio)
@@ -86,7 +86,7 @@ const snapshot = { components, variables: doc.variables, assets: Object.fromEntr
 const iconKeys = icons.map(i => i.componentKey);
 const draft = await api('POST', `/api/libraries/${fileId}/draft`, { name: FILE_NAME, snapshot, iconKeys });
 const keys = new Set(iconKeys);
-// Seperti Studio: komponen berawalan _ atau . = bagian internal, ikut snapshot tapi tidak dipetakan ke kode.
+// Like Studio: components prefixed with _ or . are internal parts: part of the snapshot but not mapped to code.
 const mappings = draft.mappings.filter(m => !keys.has(m.componentKey) && !/^[_.]/.test(m.componentName)).map(m => {
     for (const p of m.propsMap.props) if (PROP_NAMES[m.componentName]?.[p.name]) p.name = PROP_NAMES[m.componentName][p.name];
     return m;
@@ -103,7 +103,7 @@ const codeVersion = (() => {
 const version = args.version || (draft.latest ? draft.suggestedVersion : codeVersion || draft.suggestedVersion);
 const res = await api('POST', `/api/libraries/${fileId}/versions`, {
     name: FILE_NAME, packageName: draft.library?.packageName || (typeof args.package === 'string' ? args.package : PACKAGE), version,
-    releaseNotes: args.notes || `Design system CMS: ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} komponen, ${iconCount} ikon (${iconStyles.join(' & ')}), foundations`,
+    releaseNotes: args.notes || `Design system CMS: ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} components, ${iconCount} icons (${iconStyles.join(' & ')}), foundations`,
     snapshot, mappings,
 });
-console.log(`Published ${res.library.packageName}@${res.library.semver}: ${res.library.components} komponen, ${res.library.icons} ikon, ${res.library.variables} variables`);
+console.log(`Published ${res.library.packageName}@${res.library.semver}: ${res.library.components} components, ${res.library.icons} icons, ${res.library.variables} variables`);
