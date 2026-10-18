@@ -1,7 +1,7 @@
 // Contoh props untuk Live DOM Renderer di Midas Studio (Code Builder). Desain hanya membawa props visual
 // (variant, label, …); data & callback yang wajib di kode (kolom tabel, menu sidebar, handler) diisi dari sini.
 // Kunci = nama export komponen. Tidak dipakai aplikasi.
-import { ChartIcon, ShieldCheckIcon, UserIcon, WidgetIcon } from './generated/icons';
+import { ChartIcon, ShieldCheckIcon, UserIcon, DatabaseIcon, WidgetIcon } from './generated/icons';
 import { Badge } from './components/Badge/Badge';
 import { IconButton } from './components/IconButton/IconButton';
 import type { NavItem } from './components/Sidebar/Sidebar';
@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: <WidgetIcon className="h-5 w-5" /> },
   { label: 'User', path: '/user', icon: <UserIcon className="h-5 w-5" /> },
   { label: 'Role', path: '/role', icon: <ShieldCheckIcon className="h-5 w-5" /> },
+  { label: 'Master Data', icon: <DatabaseIcon className="h-5 w-5" />, children: [{ label: 'Region', path: '/master-data/region' }] },
 ];
 const options = [
   { label: 'Administrator', value: 'admin' },

@@ -47,6 +47,18 @@ test('Table shows rows, row actions, the empty state and the range', () => {
     assert.match(render(h(ui.Table, { ...base, data: [] })), /No data yet\./);
 });
 
+test('Sidebar nests children under a parent that opens when it holds the active page', () => {
+    const items = [{ label: 'Dashboard', path: '/' }, { label: 'Master Data', children: [{ label: 'Region', path: '/master-data/region' }] }];
+    const closed = render(h(ui.Sidebar, { items, activePath: '/' }));
+    assert.match(closed, /aria-expanded="false"/);
+    assert.doesNotMatch(closed, /Region/);
+    const active = render(h(ui.Sidebar, { items, activePath: '/master-data/region' }));
+    assert.match(active, /aria-expanded="true"/);
+    assert.match(active, /href="\/master-data\/region"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/master-data\/region"/);
+    const all = render(h(ui.Sidebar, { items, activePath: '/', groups: 'expanded' }));
+    assert.match(all, /Region/);
+});
+
 test('Sidebar marks the active item and collapses to icons only', () => {
     const items = [{ label: 'Dashboard', path: '/' }, { label: 'User', path: '/user' }];
     const open = render(h(ui.Sidebar, { items, activePath: '/user/12' }));

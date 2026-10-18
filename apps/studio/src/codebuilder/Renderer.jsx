@@ -125,7 +125,8 @@ function Shell({ shell, lib, height, children }) {
     if (!shell || typeof lib.AppShell !== 'function') return children;
     const items = shell.layout.items.filter(i => !i.hidden).map(i => {
         const Icon = lib[`${pascalCase(i.icon)}Icon`];
-        return { label: i.label, path: i.path, icon: Icon ? h(Icon, { className: 'h-5 w-5' }) : undefined };
+        const children = i.children?.filter(c => !c.hidden).map(c => ({ label: c.label, path: c.path }));
+        return { label: i.label, path: i.path, icon: Icon ? h(Icon, { className: 'h-5 w-5' }) : undefined, ...(children ? { children } : {}) };
     });
     return h('div', { className: 'cb-shell', style: { height } },
         h(lib.AppShell, { navItems: items, activePath: shell.activePath, onNavigate: shell.onNavigate, title: shell.title, breadcrumbs: shell.breadcrumbs, userMenu: [{ label: 'Sign out', danger: true, onClick: shell.onSignOut || (() => {}) }], appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));

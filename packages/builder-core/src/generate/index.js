@@ -22,7 +22,7 @@ export function generateProject(project, trees) {
 
     for (const mod of modules) {
         const real = mod.screens.filter(s => s.role !== 'dialog');
-        if (!real.length) { warnings.push(`Module ${mod.name} skipped: it has no screens yet`); continue; }
+        if (!real.length) { if (!modules.some(c => c.parentId === mod.id)) warnings.push(`Module ${mod.name} skipped: it has no screens yet`); continue; }
         const dir = moduleDir(modules, mod);
         const base = `src/modules/${dir}/`;
         const sharedRel = '../'.repeat(dir.split('/').length + 2);
@@ -74,7 +74,10 @@ export function generateProject(project, trees) {
     }
     files['src/app/generated/routes.tsx'] = `${GEN_HEADER}import type { RouteObject } from 'react-router';\n${imports.join('\n')}\n\nexport const generatedRoutes: RouteObject[] = [\n${routes.join('\n')}\n];\n`;
     const iconNames = [...new Set(layout.items.map(i => iconComponent(i.icon)))];
-    const navItems = layout.items.filter(i => !i.hidden).map(i => `  { label: ${q(i.label)}, path: ${q(i.path)}, icon: <${iconComponent(i.icon)} className="h-5 w-5" />, permissionKey: ${q(i.permissionKey)} },`);
+    const navItems = layout.items.filter(i => !i.hidden).map(i => i.children
+        // Parent → child menu: the group itself has no path or permission (it shows when any child is allowed).
+        ? `  {\n    label: ${q(i.label)},\n    icon: <${iconComponent(i.icon)} className="h-5 w-5" />,\n    children: [\n${i.children.filter(c => !c.hidden).map(c => `      { label: ${q(c.label)}, path: ${q(c.path)}, permissionKey: ${q(c.permissionKey)} },`).join('\n')}\n    ],\n  },`
+        : `  { label: ${q(i.label)}, path: ${q(i.path)}, icon: <${iconComponent(i.icon)} className="h-5 w-5" />, permissionKey: ${q(i.permissionKey)} },`);
     if (!ownHome) {
         iconNames.unshift('WidgetIcon');
         navItems.unshift("  { label: 'Dashboard', labelKey: 'nav.dashboard', path: '/', icon: <WidgetIcon className=\"h-5 w-5\" /> },");

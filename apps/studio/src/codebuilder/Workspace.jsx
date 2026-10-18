@@ -1,7 +1,7 @@
 // Ruang kerja satu screen: pratinjau Live DOM Renderer (dengan layout aplikasi) di tengah, outline layer di kiri,
 // dan Properties Inspector di kanan. Menutupi canvas + panel kanan Design selama screen dibuka.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { breadcrumbsOf, findTreeNode, pageTitle, ROLE_LABEL, screenTree } from '@midas/builder-core';
+import { activeNavPath, breadcrumbsOf, findTreeNode, pageTitle, ROLE_LABEL, screenTree } from '@midas/builder-core';
 import { cssUrlOf, loadBundle } from './loader.js';
 import { Inspector } from './Inspector.jsx';
 import { LiveFrame } from './Renderer.jsx';
@@ -46,7 +46,7 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
     const toggle = id => actions.setNode(screen.id, id, c => ({ ...c, hidden: c.hidden ? undefined : true }));
     const pageTitleText = pageTitle(module, screen);
     const crumbs = useMemo(() => breadcrumbsOf(modules, module, screen), [modules, module, screen]);
-    const shell = useMemo(() => ({ layout, title: pageTitleText, breadcrumbs: crumbs, activePath: layout.items.find(i => i.moduleId === module.id || modules.some(m => m.id === i.moduleId && isAncestor(modules, m, module)))?.path }), [layout, pageTitleText, crumbs, module, modules]);
+    const shell = useMemo(() => ({ layout, title: pageTitleText, breadcrumbs: crumbs, activePath: activeNavPath(layout, modules, module) }), [layout, pageTitleText, crumbs, module, modules]);
 
     // Menutupi seluruh area editor di bawah header (rail, panel kiri, canvas, panel kanan): ruang untuk pratinjau + inspector.
     const view = useRef(null);
@@ -126,7 +126,3 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
     );
 }
 
-function isAncestor(modules, anc, m) {
-    for (let c = m, n = 0; c && n < 20; c = modules.find(x => x.id === c.parentId), n++) if (c.id === anc.id) return true;
-    return false;
-}

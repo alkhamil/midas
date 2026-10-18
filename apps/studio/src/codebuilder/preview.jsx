@@ -4,7 +4,7 @@
 // the generated app (same rules, messages, dialogs and unsaved-changes guard). Nothing here is persisted.
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
+import { activeNavPath, autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
 import { builderApi } from '../storage.js';
 import { cssUrlOf, loadBundle } from './loader.js';
 import { LiveFrame } from './Renderer.jsx';
@@ -101,7 +101,9 @@ function AppPreview({ bridge, project, onClose }) {
     // First screen: the home page (module `dashboard`), otherwise the first menu item's main screen.
     const mainScreenOf = useCallback(m => m.screens.find(s => s.role === 'list') || m.screens.find(s => s.role === 'custom') || m.screens.find(s => s.role !== 'dialog'), []);
     const home = useMemo(() => {
-        const first = layout.items[0] && modules.find(m => m.id === layout.items[0].moduleId);
+        // The first menu entry that leads somewhere (a parent group has no page of its own; its first child does).
+        const entry = layout.items.flatMap(i => [i, ...(i.children || [])]).find(i => i.path);
+        const first = entry && modules.find(m => m.id === entry.moduleId);
         return first && mainScreenOf(first);
     }, [layout, modules, mainScreenOf]);
     useEffect(() => { if (home && !stack.length) setStack([{ screenId: home.id }]); }, [home]);
@@ -147,7 +149,7 @@ function AppPreview({ bridge, project, onClose }) {
     const back = useCallback(() => guarded(() => setStack(st => (st.length > 1 ? st.slice(0, -1) : st))), [guarded]);
     const byPath = useCallback(path => {
         for (const s of screens) if (screenPath(modules, s.module, s) === path) return s;
-        const it = layout.items.find(i => i.path === path);
+        const it = layout.items.flatMap(i => [i, ...(i.children || [])]).find(i => i.path === path);
         const m = it && modules.find(x => x.id === it.moduleId);
         return m && mainScreenOf(m);
     }, [screens, modules, layout, mainScreenOf]);
@@ -240,7 +242,7 @@ function AppPreview({ bridge, project, onClose }) {
         layout,
         title: pageTitle(screen.module, screen),
         breadcrumbs: breadcrumbsOf(modules, screen.module, screen),
-        activePath: layout.items.find(i => modules.some(m => m.id === i.moduleId && isInside(modules, screen.module, m)))?.path,
+        activePath: activeNavPath(layout, modules, screen.module),
         onNavigate: path => { const t = byPath(path); if (t) go(t.id); },
         onSignOut: () => flash('Signed out (preview only)'),
     }), [screen, layout, modules, byPath, go, flash]);
@@ -273,7 +275,3 @@ function AppPreview({ bridge, project, onClose }) {
     );
 }
 
-function isInside(modules, module, ancestor) {
-    for (let c = module, n = 0; c && n < 20; c = modules.find(x => x.id === c.parentId), n++) if (c.id === ancestor.id) return true;
-    return false;
-}

@@ -33,22 +33,40 @@ export function screenPath(modules, m, s) {
     return sub(`/${kebabCase(s.name)}`);
 }
 
-/** Menu sidebar: modul teratas berurutan sesuai `layout.items`, sisanya menyusul. Path = screen list, atau screen pertama. */
+/** Menu sidebar: modul teratas berurutan sesuai `layout.items`, sisanya menyusul. Path = screen list, atau screen pertama.
+ *  Modul anak (parentId) menjadi `children` dari induknya: Master Data → Region = path `/master-data/region`. Induk tanpa
+ *  screen hanya mengelompokkan anak-anaknya (tanpa path); induk dengan screen sendiri ikut muncul sebagai anak pertama. */
 export function resolveLayout(config) {
     const modules = config.modules || [];
     const layout = config.layout || {};
     const overrides = new Map((layout.items || []).map((it, i) => [it.moduleId, { ...it, order: i }]));
-    const top = modules.filter(m => !m.parentId);
-    const ordered = [...top].sort((a, b) => (overrides.get(a.id)?.order ?? 1e6 + top.indexOf(a)) - (overrides.get(b.id)?.order ?? 1e6 + top.indexOf(b)));
-    const items = ordered.map((m, i) => {
+    const sorted = list => [...list].sort((a, b) => (overrides.get(a.id)?.order ?? 1e6 + list.indexOf(a)) - (overrides.get(b.id)?.order ?? 1e6 + list.indexOf(b)));
+    const target = m => m.screens.find(s => s.role === 'list') || m.screens.find(s => s.role === 'custom') || m.screens[0];
+    const pathOf = m => { const t = target(m); return t ? screenPath(modules, m, t) : undefined; };
+    const entry = (m, icon) => {
         const o = overrides.get(m.id) || {};
-        const target = m.screens.find(s => s.role === 'list') || m.screens.find(s => s.role === 'custom') || m.screens[0];
-        return {
-            moduleId: m.id, label: o.label || m.label, icon: o.icon || DEFAULT_ICONS[i % DEFAULT_ICONS.length], hidden: !!o.hidden,
-            path: target ? screenPath(modules, m, target) : modulePath(modules, m), permissionKey: m.permissionKey || m.name,
-        };
+        return { moduleId: m.id, label: o.label || m.label, icon: o.icon || icon, hidden: !!o.hidden, path: pathOf(m), permissionKey: m.permissionKey || m.name };
+    };
+    const descendants = m => sorted(modules.filter(c => c.parentId === m.id)).flatMap(c => [c, ...descendants(c)]);
+    const items = sorted(modules.filter(m => !m.parentId)).map((m, i) => {
+        const item = entry(m, DEFAULT_ICONS[i % DEFAULT_ICONS.length]);
+        const kids = descendants(m).map(c => entry(c, 'widget')).filter(c => c.path);
+        if (!kids.length) return { ...item, path: item.path ?? modulePath(modules, m) };
+        const own = item.path ? [{ ...item, icon: undefined }] : [];
+        return { ...item, path: undefined, children: [...own, ...kids] };
     });
     return { appName: layout.appName || 'Midas App', userName: layout.userName || 'Administrator', userRole: layout.userRole || 'admin', items };
+}
+
+/** Path menu sidebar yang aktif untuk sebuah module: entri menu milik module itu, atau milik induk terdekatnya. */
+export function activeNavPath(layout, modules, module) {
+    const byId = new Map(modules.map(m => [m.id, m]));
+    const flat = layout.items.flatMap(i => [i, ...(i.children || [])]).filter(i => i.path);
+    for (let c = module, n = 0; c && n < 20; c = c.parentId ? byId.get(c.parentId) : null, n++) {
+        const hit = flat.find(i => i.moduleId === c.id);
+        if (hit) return hit.path;
+    }
+    return undefined;
 }
 
 const PERSON_MODULE = /user|member|customer|employee|staff|person|people/i;

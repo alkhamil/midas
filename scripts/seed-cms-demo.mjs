@@ -122,14 +122,18 @@ const btn = (variant, label, extra) => V('Button', { Variant: variant, Size: 'Md
 // Frame konten (yang didaftarkan ke Code Builder) lalu dibungkus layout aplikasi.
 const content = (name, children) => col({ w: 'fill', h: 836, pad: 24, gap: 24, fill: 'color/surface', name }, children);
 // Topbar = komponen library (breadcrumb, judul halaman, pengguna + avatar); tidak ada page header di dalam konten.
+const PARENT_OF = { Region: 'Master Data' };
 const topbarFor = name => {
     const [module, kind] = name.split(' — ');
-    const [title, crumb] = kind === 'Form' ? [`Add ${module}`, `Home / ${module} / Add`] : kind === 'Detail' ? [`Detail ${module}`, `Home / ${module} / Detail`]
-        : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Home / ${module}`];
+    const trail = (PARENT_OF[module] ? `${PARENT_OF[module]} / ` : '') + module;
+    const [title, crumb] = kind === 'Form' ? [`Add ${module}`, `Home / ${trail} / Add`] : kind === 'Detail' ? [`Detail ${module}`, `Home / ${trail} / Detail`]
+        : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Home / ${trail}`];
     return V('Topbar', { Menu: 'Closed' }, { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
 };
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
-const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
+// Menu items may nest one level: Master Data (parent, chevron) → Region (child). The parent holding the active page is
+// expanded and shown bold white; the active child gets the primary fill.
+const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check'], ['Master Data', 'database', ['Region']]];
 const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], gap: 4, fill: 'color/sidebar', name: 'Sidebar' }, [
     row({ w: 'fill', h: 72, pad: [0, 4], justify: 'between', name: 'Brand' }, [
         row({ gap: 10 }, [
@@ -138,12 +142,17 @@ const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], ga
         ]),
         row({ w: 28, h: 28, justify: 'center', radius: 'radius/md', stroke: 'color/sidebar-foreground', name: 'Toggle' }, [icon(ctx.icon('double-alt-arrow-left', 'outline', 'color/sidebar-foreground'), { size: 14, name: 'Icon' })]),
     ]),
-    ...NAV.map(([label, ic]) => {
-        const on = label === active, c = on ? 'color/primary-foreground' : 'color/sidebar-foreground';
-        return row({ w: 'fill', h: 40, pad: [0, 12], gap: 12, radius: 'radius/lg', fill: on ? 'color/primary' : 'none', name: `Menu · ${label}` }, [
+    ...NAV.flatMap(([label, ic, kids]) => {
+        const within = !!kids?.includes(active), on = label === active, filled = on && !kids, c = filled ? 'color/primary-foreground' : within ? '#FFFFFF' : 'color/sidebar-foreground';
+        const item = row({ w: 'fill', h: 40, pad: [0, 12], gap: 12, radius: 'radius/lg', fill: filled ? 'color/primary' : 'none', name: `Menu · ${label}` }, [
             icon(ctx.icon(ic, 'outline', c), { size: 20, name: 'Icon' }),
-            text(label, { size: 14, line: 20, weight: 500, color: c, name: 'Label' }),
+            text(label, { w: kids ? 'fill' : undefined, size: 14, line: 20, weight: within ? 600 : 500, color: c, name: 'Label' }),
+            kids ? icon(ctx.icon(within ? 'alt-arrow-up' : 'alt-arrow-down', 'outline', c), { size: 16, name: 'Chevron' }) : null,
         ]);
+        const children = within ? kids.map(k => row({ w: 'fill', h: 40, pad: [0, 12, 0, 44], radius: 'radius/lg', fill: k === active ? 'color/primary' : 'none', name: `Menu · ${k}` }, [
+            text(k, { size: 14, line: 20, weight: k === active ? 500 : 400, color: k === active ? 'color/primary-foreground' : 'color/sidebar-foreground', name: 'Label' }),
+        ])) : [];
+        return [item, ...children];
     }),
 ]);
 const screen = (name, children) => {
@@ -177,6 +186,7 @@ const filterFrameOf = name => col({ w: 560, pad: 48, align: 'center', fill: 'col
 ]);
 const filterFrame = filterFrameOf('Drawer · Filters');
 const roleFilterFrame = filterFrameOf('Drawer · Filters (role)');
+const regionFilterFrame = filterFrameOf('Drawer · Filters (region)');
 
 const userScreens = [
     list('User', 'Manage the accounts that can sign in to the app', 'Add user'),
@@ -223,6 +233,28 @@ const roleScreens = [
     confirmFrame('Confirm · Discard changes (role)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
     roleFilterFrame,
 ];
+const regionScreens = [
+    list('Region', 'Provinces, cities and districts used across the app', 'Add region'),
+    screen('Region — Form', [
+        header('Add Region', 'Fill in the new region details', ['Secondary', 'Back']),
+        panel([
+            twoCols(field('TextField', 'Code', 'e.g. JKT'), field('TextField', 'Region name', 'e.g. Jakarta')),
+            field('SelectField', 'Type', 'Select a type'),
+            R('SwitchField', { Label: 'Active region' }),
+            actions(btn('Secondary', 'Cancel'), btn('Primary', 'Save')),
+        ], 'Form'),
+    ]),
+    screen('Region — Detail', [
+        header('Detail Region', 'Region information', ['Secondary', 'Edit']),
+        panel([
+            detailRow('Code', 'JKT'), detailRow('Region name', 'Jakarta'), detailRow('Type', 'Province'),
+            detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Active' })),
+        ], 'Detail'),
+    ]),
+    confirmFrame('Confirm · Delete region', 'Danger', 'Delete region?', 'The region is removed from every list that uses it. This cannot be undone.', 'Cancel', 'Delete'),
+    confirmFrame('Confirm · Discard changes (region)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
+    regionFilterFrame,
+];
 // Reference frame: the user menu opened from the avatar (Topbar variant Menu = Open).
 const userMenuFrame = col({ w: 1440, pad: [0, 0, 48, 0], fill: 'color/surface', name: 'Topbar · User menu' }, [
     V('Topbar', { Menu: 'Open' }, { Title: 'Dashboard', Breadcrumb: 'Dashboard', UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' }),
@@ -242,7 +274,7 @@ const dashboard = screen('Dashboard', [
 // ---------------------------------------------------------------- dokumen
 const frames = []; // { page, name, id }
 const pages = [];
-const addPage = (name, specs) => {
+const addPage = (name, specs, parentName = null) => {
     const nodes = [];
     let x = 0;
     specs.forEach((spec, i) => {
@@ -251,11 +283,14 @@ const addPage = (name, specs) => {
         frames.push({ page: name, name: spec.inner ?? spec.name, id: built.find(n => n.name === (spec.inner ?? spec.name)).id });
         x += built[0].w + 120;
     });
-    pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: null });
+    pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: parentName ? ids.get(`page:${parentName}`) : null });
 };
 addPage('User', userScreens);
 addPage('Role', roleScreens);
 addPage('Dashboard', [dashboard, userMenuFrame]);
+// Parent → child: the page "Master Data" only groups; "Region" is nested under it (module path /master-data/region).
+addPage('Master Data', []);
+addPage('Region', regionScreens, 'Master Data');
 pages.push({ id: ids.get('page:library'), name: `Library · ${snap.name}`, nodes: libNodes, parentId: null });
 const pageOf = name => pages.find(p => p.name === name).id;
 const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name).id;
@@ -309,6 +344,27 @@ const config = {
             ],
         },
         {
+            id: 'mod-master-data', name: 'master-data', label: 'Master Data', parentId: null, permissionKey: 'master', pageId: pageOf('Master Data'),
+            screens: [],
+        },
+        {
+            id: 'mod-region', name: 'region', label: 'Region', parentId: 'mod-master-data', permissionKey: 'master.region', pageId: pageOf('Region'),
+            entity: { fields: [
+                str('code', 'Code', { required: true, sortable: true, filterable: true, rules: ['min:2', 'max:10'] }),
+                str('name', 'Region name', { required: true, sortable: true, filterable: true }),
+                { name: 'type', label: 'Type', type: 'enum', options: ['Province', 'City', 'District'], required: true, sortable: true, filterable: true },
+                { name: 'active', label: 'Active region', type: 'boolean', required: false, sortable: false, filterable: true },
+            ] },
+            screens: [
+                screenOf('scr-region-list', 'Region', 'Region — List', 'list'),
+                screenOf('scr-region-create', 'Region', 'Region — Form', 'create'),
+                screenOf('scr-region-edit', 'Region', 'Region — Form', 'edit'),
+                screenOf('scr-region-view', 'Region', 'Region — Detail', 'view'),
+                screenOf('scr-region-dlg-delete', 'Region', 'Confirm · Delete region', 'dialog', 'delete'),
+                screenOf('scr-region-dlg-discard', 'Region', 'Confirm · Discard changes (region)', 'dialog', 'discard'),
+            ],
+        },
+        {
             id: 'mod-dashboard', name: 'dashboard', label: 'Dashboard', parentId: null, permissionKey: 'dashboard', pageId: pageOf('Dashboard'),
             screens: [screenOf('scr-dashboard', 'Dashboard', 'Dashboard', 'custom')],
         },
@@ -320,6 +376,8 @@ const config = {
             { moduleId: 'mod-dashboard', icon: 'widget' },
             { moduleId: 'mod-user', icon: 'user' },
             { moduleId: 'mod-role', icon: 'shield-check' },
+            { moduleId: 'mod-master-data', icon: 'database' },
+            { moduleId: 'mod-region' },
         ],
     },
 };

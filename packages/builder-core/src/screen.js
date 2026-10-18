@@ -222,7 +222,8 @@ export function projectIssues(project, { byId, pages }) {
     for (const m of project.config.modules) {
         const ref = { moduleId: m.id };
         if (!pageIds.has(m.pageId)) add('error', `Source page of module ${m.name} was deleted`, ref);
-        if (!m.screens.length) add('warning', `Module ${m.name} has no screens yet`, ref);
+        // A parent that only groups child modules (Master Data → Region) is a menu group, not an empty module.
+        if (!m.screens.length && !project.config.modules.some(c => c.parentId === m.id)) add('warning', `Module ${m.name} has no screens yet`, ref);
         const crud = m.screens.some(s => CRUD_ROLES.includes(s.role));
         if (crud && !m.entity?.fields?.length) add('warning', `Module ${m.name} (CRUD) has no entity fields yet`, ref);
         if (m.screens.some(s => s.role === 'edit' || s.role === 'create') && !m.screens.some(s => s.role === 'list'))

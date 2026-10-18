@@ -12,6 +12,7 @@ import { CheckCircleIcon } from './CheckCircleIcon';
 import { CloseIcon } from './CloseIcon';
 import { CloseCircleIcon } from './CloseCircleIcon';
 import { DangerTriangleIcon } from './DangerTriangleIcon';
+import { DatabaseIcon } from './DatabaseIcon';
 import { DoubleAltArrowLeftIcon } from './DoubleAltArrowLeftIcon';
 import { DoubleAltArrowRightIcon } from './DoubleAltArrowRightIcon';
 import { EyeIcon } from './EyeIcon';
@@ -21,6 +22,7 @@ import { HamburgerMenuIcon } from './HamburgerMenuIcon';
 import { InfoCircleIcon } from './InfoCircleIcon';
 import { LogoutIcon } from './LogoutIcon';
 import { MagniferIcon } from './MagniferIcon';
+import { MapPointIcon } from './MapPointIcon';
 import { PenIcon } from './PenIcon';
 import { RestartIcon } from './RestartIcon';
 import { SettingsIcon } from './SettingsIcon';
@@ -42,6 +44,7 @@ export const iconRegistry = {
   "close": CloseIcon,
   "close-circle": CloseCircleIcon,
   "danger-triangle": DangerTriangleIcon,
+  "database": DatabaseIcon,
   "double-alt-arrow-left": DoubleAltArrowLeftIcon,
   "double-alt-arrow-right": DoubleAltArrowRightIcon,
   "eye": EyeIcon,
@@ -51,6 +54,7 @@ export const iconRegistry = {
   "info-circle": InfoCircleIcon,
   "logout": LogoutIcon,
   "magnifer": MagniferIcon,
+  "map-point": MapPointIcon,
   "pen": PenIcon,
   "restart": RestartIcon,
   "settings": SettingsIcon,
@@ -62,4 +66,4 @@ export const iconRegistry = {
 
 export type IconName = keyof typeof iconRegistry;
 // Literal (bukan Object.keys) supaya registry tidak ikut terbundel bila tidak dipakai.
-export const iconNames: IconName[] = ["add", "alt-arrow-down", "alt-arrow-left", "alt-arrow-right", "alt-arrow-up", "arrow-down", "arrow-up", "chart", "check-circle", "close", "close-circle", "danger-triangle", "double-alt-arrow-left", "double-alt-arrow-right", "eye", "eye-closed", "filter", "hamburger-menu", "info-circle", "logout", "magnifer", "pen", "restart", "settings", "shield-check", "trash-bin", "user", "widget"];
+export const iconNames: IconName[] = ["add", "alt-arrow-down", "alt-arrow-left", "alt-arrow-right", "alt-arrow-up", "arrow-down", "arrow-up", "chart", "check-circle", "close", "close-circle", "danger-triangle", "database", "double-alt-arrow-left", "double-alt-arrow-right", "eye", "eye-closed", "filter", "hamburger-menu", "info-circle", "logout", "magnifer", "map-point", "pen", "restart", "settings", "shield-check", "trash-bin", "user", "widget"];
