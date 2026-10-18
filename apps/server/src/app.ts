@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { config } from './config.js';
 import { loadUser } from './lib/auth.js';
 import { authRoutes } from './routes/auth.js';
+import { builderRoutes } from './routes/builder.js';
 import { fileRoutes } from './routes/files.js';
 import { kvRoutes } from './routes/kv.js';
 import { libraryRoutes } from './routes/libraries.js';
@@ -16,5 +17,6 @@ export async function buildApp() {
     await app.register(fileRoutes);
     await app.register(kvRoutes);
     await app.register(libraryRoutes);
+    await app.register(builderRoutes);
     return app;
 }

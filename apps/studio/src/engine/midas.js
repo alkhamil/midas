@@ -6440,7 +6440,7 @@ function invalidate() {
 function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
     renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
-    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
 function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
@@ -6634,6 +6634,7 @@ function select(ids, { reveal = true } = {}) {
     renderInspector();
     scrollSelectionIntoView();
     invalidate();
+    notifyBuilder();
 }
 function scrollSelectionIntoView() {
     requestAnimationFrame(() => {
@@ -13579,9 +13580,51 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
-// ===== Code Builder (spec §4): frame → screen → kode. Untuk sekarang hanya panel kosong di rail kiri. =====
+// ===== Code Builder (spec §4): frame → screen → kode. UI-nya modul React terpisah (src/codebuilder/), dipasang
+// sekali ke panel kiri; engine hanya menyediakan jembatan baca dokumen + navigasi canvas.
+const builderBridge = {
+    fileId: () => lib.fileId,
+    fileName: () => doc.data.name,
+    currentPageId: () => doc.page.id,
+    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p) })),
+    /** Semua node file (lintas page), termasuk salinan komponen library. */
+    nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    pageOf: id => pageOfNode(id)?.id ?? null,
+    variables: () => doc.data.variables || { collections: [], items: [] },
+    /** Layer terpilih: { id, name, type, pageId, top } (top = frame teratas di page). */
+    selection: () => [...state.selection].map(id => doc.get(id)).filter(Boolean).map(n => ({ id: n.id, name: n.name, type: n.type, pageId: doc.page.id, top: !n.parentId && n.type === 'frame' })),
+    /** Buka page node, pilih, dan zoom ke node. */
+    reveal(id) {
+        const page = pageOfNode(id);
+        if (!page) return false;
+        if (page.id !== doc.page.id) switchPage(page.id);
+        select([id]);
+        fit([id]);
+        refreshUI();
+        return true;
+    },
+    libraries: async () => {
+        await libsLoad(true);
+        return LIBS.published;
+    },
+};
+let builderMounted = null;
 function renderCodeBuilder() {
-    $('#code-builder-panel').innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">Register frames as screens and generate code — coming soon.</p></div>`;
+    const host = $('#code-builder-panel');
+    builderMounted ??= import('../codebuilder/mount.jsx').then(m => m.mountCodeBuilder(host, builderBridge)).catch(e => {
+        console.error(e);
+        builderMounted = null;
+        host.innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">${esc(e.message || 'Failed to load')}</p></div>`;
+    });
+}
+// Panel Code Builder mendengarkan perubahan dokumen/seleksi (digabung per frame).
+let builderTick = 0;
+function notifyBuilder() {
+    if (!builderMounted || builderTick) return;
+    builderTick = requestAnimationFrame(() => {
+        builderTick = 0;
+        window.dispatchEvent(new CustomEvent('midas:change'));
+    });
 }
 function renderPlugins() {
     const list = loadPlugins();

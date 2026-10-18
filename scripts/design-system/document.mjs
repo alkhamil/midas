@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { buildIconPage, svgToDataUrl } from '../../apps/studio/src/iconSet.js';
 import { build, col, frame, icon, Ids, instance, row, text, Vars } from './build.mjs';
-import { COMPONENTS, card, sidebar } from './components.mjs';
+import { COMPONENTS, card } from './components.mjs';
 import { ICON_STYLES, UI_ICONS, uiIconFiles, wdsIconFiles } from './icons.mjs';
 import { COLOR_NOTES, COLORS, ELEVATION, FONT_FAMILY, RADIUS, SPACING, TYPE_SCALE } from './tokens.mjs';
 
@@ -309,9 +309,9 @@ export function buildDocument({ existing = new Map(), wdsDir }) {
 
     // ---- Templates (instance komponen)
     const btn = (variant, label) => instance(ctx.variant('Button', { Variant: variant, Size: 'Md' }), { Label: label });
-    // Instance Sidebar menandai "Dashboard" aktif; layar lain merakit _SidebarItem dengan item aktifnya sendiri.
-    const screen = (name, title, content, active = 'Dashboard', collapsed = false) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true, name }, [
-        active === 'Dashboard' ? instance(ctx.variant('Sidebar', { Collapsed: String(collapsed) })) : sidebar(ctx, active, collapsed),
+    // Sidebar selalu instance komponen (siap di-generate); item aktif di kode mengikuti route, bukan desain.
+    const screen = (name, title, content, _active = 'Dashboard', collapsed = false) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true, name }, [
+        instance(ctx.variant('Sidebar', { Collapsed: String(collapsed) })),
         col({ w: 'fill', h: 'fill' }, [
             instance(ctx.root('PageHeader'), { Title: title }, { w: 'fill' }),
             col({ w: 'fill', pad: 24, gap: 16, name: 'Content' }, content),

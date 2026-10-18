@@ -30,3 +30,20 @@ test('report finds stubs, missing exports and props that do not match the design
     assert.equal(byName.Stub.status, 'not_implemented');
     assert.equal(byName.Missing.status, 'not_implemented');
 });
+
+test('studioEntry re-exports the package and the providers the renderer needs', async () => {
+    const { studioEntry } = await import('../src/bundle.js');
+    const src = studioEntry({ peerDependencies: { react: '*', 'react-router': '*', 'react-i18next': '*', i18next: '*' } }, { libEntry: '../dist/index.js', cssEntry: './studio.css' });
+    assert.match(src, /import '\.\/studio\.css';/);
+    assert.match(src, /export \* from '\.\.\/dist\/index\.js';/);
+    assert.match(src, /export const __midasRuntime = \{ MemoryRouter, createMemoryRouter, RouterProvider, I18nextProvider, initReactI18next, i18next \};/);
+    const bare = studioEntry({}, { libEntry: './x.js', cssEntry: null });
+    assert.doesNotMatch(bare, /import '/);
+    assert.match(bare, /__midasRuntime = \{  \}/);
+});
+
+test('latinFontsOnly keeps latin subsets and fonts without unicode-range', async () => {
+    const { latinFontsOnly } = await import('../src/bundle.js');
+    const css = '@font-face{font-family:A;unicode-range:U+0301,U+0400-045F}@font-face{font-family:B;unicode-range:U+0000-00FF,U+0131}@font-face{font-family:C;unicode-range:U+0100-02BA}@font-face{font-family:D}.x{color:red}';
+    assert.equal(latinFontsOnly(css), '@font-face{font-family:B;unicode-range:U+0000-00FF,U+0131}@font-face{font-family:C;unicode-range:U+0100-02BA}@font-face{font-family:D}.x{color:red}');
+});

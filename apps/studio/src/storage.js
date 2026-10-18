@@ -382,6 +382,18 @@ export const libraryApi = {
     })
 };
 
+/** Code Builder project (spec §4): module & screen dari file desain, library + versi yang dipakai. */
+export const builderApi = {
+    list: fileId => api('GET', `/api/builder-projects${fileId ? `?fileId=${enc(fileId)}` : ''}`).then(r => r.projects),
+    get: id => api('GET', `/api/builder-projects/${enc(id)}`).then(r => r.project),
+    create: body => api('POST', '/api/builder-projects', body).then(r => r.project),
+    /** `body.version` = versi terakhir yang dibaca; konflik → ApiError 409 dengan `data.project` versi server. */
+    save: (id, body) => api('PUT', `/api/builder-projects/${enc(id)}`, body).then(r => r.project),
+    remove: id => api('DELETE', `/api/builder-projects/${enc(id)}`),
+    mappings: (libraryId, version) => api('GET', `/api/libraries/${enc(libraryId)}/versions/${enc(version)}/mappings`).then(r => r.mappings),
+    versions: libraryId => api('GET', `/api/libraries/${enc(libraryId)}`),
+};
+
 const LEGACY_LIBS_DONE = 'midas-legacy-libraries-migrated';
 
 /**
