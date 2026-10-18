@@ -5375,7 +5375,7 @@ function strokeNeedsRaster(n) {
 function needsRasterShape(n) {
     if (['text', 'group'].includes(n.type))
         return false;
-    return hasRadii(n) || strokeNeedsRaster(n);
+    return hasRadii(n) || strokeNeedsRaster(n) || arcActive(n);
 }
 function paintStroke(ctx, n, path) {
     if (!strokeIsOn(n) || n.type === 'text')
@@ -5427,6 +5427,8 @@ function paintStroke(ctx, n, path) {
 }
 // SVG: element for the node geometry with arbitrary attributes.
 function svgShapeEl(n, f, a) {
+    if (arcActive(n))
+        return `<path d="${arcD(n, f)}" fill-rule="evenodd" ${a}/>`;
     if (n.type === 'ellipse')
         return `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${a}/>`;
     if (n.type === 'path' || n.type === 'line')
@@ -5471,8 +5473,78 @@ function svgStrokeExtra(n, f, e, prefix) {
     return { defs, el };
 }
 
+// ----- ellipse arc mode: Start (degrees), Sweep (% of the full turn), Ratio (% inner radius) -----
+function arcActive(n) { return n.type === 'ellipse' && ((n.arcSweep ?? 100) < 100 || (n.arcRatio || 0) > 0); }
+function arcParams(n) {
+    const a0 = (n.arcStart || 0) * Math.PI / 180, sweep = clamp((n.arcSweep ?? 100), 0, 100) / 100 * Math.PI * 2, ratio = clamp((n.arcRatio || 0) / 100, 0, .99);
+    return { a0, sweep, ratio, full: sweep >= Math.PI * 2 - 1e-6 };
+}
+// Local-space polygon of the arc shape (used for boolean operations).
+function arcPoly(n, steps = 96) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2, pt = (a, k) => [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k];
+    const out = [];
+    const nOuter = Math.max(2, Math.ceil(steps * sweep / (Math.PI * 2)));
+    for (let i = 0; i <= nOuter; i++)
+        out.push(pt(a0 + sweep * i / nOuter, 1));
+    if (full && ratio > 0)
+        return [out.slice(0, -1), Array.from({ length: steps }, (_, i) => pt(a0 - Math.PI * 2 * i / steps, ratio))];
+    if (ratio > 0)
+        for (let i = nOuter; i >= 0; i--)
+            out.push(pt(a0 + sweep * i / nOuter, ratio));
+    else if (!full)
+        out.push([cx, cy]);
+    return [out];
+}
+function arcPath(p, n) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = Math.max(.001, n.w / 2), ry = Math.max(.001, n.h / 2);
+    if (sweep <= 0)
+        return p;
+    if (full) {
+        p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
+        p.ellipse(cx, cy, rx, ry, 0, a0, a0 + Math.PI * 2);
+        p.closePath();
+        if (ratio > 0) {
+            p.moveTo(cx + Math.cos(a0) * rx * ratio, cy + Math.sin(a0) * ry * ratio);
+            p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a0, a0 - Math.PI * 2, true);
+            p.closePath();
+        }
+        return p;
+    }
+    const a1 = a0 + sweep;
+    p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
+    p.ellipse(cx, cy, rx, ry, 0, a0, a1);
+    if (ratio > 0) {
+        p.lineTo(cx + Math.cos(a1) * rx * ratio, cy + Math.sin(a1) * ry * ratio);
+        p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a1, a0, true);
+    }
+    else
+        p.lineTo(cx, cy);
+    p.closePath();
+    return p;
+}
+function arcD(n, f = v => Math.round(v * 100) / 100) {
+    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2;
+    const P = (a, k) => `${f(cx + Math.cos(a) * rx * k)} ${f(cy + Math.sin(a) * ry * k)}`;
+    if (sweep <= 0)
+        return '';
+    if (full) {
+        let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0 + Math.PI, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0, 1)}Z`;
+        if (ratio > 0)
+            d += `M${P(a0, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0 + Math.PI, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0, ratio)}Z`;
+        return d;
+    }
+    const large = sweep > Math.PI ? 1 : 0, a1 = a0 + sweep;
+    let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 ${large} 1 ${P(a1, 1)}`;
+    if (ratio > 0)
+        d += `L${P(a1, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 ${large} 0 ${P(a0, ratio)}Z`;
+    else
+        d += `L${f(cx)} ${f(cy)}Z`;
+    return d;
+}
 function pathFor(n) {
     const p = new Path2D();
+    if (n.type === 'ellipse' && arcActive(n))
+        return arcPath(p, n);
     if (n.type === 'ellipse')
         p.ellipse(n.w / 2, n.h / 2, Math.max(.001, n.w / 2), Math.max(.001, n.h / 2), 0, 0, Math.PI * 2);
     else if (n.type === 'line') {
@@ -6206,7 +6278,7 @@ function exportSVG(doc, ids) {
             if (strokeIsOn(n))
                 item += sx.el || svgShapeEl(n, f, `fill="none" ${svgStrokeAttrs(n, f, e)}`);
         }
-        else if (n.type === 'ellipse')
+        else if (n.type === 'ellipse' && !arcActive(n))
             item = `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${attrs}/>`;
         else if (n.type === 'path' || n.type === 'line')
             item = `<path d="${dFor(n)}" ${attrs}/>`;
@@ -6982,6 +7054,8 @@ function renderInspector() {
         html += section('Position', positionSectionHtml(n));
         html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
         html += section('Appearance', `${appearanceTopHtml(n)}${varRow('Visibility', 'visible')}${varCollectionsHtml(n)}`, varCollectionsButton(n));
+        if (!multi && n.type === 'ellipse')
+            html += section('Arc', `<div class="arc-row"><div class="arc-cell"><span class="small-label">Start</span>${field('', 'arcStart', n.arcStart || 0, { unit: '°', title: 'Arc start angle' })}</div><div class="arc-cell"><span class="small-label">Sweep</span>${field('', 'arcSweep', n.arcSweep ?? 100, { unit: '%', min: 0, max: 100, title: 'Arc sweep' })}</div><div class="arc-cell"><span class="small-label">Ratio</span>${field('', 'arcRatio', n.arcRatio || 0, { unit: '%', min: 0, max: 99, title: 'Arc ratio (inner radius)' })}</div></div>`);
         if (ns.every(x => x.type === 'text')) {
             const vAlign = n.textAlignV || 'top';
             html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented">${[['top', 'Align top'], ['center', 'Align middle'], ['bottom', 'Align bottom']].map(([a, t]) => `<button data-text-valign="${a}" class="${vAlign === a ? 'active' : ''}" title="${t}" aria-label="${t}">${TX_VALIGN_ICONS[a]}</button>`).join('')}</div></div><div class="property-grid"><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div><div class="tx-set-row"><button class="wh-lock ${textSettingsActive(n) ? 'active' : ''}" data-text-settings title="Text settings" aria-label="Text settings">${icon('sliders', 14)}</button></div></div><div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
@@ -7071,6 +7145,10 @@ function setProperty(prop, value, { live = false } = {}) {
             v = +v;
         if (['w', 'h'].includes(prop))
             v = Math.max(.1, +v);
+        if (prop === 'arcSweep')
+            v = clamp(+v, 0, 100);
+        if (prop === 'arcRatio')
+            v = clamp(+v, 0, 99);
         if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'gap', 'gapCross', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
             v = Math.max(0, +v);
         if (prop === 'fontSize')
@@ -7625,6 +7703,29 @@ async function importImage(file, location = null) {
         toast(e.message || 'Could not read the image.');
     }
 }
+// Arc handles on a selected circle (Start / Sweep / Ratio), shown while the outline is hovered.
+function arcHandles(n) {
+    const { a0, sweep, ratio } = arcParams(n), m = doc.world(n.id)?.matrix;
+    if (!m)
+        return [];
+    const at = (a, k) => { const q = point(m, n.w / 2 + Math.cos(a) * n.w / 2 * k, n.h / 2 + Math.sin(a) * n.h / 2 * k); return worldToScreen(q.x, q.y); };
+    return [{ name: 'arc-end', ...at(a0 + sweep, 1) }, { name: 'arc-ratio', ...at(a0, ratio) }, { name: 'arc-start', ...at(a0, 1) }];
+}
+function arcSelected() {
+    const roots = selectedRoots();
+    return roots.length === 1 && roots[0].type === 'ellipse' ? roots[0] : null;
+}
+// Pointer position in the ellipse's unit space (radius 1 = the outline).
+function arcLocal(n, w) {
+    const inv = doc.world(n.id).inverse, q = point(inv, w.x, w.y);
+    return { nx: (q.x - n.w / 2) / Math.max(.001, n.w / 2), ny: (q.y - n.h / 2) / Math.max(.001, n.h / 2) };
+}
+function arcNearOutline(n, p, w) {
+    const { nx, ny } = arcLocal(n, w), r = Math.hypot(nx, ny), tolPx = 12, rad = Math.max(1, Math.min(n.w, n.h) / 2 * state.camera.zoom);
+    if (Math.abs(r - 1) * rad < tolPx)
+        return true;
+    return arcHandles(n).some(h => Math.hypot(h.x - p.x, h.y - p.y) < 9);
+}
 function selectionGeometry() {
     const roots = selectedRoots();
     if (!roots.length)
@@ -7766,9 +7867,27 @@ function drawOverlay() {
         if (s)
             outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, inComponentTree(s.node) ? COMPONENT_PURPLE : '#5b9cf0', .8);
     }
+    const arcNode = arcSelected();
     const g = selectionGeometry();
     if (g && !state.editing && !state.pathEdit) {
         const corners = outline(c, g, accent, 1.2);
+        if (arcNode && (state.arcShow || state.gesture?.kind === 'arc')) {
+            // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line.
+            c.save();
+            c.lineWidth = 1.5;
+            c.strokeStyle = accent;
+            c.fillStyle = '#ffffff';
+            const hs = arcHandles(arcNode), pr = arcParams(arcNode);
+            for (const h of hs) {
+                if (h.name === 'arc-start' && pr.full)
+                    continue;
+                c.beginPath();
+                c.arc(h.x, h.y, 4.5, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            }
+            c.restore();
+        }
         if (!state.gesture || !['move', 'marquee'].includes(state.gesture.kind)) {
             const handles = handlesFor(g);
             c.strokeStyle = accent;
@@ -7965,7 +8084,9 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             continue;
         const p = point(s.inverse, world.x, world.y);
         let hit = false;
-        if (n.type === 'ellipse')
+        if (arcActive(n))
+            hit = hitCtx.isPointInPath(pathFor(n), p.x, p.y) || (n.strokeWidth > 0 && hitCtx.isPointInStroke(pathFor(n), p.x, p.y));
+        else if (n.type === 'ellipse')
             hit = ((p.x - n.w / 2) / (n.w / 2 + tol)) ** 2 + ((p.y - n.h / 2) / (n.h / 2 + tol)) ** 2 <= 1;
         else if (n.type === 'path' || n.type === 'line') {
             hitCtx.lineWidth = Math.max(n.strokeWidth, 8 / state.camera.zoom);
@@ -8143,6 +8264,16 @@ function pointerDown(e) {
         invalidate();
         return;
     }
+    const arcN = state.tool === 'select' && state.arcShow ? arcSelected() : null;
+    if (arcN) {
+        const ah = arcHandles(arcN).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 9 && !(h.name === 'arc-start' && arcParams(arcN).full));
+        if (ah) {
+            history.begin('Edit arc');
+            const pr = arcParams(arcN);
+            state.gesture = { kind: 'arc', id: arcN.id, which: ah.name, endAngle: pr.a0 + pr.sweep, lastSweep: pr.sweep, moved: false };
+            return;
+        }
+    }
     const geo = selectionGeometry();
     if (geo) {
         const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
@@ -8288,6 +8419,11 @@ function pointerMove(e) {
                 state.altDown = !!e.altKey;
                 invalidate();
             }
+            const arcN = arcSelected(), arcOn = !!arcN && arcNearOutline(arcN, p, w);
+            if (arcOn !== !!state.arcShow) {
+                state.arcShow = arcOn;
+                invalidate();
+            }
             const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
@@ -8364,6 +8500,38 @@ function pointerMove(e) {
         renderLayers();
         renderInspector();
         invalidate();
+        return;
+    }
+    if (g.kind === 'arc') {
+        const n = doc.get(g.id);
+        if (!n)
+            return;
+        const { nx, ny } = arcLocal(n, w), TAU = Math.PI * 2, snap = a => e.shiftKey ? Math.round(a / (Math.PI / 12)) * (Math.PI / 12) : a;
+        const norm = a => ((a % TAU) + TAU) % TAU;
+        if (g.which === 'arc-ratio')
+            n.arcRatio = Math.round(clamp(Math.hypot(nx, ny), 0, .99) * 100);
+        else {
+            const ang = snap(Math.atan2(ny, nx)), pr = arcParams(n);
+            if (g.which === 'arc-end') {
+                let d = norm(ang - pr.a0);
+                // Keep the sweep continuous when the handle passes the start line.
+                if (g.lastSweep > TAU * .75 && d < TAU * .25)
+                    d = TAU;
+                else if (g.lastSweep < TAU * .25 && d > TAU * .75)
+                    d = 0;
+                g.lastSweep = d;
+                n.arcSweep = Math.round(d / TAU * 1000) / 10;
+            }
+            else {
+                // Start handle: the end stays where it is, the sweep absorbs the change.
+                const s = norm(g.endAngle - ang);
+                n.arcStart = Math.round((norm(ang) * 180 / Math.PI) * 10) / 10 % 360;
+                n.arcSweep = Math.round((s === 0 && pr.sweep > 0 ? TAU : s) / TAU * 1000) / 10;
+            }
+        }
+        g.moved = true;
+        doc.touch(n);
+        changed({ ui: false });
         return;
     }
     if (g.kind === 'line-end') {
@@ -8638,7 +8806,9 @@ function pointerUp(e) {
     if (g.kind === 'path-edit') {
         normalizePath(doc.get(g.id));
     }
-    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end'].includes(g.kind)) {
+    if (g.kind === 'arc')
+        renderInspector();
+    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end', 'arc'].includes(g.kind)) {
         if (g.originals)
             for (const [id, orig] of g.originals) {
                 const n = doc.get(id);
@@ -8924,6 +9094,10 @@ function flattenPathOf(n) {
 function nodePolys(n) {
     const m = doc.world(n.id).matrix, tp = (x, y) => { const q = point(m, x, y); return [q.x, q.y]; };
     let ring = null;
+    if (n.type === 'ellipse' && arcActive(n)) {
+        const polys = arcPoly(n).map(r => r.map(([x, y]) => tp(x, y)));
+        return [polys];
+    }
     if (n.type === 'ellipse') {
         ring = [];
         for (let i = 0; i < 128; i++) {
@@ -10567,10 +10741,10 @@ function componentBlockHtml(n) {
         return rows || own ? `<div class="cmp-block instance-props"><div class="cmp-props">${rows}${own}</div></div>` : '';
     }
     if (n.component) {
-        const count = instancesOf(n.id).length, set = parentSetOf(n), common = `<button class="cmp-btn" data-cmp="place">Place instance</button><button class="cmp-btn" data-cmp="select-instances" ${count ? '' : 'disabled'}>Select instances</button>`;
+        const set = parentSetOf(n);
         if (set)
             return `<div class="cmp-block main">${variantEditorHtml(set, n)}</div>`;
-        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div><div class="cmp-actions"><button class="cmp-btn" data-cmp="add-variant">+ Variant</button>${common}<button class="cmp-btn" data-cmp="remove">Remove component</button></div></div>`;
+        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div></div>`;
     }
     if (n.componentSet) {
         const vs = setVariants(n);

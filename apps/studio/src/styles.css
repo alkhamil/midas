@@ -2805,3 +2805,17 @@ a.wide-button { text-decoration: none; color: inherit }
 
 .selection-name-input { min-width: 0 }
 .kind-chevron { flex: none; margin-left: 2px }
+
+/* Constraint dropdowns: no box inside a box, focus ring on the whole field */
+.cn-select select { background: transparent; border: 0; outline: 0; box-shadow: none; border-radius: 6px }
+.cn-select select option { background: var(--panel-3); color: var(--text) }
+.cn-select:focus-within { box-shadow: inset 0 0 0 1px var(--accent) }
+
+/* Library panel header buttons: icon and label on one line, wrapping to separate rows instead of breaking */
+.asset-head { flex-wrap: wrap }
+.asset-head .wide-button { flex: 1 1 130px; flex-direction: row; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; width: auto; min-width: 0; padding: 0 10px; overflow: hidden; text-overflow: ellipsis }
+.asset-head .wide-button svg { flex: none }
+
+.arc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.arc-cell { display: grid; gap: 4px; min-width: 0 }
+.arc-cell .field { min-width: 0 }
