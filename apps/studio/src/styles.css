@@ -2866,3 +2866,4 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .head-actions { display: inline-flex; align-items: center; gap: 0; flex: none }
 .head-actions .icon-button { margin: -4px 0 -4px 0 !important }
 .head-actions .icon-button:last-child { margin-right: -4px !important }
+#context-menu { max-height: 80vh; overflow-y: auto }

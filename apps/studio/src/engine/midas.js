@@ -3062,6 +3062,7 @@ function framePresetPanel() {
     return section('Frame', FRAME_PRESETS.map(([group, items]) => `<div class="preset-group"><button class="preset-head" data-preset-group="${esc(group)}">${presetOpen.has(group) ? icon('chevronDown', 10) : icon('chevronRight', 10)} ${esc(group)}</button>${presetOpen.has(group) ? items.map(([name, w, h]) => `<button class="preset-item" data-frame-new="${esc(group + '|' + name)}"><span>${esc(name)}</span><small>${w} × ${h}</small></button>`).join('') : ''}</div>`).join('') + '<p class="small-label" style="margin-top:10px">Pick a size to add a frame to the center of your view, or drag on the canvas for a custom frame.</p>');
 }
 function frameSection(ns) {
+    return '';
     const frames = ns.filter(n => n.type === 'frame');
     if (!frames.length || frames.length !== ns.length)
         return '';
@@ -7164,7 +7165,7 @@ function renderInspector() {
             html += strokeSectionHtml(n);
         if (n.type !== 'group')
             html += effectsSection(n);
-        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
+        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
     $('#inspector').innerHTML = html;
@@ -11309,7 +11310,17 @@ document.addEventListener('click', e => {
     if (!b)
         return;
     const cur = kindOf(activeNode() || {}), r = b.getBoundingClientRect();
-    showMenu([['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k })), Math.max(8, r.right - 160), r.bottom + 4);
+    const items = [['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k }));
+    // Size presets (mobile / tablet / desktop) sit under the kinds, for frames and sections.
+    if (cur === 'frame' || cur === 'section') {
+        items.push('-', { header: 'Size preset' });
+        for (const [group, list] of FRAME_PRESETS.filter(g => ['Phone', 'Tablet', 'Desktop'].includes(g[0]))) {
+            items.push({ header: group });
+            for (const [name, w, h] of list)
+                items.push({ label: ' ' + name + ' · ' + w + '×' + h, action: 'frame-preset:' + group + '|' + name });
+        }
+    }
+    showMenu(items, Math.max(8, r.right - 220), r.bottom + 4);
 });
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
@@ -14927,6 +14938,8 @@ document.addEventListener('click', e => {
             renamePageInline(act.slice(12));
         else if (act.startsWith('page-delete:'))
             deletePage(act.slice(12));
+        else if (act.startsWith('frame-preset:'))
+            applyFramePreset(act.slice(13));
         else if (act.startsWith('page-duplicate:'))
             duplicatePage(act.slice(15));
         else if (act.startsWith('vwcoll:'))
