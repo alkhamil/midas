@@ -126,7 +126,7 @@ const topbarFor = name => {
     const [module, kind] = name.split(' — ');
     const [title, crumb] = kind === 'Form' ? [`Add ${module}`, `Home / ${module} / Add`] : kind === 'Detail' ? [`Detail ${module}`, `Home / ${module} / Detail`]
         : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Home / ${module}`];
-    return R('Topbar', { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
+    return V('Topbar', { Menu: 'Closed' }, { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
 };
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
 const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
@@ -220,6 +220,10 @@ const roleScreens = [
     confirmFrame('Confirm · Delete role', 'Danger', 'Delete role?', 'Users with this role lose its permissions. This cannot be undone.', 'Cancel', 'Delete'),
     confirmFrame('Confirm · Discard changes (role)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
 ];
+// Reference frame: the user menu opened from the avatar (Topbar variant Menu = Open).
+const userMenuFrame = col({ w: 1440, pad: [0, 0, 48, 0], fill: 'color/surface', name: 'Topbar · User menu' }, [
+    V('Topbar', { Menu: 'Open' }, { Title: 'Dashboard', Breadcrumb: 'Dashboard', UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' }),
+]);
 const dashboard = screen('Dashboard', [
     header('Dashboard', 'Overview of app activity', ['Secondary', 'Download report']),
     row({ w: 'fill', gap: 16, align: 'start', name: 'Statistik' }, [
@@ -248,7 +252,7 @@ const addPage = (name, specs) => {
 };
 addPage('User', userScreens);
 addPage('Role', roleScreens);
-addPage('Dashboard', [dashboard]);
+addPage('Dashboard', [dashboard, userMenuFrame]);
 pages.push({ id: ids.get('page:library'), name: `Library · ${snap.name}`, nodes: libNodes, parentId: null });
 const pageOf = name => pages.find(p => p.name === name).id;
 const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name).id;

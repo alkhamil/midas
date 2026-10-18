@@ -19,7 +19,7 @@ export { Table } from './components/Table/Table';
 export { Sidebar } from './components/Sidebar/Sidebar';
 export { SectionHeader } from './components/SectionHeader/SectionHeader';
 export { Topbar } from './components/Topbar/Topbar';
-export type { Crumb } from './components/Topbar/Topbar';
+export type { Crumb, UserMenuItem } from './components/Topbar/Topbar';
 export { FilterToolbar } from './components/FilterToolbar/FilterToolbar';
 export { AppShell } from './components/AppShell/AppShell';
 export type { SelectOption } from './components/SelectField/SelectField';

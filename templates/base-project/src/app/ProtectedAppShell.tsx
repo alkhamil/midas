@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { matchPath, Outlet, useLocation, useNavigate } from 'react-router';
-import { AppShell, Button } from '@midas/ui-cms';
+import { AppShell } from '@midas/ui-cms';
 import { filterNavItems, resolveNavLabel } from '../shared/utils/navigation';
 import { appLayout } from './generated/layout';
 import { generatedPages } from './generated/pages';
@@ -36,11 +36,7 @@ function ProtectedAppShell() {
         title={page?.title ?? current?.label}
         breadcrumbs={page?.breadcrumbs}
         appName={appLayout.appName}
-        topbarExtra={
-          <Button variant="ghost" size="sm" onClick={logout}>
-            {t('auth.logout')}
-          </Button>
-        }
+        userMenu={[{ label: t('auth.logout'), danger: true, onClick: logout }]}
       >
         <Outlet />
       </AppShell>

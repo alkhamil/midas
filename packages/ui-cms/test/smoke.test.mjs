@@ -87,3 +87,13 @@ test('Drawer renders title, content and the default footer buttons', () => {
     assert.match(html, />Apply</);
     assert.equal(render(h(ui.Drawer, { open: false, onClose() {} })), '');
 });
+
+test('Topbar: avatar opens the user menu with Sign out (menu=open renders it)', () => {
+    const closed = render(h(ui.Topbar, { userName: 'Admin', userMenu: [{ label: 'Sign out', danger: true, onClick() {} }] }));
+    assert.doesNotMatch(closed, /role="menu"/);
+    assert.match(closed, /aria-haspopup="menu"/);
+    const open = render(h(ui.Topbar, { menu: 'open', userName: 'Admin', userMenu: [{ label: 'Sign out', danger: true, onClick() {} }] }));
+    assert.match(open, /role="menu"/);
+    assert.match(open, />Sign out</);
+    assert.doesNotMatch(render(h(ui.Topbar, { userName: 'Admin' })), /aria-haspopup/); // no items → not clickable
+});

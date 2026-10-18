@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T14:43:19.011Z",
+  "publishedAt": "2026-10-18T15:07:03.156Z",
   "themes": [
     "light",
     "dark"
@@ -213,6 +213,16 @@
       "componentName": "Topbar",
       "props": [
         {
+          "name": "menu",
+          "type": "enum",
+          "source": "variant",
+          "label": "Menu",
+          "values": [
+            "open",
+            "closed"
+          ]
+        },
+        {
           "name": "title",
           "type": "string",
           "source": "text",
@@ -238,6 +248,7 @@
         }
       ],
       "defaults": {
+        "menu": "closed",
         "title": "Page title",
         "breadcrumb": "Home / Page",
         "userName": "Administrator",

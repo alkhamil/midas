@@ -242,7 +242,8 @@ function AppPreview({ bridge, project, onClose }) {
         breadcrumbs: breadcrumbsOf(modules, screen.module, screen),
         activePath: layout.items.find(i => modules.some(m => m.id === i.moduleId && isInside(modules, screen.module, m)))?.path,
         onNavigate: path => { const t = byPath(path); if (t) go(t.id); },
-    }), [screen, layout, modules, byPath, go]);
+        onSignOut: () => flash('Signed out (preview only)'),
+    }), [screen, layout, modules, byPath, go, flash]);
     const path = screen ? screenPath(modules, screen.module, screen).replace(':id', current.recordId ?? ':id') : '';
 
     useEffect(() => {

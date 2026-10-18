@@ -47,7 +47,7 @@ export const midasPreview: Record<string, Record<string, unknown>> = {
   },
   Sidebar: { items: navItems, activePath: '/', appName: 'CMS Admin', onToggle: noop },
   AppShell: { navItems, activePath: '/', user: { name: 'Administrator', roleName: 'admin' }, title: 'Dashboard', breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Dashboard' }], appName: 'CMS Admin' },
-  Topbar: { breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'User' }] },
+  Topbar: { userMenu: [{ label: 'Sign out', danger: true, onClick: noop }], breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'User' }] },
   SelectField: { options },
   FilterToolbar: { searchValue: '', onSearchChange: noop, onFilterClick: noop },
   Dialog: { open: true, onClose: noop, children: 'Deleted data cannot be restored.' },
