@@ -6861,6 +6861,38 @@ function renamePageInline(id) {
         return;
     inlineRename(el, p.name, name => transaction('Rename page', () => { p.name = name; }));
 }
+// Layer icon for vectors: a miniature of the real shape, scaled to fit a 13px box (like Figma).
+function vectorThumb(n) {
+    if (n.type !== 'path' && n.type !== 'line')
+        return '';
+    const W = Math.max(.001, n.type === 'path' ? n.pathW || n.w : n.w), H = Math.max(.001, n.type === 'path' ? n.pathH || n.h : n.h);
+    let d = '', count = 0;
+    const num = v => Math.round(v * 100) / 100;
+    if (n.type === 'line')
+        d = `M0 ${num(n.h / 2)}L${num(n.w)} ${num(n.h / 2)}`;
+    else
+        for (const c of pathContours(n)) {
+            const pts = c.points || [];
+            count += pts.length;
+            if (!pts.length)
+                continue;
+            if (count > 600)
+                return '';
+            d += `M${num(pts[0].x)} ${num(pts[0].y)}`;
+            const seg = (a, b) => { d += a.out || b.in ? `C${num(a.out?.x ?? a.x)} ${num(a.out?.y ?? a.y)} ${num(b.in?.x ?? b.x)} ${num(b.in?.y ?? b.y)} ${num(b.x)} ${num(b.y)}` : `L${num(b.x)} ${num(b.y)}`; };
+            for (let i = 1; i < pts.length; i++)
+                seg(pts[i - 1], pts[i]);
+            if (c.closed) {
+                seg(pts.at(-1), pts[0]);
+                d += 'Z';
+            }
+        }
+    if (!d)
+        return '';
+    const filled = n.type === 'path' && n.fill && n.fill !== 'none' && n.closed !== false;
+    // Vector-effect keeps hairline strokes visible however much the shape is shrunk.
+    return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
 function renderLayers() {
     // Plugins dan Code Builder memakai seluruh panel kiri (tanpa pages/layers).
     const pluginsMode = state.leftTab === 'plugins', builderMode = state.leftTab === 'code-builder';
@@ -6928,7 +6960,7 @@ function renderLayers() {
             const children = doc.children(n.id), hasChildren = children.length > 0, open = state.expanded.has(n.id) || !!q;
             if (depth === 0)
                 html += '<div class="layer-group">';
-            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${n.component || n.isInstance || n.componentSet ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
+            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${inComponentTree(n) ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || (n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13))}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
             if (hasChildren && open)
                 walk(n.id, depth + 1);
             if (depth === 0)
@@ -14445,36 +14477,67 @@ $('#layer-tree').addEventListener('dragstart', e => {
     e.dataTransfer.setData('application/x-midas-layer', row.dataset.layer);
     e.dataTransfer.effectAllowed = 'move';
 });
+// Drop position inside the layer tree: top quarter of a row = above it, bottom quarter = below it, middle = inside (containers only).
+// Below the last row of the tree it means "below the bottom-most layer".
+function layerDropTarget(e) {
+    const row = e.target.closest('[data-layer]');
+    if (!row) {
+        const roots = doc.children(null);
+        const last = $$('#layer-tree .layer-row').at(-1);
+        if (!roots.length || !last || e.clientY < last.getBoundingClientRect().bottom)
+            return null;
+        return { row: last, target: roots[0], pos: 'below', root: true };
+    }
+    const target = doc.get(row.dataset.layer), r = row.getBoundingClientRect(), y = (e.clientY - r.top) / Math.max(1, r.height);
+    const container = target && ['frame', 'group'].includes(target.type) && !target.isInstance;
+    const pos = y < (container ? .25 : .5) ? 'above' : y > (container ? .75 : .5) || !container ? 'below' : 'inside';
+    return { row, target, pos };
+}
+function clearLayerDrop() {
+    $$('.drop-target,.drop-above,.drop-below,.drop-inside').forEach(n => n.classList.remove('drop-target', 'drop-above', 'drop-below', 'drop-inside'));
+}
 $('#layer-tree').addEventListener('dragover', e => {
     if (![...e.dataTransfer.types].includes('application/x-midas-layer'))
         return;
-    const row = e.target.closest('[data-layer]');
-    if (row) {
-        e.preventDefault();
-        $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
-        row.classList.add('drop-target');
-    }
+    e.preventDefault();
+    clearLayerDrop();
+    const d = layerDropTarget(e);
+    if (d)
+        d.row.classList.add('drop-' + d.pos);
 });
-$('#layer-tree').addEventListener('dragleave', e => e.target.closest('.drop-target')?.classList.remove('drop-target'));
+$('#layer-tree').addEventListener('dragleave', e => { if (!e.relatedTarget || !$('#layer-tree').contains(e.relatedTarget)) clearLayerDrop(); });
 $('#layer-tree').addEventListener('drop', e => {
     e.preventDefault();
-    $$('.drop-target').forEach(n => n.classList.remove('drop-target'));
-    const id = e.dataTransfer.getData('application/x-midas-layer'), row = e.target.closest('[data-layer]');
-    if (!id || !row)
+    const d = layerDropTarget(e);
+    clearLayerDrop();
+    const id = e.dataTransfer.getData('application/x-midas-layer');
+    if (!id || !d)
         return;
-    const source = doc.get(id), target = doc.get(row.dataset.layer);
-    if (!source || !target || source === target || doc.descendants(id).some(n => n.id === target.id))
+    const dragged = state.selection.has(id) ? [...state.selection] : [id];
+    const sources = doc.roots(dragged).filter(n => n && n !== d.target && !doc.descendants(n.id).some(c => c.id === d.target.id)).sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
+    if (!sources.length)
         return;
     transaction('Reorder layer', () => {
-        const world = doc.world(id).matrix, parentId = e.shiftKey && ['frame', 'group'].includes(target.type) ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
-        source.parentId = parentId;
-        setFromMatrix(source, multiply(inverse(parentMatrix), world));
-        doc.nodes.splice(doc.nodes.indexOf(source), 1);
-        doc.nodes.splice(doc.nodes.indexOf(target) + 1, 0, source);
+        const target = d.target, parentId = d.pos === 'inside' ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
+        let anchor = target;
+        for (const source of sources) {
+            const world = doc.world(source.id).matrix;
+            source.parentId = parentId;
+            setFromMatrix(source, multiply(inverse(parentMatrix), world));
+            doc.nodes.splice(doc.nodes.indexOf(source), 1);
+            if (d.pos === 'inside')
+                doc.nodes.push(source);
+            else if (d.pos === 'above') {
+                doc.nodes.splice(doc.nodes.indexOf(anchor) + 1, 0, source);
+                anchor = source;
+            }
+            else
+                doc.nodes.splice(doc.nodes.indexOf(target), 0, source);
+        }
         doc.refresh();
         if (parentId)
             state.expanded.add(parentId);
-        select([id]);
+        select(sources.map(n => n.id));
     });
 });
 $('#assets-panel').addEventListener('click', e => {
