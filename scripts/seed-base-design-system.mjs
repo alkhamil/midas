@@ -9,7 +9,7 @@
 // File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
 // (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dataUrlToSvg, iconNameParts, iconStyleOf } from '../apps/studio/src/iconSet.js';
@@ -62,7 +62,9 @@ if (file) {
     existing = existingIds({ pages: currentPages.map(p => p.data), variables: current.meta.variables });
 }
 
-const { doc, iconCount, iconStyles } = buildDocument({ existing, wdsDir: args.icons || join(ROOT, 'contoh_base_code/public/icons/wds') });
+const wdsDir = args.icons || join(ROOT, 'contoh_base_code/public/icons/wds');
+if (!existsSync(wdsDir)) console.warn(`Peringatan: folder ikon WDS ${wdsDir} tidak ada — hanya ikon UI bawaan yang dipakai. Pakai --icons DIR untuk set lengkap.`);
+const { doc, iconCount, iconStyles } = buildDocument({ existing, wdsDir });
 console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')} · ${iconCount} ikon (${iconStyles.join(', ')}) · ${doc.variables.items.length} variables`);
 
 // ---------------------------------------------------------------- simpan ke Midas
@@ -72,8 +74,20 @@ if (!fileId && !args.create) {
     throw new Error(`File "${FILE_NAME}" tidak ada di workspace ${me?.user?.email ?? 'akun ini'}. Login dengan akun pemilik file, atau tambahkan --create untuk membuat file baru.`);
 }
 if (!fileId) {
-    fileId = `midas-base-ds-${Math.random().toString(36).slice(2, 10)}`;
-    await api('POST', '/api/files/import', { id: fileId, data: { ...doc, name: FILE_NAME } });
+    // File default memakai id library di packages/ui-base/midas.config.json supaya `midas sync` paket langsung tersambung.
+    const kitId = FILE_NAME === DEFAULT_FILE ? (() => {
+        try {
+            return JSON.parse(readFileSync(join(ROOT, 'packages/ui-base/midas.config.json'), 'utf8')).libraryId;
+        } catch {
+            return null;
+        }
+    })() : null;
+    fileId = kitId || `midas-base-ds-${Math.random().toString(36).slice(2, 10)}`;
+    await api('POST', '/api/files/import', { id: fileId, data: { ...doc, name: FILE_NAME } }).catch(async err => {
+        if (!kitId) throw err;
+        fileId = `midas-base-ds-${Math.random().toString(36).slice(2, 10)}`; // id sudah dipakai workspace lain di server ini
+        await api('POST', '/api/files/import', { id: fileId, data: { ...doc, name: FILE_NAME } });
+    });
     console.log(`File dibuat: ${fileId}`);
 }
 else {
@@ -130,7 +144,15 @@ const mappings = draft.mappings.filter(m => !keys.has(m.componentKey) && !/^[_.]
     return m;
 });
 if (draft.breaking.length) console.log(`Breaking change: ${draft.breaking.join('; ')}`);
-const version = args.version || draft.suggestedVersion;
+// Publish pertama di server baru mengikuti versi paket kode (packages/ui-base) supaya `midas report` cocok.
+const codeVersion = (() => {
+    try {
+        return JSON.parse(readFileSync(join(ROOT, 'packages/ui-base/package.json'), 'utf8')).version;
+    } catch {
+        return null;
+    }
+})();
+const version = args.version || (draft.latest ? draft.suggestedVersion : codeVersion || draft.suggestedVersion);
 const res = await api('POST', `/api/libraries/${fileId}/versions`, {
     name: FILE_NAME, packageName: draft.library?.packageName || PACKAGE, version,
     releaseNotes: args.notes || `Design system Midas Base: ${COMPONENTS.length} komponen, ${iconCount} ikon (${iconStyles.join(' & ')}), foundations & templates`,

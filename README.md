@@ -22,6 +22,8 @@ docs/specs/     # spesifikasi & workflow
 
 ## Menjalankan secara lokal
 
+Developer baru: ikuti [docs/setup-lokal.md](docs/setup-lokal.md) (install, akun pertama, login CLI, seed design system).
+
 Butuh Node 22 dan Docker.
 
 ```bash
