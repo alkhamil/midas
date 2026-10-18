@@ -1,5 +1,5 @@
 import { Outlet, useMatches } from 'react-router';
-import { ErrorStatePage } from '@midas/ui-base';
+import ErrorStatePage from '../../shared/components/ErrorStatePage';
 import { useAuth } from './useAuth';
 
 /**

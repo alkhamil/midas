@@ -1,0 +1,86 @@
+import type { ReactNode } from 'react';
+import { tableDefaults, type TableProps as DesignProps } from '../../generated/props';
+import { AltArrowLeftIcon, AltArrowRightIcon } from '../../generated/icons';
+import { cx } from '../../internal/cx';
+
+export interface Column<T> {
+  key: string;
+  header: ReactNode;
+  /** Isi sel; default menampilkan `item[key]`. */
+  render?: (item: T, index: number) => ReactNode;
+  /** Lebar kolom (px); kolom tanpa lebar berbagi sisa ruang. */
+  width?: number;
+}
+
+export type TableProps<T> = DesignProps & {
+  columns: Column<T>[];
+  data: T[];
+  rowKey: (item: T, index: number) => string | number;
+  /** Isi kolom aksi di kanan (mis. <IconButton>). Kolom tidak tampil bila kosong. */
+  renderAction?: (item: T) => ReactNode;
+  actionHeader?: ReactNode;
+  /** Total data di server; default = `data.length`. */
+  totalRecords?: number;
+  page?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  emptyText?: string;
+  className?: string;
+};
+
+/** Daftar data dengan header, aksi baris, dan paginasi. */
+export function Table<T>(props: TableProps<T>) {
+  const { columns, data, rowKey, renderAction, actionHeader = 'Aksi', totalRecords = data.length, page = 1, pageSize = 10, onPageChange, emptyText = 'Belum ada data.', testId, className } = { ...tableDefaults, ...props };
+  const pages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const from = totalRecords === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(totalRecords, from + data.length - 1);
+  return (
+    <div data-testid={testId} className={cx('overflow-hidden rounded-lg border border-border bg-background', className)}>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-muted">
+            <tr>
+              {columns.map(c => (
+                <th key={c.key} style={c.width ? { width: c.width } : undefined} className="h-10 px-4 text-xs font-semibold text-muted-foreground">
+                  {c.header}
+                </th>
+              ))}
+              {renderAction && <th className="h-10 w-[144px] px-4 text-xs font-semibold text-muted-foreground">{actionHeader}</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={columns.length + (renderAction ? 1 : 0)} className="h-24 px-4 text-center text-muted-foreground">
+                  {emptyText}
+                </td>
+              </tr>
+            )}
+            {data.map((item, i) => (
+              <tr key={rowKey(item, i)} className="border-t border-border">
+                {columns.map(c => (
+                  <td key={c.key} className="h-[52px] px-4 text-foreground">
+                    {c.render ? c.render(item, i) : String((item as Record<string, unknown>)[c.key] ?? '')}
+                  </td>
+                ))}
+                {renderAction && <td className="h-[52px] px-4">{renderAction(item)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
+        <span>{totalRecords === 0 ? 'Tidak ada data' : `Menampilkan ${from}–${to} dari ${totalRecords}`}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" aria-label="Halaman sebelumnya" disabled={page <= 1} onClick={() => onPageChange?.(page - 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
+            <AltArrowLeftIcon className="h-4 w-4" />
+          </button>
+          <span className="flex h-8 min-w-8 items-center justify-center rounded-lg border border-primary px-2 font-medium text-primary">{page}</span>
+          <button type="button" aria-label="Halaman berikutnya" disabled={page >= pages} onClick={() => onPageChange?.(page + 1)} className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40">
+            <AltArrowRightIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { WidgetIcon } from '@midas/ui-base';
+import { WidgetIcon } from '@midas/ui-cms';
 import type { NavItemType } from '../shared/types/navigation';
 
 export const navItems: NavItemType[] = [

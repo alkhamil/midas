@@ -1,0 +1,854 @@
+{
+  "package": "@midas/ui-cms",
+  "version": "1.1.1",
+  "library": "CMS Design System",
+  "publishedAt": "2026-10-18T08:21:44.902Z",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "tokens": [
+    {
+      "key": "primary",
+      "cssVar": "--theme-primary",
+      "type": "color",
+      "variable": "color/primary"
+    },
+    {
+      "key": "primaryForeground",
+      "cssVar": "--theme-primary-foreground",
+      "type": "color",
+      "variable": "color/primary-foreground"
+    },
+    {
+      "key": "success",
+      "cssVar": "--theme-success",
+      "type": "color",
+      "variable": "color/success"
+    },
+    {
+      "key": "warning",
+      "cssVar": "--theme-warning",
+      "type": "color",
+      "variable": "color/warning"
+    },
+    {
+      "key": "danger",
+      "cssVar": "--theme-danger",
+      "type": "color",
+      "variable": "color/danger"
+    },
+    {
+      "key": "info",
+      "cssVar": "--theme-info",
+      "type": "color",
+      "variable": "color/info"
+    },
+    {
+      "key": "background",
+      "cssVar": "--theme-background",
+      "type": "color",
+      "variable": "color/background"
+    },
+    {
+      "key": "surface",
+      "cssVar": "--theme-surface",
+      "type": "color",
+      "variable": "color/surface"
+    },
+    {
+      "key": "muted",
+      "cssVar": "--theme-muted",
+      "type": "color",
+      "variable": "color/muted"
+    },
+    {
+      "key": "border",
+      "cssVar": "--theme-border",
+      "type": "color",
+      "variable": "color/border"
+    },
+    {
+      "key": "foreground",
+      "cssVar": "--theme-foreground",
+      "type": "color",
+      "variable": "color/foreground"
+    },
+    {
+      "key": "mutedForeground",
+      "cssVar": "--theme-muted-foreground",
+      "type": "color",
+      "variable": "color/muted-foreground"
+    },
+    {
+      "key": "sidebar",
+      "cssVar": "--theme-sidebar",
+      "type": "color",
+      "variable": "color/sidebar"
+    },
+    {
+      "key": "sidebarForeground",
+      "cssVar": "--theme-sidebar-foreground",
+      "type": "color",
+      "variable": "color/sidebar-foreground"
+    },
+    {
+      "key": "radiusSm",
+      "cssVar": "--theme-radius-sm",
+      "type": "number",
+      "variable": "radius/sm"
+    },
+    {
+      "key": "radiusMd",
+      "cssVar": "--theme-radius-md",
+      "type": "number",
+      "variable": "radius/md"
+    },
+    {
+      "key": "radiusLg",
+      "cssVar": "--theme-radius-lg",
+      "type": "number",
+      "variable": "radius/lg"
+    },
+    {
+      "key": "radiusXl",
+      "cssVar": "--theme-radius-xl",
+      "type": "number",
+      "variable": "radius/xl"
+    },
+    {
+      "key": "pagePadding",
+      "cssVar": "--theme-page-padding",
+      "type": "number",
+      "variable": "page-padding"
+    },
+    {
+      "key": "cardPadding",
+      "cssVar": "--theme-card-padding",
+      "type": "number",
+      "variable": "card-padding"
+    },
+    {
+      "key": "sectionGap",
+      "cssVar": "--theme-section-gap",
+      "type": "number",
+      "variable": "section-gap"
+    },
+    {
+      "key": "stackGap",
+      "cssVar": "--theme-stack-gap",
+      "type": "number",
+      "variable": "stack-gap"
+    },
+    {
+      "key": "fieldGap",
+      "cssVar": "--theme-field-gap",
+      "type": "number",
+      "variable": "field-gap"
+    },
+    {
+      "key": "fontFamily",
+      "cssVar": "--theme-font-family",
+      "type": "string",
+      "variable": "font/family"
+    }
+  ],
+  "components": [
+    {
+      "exportName": "Button",
+      "componentKey": "ds-15-5ftnkn",
+      "componentName": "Button",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "ghost",
+            "danger",
+            "primary",
+            "secondary"
+          ]
+        },
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        },
+        {
+          "name": "icon",
+          "type": "node",
+          "source": "instance",
+          "label": "Icon"
+        }
+      ],
+      "defaults": {
+        "variant": "primary",
+        "size": "sm",
+        "children": "Button",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "IconButton",
+      "componentKey": "ds-2g-nnx1nl",
+      "componentName": "IconButton",
+      "props": [
+        {
+          "name": "action",
+          "type": "enum",
+          "source": "variant",
+          "label": "Action",
+          "values": [
+            "edit",
+            "view",
+            "delete"
+          ]
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "action": "view",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "TextField",
+      "componentKey": "ds-52-drc2jk",
+      "componentName": "TextField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Nama lengkap",
+        "placeholder": "Ketik di sini…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "TextAreaField",
+      "componentKey": "ds-6b-fnk7ng",
+      "componentName": "TextAreaField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Catatan",
+        "placeholder": "Ketik di sini…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "PasswordField",
+      "componentKey": "ds-7k-4qo0v8",
+      "componentName": "PasswordField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Kata sandi",
+        "placeholder": "Ketik di sini…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "SelectField",
+      "componentKey": "ds-8z-4tp3od",
+      "componentName": "SelectField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Role",
+        "placeholder": "Pilih…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "SwitchField",
+      "componentKey": "ds-as-lrpuhb",
+      "componentName": "SwitchField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Aktif",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "Alert",
+      "componentKey": "ds-3i-71787e",
+      "componentName": "Alert",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "danger",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "message": "Pesan untuk pengguna"
+      }
+    },
+    {
+      "exportName": "Badge",
+      "componentKey": "ds-2s-maa4uw",
+      "componentName": "Badge",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "danger",
+            "neutral",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "children": "Badge"
+      }
+    },
+    {
+      "exportName": "Dialog",
+      "componentKey": "ds-bn-lj4uvt",
+      "componentName": "Dialog",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "title": "Judul dialog"
+      }
+    },
+    {
+      "exportName": "Avatar",
+      "componentKey": "ds-38-ep6lj1",
+      "componentName": "Avatar",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "initial",
+          "type": "string",
+          "source": "text",
+          "label": "Initial"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "initial": "A"
+      }
+    },
+    {
+      "exportName": "Card",
+      "componentKey": "ds-41-u4jnra",
+      "componentName": "Card",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "title": "Judul card"
+      }
+    },
+    {
+      "exportName": "StatCard",
+      "componentKey": "ds-4d-b1m06u",
+      "componentName": "StatCard",
+      "props": [
+        {
+          "name": "trend",
+          "type": "enum",
+          "source": "variant",
+          "label": "Trend",
+          "values": [
+            "up",
+            "down",
+            "neutral"
+          ]
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "source": "text",
+          "label": "Value"
+        },
+        {
+          "name": "caption",
+          "type": "string",
+          "source": "text",
+          "label": "Caption"
+        }
+      ],
+      "defaults": {
+        "trend": "up",
+        "label": "Total user",
+        "value": "1.248",
+        "caption": "12% dari bulan lalu"
+      }
+    },
+    {
+      "exportName": "Table",
+      "componentKey": "ds-ce-0ambl8",
+      "componentName": "Table",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "Sidebar",
+      "componentKey": "ds-ez-1rv9vb",
+      "componentName": "Sidebar",
+      "props": [
+        {
+          "name": "collapsed",
+          "type": "boolean",
+          "source": "variant",
+          "label": "Collapsed",
+          "values": [
+            "true",
+            "false"
+          ]
+        }
+      ],
+      "defaults": {
+        "collapsed": false
+      }
+    },
+    {
+      "exportName": "PageHeader",
+      "componentKey": "ds-fy-otdjp3",
+      "componentName": "PageHeader",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "source": "text",
+          "label": "Description"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Actions"
+        }
+      ],
+      "defaults": {
+        "title": "Judul halaman",
+        "description": "Keterangan singkat halaman"
+      }
+    },
+    {
+      "exportName": "FilterToolbar",
+      "componentKey": "ds-g9-29wrba",
+      "componentName": "FilterToolbar",
+      "props": [],
+      "defaults": {}
+    },
+    {
+      "exportName": "AppShell",
+      "componentKey": "ds-gk-u2raog",
+      "componentName": "AppShell",
+      "props": [],
+      "defaults": {}
+    }
+  ],
+  "icons": [
+    {
+      "name": "add",
+      "category": "ui",
+      "exportName": "AddIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-down",
+      "category": "ui",
+      "exportName": "AltArrowDownIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-left",
+      "category": "ui",
+      "exportName": "AltArrowLeftIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-right",
+      "category": "ui",
+      "exportName": "AltArrowRightIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "alt-arrow-up",
+      "category": "ui",
+      "exportName": "AltArrowUpIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-down",
+      "category": "ui",
+      "exportName": "ArrowDownIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "arrow-up",
+      "category": "ui",
+      "exportName": "ArrowUpIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "chart",
+      "category": "ui",
+      "exportName": "ChartIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "check-circle",
+      "category": "ui",
+      "exportName": "CheckCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "close",
+      "category": "ui",
+      "exportName": "CloseIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "close-circle",
+      "category": "ui",
+      "exportName": "CloseCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "danger-triangle",
+      "category": "ui",
+      "exportName": "DangerTriangleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-left",
+      "category": "ui",
+      "exportName": "DoubleAltArrowLeftIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "double-alt-arrow-right",
+      "category": "ui",
+      "exportName": "DoubleAltArrowRightIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "eye",
+      "category": "ui",
+      "exportName": "EyeIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "eye-closed",
+      "category": "ui",
+      "exportName": "EyeClosedIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "filter",
+      "category": "ui",
+      "exportName": "FilterIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "hamburger-menu",
+      "category": "ui",
+      "exportName": "HamburgerMenuIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "info-circle",
+      "category": "ui",
+      "exportName": "InfoCircleIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "logout",
+      "category": "ui",
+      "exportName": "LogoutIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "magnifer",
+      "category": "ui",
+      "exportName": "MagniferIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "pen",
+      "category": "ui",
+      "exportName": "PenIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "settings",
+      "category": "ui",
+      "exportName": "SettingsIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "shield-check",
+      "category": "ui",
+      "exportName": "ShieldCheckIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "trash-bin",
+      "category": "ui",
+      "exportName": "TrashBinIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "user",
+      "category": "ui",
+      "exportName": "UserIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "widget",
+      "category": "ui",
+      "exportName": "WidgetIcon",
+      "styles": [
+        "outline"
+      ]
+    }
+  ],
+  "warnings": []
+}

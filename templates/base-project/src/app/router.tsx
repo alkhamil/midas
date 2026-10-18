@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router';
-import { ErrorStatePage } from '@midas/ui-base';
+import ErrorStatePage from '../shared/components/ErrorStatePage';
 import { AuthProvider, PermissionGate } from './providers';
 import ProtectedAppShell from './ProtectedAppShell';
 import { DashboardPage } from '../modules/dashboard';

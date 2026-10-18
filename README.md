@@ -10,12 +10,14 @@ apps/
 └── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
 packages/
 ├── cli/        # @midas/cli: login, init, sync, report
-└── ui-base/    # @midas/ui-base: library UI pertama (komponen contoh_base_code + ikon & token dari desain)
+└── ui-cms/     # @midas/ui-cms: paket kode library "CMS Design System" (dibuat dengan `midas init`, komponennya ditulis developer)
 templates/
-└── base-project/   # base project aplikasi (spec §5.2) yang memakai @midas/ui-base
+└── base-project/   # base project aplikasi (spec §5.2); memakai @midas/ui-cms
 scripts/
-├── design-system/                # isi design system "Midas Base": tokens, komponen, ikon, halaman (generator)
-└── seed-base-design-system.mjs   # seed + publish design system "Midas Base" di Midas
+├── design-system/            # isi design system "CMS": tokens, komponen, ikon, halaman (generator)
+├── lib/midas-api.mjs         # klien Midas API untuk script (koneksi, token, simpan dokumen)
+├── seed-design-system.mjs    # seed + publish design system CMS di Midas
+└── seed-cms-demo.mjs         # file "CMS Demo" (User, Role, Dashboard) + project Code Builder-nya
 infra/          # konfigurasi Verdaccio & SeaweedFS untuk docker-compose
 docs/specs/     # spesifikasi & workflow
 ```
@@ -43,7 +45,7 @@ Test (API butuh infra jalan):
 npm test --workspace @midas/server
 npm test --workspace @midas/cli
 npm test --workspace @midas/studio
-npm run build --workspace @midas/ui-base && npm test --workspace @midas/ui-base
+npm run build --workspace @midas/ui-cms && npm test --workspace @midas/ui-cms
 npm run build --workspace @midas/base-project
 ```
 
@@ -87,28 +89,36 @@ Sejak backend tersedia, semua data disimpan di server (spec §7):
 - Autosave ±1,5 detik setelah perubahan terakhir, hanya page yang berubah. Setiap simpan membawa `version`; bila server punya versi lebih baru → 409 dan user memilih **reload** atau **simpan sebagai salinan**.
 - File lama di IndexedDB ditawarkan untuk di-import ke workspace setelah login (`apps/studio/src/legacyStorage.js`).
 
-## Design system Midas Base & base project
+## Design system CMS, paket kode, dan project demo
+
+Alurnya meniru alur sebenarnya: desainer membuat design system → di-publish sebagai library → developer menulis komponen kodenya → project Code Builder memakai library itu.
 
 ```bash
 node packages/cli/bin/midas.js login --server http://127.0.0.1:4000
-node scripts/seed-base-design-system.mjs          # buat/perbarui file "Midas Base Design System" + publish @midas/ui-base
-cd packages/ui-base && npm run sync && npm run build && npx midas report
-npm run dev --workspace @midas/base-project        # login demo: admin / admin123
+node scripts/seed-design-system.mjs --create     # 1. desain "CMS Design System" + publish @midas/ui-cms (kali berikutnya tanpa --create)
+cd packages/ui-cms                               # 2. paket kode (dibuat dengan `midas init`, komponennya ditulis developer)
+npm run sync && npm run build && npm test        #    ambil Library Kit, build, test
+npx midas report && npm run bundle               #    status kode 18/18 ready + bundle untuk Live DOM Renderer
+cd ../.. && node scripts/seed-cms-demo.mjs       # 3. file "CMS Demo" (User, Role, Dashboard) + project Code Builder
+npm run dev --workspace @midas/base-project      # base project; login demo: admin / admin123
 ```
 
-`scripts/seed-base-design-system.mjs` membaca ikon WDS dari `scripts/design-system/icons/wds` (gaya outline & bold-duotone; `--icons DIR` untuk folder lain). Opsi lain: `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`.
+Versi paket kode (`packages/ui-cms/package.json`) harus sama dengan versi library yang dipublish; setelah mempublish versi baru, naikkan versinya lalu `npm run sync`.
 
-Design system "Midas Base" (karakter profesional & tenang, primary `#0058CA`, font Inter) ditulis sebagai kode di `scripts/design-system/`:
+`seed-design-system.mjs`: `--create` (buat file baru), `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`, `--file NAMA`, `--package @midas/ui-x`. Seed mencari file berdasarkan nama di workspace akun yang login dan berhenti bila tidak ada, kecuali `--create`. Seed berikutnya memakai ulang id komponen, variant, property, Variable, dan ikon, jadi update tidak memutus file yang memakai library.
+
+Design system "CMS" (karakter tegas, rapi, fokus pada data; sidebar gelap, aksen indigo `#4338CA`, font Inter) ditulis sebagai kode di `scripts/design-system/`:
 
 | File | Isi |
 | --- | --- |
-| `tokens.mjs` | Variables: Color (Light/Dark), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
-| `components.mjs` | 23 komponen + bagian internal (`_Option`, `_Dropdown`, `_Chip`, `_SidebarItem`) dengan variant, component property, dan state (mis. SelectField Open) |
-| `icons.mjs` | Ikon UI tambahan; set ikon hanya 2 gaya: `outline` & `bold-duotone` |
-| `icons/wds/` | Set ikon WDS (SVG) per gaya & kategori |
+| `tokens.mjs` | Variables: Color (Light/Dark, termasuk `sidebar`), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
+| `components.mjs` | 18 komponen (Button, IconButton, Badge, Avatar, Alert, Card, StatCard, TextField, TextAreaField, PasswordField, SelectField, SwitchField, Dialog, Table, Sidebar, PageHeader, FilterToolbar, AppShell) + bagian internal `_SidebarItem`, dengan variant, component property, dan state |
+| `icons.mjs` | 27 ikon outline (garis 1,5 px) yang digambar di kotak 24 × 24 |
 | `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
-| `document.mjs` | Page Cover, Foundations, Icons, satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout), Templates |
+| `document.mjs` | Page Cover, Foundations, Icons, dan satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout) |
 
-Komponen berawalan `_` (atau `.`) adalah bagian internal: dirakit komponen lain dan ikut library, tetapi tidak diekspor ke kode dan tidak tampil di Assets file pemakai (Studio juga tidak mencentangnya saat publish).
+Komponen berawalan `_` (atau `.`) adalah bagian internal: dirakit komponen lain dan ikut library, tetapi tidak diekspor ke kode dan tidak tampil di Assets file pemakai.
 
-Seed mencari file berdasarkan nama di workspace akun yang login (`--file NAMA`) dan berhenti bila tidak ada, kecuali `--create`. Seed berikutnya memakai ulang id yang sudah ada (komponen, variant, property, Variable, ikon), jadi update tidak memutus file yang memakai library dan aset ikon tidak diunggah ulang. `font/family` menjadi `--font-sans` di `tailwind-theme.css`; `@midas/ui-base/tailwind.css` ikut memuat Inter (`@fontsource/inter`).
+**`seed-cms-demo.mjs`** membuat file desain "CMS Demo" persis seperti Studio membuatnya saat sebuah file memakai library (variabel library disalin bertanda `libId`, komponen disalin ke page `Library · …` dengan `libRef`), berisi 9 layar konten: User (daftar, form, detail), Role (daftar, form, detail), dan Dashboard. Lalu ia mendaftarkan project Code Builder dengan 3 module: `user` dan `role` (CRUD, lengkap dengan field entity) serta `dashboard` (custom). Layar adalah frame konten tanpa sidebar/topbar karena shell aplikasi datang dari base project.
+
+Paket `@midas/ui-cms` tidak bergantung pada router: `Sidebar`/`AppShell` menerima `activePath` dan `onNavigate`, dan `Dialog` tidak memakai portal, sehingga komponen tetap benar saat dirender di iframe Live DOM Renderer.

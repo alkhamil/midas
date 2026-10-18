@@ -55,7 +55,7 @@ test('screenTree reports issues: raw hex, local component, free shape, frame wit
 
 test('projectIssues checks library, empty modules, entity fields and missing frames', () => {
     const project = {
-        library: { packageName: '@midas/ui-base', version: '2.1.0', bundleUrl: null, codeStatus: 'ready' },
+        library: { packageName: '@midas/ui-cms', version: '1.1.1', bundleUrl: null, codeStatus: 'ready' },
         config: { modules: [
             { id: 'm1', name: 'user', pageId: 'p1', screens: [{ id: 's1', frameId: 'f', name: 'User List', role: 'list' }], entity: { fields: [] } },
             { id: 'm2', name: 'report', pageId: 'gone', screens: [{ id: 's2', frameId: 'nope', name: 'Report', role: 'custom' }] },
@@ -63,7 +63,7 @@ test('projectIssues checks library, empty modules, entity fields and missing fra
         ] },
     };
     const msgs = projectIssues(project, { byId: ctx().byId, pages: [{ id: 'p1' }] }).map(i => i.message).join('\n');
-    assert.match(msgs, /Bundle @midas\/ui-base@2\.1\.0 belum diunggah/);
+    assert.match(msgs, /Bundle @midas\/ui-cms@1\.1\.1 belum diunggah/);
     assert.match(msgs, /user \(CRUD\) belum punya field entity/);
     assert.match(msgs, /Page sumber module report sudah dihapus/);
     assert.match(msgs, /Frame screen Report \(custom\) sudah dihapus/);

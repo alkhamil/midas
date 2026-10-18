@@ -1,0 +1,56 @@
+/* Token tema dari Variables design system. Dibangkitkan oleh Midas — JANGAN diedit manual. */
+
+:root,
+[data-theme="light"] {
+  --theme-primary: #4338CA;
+  --theme-primary-foreground: #FFFFFF;
+  --theme-success: #15803D;
+  --theme-warning: #B45309;
+  --theme-danger: #B91C1C;
+  --theme-info: #0369A1;
+  --theme-background: #FFFFFF;
+  --theme-surface: #F8FAFC;
+  --theme-muted: #F1F5F9;
+  --theme-border: #E2E8F0;
+  --theme-foreground: #0F172A;
+  --theme-muted-foreground: #64748B;
+  --theme-sidebar: #0F172A;
+  --theme-sidebar-foreground: #CBD5E1;
+  --theme-radius-sm: 4px;
+  --theme-radius-md: 6px;
+  --theme-radius-lg: 8px;
+  --theme-radius-xl: 12px;
+  --theme-page-padding: 24px;
+  --theme-card-padding: 20px;
+  --theme-section-gap: 24px;
+  --theme-stack-gap: 16px;
+  --theme-field-gap: 12px;
+  --theme-font-family: Inter;
+}
+
+[data-theme="dark"] {
+  --theme-primary: #818CF8;
+  --theme-primary-foreground: #0B1020;
+  --theme-success: #4ADE80;
+  --theme-warning: #FBBF24;
+  --theme-danger: #F87171;
+  --theme-info: #38BDF8;
+  --theme-background: #0F172A;
+  --theme-surface: #0B1220;
+  --theme-muted: #1E293B;
+  --theme-border: #334155;
+  --theme-foreground: #F1F5F9;
+  --theme-muted-foreground: #94A3B8;
+  --theme-sidebar: #020617;
+  --theme-sidebar-foreground: #CBD5E1;
+  --theme-radius-sm: 4px;
+  --theme-radius-md: 6px;
+  --theme-radius-lg: 8px;
+  --theme-radius-xl: 12px;
+  --theme-page-padding: 24px;
+  --theme-card-padding: 20px;
+  --theme-section-gap: 24px;
+  --theme-stack-gap: 16px;
+  --theme-field-gap: 12px;
+  --theme-font-family: Inter;
+}

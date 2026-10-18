@@ -9,8 +9,7 @@ import {
   type Path,
   type UseFormReturn,
 } from 'react-hook-form';
-import { InfoCircleIcon as Info } from '@midas/ui-base';
-import { Tooltip } from '@midas/ui-base';
+import { InfoCircleIcon as Info } from '@midas/ui-cms';
 
 type LabelFontWeight = 'light' | 'normal' | 'medium' | 'semibold' | 'bold';
 
@@ -82,9 +81,9 @@ function FormItem<TForm extends FieldValues, TComponent extends React.ElementTyp
         {label}
         {isRequired && <span className="ml-0.5 text-danger">*</span>}
         {labelTooltip && (
-          <Tooltip content={labelTooltip}>
-            <Info className="ml-1 h-3.5 w-3.5 cursor-pointer" />
-          </Tooltip>
+          <span className="ml-1 inline-flex align-middle" title={typeof labelTooltip === 'string' ? labelTooltip : undefined}>
+            <Info className="h-3.5 w-3.5 cursor-pointer" />
+          </span>
         )}
       </>
     );
