@@ -7725,6 +7725,18 @@ function drawOverlay() {
     const z = state.camera.zoom, blue = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
     const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
     const accent = selNodes.length && selNodes.every(inComponentTree) ? COMPONENT_PURPLE : blue;
+    // Pixel grid: from 800% up every 1px is outlined with a thin grey line, like Figma.
+    if (z >= 8) {
+        const W = area.clientWidth, H = area.clientHeight, x0 = Math.floor(-state.camera.x / z), x1 = Math.ceil((W - state.camera.x) / z), y0 = Math.floor(-state.camera.y / z), y1 = Math.ceil((H - state.camera.y) / z);
+        c.save();
+        c.lineWidth = 1;
+        c.strokeStyle = options.theme === 'dark' ? 'rgba(160,160,170,.28)' : 'rgba(120,120,130,.28)';
+        c.beginPath();
+        for (let x = x0; x <= x1; x++) { const sx = Math.round(x * z + state.camera.x) + .5; c.moveTo(sx, 0); c.lineTo(sx, H); }
+        for (let y = y0; y <= y1; y++) { const sy = Math.round(y * z + state.camera.y) + .5; c.moveTo(0, sy); c.lineTo(W, sy); }
+        c.stroke();
+        c.restore();
+    }
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     for (const s of doc.scene()) {
         if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
@@ -7734,7 +7746,25 @@ function drawOverlay() {
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
         c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
-        c.fillText(s.node.name, p.x, p.y - 12);
+        // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
+        const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0));
+        let label = s.node.name;
+        if (c.measureText(label).width > maxW) {
+            while (label.length > 1 && c.measureText(label + '…').width > maxW)
+                label = label.slice(0, -1);
+            label = maxW < 12 ? '' : label + '…';
+        }
+        if (label && s.node.isSection) {
+            const tw = c.measureText(label).width;
+            c.fillStyle = '#ffffff';
+            c.beginPath();
+            c.roundRect(p.x, p.y - 22, tw + 12, 18, 4);
+            c.fill();
+            c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : '#5b5566';
+            c.fillText(label, p.x + 6, p.y - 10);
+        }
+        else
+            c.fillText(label, p.x, p.y - 12);
     }
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
@@ -7950,7 +7980,11 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
         if (hit) {
             if (!deep && !framesOnly) {
-                const groups = doc.ancestors(n).filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                const anc = doc.ancestors(n), groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                // Inside an auto layout frame a click always picks that frame first (the outermost one); Ctrl/Cmd reaches the smallest node.
+                const auto = anc.filter(isAutoLayout).pop();
+                if (auto && (!groups.length || anc.indexOf(auto) > anc.indexOf(groups[0])))
+                    return auto;
                 if (groups.length)
                     return groups[0];
             }
@@ -8108,6 +8142,8 @@ function pointerDown(e) {
         const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
         state.selection = new Set([n.id]);
         state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
+        // Frames/sections show only their bounding box while drawing; the background comes back on release.
+        if (type === 'frame') { state.gesture.origFill = n.fill; n.fill = 'none'; }
         refreshUI();
         invalidate();
         return;
@@ -8127,7 +8163,13 @@ function pointerDown(e) {
             return;
         }
     }
-    const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    // With several layers selected, pressing on any of them (or inside one) drags the whole selection instead of picking another layer.
+    if (hit && !e.shiftKey && state.selection.size > 1 && !state.selection.has(hit.id)) {
+        const inner = hitTest(w, { deep: true }), owner = inner && [inner, ...doc.ancestors(inner)].find(a => state.selection.has(a.id));
+        if (owner)
+            hit = owner;
+    }
     if (hit) {
         if (e.shiftKey) {
             if (state.selection.has(hit.id))
@@ -8588,8 +8630,9 @@ function pointerUp(e) {
     }
     if (g.kind === 'create') {
         const n = doc.get(g.id);
+        if (n && g.origFill !== undefined) { n.fill = g.origFill; doc.touch(n); }
         if (n && n.w < 3 && n.h < 3) {
-            n.w = n.type === 'frame' ? 400 : 120;
+            n.w = n.type === 'frame' ? 400 : 100;
             n.h = n.type === 'frame' ? 300 : n.type === 'line' ? 0.1 : 100;
             doc.touch(n);
         }
@@ -14020,7 +14063,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -14824,9 +14867,24 @@ $('#search-results').addEventListener('click', e => {
     if (row)
         focusSearchResult(+row.dataset.sr);
 });
-$('#zoom-in').onclick = () => zoomAt(1.25);
-$('#zoom-out').onclick = () => zoomAt(.8);
-$('#zoom-value').onclick = e => showMenu([{ label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 150);
+$('#zoom-in').onclick = () => zoomToPercent(zoomStep(1));
+$('#zoom-out').onclick = () => zoomToPercent(zoomStep(-1));
+const ZOOM_PRESETS = [2, 5, 10, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600];
+function zoomToPercent(pct) { if (!(pct > 0)) return; zoomAt(clamp(pct / 100, .02, 256) / state.camera.zoom); }
+function zoomStep(dir) { const cur = Math.round(state.camera.zoom * 100); return dir > 0 ? (ZOOM_PRESETS.find(v => v > cur) || cur) : ([...ZOOM_PRESETS].reverse().find(v => v < cur) || cur); }
+function showZoomMenu(e) {
+    showMenu([{ label: 'Zoom in', action: 'zoomIn', key: 'Ctrl +' }, { label: 'Zoom out', action: 'zoomOut', key: 'Ctrl -' }, '-', { label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 50%', action: 'zoom50' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: 'Zoom to 200%', action: 'zoom200' }, { label: 'Zoom to 400%', action: 'zoom400' }, { label: 'Zoom to 800%', action: 'zoom800' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 330);
+    const menu = $('#context-menu'), box = document.createElement('div');
+    box.className = 'zoom-custom';
+    box.innerHTML = '<span>Custom zoom</span><input id="zoom-custom-input" type="text" inputmode="decimal" autocomplete="off" aria-label="Custom zoom percent"><span>%</span>';
+    menu.prepend(box);
+    const input = box.querySelector('input');
+    input.value = String(Math.round(state.camera.zoom * 100));
+    input.onclick = ev => ev.stopPropagation();
+    input.onkeydown = ev => { ev.stopPropagation(); if (ev.key === 'Enter') { const v = parseFloat(input.value.replace('%', '').replace(',', '.')); if (v > 0) zoomToPercent(v); menu.classList.add('hidden'); } else if (ev.key === 'Escape') menu.classList.add('hidden'); };
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+$('#zoom-value').onclick = e => showZoomMenu(e);
 $('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
 $('#image-input').onchange = e => { importImage(e.target.files[0]); e.target.value = ''; };
 $('#modal-backdrop').onclick = e => {
@@ -14962,15 +15020,9 @@ area.addEventListener('wheel', e => {
     e.preventDefault();
     const p = eventPoint(e);
     if ((e.ctrlKey || e.metaKey) && state.ctrlDown) {
-        // Ctrl + mouse wheel: one notch = 3%; the faster the wheel spins, the bigger each step gets.
-        const now = performance.now(), dt = now - (state.zoomT || 0), raw = e.deltaY || e.deltaX;
-        state.zoomT = now;
-        state.zoomStreak = dt < 140 ? Math.min((state.zoomStreak || 0) + 1, 60) : 0;
-        const mag = Math.min(Math.abs(raw) / 100, 3) || 1, dir = -Math.sign(raw) || 1, z = state.camera.zoom;
-        let f = Math.max(.01, z + dir * 3 * mag / 100) / z;
-        if (state.zoomStreak > 1)
-            f = Math.pow(f, 1 + state.zoomStreak * .35);
-        zoomAt(clamp(f, .5, 2), p.x, p.y);
+        // Ctrl + mouse wheel: multiplicative like Figma, 1.0409 per notch (100% -> 104%).
+        const raw = e.deltaY || e.deltaX, ticks = Math.min(Math.max(Math.abs(raw) / 100, 1), 3);
+        zoomAt(Math.pow(1.0409, -Math.sign(raw) * ticks), p.x, p.y);
     }
     else if (e.ctrlKey || e.metaKey || e.altKey)
         zoomAt(Math.exp(-clamp(e.deltaY, -100, 100) * .012), p.x, p.y);
