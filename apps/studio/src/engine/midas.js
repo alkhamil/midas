@@ -7746,7 +7746,7 @@ function renderInspector() {
         html += framePresetPanel();
     }
     else if (!n) {
-        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || '#e3e3e3'}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
+        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || '#e3e3e3'}" aria-label="Canvas color"><input type="text" id="canvas-hex" value="${(options.canvasColor || '#e3e3e3').replace('#', '').toUpperCase()}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Canvas color hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>${varCollectionsHtml(doc.page)}`, varCollectionsButton(null));
         html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
         html += section('Saved to your workspace', `<p>This document is saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
     }
@@ -16383,9 +16383,33 @@ document.addEventListener('change', e => {
     if (el.id === 'canvas-color') {
         options.canvasColor = el.value;
         $('#canvas-world').style.backgroundColor = el.value;
+        const hex = document.getElementById('canvas-hex');
+        if (hex)
+            hex.value = el.value.replace('#', '').toUpperCase();
         saveOptions();
         invalidate();
     }
+});
+// The page colour can be typed as a hex code (3 or 6 digits, with or without #); it applies once the code is valid.
+document.addEventListener('input', e => {
+    if (e.target.id !== 'canvas-hex')
+        return;
+    const m = /^#?([\da-f]{3}|[\da-f]{6})$/i.exec(e.target.value.trim());
+    if (!m)
+        return;
+    const h = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1], color = '#' + h.toLowerCase();
+    options.canvasColor = color;
+    $('#canvas-world').style.backgroundColor = color;
+    const sw = document.getElementById('canvas-color');
+    if (sw)
+        sw.value = color;
+    saveOptions();
+    invalidate();
+});
+document.addEventListener('focusout', e => {
+    if (e.target.id !== 'canvas-hex')
+        return;
+    e.target.value = (options.canvasColor || '#e3e3e3').replace('#', '').toUpperCase();
 });
 // ----- page list interactions: rename, delete, drag reorder & nesting -----
 $('#page-list').addEventListener('contextmenu', e => {
