@@ -4959,8 +4959,9 @@ class DocumentModel {
             // Mask entries, built once per parent: a visible mask clips every sibling stacked below it (Figma: the mask sits above what it masks).
             const maskFor = new Map();
             let active = null;
-            for (let i = kidsOf.length - 1; i >= 0; i--) {
-                const k = kidsOf[i];
+            const flipped = !!pn?.layoutFlip;
+            for (let j = 0; j < kidsOf.length; j++) {
+                const i = flipped ? kidsOf.length - 1 - j : j, k = kidsOf[i];
                 if (k.isMask && k.visible) {
                     const mm = multiply(m, localMatrix(k));
                     active = { mask: k, matrix: mm, inverse: inverse(mm), w: k.w, h: k.h, radius: k.type === 'ellipse' ? Math.min(k.w, k.h) / 2 : k.radius || 0, radii: k.type === 'ellipse' ? null : cornerRadii(k) };
@@ -5959,7 +5960,7 @@ class Renderer {
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
                 // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
-                const entry = this.atlas.get(n, n.type === 'path' || n.type === 'line' ? Math.max(resolution, 2 * quality) : resolution, this.images);
+                const entry = this.atlas.get(n, (n.type === 'path' || n.type === 'line') && scene.length <= 400 ? Math.max(resolution, 2 * quality) : resolution, this.images);
                 if (!entry) {
                     count--;
                     return;
@@ -6587,6 +6588,11 @@ function syncComponents(activeOnly = true) {
             const src = components.get(n.sourceId) || pmap.get(n.sourceId);
             if (!src)
                 continue;
+            // Layers that were copied from a nested instance but lost their instance flag are repaired here.
+            if (src.isInstance && !n.isInstance && !n.component && !src.component) {
+                n.isInstance = true;
+                n.version = (n.version || 0) + 1;
+            }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
             const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
@@ -7972,6 +7978,29 @@ function drawOverlay() {
     const g = selectionGeometry();
     if (g && !state.editing && !state.pathEdit) {
         const corners = outline(c, g, accent, 1.2);
+        // Selected text shows the baseline of every line inside its bounding box.
+        if (g.node?.type === 'text' && !state.editing) {
+            try {
+                const lt = layoutText(g.node), nl = Math.max(1, lt.lines?.length || 1);
+                c.save();
+                c.strokeStyle = accent;
+                c.globalAlpha = .55;
+                c.lineWidth = 1;
+                c.setLineDash([3, 3]);
+                for (let i = 0; i < nl; i++) {
+                    const y = lt.baseline + i * lt.lineHeight;
+                    if (y > g.h + 1)
+                        break;
+                    const a = point(g.matrix, 0, y), b = point(g.matrix, g.w, y), pa = worldToScreen(a.x, a.y), pb = worldToScreen(b.x, b.y);
+                    c.beginPath();
+                    c.moveTo(pa.x, pa.y);
+                    c.lineTo(pb.x, pb.y);
+                    c.stroke();
+                }
+                c.restore();
+            }
+            catch { }
+        }
         if (arcNode && (state.arcShow || state.gesture?.kind === 'arc')) {
             // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line.
             c.save();
@@ -8422,24 +8451,10 @@ function pointerDown(e) {
             select([hit.id]);
         if (e.altKey) {
             history.begin('Duplicate and move');
-            const picked = selectedRoots(), variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
-            if (variant) {
-                // Alt-dragging a variant out of its component set makes an instance of it, placed where the variant is.
-                const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
-                inst.name = set.name;
-                inst.parentId = set.parentId || null;
-                const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
-                setFromMatrix(inst, multiply(inverse(pm), wm));
-                doc.touch(inst);
-                select([inst.id]);
-            }
-            else {
-                const clones = cloneNodes(picked, 0);
-                select(clones.map(n => n.id));
-            }
+            select(altDuplicate(selectedRoots()).map(n => n.id));
         }
         const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
-        state.gesture = { kind: 'move', start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
+        state.gesture = { kind: 'move', altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
     }
     else if (keepTextId && state.tool === 'select' && !e.shiftKey) {
         // Clicking empty canvas while typing only exits edit mode; the text layer stays selected (like Figma).
@@ -8456,6 +8471,20 @@ function pointerDown(e) {
         state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
         invalidate();
     }
+}
+// Alt-drag copies. A variant of a component set becomes an instance of it, placed where the variant is.
+function altDuplicate(picked) {
+    const variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
+    if (variant) {
+        const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
+        inst.name = set.name;
+        inst.parentId = set.parentId || null;
+        const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
+        setFromMatrix(inst, multiply(inverse(pm), wm));
+        doc.touch(inst);
+        return [inst];
+    }
+    return cloneNodes(picked, 0);
 }
 function smartSnap(dx, dy, g, disabled) {
     state.guides = [];
@@ -8723,6 +8752,26 @@ function pointerMove(e) {
         }
         changed({ ui: false });
         return;
+    }
+    if (g.kind === 'move' && e.altKey && !g.altDone && g.moved) {
+        // Alt pressed mid-drag: put the originals back and carry copies instead (same result as Alt first, then drag).
+        g.altDone = true;
+        for (const [id, o] of g.originals) {
+            const n = doc.get(id);
+            if (n) {
+                n.x = o.x;
+                n.y = o.y;
+                delete n._drag;
+                doc.touch(n);
+            }
+        }
+        const copies = altDuplicate(g.roots.map(id => doc.get(id)).filter(Boolean));
+        select(copies.map(n => n.id));
+        const roots = selectedRoots();
+        g.roots = roots.map(n => n.id);
+        g.originals = saveOriginals(roots);
+        g.bounds = doc.bounds(g.roots);
+        g.parentMatrices = new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()]));
     }
     if (g.kind === 'move') {
         let dx = w.x - g.start.x, dy = w.y - g.start.y;
@@ -9235,6 +9284,14 @@ function flattenPathOf(n) {
     return out;
 }
 function nodePolys(n) {
+    // A frame / group operand contributes the shapes inside it (an instance of an icon, for example), not its own box.
+    if ((n.type === 'frame' || n.type === 'group') && doc.children(n.id).length) {
+        const out = [];
+        for (const c of doc.children(n.id))
+            if (c.visible !== false)
+                out.push(...(nodePolys(c) || []));
+        return out.length ? out : null;
+    }
     const m = doc.world(n.id).matrix, tp = (x, y) => { const q = point(m, x, y); return [q.x, q.y]; };
     let ring = null;
     if (n.type === 'ellipse' && arcActive(n)) {
@@ -9469,7 +9526,7 @@ function useAsMask() {
     transaction('Use as mask', () => {
         g.name = 'Mask group';
         doc.refresh(); // the parent index is stale right after grouping
-        const inGroup = doc.nodes.filter(n => n.parentId === g.id), bottom = inGroup[inGroup.length - 1];
+        const inGroup = doc.nodes.filter(n => n.parentId === g.id), bottom = inGroup[0];
         if (bottom) {
             bottom.isMask = true;
             doc.touch(bottom);
@@ -10240,7 +10297,7 @@ function syncInstanceStructure(activeOnly = true) {
                 c.parentId = parent.id;
                 c.sourceId = s.id;
                 c.component = false;
-                c.isInstance = false;
+                c.isInstance = !!s.isInstance; // a nested instance stays an instance when its container is synced
                 c.overrides = {};
                 c.version = 0;
                 page.nodes.push(c);
@@ -12274,6 +12331,15 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
                 (n.vars ||= {})[prop] = id;
         }
+        // Variant properties bound to variables (instance: Type = variable ...).
+        for (const e of f.variableConsumptionMap?.entries || [])
+            if (e.variableField === 'VARIANT_PROPERTIES')
+                for (const a of e.variableData?.value?.expressionValue?.expressionArguments || [])
+                    for (const kv of a?.value?.mapValue?.values || []) {
+                        const id = varFor(kv.value);
+                        if (id && kv.key)
+                            (n.vars ||= {})['vprop:' + kv.key] = id;
+                    }
         // Explicit mode per collection ("Appearance → mode" in Figma).
         for (const e of f.variableModeBySetMap?.entries || []) {
             const c = collByGuid.get(vkey(e.variableSetID)), mode = modeByGuid.get(gkey(e.variableModeID));
@@ -12563,7 +12629,14 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (f.stackChildAlignSelf === 'STRETCH')
             n[horiz ? 'layoutSizingV' : 'layoutSizingH'] = 'fill';
     };
-    const applyConstraints = (n, f) => {
+    const applyConstraints = (n, f0) => {
+        // Groups and boolean operations have no constraints of their own in the file: Figma shows the ones of their layers.
+        let f = f0;
+        if (!f0.horizontalConstraint && !f0.verticalConstraint && (f0.type === 'BOOLEAN_OPERATION' || f0.type === 'GROUP')) {
+            const first = (kids.get(gkey(f0.guid)) || []).find(c => c.horizontalConstraint || c.verticalConstraint);
+            if (first)
+                f = first;
+        }
         const h = { MIN: 'left', MAX: 'right', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.horizontalConstraint], v = { MIN: 'top', MAX: 'bottom', CENTER: 'center', STRETCH: 'stretch', SCALE: 'scale' }[f.verticalConstraint];
         if (h && h !== 'left')
             n.constraintH = h;
@@ -13020,9 +13093,9 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (['VECTOR', 'STAR', 'REGULAR_POLYGON'].includes(f.type))
             return;
         const cur = midasById.get(n.id) === n ? n : midasById.get(n.id);
-        // Figma's layer list shows the first child at the top (front); Midas stores back-to-front, so siblings go in reversed (variants of a set keep their order).
-        const sibs = kids.get(gkey(f.guid)) || [];
-        for (const c of f.isStateGroup ? sibs : [...sibs].reverse())
+        // Figma's layer list shows the first child at the top only inside auto layout frames (elsewhere the last child is on top, as in Midas), so only those siblings go in reversed.
+        const sibs = kids.get(gkey(f.guid)) || [], autoParent = f.stackMode === 'HORIZONTAL' || f.stackMode === 'VERTICAL';
+        for (const c of autoParent && !f.isStateGroup ? [...sibs].reverse() : sibs)
             walk(c, cur && cur.type !== 'path' ? cur : n, f, out);
     };
     const doc = [...fig.values()].find(n => n.type === 'DOCUMENT');
@@ -13036,7 +13109,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             throw new Error('Import cancelled by user.');
         const c = canvases[ci];
         const nodes = [];
-        for (const ch of [...(kids.get(gkey(c.guid)) || [])].reverse())
+        for (const ch of kids.get(gkey(c.guid)) || [])
             walk(ch, null, null, nodes);
         processedLayers += nodes.length;
         pages.push({ id: uid(), name: c.name || `Page ${pages.length + 1}`, nodes, canvas: c });
@@ -14621,15 +14694,22 @@ document.addEventListener('click', e => {
         const p = doc.data.pages.find(x => x.id === page.dataset.page);
         if (!p || isPageDivider(p))
             return;
-        if (e.shiftKey || e.altKey) {
-            // Shift / Alt + click collects several pages so they can be dragged into a folder together.
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+            // Ctrl / Cmd + click adds or removes one page; Alt / Shift + click selects every page between the anchor and the click.
             state.pageSel ||= new Set();
-            if (!state.pageSel.size && p.id !== doc.page.id)
-                state.pageSel.add(doc.page.id);
-            if (state.pageSel.has(p.id))
-                state.pageSel.delete(p.id);
-            else
-                state.pageSel.add(p.id);
+            const anchor = state.pageAnchor || doc.page.id;
+            if (!state.pageSel.size)
+                state.pageSel.add(anchor);
+            if (e.ctrlKey || e.metaKey) {
+                state.pageSel.has(p.id) ? state.pageSel.delete(p.id) : state.pageSel.add(p.id);
+                state.pageAnchor = p.id;
+            }
+            else {
+                const order = [...document.querySelectorAll('#page-list [data-page]')].map(r => r.dataset.page).filter(id => !isPageDivider(doc.data.pages.find(x => x.id === id) || {})), a = order.indexOf(anchor), b = order.indexOf(p.id);
+                if (a >= 0 && b >= 0) {
+                    state.pageSel = new Set(order.slice(Math.min(a, b), Math.max(a, b) + 1));
+                }
+            }
             renderPages();
             return;
         }
@@ -14644,6 +14724,7 @@ document.addEventListener('click', e => {
             return;
         }
         state.lastPageClick = { id: p.id, t: now };
+        state.pageAnchor = p.id;
         setTimeout(() => {
             if (state.lastPageClick && state.lastPageClick.id === p.id && performance.now() - state.lastPageClick.t >= 400) {
                 state.lastPageClick = null;
@@ -15587,8 +15668,13 @@ overlay.addEventListener('click', e => {
     if (!deepHit)
         return;
     const chain = [deepHit, ...doc.ancestors(deepHit)], i = chain.findIndex(a => a.id === [...state.selection][0]);
-    if (i > 0)
-        select([chain[i - 1].id]);
+    if (i > 0) {
+        const target = chain[i - 1];
+        select([target.id]);
+        // Reaching a text layer goes straight into editing with everything selected.
+        if (target.type === 'text')
+            startText(target, true);
+    }
 });
 overlay.addEventListener('contextmenu', e => {
     e.preventDefault();
