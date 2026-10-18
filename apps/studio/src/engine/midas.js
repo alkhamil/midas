@@ -5712,7 +5712,7 @@ fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let t
  return vec4(rgb,alpha)*item.props.w*clipAlpha;
 }`;
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch = 0; this.canvas = document.createElement('canvas'); }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 6; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch = 0; this.canvas = document.createElement('canvas'); }
     reset() { this.entries.clear(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch++; }
     get(n, res, images) {
         const key = `${n.id}:${n.version}:${res}`;
@@ -5735,11 +5735,9 @@ class Atlas {
         }
         if (shelf.y + h + 2 > this.size) {
             if (this.shelves.length >= this.layers) {
-                // Ring buffer: recycle atlas pages when full rather than crashing WebGPU
-                this.entries.clear();
-                this.shelves = [{ x: 1, y: 1, h: 0 }];
-                page = 0;
-                shelf = this.shelves[0];
+                // Recycling pages mid-frame would overwrite shapes already queued for this frame (garbled, missing shapes):
+                // the renderer catches this, resets the atlas and draws the frame again at a lower resolution.
+                throw new Error('ATLAS_FULL');
             } else {
                 page++;
                 shelf = { x: 1, y: 1, h: 0 };
@@ -5948,7 +5946,8 @@ class Renderer {
         this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
         let count = 0, clipN = 0;
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
-        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .5, 32) * quality;
+        // Zoomed far out (big canvases) the bitmaps shrink with the zoom instead of staying at half size, so thousands of vectors fit in the atlas.
+        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .0625, 32) * quality;
         const push = (s, n, clipId, shadow = false) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
