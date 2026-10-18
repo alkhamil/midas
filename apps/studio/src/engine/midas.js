@@ -12834,13 +12834,13 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (v)
             item.values[mode] = v.slice(0, 7) + Math.round(Math.max(0, Math.min(1, alpha)) * 255).toString(16).padStart(2, '0');
     }
-    // Figma's untouched default collection ("Collection", no variables) is not a real collection of the file.
+    // A collection with no variables (Figma's untouched default "Collection", or a leftover like "Kit") is not shown in Figma either.
     for (let i = varCollections.length - 1; i >= 0; i--)
-        if (varCollections[i].name === 'Collection' && !varItems.some(v => v.collectionId === varCollections[i].id))
+        if (!varItems.some(v => v.collectionId === varCollections[i].id))
             varCollections.splice(i, 1);
     // The variable a paint / field is bound to (only variables defined in this file).
     // A boolean binding is often wrapped as IS_TRUTHY(variable): the single variable inside is the real binding.
-    const aliasOf = vd => vd?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
+    const aliasOf = vd => vd?.value?.alias || vd?.value?.fontStyleValue?.asString?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
     const varFor = vd => { const a = aliasOf(vd); return a ? varByGuid.get(vkey(a)) || null : null; };
     const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
     const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
@@ -12864,6 +12864,8 @@ async function figToMidas(file, onProgress, abortSignal) {
             const prop = VAR_FIELD[e.variableField], id = varFor(e.variableData);
             if (prop && id && bindTypes(prop).includes(varTypeOf.get(id)))
                 (n.vars ||= {})[prop] = id;
+            else if (prop && !e.variableData && n.vars)
+                delete n.vars[prop]; // an entry without a variable is a binding removed on this layer (e.g. on an instance)
         }
         // Variant properties bound to variables (instance: Type = variable ...).
         for (const e of f.variableConsumptionMap?.entries || [])
@@ -14067,7 +14069,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (ov.fontSize)
                 c.fontSize = ov.fontSize;
             for (const key of Object.keys(c))
-                if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== before[key] || (typeof c[key] === 'object' && JSON.stringify(c[key]) !== JSON.stringify(before[key]))))
+                if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== null && typeof c[key] === 'object' ? JSON.stringify(c[key]) !== JSON.stringify(before[key]) : c[key] !== before[key]))
                     c.overrides[key] = structuredClone(c[key]);
         }
     }
