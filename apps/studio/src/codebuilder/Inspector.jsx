@@ -201,7 +201,7 @@ function TableProps({ cfg, setCfg, entity }) {
             <Section title="Table">
                 <Row label="Empty text"><input value={t.emptyText ?? ''} placeholder={model.emptyText} onChange={e => patch({ emptyText: e.target.value || undefined })} /></Row>
                 <Row label="Action header"><input value={t.actionHeader ?? ''} placeholder={model.actionHeader} onChange={e => patch({ actionHeader: e.target.value || undefined })} /></Row>
-                <Row label="Rows per page"><input type="number" min="1" max="200" value={model.pageSize} onChange={e => patch({ pageSize: Number(e.target.value) || undefined })} /></Row>
+                <Row label="Default page size"><Select value={String(model.pageSize)} onChange={e => patch({ pageSize: Number(e.target.value) === 10 ? undefined : Number(e.target.value) })}>{[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</Select></Row>
             </Section>
         </>
     );
@@ -332,39 +332,50 @@ function FieldBinding({ node, cfg, setCfg, entity, modules, setFields, part = 'a
 function SidebarInspector({ layout, lib, setLayout, modules }) {
     const iconNames = Array.isArray(lib?.iconNames) ? lib.iconNames : [];
     const items = layout.items;
-    const patch = (moduleId, change) => setLayout(l => {
-        const list = items.map(i => ({ moduleId: i.moduleId, label: i.label, icon: i.icon, hidden: i.hidden || undefined }));
-        return { ...l, items: list.map(i => (i.moduleId === moduleId ? { ...i, ...change } : i)) };
-    });
-    const move = (idx, d) => setLayout(l => {
-        const list = items.map(i => ({ moduleId: i.moduleId, label: i.label, icon: i.icon, hidden: i.hidden || undefined }));
+    const slim = i => ({ moduleId: i.moduleId, label: i.label, icon: i.icon, hidden: i.hidden || undefined });
+    // The saved list is flat (top-level entries, then each parent's children); a parent's own page is not a separate entry.
+    const flatten = list => list.flatMap(i => [slim(i), ...(i.children || []).filter(c => c.moduleId !== i.moduleId).map(slim)]);
+    const patch = (moduleId, change) => setLayout(l => ({ ...l, items: flatten(items).map(i => (i.moduleId === moduleId ? { ...i, ...change } : i)) }));
+    // Reorder among siblings: top-level entries (parentId null) or the children of one parent.
+    const move = (parentId, idx, d) => setLayout(l => {
+        const next = items.map(i => ({ ...i, children: i.children ? i.children.filter(c => c.moduleId !== i.moduleId) : undefined }));
+        const list = parentId ? next.find(i => i.moduleId === parentId).children : next;
         [list[idx], list[idx + d]] = [list[idx + d], list[idx]];
-        return { ...l, items: list };
+        return { ...l, items: flatten(next) };
     });
     const defaultLabel = id => modules.find(m => m.id === id)?.label;
+    const entry = ({ it, idx, count, parentId }) => (
+        <div key={it.moduleId} className={`cb-menu-item ${it.hidden ? 'off' : ''} ${parentId ? 'child' : ''}`}>
+            <div className="cb-menu-top">
+                <input aria-label="Label menu" value={it.label} placeholder={defaultLabel(it.moduleId)} onChange={e => patch(it.moduleId, { label: e.target.value })} />
+                <button type="button" disabled={idx === 0} aria-label="Move up" onClick={() => move(parentId, idx, -1)}>↑</button>
+                <button type="button" disabled={idx === count - 1} aria-label="Move down" onClick={() => move(parentId, idx, 1)}>↓</button>
+            </div>
+            <div className="cb-menu-bottom">
+                {parentId ? null : iconNames.length > 0
+                    ? <Select aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })}>{[...new Set([it.icon, ...iconNames])].map(n => <option key={n}>{n}</option>)}</Select>
+                    : <input aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })} />}
+                <Check checked={!it.hidden} onChange={on => patch(it.moduleId, { hidden: on ? undefined : true })}>Visible</Check>
+                {it.path ? <code>{it.path}</code> : <span className="small-label">Group</span>}
+            </div>
+        </div>
+    );
     return (
         <>
             <Section title="Sidebar">
                 <Row label="App name"><input value={layout.appName} onChange={e => setLayout(l => ({ ...l, appName: e.target.value }))} /></Row>
             </Section>
             <Section title="Menu">
-                <p className="small-label">Satu menu per module. Urutan di sini = urutan di sidebar.</p>
-                {items.map((it, i) => (
-                    <div key={it.moduleId} className={`cb-menu-item ${it.hidden ? 'off' : ''}`}>
-                        <div className="cb-menu-top">
-                            <input aria-label="Label menu" value={it.label} placeholder={defaultLabel(it.moduleId)} onChange={e => patch(it.moduleId, { label: e.target.value })} />
-                            <button type="button" disabled={i === 0} aria-label="Move up" onClick={() => move(i, -1)}>↑</button>
-                            <button type="button" disabled={i === items.length - 1} aria-label="Move down" onClick={() => move(i, 1)}>↓</button>
+                <p className="small-label">One menu per module; a module with a parent appears under it (Parent → Child). The order here is the order in the sidebar.</p>
+                {items.map((it, i) => {
+                    const kids = (it.children || []).filter(c => c.moduleId !== it.moduleId);
+                    return (
+                        <div key={it.moduleId}>
+                            {entry({ it, idx: i, count: items.length, parentId: null })}
+                            {kids.map((c, k) => entry({ it: c, idx: k, count: kids.length, parentId: it.moduleId }))}
                         </div>
-                        <div className="cb-menu-bottom">
-                            {iconNames.length > 0
-                                ? <Select aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })}>{[...new Set([it.icon, ...iconNames])].map(n => <option key={n}>{n}</option>)}</Select>
-                                : <input aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })} />}
-                            <Check checked={!it.hidden} onChange={on => patch(it.moduleId, { hidden: on ? undefined : true })}>Visible</Check>
-                            <code>{it.path}</code>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
                 {!items.length && <p className="small-label">No modules yet.</p>}
             </Section>
         </>

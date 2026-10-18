@@ -4,7 +4,7 @@
 // the generated app (same rules, messages, dialogs and unsaved-changes guard). Nothing here is persisted.
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
+import { activeNavPath, autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
 import { builderApi } from '../storage.js';
 import { cssUrlOf, loadBundle } from './loader.js';
 import { LiveFrame } from './Renderer.jsx';
@@ -82,6 +82,7 @@ function AppPreview({ bridge, project, onClose }) {
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({});
     const [page, setPage] = useState(1);
+    const [sizeChoice, setSizeChoice] = useState(null); // rows per page picked in the table footer (default: the table's page size, 10)
     const [toast, setToast] = useState('');
     const [dialog, setDialog] = useState(null); // { kind: 'delete' | 'restore' | 'discard' | 'filter', ... }
     const [form, setForm] = useState({ values: {}, initial: {}, errors: {}, submitted: false });
@@ -101,7 +102,9 @@ function AppPreview({ bridge, project, onClose }) {
     // First screen: the home page (module `dashboard`), otherwise the first menu item's main screen.
     const mainScreenOf = useCallback(m => m.screens.find(s => s.role === 'list') || m.screens.find(s => s.role === 'custom') || m.screens.find(s => s.role !== 'dialog'), []);
     const home = useMemo(() => {
-        const first = layout.items[0] && modules.find(m => m.id === layout.items[0].moduleId);
+        // The first menu entry that leads somewhere (a parent group has no page of its own; its first child does).
+        const entry = layout.items.flatMap(i => [i, ...(i.children || [])]).find(i => i.path);
+        const first = entry && modules.find(m => m.id === entry.moduleId);
         return first && mainScreenOf(first);
     }, [layout, modules, mainScreenOf]);
     useEffect(() => { if (home && !stack.length) setStack([{ screenId: home.id }]); }, [home]);
@@ -127,7 +130,7 @@ function AppPreview({ bridge, project, onClose }) {
     // New screen entry (navigation, restart): reset list state and load the form values.
     const entryKey = `${stack.length}:${current?.screenId}:${current?.recordId ?? ''}:${current?.n ?? 0}`;
     useEffect(() => {
-        setSearch(''); setFilters({}); setPage(1); setDialog(null); bypass.current = false;
+        setSearch(''); setFilters({}); setPage(1); setSizeChoice(null); setDialog(null); bypass.current = false;
         if (!screen) return;
         const record = current?.recordId ? rowsOf(screen.module).find(r => r.id === current.recordId) : null;
         const base = defaultsOf(fields);
@@ -147,7 +150,7 @@ function AppPreview({ bridge, project, onClose }) {
     const back = useCallback(() => guarded(() => setStack(st => (st.length > 1 ? st.slice(0, -1) : st))), [guarded]);
     const byPath = useCallback(path => {
         for (const s of screens) if (screenPath(modules, s.module, s) === path) return s;
-        const it = layout.items.find(i => i.path === path);
+        const it = layout.items.flatMap(i => [i, ...(i.children || [])]).find(i => i.path === path);
         const m = it && modules.find(x => x.id === it.moduleId);
         return m && mainScreenOf(m);
     }, [screens, modules, layout, mainScreenOf]);
@@ -159,7 +162,7 @@ function AppPreview({ bridge, project, onClose }) {
     }, [modules, rowsOf]);
 
     // List pipeline: soft delete → search → filters → page.
-    const pageSize = table?.pageSize || 10;
+    const pageSize = sizeChoice ?? (table?.pageSize || 10);
     const visible = useMemo(() => {
         if (!module) return [];
         const q = search.trim().toLowerCase();
@@ -202,7 +205,7 @@ function AppPreview({ bridge, project, onClose }) {
         const target = role => module.screens.find(s => s.role === role);
         return {
             role: screen.role, mode, record: screen.role === 'view' ? rowsOf(module).find(r => r.id === current.recordId) : null,
-            search, setSearch: v => { setSearch(v); setPage(1); }, page, setPage, pageRows, total: visible.length,
+            search, setSearch: v => { setSearch(v); setPage(1); }, page, setPage, pageSize, setPageSize: s => { setSizeChoice(s); setPage(1); }, pageRows, total: visible.length,
             openFilter: () => setDialog({ kind: 'filter' }), relOptions,
             rowAction: rowActionHandler,
             fieldProps: (node, f) => ({
@@ -234,13 +237,13 @@ function AppPreview({ bridge, project, onClose }) {
                 return h(lib.Dialog, { open: true, onClose: () => setDialog(null), onConfirm: run, tone: d.tone, title: d.title, message: d.message, cancelLabel: d.cancelLabel, confirmLabel: d.confirmLabel });
             })(),
         };
-    }, [screen, module, mode, current, search, page, pageRows, visible, form, filters, dialog, table, lib, go, back, submit, rowsOf, relOptions]);
+    }, [screen, module, mode, current, search, page, pageSize, pageRows, visible, form, filters, dialog, table, lib, go, back, submit, rowsOf, relOptions]);
 
     const shell = useMemo(() => screen && ({
         layout,
         title: pageTitle(screen.module, screen),
         breadcrumbs: breadcrumbsOf(modules, screen.module, screen),
-        activePath: layout.items.find(i => modules.some(m => m.id === i.moduleId && isInside(modules, screen.module, m)))?.path,
+        activePath: activeNavPath(layout, modules, screen.module),
         onNavigate: path => { const t = byPath(path); if (t) go(t.id); },
         onSignOut: () => flash('Signed out (preview only)'),
     }), [screen, layout, modules, byPath, go, flash]);
@@ -273,7 +276,3 @@ function AppPreview({ bridge, project, onClose }) {
     );
 }
 
-function isInside(modules, module, ancestor) {
-    for (let c = module, n = 0; c && n < 20; c = modules.find(x => x.id === c.parentId), n++) if (c.id === ancestor.id) return true;
-    return false;
-}

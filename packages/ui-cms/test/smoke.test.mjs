@@ -47,6 +47,18 @@ test('Table shows rows, row actions, the empty state and the range', () => {
     assert.match(render(h(ui.Table, { ...base, data: [] })), /No data yet\./);
 });
 
+test('Sidebar nests children under a parent that opens when it holds the active page', () => {
+    const items = [{ label: 'Dashboard', path: '/' }, { label: 'Master Data', children: [{ label: 'Region', path: '/master-data/region' }] }];
+    const closed = render(h(ui.Sidebar, { items, activePath: '/' }));
+    assert.match(closed, /aria-expanded="false"/);
+    assert.doesNotMatch(closed, /Region/);
+    const active = render(h(ui.Sidebar, { items, activePath: '/master-data/region' }));
+    assert.match(active, /aria-expanded="true"/);
+    assert.match(active, /href="\/master-data\/region"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/master-data\/region"/);
+    const all = render(h(ui.Sidebar, { items, activePath: '/', groups: 'expanded' }));
+    assert.match(all, /Region/);
+});
+
 test('Sidebar marks the active item and collapses to icons only', () => {
     const items = [{ label: 'Dashboard', path: '/' }, { label: 'User', path: '/user' }];
     const open = render(h(ui.Sidebar, { items, activePath: '/user/12' }));
@@ -96,4 +108,17 @@ test('Topbar: avatar opens the user menu with Sign out (menu=open renders it)', 
     assert.match(open, /role="menu"/);
     assert.match(open, />Sign out</);
     assert.doesNotMatch(render(h(ui.Topbar, { userName: 'Admin' })), /aria-haspopup/); // no items → not clickable
+});
+
+test('Table shows total records above and a rows-per-page SelectField when a handler is given', () => {
+    const base = { columns: [{ key: 'n', header: 'N' }], data: [{ id: 1, n: 'a' }], rowKey: r => r.id, totalRecords: 25 };
+    const plain = render(h(ui.Table, base));
+    assert.match(plain, /Total records:[^<]*<strong[^>]*>25</);
+    assert.match(plain, /Showing 1–1 of 25/);
+    assert.doesNotMatch(plain, /Rows per page/);
+    const html = render(h(ui.Table, { ...base, pageSize: 20, onPageSizeChange: () => {} }));
+    assert.match(html, /Rows per page/);
+    assert.doesNotMatch(html, /Showing/);
+    assert.match(html, /role="combobox"/);
+    assert.match(html, /<span[^>]*>20<\/span>/);
 });

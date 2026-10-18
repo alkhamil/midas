@@ -2986,6 +2986,7 @@ button.cb-section-head { cursor: pointer }
 .cb-field-more { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; border-top: 1px dashed var(--border) }
 .cb-menu-item { border: 1px solid var(--border); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 6px }
 .cb-menu-item.off { opacity: .55 }
+.cb-menu-item.child { margin: 4px 0 0 16px; border-style: dashed }
 .cb-menu-top input { flex: 1; min-width: 0 }
 .cb-menu-bottom { display: flex; align-items: center; gap: 8px }
 .cb-menu-bottom select, .cb-menu-bottom input { flex: 1; min-width: 0 }

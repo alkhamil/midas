@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assembleProject, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
+import { activeNavPath, assembleProject, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -67,6 +67,22 @@ test('layout resolves menu order, hidden and dashboard home path', () => {
     assert.equal(l.appName, 'App');
     assert.equal(screenPath(modules, modules[2], { id: 'x', role: 'create', name: 'x' }), '/user/child/create');
     assert.equal(screenPath(modules, modules[0], { id: 'x', role: 'edit', name: 'x' }), '/user/:id/edit');
+});
+
+test('layout nests child modules under a group parent: /parent/child', () => {
+    const modules = [
+        { id: 'm', name: 'master-data', label: 'Master Data', parentId: null, screens: [] },
+        { id: 'r', name: 'region', label: 'Region', parentId: 'm', screens: [{ id: 'l', role: 'list', name: 'List' }] },
+        { id: 'c', name: 'country', label: 'Country', parentId: 'm', screens: [{ id: 'l2', role: 'list', name: 'List' }] },
+    ];
+    const l = resolveLayout({ modules, layout: { items: [{ moduleId: 'm', icon: 'database' }, { moduleId: 'c' }, { moduleId: 'r' }] } });
+    assert.equal(l.items.length, 1);
+    assert.equal(l.items[0].path, undefined);
+    assert.deepEqual(l.items[0].children.map(c => [c.label, c.path]), [['Country', '/master-data/country'], ['Region', '/master-data/region']]);
+    assert.equal(activeNavPath(l, modules, modules[1]), '/master-data/region');
+    assert.deepEqual(breadcrumbsOf(modules, modules[1], modules[1].screens[0]).map(c => c.label), ['Home', 'Master Data', 'Region']);
+    const nav = generateProject({ name: 'P', config: { modules, layout: {} } }, new Map()).files['src/app/generated/navigation.tsx'];
+    assert.match(nav, /label: 'Master Data'[\s\S]*children: \[[\s\S]*path: '\/master-data\/region'/);
 });
 
 test('table model and form binding follow the entity', () => {

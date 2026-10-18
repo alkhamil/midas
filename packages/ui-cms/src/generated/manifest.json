@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.4.0",
+  "version": "2.7.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T15:07:03.156Z",
+  "publishedAt": "2026-10-18T16:02:28.926Z",
   "themes": [
     "light",
     "dark"
@@ -741,10 +741,21 @@
             "true",
             "false"
           ]
+        },
+        {
+          "name": "groups",
+          "type": "enum",
+          "source": "variant",
+          "label": "Groups",
+          "values": [
+            "expanded",
+            "collapsed"
+          ]
         }
       ],
       "defaults": {
-        "collapsed": false
+        "collapsed": false,
+        "groups": "collapsed"
       }
     },
     {
@@ -860,6 +871,14 @@
       ]
     },
     {
+      "name": "database",
+      "category": "ui",
+      "exportName": "DatabaseIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
       "name": "double-alt-arrow-left",
       "category": "ui",
       "exportName": "DoubleAltArrowLeftIcon",
@@ -927,6 +946,14 @@
       "name": "magnifer",
       "category": "ui",
       "exportName": "MagniferIcon",
+      "styles": [
+        "outline"
+      ]
+    },
+    {
+      "name": "map-point",
+      "category": "ui",
+      "exportName": "MapPointIcon",
       "styles": [
         "outline"
       ]

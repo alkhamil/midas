@@ -14,16 +14,19 @@ function ProtectedAppShell() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  // Sidebar library datar (label, path, ikon): anak menu diratakan setelah induknya.
+  // Menu bersarang (induk → anak) diteruskan apa adanya ke Sidebar library; `flat` dipakai untuk mencari item aktif.
   const items = useMemo(
     () =>
-      filterNavItems(navItems, permissions).flatMap((item) => [
-        ...(item.path ? [{ label: resolveNavLabel(item, t), path: item.path, icon: item.icon }] : []),
-        ...(item.children ?? []).map((child) => ({ label: resolveNavLabel(child, t), path: child.path })),
-      ]),
+      filterNavItems(navItems, permissions).map((item) => ({
+        label: resolveNavLabel(item, t),
+        path: item.path,
+        icon: item.icon,
+        children: item.children?.map((child) => ({ label: resolveNavLabel(child, t), path: child.path })),
+      })),
     [permissions, t],
   );
-  const current = [...items].sort((a, b) => b.path.length - a.path.length).find((i) => (i.path === '/' ? pathname === '/' : pathname === i.path || pathname.startsWith(`${i.path}/`)));
+  const flat = useMemo(() => items.flatMap((item) => [...(item.path ? [{ label: item.label, path: item.path }] : []), ...(item.children ?? [])]), [items]);
+  const current = [...flat].sort((a, b) => b.path.length - a.path.length).find((i) => (i.path === '/' ? pathname === '/' : pathname === i.path || pathname.startsWith(`${i.path}/`)));
   // Judul & breadcrumb dari konfigurasi Code Builder; halaman bawaan memakai label menu.
   const page = generatedPages.find((p) => matchPath({ path: p.path, end: true }, pathname));
   return (

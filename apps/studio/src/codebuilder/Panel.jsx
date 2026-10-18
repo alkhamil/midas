@@ -105,7 +105,9 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
     const setLayout = useCallback(fn => update(p => {
         const resolved = resolveLayout(p.config);
         const labelOf = id => p.config.modules.find(m => m.id === id)?.label;
-        const base = { appName: resolved.appName, userName: resolved.userName, userRole: resolved.userRole, items: resolved.items.map(({ moduleId, label, icon, hidden }) => ({ moduleId, label, icon, hidden: hidden || undefined })) };
+        // Saved as one flat list (top-level entries, then each parent's children): the order among siblings is what matters.
+        const slim = ({ moduleId, label, icon, hidden }) => ({ moduleId, label, icon, hidden: hidden || undefined });
+        const base = { appName: resolved.appName, userName: resolved.userName, userRole: resolved.userRole, items: resolved.items.flatMap(i => [slim(i), ...(i.children || []).filter(c => c.moduleId !== i.moduleId).map(slim)]) };
         const next = fn(base);
         // Label yang sama dengan label module tidak disimpan sebagai override (supaya ikut berubah bila module diganti nama).
         return { config: { ...p.config, layout: { ...next, items: next.items.map(i => ({ ...i, label: i.label && i.label !== labelOf(i.moduleId) ? i.label : undefined })) } } };
