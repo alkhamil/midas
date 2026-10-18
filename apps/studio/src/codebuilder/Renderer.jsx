@@ -64,7 +64,7 @@ function Shell({ shell, lib, height, children }) {
         return { label: i.label, path: i.path, icon: Icon ? h(Icon, { className: 'h-5 w-5' }) : undefined };
     });
     return h('div', { className: 'cb-shell', style: { height } },
-        h(lib.AppShell, { navItems: items, activePath: shell.activePath, title: shell.title, appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));
+        h(lib.AppShell, { navItems: items, activePath: shell.activePath, title: shell.title, breadcrumbs: shell.breadcrumbs, appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));
 }
 
 function Screen({ tree, lib, entity, modules, shell, shellHeight, onError }) {

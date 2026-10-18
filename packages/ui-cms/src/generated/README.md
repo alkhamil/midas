@@ -1,4 +1,4 @@
-# Library Kit — @midas/ui-cms@1.1.1
+# Library Kit — @midas/ui-cms@2.1.1
 
 Folder ini dibangkitkan oleh Midas dari library **CMS Design System** dan ditimpa setiap `npx @midas/cli sync`. Jangan diedit manual: ubah desain di Midas, publish versi baru, lalu sync.
 

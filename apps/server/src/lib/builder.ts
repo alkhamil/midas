@@ -51,6 +51,8 @@ const screenShape = z.object({
     /** Page tempat frame berada — dipakai Studio untuk membuka frame. */
     pageId: z.string().min(1),
     name: z.string().min(1).max(120),
+    /** Judul di topbar; kosong = otomatis dari role + label module. */
+    title: z.string().max(120).optional(),
     role: z.enum(SCREEN_ROLES),
     /** Konfigurasi per node (kunci = id node di desain). */
     nodes: z.record(z.string(), nodeConfigShape).default({}),

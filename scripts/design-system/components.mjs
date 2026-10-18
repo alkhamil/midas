@@ -174,18 +174,46 @@ export const COMPONENTS = [
         render: (v, ctx) => sidebar(ctx, 'Dashboard', v.Collapsed === 'true'),
     },
     {
-        name: 'PageHeader',
+        name: 'Topbar',
         group: 'Layout',
-        description: 'Kepala halaman di dalam konten: judul dan keterangan. Tombol aksi utama ditaruh di sampingnya sebagai Button terpisah.',
+        description: 'Bilah atas aplikasi: breadcrumb dan judul halaman di kiri, nama pengguna dan avatar di kanan. Tidak ada page header di dalam konten — judul halaman ada di sini.',
         variants: {},
-        cprops: [{ name: 'Title', type: 'text', default: 'Judul halaman' }, { name: 'Description', type: 'text', default: 'Keterangan singkat halaman' }, { name: 'Actions', type: 'slot' }],
-        render: (_v, ctx, cp) => row({ w: 960, justify: 'between', align: 'center' }, [
-            col({ gap: 4 }, [
-                text('Judul halaman', { size: 24, line: 32, weight: 600, bind: cp.Title, name: 'Title' }),
-                text('Keterangan singkat halaman', { size: 14, line: 20, color: MUTED_FG, bind: cp.Description, name: 'Description' }),
+        cprops: [
+            { name: 'Title', type: 'text', default: 'Judul halaman' },
+            { name: 'Breadcrumb', type: 'text', default: 'Beranda / Halaman' },
+            { name: 'UserName', type: 'text', default: 'Administrator' },
+            { name: 'UserRole', type: 'text', default: 'admin' },
+        ],
+        render: (_v, ctx, cp) => row({ w: 960, h: 72, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0] }, [
+            col({ gap: 2, name: 'Judul' }, [
+                text('Judul halaman', { size: 18, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
+                text('Beranda / Halaman', { size: 12, line: 16, color: MUTED_FG, bind: cp.Breadcrumb, name: 'Breadcrumb' }),
             ]),
-            // Slot aksi dibiarkan kosong: tombol aksi halaman ditaruh desainer di samping header (sebagai instance Button terpisah).
-            row({ gap: 8, name: 'Actions' }, []),
+            row({ gap: 12, name: 'User' }, [
+                col({ align: 'end' }, [
+                    text('Administrator', { size: 14, line: 20, weight: 500, bind: cp.UserName, name: 'UserName' }),
+                    text('admin', { size: 12, line: 16, color: MUTED_FG, bind: cp.UserRole, name: 'UserRole' }),
+                ]),
+                instance(ctx.variant('Avatar', { Size: 'Md' }), { Initial: 'A' }),
+            ]),
+        ]),
+    },
+    {
+        name: 'SectionHeader',
+        group: 'Layout',
+        description: 'Kepala bagian di dalam konten (list, create, edit, detail): judul + keterangan di kiri, tombol aksi utama di kanan — satu frame. Aksi bisa dimatikan lewat variant Action = None.',
+        variants: { Action: ['Primary', 'Secondary', 'None'] },
+        cprops: [
+            { name: 'Title', type: 'text', default: 'Judul bagian' },
+            { name: 'Description', type: 'text', default: 'Keterangan singkat bagian ini' },
+            { name: 'ActionLabel', type: 'text', default: 'Tambah' },
+        ],
+        render: (v, ctx, cp) => row({ w: 960, justify: 'between', align: 'center', gap: 16 }, [
+            col({ gap: 4, name: 'Teks' }, [
+                text('Judul bagian', { size: 20, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
+                text('Keterangan singkat bagian ini', { size: 14, line: 20, color: MUTED_FG, bind: cp.Description, name: 'Description' }),
+            ]),
+            v.Action === 'None' ? null : { ...button(v.Action, 'Md', ctx, { label: 'Tambah', bind: cp.ActionLabel }), name: 'Action' },
         ]),
     },
     {
@@ -208,13 +236,7 @@ export const COMPONENTS = [
         render: (_v, ctx) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true }, [
             instance(ctx.variant('Sidebar', { Collapsed: 'false' })),
             col({ w: 'fill', h: 'fill' }, [
-                row({ w: 'fill', h: 64, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Topbar' }, [
-                    text('Dashboard', { size: 16, line: 24, weight: 600, name: 'Title' }),
-                    row({ gap: 12, name: 'User' }, [
-                        col({ align: 'end' }, [text('Administrator', { size: 14, line: 20, weight: 500 }), text('admin', { size: 12, line: 16, color: MUTED_FG })]),
-                        instance(ctx.variant('Avatar', { Size: 'Md' }), { Initial: 'A' }),
-                    ]),
-                ]),
+                instance(ctx.root('Topbar'), { Title: 'Dashboard' }, { name: 'Topbar', w: 'fill' }),
                 col({ w: 'fill', h: 'fill', pad: 24, name: 'Content' }, [
                     frame({ w: 'fill', h: 'fill', radius: 'radius/lg', stroke: 'color/border', props: { strokeStyle: 'dash', strokeDash: 6, strokeGap: 4 }, name: 'Slot konten' }),
                 ]),

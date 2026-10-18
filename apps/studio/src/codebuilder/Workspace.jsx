@@ -1,10 +1,11 @@
 // Ruang kerja satu screen: pratinjau Live DOM Renderer (dengan layout aplikasi) di tengah, outline layer di kiri,
 // dan Properties Inspector di kanan. Menutupi canvas + panel kanan Design selama screen dibuka.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { findTreeNode, ROLE_LABEL, screenTree } from '@midas/builder-core';
+import { breadcrumbsOf, findTreeNode, pageTitle, ROLE_LABEL, screenTree } from '@midas/builder-core';
 import { cssUrlOf, loadBundle } from './loader.js';
 import { Inspector } from './Inspector.jsx';
 import { LiveFrame } from './Renderer.jsx';
+import { Select } from './Select.jsx';
 
 function Outline({ tree, selected, onSelect, onToggle, hiddenOf }) {
     const row = (n, depth) => (
@@ -43,7 +44,9 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
     const node = selected && !selected.startsWith('__') ? findTreeNode(tree.tree, selected) : null;
     const hiddenOf = id => !!screen.nodes?.[id]?.hidden;
     const toggle = id => actions.setNode(screen.id, id, c => ({ ...c, hidden: c.hidden ? undefined : true }));
-    const shell = useMemo(() => ({ layout, title, activePath: layout.items.find(i => i.moduleId === module.id || modules.some(m => m.id === i.moduleId && isAncestor(modules, m, module)))?.path }), [layout, title, module, modules]);
+    const pageTitleText = pageTitle(module, screen);
+    const crumbs = useMemo(() => breadcrumbsOf(modules, module, screen), [modules, module, screen]);
+    const shell = useMemo(() => ({ layout, title: pageTitleText, breadcrumbs: crumbs, activePath: layout.items.find(i => i.moduleId === module.id || modules.some(m => m.id === i.moduleId && isAncestor(modules, m, module)))?.path }), [layout, pageTitleText, crumbs, module, modules]);
 
     // Menutupi seluruh area editor di bawah header (rail, panel kiri, canvas, panel kanan): ruang untuk pratinjau + inspector.
     const view = useRef(null);
@@ -54,10 +57,14 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
             Object.assign(view.current.style, { top: `${r.top}px`, left: '0px' });
         };
         place();
+        // Canvas memakai wheel untuk zoom/pan dan membatalkan scroll bawaan; overlay ini berada di dalam #canvas-area.
+        const stop = e => e.stopPropagation();
+        const node = view.current;
+        node.addEventListener('wheel', stop, { passive: true });
         const ro = new ResizeObserver(place);
         ro.observe(area);
         window.addEventListener('resize', place);
-        return () => { ro.disconnect(); window.removeEventListener('resize', place); };
+        return () => { ro.disconnect(); window.removeEventListener('resize', place); node.removeEventListener('wheel', stop); };
     }, []);
 
     const all = [...tree.issues, ...runtime.map(r => ({ ...r, severity: 'error', message: `Error saat render: ${r.message}` }))];
@@ -65,6 +72,7 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
         setNode: (id, fn) => actions.setNode(screen.id, id, fn),
         setLayout: actions.setLayout,
         setFields: fields => actions.setFields(module.id, fields),
+        setScreen: patch => actions.setScreen(screen.id, patch),
         reveal: id => onReveal(id),
     };
     return (
@@ -72,20 +80,20 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
             <div className="cb-screen-bar">
                 <button className="cb-back" onClick={onClose} title="Kembali ke canvas">← Canvas</button>
                 <span className={`cb-role r-${screen.role}`}>{ROLE_LABEL[screen.role]}</span>
-                <select className="cb-screen-switch" aria-label="Pilih screen" value={screen.id} onChange={e => onSwitch(e.target.value)}>
+                <Select className="cb-screen-switch" aria-label="Pilih screen" value={screen.id} onChange={e => onSwitch(e.target.value)}>
                     {modules.map(m => (
                         <optgroup key={m.id} label={m.label}>
                             {screens.filter(x => x.module.id === m.id).map(x => <option key={x.id} value={x.id}>{x.name} ({ROLE_LABEL[x.role]})</option>)}
                         </optgroup>
                     ))}
-                </select>
+                </Select>
                 <span className="small-label">src/modules/{module.name}</span>
                 <span className="cb-spacer" />
                 <label className="cb-zoom">Zoom
-                    <select value={zoom} onChange={e => setZoom(e.target.value)}>
+                    <Select value={zoom} onChange={e => setZoom(e.target.value)}>
                         <option value="fit">Muat</option>
                         {[50, 75, 100].map(z => <option key={z} value={z}>{z}%</option>)}
-                    </select>
+                    </Select>
                 </label>
                 <button className="wide-button" onClick={() => onReveal(screen.frameId)}>Buka frame di canvas</button>
                 <button className="wide-button" onClick={onGenerate}>Generate kode…</button>
@@ -110,7 +118,7 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
                         : tree.tree ? <LiveFrame tree={tree.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} selectedId={selected} onPick={setSelected} onError={onError} entity={entity} modules={modules} shell={shell} zoom={zoom} />
                             : <div className="cb-empty cb-grow"><p className="small-label">{tree.issues[0]?.message}</p></div>}
                 <aside className="cb-right">
-                    <Inspector selected={selected} tree={tree.tree} node={node} screen={screen} module={module} screens={screens} entity={entity} layout={layout} lib={lib} modules={modules} title={title} actions={inspectorActions} />
+                    <Inspector selected={selected} tree={tree.tree} node={node} screen={screen} module={module} screens={screens} entity={entity} layout={layout} lib={lib} modules={modules} title={pageTitleText} crumbs={crumbs} actions={inspectorActions} />
                 </aside>
             </div>
         </div>

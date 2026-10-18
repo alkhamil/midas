@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { autoAction, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
+import { autoAction, breadcrumbsOf, pageTitle, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -176,4 +176,18 @@ test('generator emits validation and relation options from the target module', (
     assert.match(create, /import \{ useRoleList \} from '\.\.\/\.\.\/role\/api\/queries'/);
     assert.match(create, /options=\{roleOptions\}/);
     assert.match(create, /label: String\(r\.name \?\? ''\)/);
+});
+
+test('page title and breadcrumbs follow module and screen role', () => {
+    const modules = [
+        { id: 'a', name: 'user', label: 'User', parentId: null, screens: [{ id: 'l', role: 'list', name: 'List' }, { id: 'c', role: 'create', name: 'Form' }, { id: 'x', role: 'custom', name: 'Import' }] },
+        { id: 'd', name: 'dashboard', label: 'Dashboard', parentId: null, screens: [{ id: 'dd', role: 'custom', name: 'Dashboard' }] },
+    ];
+    assert.equal(pageTitle(modules[0], modules[0].screens[0]), 'User');
+    assert.equal(pageTitle(modules[0], modules[0].screens[1]), 'Tambah User');
+    assert.equal(pageTitle(modules[0], { ...modules[0].screens[0], title: 'Semua pengguna' }), 'Semua pengguna');
+    assert.deepEqual(breadcrumbsOf(modules, modules[0], modules[0].screens[0]), [{ label: 'Beranda', path: '/' }, { label: 'User' }]);
+    assert.deepEqual(breadcrumbsOf(modules, modules[0], modules[0].screens[1]), [{ label: 'Beranda', path: '/' }, { label: 'User', path: '/user' }, { label: 'Tambah' }]);
+    assert.deepEqual(breadcrumbsOf(modules, modules[0], modules[0].screens[2]).at(-1), { label: 'Import' });
+    assert.deepEqual(breadcrumbsOf(modules, modules[1], modules[1].screens[0]), [{ label: 'Dashboard' }]);
 });

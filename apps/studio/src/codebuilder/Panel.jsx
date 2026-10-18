@@ -6,6 +6,7 @@ import { builderApi, libraryApi } from '../storage.js';
 import { cleanNodeCfg, CRUD_ROLES, kebabCase, makeContext, projectIssues, resolveLayout, ROLE_LABEL, screenTree } from '@midas/builder-core';
 import { GenerateDialog } from './Generate.jsx';
 import { EntityEditor } from './Inspector.jsx';
+import { Select } from './Select.jsx';
 import { Workspace } from './Workspace.jsx';
 
 const ROLES = ['list', 'create', 'edit', 'view', 'custom'];
@@ -107,6 +108,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         // Label yang sama dengan label module tidak disimpan sebagai override (supaya ikut berubah bila module diganti nama).
         return { config: { ...p.config, layout: { ...next, items: next.items.map(i => ({ ...i, label: i.label && i.label !== labelOf(i.moduleId) ? i.label : undefined })) } } };
     }), [update]);
+    const setScreen = useCallback((screenId, patch) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => ({ ...m, screens: m.screens.map(s => (s.id === screenId ? { ...s, ...patch } : s)) })) } })), [update]);
     const setFields = useCallback((moduleId, fields) => update(p => ({ config: { ...p.config, modules: p.config.modules.map(m => (m.id === moduleId ? { ...m, entity: { fields } } : m)) } })), [update]);
 
     // ---------------------------------------------------------------- dokumen & issues
@@ -148,10 +150,10 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
     return (
         <div className="cb-panel">
             <div className="cb-head">
-                <select className="cb-select" value={project?.id || ''} onChange={e => selectProject(e.target.value)} aria-label="Code Builder project">
+                <Select className="cb-select" value={project?.id || ''} onChange={e => selectProject(e.target.value)} aria-label="Code Builder project">
                     {!project && <option value="">Belum ada project</option>}
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                </Select>
                 <button className="icon-button small" title="Project baru" aria-label="Project baru" onClick={() => setForm('project')}>＋</button>
             </div>
             {form === 'project' && <ProjectForm fileName={bridge.fileName()} bridge={bridge} onCancel={() => setForm(null)} onCreate={async body => {
@@ -196,7 +198,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                     screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={{ ...activeScreen.module.entity, moduleName: activeScreen.module.name }} layout={layout}
                     title={layout.items.find(i => i.moduleId === rootOf(allModules, activeScreen.module).id)?.label || activeScreen.module.label}
                     module={activeScreen.module} screens={screens} modules={allModules}
-                    actions={{ setNode, setLayout, setFields }} onSwitch={setScreenId} onGenerate={() => setForm('generate')}
+                    actions={{ setNode, setLayout, setFields, setScreen }} onSwitch={setScreenId} onGenerate={() => setForm('generate')}
                     onClose={() => setScreenId(null)} onReveal={id => { setScreenId(null); bridge.reveal(id); }}
                 />,
                 canvasHost,
@@ -230,13 +232,13 @@ function ProjectForm({ fileName, bridge, onCancel, onCreate }) {
         }}>
             <b>Project baru</b>
             <label>Nama<input value={name} onChange={e => setName(e.target.value)} required /></label>
-            <label>Library<select value={libraryId} onChange={e => setLibraryId(e.target.value)}>
+            <label>Library<Select value={libraryId} onChange={e => setLibraryId(e.target.value)}>
                 <option value="">— pilih nanti —</option>
                 {(libs || []).map(l => <option key={l.id} value={l.id}>{l.packageName || l.name}</option>)}
-            </select></label>
-            {libraryId && <label>Versi<select value={version} onChange={e => setVersion(e.target.value)}>
+            </Select></label>
+            {libraryId && <label>Versi<Select value={version} onChange={e => setVersion(e.target.value)}>
                 {versions.map(v => <option key={v.version} value={v.version}>{v.version}{v.codeStatus === 'ready' ? '' : ` (kode ${v.codeStatus})`}</option>)}
-            </select></label>}
+            </Select></label>}
             {err && <p className="cb-error">{err}</p>}
             <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary">Buat</button></div>
         </form>
@@ -254,7 +256,7 @@ function LibraryLine({ project, onChange }) {
             <span className="cb-mono" title={lib.name}>{lib.packageName}@{lib.version}</span>
             <span className={`cb-badge ${lib.bundleUrl ? 'ok' : 'warn'}`} title={lib.bundleUrl ? 'Bundle tersedia untuk Live DOM Renderer' : 'Bundle belum diunggah'}>{lib.bundleUrl ? 'bundle' : 'tanpa bundle'}</span>
             {edit
-                ? <select className="cb-select small" value={lib.version} onChange={e => { onChange(lib.id, e.target.value); setEdit(false); }}>{versions.map(v => <option key={v.version}>{v.version}</option>)}</select>
+                ? <Select className="cb-select small" value={lib.version} onChange={e => { onChange(lib.id, e.target.value); setEdit(false); }}>{versions.map(v => <option key={v.version}>{v.version}</option>)}</Select>
                 : <button className="cb-link" onClick={() => setEdit(true)}>Ganti versi</button>}
         </div>
     );
@@ -278,19 +280,19 @@ function ModuleForm({ pages, modules, currentPage, initial, onCancel, onSave }) 
             onSave({ pageId, label: label.trim() || name, name, parentId: parentId || null, ...(permissionKey ? { permissionKey } : {}) });
         }}>
             <b>{initial ? 'Ubah module' : 'Module baru'}</b>
-            <label>Page sumber<select value={pageId} onChange={e => {
+            <label>Page sumber<Select value={pageId} onChange={e => {
                 setPageId(e.target.value);
                 const n = usable.find(p => p.id === e.target.value)?.name || '';
                 if (!touched) { setLabel(n); setName(kebabCase(n)); }
-            }}>{usable.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+            }}>{usable.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>
             <label>Label<input value={label} onChange={e => { setLabel(e.target.value); if (!touched) setName(kebabCase(e.target.value)); }} /></label>
             <label>Nama folder (kebab-case)<input className={valid && !taken ? '' : 'invalid'} value={name} onChange={e => { setName(e.target.value); setTouched(true); }} /></label>
             {!valid && <small className="cb-error">Huruf kecil & tanda hubung, mis. user-management</small>}
             {taken && <small className="cb-error">Nama sudah dipakai di level ini</small>}
-            <label>Parent<select value={parentId} onChange={e => setParentId(e.target.value)}>
+            <label>Parent<Select value={parentId} onChange={e => setParentId(e.target.value)}>
                 <option value="">— tidak ada —</option>
                 {modules.filter(m => m.id !== initial?.id).map(m => <option key={m.id} value={m.id}>{m.label} ({m.name})</option>)}
-            </select></label>
+            </Select></label>
             <label>Permission key<input placeholder={name} value={permissionKey} onChange={e => setPermissionKey(e.target.value)} /></label>
             <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary" disabled={!valid || taken}>Simpan</button></div>
         </form>
@@ -362,9 +364,9 @@ function ScreenForm({ module: m, selection, onCancel, onSave }) {
             {!frame && <p className="small-label">Pilih satu frame teratas di canvas (page sumber module ini).</p>}
             {frame && !onPage && <p className="cb-error">Frame "{frame.name}" bukan dari page sumber module.</p>}
             {frame && onPage && <p className="small-label">Frame: <b>{frame.name}</b></p>}
-            <label>Role<select value={role} onChange={e => setRole(e.target.value)}>
+            <label>Role<Select value={role} onChange={e => setRole(e.target.value)}>
                 {ROLES.map(r => <option key={r} value={r} disabled={used.has(r)}>{ROLE_LABEL[r]}{used.has(r) ? ' (sudah ada)' : ''}</option>)}
-            </select></label>
+            </Select></label>
             <label>Nama screen<input placeholder={frame?.name || ''} value={name} onChange={e => setName(e.target.value)} /></label>
             <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Batal</button><button className="wide-button primary" disabled={!frame || !onPage}>Register</button></div>
         </form>

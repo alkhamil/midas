@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "1.1.1",
+  "version": "2.1.1",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-18T08:21:44.902Z",
+  "publishedAt": "2026-10-18T13:52:07.029Z",
   "themes": [
     "light",
     "dark"
@@ -208,6 +208,85 @@
       }
     },
     {
+      "exportName": "Topbar",
+      "componentKey": "ds-1k-vle2pq",
+      "componentName": "Topbar",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "breadcrumb",
+          "type": "string",
+          "source": "text",
+          "label": "Breadcrumb"
+        },
+        {
+          "name": "userName",
+          "type": "string",
+          "source": "text",
+          "label": "UserName"
+        },
+        {
+          "name": "userRole",
+          "type": "string",
+          "source": "text",
+          "label": "UserRole"
+        }
+      ],
+      "defaults": {
+        "title": "Judul halaman",
+        "breadcrumb": "Beranda / Halaman",
+        "userName": "Administrator",
+        "userRole": "admin"
+      }
+    },
+    {
+      "exportName": "SectionHeader",
+      "componentKey": "ds-1l-f2zglf",
+      "componentName": "SectionHeader",
+      "props": [
+        {
+          "name": "action",
+          "type": "enum",
+          "source": "variant",
+          "label": "Action",
+          "values": [
+            "none",
+            "primary",
+            "secondary"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "source": "text",
+          "label": "Description"
+        },
+        {
+          "name": "actionLabel",
+          "type": "string",
+          "source": "text",
+          "label": "ActionLabel"
+        }
+      ],
+      "defaults": {
+        "action": "primary",
+        "title": "Judul bagian",
+        "description": "Keterangan singkat bagian ini",
+        "actionLabel": "Tambah"
+      }
+    },
+    {
       "exportName": "IconButton",
       "componentKey": "ds-2g-nnx1nl",
       "componentName": "IconButton",
@@ -233,6 +312,156 @@
       "defaults": {
         "action": "view",
         "disabled": false
+      }
+    },
+    {
+      "exportName": "Badge",
+      "componentKey": "ds-2s-maa4uw",
+      "componentName": "Badge",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "danger",
+            "neutral",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "children",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "children": "Badge"
+      }
+    },
+    {
+      "exportName": "Avatar",
+      "componentKey": "ds-38-ep6lj1",
+      "componentName": "Avatar",
+      "props": [
+        {
+          "name": "size",
+          "type": "enum",
+          "source": "variant",
+          "label": "Size",
+          "values": [
+            "md",
+            "sm"
+          ]
+        },
+        {
+          "name": "initial",
+          "type": "string",
+          "source": "text",
+          "label": "Initial"
+        }
+      ],
+      "defaults": {
+        "size": "sm",
+        "initial": "A"
+      }
+    },
+    {
+      "exportName": "Alert",
+      "componentKey": "ds-3i-71787e",
+      "componentName": "Alert",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "source": "variant",
+          "label": "Variant",
+          "values": [
+            "info",
+            "danger",
+            "success",
+            "warning"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "source": "text",
+          "label": "Message"
+        }
+      ],
+      "defaults": {
+        "variant": "success",
+        "message": "Pesan untuk pengguna"
+      }
+    },
+    {
+      "exportName": "Card",
+      "componentKey": "ds-41-u4jnra",
+      "componentName": "Card",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "title": "Judul card"
+      }
+    },
+    {
+      "exportName": "StatCard",
+      "componentKey": "ds-4d-b1m06u",
+      "componentName": "StatCard",
+      "props": [
+        {
+          "name": "trend",
+          "type": "enum",
+          "source": "variant",
+          "label": "Trend",
+          "values": [
+            "up",
+            "down",
+            "neutral"
+          ]
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "source": "text",
+          "label": "Value"
+        },
+        {
+          "name": "caption",
+          "type": "string",
+          "source": "text",
+          "label": "Caption"
+        }
+      ],
+      "defaults": {
+        "trend": "up",
+        "label": "Total user",
+        "value": "1.248",
+        "caption": "12% dari bulan lalu"
       }
     },
     {
@@ -379,65 +608,6 @@
       }
     },
     {
-      "exportName": "Alert",
-      "componentKey": "ds-3i-71787e",
-      "componentName": "Alert",
-      "props": [
-        {
-          "name": "variant",
-          "type": "enum",
-          "source": "variant",
-          "label": "Variant",
-          "values": [
-            "info",
-            "danger",
-            "success",
-            "warning"
-          ]
-        },
-        {
-          "name": "message",
-          "type": "string",
-          "source": "text",
-          "label": "Message"
-        }
-      ],
-      "defaults": {
-        "variant": "success",
-        "message": "Pesan untuk pengguna"
-      }
-    },
-    {
-      "exportName": "Badge",
-      "componentKey": "ds-2s-maa4uw",
-      "componentName": "Badge",
-      "props": [
-        {
-          "name": "variant",
-          "type": "enum",
-          "source": "variant",
-          "label": "Variant",
-          "values": [
-            "info",
-            "danger",
-            "neutral",
-            "success",
-            "warning"
-          ]
-        },
-        {
-          "name": "children",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        }
-      ],
-      "defaults": {
-        "variant": "success",
-        "children": "Badge"
-      }
-    },
-    {
       "exportName": "Dialog",
       "componentKey": "ds-bn-lj4uvt",
       "componentName": "Dialog",
@@ -471,97 +641,6 @@
       }
     },
     {
-      "exportName": "Avatar",
-      "componentKey": "ds-38-ep6lj1",
-      "componentName": "Avatar",
-      "props": [
-        {
-          "name": "size",
-          "type": "enum",
-          "source": "variant",
-          "label": "Size",
-          "values": [
-            "md",
-            "sm"
-          ]
-        },
-        {
-          "name": "initial",
-          "type": "string",
-          "source": "text",
-          "label": "Initial"
-        }
-      ],
-      "defaults": {
-        "size": "sm",
-        "initial": "A"
-      }
-    },
-    {
-      "exportName": "Card",
-      "componentKey": "ds-41-u4jnra",
-      "componentName": "Card",
-      "props": [
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Content"
-        }
-      ],
-      "defaults": {
-        "title": "Judul card"
-      }
-    },
-    {
-      "exportName": "StatCard",
-      "componentKey": "ds-4d-b1m06u",
-      "componentName": "StatCard",
-      "props": [
-        {
-          "name": "trend",
-          "type": "enum",
-          "source": "variant",
-          "label": "Trend",
-          "values": [
-            "up",
-            "down",
-            "neutral"
-          ]
-        },
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "value",
-          "type": "string",
-          "source": "text",
-          "label": "Value"
-        },
-        {
-          "name": "caption",
-          "type": "string",
-          "source": "text",
-          "label": "Caption"
-        }
-      ],
-      "defaults": {
-        "trend": "up",
-        "label": "Total user",
-        "value": "1.248",
-        "caption": "12% dari bulan lalu"
-      }
-    },
-    {
       "exportName": "Table",
       "componentKey": "ds-ce-0ambl8",
       "componentName": "Table",
@@ -586,35 +665,6 @@
       ],
       "defaults": {
         "collapsed": false
-      }
-    },
-    {
-      "exportName": "PageHeader",
-      "componentKey": "ds-fy-otdjp3",
-      "componentName": "PageHeader",
-      "props": [
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "description",
-          "type": "string",
-          "source": "text",
-          "label": "Description"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Actions"
-        }
-      ],
-      "defaults": {
-        "title": "Judul halaman",
-        "description": "Keterangan singkat halaman"
       }
     },
     {

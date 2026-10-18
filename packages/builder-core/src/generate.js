@@ -4,7 +4,7 @@
 // Hasil: { files: { 'src/…': isi }, warnings: [] }. Berisi module (`src/modules/<path>`) dan file
 // `src/app/generated/*` (route, menu, locale, layout) yang diimpor base project — jadi regenerate aman:
 // file hasil generate tidak pernah bercampur dengan kode tulisan tangan.
-import { autoAction, fieldBinding, sampleValue, isNumericField, parseRules, pascalCase, relationOf, resolveLayout, screenPath, tableModel, titleCase } from './model.js';
+import { autoAction, breadcrumbsOf, fieldBinding, pageTitle, sampleValue, isNumericField, parseRules, pascalCase, relationOf, resolveLayout, screenPath, tableModel, titleCase } from './model.js';
 import { CRUD_ROLES, camelCase, kebabCase, screenTree } from './screen.js';
 
 const q = s => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
@@ -18,7 +18,7 @@ function styleLit(style) {
     return `{ ${entries.map(([k, v]) => `${k}: ${lit(v)}`).join(', ')} }`;
 }
 
-const FLUID_COMPONENTS = new Set(['Table', 'FilterToolbar', 'PageHeader', 'Card', 'StatCard', 'Alert']);
+const FLUID_COMPONENTS = new Set(['Table', 'FilterToolbar', 'SectionHeader', 'Card', 'StatCard', 'Alert']);
 /**
  * Lebar piksel dari desain (mis. 1096px untuk tabel) diganti perilaku fluid supaya halaman responsif:
  * di dalam baris → flex 1, di dalam kolom → rentang penuh. Elemen kecil (tombol, field) tetap ukuran desain.
@@ -73,7 +73,7 @@ class PageBuilder {
     effectiveAction(node) {
         const a = node.cfg?.action;
         if (a) return a;
-        return autoAction(this.mod, this.screen, node.props.children ?? node.props.label);
+        return autoAction(this.mod, this.screen, node.props.children ?? node.props.label ?? node.props.actionLabel);
     }
 
     pathOf(screenId, id) {
@@ -124,6 +124,16 @@ class PageBuilder {
         if (name === 'FilterToolbar' && this.screen.role === 'list') {
             this.usesSearch = true;
             return wrap({ attrs: ['searchValue={search}', 'onSearchChange={(v) => { setSearch(v); setPage(1); }}'] });
+        }
+        if (name === 'SectionHeader') {
+            // Tombol aksi header: navigasi / kembali (submit form tetap lewat tombol Simpan di form).
+            const a = this.effectiveAction(node);
+            if (a.type === 'back') { this.needNavigate = true; return wrap({ skip: ['onAction'], attrs: ['onAction={() => navigate(-1)}'] }); }
+            if (a.type === 'navigate' && a.screenId) {
+                const p = this.pathOf(a.screenId, null);
+                if (p && !p.includes(':id')) { this.needNavigate = true; return wrap({ skip: ['onAction'], attrs: [`onAction={() => navigate(${q(p)})}`] }); }
+            }
+            return wrap();
         }
         if (name === 'Button' || name === 'IconButton') {
             const a = this.effectiveAction(node);
@@ -476,7 +486,7 @@ export function generateProject(project, trees) {
     const files = {}, warnings = [];
     const ctx = { modules };
     const locales = { en: {} }; // nama module → folder (id memakai folder yang sama)
-    const imports = [], routes = [];
+    const imports = [], routes = [], pages = [];
     const layout = resolveLayout(project.config);
 
     for (const mod of modules) {
@@ -514,6 +524,7 @@ export function generateProject(project, trees) {
         locales.en[mod.name] = dir;
         if (pageExports.length) imports.push(`import * as ${E}Module from '../../modules/${dir}';`);
         for (const p of pageExports) {
+            pages.push(`  { path: ${q(screenPath(modules, mod, p.screen))}, title: ${q(pageTitle(mod, p.screen))}, breadcrumbs: ${JSON.stringify(breadcrumbsOf(modules, mod, p.screen)).replace(/"/g, "'")} },`);
             const route = screenPath(modules, mod, p.screen).slice(1);
             routes.push(route ? `  { path: ${q(route)}, element: <${E}Module.${p.name} /> },` : `  { index: true, element: <${E}Module.${p.name} /> },`);
         }
@@ -538,6 +549,7 @@ export function generateProject(project, trees) {
         navItems.unshift("  { label: 'Dashboard', labelKey: 'nav.dashboard', path: '/', icon: <WidgetIcon className=\"h-5 w-5\" /> },");
     }
     files['src/app/generated/navigation.tsx'] = `${GEN_HEADER}${iconNames.length ? `import { ${[...new Set(iconNames)].join(', ')} } from '@midas/ui-cms';\n` : ''}import type { NavItemType } from '../../shared/types/navigation';\n\nexport const generatedNavItems: NavItemType[] = [\n${navItems.join('\n')}\n];\n`;
+    files['src/app/generated/pages.ts'] = `${GEN_HEADER}export interface PageMeta {\n  path: string;\n  title: string;\n  breadcrumbs: { label: string; path?: string }[];\n}\n\n/** Judul & breadcrumb topbar per route (pola path react-router). */\nexport const generatedPages: PageMeta[] = [\n${pages.join('\n')}\n];\n`;
     files['src/app/generated/layout.ts'] = `${GEN_HEADER}export const appLayout = { appName: ${q(layout.appName)} };\n`;
     return { files, warnings, layout };
 }

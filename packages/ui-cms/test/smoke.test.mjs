@@ -7,7 +7,7 @@ import * as ui from '../dist/index.js';
 const render = el => renderToStaticMarkup(el);
 
 test('exports every design component, the theme and the icons', () => {
-    for (const name of ['Button', 'IconButton', 'Badge', 'Avatar', 'Alert', 'Card', 'StatCard', 'TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField', 'Dialog', 'Table', 'Sidebar', 'PageHeader', 'FilterToolbar', 'AppShell', 'ThemeProvider', 'WidgetIcon', 'PenIcon', 'midasPreview'])
+    for (const name of ['Button', 'IconButton', 'Badge', 'Avatar', 'Alert', 'Card', 'StatCard', 'TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField', 'Dialog', 'Table', 'Sidebar', 'Topbar', 'SectionHeader', 'FilterToolbar', 'AppShell', 'ThemeProvider', 'WidgetIcon', 'PenIcon', 'midasPreview'])
         assert.ok(ui[name], `${name} di-export`);
     assert.deepEqual(ui.themeNames, ['light', 'dark']);
     assert.equal(ui.themes.light.primary, '#4338CA');

@@ -92,7 +92,7 @@ export const FORM_COMPONENTS = ['TextField', 'TextAreaField', 'PasswordField', '
 /** Komponen yang bisa dikonfigurasi khusus di inspector (selain props visual dari mapping). */
 export function behaviorOf(exportName) {
     if (exportName === 'Table') return 'table';
-    if (exportName === 'Button' || exportName === 'IconButton') return 'action';
+    if (exportName === 'Button' || exportName === 'IconButton' || exportName === 'SectionHeader') return 'action';
     if (FORM_COMPONENTS.includes(exportName)) return 'field';
     if (exportName === 'FilterToolbar') return 'filter';
     return null;
@@ -224,4 +224,34 @@ export function relationSampleOptions(field, modules) {
     if (!rel) return [];
     const target = rel.module.entity?.fields || [];
     return sampleRows(target, 5, rel.module.name).map(r => ({ label: String(r[rel.labelField]), value: r.id }));
+}
+
+// ------------------------------------------------------------------ judul halaman & breadcrumb (topbar)
+
+const ROLE_PREFIX = { create: 'Tambah', edit: 'Ubah', view: 'Detail' };
+
+/** Judul di topbar: `screen.title` bila diisi, selain itu dari role (Tambah/Ubah/Detail + label module). */
+export function pageTitle(mod, screen) {
+    if (screen.title) return screen.title;
+    if (ROLE_PREFIX[screen.role]) return `${ROLE_PREFIX[screen.role]} ${mod.label}`;
+    if (screen.role === 'custom' && screen.name.toLowerCase() !== mod.label.toLowerCase()) return screen.name;
+    return mod.label;
+}
+
+/** Breadcrumb: Beranda / (parent module) / module / aksi. Beranda sendiri (module `dashboard`) hanya satu crumb. */
+export function breadcrumbsOf(modules, mod, screen) {
+    const byId = new Map(modules.map(m => [m.id, m]));
+    const chain = [];
+    for (let c = mod, n = 0; c && n < 20; c = c.parentId ? byId.get(c.parentId) : null, n++) chain.unshift(c);
+    if (mod.name === 'dashboard' && !mod.parentId && screenPath(modules, mod, screen) === '/') return [{ label: mod.label }];
+    const crumbs = [{ label: 'Beranda', path: '/' }];
+    const listOf = m => m.screens.find(s => s.role === 'list');
+    chain.forEach(m => {
+        const list = listOf(m);
+        crumbs.push({ label: m.label, ...(list ? { path: screenPath(modules, m, list) } : {}) });
+    });
+    const last = ROLE_PREFIX[screen.role] || (screen.role === 'custom' && pageTitle(mod, screen) !== mod.label ? pageTitle(mod, screen) : null);
+    if (last) crumbs.push({ label: last });
+    else delete crumbs[crumbs.length - 1].path;
+    return crumbs;
 }

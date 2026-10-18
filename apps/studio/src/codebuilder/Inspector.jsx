@@ -2,6 +2,7 @@
 // library, teks, perilaku, binding data) serta layout aplikasi (sidebar/topbar) dan entity module.
 // Semua perubahan disimpan sebagai konfigurasi di project (`screens[].nodes`, `layout`, `entity`) — desain tidak diubah.
 import { useEffect, useState } from 'react';
+import { Select } from './Select.jsx';
 import { autoAction, behaviorOf, camelCase, fieldBinding, FIELD_TYPES, isNumericField, parseRules, relationOf, ROLE_LABEL, ROW_ACTIONS, tableModel, titleCase, withRule } from '@midas/builder-core';
 
 function Row({ label, hint, reset, children }) {
@@ -25,7 +26,7 @@ function propControl(def, value, set) {
     if (def.type === 'boolean') return <input type="checkbox" checked={!!value} onChange={e => set(e.target.checked)} />;
     if (def.type === 'enum') {
         const options = [...new Set(Object.values(def.values || {}).concat(value != null ? [value] : []).map(String))];
-        if (options.length) return <select value={value ?? ''} onChange={e => set(e.target.value)}>{value == null && <option value="" />}{options.map(o => <option key={o}>{o}</option>)}</select>;
+        if (options.length) return <Select value={value ?? ''} onChange={e => set(e.target.value)}>{value == null && <option value="" />}{options.map(o => <option key={o}>{o}</option>)}</Select>;
     }
     return <input value={value ?? ''} onChange={e => set(e.target.value)} />;
 }
@@ -53,29 +54,54 @@ function ComponentProps({ node, cfg, setCfg }) {
 
 // ------------------------------------------------------------------ validasi & relasi (level field entity)
 
-/** Aturan validasi sebuah field entity — dipakai di editor Data module dan di inspector komponen form. */
+/** Baris aturan: judul + keterangan di kiri, saklar di kanan. */
+function RuleToggle({ title, hint, checked, onChange }) {
+    return (
+        <label className={`cb-rule ${checked ? 'on' : ''}`}>
+            <span className="cb-rule-text"><b>{title}</b>{hint && <small>{hint}</small>}</span>
+            <input type="checkbox" className="cb-switch" checked={!!checked} onChange={e => onChange(e.target.checked)} />
+        </label>
+    );
+}
+
+/** Aturan validasi sebuah field entity — dipakai di editor Data module dan di tab Validasi komponen form. */
 function FieldRules({ field, onChange }) {
     const r = parseRules(field);
     const num = isNumericField(field);
     const text = ['string', 'text', 'password'].includes(field.type);
     const set = (key, value) => onChange(withRule(field, key, value));
+    let regexError = '';
+    if (r.pattern) { try { new RegExp(r.pattern); } catch (e) { regexError = 'Pola regex tidak valid'; } }
+    const active = [r.required && 'Wajib', r.min !== '' && `min ${r.min}`, r.max !== '' && `maks ${r.max}`, r.email && 'Email', r.pattern && 'Pola', r.noEmoticon && 'Tanpa emoticon'].filter(Boolean);
+    const unit = num ? '' : 'karakter';
     return (
-        <>
-            {field.type !== 'boolean' && <Check checked={r.required} onChange={on => set('required', on)}>Wajib diisi</Check>}
+        <div className="cb-rules">
+            <div className="cb-rule-summary">
+                {active.length ? active.map(a => <span key={a} className="cb-chip">{a}</span>) : <span className="small-label">Belum ada aturan — field boleh kosong.</span>}
+            </div>
+            {field.type !== 'boolean' && <RuleToggle title="Wajib diisi" hint="Tidak boleh kosong saat disimpan" checked={r.required} onChange={on => set('required', on)} />}
             {(num || text) && (
-                <div className="cb-minmax">
-                    <Row label={num ? 'Nilai min' : 'Panjang min'}><input type="number" value={r.min} onChange={e => set('min', e.target.value)} /></Row>
-                    <Row label={num ? 'Nilai maks' : 'Panjang maks'}><input type="number" value={r.max} onChange={e => set('max', e.target.value)} /></Row>
+                <div className="cb-rule-group">
+                    <div className="cb-rule-title">{num ? 'Rentang nilai' : 'Panjang teks'}</div>
+                    <div className="cb-minmax">
+                        <label><span>Minimal</span><div className="cb-unit"><input type="number" placeholder="—" value={r.min} onChange={e => set('min', e.target.value)} />{unit && <em>{unit}</em>}</div></label>
+                        <label><span>Maksimal</span><div className="cb-unit"><input type="number" placeholder="—" value={r.max} onChange={e => set('max', e.target.value)} />{unit && <em>{unit}</em>}</div></label>
+                    </div>
                 </div>
             )}
-            {text && field.type !== 'password' && (
-                <div className="cb-checks">
-                    <Check checked={r.email} onChange={on => set('email', on)}>Format email</Check>
-                    <Check checked={r.noEmoticon} onChange={on => set('noEmoticon', on)}>Tanpa emoticon</Check>
+            {text && (
+                <div className="cb-rule-group">
+                    <div className="cb-rule-title">Format</div>
+                    {field.type !== 'password' && <RuleToggle title="Format email" hint="Contoh: nama@perusahaan.id" checked={r.email} onChange={on => set('email', on)} />}
+                    <RuleToggle title="Tanpa emoticon" hint="Menolak emoji pada isian" checked={r.noEmoticon} onChange={on => set('noEmoticon', on)} />
+                    <label className="cb-regex"><span>Pola (regex)</span>
+                        <input className={regexError ? 'invalid' : ''} placeholder="^[A-Z]{3}[0-9]+$" spellCheck={false} value={r.pattern} onChange={e => set('pattern', e.target.value)} />
+                        {regexError && <small className="cb-error">{regexError}</small>}
+                    </label>
                 </div>
             )}
-            {text && <Row label="Pola (regex)" hint="Contoh: ^[A-Z]{3}[0-9]+$"><input placeholder="opsional" value={r.pattern} onChange={e => set('pattern', e.target.value)} /></Row>}
-        </>
+            {!num && !text && field.type === 'boolean' && <p className="small-label">Field ya/tidak tidak punya aturan validasi.</p>}
+        </div>
     );
 }
 
@@ -93,16 +119,16 @@ function RelationPicker({ field, modules, onChange }) {
     return (
         <>
             <Row label="Module tujuan" hint="Opsi select diambil dari data module ini">
-                <select value={moduleId} onChange={e => pickModule(e.target.value)}>
+                <Select value={moduleId} onChange={e => pickModule(e.target.value)}>
                     <option value="">— pilih module —</option>
                     {targets.map(m => <option key={m.id} value={m.id}>{m.label} ({m.name})</option>)}
-                </select>
+                </Select>
             </Row>
             {rel && (
                 <Row label="Tampilkan field" hint="Field module tujuan yang jadi teks opsi">
-                    <select value={rel.labelField} onChange={e => onChange({ ...field, relation: { moduleId: rel.module.id, labelField: e.target.value } })}>
+                    <Select value={rel.labelField} onChange={e => onChange({ ...field, relation: { moduleId: rel.module.id, labelField: e.target.value } })}>
                         {labelFields.map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)}</option>)}
-                    </select>
+                    </Select>
                 </Row>
             )}
             {!targets.length && <p className="cb-error">Belum ada module lain yang punya field entity.</p>}
@@ -114,7 +140,7 @@ function RelationPicker({ field, modules, onChange }) {
 // ------------------------------------------------------------------ perilaku
 
 function ActionEditor({ node, cfg, setCfg, screen, module, screens }) {
-    const auto = autoAction(module, screen, node.props.children ?? node.props.label);
+    const auto = autoAction(module, screen, node.props.children ?? node.props.label ?? node.props.actionLabel);
     const cur = cfg.action || null;
     const eff = cur || auto;
     const targets = screens.filter(s => !s.role.startsWith('edit') && s.role !== 'view');
@@ -122,16 +148,16 @@ function ActionEditor({ node, cfg, setCfg, screen, module, screens }) {
     return (
         <>
             <Row label="Saat diklik" hint={cur ? '' : `Otomatis dari teks tombol: ${label(auto.type)}`}>
-                <select value={cur?.type || ''} onChange={e => setCfg(c => ({ ...c, action: e.target.value ? { type: e.target.value, ...(e.target.value === 'navigate' ? { screenId: targets[0]?.id } : {}) } : undefined }))}>
+                <Select value={cur?.type || ''} onChange={e => setCfg(c => ({ ...c, action: e.target.value ? { type: e.target.value, ...(e.target.value === 'navigate' ? { screenId: targets[0]?.id } : {}) } : undefined }))}>
                     <option value="">Otomatis ({label(auto.type)})</option>
                     {['none', 'navigate', 'submit', 'back'].map(t => <option key={t} value={t}>{label(t)}</option>)}
-                </select>
+                </Select>
             </Row>
             {eff.type === 'navigate' && (
                 <Row label="Tujuan">
-                    <select value={eff.screenId || ''} onChange={e => setCfg(c => ({ ...c, action: { type: 'navigate', screenId: e.target.value } }))}>
+                    <Select value={eff.screenId || ''} onChange={e => setCfg(c => ({ ...c, action: { type: 'navigate', screenId: e.target.value } }))}>
                         {targets.map(s => <option key={s.id} value={s.id}>{s.module.label} · {s.name} ({ROLE_LABEL[s.role]})</option>)}
-                    </select>
+                    </Select>
                 </Row>
             )}
             {eff.type === 'submit' && screen.role !== 'create' && screen.role !== 'edit' && <p className="cb-error">Simpan form hanya berlaku di screen Create/Edit.</p>}
@@ -160,10 +186,10 @@ function TableEditor({ cfg, setCfg, entity }) {
                 ))}
             </ul>
             {fields.filter(f => !names.includes(f.name)).length > 0 && (
-                <select value="" onChange={e => e.target.value && setCols([...names, e.target.value])}>
+                <Select value="" onChange={e => e.target.value && setCols([...names, e.target.value])}>
                     <option value="">＋ Tambah kolom…</option>
                     {fields.filter(f => !names.includes(f.name) && f.type !== 'password').map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)}</option>)}
-                </select>
+                </Select>
             )}
             <div className="cb-subhead">Aksi per baris</div>
             <div className="cb-checks">
@@ -194,19 +220,19 @@ function FieldBinding({ node, cfg, setCfg, entity, modules, setFields, part = 'a
     return (
         <>
             <Row label="Field data" hint="Field entity yang diisi komponen ini">
-                <select value={cfg.field || ''} onChange={e => setCfg(c => ({ ...c, field: e.target.value || undefined }))}>
+                <Select value={cfg.field || ''} onChange={e => setCfg(c => ({ ...c, field: e.target.value || undefined }))}>
                     <option value="">{bound ? `Otomatis (${bound.name})` : 'Tidak terikat'}</option>
                     {fields.map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)} · {f.type}</option>)}
-                </select>
+                </Select>
             </Row>
             {!bound && <button type="button" className="wide-button" onClick={create}>＋ Buat field dari komponen ini</button>}
             {bound && node.exportName === 'SelectField' && (
                 <>
                     <Row label="Sumber opsi">
-                        <select value={bound.type === 'relation' ? 'relation' : 'enum'} onChange={e => edit(bound.name, e.target.value === 'relation' ? { ...bound, type: 'relation', options: undefined } : { ...bound, type: 'enum', relation: undefined, options: bound.options?.length ? bound.options : ['opsi1', 'opsi2'] })}>
+                        <Select value={bound.type === 'relation' ? 'relation' : 'enum'} onChange={e => edit(bound.name, e.target.value === 'relation' ? { ...bound, type: 'relation', options: undefined } : { ...bound, type: 'enum', relation: undefined, options: bound.options?.length ? bound.options : ['opsi1', 'opsi2'] })}>
                             <option value="enum">Pilihan tetap</option>
                             <option value="relation">Relasi ke module lain</option>
-                        </select>
+                        </Select>
                     </Row>
                     {bound.type === 'relation'
                         ? <RelationPicker field={bound} modules={modules} onChange={next => edit(bound.name, next)} />
@@ -248,7 +274,7 @@ function SidebarInspector({ layout, lib, setLayout, modules }) {
                         </div>
                         <div className="cb-menu-bottom">
                             {iconNames.length > 0
-                                ? <select aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })}>{[...new Set([it.icon, ...iconNames])].map(n => <option key={n}>{n}</option>)}</select>
+                                ? <Select aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })}>{[...new Set([it.icon, ...iconNames])].map(n => <option key={n}>{n}</option>)}</Select>
                                 : <input aria-label="Ikon" value={it.icon} onChange={e => patch(it.moduleId, { icon: e.target.value })} />}
                             <Check checked={!it.hidden} onChange={on => patch(it.moduleId, { hidden: on ? undefined : true })}>Tampil</Check>
                             <code>{it.path}</code>
@@ -261,14 +287,21 @@ function SidebarInspector({ layout, lib, setLayout, modules }) {
     );
 }
 
-function TopbarInspector({ layout, setLayout, title }) {
+function TopbarInspector({ layout, setLayout, title, crumbs, screen, setScreen }) {
     return (
-        <Section title="Topbar">
-            <Row label="Judul" hint="Diambil dari nama menu aktif"><input value={title} disabled /></Row>
-            <Row label="Nama pengguna"><input value={layout.userName} onChange={e => setLayout(l => ({ ...l, userName: e.target.value }))} /></Row>
-            <Row label="Peran"><input value={layout.userRole} onChange={e => setLayout(l => ({ ...l, userRole: e.target.value }))} /></Row>
-            <p className="small-label">Di aplikasi, nama & peran diambil dari sesi login; nilai ini hanya untuk pratinjau.</p>
-        </Section>
+        <>
+            <Section title="Halaman ini">
+                <Row label="Judul" hint="Tampil di topbar. Kosongkan untuk otomatis (Tambah/Ubah/Detail + nama module)">
+                    <input value={screen.title || ''} placeholder={title} onChange={e => setScreen({ title: e.target.value || undefined })} />
+                </Row>
+                <Row label="Breadcrumb" hint="Dibentuk otomatis dari module dan jenis halaman"><input value={crumbs.map(c => c.label).join(' / ')} disabled /></Row>
+            </Section>
+            <Section title="Pengguna">
+                <Row label="Nama"><input value={layout.userName} onChange={e => setLayout(l => ({ ...l, userName: e.target.value }))} /></Row>
+                <Row label="Peran"><input value={layout.userRole} onChange={e => setLayout(l => ({ ...l, userRole: e.target.value }))} /></Row>
+                <p className="small-label">Di aplikasi, nama & peran diambil dari sesi login; nilai ini hanya untuk pratinjau.</p>
+            </Section>
+        </>
     );
 }
 
@@ -285,7 +318,7 @@ export function EntityEditor({ module: m, modules = [], onChange }) {
                 <div key={i} className={`cb-field-card ${openIdx === i ? 'open' : ''}`}>
                     <div className="cb-field-top">
                         <input aria-label="Nama field" className={/^[a-z][A-Za-z0-9]*$/.test(f.name) ? '' : 'invalid'} value={f.name} onChange={e => set(i, { name: e.target.value })} />
-                        <select aria-label="Tipe" value={f.type} onChange={e => set(i, { type: e.target.value })}>{FIELD_TYPES.map(t => <option key={t}>{t}</option>)}</select>
+                        <Select aria-label="Tipe" value={f.type} onChange={e => set(i, { type: e.target.value })}>{FIELD_TYPES.map(t => <option key={t}>{t}</option>)}</Select>
                         <button type="button" aria-label="Opsi field" onClick={() => setOpenIdx(openIdx === i ? null : i)}>⋯</button>
                         <button type="button" aria-label="Hapus field" onClick={() => onChange(fields.filter((_, j) => j !== i))}>×</button>
                     </div>
@@ -310,11 +343,11 @@ export function EntityEditor({ module: m, modules = [], onChange }) {
 
 // ------------------------------------------------------------------ Inspector
 
-export function Inspector({ selected, tree, node, screen, module, screens, entity, layout, lib, modules, title, actions }) {
+export function Inspector({ selected, tree, node, screen, module, screens, entity, layout, lib, modules, title, crumbs = [], actions }) {
     const cfg = node?.cfg || {};
     const setCfg = fn => actions.setNode(selected, fn);
     if (selected === '__sidebar') return <div className="cb-insp"><Header kind="Layout" name="Sidebar" /><SidebarInspector layout={layout} lib={lib} modules={modules} setLayout={actions.setLayout} /></div>;
-    if (selected === '__topbar') return <div className="cb-insp"><Header kind="Layout" name="Topbar" /><TopbarInspector layout={layout} setLayout={actions.setLayout} title={title} /></div>;
+    if (selected === '__topbar') return <div className="cb-insp"><Header kind="Layout" name="Topbar" /><TopbarInspector layout={layout} setLayout={actions.setLayout} title={title} crumbs={crumbs} screen={screen} setScreen={actions.setScreen} /></div>;
     if (!node) {
         return (
             <div className="cb-insp">

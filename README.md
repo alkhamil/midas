@@ -132,7 +132,7 @@ Design system "CMS" (karakter tegas, rapi, fokus pada data; sidebar gelap, aksen
 | File | Isi |
 | --- | --- |
 | `tokens.mjs` | Variables: Color (Light/Dark, termasuk `sidebar`), Radius, Spacing, Typography (`font/family`), skala tipe & elevasi |
-| `components.mjs` | 18 komponen (Button, IconButton, Badge, Avatar, Alert, Card, StatCard, TextField, TextAreaField, PasswordField, SelectField, SwitchField, Dialog, Table, Sidebar, PageHeader, FilterToolbar, AppShell) + bagian internal `_SidebarItem`, dengan variant, component property, dan state |
+| `components.mjs` | 19 komponen (Button, IconButton, Badge, Avatar, Alert, Card, StatCard, TextField, TextAreaField, PasswordField, SelectField, SwitchField, Dialog, Table, Sidebar, Topbar, SectionHeader, FilterToolbar, AppShell) + bagian internal `_SidebarItem`, dengan variant, component property, dan state |
 | `icons.mjs` | 27 ikon outline (garis 1,5 px) yang digambar di kotak 24 × 24 |
 | `build.mjs` | Builder auto layout mini (frame/row/col/text/icon/instance) → node Midas dengan binding Variables |
 | `document.mjs` | Page Cover, Foundations, Icons, dan satu page per komponen dalam folder (Actions, Forms, Feedback, Data Display, Navigation, Layout) |

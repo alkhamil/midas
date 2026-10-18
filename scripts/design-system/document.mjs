@@ -163,7 +163,8 @@ export function buildDocument({ existing = new Map() }) {
             const colW = Math.max(...vroots.map(r => r.w)), rowH = Math.max(...vroots.map(r => r.h));
             const restKey = r => propNames.slice(1).map(p => r.variant[p]).join('|');
             const restKeys = [...new Set(vroots.map(restKey))];
-            const perRow = multi ? spec.variants[firstProp].length : Math.min(vroots.length, 6);
+            // Varian lebar (mis. SectionHeader 960px) ditumpuk ke bawah supaya page tidak melebar ribuan piksel.
+            const perRow = multi ? spec.variants[firstProp].length : Math.max(1, Math.min(vroots.length, 6, Math.floor(1700 / (colW + gap))));
             vroots.forEach((r, i) => {
                 const c = multi ? spec.variants[firstProp].indexOf(r.variant[firstProp]) : i % perRow;
                 const rr = multi ? restKeys.indexOf(restKey(r)) : Math.floor(i / perRow);
@@ -288,7 +289,7 @@ export function buildDocument({ existing = new Map() }) {
         ['Feedback', ['Alert', 'Badge', 'Dialog']],
         ['Data Display', ['Avatar', 'Card', 'StatCard', 'Table']],
         ['Navigation', ['Sidebar']],
-        ['Layout', ['PageHeader', 'FilterToolbar', 'AppShell']],
+        ['Layout', ['Topbar', 'SectionHeader', 'FilterToolbar', 'AppShell']],
     ];
     const grouped = GROUPS.flatMap(([, names]) => names);
     const missing = COMPONENTS.filter(c => !c.name.startsWith('_') && !grouped.includes(c.name)).map(c => c.name);

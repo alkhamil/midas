@@ -121,13 +121,13 @@ const R = (name, props = {}, extra) => instance(ctx.root(name), props, extra);
 const btn = (variant, label, extra) => V('Button', { Variant: variant, Size: 'Md' }, { Label: label }, { name: label, ...extra });
 // Frame konten (yang didaftarkan ke Code Builder) lalu dibungkus layout aplikasi.
 const content = (name, children) => col({ w: 'fill', h: 836, pad: 24, gap: 24, fill: 'color/surface', name }, children);
-const topbar = title => row({ w: 'fill', h: 64, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Topbar' }, [
-    text(title, { size: 16, line: 24, weight: 600, name: 'Title' }),
-    row({ gap: 12, name: 'User' }, [
-        col({ align: 'end' }, [text('Administrator', { size: 14, line: 20, weight: 500 }), text('admin', { size: 12, line: 16, color: MUTED })]),
-        V('Avatar', { Size: 'Md' }, { Initial: 'A' }),
-    ]),
-]);
+// Topbar = komponen library (breadcrumb, judul halaman, pengguna + avatar); tidak ada page header di dalam konten.
+const topbarFor = name => {
+    const [module, kind] = name.split(' — ');
+    const [title, crumb] = kind === 'Form' ? [`Tambah ${module}`, `Beranda / ${module} / Tambah`] : kind === 'Detail' ? [`Detail ${module}`, `Beranda / ${module} / Detail`]
+        : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Beranda / ${module}`];
+    return R('Topbar', { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
+};
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
 const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
 const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], gap: 4, fill: 'color/sidebar', name: 'Sidebar' }, [
@@ -146,29 +146,29 @@ const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], ga
         ]);
     }),
 ]);
-const SHELL_TITLE = { User: 'User', Role: 'Role', Dashboard: 'Dashboard' };
 const screen = (name, children) => {
     const module = name.split(' — ')[0];
     return row({ w: 1440, align: 'start', fill: 'color/surface', name: `Halaman · ${name}`, inner: name }, [
         sidebarFrame(module),
-        col({ w: 'fill', name: 'Area utama' }, [topbar(SHELL_TITLE[module]), content(name, children)]),
+        col({ w: 'fill', name: 'Area utama' }, [topbarFor(name), content(name, children)]),
     ]);
 };
-const header = (title, description, action) => row({ w: 'fill', justify: 'between', align: 'center', name: 'Header' }, [R('PageHeader', { Title: title, Description: description }, { w: 'fill' }), action]);
+// Kepala bagian = komponen library SectionHeader (judul + keterangan + aksi dalam satu frame).
+const header = (title, description, [variant, label]) => V('SectionHeader', { Action: variant }, { Title: title, Description: description, ActionLabel: label }, { w: 'fill', name: 'Header' });
 const panel = (children, name) => col({ w: 'fill', gap: 16, pad: 20, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', name }, children);
 const twoCols = (a, b) => row({ w: 'fill', gap: 24, align: 'start' }, [a, b]);
 const actions = (...buttons) => row({ w: 'fill', gap: 8, justify: 'end', pad: [16, 0, 0, 0], stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Aksi form' }, buttons);
 const detailRow = (label, value) => row({ w: 'fill', gap: 16, align: 'start', name: label }, [text(label, { w: 160, color: MUTED }), typeof value === 'string' ? text(value, { w: 'fill', weight: 500 }) : value]);
 const field = (name, label, placeholder) => R(name, { Label: label, Placeholder: placeholder }, { w: 'fill' });
 const list = (title, description, addLabel) => screen(`${title} — Daftar`, [
-    header(title, description, btn('Primary', addLabel)),
+    header(title, description, ['Primary', addLabel]),
     panel([R('FilterToolbar', {}, { w: 'fill' }), R('Table', {}, { w: 'fill' })], 'Daftar'),
 ]);
 
 const userScreens = [
     list('User', 'Kelola akun yang dapat masuk ke aplikasi', 'Tambah user'),
     screen('User — Form', [
-        header('Tambah User', 'Isi data akun baru', btn('Secondary', 'Kembali')),
+        header('Tambah User', 'Isi data akun baru', ['Secondary', 'Kembali']),
         panel([
             twoCols(field('TextField', 'Nama lengkap', 'Mis. Budi Santoso'), field('TextField', 'Email', 'nama@perusahaan.id')),
             twoCols(field('SelectField', 'Role', 'Pilih role'), field('PasswordField', 'Kata sandi', 'Minimal 8 karakter')),
@@ -177,7 +177,7 @@ const userScreens = [
         ], 'Form'),
     ]),
     screen('User — Detail', [
-        header('Detail User', 'Informasi akun', btn('Secondary', 'Ubah')),
+        header('Detail User', 'Informasi akun', ['Secondary', 'Ubah']),
         panel([
             detailRow('Nama', 'Budi Santoso'), detailRow('Email', 'budi@contoh.id'), detailRow('Role', 'Administrator'),
             detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Aktif' })), detailRow('Dibuat', '12/10/2026 09:30'),
@@ -187,7 +187,7 @@ const userScreens = [
 const roleScreens = [
     list('Role', 'Atur role dan hak akses pengguna', 'Tambah role'),
     screen('Role — Form', [
-        header('Tambah Role', 'Isi data role baru', btn('Secondary', 'Kembali')),
+        header('Tambah Role', 'Isi data role baru', ['Secondary', 'Kembali']),
         panel([
             field('TextField', 'Nama role', 'Mis. Editor'),
             field('TextAreaField', 'Deskripsi', 'Jelaskan hak akses role ini'),
@@ -196,7 +196,7 @@ const roleScreens = [
         ], 'Form'),
     ]),
     screen('Role — Detail', [
-        header('Detail Role', 'Informasi role', btn('Secondary', 'Ubah')),
+        header('Detail Role', 'Informasi role', ['Secondary', 'Ubah']),
         panel([
             detailRow('Nama role', 'Editor'), detailRow('Deskripsi', 'Mengelola konten, tanpa akses pengaturan'),
             detailRow('Status', V('Badge', { Variant: 'Success' }, { Label: 'Aktif' })), detailRow('Jumlah user', '12'),
@@ -204,7 +204,7 @@ const roleScreens = [
     ]),
 ];
 const dashboard = screen('Dashboard', [
-    header('Dashboard', 'Ringkasan aktivitas aplikasi', btn('Secondary', 'Unduh laporan')),
+    header('Dashboard', 'Ringkasan aktivitas aplikasi', ['Secondary', 'Unduh laporan']),
     row({ w: 'fill', gap: 16, align: 'start', name: 'Statistik' }, [
         V('StatCard', { Trend: 'Up' }, { Label: 'Total user', Value: '1.248', Caption: '12% dari bulan lalu' }, { w: 'fill' }),
         V('StatCard', { Trend: 'Up' }, { Label: 'User aktif', Value: '1.032', Caption: '83% dari total' }, { w: 'fill' }),
