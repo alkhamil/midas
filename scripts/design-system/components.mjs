@@ -182,7 +182,7 @@ export const COMPONENTS = [
     {
         name: 'Table',
         group: 'Data Display',
-        description: 'Data list with a header, row actions, and pagination. Columns and data are configured in Code Builder.',
+        description: 'Data list with a header, row actions, and pagination. A "Total records: N" line (bold count) sits above the header row; the footer has a "Rows per page" SelectField (10, 20, 50, 100; default 10) on the left and the pager on the right. Columns and data are configured in Code Builder.',
         variants: {},
         cprops: [],
         render: (_v, ctx) => table(ctx, 960),
@@ -190,19 +190,19 @@ export const COMPONENTS = [
     {
         name: '_SidebarItem',
         page: 'Sidebar',
-        description: 'Sidebar menu item. Active: primary background. Collapsed: icon only.',
+        description: 'Sidebar menu item. Active: primary background. Collapsed: icon only. Kind: Item = a page link; Parent / ParentOpen = a group with a chevron (its sub-menu is closed / open); Child = an indented sub-menu entry below its parent (no icon). A parent that contains the active page is shown as Active (bold text, no fill).',
         setFill: 'color/sidebar',
-        variants: { State: ['Default', 'Active'], Collapsed: ['false', 'true'] },
+        variants: { State: ['Default', 'Active'], Collapsed: ['false', 'true'], Kind: ['Item', 'Parent', 'ParentOpen', 'Child'] },
         cprops: [{ name: 'Label', type: 'text', default: 'Menu' }],
-        render: (v, ctx, cp) => sidebarItem(v.State === 'Active', v.Collapsed === 'true', ctx, { bind: cp.Label }),
+        render: (v, ctx, cp) => sidebarItem(v.State === 'Active', v.Collapsed === 'true', ctx, { bind: cp.Label, kind: v.Kind }),
     },
     {
         name: 'Sidebar',
         group: 'Navigation',
-        description: 'Main navigation on a dark background. The header button collapses the sidebar (256 → 72): the menu becomes icons only.',
-        variants: { Collapsed: ['false', 'true'] },
+        description: 'Main navigation on a dark background. The header button collapses the sidebar (256 → 72): the menu becomes icons only. Menus can be nested one level (parent → child, e.g. Master Data → Region): a parent shows a chevron and expands to its children; Groups = Expanded opens every group by default.',
+        variants: { Collapsed: ['false', 'true'], Groups: ['Collapsed', 'Expanded'] },
         cprops: [],
-        render: (v, ctx) => sidebar(ctx, 'Dashboard', v.Collapsed === 'true'),
+        render: (v, ctx) => sidebar(ctx, v.Groups === 'Expanded' ? 'Region' : 'Dashboard', v.Collapsed === 'true', v.Groups === 'Expanded'),
     },
     {
         name: 'Topbar',
@@ -281,7 +281,7 @@ export const COMPONENTS = [
         variants: {},
         cprops: [],
         render: (_v, ctx) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true }, [
-            instance(ctx.variant('Sidebar', { Collapsed: 'false' })),
+            instance(ctx.variant('Sidebar', { Collapsed: 'false', Groups: 'Collapsed' })),
             col({ w: 'fill', h: 'fill' }, [
                 instance(ctx.variant('Topbar', { Menu: 'Closed' }), { Title: 'Dashboard' }, { name: 'Topbar', w: 'fill' }),
                 col({ w: 'fill', h: 'fill', pad: 24, name: 'Content' }, [
@@ -369,18 +369,22 @@ function toggle({ label = 'Active', bind, on } = {}) {
     ]);
 }
 
-const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
+const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check'], ['Master Data', 'database', [['Region']]]];
 
-function sidebarItem(active, collapsed, ctx, { label = 'Menu', bind, ic = 'widget' } = {}) {
-    const c = active ? 'color/primary-foreground' : 'color/sidebar-foreground';
-    return row({ w: collapsed ? 48 : 232, h: 40, pad: collapsed ? 0 : [0, 12], gap: 12, justify: collapsed ? 'center' : 'start', radius: 'radius/lg', fill: active ? 'color/primary' : 'none', name: 'SidebarItem' }, [
-        ico(ctx, ic, c, 20),
-        collapsed ? null : text(label, { size: 14, line: 20, weight: 500, color: c, bind, name: 'Label' }),
+function sidebarItem(active, collapsed, ctx, { label = 'Menu', bind, ic = 'widget', kind = 'Item' } = {}) {
+    const parent = !collapsed && (kind === 'Parent' || kind === 'ParentOpen'), child = !collapsed && kind === 'Child';
+    // A parent holding the active page keeps its fill off and turns bold white; items and children use the primary fill.
+    const filled = active && !parent;
+    const c = filled ? 'color/primary-foreground' : active && parent ? '#FFFFFF' : 'color/sidebar-foreground';
+    return row({ w: collapsed ? 48 : 232, h: 40, pad: collapsed ? 0 : [0, 12, 0, child ? 44 : 12], gap: 12, justify: collapsed ? 'center' : 'start', radius: 'radius/lg', fill: filled ? 'color/primary' : 'none', name: 'SidebarItem' }, [
+        child ? null : ico(ctx, ic, c, 20),
+        collapsed ? null : text(label, { w: 'fill', size: 14, line: 20, weight: child && !active ? 400 : 500, color: c, bind, name: 'Label' }),
+        parent ? ico(ctx, kind === 'ParentOpen' ? 'alt-arrow-up' : 'alt-arrow-down', c, 16) : null,
     ]);
 }
 
 /** Sidebar dirakit dari instance _SidebarItem (ikon diganti per item lewat override). */
-export function sidebar(ctx, active, collapsed = false) {
+export function sidebar(ctx, active, collapsed = false, expanded = false) {
     const W = collapsed ? 72 : 256;
     return col({ w: W, h: 900, pad: [0, 12, 12, 12], gap: 4, fill: 'color/sidebar', name: 'Sidebar' }, [
         row({ w: 'fill', h: 72, pad: collapsed ? 0 : [0, 4], justify: collapsed ? 'center' : 'between', name: 'Brand' }, [
@@ -392,12 +396,16 @@ export function sidebar(ctx, active, collapsed = false) {
                 ico(ctx, collapsed ? 'double-alt-arrow-right' : 'double-alt-arrow-left', 'color/sidebar-foreground', 14),
             ]),
         ]),
-        ...NAV.map(([label, ic]) => {
-            const on = label === active;
-            return instance(ctx.variant('_SidebarItem', { State: on ? 'Active' : 'Default', Collapsed: String(collapsed) }), { Label: label }, {
+        ...NAV.flatMap(([label, ic, kids]) => {
+            const holdsActive = !!kids?.some(([k]) => k === active), on = label === active || holdsActive;
+            const kind = kids ? (expanded ? 'ParentOpen' : 'Parent') : 'Item';
+            const color = on && !kids ? 'color/primary-foreground' : on ? '#FFFFFF' : 'color/sidebar-foreground';
+            const item = instance(ctx.variant('_SidebarItem', { State: on ? 'Active' : 'Default', Collapsed: String(collapsed), Kind: kind }), { Label: label }, {
                 name: label,
-                set: { Icon: { assetId: ctx.icon(ic, STYLE, on ? 'color/primary-foreground' : 'color/sidebar-foreground') } },
+                set: { Icon: { assetId: ctx.icon(ic, STYLE, color) } },
             });
+            const children = !collapsed && kids && expanded ? kids.map(([k]) => instance(ctx.variant('_SidebarItem', { State: k === active ? 'Active' : 'Default', Collapsed: 'false', Kind: 'Child' }), { Label: k }, { name: k })) : [];
+            return [item, ...children];
         }),
     ]);
 }
@@ -406,6 +414,10 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
     const cols = [['Name', 'fill'], ['Email', 'fill'], ['Role', 160], ['Status', 120], ['Actions', 144]];
     const cell = (content, width, header) => row({ w: width, h: header ? 40 : 52, pad: [0, 16], name: 'Cell' }, [content]);
     return col({ w, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', clip: true, name: 'Table' }, [
+        row({ w: 'fill', pad: [12, 16], gap: 4, stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Total' }, [
+            text('Total records:', { size: 14, line: 20, color: MUTED_FG }),
+            text(String(rows.length), { size: 14, line: 20, weight: 700 }),
+        ]),
         row({ w: 'fill', fill: 'color/muted', name: 'Header' }, cols.map(([h, cw]) => cell(text(h, { size: 12, line: 16, weight: 600, color: MUTED_FG }), cw, true))),
         ...rows.map((r, i) => row({ w: 'fill', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: `Row ${i + 1}` }, [
             cell(text(r[0], { weight: 500 }), 'fill'),
@@ -414,9 +426,13 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
             cell(instance(ctx.variant('Badge', { Variant: r[3] === 'Active' ? 'Success' : 'Neutral' }), { Label: r[3] }), 120),
             cell(row({ gap: 4 }, ['View', 'Edit', 'Delete'].map(a => instance(ctx.variant('IconButton', { Action: a })))), 144),
         ])),
-        row({ w: 'fill', pad: [12, 16], justify: 'between', name: 'Pagination' }, [
-            text(`Showing 1–${rows.length} of ${rows.length}`, { size: 14, line: 20, color: MUTED_FG }),
-            row({ gap: 4 }, [
+        row({ w: 'fill', pad: [8, 16], justify: 'between', name: 'Pagination' }, [
+            // Rows per page: the SelectField (no label, width fits its value) with 10 / 20 / 50 / 100, default 10.
+            row({ gap: 8, name: 'Page size' }, [
+                text('Rows per page', { size: 14, line: 20, color: MUTED_FG }),
+                { ...formField('SelectField', ctx, { bare: true, value: '10' }), w: 88, name: 'Page size select' },
+            ]),
+            row({ gap: 4, name: 'Pages' }, [
                 ico(ctx, 'alt-arrow-left', MUTED_FG),
                 row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', stroke: 'color/primary' }, [text('1', { size: 14, weight: 500, color: 'color/primary' })]),
                 ico(ctx, 'alt-arrow-right', MUTED_FG),

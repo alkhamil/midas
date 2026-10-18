@@ -4,11 +4,14 @@
 export interface SidebarProps {
   /** Collapsed (variant) */
   collapsed?: boolean;
+  /** Groups (variant) */
+  groups?: "expanded" | "collapsed";
   /** `data-testid` for automated tests. */
   testId?: string;
 }
 
 /** Default values from the design. */
 export const sidebarDefaults = {
-  "collapsed": false
+  "collapsed": false,
+  "groups": "collapsed"
 } as const satisfies Partial<SidebarProps>;

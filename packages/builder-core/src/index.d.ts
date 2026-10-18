@@ -20,7 +20,8 @@ export function makeContext(input: { nodes: any[]; variables: any; mappings?: an
 export function screenTree(ctx: DocContext, frameId: string, nodeConfig?: Record<string, NodeConfig>): { tree: ScreenNode | null; issues: Issue[] };
 export function buildTrees(config: BuilderConfig, ctx: DocContext): Map<string, { tree: ScreenNode | null; issues: Issue[] }>;
 export function generateProject(project: { name: string; config: BuilderConfig }, trees: Map<string, { tree: ScreenNode | null }>): { files: Record<string, string>; warnings: string[]; layout: unknown };
-export function resolveLayout(config: BuilderConfig): { appName: string; userName: string; userRole: string; items: { moduleId: string; label: string; icon: string; hidden: boolean; path: string; permissionKey: string }[] };
+export interface NavEntry { moduleId: string; label: string; icon: string; hidden: boolean; path?: string; permissionKey: string; children?: Omit<NavEntry, 'children'>[] }
+export function resolveLayout(config: BuilderConfig): { appName: string; userName: string; userRole: string; items: NavEntry[] };
 export function screenPath(modules: BuilderModule[], mod: BuilderModule, screen: BuilderScreen): string;
 export function zipFiles(files: Record<string, string>, root?: string): Uint8Array;
 export function projectIssues(project: any, ctx: { byId: Map<string, any>; pages: any[] }): any[];
@@ -33,3 +34,5 @@ export const camelCase: (s: string) => string;
 export const kebabCase: (s: string) => string;
 export const pascalCase: (s: string) => string;
 export const titleCase: (s: string) => string;
+
+export function activeNavPath(layout: { items: NavEntry[] }, modules: BuilderModule[], module: BuilderModule): string | undefined;

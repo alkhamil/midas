@@ -17,6 +17,10 @@ export type SelectFieldProps = DesignProps & {
   name?: string;
   id?: string;
   className?: string;
+  /** Width follows the selected value instead of filling the row (e.g. a page-size select in a footer). */
+  fit?: boolean;
+  /** Where the menu opens relative to the field; `top` for fields near the bottom edge. */
+  menuPlacement?: 'bottom' | 'top';
   /** Called with an event-like object (`{ target: { value, name } }`) so it works with react-hook-form's `field.onChange`. */
   onChange?: (event: { target: { value: string; name?: string } }) => void;
   onBlur?: () => void;
@@ -27,7 +31,7 @@ export type SelectFieldProps = DesignProps & {
  * Keyboard: ArrowUp/ArrowDown move, Enter/Space choose, Escape closes. The menu is positioned under the field.
  */
 export const SelectField = forwardRef<HTMLButtonElement, SelectFieldProps>(function SelectField(props, ref) {
-  const { label, placeholder, disabled, options = [], error, value = '', name, onChange, onBlur, testId, className, id: idProp } = { ...selectFieldDefaults, ...props };
+  const { label, placeholder, disabled, options = [], error, value = '', name, onChange, onBlur, testId, className, fit, menuPlacement = 'bottom', id: idProp } = { ...selectFieldDefaults, ...props };
   const generated = useId();
   const id = idProp ?? generated;
   const button = useRef<HTMLButtonElement>(null);
@@ -76,7 +80,7 @@ export const SelectField = forwardRef<HTMLButtonElement, SelectFieldProps>(funct
   };
 
   return (
-    <FieldShell id={id} label={label} error={error} className={className}>
+    <FieldShell id={id} label={label} error={error} className={cx(fit && '!w-auto', className)}>
       <div ref={root} className="relative">
         <button
           ref={button}
@@ -100,7 +104,7 @@ export const SelectField = forwardRef<HTMLButtonElement, SelectFieldProps>(funct
         </button>
         {name && <input type="hidden" name={name} value={value} />}
         {open && (
-          <ul id={`${id}-menu`} role="listbox" className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-border bg-background py-1 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+          <ul id={`${id}-menu`} role="listbox" className={cx('absolute z-50 max-h-60 min-w-full overflow-y-auto rounded-lg border border-border bg-background py-1 shadow-[0_4px_12px_rgba(0,0,0,0.08)]', menuPlacement === 'top' ? 'bottom-full mb-1' : 'mt-1')}>
             {options.map((o, i) => {
               const on = o.value === value;
               return (

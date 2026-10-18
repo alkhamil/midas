@@ -3218,6 +3218,29 @@ async function kvDel(key) {
 
 
 function libSaveIndex() { return kvPut('index', JSON.stringify(lib.index)); }
+// URL <-> editor state, like Figma: /file/<id>?page=<pageId>&node-id=<id>. A refresh reopens the same file, page and selection.
+const deepLink = (() => {
+    const m = /^\/file\/([^/]+)\/?$/.exec(location.pathname), q = new URLSearchParams(location.search);
+    return m ? { id: decodeURIComponent(m[1]), page: q.get('page'), nodes: (q.get('node-id') || '').split(',').filter(Boolean), used: false } : null;
+})();
+function syncUrl() {
+    try {
+        const inFile = !lib.open && lib.fileId && lib.index.some(m => m.id === lib.fileId && !m.trashed);
+        let url = '/';
+        if (inFile) {
+            const q = new URLSearchParams();
+            if (doc.page)
+                q.set('page', doc.page.id);
+            const sel = [...state.selection].filter(id => doc.get(id));
+            if (sel.length)
+                q.set('node-id', sel.join(','));
+            url = `/file/${encodeURIComponent(lib.fileId)}?${q}`;
+        }
+        if (location.pathname + location.search !== url)
+            window.history.replaceState(null, '', url);
+    }
+    catch (e) { console.warn('syncUrl', e); }
+}
 async function libBoot() {
     const legacy = await openDB();
     try {
@@ -3252,12 +3275,15 @@ async function libBoot() {
         }
     }
     catch { }
-    const last = await kvGet('last');
+    const last = deepLink && lib.index.some(m => m.id === deepLink.id && !m.trashed) ? deepLink.id : await kvGet('last');
     let json = null;
     if (last && lib.index.some(m => m.id === last && !m.trashed)) {
         json = await loadStored(last);
-        if (json)
+        if (json) {
             lib.fileId = last;
+            if (deepLink && last === deepLink.id)
+                deepLink.used = true;
+        }
     }
     if (!json && legacy) {
         let name = 'Untitled';
@@ -3800,9 +3826,11 @@ async function showHome({ thumb = true } = {}) {
     lib.open = true;
     home.classList.remove('hidden');
     renderHome();
+    syncUrl();
 }
 function hideHome() {
     lib.open = false;
+    syncUrl();
     document.getElementById('home')?.classList.add('hidden');
     document.getElementById('home-menu')?.remove();
     overlay.focus({ preventScroll: true });
@@ -6526,6 +6554,8 @@ catch (e) {
     lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     toast(`“${failed?.name || 'Your file'}” could not be opened (${e.message}). It was left unchanged; a new file is open instead.`);
 }
+if (initial && deepLink?.used && deepLink.page && initial.pages?.some(p => p.id === deepLink.page))
+    initial.pageId = deepLink.page;
 const doc = new DocumentModel(initial), history = new History(doc);
 const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
@@ -6656,6 +6686,7 @@ function invalidate() {
     scheduled = true;
     requestAnimationFrame(() => {
         scheduled = false;
+        syncUrl();
         renderer.render(state.camera);
         drawOverlay();
         $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
@@ -6911,6 +6942,7 @@ function select(ids, { reveal = true } = {}) {
     renderLayers();
     renderInspector();
     scrollSelectionIntoView();
+    syncUrl();
     invalidate();
     notifyBuilder();
 }
@@ -9835,6 +9867,57 @@ function addPage() {
     });
     if (created)
         setTimeout(() => renamePageInline(created.id), 0);
+}
+function duplicatePage(id) {
+    const src = doc.data.pages.find(x => x.id === id);
+    if (!src)
+        return;
+    let created = null;
+    transaction('Duplicate page', () => {
+        const map = new Map(src.nodes.map(n => [n.id, uid()]));
+        const nodes = structuredClone(src.nodes).map(n => { n.id = map.get(n.id); n.parentId = n.parentId ? map.get(n.parentId) ?? n.parentId : n.parentId; n.version = 0; return n; });
+        const names = new Set(doc.data.pages.map(x => x.name));
+        let name = `${src.name} copy`, k = 2;
+        while (names.has(name))
+            name = `${src.name} copy ${k++}`;
+        const p = { id: uid(), name, nodes, parentId: src.parentId || null };
+        // The copy sits right after the original (and its sub-pages).
+        let at = doc.data.pages.indexOf(src) + 1;
+        const under = pid => { for (let c = doc.data.pages.find(x => x.id === pid); c && c.parentId; c = doc.data.pages.find(x => x.id === c.parentId)) if (c.parentId === src.id) return true; return false; };
+        while (doc.data.pages[at] && under(doc.data.pages[at].id))
+            at++;
+        doc.data.pages.splice(at, 0, p);
+        doc.data.pageId = p.id;
+        doc.refresh();
+        state.selection.clear();
+        fit();
+        created = p;
+    });
+    if (created)
+        toast(`Page duplicated as “${created.name}”`);
+}
+async function deletePage(id) {
+    const p = doc.data.pages.find(x => x.id === id);
+    if (!p)
+        return;
+    if (doc.data.pages.length < 2) {
+        toast('A file needs at least one page.');
+        return;
+    }
+    if (p.nodes.length && !(await confirmDialog({ title: `Delete page “${p.name}”?`, message: `It has ${p.nodes.length} layer${p.nodes.length > 1 ? 's' : ''}. You can undo this right after.`, confirmLabel: 'Delete', danger: true })))
+        return;
+    transaction('Delete page', () => {
+        const i = doc.data.pages.indexOf(p);
+        for (const c of doc.data.pages)
+            if (c.parentId === p.id)
+                c.parentId = p.parentId || null;
+        doc.data.pages.splice(i, 1);
+        if (doc.data.pageId === p.id)
+            doc.data.pageId = (doc.data.pages[i] || doc.data.pages[i - 1] || doc.data.pages[0]).id;
+        doc.refresh();
+        state.selection.clear();
+        fit();
+    });
 }
 function editTokens() {
     modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
@@ -17252,5 +17335,17 @@ window.midas = { doc, history, state, renderer, actions, select, fit, setTool, s
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
-showHome({ thumb: false });
+if (deepLink?.used) {
+    lib.open = false;
+    const ids = deepLink.nodes.filter(id => doc.get(id));
+    if (ids.length) {
+        select(ids);
+        fit(ids);
+    }
+    syncUrl();
+}
+else
+    showHome({ thumb: false });
 setTimeout(() => ensureGlobalIndexes(), 50);
+// The engine owns the canvas and a GPU device; a hot-swapped second instance would reconfigure the same canvas with another device ("TextureView ... cannot be used with Device"). Reload fully instead.
+if (import.meta.hot) import.meta.hot.decline();
