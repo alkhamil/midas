@@ -2842,3 +2842,11 @@ input[type=checkbox][role=switch]:checked { background: var(--accent-strong, #00
 input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .pp-row .vsw { display: inline-flex; align-items: center }
 .pp-row .pp-tval { margin-left: 8px }
+
+/* Collections / groups in the variables window use the same drop indicators as pages and layers */
+.vw-side .vw-coll { position: relative }
+.vw-side .vw-coll.vw-drop-before, .vw-side .vw-coll.vw-drop-after { box-shadow: none }
+.vw-side .vw-coll.vw-drop-before::after, .vw-side .vw-coll.vw-drop-after::after { content: ''; position: absolute; left: 6px; right: 4px; height: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; z-index: 2 }
+.vw-side .vw-coll.vw-drop-before::after { top: -1px }
+.vw-side .vw-coll.vw-drop-after::after { bottom: -1px }
+.vw-side .vw-coll.vw-drop-into { background: var(--accent-bg); outline: 2px solid var(--accent); outline-offset: -2px }

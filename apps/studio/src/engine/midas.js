@@ -5960,7 +5960,7 @@ class Renderer {
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
                 // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
-                const entry = this.atlas.get(n, (n.type === 'path' || n.type === 'line') && scene.length <= 400 ? Math.max(resolution, 2 * quality) : resolution, this.images);
+                const entry = this.atlas.get(n, resolution, this.images);
                 if (!entry) {
                     count--;
                     return;
@@ -7127,12 +7127,16 @@ function renderInspector() {
     }
     $('#inspector').innerHTML = html;
     // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
-    if (ns.length === 1 && (insideInstance(n) || doc.get(n.parentId)?.booleanOp))
+    if (ns.length === 1 && n.isInstance && !insideInstance(n))
+        $('#inspector').querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
+    if (ns.length === 1 && insideInstance(n))
         $('#inspector').querySelectorAll('section.inspector-section').forEach(sec => {
             const title = (sec.querySelector('.section-heading')?.textContent || '').trim();
             if (!/^(Position|Layout|Auto layout)/.test(title))
                 return;
             const inBool = !!doc.get(n.parentId)?.booleanOp;
+            if (!inBool)
+                sec.querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
             sec.querySelectorAll('input,select,button').forEach(el => {
                 if (inBool) {
                     // Operands of a union / subtract / intersect / exclude: position and layout belong to the operation.
@@ -7383,6 +7387,7 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
                 copy.component = false;
                 // A nested instance stays an instance when its component is placed.
                 copy.isInstance = src.id === root.id || !!src.isInstance;
+                delete copy.swapOf; // the copy's slot is the layer it was copied from
                 copy.overrides = {};
             }
             doc.add(copy);
@@ -7675,6 +7680,7 @@ function instantiate(id, at = null) {
                 n.sourceId = src;
                 n.component = false;
                 n.isInstance = src === id || !!n.isInstance;
+                delete n.swapOf;
                 n.overrides = {};
                 doc.add(n);
                 if (src === id)
@@ -9261,8 +9267,8 @@ function resetSelectedOverrides() { transaction('Reset overrides', () => { for (
     }
 } }); }
 function createFromInstance() { detachSelectedInstances(); makeComponent(); }
-function flattenPathOf(n) {
-    const pts = n.points || [], sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
+function flattenPathOf(n, ptsIn = null, closedIn = null) {
+    const pts = ptsIn || n.points || [], closedFlag = closedIn ?? n.closed, sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
     const seg = (a, b) => {
         if (a.out || b.in) {
             const p0 = { x: a.x * sx, y: a.y * sy }, p1 = { x: (a.out?.x ?? a.x) * sx, y: (a.out?.y ?? a.y) * sy }, p2 = { x: (b.in?.x ?? b.x) * sx, y: (b.in?.y ?? b.y) * sy }, p3 = { x: b.x * sx, y: b.y * sy };
@@ -9279,7 +9285,7 @@ function flattenPathOf(n) {
     out.push({ x: pts[0].x * sx, y: pts[0].y * sy });
     for (let i = 1; i < pts.length; i++)
         seg(pts[i - 1], pts[i]);
-    if (n.closed && pts.length > 1)
+    if (closedFlag && pts.length > 1)
         seg(pts.at(-1), pts[0]);
     return out;
 }
@@ -9308,7 +9314,26 @@ function nodePolys(n) {
     else if (n.type === 'path') {
         if (!n.closed)
             return null;
-        ring = flattenPathOf(n).map(p => tp(p.x, p.y));
+        // Every closed sub-path counts: rings inside other rings become holes (even-odd), so icons keep their counters.
+        const rings = [flattenPathOf(n).map(p => tp(p.x, p.y))];
+        for (const c of n.contours || [])
+            if (c.closed !== false && (c.points || []).length > 2)
+                rings.push(flattenPathOf(n, c.points, true).map(p => tp(p.x, p.y)));
+        if (rings.length > 1) {
+            const area = r => Math.abs(r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
+            const inside = (pt, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
+            const info = rings.map((r, i) => ({ r, a: area(r), cont: rings.map((o, j) => j !== i && inside(r[0], o) ? j : -1).filter(j => j >= 0) }));
+            const polys = [];
+            const owner = new Map();
+            for (const x of info.filter(x => x.cont.length % 2 === 0)) { const p = [x.r]; polys.push(p); owner.set(x, p); }
+            for (const x of info.filter(x => x.cont.length % 2 === 1)) {
+                const parent = info.filter(o => o.cont.length === x.cont.length - 1 && x.cont.includes(info.indexOf(o))).sort((a, b) => a.a - b.a)[0];
+                if (parent && owner.get(parent))
+                    owner.get(parent).push(x.r);
+            }
+            return polys.filter(p => p[0].length >= 3);
+        }
+        ring = rings[0];
     }
     else if (['rect', 'frame', 'image'].includes(n.type))
         ring = [tp(0, 0), tp(n.w, 0), tp(n.w, n.h), tp(0, n.h)];
@@ -10298,6 +10323,7 @@ function syncInstanceStructure(activeOnly = true) {
                 c.sourceId = s.id;
                 c.component = false;
                 c.isInstance = !!s.isInstance; // a nested instance stays an instance when its container is synced
+                delete c.swapOf;
                 c.overrides = {};
                 c.version = 0;
                 page.nodes.push(c);
@@ -11023,7 +11049,7 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${esc(n.name)}</span>`;
     const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
     // Frame / section / group can switch kind from a chevron next to the name.
-    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp)
+    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
         return input + `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
     return input;
 }
@@ -13018,6 +13044,12 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (info && field)
                 (n.propBind ||= {})[field] = info.pid;
         }
+        // Newer files keep the same link in parameterConsumptionMap (property reference per field).
+        for (const e of f.parameterConsumptionMap?.entries || []) {
+            const ref = e.variableData?.value?.propRefValue?.defId, info = ref && defInfo.get(gkey(ref)), field = PROP_FIELD[e.variableField];
+            if (info && field)
+                (n.propBind ||= {})[field] = info.pid;
+        }
         walkedFigs.push(f);
         idMap.set(k, n.id);
         figOfMidas.set(n.id, f);
@@ -13358,6 +13390,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             c.component = false;
             // A nested instance stays an instance (Figma shows it with the instance icon too).
             c.isInstance = !!s.isInstance;
+            delete c.swapOf;
             c.overrides = {};
             c.version = 0;
             if (!c.parentId)
