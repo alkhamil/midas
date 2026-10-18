@@ -7168,17 +7168,18 @@ function renderInspector() {
         el.style.backgroundImage = `url("${src}")`; });
     lastInspector = performance.now();
 }
-function constrainChildren(n, oldW, oldH) {
+// forceScale (Ctrl / Cmd while resizing): every child scales with the frame, whatever its constraints say.
+function constrainChildren(n, oldW, oldH, forceScale = false) {
     if (!['frame', 'group'].includes(n.type) && !n.booleanOp)
         return;
     const dx = n.w - oldW, dy = n.h - oldH;
     for (const c of doc.children(n.id)) {
         if (n.type === 'frame' && isAutoLayout(n) && c.layoutPositioning !== 'absolute')
             continue;
-        if (n.type === 'group' || n.booleanOp) {
+        if (n.type === 'group' || n.booleanOp || forceScale) {
             const sx = n.w / (oldW || 1), sy = n.h / (oldH || 1), cw = c.w, ch = c.h;
             // Children of a group scale with it, unless they carry an explicit constraint (Left, Right, Center, Left & Right).
-            const ch0 = c.constraintH, cv0 = c.constraintV;
+            const ch0 = forceScale ? undefined : c.constraintH, cv0 = forceScale ? undefined : c.constraintV;
             if (ch0 && ch0 !== 'scale') {
                 if (ch0 === 'right')
                     c.x += dx;
@@ -7205,7 +7206,7 @@ function constrainChildren(n, oldW, oldH) {
             }
             if (c.type === 'text')
                 c.fontSize *= Math.min(sx, sy);
-            constrainChildren(c, cw, ch);
+            constrainChildren(c, cw, ch, forceScale);
         }
         else {
             switch (c.constraintH) {
@@ -8928,7 +8929,7 @@ function pointerMove(e) {
             Object.assign(n, xyForTopLeft(n, tl));
             n.x = Math.round(n.x);
             n.y = Math.round(n.y);
-            constrainChildren(n, orig.w, orig.h);
+            constrainChildren(n, orig.w, orig.h, e.ctrlKey || e.metaKey);
             if (n.type === 'text')
                 n.h = textModeOf(n) === 'auto-h' ? Math.ceil(Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height))) : Math.max(n.h, Math.ceil(n.fontSize * n.lineHeight));
             doc.touch(n);
@@ -8942,7 +8943,7 @@ function pointerMove(e) {
                 n.h = Math.max(1, Math.round(orig.h * sy));
                 if (n.type === 'text')
                     n.fontSize = orig.fontSize * Math.min(sx, sy);
-                constrainChildren(n, orig.w, orig.h);
+                constrainChildren(n, orig.w, orig.h, e.ctrlKey || e.metaKey);
                 doc.touch(n);
             }
         }
@@ -16712,7 +16713,7 @@ if (!initial)
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
 window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
-$('#open-variables').addEventListener('click', () => toggleVarsWindow());
+$('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
 showHome({ thumb: false });
