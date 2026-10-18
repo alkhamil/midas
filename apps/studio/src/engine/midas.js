@@ -13531,6 +13531,9 @@ async function figToMidas(file, onProgress, abortSignal) {
             const targetGuid = guids[guids.length - 1];
             const targetSrc = idMap.get(gkey(targetGuid));
             let c = targetSrc ? clones.get(targetSrc) : null;
+            // An override whose path is just the component itself applies to the instance root.
+            if (!c && targetSrc && targetSrc === src.id)
+                c = n;
             if (!c && targetSrc) {
                 for (const clone of clones.values()) {
                     if (clone.sourceId === targetSrc) {
