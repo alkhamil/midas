@@ -962,7 +962,7 @@ function holderForLayer(n) {
     return null;
 }
 function layerPropOptions(n, prop) {
-    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && !n.component && !n.componentSet && !insideInstance(n) && holderForLayer(n);
+    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && (!n.component || parentSetOf(n)) && !n.componentSet && !insideInstance(n) && holderForLayer(n);
     return holder ? { holder, props: cpropsOf(holder).filter(p => p.type === type) } : { holder: null, props: [] };
 }
 function varRow(label, prop) {
@@ -4070,7 +4070,7 @@ function findDropTarget(g, w) {
         for (const d of doc.descendants(id))
             exclude.add(d.id);
     }
-    let t = hitTest(w, { framesOnly: true, exclude });
+    let t = resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w);
     // Instances are closed: layers can only be dropped into frames marked as a slot property.
     while (t && !t.propBind?.slot) {
         const top = [t, ...doc.ancestors(t)].filter(a => a.isInstance).pop();
@@ -6730,8 +6730,42 @@ function syncGeomInputs() {
             el.value = fmt(n[k]);
     }
 }
+// A component set only holds its variants: anything else dropped, drawn or pasted straight into the set goes into the variant under it.
+function normalizeSetChildren() {
+    let moved = false;
+    if (doc.nodes.some(n => n.componentSet && doc.children(n.id).some(c => !c.component)))
+        doc.touch();
+    for (const set of doc.nodes.filter(n => n.componentSet)) {
+        const variants = doc.children(set.id).filter(c => c.component);
+        if (!variants.length)
+            continue;
+        for (const c of doc.children(set.id).filter(c => !c.component)) {
+            const wc = doc.world(c.id), cx = wc.box.x + wc.box.w / 2, cy = wc.box.y + wc.box.h / 2;
+            let best = null, bestD = Infinity;
+            for (const v of variants) {
+                const b = doc.world(v.id).box, inside = cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h, dist = inside ? 0 : Math.hypot(Math.max(b.x - cx, 0, cx - (b.x + b.w)), Math.max(b.y - cy, 0, cy - (b.y + b.h)));
+                if (dist < bestD) {
+                    bestD = dist;
+                    best = v;
+                }
+            }
+            if (!best)
+                continue;
+            const wm = wc.matrix;
+            c.parentId = best.id;
+            setFromMatrix(c, multiply(inverse(doc.world(best.id).matrix), wm));
+            doc.touch(c);
+            moved = true;
+        }
+    }
+    if (moved)
+        doc.refresh();
+    return moved;
+}
 function changed({ ui = true, commit = false } = {}) {
     refreshBooleans();
+    if (commit && normalizeSetChildren() && !state.selection.size)
+        refreshUI();
     doc.touch();
     if (commit) {
         markSelectedOverrides();
@@ -7109,7 +7143,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}<span class="head-actions">${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}${multi ? '' : headerChevronHtml(n)}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}${multi ? '' : headerChevronHtml(n)}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -8204,6 +8238,21 @@ function insideRound(x, y, w, h, r = 0) {
     return (x - cx) ** 2 + (y - cy) ** 2 <= r * r + 1e-6;
 }
 const hitCtx = document.createElement('canvas').getContext('2d');
+// A component set only takes variants: whatever lands on it goes into the variant under the cursor (or the nearest one).
+function resolveSetTarget(t, w) {
+    if (!t?.componentSet)
+        return t;
+    const variants = doc.children(t.id).filter(c => c.component);
+    let best = null, bd = Infinity;
+    for (const v of variants) {
+        const b = doc.world(v.id).box, d = Math.hypot(Math.max(b.x - w.x, 0, w.x - (b.x + b.w)), Math.max(b.y - w.y, 0, w.y - (b.y + b.h)));
+        if (d < bd) {
+            bd = d;
+            best = v;
+        }
+    }
+    return best || t;
+}
 function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {}) {
     const scene = doc.scene(), tol = 4 / state.camera.zoom;
     for (let i = scene.length - 1; i >= 0; i--) {
@@ -8389,7 +8438,7 @@ function pointerDown(e) {
             refocusText();
             return;
         }
-        const parent = hitTest(w, { framesOnly: true }), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
+        const parent = resolveSetTarget(hitTest(w, { framesOnly: true }), w), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
         state.tool = 'select';
         $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === 'select'));
         startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, parent ? '#302937' : options.theme === 'dark' ? '#efe8f8' : '#302937');
@@ -8400,7 +8449,7 @@ function pointerDown(e) {
         history.begin('Draw ' + state.tool);
         const isSection = state.tool === 'section';
         // A section is the outermost container, so it is always created at the top level of the page.
-        const under = hitTest(w, { framesOnly: true }),
+        const under = resolveSetTarget(hitTest(w, { framesOnly: true }), w),
             // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
             parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
         const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
