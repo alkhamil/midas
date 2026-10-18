@@ -946,7 +946,22 @@ function varChip(prop, v) {
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
     return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
+// Component property a layer is bound to (visibility ↔ boolean property, text ↔ text property).
+function holderForLayer(n) {
+    for (let c = n.component || n.componentSet ? doc.get(n.parentId) : n, i = 0; c && i < 100; c = doc.get(c.parentId), i++)
+        if (c.component || c.componentSet)
+            return propHolderOf(c);
+    return null;
+}
+function layerPropOptions(n, prop) {
+    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && !n.component && !n.componentSet && !insideInstance(n) && holderForLayer(n);
+    return holder ? { holder, props: cpropsOf(holder).filter(p => p.type === type) } : { holder: null, props: [] };
+}
 function varRow(label, prop) {
+    const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { holder, props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
+    const bp = pid && holder && props.find(p => p.id === pid);
+    if (bp)
+        return `<div class="field-label"><span>${label}</span></div><div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>`;
     const v = boundVar(prop);
     return `<div class="field-label"><span>${label}</span>${v ? '' : varBindButton(prop)}</div>${v ? varChip(prop, v) : ''}`;
 }
@@ -1131,9 +1146,25 @@ document.addEventListener('click', e => {
 });
 function handleVarClick(e) {
     const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
+    const pd = e.target.closest('[data-prop-detach]');
+    if (pd) {
+        const n = activeNode(), field = pd.dataset.propDetach;
+        if (n?.propBind) {
+            transaction('Detach property', () => { delete n.propBind[field]; if (!Object.keys(n.propBind).length) delete n.propBind; doc.touch(n); });
+        }
+        return;
+    }
     if (bind) {
         let prop = bind.dataset.varBind;
         const rect = bind.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
+        const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
+        if (po.props.length) {
+            // Properties first, then the variables of the right type (boolean for visibility, string for text).
+            const vt = prop === 'visible' ? 'boolean' : 'string', store = varStore();
+            const items = [{ header: 'Properties' }, ...po.props.map(p => ({ label: p.name, icon: CPROP_ICON[p.type], checked: an0.propBind?.[CPROP_FIELD[p.type]] === p.id, run: () => transaction('Apply property', () => { an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); }) })), '-', { header: 'Variables' }, ...store.items.filter(i => i.type === vt).slice(0, 60).map(i => ({ label: i.name, icon: varGlyph(i.type), run: () => bindVariable(prop, i.id) }))];
+            openPopMenu(anchor, items);
+            return;
+        }
         // The Fill header icon targets the top fill row (fills.0), which is where the hex field shows the bound variable.
         if (prop === 'fill') {
             const an = activeNode();
@@ -8128,7 +8159,7 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             continue;
         // A top-level frame or section that already holds layers is only picked through its label or the layers panel,
         // so clicking its empty area no longer grabs (and drags) the whole frame.
-        if (!framesOnly && !deep && n.type === 'frame' && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
+        if (!framesOnly && !deep && n.type === 'frame' && !n.componentSet && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
             continue;
         let clipped = false;
         for (const clip of s.clips) {
@@ -8348,6 +8379,12 @@ function pointerDown(e) {
         }
     }
     let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    // A single selected layer that sits deeper inside the hit stays selected when pressed again (multi-click descent, like Figma).
+    if (hit && !e.shiftKey && !e.altKey && !(e.metaKey || e.ctrlKey) && state.selection.size === 1 && !state.selection.has(hit.id)) {
+        const inner0 = hitTest(w, { deep: true }), selId = [...state.selection][0];
+        if (inner0 && [inner0, ...doc.ancestors(inner0)].some(a => a.id === selId) && doc.ancestors(doc.get(selId)).some(a => a.id === hit.id))
+            hit = doc.get(selId);
+    }
     // With several layers selected, pressing on any of them (or inside one) drags the whole selection instead of picking another layer.
     if (hit && !e.shiftKey && state.selection.size > 1 && !state.selection.has(hit.id)) {
         const inner = hitTest(w, { deep: true }), owner = inner && [inner, ...doc.ancestors(inner)].find(a => state.selection.has(a.id));
@@ -8370,8 +8407,21 @@ function pointerDown(e) {
             select([hit.id]);
         if (e.altKey) {
             history.begin('Duplicate and move');
-            const clones = cloneNodes(selectedRoots(), 0);
-            select(clones.map(n => n.id));
+            const picked = selectedRoots(), variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
+            if (variant) {
+                // Alt-dragging a variant out of its component set makes an instance of it, placed where the variant is.
+                const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
+                inst.name = set.name;
+                inst.parentId = set.parentId || null;
+                const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
+                setFromMatrix(inst, multiply(inverse(pm), wm));
+                doc.touch(inst);
+                select([inst.id]);
+            }
+            else {
+                const clones = cloneNodes(picked, 0);
+                select(clones.map(n => n.id));
+            }
         }
         const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
         state.gesture = { kind: 'move', start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
@@ -8477,7 +8527,7 @@ function pointerMove(e) {
                 state.altDown = !!e.altKey;
                 invalidate();
             }
-            const arcN = arcSelected(), arcOn = !!arcN && arcNearOutline(arcN, p, w);
+            const arcN = arcSelected(), arcOn = !!arcN && (arcNearOutline(arcN, p, w) || hitTest(w, { deep: true })?.id === arcN.id);
             if (arcOn !== !!state.arcShow) {
                 state.arcShow = arcOn;
                 invalidate();
@@ -11440,7 +11490,7 @@ function bindLayer(holder, p, layerId) {
 }
 // Instance-swap picker: the same searchable, grouped list as the variable picker (page ≙ library, name path ≙ group).
 function swapEntries() {
-    const out = [];
+    const out = [], seenSets = new Set();
     for (const p of doc.data.pages)
         for (const c of p.nodes) {
             if (!c.component)
@@ -11448,8 +11498,13 @@ function swapEntries() {
             const set = parentSetOf(c);
             let group, leaf;
             if (set) {
-                group = set.name;
-                leaf = c.name;
+                // A component set is one entry (its first variant); variants are chosen on the instance afterwards.
+                if (seenSets.has(set.id))
+                    continue;
+                seenSets.add(set.id);
+                const parts = set.name.split('/').map(s => s.trim());
+                leaf = parts.pop();
+                group = parts.join(' / ');
             }
             else {
                 const parts = c.name.split('/').map(s => s.trim());
@@ -11621,7 +11676,8 @@ function addComponentProp(n, type) {
     const cands = layerCandidates(holder, type), sel = selected().find(s => cands.includes(s));
     transaction(`Add ${CPROP_LABEL[type].toLowerCase()} property`, () => {
         holder.cprops = [...cpropsOf(holder), p];
-        bindLayer(holder, p, (sel || cands[0])?.id);
+        if (type !== 'boolean')
+            bindLayer(holder, p, (sel || cands[0])?.id);
         doc.touch(holder);
     });
     openCpropPop(document.querySelector('[data-cmp="add-prop"]'), holder, p.id);
@@ -11786,7 +11842,7 @@ function openFloatingPop(anchor, state) {
             else if (t.matches('[data-cp-layer]'))
                 transaction('Bind property', () => { bindLayer(holder, p, t.value); doc.touch(holder); });
             else if (t.matches('[data-cp-def]'))
-                setPropDefault(holder, p.id, p.type === 'boolean' ? t.value === 'true' : t.value);
+                setPropDefault(holder, p.id, p.type === 'boolean' ? (t.type === 'checkbox' ? t.checked : t.value === 'true') : t.value);
         }
         renderCpropPop();
     });
@@ -11826,14 +11882,14 @@ function renderCpropPop() {
     if (p.type === 'text')
         def = `<input data-cp-def value="${esc(p.def ?? '')}" spellcheck="false" aria-label="Default value">`;
     else if (p.type === 'boolean')
-        def = `<select data-cp-def aria-label="Default value"><option value="true" ${p.def !== false ? 'selected' : ''}>True</option><option value="false" ${p.def === false ? 'selected' : ''}>False</option></select>`;
+        def = `<label class="vsw pp-toggle"><input type="checkbox" role="switch" data-cp-def ${p.def !== false ? 'checked' : ''} aria-label="Value"></label><span class="pp-tval">${p.def !== false ? 'True' : 'False'}</span>`;
     else if (p.type === 'instance')
         def = swapButtonHtml('data-swap-def', p.def);
     const layerLabel = { text: 'Text layer', boolean: 'Layer', instance: 'Instance', slot: 'Slot frame' }[p.type];
     pp.el.innerHTML = head(`${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
         `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
-        `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>` +
-        (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Default (visible)' : 'Default value'}</label>${def}</div>` : '') +
+        (p.type === 'boolean' ? '' : `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>`) +
+        (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Value' : 'Default value'}</label>${def}</div>` : '') +
         (p.type === 'slot' ? '<p class="pp-note">Instances can drop their own layers into this frame.</p>' : '') +
         `<div class="pp-foot"><button class="cmp-btn wide" data-cp-delete>Delete property</button></div>`;
 }
@@ -12187,6 +12243,10 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (mode && val !== undefined)
                 item.values[mode] = val;
         }
+    // Figma's untouched default collection ("Collection", no variables) is not a real collection of the file.
+    for (let i = varCollections.length - 1; i >= 0; i--)
+        if (varCollections[i].name === 'Collection' && !varItems.some(v => v.collectionId === varCollections[i].id))
+            varCollections.splice(i, 1);
     // The variable a paint / field is bound to (only variables defined in this file).
     // A boolean binding is often wrapped as IS_TRUTHY(variable): the single variable inside is the real binding.
     const aliasOf = vd => vd?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
@@ -16172,6 +16232,31 @@ document.addEventListener('keydown', e => {
     }
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
         e.preventDefault();
+        // Inside an auto layout the arrows swap the layer with its neighbour (vertical: up/down, horizontal: left/right, grid: all four).
+        const only = state.selection.size === 1 ? selectedRoots()[0] : null, alp = only && doc.get(only.parentId);
+        if (only && alp && isAutoLayout(alp) && only.layoutPositioning !== 'absolute' && !only.locked) {
+            const kids = doc.children(alp.id).filter(c => c.layoutPositioning !== 'absolute'), visual = alp.layoutFlip ? [...kids].reverse() : kids, i = visual.indexOf(only);
+            const grid = alp.layout === 'grid', horiz = alp.layout === 'horizontal', cols = Math.max(1, Math.round(alp.gridCols || 2));
+            let delta = 0;
+            if (e.key === 'ArrowLeft' && (horiz || grid))
+                delta = -1;
+            else if (e.key === 'ArrowRight' && (horiz || grid))
+                delta = 1;
+            else if (e.key === 'ArrowUp' && (!horiz || grid))
+                delta = grid ? -cols : -1;
+            else if (e.key === 'ArrowDown' && (!horiz || grid))
+                delta = grid ? cols : 1;
+            const other = visual[i + delta];
+            if (delta && other)
+                transaction('Reorder in auto layout', () => {
+                    const a = doc.nodes.indexOf(only), b = doc.nodes.indexOf(other);
+                    doc.nodes[a] = other;
+                    doc.nodes[b] = only;
+                    doc.refresh();
+                    doc.touch(alp);
+                });
+            return;
+        }
         if (state.selection.size)
             transaction('Nudge layers', () => {
                 const d = e.shiftKey ? options.bigNudge : options.nudge;

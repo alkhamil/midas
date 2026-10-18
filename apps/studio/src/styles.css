@@ -2826,3 +2826,11 @@ a.wide-button { text-decoration: none; color: inherit }
 .vp-section, .cmp-block, .cmp-props { min-width: 0; max-width: 100% }
 #inspector { overflow-x: hidden }
 .inst-locked { opacity: .5; pointer-events: none }
+
+/* panel chrome is not selectable text */
+#right-panel, #left-panel, .left-rail, .topbar, header { user-select: none; -webkit-user-select: none }
+#right-panel input, #right-panel textarea, #left-panel input, #left-panel textarea, [contenteditable] { user-select: text; -webkit-user-select: text }
+
+.stp-menu { max-height: 60vh; overflow-y: auto }
+.pp-toggle { margin-right: 8px }
+.prop-chip .vc-glyph { color: #9747FF }
