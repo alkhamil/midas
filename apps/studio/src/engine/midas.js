@@ -1032,7 +1032,7 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
         html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
     return html || `<div class="vp-empty">No variables${ql ? ' match your search' : ' yet. Create some in the Variables window'}.</div>`;
 }
-function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null }) {
+function openVarPicker(anchor, { type, types = null, exclude = null, current = null, onPick, onDetach = null, onCreate = null, prop = null, props = null, onPickProp = null }) {
     closeVarPicker();
     const pop = document.createElement('div'), want = types || [type];
     pop.id = 'var-picker';
@@ -1041,7 +1041,8 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
     const filter = i => varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude));
     const render = () => { pop.querySelector('.vp-list').innerHTML = varListHtml({ types: want, filter, q, current, limit }); };
     const build = () => {
-        pop.innerHTML = `${varListHead(q, '', want)}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
+        const propsHtml = props?.length ? `<div class="vpk-coll">Properties</div>${props.map(p => `<button class="vp-item vpk-item ${p.on ? 'on' : ''}" data-pick-prop="${esc(p.id)}"><i class="vc-glyph" style="color:#9747FF">${p.icon}</i><span class="vp-name">${esc(p.name)}</span>${p.on ? icon('check', 12) : ''}</button>`).join('')}<div class="menu-divider"></div>` : '';
+        pop.innerHTML = `${varListHead(q, '', want)}${propsHtml}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
         render();
     };
     build();
@@ -1076,8 +1077,12 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
         }
     });
     pop.addEventListener('click', e => {
-        const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]');
-        if (e.target.closest('[data-pick-create]')) {
+        const b = e.target.closest('[data-pick]'), d = e.target.closest('[data-pick-detach]'), pp = e.target.closest('[data-pick-prop]');
+        if (pp && onPickProp) {
+            closeVarPicker();
+            onPickProp(pp.dataset.pickProp);
+        }
+        else if (e.target.closest('[data-pick-create]')) {
             closeVarPicker();
             onCreate();
         }
@@ -1159,18 +1164,14 @@ function handleVarClick(e) {
         const rect = bind.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
         const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
         if (po.props.length) {
-            // Properties first, then the variables of the right type (boolean for visibility, string for text).
-            const vt = prop === 'visible' ? 'boolean' : 'string', store = varStore();
-            const items = [{ header: 'Properties' }, ...po.props.map(p => ({ label: p.name, icon: CPROP_ICON[p.type], checked: an0.propBind?.[CPROP_FIELD[p.type]] === p.id, run: () => transaction('Apply property', () => { an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); }) })), '-', { header: 'Variables' }, ...store.items.filter(i => i.type === vt).slice(0, 60).map(i => ({ label: i.name, icon: varGlyph(i.type), run: () => bindVariable(prop, i.id) }))];
-            openPopMenu(anchor, items);
+            // Same window as the variable picker, with the component's matching properties on top.
+            const applyProp = pid => transaction('Apply property', () => { const p = po.props.find(x => x.id === pid); if (!p) return; an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); });
+            openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), props: po.props.map(p => ({ id: p.id, name: p.name, icon: CPROP_ICON[p.type], on: an0.propBind?.[CPROP_FIELD[p.type]] === p.id })), onPickProp: applyProp, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
             return;
         }
-        // The Fill header icon targets the top fill row (fills.0), which is where the hex field shows the bound variable.
         if (prop === 'fill') {
             const an = activeNode();
-            if (an && !getFills(an).length && an.type !== 'text')
-                addFill();
-            prop = 'fills.0';
+            prop = an && getFills(an).length ? 'fills.0' : 'fill';
         }
         const cur = boundVarId(prop);
         openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
@@ -7120,18 +7121,29 @@ function renderInspector() {
     }
     $('#inspector').innerHTML = html;
     // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
-    if (ns.length === 1 && insideInstance(n))
+    if (ns.length === 1 && (insideInstance(n) || doc.get(n.parentId)?.booleanOp))
         $('#inspector').querySelectorAll('section.inspector-section').forEach(sec => {
             const title = (sec.querySelector('.section-heading')?.textContent || '').trim();
             if (!/^(Position|Layout|Auto layout)/.test(title))
                 return;
+            const inBool = !!doc.get(n.parentId)?.booleanOp;
             sec.querySelectorAll('input,select,button').forEach(el => {
-                if (el.closest('.sz-field') && el.tagName === 'BUTTON')
+                if (inBool) {
+                    // Operands of a union / subtract / intersect / exclude: position and layout belong to the operation.
+                    if (!el.matches('[data-cmp]')) {
+                        el.disabled = true;
+                        el.classList.add('inst-locked');
+                    }
                     return;
-                if (el.matches('[data-var-coll-toggle],[data-cmp]'))
-                    return;
-                el.disabled = true;
-                el.classList.add('inst-locked');
+                }
+                if (el.tagName === 'INPUT' && el.matches('[data-prop="x"],[data-prop="y"],[data-prop="rotation"],[data-prop="w"],[data-prop="h"]'))
+                    el.readOnly = true;
+                if (el.tagName === 'INPUT' && el.matches('[data-prop="w"],[data-prop="h"]'))
+                    el.dataset.sizeWindow = el.dataset.prop === 'w' ? 'h' : 'v';
+                else if (el.matches('[data-align],[data-flip],[data-rotate90],[data-ly-pos],[data-cn-pin],select[data-prop^="constraint"]')) {
+                    el.disabled = true;
+                    el.classList.add('inst-locked');
+                }
             });
         });
     $('#inspector').querySelectorAll('[data-img-asset]').forEach(el => { const src = doc.data.assets[el.dataset.imgAsset]; if (src)
@@ -8185,7 +8197,10 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
         if (hit) {
             if (!deep && !framesOnly) {
-                const anc = doc.ancestors(n), groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
+                const anc = doc.ancestors(n), variantOf = [n, ...anc].find(a => a.component && doc.get(a.parentId)?.componentSet);
+                if (variantOf)
+                    return variantOf;
+                const groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
                 // Inside an auto layout frame a click always picks that frame first (the outermost one); Ctrl/Cmd reaches the smallest node.
                 if (groups.length)
                     return groups[0];
@@ -10865,7 +10880,7 @@ function svgThumbOf(n) {
 }
 function componentBlockHtml(n) {
     if (n.isInstance && n.sourceId) {
-        const src = componentById(n.sourceId), set = src && parentSetOf(src);
+        const src = chainComponent(n), set = src && parentSetOf(src);
         const rows = set ? variantProps(set).map(pr => {
             const vals = variantValues(set, pr), bp = binaryPair(vals), key = 'vprop:' + pr, bv = n.vars?.[key] && varItem(n.vars[key]);
             let ctl;
@@ -10898,7 +10913,7 @@ document.addEventListener('click', e => {
     const goto = e.target.closest('[data-cmp-goto]');
     if (goto) {
         e.stopPropagation();
-        goToMainComponent(goto.dataset.cmpGoto);
+        goToMainComponent(chainComponent(doc.get(goto.dataset.cmpGoto) || { sourceId: goto.dataset.cmpGoto })?.id || goto.dataset.cmpGoto);
         return;
     }
     const b = e.target.closest('[data-cmp]');
@@ -10912,7 +10927,7 @@ document.addEventListener('click', e => {
     else if (!n)
         return;
     else if (act === 'goto' && n.sourceId)
-        goToMainComponent(n.sourceId);
+        goToMainComponent(chainComponent(n)?.id || n.sourceId);
     else if (act === 'reset')
         transaction('Reset overrides', () => { const page = pageOfNode(n.id); for (const x of [n, ...pageTree(page, n.id)]) {
             if (x.sourceId)
@@ -12868,6 +12883,15 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         else if (type === 'rect' || type === 'ellipse') {
             applyFills(n, f);
+            // Ellipse arc (pie / donut): start angle, sweep and inner radius ratio.
+            if (type === 'ellipse' && f.arcData) {
+                const TAU = Math.PI * 2, a0 = f.arcData.startingAngle || 0, a1 = f.arcData.endingAngle ?? TAU, sweep = Math.max(0, Math.min(TAU, a1 - a0)), ratio = f.arcData.innerRadius || 0;
+                if (sweep < TAU - 1e-4 || ratio > 1e-4) {
+                    n.arcStart = Math.round((((a0 * 180 / Math.PI) % 360) + 360) % 360 * 100) / 100;
+                    n.arcSweep = Math.round(sweep / TAU * 10000) / 100;
+                    n.arcRatio = Math.round(ratio * 10000) / 100;
+                }
+            }
         }
         else if (type === 'text') {
             applyFills(n, f);
@@ -14791,9 +14815,16 @@ function evalMathExpr(src) {
     return i === s.length && Number.isFinite(v) ? v : NaN;
 }
 const exprEligible = el => el instanceof HTMLInputElement && (el.type === 'number' || el.dataset.expr) && !el.closest('.vars-window') && !el.matches('[data-vw],[data-vd-val],[data-ve]');
+document.addEventListener('pointerdown', e => {
+    const el = e.target.closest?.('input[data-size-window]');
+    if (el) {
+        e.preventDefault();
+        openSizeMenu(el, el.dataset.sizeWindow);
+    }
+}, true);
 document.addEventListener('focusin', e => {
     const el = e.target;
-    if (!exprEligible(el) || el.dataset.expr || el.type !== 'number')
+    if (el.readOnly || !exprEligible(el) || el.dataset.expr || el.type !== 'number')
         return;
     el.dataset.expr = '1';
     el.dataset.exprMin = el.min;
@@ -15547,6 +15578,17 @@ overlay.addEventListener('dblclick', e => {
     else if (hit) {
         select([hit.id]);
     }
+});
+// Third, fourth ... click in a row keeps going one level deeper toward the cursor (the double-click handles the first step).
+overlay.addEventListener('click', e => {
+    if (e.detail < 3 || state.tool !== 'select' || state.selection.size !== 1)
+        return;
+    const w0 = eventWorld(e), deepHit = hitTest(w0, { deep: true });
+    if (!deepHit)
+        return;
+    const chain = [deepHit, ...doc.ancestors(deepHit)], i = chain.findIndex(a => a.id === [...state.selection][0]);
+    if (i > 0)
+        select([chain[i - 1].id]);
 });
 overlay.addEventListener('contextmenu', e => {
     e.preventDefault();

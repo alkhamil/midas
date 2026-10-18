@@ -2834,3 +2834,11 @@ a.wide-button { text-decoration: none; color: inherit }
 .stp-menu { max-height: 60vh; overflow-y: auto }
 .pp-toggle { margin-right: 8px }
 .prop-chip .vc-glyph { color: #9747FF }
+
+/* switches (component properties) */
+input[type=checkbox][role=switch] { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--border); position: relative; cursor: pointer; border: 0; margin: 0; transition: background .15s }
+input[type=checkbox][role=switch]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s }
+input[type=checkbox][role=switch]:checked { background: var(--accent-strong, #0058CA) }
+input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
+.pp-row .vsw { display: inline-flex; align-items: center }
+.pp-row .pp-tval { margin-left: 8px }
