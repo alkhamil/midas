@@ -34,7 +34,6 @@ export function Topbar({ user }) {
                 <span className="save-indicator" id="save-indicator"><i></i> Saved</span>
             </div>
             <div className="top-actions">
-                <button className="icon-button" id="open-variables" title="Variables" aria-label="Variables"><VariablesIcon size={17} /></button>
                 <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
                 {/* Sementara masih presentasi frame; nanti menjadi Preview App milik Code Builder (spec §4.5). */}
                 <button className="icon-button" id="present" title="Preview app" aria-label="Preview app" data-icon="play"></button>

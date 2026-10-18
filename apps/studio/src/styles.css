@@ -2863,6 +2863,17 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .vw-side .vw-coll.multi:not(.on) { background: var(--accent-bg) }
 .vw-side .vw-coll.multi { box-shadow: inset 0 0 0 1px var(--accent) }
 
+.head-actions { display: inline-flex; align-items: center; gap: 0; flex: none }
+.head-actions .icon-button { margin: -4px 0 -4px 0 !important }
+.head-actions .icon-button:last-child { margin-right: -4px !important }
+#context-menu { max-height: 80vh; overflow-y: auto }
+
+.busy-pill { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 900; display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: var(--panel); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); font-size: 12px; max-width: 80vw }
+.busy-spin { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: busy-rot .8s linear infinite; flex: none }
+.busy-bar { display: none; width: 120px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden }
+.busy-bar.on { display: block }
+.busy-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s }
+@keyframes busy-rot { to { transform: rotate(360deg) } }
 /* ===== Code Builder (spec §4.3) ===== */
 .code-builder-panel { padding: 0 }
 .cb-panel { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 14px; font-size: 12px; color: var(--text) }

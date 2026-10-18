@@ -720,7 +720,7 @@ document.addEventListener('change', e => {
 // ===== variables =====
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
-function bindTypes(prop) { if (String(prop).startsWith('vprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
+function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
     const n = activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
@@ -728,7 +728,21 @@ function vpropType(name) {
         return null;
     return binaryPair(variantValues(set, name)) ? 'boolean' : 'string';
 }
-function bindType(prop) { if (String(prop).startsWith('vprop:'))
+// Instance component properties (text / boolean) can take a variable: key 'cprop:<property id>'.
+function cpropById(pid) {
+    for (const pg of doc.data.pages)
+        for (const x of pg.nodes) {
+            const p = x.cprops?.find(q => q.id === pid);
+            if (p)
+                return p;
+        }
+    return null;
+}
+function bindType(prop) { if (String(prop).startsWith('cprop:')) {
+    const p = cpropById(prop.slice(6));
+    return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' ? 'string' : null;
+}
+if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
@@ -889,6 +903,24 @@ function applyVariables(d) {
         if (!n.vars)
             continue;
         for (const [prop, id] of Object.entries(n.vars)) {
+            if (prop.startsWith('cprop:')) {
+                const vi = items.get(id), pid = prop.slice(6);
+                if (!vi || !cpropById(pid)) {
+                    delete n.vars[prop];
+                    touched.add(n);
+                    continue;
+                }
+                const val = varValue(d, vi, n), next = vi.type === 'boolean' ? !!val : String(val ?? '');
+                if (val !== undefined && n.propValues?.[pid] !== next) {
+                    n.propValues = { ...(n.propValues || {}), [pid]: next };
+                    touched.add(n);
+                    if (!varSwapQueued) {
+                        varSwapQueued = true;
+                        queueMicrotask(() => { varSwapQueued = false; syncComponents(); invalidate(); });
+                    }
+                }
+                continue;
+            }
             if (prop.startsWith('vprop:')) {
                 const vi = items.get(id);
                 if (!vi) {
@@ -2326,8 +2358,21 @@ function setLeftTab(k) {
     state.leftTab = ['assets', 'plugins', 'code-builder'].includes(k) ? k : 'layers';
     state.varCollMenu = false;
     $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
-    renderLayers();
     syncRail();
+    if (state.leftTab === 'assets' && doc.nodes.length + doc.data.pages.length > 400) {
+        // Big files: show the busy pill first, then build the (heavy) components list.
+        const busy = startBusy('Loading components…');
+        setTimeout(() => {
+            try {
+                renderLayers();
+            }
+            finally {
+                busy.done();
+            }
+        }, 40);
+        return;
+    }
+    renderLayers();
 }
 document.addEventListener('click', e => {
     const b = e.target.closest('[data-rail]');
@@ -3064,6 +3109,7 @@ function framePresetPanel() {
     return section('Frame', FRAME_PRESETS.map(([group, items]) => `<div class="preset-group"><button class="preset-head" data-preset-group="${esc(group)}">${presetOpen.has(group) ? icon('chevronDown', 10) : icon('chevronRight', 10)} ${esc(group)}</button>${presetOpen.has(group) ? items.map(([name, w, h]) => `<button class="preset-item" data-frame-new="${esc(group + '|' + name)}"><span>${esc(name)}</span><small>${w} × ${h}</small></button>`).join('') : ''}</div>`).join('') + '<p class="small-label" style="margin-top:10px">Pick a size to add a frame to the center of your view, or drag on the canvas for a custom frame.</p>');
 }
 function frameSection(ns) {
+    return '';
     const frames = ns.filter(n => n.type === 'frame');
     if (!frames.length || frames.length !== ns.length)
         return '';
@@ -4122,7 +4168,7 @@ function findDropTarget(g, w) {
         for (const d of doc.descendants(id))
             exclude.add(d.id);
     }
-    let t = hitTest(w, { framesOnly: true, exclude });
+    let t = resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w);
     // Instances are closed: layers can only be dropped into frames marked as a slot property.
     while (t && !t.propBind?.slot) {
         const top = [t, ...doc.ancestors(t)].filter(a => a.isInstance).pop();
@@ -6775,8 +6821,42 @@ function syncGeomInputs() {
             el.value = fmt(n[k]);
     }
 }
+// A component set only holds its variants: anything else dropped, drawn or pasted straight into the set goes into the variant under it.
+function normalizeSetChildren() {
+    let moved = false;
+    if (doc.nodes.some(n => n.componentSet && doc.children(n.id).some(c => !c.component)))
+        doc.touch();
+    for (const set of doc.nodes.filter(n => n.componentSet)) {
+        const variants = doc.children(set.id).filter(c => c.component);
+        if (!variants.length)
+            continue;
+        for (const c of doc.children(set.id).filter(c => !c.component)) {
+            const wc = doc.world(c.id), cx = wc.box.x + wc.box.w / 2, cy = wc.box.y + wc.box.h / 2;
+            let best = null, bestD = Infinity;
+            for (const v of variants) {
+                const b = doc.world(v.id).box, inside = cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h, dist = inside ? 0 : Math.hypot(Math.max(b.x - cx, 0, cx - (b.x + b.w)), Math.max(b.y - cy, 0, cy - (b.y + b.h)));
+                if (dist < bestD) {
+                    bestD = dist;
+                    best = v;
+                }
+            }
+            if (!best)
+                continue;
+            const wm = wc.matrix;
+            c.parentId = best.id;
+            setFromMatrix(c, multiply(inverse(doc.world(best.id).matrix), wm));
+            doc.touch(c);
+            moved = true;
+        }
+    }
+    if (moved)
+        doc.refresh();
+    return moved;
+}
 function changed({ ui = true, commit = false } = {}) {
     refreshBooleans();
+    if (commit && normalizeSetChildren() && !state.selection.size)
+        refreshUI();
     doc.touch();
     if (commit) {
         markSelectedOverrides();
@@ -7155,7 +7235,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -7176,7 +7256,7 @@ function renderInspector() {
             html += strokeSectionHtml(n);
         if (n.type !== 'group')
             html += effectsSection(n);
-        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
+        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
     $('#inspector').innerHTML = html;
@@ -7214,17 +7294,18 @@ function renderInspector() {
         el.style.backgroundImage = `url("${src}")`; });
     lastInspector = performance.now();
 }
-function constrainChildren(n, oldW, oldH) {
+// forceScale (Ctrl / Cmd while resizing): every child scales with the frame, whatever its constraints say.
+function constrainChildren(n, oldW, oldH, forceScale = false) {
     if (!['frame', 'group'].includes(n.type) && !n.booleanOp)
         return;
     const dx = n.w - oldW, dy = n.h - oldH;
     for (const c of doc.children(n.id)) {
         if (n.type === 'frame' && isAutoLayout(n) && c.layoutPositioning !== 'absolute')
             continue;
-        if (n.type === 'group' || n.booleanOp) {
+        if (n.type === 'group' || n.booleanOp || forceScale) {
             const sx = n.w / (oldW || 1), sy = n.h / (oldH || 1), cw = c.w, ch = c.h;
             // Children of a group scale with it, unless they carry an explicit constraint (Left, Right, Center, Left & Right).
-            const ch0 = c.constraintH, cv0 = c.constraintV;
+            const ch0 = forceScale ? undefined : c.constraintH, cv0 = forceScale ? undefined : c.constraintV;
             if (ch0 && ch0 !== 'scale') {
                 if (ch0 === 'right')
                     c.x += dx;
@@ -7251,7 +7332,7 @@ function constrainChildren(n, oldW, oldH) {
             }
             if (c.type === 'text')
                 c.fontSize *= Math.min(sx, sy);
-            constrainChildren(c, cw, ch);
+            constrainChildren(c, cw, ch, forceScale);
         }
         else {
             switch (c.constraintH) {
@@ -8249,6 +8330,21 @@ function insideRound(x, y, w, h, r = 0) {
     return (x - cx) ** 2 + (y - cy) ** 2 <= r * r + 1e-6;
 }
 const hitCtx = document.createElement('canvas').getContext('2d');
+// A component set only takes variants: whatever lands on it goes into the variant under the cursor (or the nearest one).
+function resolveSetTarget(t, w) {
+    if (!t?.componentSet)
+        return t;
+    const variants = doc.children(t.id).filter(c => c.component);
+    let best = null, bd = Infinity;
+    for (const v of variants) {
+        const b = doc.world(v.id).box, d = Math.hypot(Math.max(b.x - w.x, 0, w.x - (b.x + b.w)), Math.max(b.y - w.y, 0, w.y - (b.y + b.h)));
+        if (d < bd) {
+            bd = d;
+            best = v;
+        }
+    }
+    return best || t;
+}
 function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {}) {
     const scene = doc.scene(), tol = 4 / state.camera.zoom;
     for (let i = scene.length - 1; i >= 0; i--) {
@@ -8434,7 +8530,7 @@ function pointerDown(e) {
             refocusText();
             return;
         }
-        const parent = hitTest(w, { framesOnly: true }), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
+        const parent = resolveSetTarget(hitTest(w, { framesOnly: true }), w), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
         state.tool = 'select';
         $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === 'select'));
         startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, parent ? '#302937' : options.theme === 'dark' ? '#efe8f8' : '#302937');
@@ -8445,7 +8541,7 @@ function pointerDown(e) {
         history.begin('Draw ' + state.tool);
         const isSection = state.tool === 'section';
         // A section is the outermost container, so it is always created at the top level of the page.
-        const under = hitTest(w, { framesOnly: true }),
+        const under = resolveSetTarget(hitTest(w, { framesOnly: true }), w),
             // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
             parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
         const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
@@ -8478,11 +8574,20 @@ function pointerDown(e) {
         }
         if (handle) {
             history.begin(handle.name === 'rotate' ? 'Rotate layers' : 'Resize layers');
-            state.gesture = { kind: handle.name === 'rotate' ? 'rotate' : 'resize', handle: handle.name, start: w, geometry: structuredClone(geo), originals: saveOriginals(selectedRoots()), roots: selectedRoots().map(n => n.id), center: point(geo.matrix, geo.w / 2, geo.h / 2) };
+            state.gesture = { kind: handle.name === 'rotate' ? 'rotate' : 'resize', descOrig: new Map(selectedRoots().flatMap(r => doc.descendants(r.id)).map(c => [c.id, { x: c.x, y: c.y, w: c.w, h: c.h, ...(c.fontSize !== undefined ? { fontSize: c.fontSize } : {}) }])), handle: handle.name, start: w, geometry: structuredClone(geo), originals: saveOriginals(selectedRoots()), roots: selectedRoots().map(n => n.id), center: point(geo.matrix, geo.w / 2, geo.h / 2) };
             return;
         }
     }
     let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    // Ctrl / Cmd pressed on a component or instance starts a marquee that reaches the layers inside; a plain Ctrl-click still picks the one under the cursor.
+    let ctrlClickId = null;
+    if (hit && (e.ctrlKey || e.metaKey) && !e.shiftKey && state.tool === 'select') {
+        const inner = hitTest(w, { deep: true });
+        if (inner && [inner, ...doc.ancestors(inner)].some(a => a.component || a.isInstance || a.componentSet)) {
+            ctrlClickId = inner.id;
+            hit = null;
+        }
+    }
     // A single selected layer that sits deeper inside the hit stays selected when pressed again (multi-click descent, like Figma).
     if (hit && !e.shiftKey && !e.altKey && !(e.metaKey || e.ctrlKey) && state.selection.size === 1 && !state.selection.has(hit.id)) {
         const inner0 = hitTest(w, { deep: true }), selId = [...state.selection][0];
@@ -8527,16 +8632,16 @@ function pointerDown(e) {
         const old = e.shiftKey ? new Set(state.selection) : new Set();
         if (!e.shiftKey)
             select([]);
-        state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey };
+        state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey, clickId: ctrlClickId };
         state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
         invalidate();
     }
 }
 // Alt-drag copies. A variant of a component set becomes an instance of it, placed where the variant is.
 function altDuplicate(picked) {
-    const variant = picked.length === 1 && picked[0].component && parentSetOf(picked[0]) ? picked[0] : null;
+    const variant = picked.length === 1 && picked[0].component ? picked[0] : null;
     if (variant) {
-        const set = parentSetOf(variant), wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
+        const set = parentSetOf(variant) || variant, wm = doc.world(variant.id).matrix, inst = cloneNodes([variant], 0, true)[0];
         inst.name = set.name;
         inst.parentId = set.parentId || null;
         const pm = set.parentId ? doc.world(set.parentId).matrix : identity();
@@ -8687,6 +8792,8 @@ function pointerMove(e) {
     }
     if (g.kind === 'marquee') {
         state.marquee = { x: Math.min(g.start.x, p.x), y: Math.min(g.start.y, p.y), w: Math.abs(p.x - g.start.x), h: Math.abs(p.y - g.start.y) };
+        if (state.marquee.w > 3 || state.marquee.h > 3)
+            g.dragged = true;
         const tl = screenToWorld(state.marquee.x, state.marquee.y), b = { ...tl, w: state.marquee.w / state.camera.zoom, h: state.marquee.h / state.camera.zoom };
         state.selection = new Set(g.old);
         // Figma-style: a frame the marquee fully encloses is selected as one; a frame it only overlaps is entered, so its
@@ -8701,7 +8808,8 @@ function pointerMove(e) {
                 if (!hit)
                     continue;
                 const enclosed = s.box.x >= b.x && s.box.y >= b.y && s.box.x + s.box.w <= b.x + b.w && s.box.y + s.box.h <= b.y + b.h;
-                const container = n.type === 'frame' && !n.isInstance && !n.component && doc.children(n.id).length > 0;
+                // With Ctrl held the marquee also goes inside components, instances and groups.
+                const container = (n.type === 'frame' || n.type === 'group' && g.deep) && (g.deep || !n.isInstance && !n.component && !n.componentSet) && doc.children(n.id).length > 0;
                 if (container && (!enclosed || g.deep))
                     visit(n.id);
                 else if (!container || enclosed)
@@ -8941,6 +9049,12 @@ function pointerMove(e) {
                 n.version = version;
             }
         }
+        // Children go back to where they were when the drag began, so each frame is computed from the start (no drift).
+        for (const [cid, o] of g.descOrig || []) {
+            const c = doc.get(cid);
+            if (c)
+                Object.assign(c, o);
+        }
         doc.touch();
         if (g.roots.length === 1) {
             const n = doc.get(g.roots[0]), orig = g.originals.get(n.id), worldTL = point(g.geometry.matrix, left, top), parentInv = n.parentId ? doc.world(n.parentId).inverse : identity(), tl = point(parentInv, worldTL.x, worldTL.y);
@@ -8962,7 +9076,21 @@ function pointerMove(e) {
             Object.assign(n, xyForTopLeft(n, tl));
             n.x = Math.round(n.x);
             n.y = Math.round(n.y);
-            constrainChildren(n, orig.w, orig.h);
+            if ((e.ctrlKey || e.metaKey) && ['frame', 'group'].includes(n.type) && !isAutoLayout(n)) {
+                // Ctrl / Cmd: only the frame changes; its content stays exactly where it is on the canvas, constraints ignored.
+                for (const c of doc.children(n.id)) {
+                    const o = g.descOrig?.get(c.id);
+                    if (o) {
+                        c.x = o.x - left;
+                        c.y = o.y - top;
+                        doc.touch(c);
+                    }
+                }
+                if (n.type === 'frame')
+                    constraintSizes.set(n, { w: n.w, h: n.h });
+            }
+            else
+                constrainChildren(n, orig.w, orig.h);
             if (n.type === 'text')
                 n.h = textModeOf(n) === 'auto-h' ? Math.ceil(Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height))) : Math.max(n.h, Math.ceil(n.fontSize * n.lineHeight));
             doc.touch(n);
@@ -9015,6 +9143,11 @@ function pointerUp(e) {
     state.marquee = null;
     if (!g)
         return;
+    if (g.kind === 'marquee' && g.clickId && !g.dragged) {
+        select([g.clickId]);
+        invalidate();
+        return;
+    }
     if (g.kind === 'guide') {
         const gd = pageGuides().find(x => x.id === g.id), q = eventPoint(e);
         if (gd && (gd.axis === 'x' ? q.x < RULER : q.y < RULER))
@@ -9297,8 +9430,10 @@ function pushToMain() {
                 const src = x.sourceId && (doc.get(x.sourceId) || componentById(x.sourceId));
                 if (!src || !x.overrides)
                     continue;
+                // Where the instance sits (and how it is turned) belongs to the instance: the main component stays put.
                 for (const [k, v] of Object.entries(x.overrides))
-                    src[k] = structuredClone(v);
+                    if (!(x === r && ['x', 'y', 'rotation', 'flipX', 'flipY'].includes(k)))
+                        src[k] = structuredClone(v);
                 x.overrides = {};
                 doc.touch(src);
                 doc.touch(x);
@@ -10657,9 +10792,13 @@ async function iconVariantSvg(v) {
     return exportSvgAnyPage(v.id);
 }
 // Sumber ikon untuk snapshot: satu entri per komponen ikon, gaya dari variant (tanpa variant → "default").
-async function iconSources(roots) {
+async function iconSources(roots, onProgress = null) {
     const out = [];
+    let done = 0;
     for (const r of roots) {
+        onProgress?.(done++, roots.length);
+        if (done % 8 === 0)
+            await nextPaint();
         const variants = r.componentSet ? setVariants(r) : [r], styles = {};
         for (const v of variants) {
             try {
@@ -10672,14 +10811,61 @@ async function iconSources(roots) {
     }
     return out;
 }
+// Busy indicator: a pill with a spinner, a label and (when the progress is known) a bar, so long work never looks like a freeze.
+const nextPaint = () => new Promise(r => setTimeout(r, 30));
+function startBusy(label, pct = null) {
+    let el = document.getElementById('busy-pill');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'busy-pill';
+        el.className = 'busy-pill';
+        el.setAttribute('role', 'status');
+        el.innerHTML = '<span class="busy-spin"></span><span class="busy-label"></span><span class="busy-bar"><i></i></span>';
+        document.body.appendChild(el);
+    }
+    el._n = (el._n || 0) + 1;
+    const api = {
+        set(text, p = null) {
+            el.querySelector('.busy-label').textContent = text;
+            const bar = el.querySelector('.busy-bar');
+            bar.classList.toggle('on', p !== null);
+            if (p !== null)
+                bar.firstElementChild.style.width = Math.max(0, Math.min(100, p)) + '%';
+        },
+        done() {
+            if (api.closed)
+                return;
+            api.closed = true;
+            el._n--;
+            if (el._n <= 0)
+                el.remove();
+        }
+    };
+    api.set(label, pct);
+    return api;
+}
 async function publishLibrary() {
+    const busy = startBusy('Preparing library…', 5);
+    try {
+        await nextPaint();
+        await publishLibraryInner(busy);
+    }
+    finally {
+        busy.done();
+    }
+}
+async function publishLibraryInner(busy) {
     const snapshot = librarySnapshot();
     if (!snapshot.components.length && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
         return;
     }
-    if (state.dirty)
+    if (state.dirty) {
+        busy.set('Saving the file…', 20);
         await save();
+    }
+    busy.set('Reading the images used by components…', 45);
+    await nextPaint();
     try {
         snapshot.assets = await snapshotAssets(snapshot.components);
     }
@@ -10690,6 +10876,8 @@ async function publishLibrary() {
     // Tebakan awal: komponen di page "Icons" atau bernama "Icon/…" adalah ikon; bisa diubah di form.
     const iconKeys = snapshot.components.filter(c => looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
     let draft;
+    busy.set('Comparing with the published version…', 75);
+    await nextPaint();
     try {
         draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot, iconKeys);
     }
@@ -10776,10 +10964,13 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             return showErrors(['Choose at least one component or icon to publish.']);
         submit.disabled = true;
         submit.textContent = iconRoots.length ? `Exporting ${iconRoots.length} icon${iconRoots.length === 1 ? '' : 's'}…` : 'Publishing…';
+        const busy = startBusy(iconRoots.length ? 'Exporting icons…' : 'Publishing…', iconRoots.length ? 0 : null);
         try {
-            const icons = await iconSources(iconRoots);
+            const icons = await iconSources(iconRoots, (i, total) => busy.set(`Exporting icons… ${i + 1} / ${total}`, (i / total) * 60));
+            busy.set(`Uploading ${chosen.length} component${chosen.length === 1 ? '' : 's'}${icons.length ? ` and ${icons.length} icon${icons.length === 1 ? '' : 's'}` : ''}…`, iconRoots.length ? 75 : null);
             submit.textContent = 'Publishing…';
             const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, icons }, mappings: chosen });
+            busy.done();
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
@@ -10787,6 +10978,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             renderAssets();
         }
         catch (err) {
+            busy.done();
             showErrors(err?.body?.errors || [err?.message || String(err)]);
             submit.disabled = false;
             version.oninput();
@@ -11203,12 +11395,43 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${ns.length} layers selected</span>`;
     if (n.component && parentSetOf(n))
         return `<span class="selection-name">${esc(n.name)}</span>`;
-    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200">`;
+    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200" style="width:${Math.min(Math.max(String(n.name).length + 1, 4), 28)}ch">`;
     // Frame / section / group can switch kind from a chevron next to the name.
-    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
-        return input + `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
-    return input;
+    return input + headerChevronHtml(n);
 }
+// Chevrons that sit right next to the layer name: the "···" button: kind switcher for frames / groups, instance swap for instances.
+function headerChevronHtml(n) {
+    if (n.isInstance && n.sourceId && !insideInstance(n))
+        return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
+    if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
+        return `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
+    return '';
+}
+// Point an instance at another component, rebuilding its layers.
+function swapInstanceTo(inst, compId) {
+    const target = componentById(compId);
+    if (!target || chainComponent(inst)?.id === target.id)
+        return;
+    transaction('Swap instance', () => {
+        const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(x => x.id));
+        page.nodes = page.nodes.filter(x => !gone.has(x.id));
+        inst.sourceId = target.id;
+        inst.overrides = {};
+        delete inst.propValues;
+        inst.w = target.w;
+        inst.h = target.h;
+        doc.refresh();
+        syncComponents(true);
+        doc.touch(inst);
+    });
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-instance-swap]');
+    const n = b && activeNode();
+    if (!n)
+        return;
+    openSwapPicker(b, { current: chainComponent(n)?.id, onPick: id => swapInstanceTo(n, id) });
+});
 function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
 function convertKind(kind) {
     const targets = selected().filter(n => kindOf(n) && kindOf(n) !== kind && !n.component && !n.componentSet && !n.isInstance && !n.sourceId);
@@ -11256,7 +11479,17 @@ document.addEventListener('click', e => {
     if (!b)
         return;
     const cur = kindOf(activeNode() || {}), r = b.getBoundingClientRect();
-    showMenu([['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k })), Math.max(8, r.right - 160), r.bottom + 4);
+    const items = [['section', 'Section'], ['frame', 'Frame'], ['group', 'Group']].map(([k, l]) => ({ label: (cur === k ? '✓ ' : ' ') + l, action: 'kind-' + k }));
+    // Size presets (mobile / tablet / desktop) sit under the kinds, for frames and sections.
+    if (cur === 'frame' || cur === 'section') {
+        items.push('-', { header: 'Size preset' });
+        for (const [group, list] of FRAME_PRESETS.filter(g => ['Phone', 'Tablet', 'Desktop'].includes(g[0]))) {
+            items.push({ header: group });
+            for (const [name, w, h] of list)
+                items.push({ label: ' ' + name + ' · ' + w + '×' + h, action: 'frame-preset:' + group + '|' + name });
+        }
+    }
+    showMenu(items, Math.max(8, r.right - 220), r.bottom + 4);
 });
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
@@ -12153,7 +12386,14 @@ function renderCpropPop() {
 }
 // Controls on an instance for the component's own properties and for exposed nested instances.
 function instancePropsHtml(owner, holder) {
-    const ctl = (owner, p, attrs = '') => {
+    const bindable = (owner, p, attrs, html) => {
+        if (attrs || (p.type !== 'text' && p.type !== 'boolean'))
+            return html;
+        const key = 'cprop:' + p.id, bv = owner.vars?.[key] && varItem(owner.vars[key]);
+        return bv ? varChip(key, bv) : html + varBindButton(key);
+    };
+    const ctl = (owner, p, attrs = '') => bindable(owner, p, attrs, ctl0(owner, p, attrs));
+    const ctl0 = (owner, p, attrs = '') => {
         const v = instancePropValue(owner, p);
         if (p.type === 'text')
             return `<input class="cmp-input" data-iprop="${p.id}" ${attrs} value="${esc(v ?? '')}" spellcheck="false" aria-label="${esc(p.name)}">`;
@@ -13420,6 +13660,28 @@ async function figToMidas(file, onProgress, abortSignal) {
             byParent.set(n.parentId, []);
         byParent.get(n.parentId).push(n);
     }
+    // A property's default is what Figma shows: the visibility / text of the layer it drives (a bool stored without a value is false).
+    for (const holder of allMidas.filter(x => x.cprops?.length)) {
+        const members = [];
+        const q = [holder.id];
+        while (q.length)
+            for (const c of byParent.get(q.shift()) || []) {
+                members.push(c);
+                q.push(c.id);
+            }
+        for (const p of holder.cprops) {
+            if (p.type === 'boolean') {
+                const b = members.find(m => m.propBind?.visible === p.id);
+                if (b)
+                    p.def = b.visible !== false;
+            }
+            else if (p.type === 'text') {
+                const b = members.find(m => m.propBind?.text === p.id && typeof m.text === 'string');
+                if (b)
+                    p.def = b.text;
+            }
+        }
+    }
     for (const n of allMidas.filter(x => x.componentSet)) {
         const vs = (byParent.get(n.id) || []).filter(x => x.component), parsed = vs.map(v => Object.fromEntries(v.name.split(',').map(s => s.trim().split('=')).filter(a => a.length === 2 && a[0].trim()).map(a => [a[0].trim(), a[1].trim()])));
         if (vs.length && parsed.every(p => Object.keys(p).length))
@@ -13622,6 +13884,9 @@ async function figToMidas(file, onProgress, abortSignal) {
             const targetGuid = guids[guids.length - 1];
             const targetSrc = idMap.get(gkey(targetGuid));
             let c = targetSrc ? clones.get(targetSrc) : null;
+            // An override whose path is just the component itself applies to the instance root.
+            if (!c && targetSrc && targetSrc === src.id)
+                c = n;
             if (!c && targetSrc) {
                 for (const clone of clones.values()) {
                     if (clone.sourceId === targetSrc) {
@@ -14940,6 +15205,8 @@ document.addEventListener('click', e => {
             renamePageInline(act.slice(12));
         else if (act.startsWith('page-delete:'))
             deletePage(act.slice(12));
+        else if (act.startsWith('frame-preset:'))
+            applyFramePreset(act.slice(13));
         else if (act.startsWith('page-duplicate:'))
             duplicatePage(act.slice(15));
         else if (act.startsWith('vwcoll:'))
@@ -15990,6 +16257,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Control' || e.key === '
 window.addEventListener('keyup', e => { if (e.key === 'Control' || e.key === 'Meta')
     state.ctrlDown = false; });
 window.addEventListener('blur', () => { state.ctrlDown = false; });
+// Ctrl + wheel (and trackpad pinch) never zooms the browser page, in the side panels or anywhere else; only the canvas handler uses it.
+document.addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
 area.addEventListener('wheel', e => {
     if (!$('#modal-backdrop').classList.contains('hidden'))
         return;
@@ -16826,7 +17095,7 @@ invalidate();
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
 window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
-$('#open-variables').addEventListener('click', () => toggleVarsWindow());
+$('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
 showHome({ thumb: false });
