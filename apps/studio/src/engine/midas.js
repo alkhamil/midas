@@ -2938,9 +2938,11 @@ document.addEventListener('change', e => {
 // ===== constraints + float =====
 const constraintSizes = new WeakMap();
 function applyConstraints(d) {
-    for (const f of d.nodes) {
-        if (f.type !== 'frame')
-            continue;
+    // Outer frames first: a parent that grows resizes its Scale / Left & Right children before those children resize their own.
+    const depth = n => { let k = 0; for (let c = d.get(n.parentId); c && k < 100; c = d.get(c.parentId))
+        k++; return k; };
+    const frames = d.nodes.filter(n => n.type === 'frame').map(n => [depth(n), n]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+    for (const f of frames) {
         const last = constraintSizes.get(f);
         if (!last) {
             constraintSizes.set(f, { w: f.w, h: f.h });
@@ -5910,7 +5912,8 @@ class Renderer {
                 return;
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
-                const entry = this.atlas.get(n, resolution, this.images);
+                // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
+                const entry = this.atlas.get(n, n.type === 'path' || n.type === 'line' ? Math.max(resolution, 2 * quality) : resolution, this.images);
                 if (!entry) {
                     count--;
                     return;
@@ -6809,7 +6812,8 @@ function switchPage(id) {
     invalidate();
 }
 // ----- pages: nesting folders, dividers, drag reordering -----
-function pageChildren(pid) { return doc.data.pages.filter(p => (p.parentId || null) === (pid || null)); }
+// Pages flagged `internal` hold library components pulled in from Figma's hidden canvas; they are not shown in the page list.
+function pageChildren(pid) { return doc.data.pages.filter(p => !p.internal && (p.parentId || null) === (pid || null)); }
 function pageHasNodes(p) { return (p.nodes?.length || 0) > 0; }
 function isPageDivider(p) { return /^-{2,}$/.test(String(p.name || '').trim()); }
 function pageIsFolder(p) { return pageChildren(p.id).length > 0; }
@@ -7277,7 +7281,8 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
             if (asInstance) {
                 copy.sourceId = src.id;
                 copy.component = false;
-                copy.isInstance = src.id === root.id;
+                // A nested instance stays an instance when its component is placed.
+                copy.isInstance = src.id === root.id || !!src.isInstance;
                 copy.overrides = {};
             }
             doc.add(copy);
@@ -7569,7 +7574,7 @@ function instantiate(id, at = null) {
                 n.parentId = src === id ? null : ids.get(n.parentId);
                 n.sourceId = src;
                 n.component = false;
-                n.isInstance = src === id;
+                n.isInstance = src === id || !!n.isInstance;
                 n.overrides = {};
                 doc.add(n);
                 if (src === id)
@@ -12028,7 +12033,8 @@ async function figToMidas(file, onProgress, abortSignal) {
     const varCollections = [], varItems = [], varByGuid = new Map(), modeByGuid = new Map(), collByGuid = new Map();
     const vkey = v => v?.guid ? gkey(v.guid) : null;
     for (const nc of fig.values()) {
-        if (nc.type !== 'VARIABLE_SET')
+        // Collections deleted in Figma stay in the file as soft-deleted records: they are not part of the document.
+        if (nc.type !== 'VARIABLE_SET' || nc.isSoftDeleted)
             continue;
         const c = { id: uid(), name: (nc.name || 'Collection').trim(), modes: [] };
         const modes = [...(nc.variableSetModes || [])].sort((a, b) => String(a.sortPosition ?? '') < String(b.sortPosition ?? '') ? -1 : 1);
@@ -12045,7 +12051,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     const VTYPE = { COLOR: 'color', FLOAT: 'number', STRING: 'string', BOOLEAN: 'boolean' };
     const varSources = [];
     for (const nc of fig.values()) {
-        if (nc.type !== 'VARIABLE')
+        if (nc.type !== 'VARIABLE' || nc.isSoftDeleted)
             continue;
         const coll = collByGuid.get(vkey(nc.variableSetID)), type = VTYPE[nc.variableResolvedType];
         if (!coll) {
@@ -12090,7 +12096,9 @@ async function figToMidas(file, onProgress, abortSignal) {
                 item.values[mode] = val;
         }
     // The variable a paint / field is bound to (only variables defined in this file).
-    const varFor = vd => vd?.value?.alias ? varByGuid.get(vkey(vd.value.alias)) || null : null;
+    // A boolean binding is often wrapped as IS_TRUTHY(variable): the single variable inside is the real binding.
+    const aliasOf = vd => vd?.value?.alias || vd?.value?.expressionValue?.expressionArguments?.map(a => a?.value?.alias).find(Boolean) || null;
+    const varFor = vd => { const a = aliasOf(vd); return a ? varByGuid.get(vkey(a)) || null : null; };
     const VAR_FIELD = { CORNER_RADIUS: 'radius', RECTANGLE_TOP_LEFT_CORNER_RADIUS: 'rTL', RECTANGLE_TOP_RIGHT_CORNER_RADIUS: 'rTR', RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS: 'rBL', RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS: 'rBR', WIDTH: 'w', HEIGHT: 'h', MIN_WIDTH: 'minW', MAX_WIDTH: 'maxW', MIN_HEIGHT: 'minH', MAX_HEIGHT: 'maxH', STACK_SPACING: 'gap', STACK_COUNTER_SPACING: 'gapCross', STACK_PADDING_LEFT: 'padL', STACK_PADDING_RIGHT: 'padR', STACK_PADDING_TOP: 'padT', STACK_PADDING_BOTTOM: 'padB', STROKE_WEIGHT: 'strokeWidth', BORDER_TOP_WEIGHT: 'strokeT', BORDER_RIGHT_WEIGHT: 'strokeR', BORDER_BOTTOM_WEIGHT: 'strokeB', BORDER_LEFT_WEIGHT: 'strokeL', OPACITY: 'opacity', VISIBLE: 'visible', TEXT_DATA: 'text', FONT_SIZE: 'fontSize', LINE_HEIGHT: 'lineHeight', LETTER_SPACING: 'letterSpacing', FONT_FAMILY: 'fontFamily', FONT_WEIGHT: 'fontWeight', FONT_STYLE: 'fontWeight' };
     const varTypeOf = new Map(varItems.map(i => [i.id, i.type]));
     const applyVarBindings = (n, f) => {
@@ -12363,7 +12371,8 @@ async function figToMidas(file, onProgress, abortSignal) {
         const ca = f.stackCounterAlignItems || 'MIN';
         n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
         const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
-        const prim = hug(f.stackPrimarySizing), counter = hug(f.stackCounterSizing);
+        // An omitted stackPrimarySizing is Figma's default (RESIZE_TO_FIT = hug); an omitted stackCounterSizing is FIXED.
+        const prim = hug(f.stackPrimarySizing ?? 'RESIZE_TO_FIT'), counter = hug(f.stackCounterSizing);
         n.layoutSizingH = horiz ? prim : counter;
         n.layoutSizingV = horiz ? counter : prim;
         if (f.stackWrap) {
@@ -12870,7 +12879,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     const canvasOf = f => { let x = f, i = 0; while (x && x.type !== 'CANVAS' && i++ < 300)
         x = fig.get(gkey(x.parentIndex?.guid)); return x; };
     const isInternal = f => { const c = canvasOf(f); return !!c && (c.internalOnly || c.name === 'Internal Only Canvas'); };
-    const lib = { id: uid(), name: 'Library components', nodes: [], canvas: null }, libPos = { x: 0, y: 0, rowH: 0 };
+    const lib = { id: uid(), name: 'Library components', nodes: [], canvas: null, internal: true }, libPos = { x: 0, y: 0, rowH: 0 };
     const wantSymbol = guid => {
         const g = realGuid(guid), key = g && gkey(g);
         if (!key || idMap.has(key))
@@ -13163,7 +13172,7 @@ async function figToMidas(file, onProgress, abortSignal) {
     }
     // instances whose layers are stored in the file: link them to the main component and keep every difference as an override
     const OMIT = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'name', 'variant', 'componentSet']);
-    const linkPair = (inst, src, root) => {
+    const linkPair = (inst, src, root, props = inst.propValues) => {
         inst.sourceId = src.id;
         inst.component = false;
         inst.isInstance = root;
@@ -13174,10 +13183,15 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (JSON.stringify(inst[k]) !== JSON.stringify(src[k]))
                 inst.overrides[k] = structuredClone(inst[k]);
         }
+        // A layer driven by a text / visibility property takes the instance's property value, not the stale text Figma kept on it.
+        if (!root && props && src.propBind)
+            for (const field of ['text', 'visible'])
+                if (src.propBind[field] && Object.hasOwn(props, src.propBind[field]))
+                    delete inst.overrides[field];
         const a = byParent.get(inst.id) || [], b = byParent.get(src.id) || [];
         if (a.length === b.length)
             a.forEach((c, i) => { if (c.name === b[i].name && c.type === b[i].type)
-                linkPair(c, b[i], false); });
+                linkPair(c, b[i], false, props); });
     };
     for (const { f, n } of linked) {
         assignProps(n, f);
@@ -13246,7 +13260,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.version = 0;
         }
     const name = (meta?.file_name || file.name.replace(/\.fig$/i, '') || 'Figma import').toString().slice(0, 120);
-    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes })), tokens: defaultTokens(), assets, variables: { collections: varCollections, items: varItems } };
+    const data = { format: 'midas', version: 1, name, pageId: pages[0].id, pages: pages.map(p => ({ id: p.id, name: p.name, nodes: p.nodes, ...(p.internal ? { internal: true } : {}) })), tokens: defaultTokens(), assets, variables: { collections: varCollections, items: varItems } };
     if (varItems.length)
         note(`imported ${varItems.length} variable${varItems.length === 1 ? '' : 's'} in ${varCollections.length} collection${varCollections.length === 1 ? '' : 's'}`);
     const notes = [...rep.notes].map(([k, v]) => v > 1 ? `${v}× ${k}` : k), skipped = [...rep.skipped].map(([k, v]) => `${v}× ${k.toLowerCase().replace(/_/g, ' ')}`);
