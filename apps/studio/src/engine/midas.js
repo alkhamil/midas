@@ -6751,7 +6751,7 @@ function renderPages() {
                 continue;
             }
             const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
-            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
             if (folder && open)
                 walk(p.id, depth + 1);
         }
@@ -6759,10 +6759,8 @@ function renderPages() {
     walk(null, 0);
     $('#page-list').innerHTML = out.join('') || '<div class="empty-state" style="padding:14px">No pages yet.</div>';
 }
-function movePage(srcId, targetId, mode) {
-    const pages = doc.data.pages, src = pages.find(p => p.id === srcId);
-    if (!src)
-        return;
+function movePage(srcIds, targetId, mode) {
+    const pages = doc.data.pages, ids = String(srcIds).split(',').filter(Boolean);
     const isDescendantOf = (id, of) => {
         let c = pages.find(p => p.id === id);
         while (c && c.parentId) {
@@ -6772,84 +6770,43 @@ function movePage(srcId, targetId, mode) {
         }
         return false;
     };
-    if (targetId && (targetId === srcId || isDescendantOf(targetId, srcId)))
+    // Keep the pages' current order, drop the target itself and anything already moving along with its own parent.
+    const srcs = pages.filter(p => ids.includes(p.id) && p.id !== targetId && !(targetId && isDescendantOf(targetId, p.id)) && !ids.includes(p.parentId));
+    if (!srcs.length)
         return;
     transaction('Reorder pages', () => {
-        pages.splice(pages.indexOf(src), 1);
-        if (!targetId) {
-            src.parentId = null;
-            pages.push(src);
+        // A moved page drags its own sub-pages along; they stay right behind it in the array.
+        const take = p => { const group = [p]; for (const c of pages) if (c.parentId === p.id) group.push(...take(c)); return group; };
+        const blocks = srcs.map(take), moving = new Set(blocks.flat());
+        for (const p of moving)
+            pages.splice(pages.indexOf(p), 1);
+        const t = targetId && pages.find(p => p.id === targetId);
+        if (!t) {
+            for (const b of blocks) { b[0].parentId = null; pages.push(...b); }
+            return;
+        }
+        let at;
+        if (mode === 'into') {
+            for (const b of blocks)
+                b[0].parentId = t.id;
+            state.expandedPages.add(t.id);
+            at = pages.indexOf(t) + 1;
+            while (pages[at] && isDescendantOf(pages[at].id, t.id))
+                at++;
         }
         else {
-            const t = pages.find(p => p.id === targetId);
-            if (!t) {
-                src.parentId = null;
-                pages.push(src);
-            }
-            else if (mode === 'into' && !pageHasNodes(t)) {
-                src.parentId = t.id;
-                pages.splice(pages.indexOf(t) + 1, 0, src);
-                state.expandedPages.add(t.id);
-            }
-            else {
-                src.parentId = t.parentId || null;
-                pages.splice(pages.indexOf(t) + (mode === 'after' ? 1 : 0), 0, src);
+            for (const b of blocks)
+                b[0].parentId = t.parentId || null;
+            at = pages.indexOf(t);
+            if (mode === 'after') {
+                at++;
+                while (pages[at] && isDescendantOf(pages[at].id, t.id))
+                    at++;
             }
         }
+        pages.splice(at, 0, ...blocks.flat());
+        state.pageSel = new Set();
     });
-}
-function deletePage(id) {
-    const p = doc.data.pages.find(x => x.id === id);
-    if (!p)
-        return;
-    if (doc.data.pages.length <= 1) {
-        toast('A document needs at least one page.');
-        return;
-    }
-    // No confirmation: the delete is a normal history step, so Ctrl+Z brings the page back.
-    toast(`Deleted “${p.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
-    transaction('Delete page', () => {
-        for (const c of doc.data.pages)
-            if (c.parentId === id)
-                c.parentId = p.parentId || null;
-        doc.data.pages = doc.data.pages.filter(x => x.id !== id);
-        state.pageViews.delete(id);
-        if (doc.data.pageId === id) {
-            doc.data.pageId = doc.data.pages[0].id;
-            state.selection.clear();
-            state.camera = { x: 60, y: 70, zoom: .6 };
-        }
-        doc.refresh();
-    });
-    setTimeout(() => fit(), 0);
-}
-// Copy a page with all of its layers. References inside the page (parents, instances of components on
-// this page, swaps, prototype links) point at the copies; references to other pages stay as they are.
-function duplicatePage(id) {
-    const src = doc.data.pages.find(x => x.id === id);
-    if (!src)
-        return;
-    const ids = new Map(src.nodes.map(n => [n.id, uid()])), remap = v => ids.get(v) ?? v;
-    const nodes = src.nodes.map(n => {
-        const c = structuredClone(n);
-        c.id = ids.get(n.id);
-        for (const k of ['parentId', 'sourceId', 'swapOf', 'prototypeTarget'])
-            if (c[k] != null)
-                c[k] = remap(c[k]);
-        if (Array.isArray(c.exposedNested))
-            c.exposedNested = c.exposedNested.map(remap);
-        c.version = 0;
-        return c;
-    });
-    const names = new Set(doc.data.pages.map(p => p.name));
-    let name = `${src.name} copy`, k = 2;
-    while (names.has(name))
-        name = `${src.name} copy ${k++}`;
-    const page = { ...structuredClone({ ...src, nodes: [] }), id: uid(), name, nodes };
-    transaction('Duplicate page', () => {
-        doc.data.pages.splice(doc.data.pages.indexOf(src) + 1, 0, page);
-    });
-    switchPage(page.id);
 }
 function renamePageInline(id) {
     const p = doc.data.pages.find(x => x.id === id);
@@ -6925,7 +6882,7 @@ function renderLayers() {
         return;
     }
     // While a search is open with a query, the results list takes the place of pages and layers.
-    const searching = !$('#layer-search-box').classList.contains('hidden') && $('#search-layers').value.trim() !== '';
+    const searching = !$('#layer-search-box').classList.contains('hidden');
     for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layers-heading'])
         $(id).classList.toggle('hidden', searching);
     $('#layer-tree').classList.toggle('hidden', searching);
@@ -9225,15 +9182,24 @@ function renameLayer() {
 function renameFile() { inlineRename($('#file-name'), doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
 function renameDocFrom(el) { inlineRename(el, doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
 function addPage() {
+    let created = null;
     transaction('Add page', () => {
         const nums = doc.data.pages.map(p => /^Page (\d+)$/.exec(p.name)).filter(Boolean).map(m => +m[1]);
-        const p = { id: uid(), name: `Page ${(nums.length ? Math.max(...nums) : 0) + 1}`, nodes: [], parentId: null };
-        doc.data.pages.push(p);
+        const cur = doc.page, p = { id: uid(), name: `Page ${(nums.length ? Math.max(...nums) : 0) + 1}`, nodes: [], parentId: cur?.parentId || null };
+        // The new page lands right below the page that is open (after its sub-pages), not at the bottom of the list.
+        let at = cur ? doc.data.pages.indexOf(cur) + 1 : doc.data.pages.length;
+        const under = id => { for (let c = doc.data.pages.find(x => x.id === id); c && c.parentId; c = doc.data.pages.find(x => x.id === c.parentId)) if (c.parentId === cur.id) return true; return false; };
+        while (cur && doc.data.pages[at] && under(doc.data.pages[at].id))
+            at++;
+        doc.data.pages.splice(at, 0, p);
         doc.data.pageId = p.id;
         doc.refresh();
         state.selection.clear();
         fit();
+        created = p;
     });
+    if (created)
+        setTimeout(() => renamePageInline(created.id), 0);
 }
 function editTokens() {
     modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
@@ -14227,6 +14193,22 @@ document.addEventListener('click', e => {
         const p = doc.data.pages.find(x => x.id === page.dataset.page);
         if (!p || isPageDivider(p))
             return;
+        if (e.shiftKey || e.altKey) {
+            // Shift / Alt + click collects several pages so they can be dragged into a folder together.
+            state.pageSel ||= new Set();
+            if (!state.pageSel.size && p.id !== doc.page.id)
+                state.pageSel.add(doc.page.id);
+            if (state.pageSel.has(p.id))
+                state.pageSel.delete(p.id);
+            else
+                state.pageSel.add(p.id);
+            renderPages();
+            return;
+        }
+        if (state.pageSel?.size) {
+            state.pageSel.clear();
+            renderPages();
+        }
         const now = performance.now(), last = state.lastPageClick;
         if (last && last.id === p.id && now - last.t < 420) {
             state.lastPageClick = null;
@@ -14435,7 +14417,8 @@ $('#page-list').addEventListener('dragstart', e => {
     const row = e.target.closest('[data-page]');
     if (!row || row.dataset.divider)
         return;
-    e.dataTransfer.setData('application/x-midas-page', row.dataset.page);
+    const group = state.pageSel?.has(row.dataset.page) && state.pageSel.size > 1 ? [...state.pageSel] : [row.dataset.page];
+    e.dataTransfer.setData('application/x-midas-page', group.join(','));
     e.dataTransfer.effectAllowed = 'move';
 });
 $('#page-list').addEventListener('dragover', e => {
@@ -14451,7 +14434,7 @@ $('#page-list').addEventListener('dragover', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     const r = row.getBoundingClientRect(), rel = (e.clientY - r.top) / Math.max(1, r.height);
     let mode = rel < .28 ? 'before' : rel > .72 ? 'after' : 'into';
-    if (mode === 'into' && (!p || pageHasNodes(p)))
+    if (mode === 'into' && (!p || isPageDivider(p)))
         mode = rel < .5 ? 'before' : 'after';
     row.classList.add('drop-' + mode);
     state.pageDrop = { targetId: row.dataset.page, mode };
@@ -14695,6 +14678,10 @@ function srSnippet(text, q) {
 }
 function renderSearchResults() {
     const box = $('#search-results'), { q, results, pageHits } = srCompute();
+    if (!q) {
+        box.innerHTML = '<div class="sr-empty">Search layers and pages by name or text.</div>';
+        return;
+    }
     const LIMIT = 1000, scopeLabel = SR.scope === 'all' ? 'All pages' : 'This page';
     const countLabel = results.length ? `${results.length.toLocaleString()} result${results.length === 1 ? '' : 's'}` : SR.scope === 'all' ? 'No results' : 'No results on this page';
     let html = `<div class="sr-head"><span>${countLabel} · </span><button class="sr-scope" data-sr-scope>${scopeLabel}${icon('chevronDown', 10)}</button><span class="sr-nav"><button class="icon-button small" data-sr-step="-1" title="Previous result (Shift+Enter)" aria-label="Previous result">${icon('chevronDown', 12)}</button><button class="icon-button small" data-sr-step="1" title="Next result (Enter)" aria-label="Next result">${icon('chevronDown', 12)}</button></span></div>`;
