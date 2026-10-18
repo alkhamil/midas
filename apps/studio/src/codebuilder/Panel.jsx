@@ -193,7 +193,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
             )}
             {activeScreen && canvasHost && createPortal(
                 <Workspace
-                    screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={activeScreen.module.entity} layout={layout}
+                    screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={{ ...activeScreen.module.entity, moduleName: activeScreen.module.name }} layout={layout}
                     title={layout.items.find(i => i.moduleId === rootOf(allModules, activeScreen.module).id)?.label || activeScreen.module.label}
                     module={activeScreen.module} screens={screens} modules={allModules}
                     actions={{ setNode, setLayout, setFields }} onGenerate={() => setForm('generate')}
@@ -336,7 +336,7 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
                         ? <ScreenForm module={m} selection={selection} onCancel={() => setForm(null)} onSave={s => { onUpdate(m.id, mm => ({ screens: [...mm.screens, { id: uid('scr'), ...s }] })); setForm(null); }} />
                         : <button className="cb-link" onClick={() => setForm({ screenFor: m.id })}>＋ Register frame</button>}
                     {crud && (fields
-                        ? <><EntityEditor module={m} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Selesai</button></>
+                        ? <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Selesai</button></>
                         : <button className="cb-link" onClick={() => setForm({ fieldsFor: m.id })}>Entity fields ({m.entity?.fields?.length || 0})</button>)}
                     {editing
                         ? <ModuleForm pages={pages} modules={modules} initial={m} onCancel={() => setForm(null)} onSave={v => { onUpdate(m.id, () => v); setForm(null); }} />

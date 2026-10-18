@@ -19,8 +19,10 @@ const fieldShape = z.object({
     filterable: z.boolean().default(false),
     /** Nilai untuk tipe enum. */
     options: z.array(z.string().min(1)).optional(),
-    /** Module tujuan untuk tipe relation. */
-    relation: z.string().optional(),
+    /** Aturan validasi tambahan (selain `required`): `min:N`, `max:N`, `email`, `pattern:REGEX`, `withoutemoticon`. */
+    rules: z.array(z.string().max(300)).optional(),
+    /** Relasi (tipe relation): module tujuan + field label opsi. String = nama module (format lama). */
+    relation: z.union([z.string(), z.object({ moduleId: z.string().min(1), labelField: z.string().optional() })]).optional(),
 });
 
 /** Konfigurasi satu node di screen (diatur lewat Properties Inspector): override properti, perilaku, binding data. */
@@ -83,6 +85,22 @@ export const configShape = z.object({ modules: z.array(moduleShape).default([]),
 export type BuilderConfig = z.infer<typeof configShape>;
 export type BuilderModule = BuilderConfig['modules'][number];
 
+/** Format aturan validasi yang dikenal; mengembalikan pesan error atau null. */
+function ruleError(rule: string): string | null {
+    if (/^(required|email|withoutemoticon)$/.test(rule)) return null;
+    if (/^(min|max):-?\d+(\.\d+)?$/.test(rule)) return null;
+    if (rule.startsWith('pattern:') && rule.length > 8) {
+        try {
+            new RegExp(rule.slice(8));
+            return null;
+        }
+        catch {
+            return `pola regex tidak valid: ${rule.slice(8)}`;
+        }
+    }
+    return `aturan validasi tidak dikenal: ${rule}`;
+}
+
 export const emptyConfig = (): BuilderConfig => ({ modules: [] });
 
 /** `crud` bila ada screen list/create/edit/view, `custom` bila hanya custom, `empty` bila belum ada screen. */
@@ -129,6 +147,17 @@ export function validateConfig(config: BuilderConfig): string[] {
             if (fieldNames.has(f.name)) errors.push(`Field ${f.name} dipakai dua kali di module ${m.name}`);
             fieldNames.add(f.name);
             if (f.type === 'enum' && !f.options?.length) errors.push(`Field ${f.name} (enum) belum punya pilihan`);
+            for (const r of f.rules ?? []) {
+                const bad = ruleError(r);
+                if (bad) errors.push(`Field ${f.name} di module ${m.name}: ${bad}`);
+            }
+            if (f.type === 'relation' && f.relation && typeof f.relation === 'object') {
+                const rel = f.relation;
+                const target = byId.get(rel.moduleId);
+                if (!target) errors.push(`Field ${f.name} di module ${m.name}: module tujuan relasi tidak ditemukan`);
+                else if (rel.labelField && !(target.entity?.fields ?? []).some(x => x.name === rel.labelField))
+                    errors.push(`Field ${f.name} di module ${m.name}: field label ${rel.labelField} tidak ada di module ${target.name}`);
+            }
         }
     }
     return errors;

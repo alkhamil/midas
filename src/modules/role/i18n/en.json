@@ -1,0 +1,28 @@
+{
+  "role": {
+    "list": {
+      "t1": "Tambah role"
+    },
+    "create": {
+      "t1": "Kembali",
+      "t2": "Batal",
+      "t3": "Simpan"
+    },
+    "edit": {
+      "t1": "Kembali",
+      "t2": "Batal",
+      "t3": "Simpan"
+    },
+    "view": {
+      "t1": "Ubah",
+      "t2": "Nama role",
+      "t3": "Editor",
+      "t4": "Deskripsi",
+      "t5": "Mengelola konten, tanpa akses pengaturan",
+      "t6": "Status",
+      "t7": "Aktif",
+      "t8": "Jumlah user",
+      "t9": "12"
+    }
+  }
+}

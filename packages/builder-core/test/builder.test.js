@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { autoAction, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, resolveLayout, screenPath, screenTree, tableModel, zipFiles } from '../src/index.js';
+import { autoAction, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -133,4 +133,47 @@ test('zipFiles writes a readable stored archive', () => {
     const view = new DataView(zip.buffer);
     assert.equal(view.getUint32(0, true), 0x04034b50);
     assert.equal(view.getUint16(zip.length - 12, true), 2); // jumlah entri di end-of-central-directory
+});
+
+test('rules helpers round-trip the base-code rule format', () => {
+    const f = withRule(withRule({ name: 'n', type: 'string' }, 'min', '3'), 'email', true);
+    assert.deepEqual(f.rules, ['min:3', 'email']);
+    assert.deepEqual(parseRules(f), { required: false, min: '3', max: '', email: true, pattern: '', noEmoticon: false });
+    assert.equal(withRule(withRule(f, 'min', ''), 'email', false).rules, undefined);
+    assert.equal(ruleError('min:3'), null);
+    assert.match(ruleError('pattern:('), /regex/);
+    assert.match(ruleError('bogus'), /tidak dikenal/);
+});
+
+test('relationOf resolves object and legacy string relations', () => {
+    const modules = [{ id: 'r', name: 'role', entity: { fields: [{ name: 'code', type: 'string' }, { name: 'name', type: 'string' }] } }];
+    assert.equal(relationOf({ type: 'relation', relation: { moduleId: 'r', labelField: 'code' } }, modules).labelField, 'code');
+    assert.equal(relationOf({ type: 'relation', relation: 'role' }, modules).labelField, 'name');
+    assert.equal(relationOf({ type: 'relation', relation: { moduleId: 'zzz' } }, modules), null);
+    assert.deepEqual(relationSampleOptions({ type: 'relation', relation: 'role' }, modules)[0], { label: 'Role 1', value: '1' });
+});
+
+test('generator emits validation and relation options from the target module', () => {
+    const role = { id: 'm2', name: 'role', label: 'Role', parentId: null, pageId: 'p', entity: { fields: [{ name: 'name', type: 'string' }] }, screens: [{ id: 'r-list', frameId: 'list', pageId: 'p', name: 'List', role: 'list', nodes: {} }] };
+    const user = mod({ entity: { fields: [
+        { name: 'fullName', label: 'Full name', type: 'string', required: true, rules: ['min:3', 'email', 'pattern:^[A-Z]'] },
+        { name: 'role', label: 'Role', type: 'relation', relation: { moduleId: 'm2', labelField: 'name' } },
+    ] } });
+    // form: label "Role" mengikat select relasi
+    nodes.push({ id: 'f-role', parentId: 'form', type: 'frame', isInstance: true, sourceId: 'sel-v', w: 400, h: 60, name: 'Role', propValues: { 'sel-label': 'Role' } });
+    const p = { name: 'Demo', config: { modules: [user, role] } };
+    const sel = comp('sel', 'SelectField');
+    const ctx2 = makeContext({ nodes: [...nodes, sel, { id: 'sel-v', parentId: 'sel-set', name: 'Default', type: 'frame', component: true, variant: {}, libRef: 'lib:sel-v' }], variables, mappings: [...mappings, { componentKey: 'sel', exportName: 'SelectField', propsMap: { props: [{ source: 'text', key: 'sel-label', name: 'label', type: 'string' }] } }], libraryId: 'lib', fileId: 'app' });
+    const { files } = generateProject(p, buildTrees(p.config, ctx2));
+    const v = files['src/modules/user/validation/userValidation.ts'];
+    assert.match(v, /validation\.required/);
+    assert.match(v, /validation\.minLength/);
+    assert.match(v, /validation\.email/);
+    assert.match(v, /new RegExp\('\^\[A-Z\]'\)/);
+    const create = files['src/modules/user/pages/UserCreatePage.tsx'];
+    assert.match(create, /validateUser\(values, 'create'\)/);
+    assert.match(create, /error=\{errors\.fullName\}/);
+    assert.match(create, /import \{ useRoleList \} from '\.\.\/\.\.\/role\/api\/queries'/);
+    assert.match(create, /options=\{roleOptions\}/);
+    assert.match(create, /label: String\(r\.name \?\? ''\)/);
 });

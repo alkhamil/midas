@@ -4,7 +4,7 @@
 // Hasil: { files: { 'src/…': isi }, warnings: [] }. Berisi module (`src/modules/<path>`) dan file
 // `src/app/generated/*` (route, menu, locale, layout) yang diimpor base project — jadi regenerate aman:
 // file hasil generate tidak pernah bercampur dengan kode tulisan tangan.
-import { autoAction, fieldBinding, pascalCase, resolveLayout, screenPath, tableModel, titleCase } from './model.js';
+import { autoAction, fieldBinding, sampleValue, isNumericField, parseRules, pascalCase, relationOf, resolveLayout, screenPath, tableModel, titleCase } from './model.js';
 import { CRUD_ROLES, camelCase, kebabCase, screenTree } from './screen.js';
 
 const q = s => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
@@ -51,6 +51,8 @@ class PageBuilder {
         this.usesValues = false;
         this.usesSearch = false;
         this.usesTable = false;
+        this.relations = new Map(); // nama field → { rel, hook } untuk select relasi
+        this.hasRules = (mod.entity?.fields || []).some(f => hasAnyRule(f));
     }
 
     t(text) {
@@ -60,6 +62,13 @@ class PageBuilder {
     }
 
     get fields() { return this.mod.entity?.fields || []; }
+
+    /** Relasi field yang bisa dibaca lewat query module tujuan (hasil generate); selain itu null → opsi contoh. */
+    relTarget(f) {
+        const rel = relationOf(f, this.ctx.modules);
+        if (!rel || !rel.module.entity?.fields?.length || !rel.module.screens.some(s => CRUD_ROLES.includes(s.role))) return null;
+        return rel;
+    }
 
     effectiveAction(node) {
         const a = node.cfg?.action;
@@ -129,20 +138,32 @@ class PageBuilder {
         const f = this.hasForm || this.screen.role === 'view' ? fieldBinding({ fields: this.fields }, node) : null;
         if (f && ['TextField', 'TextAreaField', 'PasswordField'].includes(name)) {
             this.usesValues = true;
-            return wrap({ skip: ['value'], attrs: [`value={String(values.${f.name} ?? '')}`, `onChange={(e) => setField(${q(f.name)}, e.target.value)}`, ...(this.screen.role === 'view' ? ['readOnly'] : [])] });
+            return wrap({ skip: ['value', 'error'], attrs: [`value={String(values.${f.name} ?? '')}`, `onChange={(e) => setField(${q(f.name)}, e.target.value)}`, ...this.errAttr(f), ...(this.screen.role === 'view' ? ['readOnly'] : [])] });
         }
         if (f && name === 'SelectField') {
             this.usesValues = true;
-            // Relation: pilihan contoh sampai endpoint module tujuan dihubungkan (ganti dengan query ke module itu).
-            const opts = f.type === 'enum' ? f.options.map(o => `{ label: ${q(titleCase(o))}, value: ${q(o)} }`).join(', ')
-                : f.type === 'relation' ? [1, 2, 3].map(i => `{ label: ${q(`${titleCase(f.relation || f.name)} ${i}`)}, value: ${q(`${titleCase(f.relation || f.name)} ${i}`)} }`).join(', ') : '';
-            return wrap({ skip: ['options', 'value'], attrs: [`options={[${opts}]}`, `value={String(values.${f.name} ?? '')}`, `onChange={(e) => setField(${q(f.name)}, e.target.value)}`] });
+            let opts;
+            const rel = f.type === 'relation' ? this.relTarget(f) : null;
+            if (rel) {
+                this.relations.set(f.name, rel);
+                opts = `${f.name}Options`;
+            }
+            else if (f.type === 'relation') opts = `[${[1, 2, 3].map(i => `{ label: ${q(`${titleCase(f.name)} ${i}`)}, value: ${q(String(i))} }`).join(', ')}]`;
+            else opts = `[${(f.options || []).map(o => `{ label: ${q(titleCase(o))}, value: ${q(o)} }`).join(', ')}]`;
+            return wrap({ skip: ['options', 'value', 'error'], attrs: [`options={${rel ? opts : opts}}`, `value={String(values.${f.name} ?? '')}`, `onChange={(e) => setField(${q(f.name)}, e.target.value)}`, ...this.errAttr(f)] });
         }
         if (f && name === 'SwitchField') {
             this.usesValues = true;
             return wrap({ skip: ['checked'], attrs: [`checked={Boolean(values.${f.name})}`, `onCheckedChange={(v) => setField(${q(f.name)}, v)}`] });
         }
         return wrap();
+    }
+
+    /** Atribut pesan error validasi (hanya form create/edit di module yang punya aturan). */
+    errAttr(f) {
+        if (!(this.hasForm && this.hasRules && hasAnyRule(f))) return [];
+        this.usesErrors = true;
+        return [`error={errors.${f.name}}`];
     }
 
     table(node) {
@@ -166,6 +187,11 @@ class PageBuilder {
         ].join('\n');
     }
 }
+
+const hasAnyRule = f => {
+    const r = parseRules(f);
+    return (r.required && !['boolean', 'number'].includes(f.type)) || r.min !== '' || r.max !== '' || r.email || !!r.pattern || r.noEmoticon;
+};
 
 const ROLE_PAGE = { list: 'List', create: 'Create', edit: 'Edit', view: 'View' };
 /** Nama komponen halaman: `<Module><Role>Page` untuk CRUD, nama screen untuk custom. */
@@ -197,18 +223,39 @@ function pageFile(ctx, mod, screen, tree) {
     if (isList) uiList.push('type Column');
     if (uiList.length) imports.push(`import { ${uiList.join(', ')} } from '@midas/ui-cms';`);
     const body = [], lines = [];
+    // Query module tujuan untuk relasi (opsi select di form, label kolom di list).
+    const dirSegs = moduleDir(ctx.modules, mod).split('/').length;
+    const relImports = new Map(); // path import → nama hook
+    const relLines = [];
+    const useRel = (rel, varName) => {
+        const hook = `use${pascalCase(rel.module.name)}List`;
+        relImports.set(`${'../'.repeat(dirSegs + 1)}${moduleDir(ctx.modules, rel.module)}/api/queries`, hook);
+        relLines.push(`  const ${varName} = ${hook}({ page: 1, size: 1000, search: '' }).data?.rows ?? [];`);
+    };
     if (isList) {
         const hooks = [`use${E}List`, ...(b.needDelete ? [`useDelete${E}`] : [])];
         imports.push(`import { ${hooks.join(', ')} } from '../api/queries';`, `import type { ${E} } from '../types';`);
+        const relCols = new Map();
+        for (const c of b.tableModel.columns) {
+            if (c.type !== 'relation') continue;
+            const rel = b.relTarget(b.fields.find(f => f.name === c.key));
+            if (rel) { relCols.set(c.key, rel); useRel(rel, `${c.key}Rel`); }
+        }
         const cols = b.tableModel.columns.map(c => {
+            const rel = relCols.get(c.key);
+            if (rel) return `  { key: ${q(c.key)}, header: ${q(c.header)}, render: (r) => String(${c.key}Rel.find((o) => o.id === r.${c.key})?.${rel.labelField} ?? r.${c.key}) },`;
             const w = c.type === 'boolean' ? ', width: 120' : c.type === 'enum' ? ', width: 140' : '';
             const render = c.type === 'boolean' ? `, render: (r) => <Badge variant={r.${c.key} ? 'success' : 'neutral'}>{r.${c.key} ? 'Aktif' : 'Nonaktif'}</Badge>`
                 : c.type === 'enum' ? `, render: (r) => <Badge variant="neutral">{String(r.${c.key})}</Badge>` : '';
             return `  { key: ${q(c.key)}, header: ${q(c.header)}${w}${render} },`;
         });
-        body.push(`const PAGE_SIZE = ${b.tableModel.pageSize};`, `const columns: Column<${E}>[] = [\n${cols.join('\n')}\n];`, '');
+        const colsCode = `const columns: Column<${E}>[] = [\n${cols.join('\n')}\n];`;
+        body.push(`const PAGE_SIZE = ${b.tableModel.pageSize};`);
+        if (!relCols.size) body.push(colsCode, '');
+        else body.push('');
         lines.push('  const [page, setPage] = useState(1);', b.usesSearch ? "  const [search, setSearch] = useState('');" : "  const search = '';");
         lines.push(`  const { data } = use${E}List({ page, size: PAGE_SIZE, search });`, '  const rows = data?.rows ?? [];', '  const total = data?.total ?? 0;');
+        if (relCols.size) lines.push(...relLines.splice(0), ...colsCode.split('\n').map(l => `  ${l}`));
         if (b.needDelete) lines.push(`  const remove = useDelete${E}();`, "  const onDelete = (id: string) => { if (window.confirm(t('common.confirmDelete', { defaultValue: 'Hapus data ini?' }))) remove.mutate(id); };");
     }
     if (values) {
@@ -216,8 +263,20 @@ function pageFile(ctx, mod, screen, tree) {
         const defaults = b.fields.map(f => `${f.name}: ${f.type === 'boolean' ? 'false' : f.type === 'number' ? '0' : f.type === 'enum' ? q(f.options?.[0] ?? '') : "''"}`).join(', ');
         const hooks = screen.role === 'create' ? [`useCreate${E}`] : screen.role === 'edit' ? [`use${E}Detail`, `useUpdate${E}`] : [`use${E}Detail`];
         imports.push(`import type { ${input} } from '../types';`, `import { ${hooks.join(', ')} } from '../api/queries';`);
+        for (const [name, rel] of b.relations) {
+            useRel(rel, `${name}Rel`);
+            relLines.push(`  const ${name}Options = ${name}Rel.map((r) => ({ label: String(r.${rel.labelField} ?? ''), value: r.id }));`);
+        }
+        lines.push(...relLines.splice(0));
+        if (form && b.hasRules) {
+            imports.push(`import { validate${E}, type ${E}Errors } from '../validation/${camelCase(mod.name)}Validation';`);
+            lines.push(`  const [${b.usesErrors ? 'errors' : ''}, setErrors] = useState<${E}Errors>({});`);
+        }
         lines.push(`  const [values${b.usesValues || record ? ', setValues' : ''}] = useState<${input}>({ ${defaults} });`);
-        if (b.usesValues) lines.push(`  const setField = <K extends keyof ${input}>(key: K, value: ${input}[K]) => setValues((v) => ({ ...v, [key]: value }));`);
+        if (b.usesValues) {
+            const clear = form && b.hasRules ? ' setErrors((e) => ({ ...e, [key]: undefined }));' : '';
+            lines.push(`  const setField = <K extends keyof ${input}>(key: K, value: ${input}[K]) => {`, '    setValues((v) => ({ ...v, [key]: value }));' + clear, '  };');
+        }
         if (record) {
             lines.push("  const { id = '' } = useParams();", `  const { data: record } = use${E}Detail(id);`);
             lines.push('  useEffect(() => { if (record) { const { id: _id, ...rest } = record; setValues(rest); } }, [record]);');
@@ -227,9 +286,11 @@ function pageFile(ctx, mod, screen, tree) {
     }
     if (navigate) lines.unshift('  const navigate = useNavigate();');
     if (form) {
-        lines.push('  const saving = save.isPending;', '  const onSubmit = (e: React.FormEvent) => {', '    e.preventDefault();',
+        const check = b.hasRules ? [`    const found = validate${E}(values, ${q(screen.role)});`, '    setErrors(found);', '    if (Object.keys(found).length) return;'] : [];
+        lines.push('  const saving = save.isPending;', '  const onSubmit = (e: React.FormEvent) => {', '    e.preventDefault();', ...check,
             screen.role === 'edit' ? '    save.mutate({ id, input: values }, { onSuccess: () => navigate(-1) });' : '    save.mutate(values, { onSuccess: () => navigate(-1) });', '  };');
     }
+    for (const [path, hook] of relImports) imports.push(`import { ${hook} } from '${path}';`);
     const tid = `"${kebabCase(mod.name)}-${screen.role}-page"`;
     const wrap = form ? [`    <form onSubmit={onSubmit} data-testid=${tid}>`, '    </form>'] : [`    <div data-testid=${tid}>`, '    </div>'];
     const name = pageNameOf(mod, screen);
@@ -243,23 +304,69 @@ function typesFile(mod) {
     return `${GEN_HEADER}export interface ${E} {\n  id: string;\n${fields.map(f => `  ${f.name}${f.required ? '' : '?'}: ${tsType(f)};`).join('\n')}\n}\n\nexport type ${E}Input = Omit<${E}, 'id'>;\n\nexport interface ${E}ListParams {\n  page: number;\n  size: number;\n  search?: string;\n}\n`;
 }
 
-function sampleLit(fields, n) {
+/** `validation/<module>Validation.ts`: aturan field (required/min/max/email/pattern/withoutemoticon) → pesan i18n `validation.*`. */
+function validationFile(mod, sharedRel) {
+    const E = pascalCase(mod.name);
+    const out = [];
+    let usesEmoticon = false, usesMode = false;
+    for (const f of mod.entity.fields) {
+        const r = parseRules(f);
+        const label = q(f.label || titleCase(f.name));
+        const v = `values.${f.name}`;
+        const checks = [];
+        const textual = !isNumericField(f) && f.type !== 'boolean';
+        if (r.required && textual) {
+            const guard = f.type === 'password' ? " && mode === 'create'" : '';
+            if (guard) usesMode = true;
+            checks.push(`if (isEmpty(${v})${guard}) errors.${f.name} = t('validation.required', { label: ${label} });`);
+        }
+        const rest = [];
+        if (r.min !== '' && isFinite(Number(r.min))) rest.push(isNumericField(f)
+            ? `if (Number(${v}) < ${Number(r.min)}) errors.${f.name} = t('validation.minValue', { label: ${label}, count: ${Number(r.min)} });`
+            : `if (String(${v}).length < ${Number(r.min)}) errors.${f.name} = t('validation.minLength', { label: ${label}, count: ${Number(r.min)} });`);
+        if (r.max !== '' && isFinite(Number(r.max))) rest.push(isNumericField(f)
+            ? `if (Number(${v}) > ${Number(r.max)}) errors.${f.name} = t('validation.maxValue', { label: ${label}, count: ${Number(r.max)} });`
+            : `if (String(${v}).length > ${Number(r.max)}) errors.${f.name} = t('validation.maxLength', { label: ${label}, count: ${Number(r.max)} });`);
+        if (r.email && textual) rest.push(`if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(${v}))) errors.${f.name} = t('validation.email');`);
+        if (r.pattern && textual) rest.push(`if (!new RegExp(${q(r.pattern)}).test(String(${v}))) errors.${f.name} = t('validation.pattern', { label: ${label} });`);
+        if (r.noEmoticon && textual) { usesEmoticon = true; rest.push(`if (hasEmoticon(String(${v}))) errors.${f.name} = t('validation.noEmoticon');`); }
+        if (!checks.length && !rest.length) continue;
+        const body = [...checks, ...(rest.length ? [`${checks.length ? 'else {' : `if (!isEmpty(${v})) {`}`, ...rest.map(l => `  ${l}`), '}'] : [])];
+        // else-if berantai: tiap aturan menimpa pesan sebelumnya; yang terakhir (paling spesifik) menang.
+        out.push(...body.map(l => `  ${l}`));
+    }
+    return `${GEN_HEADER}import { t } from 'i18next';
+${usesEmoticon ? `import { hasEmoticon } from '${sharedRel}shared/utils';\n` : ''}import type { ${E}Input } from '../types';
+
+export type ${E}Errors = Partial<Record<keyof ${E}Input, string>>;
+
+const isEmpty = (v: unknown) => v === undefined || v === null || String(v).trim() === '';
+
+/** Validasi form ${mod.label}; mengembalikan pesan error per field (kosong = valid). */
+export function validate${E}(values: ${E}Input, ${usesMode ? 'mode' : '_mode'}: 'create' | 'edit'): ${E}Errors {
+  const errors: ${E}Errors = {};
+${out.join('\n')}
+  return errors;
+}
+`;
+}
+
+function sampleLit(fields, n, modName) {
     const rows = Array.from({ length: n }, (_, i) => {
-        const o = Object.fromEntries(fields.map(f => [f.name, sampleOf(f, i)]));
+        const o = Object.fromEntries(fields.map(f => [f.name, sampleOf(f, i, modName)]));
         return `  { id: '${i + 1}', ${Object.entries(o).map(([k, v]) => `${k}: ${lit(v)}`).join(', ')} },`;
     });
     return rows.join('\n');
 }
-function sampleOf(f, i) {
+function sampleOf(f, i, modName) {
     if (f.type === 'enum') return f.options?.[i % f.options.length] ?? '';
     if (f.type === 'number') return (i + 1) * 10;
     if (f.type === 'boolean') return i % 3 !== 2;
     if (f.type === 'password') return '';
+    if (f.type === 'relation') return String((i % 3) + 1);
     if (f.type === 'date') return `2026-0${(i % 9) + 1}-15`;
     if (f.type === 'datetime') return `2026-0${(i % 9) + 1}-15T09:00:00`;
-    if (/email/i.test(f.name)) return `user${i + 1}@contoh.id`;
-    if (/name|nama|title|judul/i.test(f.name)) return ['Budi Santoso', 'Ani Wijaya', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo'][i % 5];
-    return `${titleCase(f.name)} ${i + 1}`;
+    return sampleValue(f, i, modName);
 }
 
 function apiFiles(mod, sharedRel) {
@@ -271,7 +378,7 @@ function apiFiles(mod, sharedRel) {
 export const USE_MOCK = { list: true, detail: true, create: true, update: true, remove: true };
 
 let store: ${E}[] = [
-${sampleLit(mod.entity.fields, 5)}
+${sampleLit(mod.entity.fields, 5, mod.name)}
 ];
 const delay = <T,>(v: T) => new Promise<T>((r) => setTimeout(() => r(v), 150));
 
@@ -385,6 +492,7 @@ export function generateProject(project, trees) {
         if (crud) {
             files[`${base}types/index.ts`] = typesFile(mod);
             for (const [p, c] of Object.entries(apiFiles(mod, sharedRel))) files[base + p] = c;
+            if (mod.entity.fields.some(hasAnyRule)) files[`${base}validation/${camelCase(mod.name)}Validation.ts`] = validationFile(mod, sharedRel);
             files[`${base}api/index.ts`] = `${GEN_HEADER}export * from './queries';\n`;
         }
         const ns = mod.name.replace(/-/g, '_');

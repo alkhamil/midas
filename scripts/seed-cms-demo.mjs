@@ -205,10 +205,10 @@ const config = {
         {
             id: 'mod-user', name: 'user', label: 'User', parentId: null, permissionKey: 'user', pageId: pageOf('User'),
             entity: { fields: [
-                str('name', 'Nama lengkap', { required: true, sortable: true, filterable: true }),
-                str('email', 'Email', { required: true, sortable: true, filterable: true }),
-                { name: 'role', label: 'Role', type: 'relation', relation: 'role', required: true, sortable: false, filterable: true },
-                { name: 'password', label: 'Kata sandi', type: 'password', required: true, sortable: false, filterable: false },
+                str('name', 'Nama lengkap', { required: true, sortable: true, filterable: true, rules: ['min:3', 'max:100', 'withoutemoticon'] }),
+                str('email', 'Email', { required: true, sortable: true, filterable: true, rules: ['email'] }),
+                { name: 'role', label: 'Role', type: 'relation', relation: { moduleId: 'mod-role', labelField: 'name' }, required: true, sortable: false, filterable: true },
+                { name: 'password', label: 'Kata sandi', type: 'password', required: true, rules: ['min:8'], sortable: false, filterable: false },
                 { name: 'active', label: 'Akun aktif', type: 'boolean', required: false, sortable: false, filterable: true },
             ] },
             screens: [

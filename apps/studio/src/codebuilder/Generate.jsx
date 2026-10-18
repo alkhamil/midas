@@ -2,6 +2,7 @@
 //  1. CLI (disarankan): `npx @midas/cli generate "<project>" --out .` di repo aplikasi — bisa diulang kapan pun.
 //  2. Unduh .zip dari Studio.
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { buildTrees, generateProject, zipFiles } from '@midas/builder-core';
 
 export function GenerateDialog({ project, ctx, onClose }) {
@@ -37,7 +38,8 @@ export function GenerateDialog({ project, ctx, onClose }) {
         }
         return [...g];
     }, [names.join('|')]);
-    return (
+    // Di-portal ke body: panel kiri & workspace punya stacking context sendiri, jadi dialog bisa tertutup/bertumpuk tanpa ini.
+    return createPortal(
         <div className="cb-modal-backdrop" onClick={onClose}>
             <div className="cb-modal" role="dialog" aria-label="Generate kode" onClick={e => e.stopPropagation()}>
                 <header><b>Generate kode — {project.name}</b><button type="button" className="icon-button small" aria-label="Tutup" onClick={onClose}>×</button></header>
@@ -55,6 +57,7 @@ export function GenerateDialog({ project, ctx, onClose }) {
                     <p className="small-label">Setelah itu: <code>npm install && npm run dev</code>. Data masih mock (<code>USE_MOCK</code> di <code>api/mock.ts</code>) sampai endpoint backend dihubungkan.</p>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

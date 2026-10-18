@@ -2,7 +2,7 @@
 // library, teks, perilaku, binding data) serta layout aplikasi (sidebar/topbar) dan entity module.
 // Semua perubahan disimpan sebagai konfigurasi di project (`screens[].nodes`, `layout`, `entity`) — desain tidak diubah.
 import { useState } from 'react';
-import { autoAction, behaviorOf, fieldBinding, FIELD_TYPES, ROLE_LABEL, tableModel, titleCase, ROW_ACTIONS } from '@midas/builder-core';
+import { autoAction, behaviorOf, camelCase, fieldBinding, FIELD_TYPES, isNumericField, parseRules, relationOf, ROLE_LABEL, ROW_ACTIONS, tableModel, titleCase, withRule } from '@midas/builder-core';
 
 function Row({ label, hint, reset, children }) {
     return (
@@ -49,6 +49,66 @@ function ComponentProps({ node, cfg, setCfg }) {
             </Row>
         );
     });
+}
+
+// ------------------------------------------------------------------ validasi & relasi (level field entity)
+
+/** Aturan validasi sebuah field entity — dipakai di editor Data module dan di inspector komponen form. */
+function FieldRules({ field, onChange }) {
+    const r = parseRules(field);
+    const num = isNumericField(field);
+    const text = !num && field.type !== 'boolean';
+    const set = (key, value) => onChange(withRule(field, key, value));
+    return (
+        <>
+            {field.type !== 'boolean' && <Check checked={r.required} onChange={on => set('required', on)}>Wajib diisi</Check>}
+            {field.type !== 'boolean' && (num || text) && (
+                <div className="cb-minmax">
+                    <Row label={num ? 'Nilai min' : 'Panjang min'}><input type="number" value={r.min} onChange={e => set('min', e.target.value)} /></Row>
+                    <Row label={num ? 'Nilai maks' : 'Panjang maks'}><input type="number" value={r.max} onChange={e => set('max', e.target.value)} /></Row>
+                </div>
+            )}
+            {text && field.type !== 'password' && (
+                <div className="cb-checks">
+                    <Check checked={r.email} onChange={on => set('email', on)}>Format email</Check>
+                    <Check checked={r.noEmoticon} onChange={on => set('noEmoticon', on)}>Tanpa emoticon</Check>
+                </div>
+            )}
+            {text && <Row label="Pola (regex)" hint="Contoh: ^[A-Z]{3}[0-9]+$"><input placeholder="opsional" value={r.pattern} onChange={e => set('pattern', e.target.value)} /></Row>}
+        </>
+    );
+}
+
+/** Relasi ke module lain: module tujuan + field yang jadi label opsi (nilai tersimpan = id baris). */
+function RelationPicker({ field, modules, onChange }) {
+    const rel = relationOf(field, modules);
+    const targets = modules.filter(m => m.entity?.fields?.length);
+    const labelFields = (rel?.module.entity?.fields || []).filter(f => f.type !== 'password');
+    const moduleId = typeof field.relation === 'object' ? field.relation.moduleId : rel?.module.id || '';
+    const pickModule = id => {
+        const m = modules.find(x => x.id === id);
+        const first = (m?.entity?.fields || []).find(f => f.name === 'name') || (m?.entity?.fields || []).find(f => f.type === 'string') || m?.entity?.fields?.[0];
+        onChange({ ...field, relation: id ? { moduleId: id, labelField: first?.name } : undefined });
+    };
+    return (
+        <>
+            <Row label="Module tujuan" hint="Opsi select diambil dari data module ini">
+                <select value={moduleId} onChange={e => pickModule(e.target.value)}>
+                    <option value="">— pilih module —</option>
+                    {targets.map(m => <option key={m.id} value={m.id}>{m.label} ({m.name})</option>)}
+                </select>
+            </Row>
+            {rel && (
+                <Row label="Tampilkan field" hint="Field module tujuan yang jadi teks opsi">
+                    <select value={rel.labelField} onChange={e => onChange({ ...field, relation: { moduleId: rel.module.id, labelField: e.target.value } })}>
+                        {labelFields.map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)}</option>)}
+                    </select>
+                </Row>
+            )}
+            {!targets.length && <p className="cb-error">Belum ada module lain yang punya field entity.</p>}
+            {rel && <p className="small-label">Nilai tersimpan: id baris {rel.module.label}. Opsi diambil dari <code>use{rel.module.name.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}List</code>.</p>}
+        </>
+    );
 }
 
 // ------------------------------------------------------------------ perilaku
@@ -116,16 +176,45 @@ function TableEditor({ cfg, setCfg, entity }) {
     );
 }
 
-function FieldBinding({ node, cfg, setCfg, entity }) {
+const DEFAULT_TYPE = { TextField: 'string', TextAreaField: 'text', PasswordField: 'password', SwitchField: 'boolean', SelectField: 'enum' };
+
+/** Binding komponen form ke field entity + validasi + (untuk SelectField) sumber opsi. */
+function FieldBinding({ node, cfg, setCfg, entity, modules, setFields }) {
     const fields = entity?.fields || [];
     const bound = fieldBinding(entity, node);
+    const edit = (name, next) => setFields(fields.map(f => (f.name === name ? next : f)));
+    const create = () => {
+        const label = String(node.props.label ?? node.name ?? 'Field');
+        let name = camelCase(label) || 'field';
+        while (fields.some(f => f.name === name)) name += '2';
+        setFields([...fields, { name, label, type: DEFAULT_TYPE[node.exportName] || 'string', required: false, sortable: false, filterable: false, ...(node.exportName === 'SelectField' ? { options: ['opsi1', 'opsi2'] } : {}) }]);
+        setCfg(c => ({ ...c, field: name }));
+    };
     return (
-        <Row label="Field data" hint="Field entity yang diisi komponen ini">
-            <select value={cfg.field || ''} onChange={e => setCfg(c => ({ ...c, field: e.target.value || undefined }))}>
-                <option value="">{bound ? `Otomatis (${bound.name})` : 'Tidak terikat'}</option>
-                {fields.map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)} · {f.type}</option>)}
-            </select>
-        </Row>
+        <>
+            <Row label="Field data" hint="Field entity yang diisi komponen ini">
+                <select value={cfg.field || ''} onChange={e => setCfg(c => ({ ...c, field: e.target.value || undefined }))}>
+                    <option value="">{bound ? `Otomatis (${bound.name})` : 'Tidak terikat'}</option>
+                    {fields.map(f => <option key={f.name} value={f.name}>{f.label || titleCase(f.name)} · {f.type}</option>)}
+                </select>
+            </Row>
+            {!bound && <button type="button" className="wide-button" onClick={create}>＋ Buat field dari komponen ini</button>}
+            {bound && node.exportName === 'SelectField' && (
+                <>
+                    <Row label="Sumber opsi">
+                        <select value={bound.type === 'relation' ? 'relation' : 'enum'} onChange={e => edit(bound.name, e.target.value === 'relation' ? { ...bound, type: 'relation', options: undefined } : { ...bound, type: 'enum', relation: undefined, options: bound.options?.length ? bound.options : ['opsi1', 'opsi2'] })}>
+                            <option value="enum">Pilihan tetap</option>
+                            <option value="relation">Relasi ke module lain</option>
+                        </select>
+                    </Row>
+                    {bound.type === 'relation'
+                        ? <RelationPicker field={bound} modules={modules} onChange={next => edit(bound.name, next)} />
+                        : <Row label="Pilihan"><input placeholder="aktif, nonaktif" value={(bound.options || []).join(', ')} onChange={e => edit(bound.name, { ...bound, options: e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} /></Row>}
+                </>
+            )}
+            {bound && <div className="cb-subhead">Validasi · {bound.label || titleCase(bound.name)}</div>}
+            {bound && <FieldRules field={bound} onChange={next => edit(bound.name, next)} />}
+        </>
     );
 }
 
@@ -186,7 +275,7 @@ function TopbarInspector({ layout, setLayout, title }) {
 
 // ------------------------------------------------------------------ entity module
 
-export function EntityEditor({ module: m, onChange }) {
+export function EntityEditor({ module: m, modules = [], onChange }) {
     const fields = m.entity?.fields || [];
     const [openIdx, setOpenIdx] = useState(null);
     const set = (i, patch) => onChange(fields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
@@ -205,10 +294,12 @@ export function EntityEditor({ module: m, onChange }) {
                         <div className="cb-field-more">
                             <Row label="Label"><input placeholder={titleCase(f.name)} value={f.label || ''} onChange={e => set(i, { label: e.target.value || undefined })} /></Row>
                             <div className="cb-checks">
-                                {[['required', 'Wajib'], ['sortable', 'Sortir'], ['filterable', 'Filter']].map(([k, l]) => <Check key={k} checked={f[k]} onChange={on => set(i, { [k]: on })}>{l}</Check>)}
+                                {[['sortable', 'Sortir'], ['filterable', 'Filter']].map(([k, l]) => <Check key={k} checked={f[k]} onChange={on => set(i, { [k]: on })}>{l}</Check>)}
                             </div>
+                            <div className="cb-subhead">Validasi</div>
+                            <FieldRules field={f} onChange={next => onChange(fields.map((x, j) => (j === i ? next : x)))} />
                             {f.type === 'enum' && <Row label="Pilihan"><input placeholder="aktif, nonaktif" value={(f.options || []).join(', ')} onChange={e => set(i, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></Row>}
-                            {f.type === 'relation' && <Row label="Module tujuan"><input placeholder="role" value={f.relation || ''} onChange={e => set(i, { relation: e.target.value || undefined })} /></Row>}
+                            {f.type === 'relation' && <RelationPicker field={f} modules={modules} onChange={next => onChange(fields.map((x, j) => (j === i ? next : x)))} />}
                         </div>
                     )}
                 </div>
@@ -230,7 +321,7 @@ export function Inspector({ selected, tree, node, screen, module, screens, entit
             <div className="cb-insp">
                 <Header kind={ROLE_LABEL[screen.role]} name={screen.name} />
                 <Section title="Cara pakai"><p className="small-label">Klik komponen di pratinjau untuk mengatur propertinya. Klik sidebar atau topbar untuk mengatur layout aplikasi. Perubahan tersimpan otomatis dan ikut ke kode yang di-generate.</p></Section>
-                <EntityEditor module={module} onChange={actions.setFields} />
+                <EntityEditor module={module} modules={modules} onChange={actions.setFields} />
             </div>
         );
     }
@@ -247,7 +338,7 @@ export function Inspector({ selected, tree, node, screen, module, screens, entit
             )}
             {behavior === 'action' && <Section title="Perilaku"><ActionEditor node={node} cfg={cfg} setCfg={setCfg} screen={screen} module={module} screens={screens} /></Section>}
             {behavior === 'table' && <Section title="Data tabel"><TableEditor cfg={cfg} setCfg={setCfg} entity={entity} /></Section>}
-            {behavior === 'field' && <Section title="Data"><FieldBinding node={node} cfg={cfg} setCfg={setCfg} entity={entity} /></Section>}
+            {behavior === 'field' && <Section title="Data"><FieldBinding node={node} cfg={cfg} setCfg={setCfg} entity={entity} modules={modules} setFields={actions.setFields} /></Section>}
             {behavior === 'filter' && <Section title="Data"><p className="small-label">Kotak cari memfilter tabel pada screen list.</p></Section>}
             {node.kind === 'unsupported' && <Section title="Tidak didukung"><p className="cb-error">{node.reason}</p></Section>}
             {node !== tree && <Section title="Tampilan"><Check checked={cfg.hidden} onChange={on => setCfg(c => ({ ...c, hidden: on || undefined }))}>Sembunyikan di aplikasi</Check></Section>}

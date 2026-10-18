@@ -51,18 +51,21 @@ export function resolveLayout(config) {
     return { appName: layout.appName || 'Midas App', userName: layout.userName || 'Administrator', userRole: layout.userRole || 'admin', items };
 }
 
+const PERSON_MODULE = /user|pengguna|member|customer|pelanggan|employee|karyawan|staff|person|people/i;
+const PEOPLE = ['Budi Santoso', 'Ani Wijaya', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo'];
 const SAMPLE = {
-    string: (f, i) => (/email/i.test(f.name) ? `user${i + 1}@contoh.id` : /name|nama|title|judul/i.test(f.name) ? ['Budi Santoso', 'Ani Wijaya', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo'][i % 5] : `${titleCase(f.name)} ${i + 1}`),
+    // Nama orang hanya untuk module yang memang berisi orang; module lain (role, produk, …) memakai "<Module> N".
+    string: (f, i, mod) => (/email/i.test(f.name) ? `user${i + 1}@contoh.id` : /name|nama|title|judul/i.test(f.name) ? (!mod || PERSON_MODULE.test(mod) ? PEOPLE[i % 5] : `${titleCase(mod)} ${i + 1}`) : `${titleCase(f.name)} ${i + 1}`),
     text: (f, i) => `Keterangan ${titleCase(f.name).toLowerCase()} ${i + 1}`,
     number: (_f, i) => (i + 1) * 10,
     boolean: (_f, i) => i % 3 !== 2,
     date: (_f, i) => `2026-0${(i % 9) + 1}-15`,
     datetime: (_f, i) => `2026-0${(i % 9) + 1}-15T09:00:00`,
     password: () => '',
-    relation: (f, i) => `${titleCase(f.relation || f.name)} ${(i % 3) + 1}`,
+    relation: (_f, i) => String((i % 3) + 1), // id baris contoh module tujuan
 };
-export const sampleValue = (f, i) => (f.type === 'enum' ? (f.options?.[i % f.options.length] ?? '') : (SAMPLE[f.type] || SAMPLE.string)(f, i));
-export const sampleRows = (fields, n = 5) => Array.from({ length: n }, (_, i) => ({ id: String(i + 1), ...Object.fromEntries(fields.map(f => [f.name, sampleValue(f, i)])) }));
+export const sampleValue = (f, i, mod) => (f.type === 'enum' ? (f.options?.[i % f.options.length] ?? '') : (SAMPLE[f.type] || SAMPLE.string)(f, i, mod));
+export const sampleRows = (fields, n = 5, mod) => Array.from({ length: n }, (_, i) => ({ id: String(i + 1), ...Object.fromEntries(fields.map(f => [f.name, sampleValue(f, i, mod)])) }));
 
 const fieldLabel = f => f.label || titleCase(f.name);
 
@@ -96,19 +99,23 @@ export function behaviorOf(exportName) {
 }
 
 /** Props data untuk Live DOM Renderer (kolom & baris contoh dari entity) — sama semantik dengan kode hasil generate. */
-export function previewDataProps(node, entity, rolePreview = {}) {
+export function previewDataProps(node, entity, rolePreview = {}, modules = []) {
     if (node.exportName === 'Table') {
         const t = tableModel(entity, node.cfg);
         if (!t.columns.length) return {};
-        const rows = sampleRows(entity.fields, 5);
+        const rows = sampleRows(entity.fields, 5, entity.moduleName);
         return {
-            columns: t.columns.map(c => ({ key: c.key, header: c.header, ...(c.type === 'boolean' ? { render: r => (r[c.key] ? 'Aktif' : 'Nonaktif') } : {}) })),
+            columns: t.columns.map(c => {
+                const rel = c.type === 'relation' ? relationSampleOptions(entity.fields.find(f => f.name === c.key), modules) : null;
+                return { key: c.key, header: c.header, ...(c.type === 'boolean' ? { render: r => (r[c.key] ? 'Aktif' : 'Nonaktif') } : rel ? { render: r => rel.find(o => o.value === r[c.key])?.label ?? r[c.key] } : {}) };
+            }),
             data: rows, totalRecords: rows.length, pageSize: t.pageSize,
             renderAction: t.rowActions.length ? rolePreview.renderAction : undefined,
         };
     }
     const f = FORM_COMPONENTS.includes(node.exportName) ? fieldBinding(entity, node) : null;
     if (f?.type === 'enum') return { options: (f.options || []).map(o => ({ label: titleCase(o), value: o })) };
+    if (f?.type === 'relation') return { options: relationSampleOptions(f, modules) };
     return {};
 }
 
@@ -147,4 +154,74 @@ export function findTreeNode(tree, id) {
         if (hit) return hit;
     }
     return null;
+}
+
+// ------------------------------------------------------------------ validasi (format rules sama dengan base code: `min:3`, `email`, …)
+
+const NUMERIC = new Set(['number']);
+export const isNumericField = f => NUMERIC.has(f.type);
+
+/** Aturan validasi sebuah field: `required` + `rules` (`min:N`, `max:N`, `email`, `pattern:REGEX`, `withoutemoticon`). */
+export function parseRules(field) {
+    const out = { required: !!field.required, min: '', max: '', email: false, pattern: '', noEmoticon: false };
+    for (const r of field.rules || []) {
+        const i = r.indexOf(':');
+        const name = i < 0 ? r : r.slice(0, i), arg = i < 0 ? '' : r.slice(i + 1);
+        if (name === 'min' || name === 'max') out[name] = arg;
+        else if (name === 'pattern') out.pattern = arg;
+        else if (name === 'email') out.email = true;
+        else if (name === 'withoutemoticon') out.noEmoticon = true;
+    }
+    return out;
+}
+
+/** Field baru dengan aturan `key` diubah (`value` kosong/false = hapus aturan). */
+export function withRule(field, key, value) {
+    const cur = parseRules(field);
+    cur[key] = value;
+    const { required, ...rest } = cur;
+    const rules = [];
+    if (rest.min !== '' && rest.min != null) rules.push(`min:${rest.min}`);
+    if (rest.max !== '' && rest.max != null) rules.push(`max:${rest.max}`);
+    if (rest.email) rules.push('email');
+    if (rest.pattern) rules.push(`pattern:${rest.pattern}`);
+    if (rest.noEmoticon) rules.push('withoutemoticon');
+    const next = { ...field, required };
+    if (rules.length) next.rules = rules;
+    else delete next.rules;
+    return next;
+}
+
+/** Aturan yang valid untuk format string; mengembalikan pesan error atau null. */
+export function ruleError(rule) {
+    if (/^(required|email|withoutemoticon)$/.test(rule)) return null;
+    if (/^(min|max):-?\d+(\.\d+)?$/.test(rule)) return null;
+    if (rule.startsWith('pattern:') && rule.length > 8) {
+        try { new RegExp(rule.slice(8)); return null; } catch { return `Pola regex tidak valid: ${rule.slice(8)}`; }
+    }
+    return `Aturan validasi tidak dikenal: ${rule}`;
+}
+
+// ------------------------------------------------------------------ relasi antar module
+
+/**
+ * Relasi sebuah field `relation`: `{ module, labelField, valueField }`. `field.relation` boleh objek
+ * `{ moduleId, labelField }` atau string nama module (format lama); label default = field `name`/pertama.
+ */
+export function relationOf(field, modules) {
+    if (field.type !== 'relation' || !field.relation) return null;
+    const r = field.relation;
+    const module = typeof r === 'string' ? modules.find(m => m.name === r) : modules.find(m => m.id === r.moduleId);
+    if (!module) return null;
+    const fields = module.entity?.fields || [];
+    const labelField = (typeof r === 'object' && r.labelField) || (fields.find(f => f.name === 'name') || fields.find(f => f.type === 'string') || fields[0])?.name;
+    return labelField ? { module, labelField, valueField: 'id' } : null;
+}
+
+/** Opsi select dari baris contoh module tujuan (pratinjau di Studio). */
+export function relationSampleOptions(field, modules) {
+    const rel = relationOf(field, modules);
+    if (!rel) return [];
+    const target = rel.module.entity?.fields || [];
+    return sampleRows(target, 5, rel.module.name).map(r => ({ label: String(r[rel.labelField]), value: r.id }));
 }

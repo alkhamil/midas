@@ -19,11 +19,11 @@ class Boundary extends Component {
     }
 }
 
-function RenderNode({ node, lib, preview, entity, onError }) {
+function RenderNode({ node, lib, preview, entity, modules, onError }) {
     const data = { 'data-node': node.nodeId, 'data-name': node.name || '' };
     if (node.kind === 'text') return h('p', { ...data, style: node.style }, node.text);
     if (node.kind === 'box')
-        return h('div', { ...data, style: node.style }, node.children.map(c => h(RenderNode, { key: c.nodeId, node: c, lib, preview, entity, onError })));
+        return h('div', { ...data, style: node.style }, node.children.map(c => h(RenderNode, { key: c.nodeId, node: c, lib, preview, entity, modules, onError })));
     if (node.kind === 'component') {
         const Comp = lib[node.exportName];
         if (typeof Comp !== 'function' && typeof Comp !== 'object')
@@ -33,7 +33,7 @@ function RenderNode({ node, lib, preview, entity, onError }) {
         const renderAction = rowActions.length && typeof lib.IconButton === 'function'
             ? () => h('div', { className: 'flex gap-1' }, rowActions.map(a => h(lib.IconButton, { key: a, action: a })))
             : undefined;
-        const props = { ...preview[node.exportName], ...previewDataProps(node, entity, { renderAction }), ...node.props };
+        const props = { ...preview[node.exportName], ...previewDataProps(node, entity, { renderAction }, modules), ...node.props };
         return h('div', { ...data, className: 'midas-component', style: node.box },
             h(Boundary, { nodeId: node.nodeId, name: node.exportName, onError }, h(Comp, props)));
     }
@@ -67,9 +67,9 @@ function Shell({ shell, lib, height, children }) {
         h(lib.AppShell, { navItems: items, activePath: shell.activePath, title: shell.title, appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));
 }
 
-function Screen({ tree, lib, entity, shell, shellHeight, onError }) {
+function Screen({ tree, lib, entity, modules, shell, shellHeight, onError }) {
     const { rt, i18n } = useRuntime(lib);
-    let el = h(Shell, { shell, lib, height: shellHeight }, h(RenderNode, { node: tree, lib, preview: lib.midasPreview || {}, entity, onError }));
+    let el = h(Shell, { shell, lib, height: shellHeight }, h(RenderNode, { node: tree, lib, preview: lib.midasPreview || {}, entity, modules, onError }));
     // Data router (bukan MemoryRouter biasa) supaya hook seperti useMatches di AppShell bekerja.
     const router = useMemo(() => (rt.createMemoryRouter ? rt.createMemoryRouter([{ path: '*', element: el }]) : null), [rt, tree, lib]);
     if (router && rt.RouterProvider) el = h(rt.RouterProvider, { router });
@@ -96,7 +96,7 @@ body.picking aside:hover,body.picking header:hover{outline:1px dashed #9747FF;ou
  * Iframe berisi screen. `tree` dari screenTree(), `lib` = modul bundle, `cssUrl` = CSS bundle.
  * Klik elemen → onPick(nodeId). Lebar frame diskalakan agar muat di area (`fit`).
  */
-export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, shell }) {
+export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, modules, shell }) {
     const iframe = useRef(null), root = useRef(null), wrap = useRef(null);
     const [ready, setReady] = useState(false);
     const [scale, setScale] = useState(1);
@@ -126,8 +126,8 @@ export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, enti
 
     useEffect(() => {
         if (!ready || !root.current || !tree) return;
-        root.current.render(h(Screen, { tree, lib, entity, shell: useShell ? shell : null, shellHeight, onError }));
-    }, [ready, tree, lib, onError, entity, shell, useShell, shellHeight]);
+        root.current.render(h(Screen, { tree, lib, entity, modules, shell: useShell ? shell : null, shellHeight, onError }));
+    }, [ready, tree, lib, onError, entity, modules, shell, useShell, shellHeight]);
 
     // Klik di iframe → node terdekat.
     useEffect(() => {

@@ -110,6 +110,13 @@ test('node config, layout and password fields round-trip through the project con
     assert.equal(back.modules[0].entity.fields[0].type, 'password');
     const bad = await call('PUT', `/api/builder-projects/${p.id}`, { version: saved.body.project.version, config: { modules: [{ ...mod, screens: [{ ...mod.screens[0], nodes: { n1: { action: { type: 'explode' } } } }] }] } });
     assert.equal(bad.status, 400);
+    // validasi: aturan tak dikenal / regex rusak / relasi ke module yang tidak ada ditolak
+    const withField = (field: object) => ({ modules: [{ ...mod, entity: { fields: [field] } }] });
+    const v = saved.body.project.version;
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v, config: withField({ name: 'a', type: 'string', rules: ['min:3', 'email', 'pattern:^a'] }) })).status, 200);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['bogus'] }) })).status, 400);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'a', type: 'string', rules: ['pattern:('] }) })).status, 400);
+    assert.equal((await call('PUT', `/api/builder-projects/${p.id}`, { version: v + 1, config: withField({ name: 'r', type: 'relation', relation: { moduleId: 'nope' } }) })).status, 400);
     await call('DELETE', `/api/builder-projects/${p.id}`);
 });
 
