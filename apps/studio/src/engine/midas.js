@@ -3188,9 +3188,9 @@ async function libBoot() {
         lib.index = lib.index.filter(m => keep.includes(m));
     }
     if (!json) {
+        // Tidak ada file yang bisa dibuka: editor memakai dokumen kosong yang belum disimpan. Ia baru masuk Recents &
+        // server saat pertama kali diedit (save() menambahkannya), jadi file yang sudah dihapus tidak "hidup lagi".
         lib.fileId = uid();
-        const now = Date.now();
-        lib.index.unshift({ id: lib.fileId, name: 'Untitled', created: now, updated: now, opened: now, thumb: null });
     }
     // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
     // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
@@ -3413,14 +3413,43 @@ async function libTrash(id, on) {
     await libSaveIndex();
     renderHome();
 }
+/**
+ * Dipanggil sebelum file dihapus permanen. Bila file yang sedang terbuka ikut dihapus, editor pindah ke file terbaru yang
+ * masih ada, atau ke dokumen kosong yang BELUM disimpan (dibuat di server saat pertama kali diedit). Dulu editor langsung
+ * membuat dan menyimpan "Untitled" pengganti, sehingga setelah Delete/Empty trash ada file baru yang muncul lagi di Recents.
+ */
+async function libLeaveDeleted(ids) {
+    if (!ids.includes(lib.fileId))
+        return;
+    // Jangan sampai autosave file yang akan dihapus (atau dokumen pengganti) berjalan setelah ini.
+    clearTimeout(saveTimer);
+    clearTimeout(retryTimer);
+    state.dirty = false;
+    const next = lib.index.filter(m => !m.trashed && !ids.includes(m.id)).sort((a, b) => (b.opened || 0) - (a.opened || 0))[0];
+    let data = null;
+    if (next) {
+        try {
+            data = await projectStorage.loadProject(next.id);
+        }
+        catch { }
+    }
+    if (data)
+        return loadIntoEditor(data, next.id);
+    await loadIntoEditor(templateData('blank'), uid());
+}
 async function libDelete(id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta || !confirm(`Delete “${meta.name}” permanently? This can't be undone.`))
         return;
-    if (id === lib.fileId)
-        await libNew('blank', { stay: true });
+    await libLeaveDeleted([id]);
+    try {
+        await projectStorage.deleteProject(id);
+    }
+    catch (e) {
+        toast(`Could not delete the file on the server (${e.message}). It was kept.`);
+        return renderHome();
+    }
     lib.index = lib.index.filter(m => m.id !== id);
-    await projectStorage.deleteProject(id);
     await libSaveIndex();
     renderHome();
 }
@@ -3495,7 +3524,17 @@ function ensureHome() {
         else if (t.closest('[data-home-empty-trash]')) {
             const gone = lib.index.filter(m => m.trashed);
             if (gone.length && confirm(`Permanently delete ${gone.length} file${gone.length > 1 ? 's' : ''} in Trash?`)) {
-                Promise.all(gone.map(m => kvDel('file:' + m.id))).then(() => { lib.index = lib.index.filter(m => !m.trashed); return libSaveIndex(); }).then(renderHome);
+                (async () => {
+                    await libLeaveDeleted(gone.map(m => m.id));
+                    // Hanya yang benar-benar terhapus di server yang dibuang dari daftar; sisanya tetap di Trash.
+                    const results = await Promise.all(gone.map(m => projectStorage.deleteProject(m.id).then(() => m.id, () => null)));
+                    const removed = new Set(results.filter(Boolean));
+                    lib.index = lib.index.filter(m => !removed.has(m.id));
+                    await libSaveIndex();
+                    renderHome();
+                    if (removed.size < gone.length)
+                        toast(`${gone.length - removed.size} file${gone.length - removed.size > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+                })();
             }
         }
         else if (t.closest('[data-home-back]'))
@@ -3577,12 +3616,23 @@ async function bulkDelete() {
     if (inTrash && !confirm(`Permanently delete ${ids.length} file${ids.length > 1 ? 's' : ''}? This can't be undone.`))
         return;
     if (inTrash) {
+        await libLeaveDeleted(ids);
+        const failed = [];
         for (const id of ids) {
-            if (id === lib.fileId)
-                await libNew('blank', { stay: true });
-            await projectStorage.deleteProject(id);
+            try {
+                await projectStorage.deleteProject(id);
+            }
+            catch {
+                failed.push(id);
+            }
         }
-        lib.index = lib.index.filter(m => !ids.includes(m.id));
+        lib.index = lib.index.filter(m => !ids.includes(m.id) || failed.includes(m.id));
+        if (failed.length) {
+            lib.sel.clear();
+            await libSaveIndex();
+            renderHome();
+            return toast(`${failed.length} file${failed.length > 1 ? 's' : ''} could not be deleted on the server and were kept in Trash.`);
+        }
     }
     else
         for (const id of ids) {
@@ -6280,7 +6330,8 @@ async function openDB() { return null; }
 
 
 
-function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), 32000000); }
+// Toast singkat: 2,5 dtk, ditambah ±40 ms per huruf di atas 40 karakter (maks. 6 dtk) supaya pesan panjang tetap terbaca.
+function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), Math.min(6000, 2500 + Math.max(0, String(message).length - 40) * 40)); }
 const saved = await libBoot();
 let initial;
 try {
@@ -15808,11 +15859,11 @@ else
 if (options.canvasColor)
     $('#canvas-world').style.backgroundColor = options.canvasColor;
 if (initial)
-    markPagesSaved(); // everything on disk matches what was just loaded; a fresh starter document still has to be written
+    markPagesSaved(); // everything on disk matches what was just loaded
 refreshUI();
 invalidate();
-if (!initial)
-    saveSoon();
+// Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
+// kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
 window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
