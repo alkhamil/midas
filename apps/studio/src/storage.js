@@ -352,7 +352,18 @@ export const projectStorage = {
  * Design system library di workspace (spec §3). Bentuk data mengikuti engine:
  * `version` = nomor urut publish (dipakai untuk deteksi update), `semver` = versi paket kode.
  */
+export const templateApi = {
+    /** Base project template as { path: text }. */
+    get: name => api('GET', `/api/templates/${enc(name)}`).then(r => r.files),
+};
+
 export const libraryApi = {
+    /** The built npm package (.tgz) of a library version, or null when it was not uploaded (`midas bundle`). */
+    package: async (id, version) => {
+        const res = await fetch(`/api/libraries/${enc(id)}/versions/${enc(version)}/package`, { credentials: 'same-origin' });
+        if (!res.ok) return null;
+        return { name: res.headers.get('x-package-file') || `${id}-${version}.tgz`, bytes: new Uint8Array(await res.arrayBuffer()) };
+    },
     list: () => api('GET', '/api/libraries').then(r => r.libraries),
     snapshot: async (id, seq) => {
         try {

@@ -7,7 +7,7 @@ import * as ui from '../dist/index.js';
 const render = el => renderToStaticMarkup(el);
 
 test('exports every design component, the theme and the icons', () => {
-    for (const name of ['Button', 'IconButton', 'Badge', 'Avatar', 'Alert', 'Card', 'StatCard', 'TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField', 'Dialog', 'Table', 'Sidebar', 'Topbar', 'SectionHeader', 'FilterToolbar', 'AppShell', 'ThemeProvider', 'WidgetIcon', 'PenIcon', 'midasPreview'])
+    for (const name of ['Button', 'IconButton', 'Badge', 'Avatar', 'Alert', 'Card', 'StatCard', 'TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField', 'Dialog', 'Table', 'Sidebar', 'Topbar', 'SectionHeader', 'Drawer', 'FilterToolbar', 'AppShell', 'ThemeProvider', 'WidgetIcon', 'PenIcon', 'midasPreview'])
         assert.ok(ui[name], `${name} di-export`);
     assert.deepEqual(ui.themeNames, ['light', 'dark']);
     assert.equal(ui.themes.light.primary, '#4338CA');
@@ -77,4 +77,23 @@ test('Dialog renders default Cancel / Confirm buttons when onConfirm is set', ()
 
 test('IconButton supports the restore action', () => {
     assert.match(render(h(ui.IconButton, { action: 'restore' })), /aria-label="Restore"/);
+});
+
+test('Drawer renders title, content and the default footer buttons', () => {
+    const html = render(h(ui.Drawer, { open: true, onClose() {}, onPrimary() {}, title: 'Filters' }, 'Fields'));
+    assert.match(html, /role="dialog"/);
+    assert.match(html, />Filters</);
+    assert.match(html, />Reset</);
+    assert.match(html, />Apply</);
+    assert.equal(render(h(ui.Drawer, { open: false, onClose() {} })), '');
+});
+
+test('Topbar: avatar opens the user menu with Sign out (menu=open renders it)', () => {
+    const closed = render(h(ui.Topbar, { userName: 'Admin', userMenu: [{ label: 'Sign out', danger: true, onClick() {} }] }));
+    assert.doesNotMatch(closed, /role="menu"/);
+    assert.match(closed, /aria-haspopup="menu"/);
+    const open = render(h(ui.Topbar, { menu: 'open', userName: 'Admin', userMenu: [{ label: 'Sign out', danger: true, onClick() {} }] }));
+    assert.match(open, /role="menu"/);
+    assert.match(open, />Sign out</);
+    assert.doesNotMatch(render(h(ui.Topbar, { userName: 'Admin' })), /aria-haspopup/); // no items → not clickable
 });

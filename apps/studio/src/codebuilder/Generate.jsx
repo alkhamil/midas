@@ -3,7 +3,8 @@
 //  2. Unduh .zip dari Studio.
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { buildTrees, generateProject, zipFiles } from '@midas/builder-core';
+import { assembleProject, buildTrees, generateProject, zipFiles } from '@midas/builder-core';
+import { libraryApi, templateApi } from '../storage.js';
 
 export function GenerateDialog({ project, ctx, onClose }) {
     const result = useMemo(() => {
@@ -22,14 +23,33 @@ export function GenerateDialog({ project, ctx, onClose }) {
     }, [onClose]);
     const names = Object.keys(result.files);
     const cmd = `npx @midas/cli generate "${project.name}" --out .`;
-    const download = () => {
-        const bytes = zipFiles(result.files);
+    const [busy, setBusy] = useState(false);
+    const [problem, setProblem] = useState(null);
+    const save = (bytes, name) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
-        a.download = `${project.name.replace(/[^\w-]+/g, '-').toLowerCase()}-generated.zip`;
+        a.download = name;
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     };
+    const slug = project.name.replace(/[^\w-]+/g, '-').toLowerCase();
+    /** Complete project: base project + generated code + the library package → `npm install && npm run dev`. */
+    const downloadProject = async () => {
+        setBusy(true);
+        setProblem(null);
+        try {
+            const lib = project.library;
+            const [template, pkg] = await Promise.all([templateApi.get('base-project'), lib ? libraryApi.package(lib.id, lib.version) : null]);
+            if (!pkg) throw new Error(`The package of ${lib ? `${lib.packageName}@${lib.version}` : 'the library'} has not been uploaded yet. Run \`midas bundle\` in the package repo, then try again.`);
+            const files = assembleProject(template, result.files, { appName: project.name, libraryName: lib.packageName, tarballName: pkg.name, tarball: pkg.bytes });
+            save(zipFiles(files, slug), `${slug}.zip`);
+        }
+        catch (e) {
+            setProblem(e.message);
+        }
+        setBusy(false);
+    };
+    const downloadSources = () => save(zipFiles(result.files), `${slug}-generated.zip`);
     const groups = useMemo(() => {
         const g = new Map();
         for (const n of names) {
@@ -45,16 +65,19 @@ export function GenerateDialog({ project, ctx, onClose }) {
                 <header><b>Generate code — {project.name}</b><button type="button" className="icon-button small" aria-label="Close" onClick={onClose}>×</button></header>
                 {result.error && <p className="cb-error">{result.error}</p>}
                 <div className="cb-modal-body">
-                    <h4>Option 1 · Pull with the CLI (recommended)</h4>
-                    <p className="small-label">Run in your app repo folder (a <code>git clone</code> of the base project, already signed in with <code>midas login</code>). Safe to repeat: only generated files are overwritten; hand-written code is never touched.</p>
+                    <h4>Download the project (easiest)</h4>
+                    <p className="small-label">A complete app: the base project + your generated modules + the UI library (<code>{project.library?.packageName}</code>) bundled in <code>vendor/</code>. Unzip it, then:</p>
+                    <div className="cb-code"><code>npm install &amp;&amp; npm run dev</code></div>
+                    <button type="button" className="wide-button primary" disabled={!names.length || busy} onClick={downloadProject}>{busy ? 'Preparing…' : 'Download project (.zip)'}</button>
+                    {problem && <p className="cb-error">{problem}</p>}
+                    <h4>Update an existing app</h4>
+                    <p className="small-label">In the app's folder (already signed in with <code>midas login</code>). Safe to repeat: only generated files are overwritten; hand-written code is never touched.</p>
                     <div className="cb-code"><code>{cmd}</code><button type="button" className="cb-link" onClick={() => navigator.clipboard?.writeText(cmd).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })}>{copied ? 'Copied' : 'Copy'}</button></div>
-                    <h4>Option 2 · Download .zip</h4>
-                    <p className="small-label">Contains the generated <code>src/</code> folder; merge it into your app repo.</p>
-                    <button type="button" className="wide-button primary" disabled={!names.length} onClick={download}>Download .zip ({names.length} files)</button>
+                    <button type="button" className="cb-link" disabled={!names.length} onClick={downloadSources}>Or download only the generated files ({names.length} files)</button>
                     <h4>What gets generated</h4>
                     {groups.length ? <ul className="cb-files">{groups.map(([k, n]) => <li key={k}><code>{k}</code><span>{n} files</span></li>)}</ul> : <p className="small-label">Nothing to generate yet — register screens in a module and complete its entity fields.</p>}
                     {result.warnings.map((w, i) => <p key={i} className="cb-warn">⚠ {w}</p>)}
-                    <p className="small-label">Then run <code>npm install && npm run dev</code>. Data is still mocked (<code>USE_MOCK</code> in <code>api/mock.ts</code>) until the backend endpoints are connected.</p>
+                    <p className="small-label">Data is still mocked (<code>USE_MOCK</code> in <code>api/mock.ts</code>) until the backend endpoints are connected.</p>
                 </div>
             </div>
         </div>,

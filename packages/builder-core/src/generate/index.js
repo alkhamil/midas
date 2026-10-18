@@ -89,3 +89,4 @@ export function generateProject(project, trees) {
 export function buildTrees(config, ctx) {
     return new Map(config.modules.flatMap(m => m.screens.map(s => [s.id, screenTree(ctx, s.frameId, s.nodes || {})])));
 }
+export { assembleProject } from './project.js';

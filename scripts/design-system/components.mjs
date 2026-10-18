@@ -154,6 +154,32 @@ export const COMPONENTS = [
         },
     },
     {
+        name: 'Drawer',
+        group: 'Feedback',
+        description: 'Side panel that slides in from the right, e.g. for list filters. Title and the Reset / Apply labels are properties; the Content slot holds the fields.',
+        variants: {},
+        cprops: [
+            { name: 'Title', type: 'text', default: 'Filters' },
+            { name: 'SecondaryLabel', type: 'text', default: 'Reset' },
+            { name: 'PrimaryLabel', type: 'text', default: 'Apply' },
+            { name: 'Content', type: 'slot' },
+        ],
+        render: (_v, ctx, cp) => col({ w: 400, h: 640, fill: 'color/background', stroke: 'color/border', shadow: { x: -8, y: 0, blur: 32, opacity: 0.12 }, clip: true }, [
+            row({ w: 'fill', pad: [16, 24], justify: 'between', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Header' }, [
+                text('Filters', { size: 18, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
+                ico(ctx, 'close', MUTED_FG, 20),
+            ]),
+            col({ w: 'fill', h: 'fill', pad: 24, gap: 16, name: 'Content' }, [
+                { ...formField('SelectField', ctx, { label: 'Status', value: 'All' }), w: 'fill' },
+                { ...formField('SelectField', ctx, { label: 'Role', value: 'All' }), w: 'fill' },
+            ]),
+            row({ w: 'fill', pad: [16, 24], gap: 8, justify: 'end', stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Footer' }, [
+                { ...button('Secondary', 'Md', ctx, { label: 'Reset', bind: cp.SecondaryLabel }), name: 'Secondary' },
+                { ...button('Primary', 'Md', ctx, { label: 'Apply', bind: cp.PrimaryLabel }), name: 'Primary' },
+            ]),
+        ]),
+    },
+    {
         name: 'Table',
         group: 'Data Display',
         description: 'Data list with a header, row actions, and pagination. Columns and data are configured in Code Builder.',
@@ -181,27 +207,43 @@ export const COMPONENTS = [
     {
         name: 'Topbar',
         group: 'Layout',
-        description: 'App top bar: page title and breadcrumb on the left, user name and avatar on the right.',
-        variants: {},
+        description: 'App top bar: page title and breadcrumb on the left, user name and avatar on the right. The avatar is a button that opens the user menu (Menu = Open shows it) with the Sign out action.',
+        variants: { Menu: ['Closed', 'Open'] },
         cprops: [
             { name: 'Title', type: 'text', default: 'Page title' },
             { name: 'Breadcrumb', type: 'text', default: 'Home / Page' },
             { name: 'UserName', type: 'text', default: 'Administrator' },
             { name: 'UserRole', type: 'text', default: 'admin' },
         ],
-        render: (_v, ctx, cp) => row({ w: 960, h: 72, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0] }, [
-            col({ gap: 2, name: 'Title block' }, [
-                text('Page title', { size: 18, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
-                text('Home / Page', { size: 12, line: 16, color: MUTED_FG, bind: cp.Breadcrumb, name: 'Breadcrumb' }),
-            ]),
-            row({ gap: 12, name: 'User' }, [
-                col({ align: 'end' }, [
-                    text('Administrator', { size: 14, line: 20, weight: 500, bind: cp.UserName, name: 'UserName' }),
-                    text('admin', { size: 12, line: 16, color: MUTED_FG, bind: cp.UserRole, name: 'UserRole' }),
+        render: (v, ctx, cp) => {
+            const bar = row({ w: 960, h: 72, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Bar' }, [
+                col({ gap: 2, name: 'Title block' }, [
+                    text('Page title', { size: 18, line: 28, weight: 600, bind: cp.Title, name: 'Title' }),
+                    text('Home / Page', { size: 12, line: 16, color: MUTED_FG, bind: cp.Breadcrumb, name: 'Breadcrumb' }),
                 ]),
-                instance(ctx.variant('Avatar', { Size: 'Md' }), { Initial: 'A' }),
-            ]),
-        ]),
+                row({ gap: 12, name: 'User' }, [
+                    col({ align: 'end' }, [
+                        text('Administrator', { size: 14, line: 20, weight: 500, bind: cp.UserName, name: 'UserName' }),
+                        text('admin', { size: 12, line: 16, color: MUTED_FG, bind: cp.UserRole, name: 'UserRole' }),
+                    ]),
+                    instance(ctx.variant('Avatar', { Size: 'Md' }), { Initial: 'A' }),
+                ]),
+            ]);
+            if (v.Menu !== 'Open') return bar;
+            // User menu: opens under the avatar (right aligned).
+            const menu = col({ w: 220, pad: [4, 0], radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', shadow: { x: 0, y: 4, blur: 12, opacity: 0.08 }, name: 'User menu' }, [
+                col({ w: 'fill', pad: [8, 12], gap: 2, name: 'Account' }, [
+                    text('Administrator', { size: 14, line: 20, weight: 500 }),
+                    text('admin', { size: 12, line: 16, color: MUTED_FG }),
+                ]),
+                frame({ w: 'fill', h: 1, fill: 'color/border', name: 'Divider' }),
+                row({ w: 'fill', h: 36, pad: [0, 12], gap: 8, name: 'Sign out' }, [
+                    ico(ctx, 'logout', 'color/danger', 16),
+                    text('Sign out', { size: 14, line: 20, color: 'color/danger' }),
+                ]),
+            ]);
+            return col({ w: 960, name: 'Topbar with menu' }, [bar, row({ w: 'fill', justify: 'end', pad: [8, 24, 0, 0], name: 'Menu slot' }, [menu])]);
+        },
     },
     {
         name: 'SectionHeader',
@@ -241,7 +283,7 @@ export const COMPONENTS = [
         render: (_v, ctx) => row({ w: 1440, h: 900, align: 'start', fill: 'color/surface', clip: true }, [
             instance(ctx.variant('Sidebar', { Collapsed: 'false' })),
             col({ w: 'fill', h: 'fill' }, [
-                instance(ctx.root('Topbar'), { Title: 'Dashboard' }, { name: 'Topbar', w: 'fill' }),
+                instance(ctx.variant('Topbar', { Menu: 'Closed' }), { Title: 'Dashboard' }, { name: 'Topbar', w: 'fill' }),
                 col({ w: 'fill', h: 'fill', pad: 24, name: 'Content' }, [
                     frame({ w: 'fill', h: 'fill', radius: 'radius/lg', stroke: 'color/border', props: { strokeStyle: 'dash', strokeDash: 6, strokeGap: 4 }, name: 'Content slot' }),
                 ]),

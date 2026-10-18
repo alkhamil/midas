@@ -55,7 +55,7 @@ function matchesFilters(fields, row, filters) {
     return true;
 }
 
-/** Filter dialog of the list screen (draft values applied on Apply). */
+/** Filter drawer of the list screen (draft values applied on Apply). */
 function FilterDialog({ lib, fields, softDelete, filters, relOptions, onApply, onClose }) {
     const [draft, setDraft] = useState(filters);
     const set = (k, v) => setDraft(d => ({ ...d, [k]: v }));
@@ -69,10 +69,8 @@ function FilterDialog({ lib, fields, softDelete, filters, relOptions, onApply, o
         return h(lib.TextField, { key: f.name, label, value: draft[f.name] ?? '', onChange: e => set(f.name, e.target.value) });
     });
     if (softDelete) controls.push(h(lib.SwitchField, { key: 'showDeleted', label: 'Show deleted', checked: draft.showDeleted === 'true', onCheckedChange: on => set('showDeleted', on ? 'true' : '') }));
-    return h(lib.Dialog, {
-        open: true, onClose, title: 'Filters',
-        footer: h(Fragment, null, h(lib.Button, { variant: 'secondary', onClick: () => onApply({}) }, 'Reset'), h(lib.Button, { onClick: () => onApply(draft) }, 'Apply')),
-    }, h('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } }, controls));
+    return h(lib.Drawer, { open: true, onClose, title: 'Filters', secondaryLabel: 'Reset', primaryLabel: 'Apply', onSecondary: () => onApply({}), onPrimary: () => onApply(draft) },
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } }, controls));
 }
 
 function AppPreview({ bridge, project, onClose }) {
@@ -244,7 +242,8 @@ function AppPreview({ bridge, project, onClose }) {
         breadcrumbs: breadcrumbsOf(modules, screen.module, screen),
         activePath: layout.items.find(i => modules.some(m => m.id === i.moduleId && isInside(modules, screen.module, m)))?.path,
         onNavigate: path => { const t = byPath(path); if (t) go(t.id); },
-    }), [screen, layout, modules, byPath, go]);
+        onSignOut: () => flash('Signed out (preview only)'),
+    }), [screen, layout, modules, byPath, go, flash]);
     const path = screen ? screenPath(modules, screen.module, screen).replace(':id', current.recordId ?? ':id') : '';
 
     useEffect(() => {

@@ -128,7 +128,7 @@ function Shell({ shell, lib, height, children }) {
         return { label: i.label, path: i.path, icon: Icon ? h(Icon, { className: 'h-5 w-5' }) : undefined };
     });
     return h('div', { className: 'cb-shell', style: { height } },
-        h(lib.AppShell, { navItems: items, activePath: shell.activePath, onNavigate: shell.onNavigate, title: shell.title, breadcrumbs: shell.breadcrumbs, appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));
+        h(lib.AppShell, { navItems: items, activePath: shell.activePath, onNavigate: shell.onNavigate, title: shell.title, breadcrumbs: shell.breadcrumbs, userMenu: [{ label: 'Sign out', danger: true, onClick: shell.onSignOut || (() => {}) }], appName: shell.layout.appName, user: { name: shell.layout.userName, roleName: shell.layout.userRole } }, children));
 }
 
 // Router dibuat sekali; isi halaman dialirkan lewat context supaya perubahan props (pencarian, navigasi preview)

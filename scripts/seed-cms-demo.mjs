@@ -126,7 +126,7 @@ const topbarFor = name => {
     const [module, kind] = name.split(' — ');
     const [title, crumb] = kind === 'Form' ? [`Add ${module}`, `Home / ${module} / Add`] : kind === 'Detail' ? [`Detail ${module}`, `Home / ${module} / Detail`]
         : module === 'Dashboard' ? ['Dashboard', 'Dashboard'] : [module, `Home / ${module}`];
-    return R('Topbar', { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
+    return V('Topbar', { Menu: 'Closed' }, { Title: title, Breadcrumb: crumb, UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' });
 };
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
 const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
@@ -170,20 +170,10 @@ const list = (title, description, addLabel) => screen(`${title} — List`, [
 const confirmFrame = (name, tone, title, message, cancel, confirm) => col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name }, [
     V('Dialog', { Size: 'Sm', Tone: tone }, { Title: title, Message: message, CancelLabel: cancel, ConfirmLabel: confirm }, { name: 'Dialog' }),
 ]);
-// Filter dialog (reference design): fields come from the entity fields marked "filterable".
-const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Dialog · Filters' }, [
-    col({ w: 400, radius: 'radius/xl', fill: 'color/background', stroke: 'color/border', shadow: { x: 0, y: 12, blur: 32, opacity: 0.16 }, clip: true, name: 'Filters' }, [
-        row({ w: 'fill', pad: [16, 24], justify: 'between', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Header' }, [
-            text('Filters', { size: 18, line: 28, weight: 600 }),
-            icon(ctx.icon('close', 'outline', 'color/muted-foreground'), { size: 20, name: 'Icon' }),
-        ]),
-        col({ w: 'fill', pad: 24, gap: 16, name: 'Content' }, [
-            field('SelectField', 'Role', 'All'),
-            field('SelectField', 'Active account', 'All'),
-            R('SwitchField', { Label: 'Show deleted' }),
-        ]),
-        row({ w: 'fill', pad: [16, 24], gap: 8, justify: 'end', stroke: 'color/border', strokeSides: [1, 0, 0, 0], name: 'Footer' }, [btn('Secondary', 'Reset'), btn('Primary', 'Apply')]),
-    ]),
+// Filter drawer (library Drawer): the generated list page opens it from the Filter button; its fields come from the entity
+// fields marked "filterable".
+const filterFrame = col({ w: 560, pad: 48, align: 'center', fill: 'color/muted', radius: 'radius/lg', name: 'Drawer · Filters' }, [
+    instance(ctx.root('Drawer'), { Title: 'Filters', SecondaryLabel: 'Reset', PrimaryLabel: 'Apply' }, { name: 'Drawer' }),
 ]);
 
 const userScreens = [
@@ -230,6 +220,10 @@ const roleScreens = [
     confirmFrame('Confirm · Delete role', 'Danger', 'Delete role?', 'Users with this role lose its permissions. This cannot be undone.', 'Cancel', 'Delete'),
     confirmFrame('Confirm · Discard changes (role)', 'Danger', 'Discard changes?', 'You have unsaved changes. They will be lost if you leave this page.', 'Stay', 'Discard'),
 ];
+// Reference frame: the user menu opened from the avatar (Topbar variant Menu = Open).
+const userMenuFrame = col({ w: 1440, pad: [0, 0, 48, 0], fill: 'color/surface', name: 'Topbar · User menu' }, [
+    V('Topbar', { Menu: 'Open' }, { Title: 'Dashboard', Breadcrumb: 'Dashboard', UserName: 'Administrator', UserRole: 'admin' }, { w: 'fill', name: 'Topbar' }),
+]);
 const dashboard = screen('Dashboard', [
     header('Dashboard', 'Overview of app activity', ['Secondary', 'Download report']),
     row({ w: 'fill', gap: 16, align: 'start', name: 'Statistik' }, [
@@ -258,7 +252,7 @@ const addPage = (name, specs) => {
 };
 addPage('User', userScreens);
 addPage('Role', roleScreens);
-addPage('Dashboard', [dashboard]);
+addPage('Dashboard', [dashboard, userMenuFrame]);
 pages.push({ id: ids.get('page:library'), name: `Library · ${snap.name}`, nodes: libNodes, parentId: null });
 const pageOf = name => pages.find(p => p.name === name).id;
 const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name).id;

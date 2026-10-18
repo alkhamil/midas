@@ -80,8 +80,8 @@ export function client(server, token) {
         try {
             res = await fetch(base + path, {
                 method,
-                headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body ? { 'content-type': 'application/json' } : {}) },
-                body: body ? JSON.stringify(body) : undefined,
+                headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body ? { 'content-type': Buffer.isBuffer(body) ? 'application/gzip' : 'application/json' } : {}) },
+                body: body ? (Buffer.isBuffer(body) ? body : JSON.stringify(body)) : undefined,
             });
         } catch (e) {
             throw new Error(`cannot connect to ${base} (${e.cause?.code || e.message})`);
@@ -296,6 +296,13 @@ async function bundle(args) {
     const { request } = connection(args, repo);
     const res = await request('PUT', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/bundle`, { js, css });
     console.log(`Uploaded to Midas: ${res.bundleUrl}`);
+    // Also upload the built npm package: Studio's "Download project" embeds it, so developers need no registry login.
+    const out = join(dir, '.midas');
+    mkdirSync(out, { recursive: true });
+    const file = execFileSync('npm', ['pack', '--silent', '--pack-destination', out], { cwd: dir, encoding: 'utf8' }).trim().split('\n').at(-1);
+    const tgz = readFileSync(join(out, file));
+    await request('PUT', `/api/libraries/${encodeURIComponent(repo.libraryId)}/versions/${encodeURIComponent(pkg.version)}/package`, tgz);
+    console.log(`Package ${file} uploaded (${Math.round(tgz.length / 1024)} KB) for "Download project"`);
     return 0;
 }
 

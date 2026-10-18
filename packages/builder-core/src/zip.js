@@ -14,13 +14,13 @@ const crc32 = buf => {
     return (c ^ 0xffffffff) >>> 0;
 };
 
-/** `files`: path relatif → isi teks. Mengembalikan Uint8Array berisi arsip zip. */
+/** `files`: path → text or bytes (Uint8Array). Returns the zip archive as a Uint8Array. */
 export function zipFiles(files, root = '') {
     const enc = new TextEncoder();
     const parts = [], central = [];
     let offset = 0;
     for (const [path, content] of Object.entries(files)) {
-        const name = enc.encode(root ? `${root}/${path}` : path), data = enc.encode(content), crc = crc32(data);
+        const name = enc.encode(root ? `${root}/${path}` : path), data = typeof content === 'string' ? enc.encode(content) : content, crc = crc32(data);
         const local = new DataView(new ArrayBuffer(30));
         local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true);
         local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, name.length, true);
