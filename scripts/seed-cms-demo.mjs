@@ -4,12 +4,15 @@
 //
 // File ini dibuat seperti Studio membuatnya saat sebuah file memakai library: variabel library disalin (bertanda libId),
 // komponen disalin ke page "Library · <nama>" (setiap layer punya libRef), dan layar disusun dari instance salinan itu.
-// Layar adalah frame konten (tanpa sidebar/topbar): shell aplikasi datang dari base project.
+// Tiap layar dibungkus layout aplikasi (Sidebar + Topbar) supaya terlihat utuh di canvas; yang didaftarkan ke Code Builder
+// adalah frame konten di dalamnya — sidebar/topbar di aplikasi datang dari layout project + AppShell library.
 //
 // Pakai:
 //   node scripts/seed-cms-demo.mjs [--server URL] [--package @midas/ui-cms] [--file "CMS Demo"] [--no-project]
 // Prasyarat: library sudah dipublish (`node scripts/seed-design-system.mjs`) dan sudah login (`midas login`).
-import { build, col, Ids, instance, row, text } from './design-system/build.mjs';
+import { svgToDataUrl } from '../apps/studio/src/iconSet.js';
+import { build, col, icon, Ids, instance, row, text } from './design-system/build.mjs';
+import { UI_ICONS } from './design-system/icons.mjs';
 import { existingIds } from './design-system/document.mjs';
 import { PACKAGE_NAME } from './design-system/tokens.mjs';
 import { connect, enc, findFile, parseArgs, saveDocument } from './lib/midas-api.mjs';
@@ -77,8 +80,18 @@ for (const n of libNodes) {
     if (parent?.componentSet) variantIndex.set(`${parent.name}|${n.name}`, n.id);
     else if (!n.parentId) rootIndex.set(n.name, n.id);
 }
+const extraAssets = {};
 const ctx = {
     ids, vars, components,
+    /** Ikon berwarna token untuk sidebar di canvas (aset SVG ikut disimpan di dokumen). */
+    icon(name, style, colorRef) {
+        const svg = UI_ICONS[name];
+        if (!svg) throw new Error(`Ikon ${name} tidak ada`);
+        const c = colorRef.startsWith('#') ? colorRef : vars.byName.get(colorRef).first;
+        const id = `dsicon-${name}-${style}-${c.slice(1).toLowerCase()}`;
+        extraAssets[id] ||= svgToDataUrl(svg.replace(/#1C274C/gi, c));
+        return id;
+    },
     subtree(id) {
         const out = [], queue = [id];
         for (let i = 0; i < queue.length; i++) {
@@ -106,7 +119,41 @@ const ctx = {
 const V = (name, variant, props, extra) => instance(ctx.variant(name, variant), props, extra);
 const R = (name, props = {}, extra) => instance(ctx.root(name), props, extra);
 const btn = (variant, label, extra) => V('Button', { Variant: variant, Size: 'Md' }, { Label: label }, { name: label, ...extra });
-const screen = (name, children) => col({ w: 1184, pad: 24, gap: 24, fill: 'color/surface', name }, children);
+// Frame konten (yang didaftarkan ke Code Builder) lalu dibungkus layout aplikasi.
+const content = (name, children) => col({ w: 'fill', h: 836, pad: 24, gap: 24, fill: 'color/surface', name }, children);
+const topbar = title => row({ w: 'fill', h: 64, pad: [0, 24], justify: 'between', fill: 'color/background', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: 'Topbar' }, [
+    text(title, { size: 16, line: 24, weight: 600, name: 'Title' }),
+    row({ gap: 12, name: 'User' }, [
+        col({ align: 'end' }, [text('Administrator', { size: 14, line: 20, weight: 500 }), text('admin', { size: 12, line: 16, color: MUTED })]),
+        V('Avatar', { Size: 'Md' }, { Initial: 'A' }),
+    ]),
+]);
+// Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
+const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check']];
+const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], gap: 4, fill: 'color/sidebar', name: 'Sidebar' }, [
+    row({ w: 'fill', h: 72, pad: [0, 4], justify: 'between', name: 'Brand' }, [
+        row({ gap: 10 }, [
+            row({ w: 32, h: 32, justify: 'center', radius: 'radius/lg', fill: 'color/primary', name: 'Logo' }, [text('C', { size: 16, line: 24, weight: 700, color: 'color/primary-foreground' })]),
+            text('CMS Demo', { size: 16, line: 24, weight: 600, color: '#FFFFFF', name: 'App name' }),
+        ]),
+        row({ w: 28, h: 28, justify: 'center', radius: 'radius/md', stroke: 'color/sidebar-foreground', name: 'Toggle' }, [icon(ctx.icon('double-alt-arrow-left', 'outline', 'color/sidebar-foreground'), { size: 14, name: 'Icon' })]),
+    ]),
+    ...NAV.map(([label, ic]) => {
+        const on = label === active, c = on ? 'color/primary-foreground' : 'color/sidebar-foreground';
+        return row({ w: 'fill', h: 40, pad: [0, 12], gap: 12, radius: 'radius/lg', fill: on ? 'color/primary' : 'none', name: `Menu · ${label}` }, [
+            icon(ctx.icon(ic, 'outline', c), { size: 20, name: 'Icon' }),
+            text(label, { size: 14, line: 20, weight: 500, color: c, name: 'Label' }),
+        ]);
+    }),
+]);
+const SHELL_TITLE = { User: 'User', Role: 'Role', Dashboard: 'Dashboard' };
+const screen = (name, children) => {
+    const module = name.split(' — ')[0];
+    return row({ w: 1440, align: 'start', fill: 'color/surface', name: `Halaman · ${name}`, inner: name }, [
+        sidebarFrame(module),
+        col({ w: 'fill', name: 'Area utama' }, [topbar(SHELL_TITLE[module]), content(name, children)]),
+    ]);
+};
 const header = (title, description, action) => row({ w: 'fill', justify: 'between', align: 'center', name: 'Header' }, [R('PageHeader', { Title: title, Description: description }, { w: 'fill' }), action]);
 const panel = (children, name) => col({ w: 'fill', gap: 16, pad: 20, radius: 'radius/lg', fill: 'color/background', stroke: 'color/border', name }, children);
 const twoCols = (a, b) => row({ w: 'fill', gap: 24, align: 'start' }, [a, b]);
@@ -177,7 +224,7 @@ const addPage = (name, specs) => {
     specs.forEach((spec, i) => {
         const built = build(spec, ctx, { x, y: 0, key: `screen:${name}/${i}` });
         nodes.push(...built);
-        frames.push({ page: name, name: spec.name, id: built[0].id });
+        frames.push({ page: name, name: spec.inner ?? spec.name, id: built.find(n => n.name === (spec.inner ?? spec.name)).id });
         x += built[0].w + 120;
     });
     pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: null });
@@ -188,7 +235,7 @@ addPage('Dashboard', [dashboard]);
 pages.push({ id: ids.get('page:library'), name: `Library · ${snap.name}`, nodes: libNodes, parentId: null });
 const pageOf = name => pages.find(p => p.name === name).id;
 const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name).id;
-const doc = { format: 'midas', version: 1, name: FILE_NAME, pageId: pages[0].id, pages, tokens: {}, variables: vars.toJSON(), assets: structuredClone(snap.assets ?? {}) };
+const doc = { format: 'midas', version: 1, name: FILE_NAME, pageId: pages[0].id, pages, tokens: {}, variables: vars.toJSON(), assets: { ...structuredClone(snap.assets ?? {}), ...extraAssets } };
 console.log(`CMS Demo: ${pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')}`);
 
 const saved = await saveDocument(api, { name: FILE_NAME, doc, existing: existingFile, idPrefix: 'cms-demo' });

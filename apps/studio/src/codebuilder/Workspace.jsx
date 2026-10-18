@@ -20,7 +20,8 @@ function Outline({ tree, selected, onSelect, onToggle, hiddenOf }) {
     return <ul className="cb-outline">{row(tree, 0)}</ul>;
 }
 
-export function Workspace({ screen, tree, ctx, library, entity, layout, title, module, screens, modules, actions, onClose, onReveal, onGenerate }) {
+export function Workspace({ screen, tree, ctx, library, entity, layout, title, module, screens, modules, actions, onClose, onReveal, onGenerate, onSwitch }) {
+    const [zoom, setZoom] = useState('fit');
     const [lib, setLib] = useState(null);
     const [err, setErr] = useState(null);
     const [selected, setSelected] = useState(null);
@@ -44,13 +45,13 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
     const toggle = id => actions.setNode(screen.id, id, c => ({ ...c, hidden: c.hidden ? undefined : true }));
     const shell = useMemo(() => ({ layout, title, activePath: layout.items.find(i => i.moduleId === module.id || modules.some(m => m.id === i.moduleId && isAncestor(modules, m, module)))?.path }), [layout, title, module, modules]);
 
-    // Menutupi canvas + panel kanan.
+    // Menutupi seluruh area editor di bawah header (rail, panel kiri, canvas, panel kanan): ruang untuk pratinjau + inspector.
     const view = useRef(null);
     useEffect(() => {
         const area = document.getElementById('canvas-area');
         const place = () => {
             const r = area.getBoundingClientRect();
-            Object.assign(view.current.style, { top: `${r.top}px`, left: `${r.left}px` });
+            Object.assign(view.current.style, { top: `${r.top}px`, left: '0px' });
         };
         place();
         const ro = new ResizeObserver(place);
@@ -69,13 +70,25 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
     return (
         <div className="cb-screen-view" ref={view}>
             <div className="cb-screen-bar">
+                <button className="cb-back" onClick={onClose} title="Kembali ke canvas">← Canvas</button>
                 <span className={`cb-role r-${screen.role}`}>{ROLE_LABEL[screen.role]}</span>
-                <b>{screen.name}</b>
+                <select className="cb-screen-switch" aria-label="Pilih screen" value={screen.id} onChange={e => onSwitch(e.target.value)}>
+                    {modules.map(m => (
+                        <optgroup key={m.id} label={m.label}>
+                            {screens.filter(x => x.module.id === m.id).map(x => <option key={x.id} value={x.id}>{x.name} ({ROLE_LABEL[x.role]})</option>)}
+                        </optgroup>
+                    ))}
+                </select>
                 <span className="small-label">src/modules/{module.name}</span>
                 <span className="cb-spacer" />
+                <label className="cb-zoom">Zoom
+                    <select value={zoom} onChange={e => setZoom(e.target.value)}>
+                        <option value="fit">Muat</option>
+                        {[50, 75, 100].map(z => <option key={z} value={z}>{z}%</option>)}
+                    </select>
+                </label>
                 <button className="wide-button" onClick={() => onReveal(screen.frameId)}>Buka frame di canvas</button>
                 <button className="wide-button" onClick={onGenerate}>Generate kode…</button>
-                <button className="wide-button primary" onClick={onClose}>Kembali ke canvas</button>
             </div>
             <div className="cb-screen-body">
                 <aside className="cb-left">
@@ -94,7 +107,7 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
                 </aside>
                 {err ? <div className="cb-empty cb-grow"><b>Live DOM Renderer</b><p className="small-label">{err}</p></div>
                     : !lib ? <div className="cb-empty cb-grow"><p className="small-label">Memuat {library.packageName}@{library.version}…</p></div>
-                        : tree.tree ? <LiveFrame tree={tree.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} selectedId={selected} onPick={setSelected} onError={onError} entity={entity} modules={modules} shell={shell} />
+                        : tree.tree ? <LiveFrame tree={tree.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} selectedId={selected} onPick={setSelected} onError={onError} entity={entity} modules={modules} shell={shell} zoom={zoom} />
                             : <div className="cb-empty cb-grow"><p className="small-label">{tree.issues[0]?.message}</p></div>}
                 <aside className="cb-right">
                     <Inspector selected={selected} tree={tree.tree} node={node} screen={screen} module={module} screens={screens} entity={entity} layout={layout} lib={lib} modules={modules} title={title} actions={inspectorActions} />

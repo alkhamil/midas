@@ -228,7 +228,7 @@ export function projectIssues(project, { byId, pages }) {
         for (const s of m.screens) {
             const f = byId.get(s.frameId);
             if (!f) add('error', `Frame screen ${s.name} (${s.role}) sudah dihapus`, { ...ref, screenId: s.id });
-            else if (f.parentId) add('warning', `Screen ${s.name} bukan frame teratas di page`, { ...ref, screenId: s.id });
+            else if (f.parentId && byId.get(f.parentId)?.type !== 'frame') add('warning', `Screen ${s.name} harus frame teratas di page atau berada di dalam frame (mis. layout halaman)`, { ...ref, screenId: s.id });
         }
     }
     return out;

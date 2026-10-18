@@ -96,7 +96,7 @@ body.picking aside:hover,body.picking header:hover{outline:1px dashed #9747FF;ou
  * Iframe berisi screen. `tree` dari screenTree(), `lib` = modul bundle, `cssUrl` = CSS bundle.
  * Klik elemen → onPick(nodeId). Lebar frame diskalakan agar muat di area (`fit`).
  */
-export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, modules, shell }) {
+export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, modules, shell, zoom = 'fit' }) {
     const iframe = useRef(null), root = useRef(null), wrap = useRef(null);
     const [ready, setReady] = useState(false);
     const [scale, setScale] = useState(1);
@@ -158,7 +158,7 @@ export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, enti
     useEffect(() => {
         const measure = () => {
             const w = wrap.current?.clientWidth || width;
-            setScale(Math.min(1, (w - 32) / width));
+            setScale(zoom === 'fit' ? Math.min(1, (w - 32) / width) : Number(zoom) / 100);
             const body = iframe.current?.contentDocument?.body;
             if (body) setHeight(shellHeight || Math.max(body.scrollHeight, 200));
         };
@@ -168,7 +168,7 @@ export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, enti
         const body = iframe.current?.contentDocument?.body;
         if (body) ro.observe(body);
         return () => ro.disconnect();
-    }, [ready, width, tree, shellHeight]);
+    }, [ready, width, tree, shellHeight, zoom]);
 
     return h('div', { className: 'cb-live-wrap', ref: wrap },
         h('div', { className: 'cb-live-stage', style: { width: width * scale, height: height * scale } },

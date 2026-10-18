@@ -57,12 +57,12 @@ function ComponentProps({ node, cfg, setCfg }) {
 function FieldRules({ field, onChange }) {
     const r = parseRules(field);
     const num = isNumericField(field);
-    const text = !num && field.type !== 'boolean';
+    const text = ['string', 'text', 'password'].includes(field.type);
     const set = (key, value) => onChange(withRule(field, key, value));
     return (
         <>
             {field.type !== 'boolean' && <Check checked={r.required} onChange={on => set('required', on)}>Wajib diisi</Check>}
-            {field.type !== 'boolean' && (num || text) && (
+            {(num || text) && (
                 <div className="cb-minmax">
                     <Row label={num ? 'Nilai min' : 'Panjang min'}><input type="number" value={r.min} onChange={e => set('min', e.target.value)} /></Row>
                     <Row label={num ? 'Nilai maks' : 'Panjang maks'}><input type="number" value={r.max} onChange={e => set('max', e.target.value)} /></Row>

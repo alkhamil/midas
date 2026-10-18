@@ -196,7 +196,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                     screen={activeScreen} tree={trees.get(activeScreen.id)} ctx={ctx} library={lib} entity={{ ...activeScreen.module.entity, moduleName: activeScreen.module.name }} layout={layout}
                     title={layout.items.find(i => i.moduleId === rootOf(allModules, activeScreen.module).id)?.label || activeScreen.module.label}
                     module={activeScreen.module} screens={screens} modules={allModules}
-                    actions={{ setNode, setLayout, setFields }} onGenerate={() => setForm('generate')}
+                    actions={{ setNode, setLayout, setFields }} onSwitch={setScreenId} onGenerate={() => setForm('generate')}
                     onClose={() => setScreenId(null)} onReveal={id => { setScreenId(null); bridge.reveal(id); }}
                 />,
                 canvasHost,
