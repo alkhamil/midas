@@ -10,23 +10,27 @@ Semua data (akun, file desain, library) disimpan di server lokal masing-masing â
 - Git
 - Port kosong: `4000` (API), `5173` (Studio), `5433` (Postgres), `8333` (S3/SeaweedFS), `4873` (Verdaccio)
 
-## 2. Ambil kode
+## 2. Ambil kode & buat branch kerja
+
+Kode terbaru ada di `main`. Kerjakan perubahanmu di branch sendiri (contoh di bawah: `feat/fahmi`), jangan langsung di `main`.
 
 Belum pernah clone:
 
 ```bash
 git clone https://github.com/alkhamil/midas.git
 cd midas
-git checkout feat/backend-foundation
+git checkout -b feat/fahmi
 ```
 
 Sudah punya repo-nya:
 
 ```bash
-git fetch origin
-git checkout feat/backend-foundation
-git pull
+git checkout main
+git pull origin main
+git checkout -b feat/fahmi
 ```
+
+Push branch pertama kali dengan `git push -u origin feat/fahmi`, lalu buka pull request ke `main` di GitHub.
 
 ## 3. Install & infrastruktur
 
