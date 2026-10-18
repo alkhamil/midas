@@ -2819,3 +2819,10 @@ a.wide-button { text-decoration: none; color: inherit }
 .arc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
 .arc-cell { display: grid; gap: 4px; min-width: 0 }
 .arc-cell .field { min-width: 0 }
+
+/* long property labels truncate instead of scrolling the panel sideways */
+.vp-row2 { min-width: 0 }
+.vp-row2 .vp-pill { flex: 1 1 0; min-width: 0 }
+.vp-section, .cmp-block, .cmp-props { min-width: 0; max-width: 100% }
+#inspector { overflow-x: hidden }
+.inst-locked { opacity: .5; pointer-events: none }

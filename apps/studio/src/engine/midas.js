@@ -64,6 +64,11 @@ function runLayout(d) {
             kids.set(k, []);
         kids.get(k).push(n);
     }
+    for (const [k, list] of kids) {
+        const p = k && d.get(k);
+        if (p?.layoutFlip && isAutoLayout(p))
+            list.reverse();
+    }
     const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
     const parentOf = n => d.get(n.parentId);
     // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
@@ -4753,7 +4758,7 @@ const POS_ICONS = {
 };
 function positionSectionHtml(n) {
     const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
-    const p = doc.get(n.parentId), cons = !!p && p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute');
+    const p = doc.get(n.parentId), cons = !!p && (p.type === 'group' || p.booleanOp || p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute'));
     const h = n.constraintH || 'left', v = n.constraintV || 'top';
     const flips = `<div class="pos-flips"><button data-rotate90 title="Rotate 90°" aria-label="Rotate 90 degrees">${POS_ICONS.rot90}</button><button data-flip="x" class="${n.flipX ? 'on' : ''}" title="Flip horizontal" aria-label="Flip horizontal">${POS_ICONS.flipH}</button><button data-flip="y" class="${n.flipY ? 'on' : ''}" title="Flip vertical" aria-label="Flip vertical">${POS_ICONS.flipV}</button></div>`;
     const left = (cons ? cnSelect('constraintH', h, [['left', 'Left'], ['right', 'Right'], ['stretch', 'Left & Right'], ['center', 'Center'], ['scale', 'Scale']], '⊢⊣') + cnSelect('constraintV', v, [['top', 'Top'], ['bottom', 'Bottom'], ['stretch', 'Top & Bottom'], ['center', 'Center'], ['scale', 'Scale']], '⌶') : '') + field(icon('rotate', 12), 'rotation', n.rotation, { unit: '°', title: 'Rotation' });
@@ -4917,13 +4922,25 @@ class DocumentModel {
             if (depth > 500) // cycle guard only
                 return;
             // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
-            let clips = parentClips;
             // Auto layout "Canvas stacking: First on top" paints the children in reverse order (layer order is unchanged).
             const kidsOf = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
+            // Mask entries, built once per parent: a visible mask clips every sibling stacked below it (Figma: the mask sits above what it masks).
+            const maskFor = new Map();
+            let active = null;
+            for (let i = kidsOf.length - 1; i >= 0; i--) {
+                const k = kidsOf[i];
+                if (k.isMask && k.visible) {
+                    const mm = multiply(m, localMatrix(k));
+                    active = { mask: k, matrix: mm, inverse: inverse(mm), w: k.w, h: k.h, radius: k.type === 'ellipse' ? Math.min(k.w, k.h) / 2 : k.radius || 0, radii: k.type === 'ellipse' ? null : cornerRadii(k) };
+                }
+                else
+                    maskFor.set(k.id, active);
+            }
             for (const n of pn?.layoutReverseZ && isAutoLayout(pn) ? [...kidsOf].reverse() : kidsOf) {
                 if (visited.has(n.id))
                     continue;
                 visited.add(n.id);
+                const clips = maskFor.get(n.id) ? [...parentClips, maskFor.get(n.id)] : parentClips;
                 const mat = multiply(m, localMatrix(n)), box = boxOf(mat, n.w, n.h), o = opacity * n.opacity, hide = hidden || !n.visible, lock = locked || n.locked;
                 const item = { node: n, matrix: mat, inverse: inverse(mat), box, opacity: o, clips, hidden: hide, locked: lock, boolChild: boolInside.has(pid) };
                 world.set(n.id, item);
@@ -4933,9 +4950,6 @@ class DocumentModel {
                 if (n.booleanOp || boolInside.has(pid))
                     boolInside.add(n.id);
                 walk(n.id, mat, o, next, hide, lock, depth + 1);
-                if (n.isMask && n.visible)
-                    // radius/radii let the GPU path approximate the mask with its rounded box (or ellipse) on huge scenes.
-                    clips = [...parentClips, { mask: n, matrix: mat, inverse: inverse(mat), w: n.w, h: n.h, radius: n.type === 'ellipse' ? Math.min(n.w, n.h) / 2 : n.radius || 0, radii: n.type === 'ellipse' ? null : cornerRadii(n) }];
             }
         };
         walk(null, identity(), 1, [], false, false, 0);
@@ -7074,6 +7088,21 @@ function renderInspector() {
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
     $('#inspector').innerHTML = html;
+    // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
+    if (ns.length === 1 && insideInstance(n))
+        $('#inspector').querySelectorAll('section.inspector-section').forEach(sec => {
+            const title = (sec.querySelector('.section-heading')?.textContent || '').trim();
+            if (!/^(Position|Layout|Auto layout)/.test(title))
+                return;
+            sec.querySelectorAll('input,select,button').forEach(el => {
+                if (el.closest('.sz-field') && el.tagName === 'BUTTON')
+                    return;
+                if (el.matches('[data-var-coll-toggle],[data-cmp]'))
+                    return;
+                el.disabled = true;
+                el.classList.add('inst-locked');
+            });
+        });
     $('#inspector').querySelectorAll('[data-img-asset]').forEach(el => { const src = doc.data.assets[el.dataset.imgAsset]; if (src)
         el.style.backgroundImage = `url("${src}")`; });
     lastInspector = performance.now();
@@ -7087,10 +7116,32 @@ function constrainChildren(n, oldW, oldH) {
             continue;
         if (n.type === 'group' || n.booleanOp) {
             const sx = n.w / (oldW || 1), sy = n.h / (oldH || 1), cw = c.w, ch = c.h;
-            c.x *= sx;
-            c.y *= sy;
-            c.w *= sx;
-            c.h *= sy;
+            // Children of a group scale with it, unless they carry an explicit constraint (Left, Right, Center, Left & Right).
+            const ch0 = c.constraintH, cv0 = c.constraintV;
+            if (ch0 && ch0 !== 'scale') {
+                if (ch0 === 'right')
+                    c.x += dx;
+                else if (ch0 === 'center')
+                    c.x += dx / 2;
+                else if (ch0 === 'stretch')
+                    c.w = Math.max(1, c.w + dx);
+            }
+            else {
+                c.x *= sx;
+                c.w *= sx;
+            }
+            if (cv0 && cv0 !== 'scale') {
+                if (cv0 === 'bottom')
+                    c.y += dy;
+                else if (cv0 === 'center')
+                    c.y += dy / 2;
+                else if (cv0 === 'stretch')
+                    c.h = Math.max(1, c.h + dy);
+            }
+            else {
+                c.y *= sy;
+                c.h *= sy;
+            }
             if (c.type === 'text')
                 c.fontSize *= Math.min(sx, sy);
             constrainChildren(c, cw, ch);
@@ -7713,8 +7764,10 @@ function arcHandles(n) {
     const { a0, sweep, ratio } = arcParams(n), m = doc.world(n.id)?.matrix;
     if (!m)
         return [];
+    // Handles sit slightly inside the outline so the bounding box never covers them.
+    const inset = Math.min(1 - 14 / Math.max(28, Math.min(n.w, n.h) / 2 * state.camera.zoom), .9);
     const at = (a, k) => { const q = point(m, n.w / 2 + Math.cos(a) * n.w / 2 * k, n.h / 2 + Math.sin(a) * n.h / 2 * k); return worldToScreen(q.x, q.y); };
-    return [{ name: 'arc-end', ...at(a0 + sweep, 1) }, { name: 'arc-ratio', ...at(a0, ratio) }, { name: 'arc-start', ...at(a0, 1) }];
+    return [{ name: 'arc-end', ...at(a0 + sweep, inset) }, { name: 'arc-ratio', ...at(a0, ratio) }, { name: 'arc-start', ...at(a0, inset) }];
 }
 function arcSelected() {
     const roots = selectedRoots();
@@ -8103,11 +8156,11 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             if (!deep && !framesOnly) {
                 const anc = doc.ancestors(n), groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
                 // Inside an auto layout frame a click always picks that frame first (the outermost one); Ctrl/Cmd reaches the smallest node.
-                const auto = anc.filter(isAutoLayout).pop();
-                if (auto && (!groups.length || anc.indexOf(auto) > anc.indexOf(groups[0])))
-                    return auto;
                 if (groups.length)
                     return groups[0];
+                const auto = anc.filter(isAutoLayout).pop();
+                if (auto)
+                    return auto;
             }
             return n;
         }
@@ -9059,9 +9112,29 @@ function finishText(cancel = false) {
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
 function showMenu(items, x, y) { const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
+// A layer inside an instance (not the instance's own root).
+function insideInstance(n) { return !!n && doc.ancestors(n).some(a => a.isInstance); }
+// Copy what an instance overrides back into its main component, then clear the overrides.
+function pushToMain() {
+    transaction('Push changes to main component', () => {
+        for (const r of selectedRoots().filter(x => x.isInstance)) {
+            const page = pageOfNode(r.id);
+            for (const x of [r, ...pageTree(page, r.id)]) {
+                const src = x.sourceId && (doc.get(x.sourceId) || componentById(x.sourceId));
+                if (!src || !x.overrides)
+                    continue;
+                for (const [k, v] of Object.entries(x.overrides))
+                    src[k] = structuredClone(v);
+                x.overrides = {};
+                doc.touch(src);
+                doc.touch(x);
+            }
+        }
+        syncComponents(true);
+    });
+}
 function instanceMenuItems(n) {
-    const has = Object.keys(n.overrides || {}).length > 0;
-    return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, ...(has ? [{ label: 'Reset overrides', action: 'resetOverrides' }] : []), '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
+    return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Push changes to main component', action: 'pushToMain' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, { label: 'Reset instance', action: 'resetOverrides' }, '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
 }
 function detachSelectedInstances() { transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
     detachNodeTree(pageOfNode(x.id), x.id); }); }
@@ -9289,6 +9362,15 @@ const MENU_ICONS = (() => {
 // The ··· menu in the inspector header: masking and boolean operations only.
 function selectionMenu(x = window.innerWidth - 295, y = 113) {
     const one = state.selection.size === 1 && activeNode();
+    // Inside an instance only resetting (and detaching a nested instance) makes sense.
+    if (one && insideInstance(one)) {
+        showMenu([...(one.isInstance ? [{ label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }] : []), { label: 'Reset instance', action: 'resetOverrides' }], x, y);
+        return;
+    }
+    if (one && one.isInstance) {
+        showMenu(instanceMenuItems(one), x, y);
+        return;
+    }
     showMenu([
         { label: one?.isMask ? 'Remove mask' : 'Use as mask', action: 'useAsMask', icon: 'mask', key: kbd('⌥⌘M', 'Ctrl+Alt+M'), disabled: !state.selection.size },
         '-',
@@ -9322,7 +9404,7 @@ function useAsMask() {
     transaction('Use as mask', () => {
         g.name = 'Mask group';
         doc.refresh(); // the parent index is stale right after grouping
-        const bottom = doc.nodes.find(n => n.parentId === g.id);
+        const inGroup = doc.nodes.filter(n => n.parentId === g.id), bottom = inGroup[inGroup.length - 1];
         if (bottom) {
             bottom.isMask = true;
             doc.touch(bottom);
@@ -9335,7 +9417,10 @@ function useAsMask() {
     select([g.id]);
 }
 // Right-click menu on the canvas and layer list keeps the full command set.
-function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an?.isInstance) {
+function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an && insideInstance(an)) {
+    selectionMenu(x, y);
+    return;
+} if (state.selection.size === 1 && an?.isInstance) {
     showMenu(instanceMenuItems(an), x, y);
     return;
 } showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
@@ -10947,7 +11032,8 @@ function variantEditorHtml(set, cur) {
             const ctl = comboField(`data-vprop-val="${esc(k)}"`, cur.variant?.[k], vals, k);
             return `<div class="cmp-prop2"><span title="${esc(k)}">${esc(k)}</span><div class="cmp-ctl">${ctl}</div></div>`;
         }).join('');
-        return `<div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div><div class="cmp-props">${sels}</div>${cpropRowsHtml(set)}</div>`;
+        // A variant shows only its own variant values (no property editing here: that happens on the component set).
+        return `<div class="vp-section"><div class="vp-head"><span>Current variant</span></div><div class="cmp-props">${sels}</div></div>`;
     }
     const rows = props.map(k => {
         const vals = variantValues(set, k), open = propPop && propPop.prop === k && propPop.setId === set.id;
@@ -11464,12 +11550,18 @@ function swapButtonHtml(attrs, compId) {
     return `<button class="swap-btn" ${attrs} title="${esc(label)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(label)}</span>${CHEV_SVG}</button>`;
 }
 function swappableComponents() {
-    const out = [];
+    // One entry per component (a component set counts once, represented by its first variant); variants are picked on the instance itself.
+    const out = [], seenSets = new Set();
     for (const p of doc.data.pages) {
         for (const c of p.nodes) {
             if (c.component) {
                 const set = parentSetOf(c);
-                out.push({ id: c.id, label: set ? `${set.name} / ${c.name}` : c.name });
+                if (set) {
+                    if (seenSets.has(set.id))
+                        continue;
+                    seenSets.add(set.id);
+                }
+                out.push({ id: c.id, label: set ? set.name : c.name });
             }
         }
     }
@@ -11497,7 +11589,7 @@ function swapNestedNode(y, targetId) {
         delete y.swapOf;
         y.isInstance = false;
     }
-    else if (y.isInstance && !y.swapOf)
+    else if (y.isInstance && !y.swapOf && idx.get(y.sourceId)?.component)
         y.sourceId = target.id; // a real instance, e.g. the nested instance inside the main component
     else {
         y.swapOf = y.swapOf || y.sourceId;
@@ -12364,7 +12456,9 @@ async function figToMidas(file, onProgress, abortSignal) {
         // Auto layout settings
         if (f.strokesIncludedInLayout)
             n.strokesIncluded = true;
-        if (f.stackReverseZIndex)
+        // Children are stored reversed (see above): lay them out back-to-front again, and paint "last on top" by reversing.
+        n.layoutFlip = true;
+        if (!f.stackReverseZIndex)
             n.layoutReverseZ = true;
         if (f.stackCounterAlignItems === 'BASELINE' && horiz)
             n.alignBaseline = true;
@@ -12842,7 +12936,9 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (['VECTOR', 'STAR', 'REGULAR_POLYGON'].includes(f.type))
             return;
         const cur = midasById.get(n.id) === n ? n : midasById.get(n.id);
-        for (const c of kids.get(gkey(f.guid)) || [])
+        // Figma's layer list shows the first child at the top (front); Midas stores back-to-front, so siblings go in reversed (variants of a set keep their order).
+        const sibs = kids.get(gkey(f.guid)) || [];
+        for (const c of f.isStateGroup ? sibs : [...sibs].reverse())
             walk(c, cur && cur.type !== 'path' ? cur : n, f, out);
     };
     const doc = [...fig.values()].find(n => n.type === 'DOCUMENT');
@@ -12856,7 +12952,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             throw new Error('Import cancelled by user.');
         const c = canvases[ci];
         const nodes = [];
-        for (const ch of kids.get(gkey(c.guid)) || [])
+        for (const ch of [...(kids.get(gkey(c.guid)) || [])].reverse())
             walk(ch, null, null, nodes);
         processedLayers += nodes.length;
         pages.push({ id: uid(), name: c.name || `Page ${pages.length + 1}`, nodes, canvas: c });
@@ -13103,7 +13199,8 @@ async function figToMidas(file, onProgress, abortSignal) {
             c.parentId = s.parentId === src.id ? n.id : clones.get(s.parentId)?.id;
             c.sourceId = s.id;
             c.component = false;
-            c.isInstance = false;
+            // A nested instance stays an instance (Figma shows it with the instance icon too).
+            c.isInstance = !!s.isInstance;
             c.overrides = {};
             c.version = 0;
             if (!c.parentId)
@@ -14308,7 +14405,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -15357,7 +15454,21 @@ overlay.addEventListener('dblclick', e => {
         renameOnCanvas(labelHit);
         return;
     }
-    const hit = hitTest(eventWorld(e), { deep: true });
+    const w0 = eventWorld(e);
+    let hit = hitTest(w0, { deep: true });
+    // In auto layout (and inside components) a double-click goes one level deeper, toward the cursor, instead of jumping to the leaf.
+    if (hit && state.tool === 'select') {
+        const chain = [hit, ...doc.ancestors(hit)];
+        if (chain.some(a => isAutoLayout(a) || a.component || a.isInstance)) {
+            const only = state.selection.size === 1 ? [...state.selection][0] : null, i = only ? chain.findIndex(a => a.id === only) : -1;
+            if (i > 0)
+                hit = chain[i - 1];
+            else if (i < 0) {
+                const base = hitTest(w0), j = base ? chain.findIndex(a => a.id === base.id) : -1;
+                hit = j > 0 ? chain[j - 1] : hit;
+            }
+        }
+    }
     if (state.tool === 'pen') {
         finishPen(false);
         return;
