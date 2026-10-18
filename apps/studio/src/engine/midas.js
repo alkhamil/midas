@@ -718,7 +718,7 @@ document.addEventListener('change', e => {
 // ===== variables =====
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
-function bindTypes(prop) { if (String(prop).startsWith('vprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
+function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
     const n = activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
@@ -726,7 +726,21 @@ function vpropType(name) {
         return null;
     return binaryPair(variantValues(set, name)) ? 'boolean' : 'string';
 }
-function bindType(prop) { if (String(prop).startsWith('vprop:'))
+// Instance component properties (text / boolean) can take a variable: key 'cprop:<property id>'.
+function cpropById(pid) {
+    for (const pg of doc.data.pages)
+        for (const x of pg.nodes) {
+            const p = x.cprops?.find(q => q.id === pid);
+            if (p)
+                return p;
+        }
+    return null;
+}
+function bindType(prop) { if (String(prop).startsWith('cprop:')) {
+    const p = cpropById(prop.slice(6));
+    return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' ? 'string' : null;
+}
+if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
@@ -887,6 +901,24 @@ function applyVariables(d) {
         if (!n.vars)
             continue;
         for (const [prop, id] of Object.entries(n.vars)) {
+            if (prop.startsWith('cprop:')) {
+                const vi = items.get(id), pid = prop.slice(6);
+                if (!vi || !cpropById(pid)) {
+                    delete n.vars[prop];
+                    touched.add(n);
+                    continue;
+                }
+                const val = varValue(d, vi, n), next = vi.type === 'boolean' ? !!val : String(val ?? '');
+                if (val !== undefined && n.propValues?.[pid] !== next) {
+                    n.propValues = { ...(n.propValues || {}), [pid]: next };
+                    touched.add(n);
+                    if (!varSwapQueued) {
+                        varSwapQueued = true;
+                        queueMicrotask(() => { varSwapQueued = false; syncComponents(); invalidate(); });
+                    }
+                }
+                continue;
+            }
             if (prop.startsWith('vprop:')) {
                 const vi = items.get(id);
                 if (!vi) {
@@ -12217,7 +12249,14 @@ function renderCpropPop() {
 }
 // Controls on an instance for the component's own properties and for exposed nested instances.
 function instancePropsHtml(owner, holder) {
-    const ctl = (owner, p, attrs = '') => {
+    const bindable = (owner, p, attrs, html) => {
+        if (attrs || (p.type !== 'text' && p.type !== 'boolean'))
+            return html;
+        const key = 'cprop:' + p.id, bv = owner.vars?.[key] && varItem(owner.vars[key]);
+        return bv ? varChip(key, bv) : html + varBindButton(key);
+    };
+    const ctl = (owner, p, attrs = '') => bindable(owner, p, attrs, ctl0(owner, p, attrs));
+    const ctl0 = (owner, p, attrs = '') => {
         const v = instancePropValue(owner, p);
         if (p.type === 'text')
             return `<input class="cmp-input" data-iprop="${p.id}" ${attrs} value="${esc(v ?? '')}" spellcheck="false" aria-label="${esc(p.name)}">`;
@@ -13456,6 +13495,28 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (!byParent.has(n.parentId))
             byParent.set(n.parentId, []);
         byParent.get(n.parentId).push(n);
+    }
+    // A property's default is what Figma shows: the visibility / text of the layer it drives (a bool stored without a value is false).
+    for (const holder of allMidas.filter(x => x.cprops?.length)) {
+        const members = [];
+        const q = [holder.id];
+        while (q.length)
+            for (const c of byParent.get(q.shift()) || []) {
+                members.push(c);
+                q.push(c.id);
+            }
+        for (const p of holder.cprops) {
+            if (p.type === 'boolean') {
+                const b = members.find(m => m.propBind?.visible === p.id);
+                if (b)
+                    p.def = b.visible !== false;
+            }
+            else if (p.type === 'text') {
+                const b = members.find(m => m.propBind?.text === p.id && typeof m.text === 'string');
+                if (b)
+                    p.def = b.text;
+            }
+        }
     }
     for (const n of allMidas.filter(x => x.componentSet)) {
         const vs = (byParent.get(n.id) || []).filter(x => x.component), parsed = vs.map(v => Object.fromEntries(v.name.split(',').map(s => s.trim().split('=')).filter(a => a.length === 2 && a[0].trim()).map(a => [a[0].trim(), a[1].trim()])));
