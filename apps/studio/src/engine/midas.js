@@ -1,5 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
+import { AtlasPacker } from './atlasPacker.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
 
 
@@ -5626,8 +5627,8 @@ fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let t
  return vec4(rgb,alpha)*item.props.w*clipAlpha;
 }`;
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch = 0; this.canvas = document.createElement('canvas'); }
-    reset() { this.entries.clear(); this.shelves = [{ x: 1, y: 1, h: 0 }]; this.epoch++; }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.canvas = document.createElement('canvas'); }
+    reset() { this.entries.clear(); this.packer.reset(); this.epoch++; }
     get(n, res, images) {
         const key = `${n.id}:${n.version}:${res}`;
         if (this.entries.has(key))
@@ -5641,25 +5642,16 @@ class Atlas {
         const width = n.w + padding * 2, height = n.h + padding * 2;
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
-        let page = this.shelves.length - 1, shelf = this.shelves[page];
-        if (shelf.x + w + 2 > this.size) {
-            shelf.x = 1;
-            shelf.y += shelf.h + 2;
-            shelf.h = 0;
+        let slot = this.packer.alloc(w, h);
+        if (!slot) {
+            // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
+            this.entries.clear();
+            this.packer.reset();
+            slot = this.packer.alloc(w, h);
+            if (!slot)
+                return null;
         }
-        if (shelf.y + h + 2 > this.size) {
-            if (this.shelves.length >= this.layers) {
-                // Ring buffer: recycle atlas pages when full rather than crashing WebGPU
-                this.entries.clear();
-                this.shelves = [{ x: 1, y: 1, h: 0 }];
-                page = 0;
-                shelf = this.shelves[0];
-            } else {
-                page++;
-                shelf = { x: 1, y: 1, h: 0 };
-                this.shelves.push(shelf);
-            }
-        }
+        const { x, y, page } = slot;
         this.canvas.width = w;
         this.canvas.height = h;
         const ctx = this.canvas.getContext('2d');
@@ -5685,10 +5677,8 @@ class Atlas {
             ctx.globalAlpha = 1;
             paintStroke(ctx, n, path);
         }
-        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [shelf.x, shelf.y, page], premultipliedAlpha: true }, [w, h]);
-        const entry = { u: shelf.x / this.size, v: shelf.y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
-        shelf.x += w + 2;
-        shelf.h = Math.max(shelf.h, h);
+        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w, h]);
+        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
         this.entries.set(key, entry);
         return entry;
     }
@@ -5862,7 +5852,9 @@ class Renderer {
         this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
         let count = 0, clipN = 0;
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
-        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), .5, 32) * quality;
+        // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
+        // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
+        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), 1 / 16, 32) * quality;
         const push = (s, n, clipId, shadow = false) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
