@@ -1,6 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, assetsAsDataUrls } from '../storage.js';
 import { AtlasPacker } from './atlasPacker.js';
+import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
 
 
@@ -9728,15 +9729,22 @@ function nodeIndex() {
     _cachedNodeIndexRev = doc.revision;
     return _cachedNodeIndex;
 }
-let _compMap = null, _instMap = null, _pageMap = null, _globalRev = -1;
+let _compMap = null, _instMap = null, _pageMap = null, _nodeMap = null, _kidsMap = null, _globalRev = -1;
 function ensureGlobalIndexes() {
     if (_compMap && _globalRev === doc.revision)
         return;
     _compMap = new Map();
     _instMap = new Map();
     _pageMap = new Map();
+    // Indeks id → node dan induk → anak untuk seluruh dokumen. subtreeOf/parentSetOf/setVariants dulu memindai
+    // semua node (84 ribu pada file besar) di setiap pemanggilan; panel Components memanggilnya ratusan kali.
+    _nodeMap = new Map();
+    _kidsMap = new Map();
     for (const p of doc.data.pages) {
         for (const n of p.nodes) {
+            _nodeMap.set(n.id, n);
+            if (n.parentId)
+                (_kidsMap.get(n.parentId) || _kidsMap.set(n.parentId, []).get(n.parentId)).push(n);
             _pageMap.set(n.id, p);
             if (n.component)
                 _compMap.set(n.id, n);
@@ -9771,12 +9779,8 @@ function pageOfNode(id) {
 function pageTree(page, rootId) {
     if (!page || !rootId)
         return [];
-    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
-        const k = new Map();
-        for (const n of page.nodes)
-            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
-        return k;
-    })();
+    // Page aktif punya indeks sendiri; page lain memakai indeks induk → anak global (bukan membangun peta satu page tiap panggilan).
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (ensureGlobalIndexes(), _kidsMap);
     const out = [], queue = [rootId], seen = new Set([rootId]);
     while (queue.length) {
         const id = queue.shift();
@@ -9843,12 +9847,8 @@ function markSelectedOverrides() {
 function instanceTree(page, rootId) {
     if (!page || !rootId)
         return [];
-    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (() => {
-        const k = new Map();
-        for (const n of page.nodes)
-            (k.get(n.parentId) || k.set(n.parentId, []).get(n.parentId)).push(n);
-        return k;
-    })();
+    // Page aktif punya indeks sendiri; page lain memakai indeks induk → anak global (bukan membangun peta satu page tiap panggilan).
+    const kids = (page === doc.page && doc._byParent?.size) ? doc._byParent : (ensureGlobalIndexes(), _kidsMap);
     const out = [], queue = [rootId], seen = new Set([rootId]);
     while (queue.length) {
         const id = queue.shift();
@@ -10050,22 +10050,9 @@ async function libSnap(id, fresh = false) {
     return snap;
 }
 function subtreeOf(rootId) {
-    const nodes = allNodes(), kids = new Map();
-    for (const n of nodes)
-        if (n.parentId)
-            (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
-    const out = [], root = nodes.find(n => n.id === rootId);
-    if (!root)
-        return out;
-    const stack = [root];
-    while (stack.length) {
-        const n = stack.pop();
-        out.push(n);
-        stack.push(...(kids.get(n.id) || []));
-    }
-    return out;
+    ensureGlobalIndexes();
+    return subtreeFrom({ nodeMap: _nodeMap, kidsMap: _kidsMap }, rootId);
 }
-// What a library version contains: the main components (and component sets) of this file plus its own variables.
 function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
@@ -10535,9 +10522,39 @@ function renderAssets() {
     const iconsOpen = state.assetIconsOpen === true;
     const iconGroup = iconEntries.length ? `<div class="asset-group"><button class="lib-group-head" data-asset-icons>${icon(iconsOpen ? 'chevronDown' : 'chevronRight', 10)}<span>Icons</span><small>${iconEntries.length}</small></button>${iconsOpen ? `<div class="asset-icon-grid">${iconEntries.map(card).join('')}</div>` : ''}</div>` : '';
     $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + compEntries.map(card).join('') + iconGroup;
-    for (const en of [...compEntries, ...(iconsOpen ? iconEntries : [])])
-        if (!svgThumbOf(en.comp))
-            ensureThumb(en.comp);
+    watchAssetThumbs([...compEntries, ...(iconsOpen ? iconEntries : [])]);
+}
+// Thumbnail komponen mahal (tiap thumbnail merender layer-nya, dan komponen di page lain mengharuskan pindah page sementara),
+// sedangkan file design system bisa punya ratusan komponen. Jadi hanya kartu yang terlihat di panel yang dibuat; sisanya
+// menunggu sampai di-scroll ke dalam viewport.
+let assetThumbObserver = null;
+function watchAssetThumbs(entries) {
+    assetThumbObserver?.disconnect();
+    assetThumbObserver = null;
+    const panel = $('#assets-panel');
+    const todo = new Map(entries.filter(en => !svgThumbOf(en.comp) && !thumbCache.get(en.comp.id)?.url).map(en => [en.comp.id, en.comp]));
+    if (!panel || !todo.size)
+        return;
+    if (typeof IntersectionObserver === 'undefined') {
+        for (const n of [...todo.values()].slice(0, 24))
+            ensureThumb(n);
+        return;
+    }
+    assetThumbObserver = new IntersectionObserver(hits => {
+        for (const h of hits) {
+            if (!h.isIntersecting)
+                continue;
+            const id = h.target.dataset.thumb, n = todo.get(id);
+            assetThumbObserver?.unobserve(h.target);
+            if (n) {
+                todo.delete(id);
+                ensureThumb(n);
+            }
+        }
+    }, { root: panel, rootMargin: '200px 0px' });
+    for (const el of panel.querySelectorAll('.asset-preview[data-thumb]'))
+        if (todo.has(el.dataset.thumb))
+            assetThumbObserver.observe(el);
 }
 // Thumbnail cepat untuk komponen yang isinya satu gambar SVG (mis. ikon hasil import): pakai gambarnya langsung.
 function svgThumbOf(n) {
@@ -10624,7 +10641,10 @@ document.addEventListener('click', e => {
 });
 // ===== variants (component sets) =====
 function parentSetOf(n) {
-    const page = pageOfNode(n.id), p = page && n.parentId ? page.nodes.find(x => x.id === n.parentId) : null;
+    if (!n.parentId)
+        return null;
+    ensureGlobalIndexes();
+    const p = _nodeMap.get(n.parentId);
     return p && p.componentSet ? p : null;
 }
 function selNameHtml(n, multi, ns) {
@@ -10889,8 +10909,8 @@ function combineAsVariants() {
     }
 }
 function setVariants(set) {
-    const page = pageOfNode(set.id);
-    return page ? page.nodes.filter(x => x.parentId === set.id && x.component) : [];
+    ensureGlobalIndexes();
+    return (_kidsMap.get(set.id) || []).filter(x => x.component);
 }
 function variantProps(set) {
     const props = [];
@@ -11685,26 +11705,53 @@ function setAsThumbnail() {
 }
 // Render a layer from any page (temporarily switches the page for the export).
 let thumbJobs = Promise.resolve();
+// Thumbnail/preview layer di page lain mengharuskan pindah page sementara, dan setiap perpindahan membuat doc.scene()
+// page tujuan dihitung ulang (layout + variabel seluruh page: 14–200 ms). Permintaan yang datang bersamaan dikumpulkan
+// dan dikelompokkan per page supaya satu kali pindah page melayani semuanya.
+const thumbQueue = [];
 function renderNodeAnyPage(id, scale) {
-    const job = thumbJobs.then(async () => {
-        const page = pageOfNode(id);
-        if (!page)
-            throw new Error('Layer not found.');
-        if (page.id === doc.page.id)
-            return renderer.exportCanvas([id], scale);
+    return new Promise((resolve, reject) => {
+        thumbQueue.push({ id, scale, resolve, reject });
+        if (thumbQueue.length === 1)
+            thumbJobs = thumbJobs.then(() => new Promise(r => setTimeout(r, 0))).then(runThumbQueue).catch(() => { });
+    });
+}
+async function runThumbQueue() {
+    const byPage = new Map();
+    for (const j of thumbQueue.splice(0)) {
+        const page = pageOfNode(j.id);
+        if (!page) {
+            j.reject(new Error('Layer not found.'));
+            continue;
+        }
+        (byPage.get(page) || byPage.set(page, []).get(page)).push(j);
+    }
+    const run = async list => {
+        for (const j of list) {
+            try {
+                j.resolve(await renderer.exportCanvas([j.id], j.scale));
+            }
+            catch (e) {
+                j.reject(e);
+            }
+        }
+    };
+    for (const [page, list] of byPage) {
+        if (page.id === doc.page.id) {
+            await run(list);
+            continue;
+        }
         const prev = doc.data.pageId;
         doc.data.pageId = page.id;
         doc.refresh();
         try {
-            return await renderer.exportCanvas([id], scale);
+            await run(list);
         }
         finally {
             doc.data.pageId = prev;
             doc.refresh();
         }
-    });
-    thumbJobs = job.catch(() => { });
-    return job;
+    }
 }
 
 // ===== Figma (.fig) import =====
