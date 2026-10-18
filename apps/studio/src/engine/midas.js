@@ -962,7 +962,7 @@ function holderForLayer(n) {
     return null;
 }
 function layerPropOptions(n, prop) {
-    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && (!n.component || parentSetOf(n)) && !n.componentSet && !insideInstance(n) && holderForLayer(n);
+    const type = prop === 'visible' ? 'boolean' : prop === 'text' && n.type === 'text' ? 'text' : null, holder = type && !n.component && !n.componentSet && !insideInstance(n) && holderForLayer(n);
     return holder ? { holder, props: cpropsOf(holder).filter(p => p.type === type) } : { holder: null, props: [] };
 }
 function varRow(label, prop) {
