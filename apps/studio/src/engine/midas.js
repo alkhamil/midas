@@ -1004,10 +1004,9 @@ function varRow(label, prop) {
     const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { holder, props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
     // The property is looked up by id across the file, so layers inside instances (copied from the main component) show their binding too.
     const bp = pid && (props.find(p => p.id === pid) || (() => { for (const pg of doc.data.pages) for (const x of pg.nodes) { const p = x.cprops?.find(q => q.id === pid); if (p) return p; } return null; })());
-    if (bp)
-        return `<div class="field-label"><span>${label}</span></div><div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>`;
     const v = boundVar(prop);
-    return `<div class="field-label"><span>${label}</span>${v ? '' : varBindButton(prop)}</div>${v ? varChip(prop, v) : ''}`;
+    // A layer can be bound to a component property and to a variable at the same time: both chips show.
+    return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
 function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
 function varOwnerOf(item) { return varColl(item.collectionId); }
@@ -1085,7 +1084,7 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
     const filter = i => varInScope(i, prop) && i.id !== exclude && (!exclude || !aliasReaches(i, exclude));
     const render = () => { pop.querySelector('.vp-list').innerHTML = varListHtml({ types: want, filter, q, current, limit }); };
     const build = () => {
-        const propsHtml = props?.length ? `<div class="vpk-coll">Properties</div>${props.map(p => `<button class="vp-item vpk-item ${p.on ? 'on' : ''}" data-pick-prop="${esc(p.id)}"><i class="vc-glyph" style="color:#9747FF">${p.icon}</i><span class="vp-name">${esc(p.name)}</span>${p.on ? icon('check', 12) : ''}</button>`).join('')}<div class="menu-divider"></div>` : '';
+        const propsHtml = props?.length ? `<div class="vpk-coll">Properties</div>${props.map(p => `<button class="vp-item vpk-item ${p.on ? 'on' : ''}" data-pick-prop="${esc(p.id)}"><i class="vc-glyph" style="color:var(--comp)">${p.icon}</i><span class="vp-name">${esc(p.name)}</span>${p.on ? icon('check', 12) : ''}</button>`).join('')}<div class="menu-divider"></div>` : '';
         pop.innerHTML = `${varListHead(q, '', want)}${propsHtml}<div class="vp-list"></div>${onCreate ? '<button class="vp-create" data-pick-create>+ New variable from these effects</button>' : ''}${onDetach && current ? '<button class="vp-detach" data-pick-detach>Detach variable</button>' : ''}`;
         render();
     };
@@ -1563,6 +1562,8 @@ function sizeModeOf(n, axis) {
         mode = 'fixed';
     return { mode, canHug: n.type === 'text' || n.type === 'frame', canFill: inAuto };
 }
+// Like Figma: no variable button on W / H, only a chevron on hover that opens the sizing menu.
+function szChevron(axis, word) { return `<button class="sz-hchev" data-size-menu="${axis}" tabindex="-1" title="${word} options" aria-label="${word} options">${CHEV_SVG}</button>`; }
 function sizeFieldHtml(n, axis) {
     const dim = axis === 'h' ? 'w' : 'h', label = axis === 'h' ? 'W' : 'H', { mode } = sizeModeOf(n, axis), bound = boundVar(dim), word = axis === 'h' ? 'Width' : 'Height';
     if (n.type === 'text') {
@@ -1570,11 +1571,11 @@ function sizeFieldHtml(n, axis) {
         const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
         const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
         const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
-        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${varBindButton(dim)}</div>`;
+        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${szChevron(axis, word)}</div>`;
     }
     const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
     const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
-    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${varBindButton(dim)}</div>`;
+    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${szChevron(axis, word)}</div>`;
 }
 const MM_ICON = {
     min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
@@ -6675,11 +6676,12 @@ function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
     const targetPages = activeOnly ? [doc.page] : doc.data.pages;
-    const components = new Map();
+    const components = new Map(), everywhere = new Map();
     for (const page of doc.data.pages) {
         for (const n of page.nodes) {
             if (n.component)
                 components.set(n.id, n);
+            everywhere.set(n.id, n);
         }
     }
     for (const page of targetPages) {
@@ -6687,9 +6689,16 @@ function syncComponents(activeOnly = true) {
         for (const n of page.nodes) {
             if (!n.sourceId)
                 continue;
-            const src = components.get(n.sourceId) || pmap.get(n.sourceId);
-            if (!src)
-                continue;
+            let src = components.get(n.sourceId) || pmap.get(n.sourceId);
+            // A layer inside an instance whose source layer sits on another page (the component's own page) only follows
+            // the instance's text / visibility property values.
+            let far = false;
+            if (!src) {
+                src = everywhere.get(n.sourceId);
+                if (!src?.propBind)
+                    continue;
+                far = true;
+            }
             // Layers that were copied from a nested instance but lost their instance flag are repaired here.
             if (src.isInstance && !n.isInstance && !n.component && !src.component) {
                 n.isInstance = true;
@@ -6700,7 +6709,7 @@ function syncComponents(activeOnly = true) {
             const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
-            for (const [k, v] of Object.entries(src)) {
+            for (const [k, v] of far ? [] : Object.entries(src)) {
                 if (omitted.has(k) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
                     continue;
                 if (n[k] === v)
@@ -7995,7 +8004,7 @@ function selectionGeometry() {
 function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
 function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
 // Components, variant sets, instances and everything inside them are selected in Figma's purple.
-const COMPONENT_PURPLE = '#9747FF';
+const compPurple = () => options.theme === 'dark' ? '#a898d8' : '#9747FF';
 function inComponentTree(n) {
     for (let cur = n, i = 0; cur && i < 200; cur = doc.get(cur.parentId), i++)
         if (cur.component || cur.componentSet || cur.isInstance)
@@ -8069,9 +8078,9 @@ function drawOverlay() {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, overlay.width, overlay.height);
     c.scale(dpr, dpr);
-    const z = state.camera.zoom, blue = options.theme === 'dark' ? '#6fa9f5' : '#0058CA';
+    const z = state.camera.zoom, blue = options.theme === 'dark' ? '#7aa6dc' : '#0058CA';
     const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
-    const accent = selNodes.length && selNodes.every(inComponentTree) ? COMPONENT_PURPLE : blue;
+    const accent = selNodes.length && selNodes.every(inComponentTree) ? compPurple() : blue;
     // Pixel grid: from 800% up every 1px is outlined with a thin grey line, like Figma.
     if (z >= 8) {
         const W = area.clientWidth, H = area.clientHeight, x0 = Math.floor(-state.camera.x / z), x1 = Math.ceil((W - state.camera.x) / z), y0 = Math.floor(-state.camera.y / z), y1 = Math.ceil((H - state.camera.y) / z);
@@ -8092,7 +8101,7 @@ function drawOverlay() {
         c.font = `${s.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
-        c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
+        c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? compPurple() : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
         // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
         const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0));
         let label = s.node.name;
@@ -8107,7 +8116,7 @@ function drawOverlay() {
             c.beginPath();
             c.roundRect(p.x, p.y - 22, tw + 12, 18, 4);
             c.fill();
-            c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? COMPONENT_PURPLE : blue) : '#5b5566';
+            c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? compPurple() : blue) : '#5b5566';
             c.fillText(label, p.x + 6, p.y - 10);
         }
         else
@@ -8116,7 +8125,7 @@ function drawOverlay() {
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
         if (s)
-            outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, inComponentTree(s.node) ? COMPONENT_PURPLE : '#5b9cf0', .8);
+            outline(c, { matrix: s.matrix, w: s.node.w, h: s.node.h }, inComponentTree(s.node) ? compPurple() : options.theme === 'dark' ? '#7aa6dc' : '#5b9cf0', .8);
     }
     const arcNode = arcSelected();
     const g = selectionGeometry();
@@ -8401,6 +8410,20 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
     }
     return null;
 }
+// With layers selected that share a parent, any sibling of theirs under the cursor is picked directly (hover, click, Shift-click),
+// however deep it sits and wherever the parent's own hit rules would stop, like Figma's sibling selection.
+function siblingHit(w) {
+    if (state.tool !== 'select' || !state.selection.size)
+        return null;
+    const sel = [...state.selection].map(id => doc.get(id)).filter(Boolean), parentId = sel[0]?.parentId;
+    if (!parentId || sel.some(n => n.parentId !== parentId))
+        return null;
+    const inner = hitTest(w, { deep: true });
+    if (!inner)
+        return null;
+    const sib = [inner, ...doc.ancestors(inner)].find(a => a.parentId === parentId);
+    return sib && !state.selection.has(sib.id) && !doc.world(sib.id)?.locked ? sib : null;
+}
 function pathHandleAt(screen) {
     const n = doc.get(state.pathEdit);
     if (!n)
@@ -8581,7 +8604,8 @@ function pointerDown(e) {
             return;
         }
     }
-    let hit = (state.tool === 'select' ? frameLabelHit(p) : null) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    const labelHit = state.tool === 'select' ? frameLabelHit(p) : null;
+    let hit = labelHit || (!e.altKey && !e.ctrlKey && !e.metaKey && siblingHit(w)) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
     // Ctrl / Cmd pressed on a component or instance starts a marquee that reaches the layers inside; a plain Ctrl-click still picks the one under the cursor.
     let ctrlClickId = null;
     if (hit && (e.ctrlKey || e.metaKey) && !e.shiftKey && state.tool === 'select') {
@@ -8744,7 +8768,7 @@ function pointerMove(e) {
                 state.arcShow = arcOn;
                 invalidate();
             }
-            const hit = hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
+            const hit = (!e.ctrlKey && !e.metaKey && !e.altKey && siblingHit(w)) || hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
             overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', n: 'ns-resize', ne: 'nesw-resize', e: 'ew-resize', se: 'nwse-resize', s: 'ns-resize', sw: 'nesw-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
@@ -10547,6 +10571,7 @@ function syncInstanceStructure(activeOnly = true) {
                     bySource.delete(slotKey(n));
                     dirty = true;
                 }
+            let made = false;
             for (const s of srcDesc) {
                 if (bySource.has(s.id))
                     continue;
@@ -10566,7 +10591,22 @@ function syncInstanceStructure(activeOnly = true) {
                 page.nodes.push(c);
                 bySource.set(s.id, c);
                 dirty = true;
+                made = true;
             }
+            // Layers that were just built take the instance-swap values already chosen on their instance (an imported nested icon).
+            if (made)
+                for (const holder of [root, ...instanceTree(page, root.id)])
+                    for (const [pid, val] of Object.entries(holder.propValues || {}))
+                        for (const y of pageTree(page, holder.id))
+                            if (y.propBind?.swap === pid && y.sourceId !== val && sources.has(val)) {
+                                const gone = new Set(pageTree(page, y.id).map(n => n.id));
+                                page.nodes = page.nodes.filter(n => !gone.has(n.id));
+                                y.swapOf = y.swapOf || y.sourceId;
+                                y.sourceId = val;
+                                y.isInstance = true;
+                                y.overrides = {};
+                                y.version = (y.version || 0) + 1;
+                            }
             // keep the layer order of the main component
             const pairs = [[root.id, src.id]];
             for (const n of instanceTree(page, root.id))
@@ -12765,12 +12805,35 @@ async function figToMidas(file, onProgress, abortSignal) {
             return v.boolValue;
         return undefined;
     };
+    // A colour composed from another variable and an alpha (COMPOSE_COLOR, e.g. a "transparent" background in one mode)
+    // has no stored colour: it takes the referenced variable's colour with that alpha, resolved after all values are read.
+    const composed = [];
     for (const [item, nc] of varSources)
         for (const e of nc.variableDataValues?.entries || []) {
             const mode = modeByGuid.get(gkey(e.modeID)), val = varValueOf(e.variableData, item.type);
             if (mode && val !== undefined)
                 item.values[mode] = val;
+            else if (mode && item.type === 'color') {
+                const ex = e.variableData?.value?.expressionValue;
+                if (ex?.expressionFunction === 'COMPOSE_COLOR') {
+                    const args = ex.expressionArguments || [], from = args[0]?.value?.alias, alpha = args[1]?.value?.floatValue;
+                    if (from && Number.isFinite(alpha))
+                        composed.push({ item, mode, from: varByGuid.get(vkey(from)), alpha: alpha > 1 ? alpha / 100 : alpha });
+                }
+            }
         }
+    for (const { item, mode, from, alpha } of composed) {
+        let v = null, cur = from;
+        for (let i = 0; i < 16 && cur && v === null; i++) {
+            const t = varItems.find(x => x.id === cur), raw = t && (Object.values(t.values).find(x => x !== undefined));
+            if (typeof raw === 'string')
+                v = raw;
+            else
+                cur = raw?.alias;
+        }
+        if (v)
+            item.values[mode] = v.slice(0, 7) + Math.round(Math.max(0, Math.min(1, alpha)) * 255).toString(16).padStart(2, '0');
+    }
     // Figma's untouched default collection ("Collection", no variables) is not a real collection of the file.
     for (let i = varCollections.length - 1; i >= 0; i--)
         if (varCollections[i].name === 'Collection' && !varItems.some(v => v.collectionId === varCollections[i].id))
@@ -13061,8 +13124,10 @@ async function figToMidas(file, onProgress, abortSignal) {
         n.padB = f.stackPaddingBottom ?? t;
         const just = f.stackPrimaryAlignItems || f.stackJustify || 'MIN';
         n.primaryAlign = just === 'CENTER' ? 'center' : just === 'MAX' ? 'end' : 'start';
-        if (just === 'SPACE_BETWEEN' || just === 'SPACE_EVENLY')
+        if (just === 'SPACE_BETWEEN' || just === 'SPACE_EVENLY' || just === 'SPACE_AROUND')
             n.gapAuto = true;
+        if (just === 'SPACE_AROUND')
+            n.gapMode = 'around';
         if (just === 'SPACE_EVENLY')
             n.gapMode = 'evenly';
         // Auto layout settings
@@ -13372,6 +13437,20 @@ async function figToMidas(file, onProgress, abortSignal) {
                 defInfo.set(gkey(d.id), parent);
         }
     const PROP_FIELD = { VISIBLE: 'visible', TEXT_DATA: 'text', OVERRIDDEN_SYMBOL_ID: 'swap', SLOT_CONTENT_ID: 'slot' };
+    const PROP_FIELD_TYPE = { visible: 'boolean', text: 'text', swap: 'instance', slot: 'slot' };
+    // The property definitions (set-level ones, through their aliases) of the component a layer sits in.
+    const ownDefInfos = f => {
+        let x = fig.get(gkey(f.parentIndex?.guid));
+        while (x && x.type !== 'SYMBOL')
+            x = fig.get(gkey(x.parentIndex?.guid));
+        const out = new Set();
+        for (const d of x?.componentPropDefs || []) {
+            const i = defInfo.get(gkey(d.id));
+            if (i)
+                out.add(i);
+        }
+        return out;
+    };
     const NONE_GUID = 4294967295;
     const realGuid = g => g && g.sessionID !== NONE_GUID ? g : null;
     const swapDefaults = [], walkedFigs = [];
@@ -13485,7 +13564,18 @@ async function figToMidas(file, onProgress, abortSignal) {
                 n.cprops = props;
         }
         for (const r of f.componentPropRefs || []) {
-            const info = defInfo.get(gkey(r.defID)), field = PROP_FIELD[r.componentPropNodeField];
+            let info = defInfo.get(gkey(r.defID));
+            const field = PROP_FIELD[r.componentPropNodeField];
+            // A layer copied from another component keeps pointing at that component's definition (e.g. a Button's "Label"),
+            // while the component it now lives in has its own definition of that type: bind to that one, as Figma does.
+            if (info && field) {
+                const own = ownDefInfos(f);
+                if (own.size && !own.has(info)) {
+                    const alt = [...own].filter(i => i.type === PROP_FIELD_TYPE[field]);
+                    if (alt.length === 1)
+                        info = alt[0];
+                }
+            }
             if (info && field)
                 (n.propBind ||= {})[field] = info.pid;
         }
@@ -13570,7 +13660,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         const cur = midasById.get(n.id) === n ? n : midasById.get(n.id);
         // Figma's layer list shows the first child at the top only inside auto layout frames (elsewhere the last child is on top, as in Midas), so only those siblings go in reversed.
         const sibs = kids.get(gkey(f.guid)) || [], autoParent = f.stackMode === 'HORIZONTAL' || f.stackMode === 'VERTICAL';
-        for (const c of autoParent && !f.isStateGroup ? [...sibs].reverse() : sibs)
+        for (const c of autoParent ? [...sibs].reverse() : sibs)
             walk(c, cur && cur.type !== 'path' ? cur : n, f, out);
     };
     const doc = [...fig.values()].find(n => n.type === 'DOCUMENT');
@@ -13808,6 +13898,45 @@ async function figToMidas(file, onProgress, abortSignal) {
         y.isInstance = true;
         y.overrides = {};
     };
+    const isUnder = (clones, y, anc) => {
+        const byId = new Map();
+        for (const z of clones.values())
+            byId.set(z.id, z);
+        for (let p = byId.get(y.parentId); p; p = byId.get(p.parentId))
+            if (p === anc)
+                return true;
+        return false;
+    };
+    // An instance placed inside a component is built before the instances of that component, so its layers already exist
+    // when the outer instance copies them (and the properties set on it can reach them).
+    {
+        const symOf = f => {
+            let x = fig.get(gkey(f.parentIndex?.guid));
+            while (x && x.type !== 'SYMBOL')
+                x = fig.get(gkey(x.parentIndex?.guid));
+            return x ? gkey(x.guid) : null;
+        };
+        const inside = new Map(), depth = new Map(), visiting = new Set();
+        for (const it of pending) {
+            const k = symOf(it.f);
+            if (k)
+                (inside.get(k) || inside.set(k, []).get(k)).push(it);
+        }
+        const dep = it => {
+            if (depth.has(it))
+                return depth.get(it);
+            if (visiting.has(it))
+                return 0;
+            visiting.add(it);
+            let d = 0;
+            for (const j of inside.get(gkey(it.f.symbolData?.symbolID)) || [])
+                d = Math.max(d, dep(j) + 1);
+            visiting.delete(it);
+            depth.set(it, d);
+            return d;
+        };
+        pending.sort((x, y) => dep(x) - dep(y));
+    }
     let instCount = 0;
     for (const { f, n } of pending) {
         if (++instCount % 50 === 0)
@@ -13825,6 +13954,7 @@ async function figToMidas(file, onProgress, abortSignal) {
                 const added = page.nodes.slice(before), sx = n.w / (symF.size?.x || n.w || 1), sy = n.h / (symF.size?.y || n.h || 1);
                 for (const c of added) {
                     owner.set(c.id, page);
+                    (byParent.get(c.parentId) || byParent.set(c.parentId, []).get(c.parentId)).push(c);
                     if (Math.abs(sx - 1) > 1e-3 || Math.abs(sy - 1) > 1e-3) {
                         c.x *= sx;
                         c.y *= sy;
@@ -13862,6 +13992,7 @@ async function figToMidas(file, onProgress, abortSignal) {
                 continue;
             clones.set(s.id, c);
             page.nodes.push(c);
+            (byParent.get(c.parentId) || byParent.set(c.parentId, []).get(c.parentId)).push(c);
             owner.set(c.id, page);
             rep.layers++;
         }
@@ -13900,6 +14031,14 @@ async function figToMidas(file, onProgress, abortSignal) {
             }
             if (!c)
                 continue;
+            // Property values set on a nested instance (its icon swapped, its label changed, a layer shown or hidden).
+            if (ov.componentPropAssignments?.length) {
+                assignProps(c, ov);
+                for (const [pid, val] of Object.entries(c.propValues || {}))
+                    for (const y of [...clones.values()])
+                        if (y.propBind?.swap === pid && isUnder(clones, y, c))
+                            swapClone(page, y, val, clones);
+            }
             const swapTo = ov.overriddenSymbolID && idMap.get(gkey(ov.overriddenSymbolID));
             if (swapTo) {
                 swapClone(page, c, swapTo, clones);
@@ -13911,7 +14050,9 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (ov.visible !== undefined)
                 c.visible = ov.visible !== false;
             c.vars = { ...(c.vars || {}) };
-            applyVarBindings(c, { variableConsumptionMap: ov.variableConsumptionMap });
+            if (c.varModes)
+                c.varModes = { ...c.varModes };
+            applyVarBindings(c, { variableConsumptionMap: ov.variableConsumptionMap, variableModeBySetMap: ov.variableModeBySetMap });
             applyParamBindings(c, ov);
             if (c.vars && !Object.keys(c.vars).length)
                 delete c.vars;

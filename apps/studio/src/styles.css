@@ -1,8 +1,10 @@
 :root {
   --ui-font: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --accent: #5b9cf0;
-  --accent-strong: #0058CA;
-  --accent-bg: #16294a;
+  --accent: #7aa6dc;
+  --accent-strong: #2f64a8;
+  --accent-bg: #1f2c40;
+  --comp: #a898d8;
+  --comp-strong: #7d6cb8;
   --panel: #242426;
   --panel-2: #2b2b2e;
   --panel-3: #323236;
@@ -19,7 +21,7 @@
   --left: 236px;
   --rail: 48px;
   --right: 280px;
-  --selection: #3f8ae0;
+  --selection: #5b8fcf;
   --danger: #f17982;
   --success: #8ac5a7;
   --checker: repeating-conic-gradient(#bbb 0% 25%,#eee 0% 50%) 50%/10px 10px;
@@ -42,6 +44,8 @@ html[data-theme="light"] {
   --accent: #0058CA;
   --accent-strong: #0058CA;
   --accent-bg: #e3edfb;
+  --comp: #9747FF;
+  --comp-strong: #9747FF;
   --shadow: 0 12px 36px #32204a18;
   color-scheme: light
 }
@@ -607,7 +611,7 @@ button svg {
 
 .layer-row.selected {
   background: var(--accent-bg);
-  border-color: #5b9cf025
+  border-color: #7aa6dc25
 }
 
 .layer-row.selected .layer-icon {
@@ -657,7 +661,7 @@ button svg {
 }
 
 .layer-row.component-old .layer-icon {
-  color: #6fa9f5
+  color: #7aa6dc
 }
 
 .layer-row.sticky-root {
@@ -1427,7 +1431,7 @@ button svg {
 .coll-menu .cm-item { width: 100%; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--text); font-size: 12.5px; cursor: pointer; text-align: left }
 .coll-menu .cm-item span:not(.chk) { flex: 1 }
 .coll-menu .cm-item i { font-style: normal; color: var(--muted) }
-.coll-menu .cm-item:hover, .coll-menu .cm-item.on { background: #0a84e8; color: #fff }
+.coll-menu .cm-item:hover, .coll-menu .cm-item.on { background: var(--accent-strong); color: #fff }
 .coll-menu .chk { width: 14px; text-align: center; flex: none }
 .coll-menu .menu-divider { height: 1px; background: var(--border); margin: 4px 0 }
 .vp-section { display: grid; gap: 6px }
@@ -1535,7 +1539,7 @@ button svg {
 
 .asset-button {
   padding: 10px 22px;
-  background: #0058CA;
+  background: var(--accent-strong);
   color: white;
   border-radius: 8px;
   font-size: 11px
@@ -2631,8 +2635,8 @@ select.vw-text { cursor: pointer }
 .sr-row:hover { background: var(--hover) }
 .sr-row.active, .sr-row.current { background: var(--accent-bg); color: var(--text) }
 .sr-row .sr-icon, .sr-row > svg { display: flex; color: var(--muted); flex: none; margin-top: 1px }
-.sr-row.component .sr-icon, .sr-row.instance .sr-icon { color: #9b7cf6 }
-.sr-row.component .sr-name, .sr-row.instance .sr-name { color: #b49cff }
+.sr-row.component .sr-icon, .sr-row.instance .sr-icon { color: var(--comp) }
+.sr-row.component .sr-name, .sr-row.instance .sr-name { color: var(--comp) }
 .sr-text { min-width: 0; flex: 1 }
 .sr-name, .sr-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .sr-sub { color: var(--muted); margin-top: 2px }
@@ -2669,8 +2673,9 @@ select.vw-text { cursor: pointer }
 .ly-seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px #0003 }
 .ly-seg button:disabled { opacity: .45; cursor: default }
 .sz-field { position: relative }
-.sz-field:hover .sz-mode { margin-right: 22px }
-.sz-field.var-bound-num .sz-mode { margin-right: 22px }
+.sz-hchev { display: none; flex: none; align-items: center; justify-content: center; width: 20px; height: 100%; min-height: 28px; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0 }
+.sz-field:hover .sz-hchev { display: flex }
+.sz-hchev:hover { color: var(--text) }
 .font-field-row.bound .font-field { background: var(--accent-bg) }
 .font-field-row.bound .var-btn { opacity: 1; color: var(--accent); right: 6px }
 .swap-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font-size: 12px; cursor: pointer; text-align: left }
@@ -2781,8 +2786,8 @@ a.wide-button { text-decoration: none; color: inherit }
 .zoom-custom input { width: 64px; margin-left: auto; text-align: right; height: 26px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: inherit; font: inherit }
 
 /* Components and everything inside them are purple in the layer tree */
-.layer-row.component .layer-icon { color: #9747FF }
-.layer-row.component .layer-name { color: #9747FF }
+.layer-row.component .layer-icon { color: var(--comp) }
+.layer-row.component .layer-name { color: var(--comp) }
 .layer-row .vector-thumb { width: 13px; height: 13px; overflow: visible }
 .layer-row.drop-above::after, .layer-row.drop-below::after { content: ''; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; z-index: 3 }
 .layer-row.drop-above::after { top: -1px }
@@ -2833,7 +2838,7 @@ a.wide-button { text-decoration: none; color: inherit }
 
 .stp-menu { max-height: 60vh; overflow-y: auto }
 .pp-toggle { margin-right: 8px }
-.prop-chip .vc-glyph { color: #9747FF }
+.prop-chip .vc-glyph { color: var(--comp) }
 
 /* switches (component properties) */
 input[type=checkbox][role=switch] { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--border); position: relative; cursor: pointer; border: 0; margin: 0; transition: background .15s }
@@ -2853,7 +2858,7 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 
 #vars-window, #vars-window * { user-select: none; -webkit-user-select: none }
 #vars-window input, #vars-window textarea, #vars-window [contenteditable] { user-select: text; -webkit-user-select: text }
-.return-bar { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: #9747FF; color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
+.return-bar { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: var(--comp-strong); color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
 .return-bar button { color: inherit; font-size: 12px; font-weight: 500 }
 .return-bar .icon-button { width: 22px; height: 22px; border-radius: 50%; color: #fff }
 .return-bar .icon-button:hover { background: rgba(255,255,255,.2) }
@@ -2946,7 +2951,7 @@ button.cb-section-head { cursor: pointer }
 .cb-ol-row.active { background: #0D99FF22; color: var(--text); box-shadow: inset 2px 0 0 #0D99FF }
 .cb-ol-row.off { opacity: .45 }
 .cb-ol-kind { width: 14px; text-align: center; color: var(--text-secondary); font-size: 10px; flex: none }
-.cb-ol-row.k-component .cb-ol-kind { color: #9747FF }
+.cb-ol-row.k-component .cb-ol-kind { color: var(--comp) }
 .cb-ol-name { flex: 1; overflow: hidden; text-overflow: ellipsis }
 .cb-ol-eye { border: 0; background: none; color: var(--text-secondary); cursor: pointer; font-size: 10px; padding: 2px 4px; opacity: 0 }
 .cb-ol-row:hover .cb-ol-eye, .cb-ol-row.off .cb-ol-eye { opacity: 1 }

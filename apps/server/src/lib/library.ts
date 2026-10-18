@@ -139,7 +139,7 @@ export function deriveMapping(c: SnapshotComponent): ComponentMapping {
 export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMapping[] = [], skip: Set<string> = iconKeysOf(snapshot)): ComponentMapping[] {
     const prev = new Map(previous.map(m => [m.componentKey, m]));
     // Ikon tidak dipetakan sebagai komponen ber-props; Library Kit membangkitkannya terpisah.
-    return snapshot.components.filter(c => !skip.has(c.id)).map(c => {
+    const mapped = snapshot.components.filter(c => !skip.has(c.id)).map(c => {
         const d = deriveMapping(c), p = prev.get(c.id);
         if (!p)
             return d;
@@ -157,6 +157,31 @@ export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMap
             },
         };
     });
+    return uniqueExportNames(mapped, prev);
+}
+
+/**
+ * Komponen yang namanya sama (mis. beberapa "Badge" di halaman berbeda) mendapat nama export unik: Badge, Badge2, ...
+ * Nama dari versi sebelumnya dipertahankan lebih dulu agar kode pemakai tidak berubah.
+ */
+function uniqueExportNames(mappings: ComponentMapping[], prev: Map<string, ComponentMapping>): ComponentMapping[] {
+    const taken = new Set<string>();
+    const out = new Map<string, ComponentMapping>();
+    for (const m of mappings)
+        if (prev.has(m.componentKey) && !taken.has(m.exportName)) {
+            taken.add(m.exportName);
+            out.set(m.componentKey, m);
+        }
+    for (const m of mappings) {
+        if (out.has(m.componentKey))
+            continue;
+        let name = m.exportName, i = 2;
+        while (taken.has(name))
+            name = `${m.exportName}${i++}`;
+        taken.add(name);
+        out.set(m.componentKey, name === m.exportName ? m : { ...m, exportName: name });
+    }
+    return mappings.map(m => out.get(m.componentKey)!);
 }
 
 /** Pesan error validasi mapping (nama export/prop tidak valid atau bentrok). */
