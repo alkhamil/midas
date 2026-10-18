@@ -1,7 +1,7 @@
 // Properties Inspector Code Builder: properti node yang diklik di Live DOM Renderer (props komponen dari mapping
 // library, teks, perilaku, binding data) serta layout aplikasi (sidebar/topbar) dan entity module.
 // Semua perubahan disimpan sebagai konfigurasi di project (`screens[].nodes`, `layout`, `entity`) — desain tidak diubah.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { autoAction, behaviorOf, camelCase, fieldBinding, FIELD_TYPES, isNumericField, parseRules, relationOf, ROLE_LABEL, ROW_ACTIONS, tableModel, titleCase, withRule } from '@midas/builder-core';
 
 function Row({ label, hint, reset, children }) {
@@ -179,7 +179,7 @@ function TableEditor({ cfg, setCfg, entity }) {
 const DEFAULT_TYPE = { TextField: 'string', TextAreaField: 'text', PasswordField: 'password', SwitchField: 'boolean', SelectField: 'enum' };
 
 /** Binding komponen form ke field entity + validasi + (untuk SelectField) sumber opsi. */
-function FieldBinding({ node, cfg, setCfg, entity, modules, setFields }) {
+function FieldBinding({ node, cfg, setCfg, entity, modules, setFields, part = 'all' }) {
     const fields = entity?.fields || [];
     const bound = fieldBinding(entity, node);
     const edit = (name, next) => setFields(fields.map(f => (f.name === name ? next : f)));
@@ -190,6 +190,7 @@ function FieldBinding({ node, cfg, setCfg, entity, modules, setFields }) {
         setFields([...fields, { name, label, type: DEFAULT_TYPE[node.exportName] || 'string', required: false, sortable: false, filterable: false, ...(node.exportName === 'SelectField' ? { options: ['opsi1', 'opsi2'] } : {}) }]);
         setCfg(c => ({ ...c, field: name }));
     };
+    if (part === 'rules') return bound ? <FieldRules field={bound} onChange={next => edit(bound.name, next)} /> : <p className="small-label">Ikat komponen ke field data dulu (tab Data) untuk mengatur validasi.</p>;
     return (
         <>
             <Row label="Field data" hint="Field entity yang diisi komponen ini">
@@ -212,8 +213,6 @@ function FieldBinding({ node, cfg, setCfg, entity, modules, setFields }) {
                         : <Row label="Pilihan"><input placeholder="aktif, nonaktif" value={(bound.options || []).join(', ')} onChange={e => edit(bound.name, { ...bound, options: e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} /></Row>}
                 </>
             )}
-            {bound && <div className="cb-subhead">Validasi · {bound.label || titleCase(bound.name)}</div>}
-            {bound && <FieldRules field={bound} onChange={next => edit(bound.name, next)} />}
         </>
     );
 }
@@ -326,23 +325,47 @@ export function Inspector({ selected, tree, node, screen, module, screens, entit
         );
     }
     const behavior = node.kind === 'component' ? behaviorOf(node.exportName) : null;
+    const hide = node !== tree && <Section title="Tampilan"><Check checked={cfg.hidden} onChange={on => setCfg(c => ({ ...c, hidden: on || undefined }))}>Sembunyikan di aplikasi</Check></Section>;
+    const tabs = [];
+    if (node.kind === 'component') tabs.push(['Properti', <Section key="p" title="Properti"><ComponentProps node={node} cfg={cfg} setCfg={setCfg} /></Section>]);
+    if (node.kind === 'text') tabs.push(['Properti', (
+        <Section key="t" title="Isi teks">
+            <textarea rows={3} value={node.text} onChange={e => setCfg(c => ({ ...c, text: e.target.value === node.designText ? undefined : e.target.value }))} />
+            {cfg.text !== undefined && <button type="button" className="cb-link" onClick={() => setCfg(c => ({ ...c, text: undefined }))}>↺ Kembalikan teks desain</button>}
+        </Section>
+    )]);
+    if (node.kind === 'box' || node.kind === 'unsupported') tabs.push(['Properti', node.kind === 'unsupported' ? <Section key="u" title="Tidak didukung"><p className="cb-error">{node.reason}</p></Section> : <Section key="b" title="Frame"><p className="small-label">{node.children?.length || 0} elemen di dalam frame ini. Pilih elemen di pratinjau atau di Layer untuk mengatur propertinya.</p></Section>]);
+    if (behavior === 'action') tabs.push(['Perilaku', <Section key="a" title="Saat diklik"><ActionEditor node={node} cfg={cfg} setCfg={setCfg} screen={screen} module={module} screens={screens} /></Section>]);
+    if (behavior === 'table') tabs.push(['Data', <Section key="d" title="Data tabel"><TableEditor cfg={cfg} setCfg={setCfg} entity={entity} /></Section>]);
+    if (behavior === 'field') {
+        tabs.push(['Data', <Section key="f" title="Data"><FieldBinding node={node} cfg={cfg} setCfg={setCfg} entity={entity} modules={modules} setFields={actions.setFields} part="data" /></Section>]);
+        tabs.push(['Validasi', <Section key="v" title="Validasi"><FieldBinding node={node} cfg={cfg} setCfg={setCfg} entity={entity} modules={modules} setFields={actions.setFields} part="rules" /></Section>]);
+    }
+    if (behavior === 'filter') tabs.push(['Data', <Section key="fl" title="Data"><p className="small-label">Kotak cari memfilter tabel pada screen list.</p></Section>]);
     return (
         <div className="cb-insp">
             <Header kind={node.kind === 'component' ? node.exportName : node.kind === 'text' ? 'Teks' : node.kind === 'box' ? 'Frame' : 'Tidak didukung'} name={node.name} onReveal={() => actions.reveal(selected)} />
-            {node.kind === 'component' && <Section title="Properti"><ComponentProps node={node} cfg={cfg} setCfg={setCfg} /></Section>}
-            {node.kind === 'text' && (
-                <Section title="Isi teks">
-                    <textarea rows={3} value={node.text} onChange={e => setCfg(c => ({ ...c, text: e.target.value === node.designText ? undefined : e.target.value }))} />
-                    {cfg.text !== undefined && <button type="button" className="cb-link" onClick={() => setCfg(c => ({ ...c, text: undefined }))}>↺ Kembalikan teks desain</button>}
-                </Section>
-            )}
-            {behavior === 'action' && <Section title="Perilaku"><ActionEditor node={node} cfg={cfg} setCfg={setCfg} screen={screen} module={module} screens={screens} /></Section>}
-            {behavior === 'table' && <Section title="Data tabel"><TableEditor cfg={cfg} setCfg={setCfg} entity={entity} /></Section>}
-            {behavior === 'field' && <Section title="Data"><FieldBinding node={node} cfg={cfg} setCfg={setCfg} entity={entity} modules={modules} setFields={actions.setFields} /></Section>}
-            {behavior === 'filter' && <Section title="Data"><p className="small-label">Kotak cari memfilter tabel pada screen list.</p></Section>}
-            {node.kind === 'unsupported' && <Section title="Tidak didukung"><p className="cb-error">{node.reason}</p></Section>}
-            {node !== tree && <Section title="Tampilan"><Check checked={cfg.hidden} onChange={on => setCfg(c => ({ ...c, hidden: on || undefined }))}>Sembunyikan di aplikasi</Check></Section>}
+            <Tabs tabs={tabs} id={selected} hide={hide} />
         </div>
+    );
+}
+
+/** Tab bar segmented bila ada lebih dari satu grup (Properti / Data / Validasi / Perilaku). */
+function Tabs({ tabs, id, hide }) {
+    const [active, setActive] = useState(0);
+    useEffect(() => setActive(0), [id]);
+    const names = tabs.map(t => t[0]);
+    const idx = Math.min(active, names.length - 1);
+    return (
+        <>
+            {names.length > 1 && (
+                <div className="cb-tabs" role="tablist">
+                    {names.map((n, i) => <button key={n} type="button" role="tab" aria-selected={i === idx} className={i === idx ? 'on' : ''} onClick={() => setActive(i)}>{n}</button>)}
+                </div>
+            )}
+            {tabs[idx]?.[1]}
+            {idx === 0 && hide}
+        </>
     );
 }
 
