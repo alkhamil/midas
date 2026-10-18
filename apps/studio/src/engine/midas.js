@@ -387,6 +387,10 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
 }
 function addAutoLayout() {
     const roots = selectedRoots();
+    if (roots.some(r => r.isInstance || insideInstance(r))) {
+        toast('Layout is changed on the main component; instances follow it.');
+        return;
+    }
     if (!roots.length) {
         toast('Select a frame or layers first to add auto layout.');
         return;
@@ -638,6 +642,10 @@ function setLayoutMode(mode) {
         f.layoutWrap = false; });
 }
 function lyEach(label, fn) {
+    if (selected().some(r => r.isInstance || insideInstance(r)) && /mode|direction|auto layout|wrap/i.test(label)) {
+        toast('Layout is changed on the main component; instances follow it.');
+        return;
+    }
     transaction(label, () => { for (const f of selected().filter(isAutoLayout)) { fn(f); doc.touch(f); } });
 }
 document.addEventListener('click', e => {
@@ -10386,10 +10394,47 @@ function createComponentFromSelection() {
     }
     makeComponent();
 }
-function goToMainComponent(id) {
+// Figma-style floating "Return to instance" after jumping to a main component.
+function showReturnBar() {
+    let bar = document.getElementById('return-bar');
+    if (!state.returnTo) {
+        bar?.remove();
+        return;
+    }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'return-bar';
+        bar.className = 'return-bar';
+        bar.innerHTML = '<button type="button" data-return-instance>Return to instance</button><button type="button" class="icon-button small" data-return-close aria-label="Close">' + icon('close', 12) + '</button>';
+        document.body.appendChild(bar);
+        bar.addEventListener('click', ev => {
+            if (ev.target.closest('[data-return-close]')) {
+                state.returnTo = null;
+                showReturnBar();
+            }
+            else if (ev.target.closest('[data-return-instance]')) {
+                const r = state.returnTo;
+                state.returnTo = null;
+                showReturnBar();
+                if (r && pageOfNode(r.id)) {
+                    const pg = pageOfNode(r.id);
+                    if (pg.id !== doc.page.id)
+                        switchPage(pg.id);
+                    select([r.id]);
+                    fit([r.id]);
+                }
+            }
+        });
+    }
+}
+function goToMainComponent(id, fromId = null) {
     const page = pageOfNode(id);
     if (!page)
         return;
+    if (fromId && fromId !== id) {
+        state.returnTo = { id: fromId };
+        showReturnBar();
+    }
     if (page.id !== doc.page.id)
         switchPage(page.id);
     select([id]);
@@ -10972,7 +11017,7 @@ function componentBlockHtml(n) {
             else if (bp)
                 ctl = `<label class="vsw"><input type="checkbox" role="switch" class="variant-bool" data-variant-swap="${esc(pr)}" data-variant-true="${esc(bp.t)}" data-variant-false="${esc(bp.f)}" ${src.variant?.[pr] === bp.t ? 'checked' : ''} aria-label="${esc(pr)}"></label><span class="vsw-spacer"></span>${varBindButton(key)}`;
             else
-                ctl = `${comboField(`data-variant-swap="${esc(pr)}"`, src.variant?.[pr], vals, pr)}${varBindButton(key)}`;
+                ctl = `${variantSelect(`data-variant-swap="${esc(pr)}"`, src.variant?.[pr], vals, pr)}${varBindButton(key)}`;
             return `<div class="cmp-prop2"><span title="${esc(pr)}">${esc(pr)}</span><div class="cmp-ctl">${ctl}</div></div>`;
         }).join('') : '';
         const own = src ? instancePropsHtml(n, propHolderOf(src)) : '';
@@ -10996,7 +11041,7 @@ document.addEventListener('click', e => {
     const goto = e.target.closest('[data-cmp-goto]');
     if (goto) {
         e.stopPropagation();
-        goToMainComponent(chainComponent(doc.get(goto.dataset.cmpGoto) || { sourceId: goto.dataset.cmpGoto })?.id || goto.dataset.cmpGoto);
+        goToMainComponent(chainComponent(doc.get(goto.dataset.cmpGoto) || { sourceId: goto.dataset.cmpGoto })?.id || goto.dataset.cmpGoto, activeNode()?.id);
         return;
     }
     const b = e.target.closest('[data-cmp]');
@@ -11010,7 +11055,7 @@ document.addEventListener('click', e => {
     else if (!n)
         return;
     else if (act === 'goto' && n.sourceId)
-        goToMainComponent(chainComponent(n)?.id || n.sourceId);
+        goToMainComponent(chainComponent(n)?.id || n.sourceId, n.id);
     else if (act === 'reset')
         transaction('Reset overrides', () => { const page = pageOfNode(n.id); for (const x of [n, ...pageTree(page, n.id)]) {
             if (x.sourceId)
@@ -11153,6 +11198,10 @@ document.addEventListener('keydown', e => {
 });
 function setOfNode(n) { return !n ? null : n.componentSet ? n : n.component ? parentSetOf(n) : null; }
 // A dropdown you can also type into: the field takes free text, the chevron lists the existing values.
+// Instance level: a fixed list of values to pick from (typing is only for the component set).
+function variantSelect(attrs, value, options, label) {
+    return `<select class="full-width" ${attrs} aria-label="${esc(label)}">${options.map(o => `<option value="${esc(o)}" ${o === value ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+}
 function comboField(attrs, value, options, label) {
     return `<span class="cmp-combo"><input type="text" ${attrs} value="${esc(value ?? '')}" spellcheck="false" aria-label="${esc(label)}"><button type="button" class="cmp-combo-btn" data-combo-options="${esc(JSON.stringify(options))}" tabindex="-1" aria-label="Show values">${icon('chevronDown', 12)}</button></span>`;
 }
@@ -12014,7 +12063,7 @@ function instancePropsHtml(owner, holder) {
         const comp = chainComponent(x), set = comp && parentSetOf(comp), nh = propHolderOf(comp);
         let inner = '';
         if (set)
-            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${comboField(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
+            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${variantSelect(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
         if (nh)
             inner += cpropsOf(nh).filter(p => p.type !== 'slot').map(p => row(x, p, `data-owner="${x.id}"`)).join('');
         html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
