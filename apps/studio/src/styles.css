@@ -3174,3 +3174,59 @@ button.cb-section-head { cursor: pointer }
 .lh-chev { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); border-radius: 5px; cursor: pointer; padding: 0 }
 .lh-chev:hover { background: var(--hover); color: var(--text) }
 .vw-side-actions { display: inline-flex; align-items: center; gap: 2px }
+
+/* Checkboxes (not switches): one consistent look */
+input[type=checkbox]:not([role=switch]) {
+  appearance: none; -webkit-appearance: none;
+  flex: none; width: 16px; height: 16px; margin: 0; padding: 0;
+  border: 1.5px solid var(--muted); border-radius: 4px;
+  background: transparent center / 12px 12px no-repeat;
+  cursor: pointer; vertical-align: middle;
+  transition: background-color .12s, border-color .12s, box-shadow .12s
+}
+input[type=checkbox]:not([role=switch]):hover { border-color: var(--text-secondary) }
+input[type=checkbox]:not([role=switch]):focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent) }
+input[type=checkbox]:not([role=switch]):checked,
+input[type=checkbox]:not([role=switch]):indeterminate {
+  background-color: var(--accent-strong); border-color: var(--accent-strong)
+}
+input[type=checkbox]:not([role=switch]):checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.3 5 8.8l4.5-5.2'/%3E%3C/svg%3E") }
+input[type=checkbox]:not([role=switch]):indeterminate { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E") }
+input[type=checkbox]:not([role=switch]):disabled { opacity: .45; cursor: default }
+.checkbox-row { gap: 9px }
+.checkbox-row { font-size: 12px }
+
+/* Add instances window + slot property window */
+.add-inst { width: 300px; max-height: min(520px, 80vh); display: flex; flex-direction: column; z-index: 470 }
+.ai-search { display: flex; align-items: center; gap: 8px; margin: 10px 12px 4px; padding: 0 10px; height: 34px; border-radius: 8px; border: 1px solid var(--accent); background: var(--field); color: var(--muted) }
+.ai-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 12.5px }
+.ai-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px 8px; border-bottom: 1px solid var(--border) }
+.ai-tools select { height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px; max-width: 200px }
+.ai-list { overflow-y: auto; padding: 6px; display: grid; gap: 1px; align-content: start }
+.ai-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer }
+.ai-row:hover { background: var(--hover) }
+.ai-row.back { color: var(--text-secondary); font-weight: 600 }
+.ai-ico { display: grid; place-items: center; color: var(--text-secondary); flex: none }
+.ai-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ai-row small { color: var(--muted); font-size: 11px }
+.ai-chev { color: var(--muted); display: grid; place-items: center }
+.ai-empty { padding: 18px 10px; color: var(--muted); font-size: 12px; text-align: center }
+.pp-sec { padding: 12px 14px 4px; font-weight: 600; font-size: 12px }
+.pp-sec.row { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-soft); margin-top: 4px }
+.pp-row.col { grid-template-columns: 1fr; gap: 6px }
+.pp-row textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 64px; border: 1px solid transparent; border-radius: 6px; background: var(--field); color: var(--text); padding: 8px 10px; font: inherit; font-size: 12px }
+.pp-row textarea:focus { outline: 0; border-color: var(--accent) }
+.pp-pref { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px; font-size: 12px }
+.cmp-slot.add { border: 0; background: var(--field); color: var(--text-secondary); border-radius: 6px; height: 28px; padding: 0 8px; cursor: pointer; width: 100%; justify-content: space-between } .cmp-slot.add:hover { background: var(--hover); color: var(--text) } .cmp-slot.add i { display: grid; place-items: center }
+
+/* Slot frames get their own colour in the layers panel (like Figma) */
+:root { --slot: #ff5ccb }
+html[data-theme="light"] { --slot: #d91fa6 }
+.layer-row.slot .layer-icon, .layer-row.slot .layer-name { color: var(--slot) }
+.vw-colls.vw-groups { flex: 1 1 0; min-height: 60px; overflow-y: auto }
+.vw-side { min-height: 0 }
+
+.sz-mm { flex: none; font-size: 9px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; padding: 1px 4px; margin-right: 4px; border-radius: 4px; color: var(--muted, #8a8a99); background: color-mix(in srgb, currentColor 12%, transparent); cursor: default }
+.sz-field.has-mm { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #7c5cff) 35%, transparent) }
+.sz-field.mm-hit .sz-mm { color: var(--accent, #7c5cff); background: color-mix(in srgb, var(--accent, #7c5cff) 16%, transparent) }
+.sz-field.mm-hit { box-shadow: inset 0 0 0 1px var(--accent, #7c5cff) }
