@@ -164,12 +164,26 @@ function textStyle(ctx, n, issues) {
 
 const issue = (n, severity, message) => ({ nodeId: n.id, nodeName: n.name || n.type, severity, message });
 
+// The generated app already has a Sidebar and Topbar (app shell, set up under Layout). When a registered frame is a whole page
+// mockup that also draws them, they are left out so the app does not end up with two sidebars.
+const LAYOUT_COMPONENTS = new Set(['sidebar', 'topbar', 'appshell']);
+const LAYOUT_FRAME_NAME = /^(side ?bar|nav ?bar|top ?bar|top ?navigation|app ?shell)$/i;
+const LAYOUT_DEPTH = 2; // only the page wrapper levels (frame → shell → area), never deep inside the content
+
 /** Pohon render + daftar issue untuk satu frame (screen). */
 export function screenTree(ctx, frameId, nodeCfg = {}) {
     const issues = [];
     const root = ctx.byId.get(frameId);
     if (!root) return { tree: null, issues: [{ nodeId: frameId, nodeName: 'Frame', severity: 'error', message: 'Screen frame not found — it may have been deleted' }] };
-    const walk = (n, parent) => {
+    let prunedLayout = false;
+    const isLayoutPart = k => {
+        if (k.isInstance) {
+            const c = componentOf(ctx, k);
+            return LAYOUT_COMPONENTS.has(String(c.mapping?.exportName ?? c.holder?.name ?? c.name ?? '').toLowerCase());
+        }
+        return (k.type === 'frame' || k.type === 'group') && LAYOUT_FRAME_NAME.test(String(k.name || '').trim());
+    };
+    const walk = (n, parent, depth = 0) => {
         const cfg = nodeCfg[n.id] || {};
         if (cfg.hidden && parent) return null;
         const box = sizing(n, parent);
@@ -187,20 +201,40 @@ export function screenTree(ctx, frameId, nodeCfg = {}) {
         }
         if (n.type === 'text') return { kind: 'text', text: cfg.text ?? n.text ?? '', designText: n.text ?? '', cfg, style: { ...textStyle(ctx, n, issues), ...box }, nodeId: n.id, name: n.name };
         if (n.type === 'frame' || n.type === 'group' || n.type === 'section') {
-            const kids = childrenOf(ctx, n.id);
+            let kids = childrenOf(ctx, n.id);
+            if (depth < LAYOUT_DEPTH) {
+                const parts = kids.filter(isLayoutPart);
+                if (parts.length) {
+                    prunedLayout = true;
+                    for (const k of parts) issues.push(issue(k, 'info', `${k.name || 'Layout part'} is ignored — the app shell already provides the sidebar and topbar (Layout settings)`));
+                    kids = kids.filter(k => !parts.includes(k));
+                }
+            }
             if (kids.length > 1 && !isAutoLayout(n))
                 issues.push(issue(n, 'warning', `${n.type === 'group' ? 'Group' : 'Frame'} without auto layout — switch to auto layout so it can be generated`));
-            return { kind: 'box', style: { ...frameStyle(ctx, n, issues), ...box }, children: kids.map(k => walk(k, n)).filter(Boolean), cfg, nodeId: n.id, name: n.name };
+            return { kind: 'box', style: { ...frameStyle(ctx, n, issues), ...box }, children: kids.map(k => walk(k, n, depth + 1)).filter(Boolean), cfg, nodeId: n.id, name: n.name };
         }
         const what = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', path: 'Vector', image: 'Image', boolean: 'Boolean' }[n.type] || n.type;
         const reason = `A free ${what} is not generated — make it a library component or an asset`;
         issues.push(issue(n, 'warning', reason));
         return { kind: 'unsupported', nodeId: n.id, name: n.name, box: { ...box, width: `${round(n.w)}px`, height: `${round(n.h)}px` }, reason };
     };
-    const tree = walk(root, null);
-    tree.cfg = nodeCfg[root.id] || {};
+    let tree = walk(root, null);
+    const rootCfg = nodeCfg[root.id] || {};
+    let width = root.w, height = root.h;
+    if (prunedLayout) {
+        // What is left of a page mockup is usually one wrapper chain (page → main area → content): use the innermost box.
+        let inner = tree;
+        while (inner.kind === 'box' && inner.children.length === 1 && inner.children[0].kind === 'box') inner = inner.children[0];
+        if (inner !== tree) {
+            const src = ctx.byId.get(inner.nodeId);
+            tree = { ...inner };
+            if (src) { width = src.w; height = src.h; }
+        }
+    }
+    tree.cfg = rootCfg;
     groupFormFields(tree, nodeCfg);
-    tree.style = { ...tree.style, width: `${round(root.w)}px`, minHeight: `${round(root.h)}px`, height: undefined };
+    tree.style = { ...tree.style, width: `${round(width)}px`, minHeight: `${round(height)}px`, height: undefined };
     return { tree, issues };
 }
 

@@ -16984,6 +16984,8 @@ const builderBridge = {
     pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p), codeBuilder: !!p.codeBuilder })),
     /** Semua node file (lintas page), termasuk salinan komponen library. */
     nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    // Top-level frames of a page (candidates when registering Code Builder screens), left to right.
+    pageFrames: pageId => (doc.data.pages.find(p => p.id === pageId)?.nodes || []).filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && n.visible !== false).map(n => ({ id: n.id, name: n.name, x: n.x, y: n.y, pageId })).sort((a, b) => (a.x - b.x) || (a.y - b.y)),
     pageOf: id => pageOfNode(id)?.id ?? null,
     variables: () => doc.data.variables || { collections: [], items: [] },
     /** Layer terpilih: { id, name, type, pageId, top } (top = frame teratas di page). */

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeNavPath, assembleProject, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
+import { activeNavPath, assembleProject, suggestScreens, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -276,4 +276,19 @@ test('assembleProject makes a standalone project with the vendored library', () 
     assert.ok(files['src/a.ts'] && files['src/b.ts']);
     const zip = zipFiles(files);
     assert.equal(new DataView(zip.buffer).getUint16(zip.length - 12, true), Object.keys(files).length);
+});
+
+test('suggestScreens guesses roles from frame names', () => {
+    const roles = n => suggestScreens(n).map(s => s.purpose ? `${s.role}:${s.purpose}` : s.role).join('+');
+    assert.equal(roles('Region — List'), 'list');
+    assert.equal(roles('Page · User — List'), 'list');
+    assert.equal(roles('Region — Form'), 'create+edit');
+    assert.equal(roles('Add user'), 'create');
+    assert.equal(roles('Edit user'), 'edit');
+    assert.equal(roles('Region — Detail'), 'view');
+    assert.equal(roles('Confirm · Delete region'), 'dialog:delete');
+    assert.equal(roles('Confirm · Restore user'), 'dialog:restore');
+    assert.equal(roles('Confirm · Discard changes (user)'), 'dialog:discard');
+    assert.equal(roles('Drawer · Filters'), '');
+    assert.equal(roles('Dashboard'), 'custom');
 });
