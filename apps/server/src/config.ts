@@ -6,6 +6,12 @@ function env(name: string, fallback?: string): string {
 
 export const config = {
     port: Number(env('PORT', '4000')),
+    /** Interface to listen on; use 0.0.0.0 in a container / hosting service. */
+    host: env('HOST', '127.0.0.1'),
+    /** Apply pending database migrations at startup (hosting without a shell). */
+    autoMigrate: env('AUTO_MIGRATE', 'false') === 'true',
+    /** Built Studio (apps/studio/dist). When it exists the server serves it, so Studio and API share one origin. */
+    studioDist: process.env.STUDIO_DIST ?? '',
     databaseUrl: env('DATABASE_URL', 'postgres://midas:midas@127.0.0.1:5433/midas'),
     s3: {
         endpoint: env('S3_ENDPOINT', 'http://127.0.0.1:8333'),
