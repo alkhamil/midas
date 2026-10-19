@@ -3,8 +3,8 @@
   --accent: #7aa6dc;
   --accent-strong: #2f64a8;
   --accent-bg: #1f2c40;
-  --comp: #a898d8;
-  --comp-strong: #7d6cb8;
+  --comp: #b78cff;
+  --comp-strong: #9747FF;
   --panel: #242426;
   --panel-2: #2b2b2e;
   --panel-3: #323236;
@@ -3230,3 +3230,24 @@ html[data-theme="light"] { --slot: #d91fa6 }
 .sz-field.has-mm { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #7c5cff) 35%, transparent) }
 .sz-field.mm-hit .sz-mm { color: var(--accent, #7c5cff); background: color-mix(in srgb, var(--accent, #7c5cff) 16%, transparent) }
 .sz-field.mm-hit { box-shadow: inset 0 0 0 1px var(--accent, #7c5cff) }
+
+
+/* Dropdowns: our own chevron instead of the browser's (grey arrow button on focus). */
+select:not([multiple]):not([size]):not(.vpk-lib select) { -webkit-appearance: none; appearance: none; padding-right: 24px !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16' fill='none' stroke='%238b8b99' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 8px center !important; background-size: 10px !important; text-overflow: ellipsis }
+select:not([multiple]):not([size]):focus-visible { outline: 1px solid var(--accent); outline-offset: 0 }
+/* Menus opened from inside another popup (mode lists, dropdown menus) always sit on top of it. */
+.stp.stp-menu, .sel-menu { z-index: 600 }
+.coll-menu.coll-sub { z-index: 460 }
+.coll-menu { max-height: min(70vh, 460px); overflow-y: auto; overscroll-behavior: contain }
+
+
+/* One dropdown look everywhere (the component-properties dropdown is the reference). */
+select:not([multiple]):not([size]):not(.vpk-lib select):not(.cn-select select) { height: 28px !important; border: 0 !important; border-radius: 6px !important; background-color: var(--field) !important; color: var(--text) !important; font-size: 12px !important; padding-left: 8px !important; cursor: pointer }
+select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color: var(--hover, var(--field)) !important }
+
+.sz-lab.mm { display: inline-flex; align-items: center; gap: 2px; color: var(--accent) }
+.sz-lab .mmb { display: inline-block; width: 1px; height: 11px; background: currentColor; border-radius: 1px }
+.sz-field.has-mm { box-shadow: none }
+.sz-field.mm-hit .sz-lab.mm { color: var(--accent); filter: brightness(1.25) }
+.sz-mm { display: none }
+.sz-field.mm-hit { box-shadow: none }
