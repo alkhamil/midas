@@ -213,7 +213,9 @@ function emit(spec, ctx, out, parentId, x, y, id, key) {
         Object.assign(node, {
             type: 'text', name: spec.name || spec.text.slice(0, 40), text: spec.text, fontFamily: FONT_FAMILY, fontSize: spec.size, fontWeight: spec.weight, fontStyle: 'normal',
             lineHeight: (spec.line ?? Math.round(spec.size * 1.43)) / spec.size, letterSpacing: spec.letterSpacing ?? 0, textAlign: spec.align || 'left', textDecoration: 'none', textCase: 'none', direction: 'auto',
-            autoW: spec.w === 'hug', fill: 'none', ...(spec.bind ? { propBind: { text: spec.bind } } : {}),
+            // Text without an explicit width hugs its content: Studio measures it with the real font, so it never wraps because an
+            // estimate was a pixel too narrow. Only a numeric / fill width keeps a fixed box.
+            autoW: spec.w === 'hug' || spec.w === undefined, fill: 'none', ...(spec.bind ? { propBind: { text: spec.bind } } : {}),
         });
         node.fill = color(ctx, spec.color, node, 'fill');
         if (spec.opacity != null) node.opacity = spec.opacity;
