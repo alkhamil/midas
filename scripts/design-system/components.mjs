@@ -420,7 +420,7 @@ export function table(ctx, w, rows = [['John Smith', 'john@example.com', 'Admini
         ]),
         row({ w: 'fill', fill: 'color/muted', name: 'Header' }, cols.map(([h, cw]) => cell(text(h, { size: 12, line: 16, weight: 600, color: MUTED_FG }), cw, true))),
         ...rows.map((r, i) => row({ w: 'fill', stroke: 'color/border', strokeSides: [0, 0, 1, 0], name: `Row ${i + 1}` }, [
-            cell(text(r[0], { weight: 500 }), 'fill'),
+            cell(text(r[0]), 'fill'),
             cell(text(r[1], { color: MUTED_FG }), 'fill'),
             cell(text(r[2]), 160),
             cell(instance(ctx.variant('Badge', { Variant: r[3] === 'Active' ? 'Success' : 'Neutral' }), { Label: r[3] }), 120),
