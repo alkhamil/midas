@@ -59,7 +59,7 @@ function RuleToggle({ title, hint, checked, onChange }) {
     return (
         <label className={`cb-rule ${checked ? 'on' : ''}`}>
             <span className="cb-rule-text"><b>{title}</b>{hint && <small>{hint}</small>}</span>
-            <input type="checkbox" className="cb-switch" checked={!!checked} onChange={e => onChange(e.target.checked)} />
+            <input type="checkbox" role="switch" className="cb-switch" checked={!!checked} onChange={e => onChange(e.target.checked)} />
         </label>
     );
 }
