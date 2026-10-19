@@ -35,4 +35,5 @@ export const kebabCase: (s: string) => string;
 export const pascalCase: (s: string) => string;
 export const titleCase: (s: string) => string;
 
+export function suggestScreens(frameName: string): { role: string; purpose?: string }[];
 export function activeNavPath(layout: { items: NavEntry[] }, modules: BuilderModule[], module: BuilderModule): string | undefined;

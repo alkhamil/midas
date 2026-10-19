@@ -70,3 +70,29 @@ test('projectIssues checks library, empty modules, entity fields and missing fra
     assert.match(msgs, /Module empty has no screens yet/);
     assert.match(projectIssues({ library: null, config: { modules: [] } }, { byId: new Map(), pages: [] })[0].message, /Choose a library/);
 });
+
+test('screenTree leaves out Sidebar/Topbar drawn inside a page mockup (no second sidebar)', () => {
+    const nodes = [
+        { id: 'page', name: 'Page · User', type: 'frame', w: 1440, h: 900, layout: 'horizontal', gap: 0 },
+        { id: 'side', parentId: 'page', name: 'Sidebar', type: 'frame', w: 256, h: 900, layout: 'vertical' },
+        { id: 'side-t', parentId: 'side', type: 'text', text: 'Dashboard', w: 60, h: 20 },
+        { id: 'main', parentId: 'page', name: 'Area utama', type: 'frame', w: 1184, h: 900, layout: 'vertical', gap: 0 },
+        { id: 'top', parentId: 'main', name: 'Topbar', type: 'frame', w: 1184, h: 72, layout: 'horizontal' },
+        { id: 'content', parentId: 'main', name: 'User — List', type: 'frame', w: 1184, h: 828, layout: 'vertical', gap: 16 },
+        { id: 'title', parentId: 'content', type: 'text', text: 'Users', w: 50, h: 20 },
+        { id: 'btn', parentId: 'content', type: 'frame', isInstance: true, sourceId: 'v1', w: 120, h: 42 },
+    ];
+    const c = makeContext({ nodes: [...libNodes, ...nodes], variables, mappings, libraryId: 'lib', fileId: 'app' });
+    const { tree, issues } = screenTree(c, 'page');
+    const names = [];
+    const walk = n => { names.push(n.name || n.text); (n.children || []).forEach(walk); };
+    walk(tree);
+    assert.ok(!names.includes('Sidebar') && !names.includes('Topbar'), names.join(','));
+    assert.equal(tree.nodeId, 'content');
+    assert.equal(tree.style.width, '1184px');
+    assert.deepEqual(issues.filter(i => i.severity === 'info').map(i => i.nodeId).sort(), ['side', 'top']);
+    // A frame named Sidebar deep inside the content is real content and stays.
+    const deep = [{ id: 'f2', name: 'Detail', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'w', parentId: 'f2', name: 'Wrap', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'w2', parentId: 'w', name: 'Wrap 2', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'keep', parentId: 'w2', name: 'Sidebar', type: 'frame', w: 200, h: 200, layout: 'vertical' }];
+    const t2 = screenTree(makeContext({ nodes: [...libNodes, ...deep], variables, mappings, libraryId: 'lib', fileId: 'app' }), 'f2');
+    assert.equal(t2.issues.filter(i => i.severity === 'info').length, 0);
+});

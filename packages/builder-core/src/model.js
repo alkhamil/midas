@@ -58,6 +58,27 @@ export function resolveLayout(config) {
     return { appName: layout.appName || 'Midas App', userName: layout.userName || 'Administrator', userRole: layout.userRole || 'admin', items };
 }
 
+/**
+ * Screens a frame is probably meant to be, guessed from its name (a leading "Page ·" and the module name are ignored):
+ * `Region — List` → list, `… — Form` → create + edit, `… — Detail` → view, `Confirm · Delete region` → dialog (delete),
+ * `Drawer · Filters` → nothing (the generated list page builds its own filter drawer), anything else → custom.
+ * Returns [{ role, purpose? }]; the caller decides which of them are still free in the module.
+ */
+export function suggestScreens(frameName) {
+    const n = String(frameName || '').replace(/^page\s*[·:-]\s*/i, '').toLowerCase();
+    if (/drawer|filter/.test(n)) return [];
+    if (/confirm|dialog|modal|popup/.test(n)) {
+        const purpose = /restore/.test(n) ? 'restore' : /discard|unsaved|leave|cancel/.test(n) ? 'discard' : 'delete';
+        return [{ role: 'dialog', purpose }];
+    }
+    if (/\b(detail|details|view|show|info)\b/.test(n)) return [{ role: 'view' }];
+    if (/\b(list|table|index|daftar|browse)\b/.test(n)) return [{ role: 'list' }];
+    if (/\b(edit|update|ubah)\b/.test(n) && !/\b(add|create|new|form)\b/.test(n)) return [{ role: 'edit' }];
+    if (/\b(add|create|new|tambah)\b/.test(n) && !/\b(edit|form)\b/.test(n)) return [{ role: 'create' }];
+    if (/\bform\b|\b(add|create|new|edit)\b/.test(n)) return [{ role: 'create' }, { role: 'edit' }];
+    return [{ role: 'custom' }];
+}
+
 /** Path menu sidebar yang aktif untuk sebuah module: entri menu milik module itu, atau milik induk terdekatnya. */
 export function activeNavPath(layout, modules, module) {
     const byId = new Map(modules.map(m => [m.id, m]));
