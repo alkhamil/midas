@@ -13,7 +13,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.coolify
       target: runtime
     restart: unless-stopped
     # Coolify routes its domain to this port. For plain `docker compose` on a

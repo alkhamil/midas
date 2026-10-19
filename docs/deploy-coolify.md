@@ -2,7 +2,8 @@
 
 Stack produksi ada di [`docker-compose.coolify.yml`](../docker-compose.coolify.yml): satu container aplikasi
 (Fastify yang juga menyajikan hasil build React Studio), Postgres, dan SeaweedFS sebagai S3 internal. Image
-dibangun lewat multi-stage [`Dockerfile`](../Dockerfile) — tidak ada `npm run dev` atau source TypeScript di runtime.
+dibangun lewat multi-stage [`Dockerfile.coolify`](../Dockerfile.coolify) — tidak ada `npm run dev` atau source TypeScript di runtime.
+`Dockerfile` di root sengaja dibiarkan sama dengan branch `main` (dipakai Render/Koyeb/Fly.io).
 
 ## 1. Buat resource
 
@@ -40,7 +41,7 @@ saat deployment compose, sehingga bind mount file (mis. `s3.env.json`) dibuat se
 SeaweedFS gagal start (`fail to read ...: is a directory`). Kredensial diberikan lewat `AWS_ACCESS_KEY_ID`
 dan `AWS_SECRET_ACCESS_KEY`; SeaweedFS otomatis membuat identity admin S3 dari kedua variabel tersebut.
 
-`HOST`, `PORT`, `AUTO_MIGRATE`, `STUDIO_DIST`, dan `TEMPLATES_DIR` sudah diatur di compose/Dockerfile.
+`HOST`, `PORT`, `AUTO_MIGRATE`, `STUDIO_DIST`, dan `TEMPLATES_DIR` sudah diatur di compose/`Dockerfile.coolify`.
 
 ## 3. Domain dan port
 
