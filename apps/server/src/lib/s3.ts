@@ -13,7 +13,13 @@ export async function ensureBucket(): Promise<void> {
         await s3.send(new HeadBucketCommand({ Bucket: config.s3.bucket }));
     }
     catch {
-        await s3.send(new CreateBucketCommand({ Bucket: config.s3.bucket }));
+        try {
+            await s3.send(new CreateBucketCommand({ Bucket: config.s3.bucket }));
+        }
+        catch (e) {
+            // Hosted S3 (R2, …): API tokens often cannot create buckets; create it once in the dashboard.
+            console.warn(`Bucket "${config.s3.bucket}" is not reachable and could not be created: ${(e as Error).message}`);
+        }
     }
 }
 
