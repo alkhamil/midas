@@ -2860,7 +2860,7 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 
 #vars-window, #vars-window * { user-select: none; -webkit-user-select: none }
 #vars-window input, #vars-window textarea, #vars-window [contenteditable] { user-select: text; -webkit-user-select: text }
-.return-bar { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: var(--comp-strong); color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
+.return-bar { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: var(--comp-strong); color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
 .return-bar button { color: inherit; font-size: 12px; font-weight: 500 }
 .return-bar .icon-button { width: 22px; height: 22px; border-radius: 50%; color: #fff }
 .return-bar .icon-button:hover { background: rgba(255,255,255,.2) }
@@ -3251,3 +3251,77 @@ select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color
 .sz-field.mm-hit .sz-lab.mm { color: var(--accent); filter: brightness(1.25) }
 .sz-mm { display: none }
 .sz-field.mm-hit { box-shadow: none }
+
+.rename-many { display: grid; gap: 10px }
+.rename-many label { display: grid; gap: 4px; font-size: 12px; color: var(--muted) }
+.rename-many .rm-row { display: grid; grid-template-columns: 1fr 1fr 70px; gap: 8px }
+.rm-preview { display: grid; gap: 4px; padding: 8px; border-radius: 8px; background: var(--field); font-size: 12px; max-height: 180px; overflow: auto }
+.rm-preview div { display: flex; gap: 8px; align-items: center; min-width: 0 }
+.rm-preview span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 }
+.rm-preview b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 }
+.rm-preview i { font-style: normal; color: var(--muted) }
+.rm-preview .rm-more { color: var(--muted) }
+
+
+.cmp-ctl .var-btn { position: static; transform: none; opacity: 0; flex: none }
+.cmp-prop2:hover .var-btn, .cmp-ctl .var-btn:focus-visible { opacity: 1 }
+.lg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px }
+.lg-ico { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); cursor: pointer }
+.lg-sum { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font-size: 12px; cursor: pointer; text-align: left }
+.lg-sum span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lg-stylename { flex: 1; min-width: 0; height: 32px; display: flex; align-items: center; padding: 0 10px; border-radius: 6px; background: var(--field); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lg-pop, .lg-styles, .lg-edit-style { width: 300px; max-height: 80vh; overflow: auto; z-index: 470 }
+.lg-pop .pp-head .lgp-type { height: 28px; width: auto; min-width: 110px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px; font-weight: 600 }
+.lgp-color { display: flex; align-items: center; gap: 6px }
+.lgp-color .hex-field { flex: 1; min-width: 0 }
+.lgp-pct { display: flex; align-items: center; gap: 2px; color: var(--muted) }
+.lgp-pct input { width: 44px !important; text-align: right; padding: 0 6px !important }
+.lgs-actions { display: inline-flex; gap: 4px }
+.lgs-search { display: flex; align-items: center; gap: 8px; margin: 10px 14px; padding: 0 10px; height: 32px; border-radius: 6px; background: var(--field); color: var(--muted) }
+.lgs-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); outline: 0; font-size: 12.5px }
+.lgs-list { padding: 0 8px 12px; display: grid; gap: 2px }
+.lgs-row { display: flex; align-items: center; border-radius: 6px }
+.lgs-row:hover { background: var(--hover) }
+.lgs-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border: 0; background: transparent; color: var(--text); font-size: 12.5px; cursor: pointer; text-align: left }
+.lgs-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lgs-edit { opacity: 0 }
+.lgs-row:hover .lgs-edit { opacity: 1 }
+.lgs-props { padding: 0 14px }
+.lgs-props .pp-vals-h { padding-left: 0; padding-right: 0 }
+
+.lgp-color .hex-field { display: flex; flex-direction: row; align-items: center; gap: 6px; height: 30px }
+.lgp-color .hex-field input[type=color] { width: 22px !important; height: 22px !important; padding: 0 !important; border-radius: 4px }
+.lgp-color .hex-field input[type=text] { flex: 1; min-width: 0 }
+
+.sz-field .sz-lab.mm { margin-right: 6px }
+
+.fr-sw.locked { cursor: default; pointer-events: none }
+
+.sc-toggle { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; padding: 0 }
+.sc-previews { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted) }
+.sc-prev { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border) }
+.sc-previews em { font-style: normal; font-weight: 600; color: var(--text) }
+.sc-list { display: grid; gap: 6px }
+.sc-row { position: relative }
+.sc-var { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font-size: 12px; cursor: pointer; text-align: left }
+.sc-var span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.sc-var .vw-sw { flex: none }
+.sc-acts { display: none; align-items: center; gap: 2px; flex: none }
+.sc-row:hover .sc-acts { display: inline-flex }
+.sc-all { justify-self: center; display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; cursor: pointer; padding: 6px 0 }
+.sc-all:hover { color: var(--text) }
+.sc-row .fr-sw input[type=color] { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer }
+
+/* Menus and lists: a long label is cut with an ellipsis instead of wrapping or pushing the width. */
+.stp-menu button { min-width: 0 }
+.stp-menu .pm-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.vp-item .vp-name, .vpk-item .vp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.swp-thumb { flex: none; width: 36px; height: 24px; border-radius: 4px; background: var(--field); display: grid; place-items: center; overflow: hidden }
+.swp-thumb img { width: 100%; height: 100%; object-fit: contain }
+.swp-thumb .vc-glyph { width: auto }
+.vpk-item:has(.swp-thumb) { height: 36px }
+/* A focused dropdown is outlined inside its own box (no offset ring). */
+select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 0 0 1px var(--accent) !important }
+/* Selection colors: rows never grow past the panel. */
+.sc-list { grid-template-columns: minmax(0, 1fr) }
+.sc-row { min-width: 0 }

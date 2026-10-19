@@ -157,6 +157,7 @@ function metaFor(fileId, docData) {
         tokens: docData.tokens,
         variables: docData.variables,
         thumbnailId: docData.thumbnailId ?? null,
+        guideStyles: docData.guideStyles ?? [],
         created: docData.created,
         ...(Object.keys(assetUrls).length ? { assetUrls } : {})
     };
@@ -242,6 +243,9 @@ async function embedAssets(fileId, assets = {}) {
     return out;
 }
 
+// Exported files keep coordinates to 4 decimals (0.0001 px): the long floating-point tails of vector points were most of the file.
+const roundForExport = (_k, v) => typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 1e4) / 1e4 : v;
+
 export const projectStorage = {
     // Kuota browser tidak relevan lagi: data ada di server.
     async getQuota() {
@@ -316,6 +320,7 @@ export const projectStorage = {
             tokens: meta.tokens,
             variables: meta.variables,
             thumbnailId: meta.thumbnailId,
+            guideStyles: meta.guideStyles ?? [],
             created: meta.created ?? file.created,
             assets
         };
@@ -324,9 +329,9 @@ export const projectStorage = {
     async exportProject(fileId, inMemoryDocData) {
         if (inMemoryDocData?.pages?.every(p => Array.isArray(p.nodes))) {
             const assets = await embedAssets(fileId, inMemoryDocData.assets);
-            return JSON.stringify({ ...inMemoryDocData, assets, format: 'midas', version: 1 }, null, 2);
+            return JSON.stringify({ ...inMemoryDocData, assets, format: 'midas', version: 1 }, roundForExport);
         }
-        return JSON.stringify(await api('GET', `${fileUrl(fileId)}/export`), null, 2);
+        return JSON.stringify(await api('GET', `${fileUrl(fileId)}/export`), roundForExport);
     },
 
     async deleteProject(fileId) {
