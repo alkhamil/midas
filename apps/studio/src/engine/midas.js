@@ -7737,7 +7737,7 @@ function pageSig(p) {
     let s = 0;
     for (const n of p.nodes)
         s += (n.version || 0) + 1;
-    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}`;
+    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}:${p.codeBuilder ? 1 : 0}`;
 }
 function markPagesSaved() {
     savedPageSigs.clear();
@@ -8228,7 +8228,7 @@ function renderPages() {
                 continue;
             }
             const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
-            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span>${p.codeBuilder ? `<span class="page-cb" title="Available as a Code Builder module source">${icon('code', 12)}</span>` : ''}</div>`);
             if (folder && open)
                 walk(p.id, depth + 1);
         }
@@ -11278,6 +11278,22 @@ function addPage() {
     });
     if (created)
         setTimeout(() => renamePageInline(created.id), 0);
+}
+/** Flag a page as a Code Builder module source: only flagged pages are offered in the "New module" Source page list. */
+function togglePageCodeBuilder(id) {
+    const p = doc.data.pages.find(x => x.id === id);
+    if (!p)
+        return;
+    const on = !p.codeBuilder;
+    transaction(on ? 'Use page in Code Builder' : 'Remove page from Code Builder', () => {
+        if (on)
+            p.codeBuilder = true;
+        else
+            delete p.codeBuilder;
+    });
+    renderPages();
+    notifyBuilder();
+    toast(on ? `“${p.name}” can now be used as a Code Builder module source.` : `“${p.name}” removed from the Code Builder module sources.`);
 }
 function duplicatePage(id) {
     const src = doc.data.pages.find(x => x.id === id);
@@ -16965,7 +16981,7 @@ const builderBridge = {
     fileId: () => lib.fileId,
     fileName: () => doc.data.name,
     currentPageId: () => doc.page.id,
-    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p) })),
+    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p), codeBuilder: !!p.codeBuilder })),
     /** Semua node file (lintas page), termasuk salinan komponen library. */
     nodes: () => doc.data.pages.flatMap(p => p.nodes),
     pageOf: id => pageOfNode(id)?.id ?? null,
@@ -17546,6 +17562,8 @@ document.addEventListener('click', e => {
             applyFramePreset(act.slice(13));
         else if (act.startsWith('page-duplicate:'))
             duplicatePage(act.slice(15));
+        else if (act.startsWith('page-codebuilder:'))
+            togglePageCodeBuilder(act.slice(17));
         else if (act.startsWith('vwcoll:'))
             vwCollAction(act);
         else
@@ -17942,7 +17960,7 @@ $('#page-list').addEventListener('contextmenu', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     if (!p)
         return;
-    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
+    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, { label: p.codeBuilder ? '✓ Use in Code Builder' : 'Use in Code Builder', action: 'page-codebuilder:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
 });
 $('#page-list').addEventListener('dblclick', e => {
     const row = e.target.closest('[data-page]');
