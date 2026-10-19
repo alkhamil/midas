@@ -33,6 +33,13 @@ dibangun lewat multi-stage [`Dockerfile`](../Dockerfile) — tidak ada `npm run 
 Jika memakai Postgres/S3 eksternal, hapus service bawaan beserta entri `depends_on`-nya di compose supaya
 stack benar-benar hanya menjalankan container aplikasi.
 
+### Kredensial S3 internal
+
+Service `s3` tidak memakai file konfigurasi yang di-bind-mount. Coolify tidak menyimpan file repo di host
+saat deployment compose, sehingga bind mount file (mis. `s3.env.json`) dibuat sebagai direktori kosong dan
+SeaweedFS gagal start (`fail to read ...: is a directory`). Kredensial diberikan lewat `AWS_ACCESS_KEY_ID`
+dan `AWS_SECRET_ACCESS_KEY`; SeaweedFS otomatis membuat identity admin S3 dari kedua variabel tersebut.
+
 `HOST`, `PORT`, `AUTO_MIGRATE`, `STUDIO_DIST`, dan `TEMPLATES_DIR` sudah diatur di compose/Dockerfile.
 
 ## 3. Domain dan port
