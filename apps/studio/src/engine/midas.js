@@ -1663,21 +1663,25 @@ function mmMarker(n, dim) {
         return { cls: '', html: '' };
     const hit = mn != null && n[dim] <= mn + .01 ? 'min' : mx != null && n[dim] >= mx - .01 ? 'max' : '';
     const tip = [mn != null ? `Min ${word} ${fmt(mn)}` : '', mx != null ? `Max ${word} ${fmt(mx)}` : ''].filter(Boolean).join(' · ');
-    const label = mn != null && mx != null ? 'Min·Max' : mn != null ? 'Min' : 'Max';
-    return { cls: 'has-mm' + (hit ? ' mm-hit' : ''), html: `<span class="sz-mm" title="${esc(tip)}">${label}</span>` };
+    return { cls: 'has-mm' + (hit ? ' mm-hit' : ''), html: '', tip };
+}
+// With a min and / or max the W / H label turns into |W| / |H|, like Figma.
+function mmLabelOf(n, dim) {
+    const m = mmMarker(n, dim);
+    return { cls: m.cls ? 'mm' : '', tip: m.tip || '', html: l => m.cls ? `<i class="mmb"></i>${l}<i class="mmb"></i>` : l };
 }
 function sizeFieldHtml(n, axis) {
     const dim = axis === 'h' ? 'w' : 'h', label = axis === 'h' ? 'W' : 'H', { mode } = sizeModeOf(n, axis), bound = boundVar(dim), word = axis === 'h' ? 'Width' : 'Height';
     if (n.type === 'text') {
         const tm = textModeOf(n), p = doc.get(n.parentId), inAuto = p?.type === 'frame' && n.layoutPositioning !== 'absolute';
         const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
-        const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
+        const lab = inAuto ? `<button class="sz-lab ${mmLabelOf(n, dim).cls}" data-size-menu="${axis}" title="${esc(mmLabelOf(n, dim).tip || word + ' options')}" aria-label="${word} options">${mmLabelOf(n, dim).html(label)}</button>` : `<span class="sz-lab ${mmLabelOf(n, dim).cls}" title="${esc(mmLabelOf(n, dim).tip)}">${mmLabelOf(n, dim).html(label)}</span>`;
         const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
         const mmT = mmMarker(n, dim);
         return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''} ${mmT.cls}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${mmT.html}${fill}${szChevron(axis, word)}</div>`;
     }
-    const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
-    const mm = mmMarker(n, dim);
+    const mm = mmMarker(n, dim), ml = mmLabelOf(n, dim);
+    const lab = `<button class="sz-lab ${ml.cls}" data-size-menu="${axis}" title="${esc(ml.tip || word + ' options')}" aria-label="${word} options">${ml.html(label)}</button>`;
     const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
     return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''} ${mm.cls}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${mm.html}${modeBtn}${szChevron(axis, word)}</div>`;
 }
@@ -5720,12 +5724,16 @@ class DocumentModel {
             variables: this.data.variables,
             thumbnailId: this.data.thumbnailId ?? null
         };
-        const metaStr = JSON.stringify(meta);
-        return metaStr.slice(0, -1) + ',"pages":[' + pageChunks.join(',') + ']}';
+        // Kept as separate chunks: an undo entry shares the strings of every page that did not change, instead of
+        // holding a full copy of the document (that copy x 40 entries ran big files out of memory).
+        return { meta: JSON.stringify(meta), pages: pageChunks };
+    }
+    static sameSnapshot(a, b) {
+        return a.meta === b.meta && a.pages.length === b.pages.length && a.pages.every((x, i) => x === b.pages[i]);
     }
     restore(s) {
         this._pageSnapshots.clear();
-        Object.assign(this.data, JSON.parse(s));
+        Object.assign(this.data, { ...JSON.parse(s.meta), pages: s.pages.map(p => JSON.parse(p)) });
         this.refresh();
     }
     serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }, null, 2); }
@@ -5822,7 +5830,7 @@ class History {
         const entry = this.pending;
         this.pending = null;
         const sameMap = (a, b = {}) => Object.keys(a).length === Object.keys(b).length && Object.keys(a).every(key => a[key] === b[key]);
-        if (entry.snapshot === this.doc.snapshot() && sameMap(entry.assets, this.doc.data.assets) && sameMap(entry.fonts, this.doc.data.fonts))
+        if (DocumentModel.sameSnapshot(entry.snapshot, this.doc.snapshot()) && sameMap(entry.assets, this.doc.data.assets) && sameMap(entry.fonts, this.doc.data.fonts))
             return false;
         this.undoStack.push(entry);
         if (this.undoStack.length > 40)
@@ -7657,7 +7665,7 @@ function movePage(srcIds, targetId, mode) {
             return;
         }
         let at;
-        if (mode === 'into') {
+        if (mode === 'into' && !pageHasNodes(t)) {
             for (const b of blocks)
                 b[0].parentId = t.id;
             state.expandedPages.add(t.id);
@@ -8613,7 +8621,7 @@ function selectionGeometry() {
 function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
 function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
 // Components, variant sets, instances and everything inside them are selected in Figma's purple.
-const compPurple = () => options.theme === 'dark' ? '#a898d8' : '#9747FF';
+const compPurple = () => '#9747FF'; // bounding box: same in light and dark
 function inComponentTree(n) {
     for (let cur = n, i = 0; cur && i < 200; cur = doc.get(cur.parentId), i++)
         if (cur.component || cur.componentSet || cur.isInstance)
@@ -10283,6 +10291,8 @@ function booleanOp(kind) {
         toast('Select two or more shapes.');
         return;
     }
+    // Stacking order decides the base: Subtract removes every layer above from the lowest one (like Figma), whatever order they were selected in.
+    roots.sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
     const polys = roots.map(nodePolys);
     if (polys.some(p => !p) || !pc) {
         toast('Boolean operations work on rectangles, ellipses and closed paths.');
@@ -14235,7 +14245,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         else
             n.radius = f.cornerRadius || 0;
     };
-    const applyLayout = (n, f) => {
+    const applyLayout = (n, f, asInstance = f.type === 'INSTANCE') => {
         if (f.stackMode !== 'HORIZONTAL' && f.stackMode !== 'VERTICAL') {
             if (f.stackMode === 'GRID')
                 note('grid layout imported as a plain frame');
@@ -14268,9 +14278,13 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.alignBaseline = true;
         const ca = f.stackCounterAlignItems || 'MIN';
         n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
-        const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
-        // An omitted stackPrimarySizing is Figma's default (RESIZE_TO_FIT = hug); an omitted stackCounterSizing is FIXED.
-        const prim = hug(f.stackPrimarySizing ?? 'RESIZE_TO_FIT'), counter = hug(f.stackCounterSizing);
+        // An instance keeps the size Figma stored for it ("hug with implicit size" is how Figma remembers it): a hug there
+        // would shrink it to its content (a 44px avatar to its 10px badge, a 20px icon holder to 12px).
+        const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' && !asInstance ? 'hug' : 'fixed';
+        // An omitted stackPrimarySizing is Figma's default (RESIZE_TO_FIT = hug); an instance without one takes its component's.
+        // An omitted stackCounterSizing is FIXED.
+        const primDefault = asInstance && f.type === 'INSTANCE' ? fig.get(gkey(f.symbolData?.symbolID))?.stackPrimarySizing ?? 'RESIZE_TO_FIT' : 'RESIZE_TO_FIT';
+        const prim = hug(f.stackPrimarySizing ?? primDefault), counter = hug(f.stackCounterSizing);
         n.layoutSizingH = horiz ? prim : counter;
         n.layoutSizingV = horiz ? counter : prim;
         if (f.stackWrap) {
@@ -14311,15 +14325,16 @@ async function figToMidas(file, onProgress, abortSignal) {
     };
     // Per-instance overrides of a layer's size, auto layout, min / max, ratio, corners and stroke weight.
     const LAYOUT_OV = ['stackSpacing', 'stackHorizontalPadding', 'stackVerticalPadding', 'stackPaddingRight', 'stackPaddingBottom', 'stackPrimarySizing', 'stackCounterSizing', 'stackPrimaryAlignItems', 'stackCounterAlignItems', 'stackWrap', 'stackCounterSpacing'];
-    const applyLayoutOverride = (c, ov, base, pf) => {
+    const applyLayoutOverride = (c, ov, base, pf, isRoot = false) => {
         const m = { ...base, ...ov };
-        if (ov.size && Number.isFinite(ov.size.x) && Number.isFinite(ov.size.y)) {
+        // On the instance itself the size in an override is the component's own; the instance keeps the size Figma stored for it.
+        if (!isRoot && ov.size && Number.isFinite(ov.size.x) && Number.isFinite(ov.size.y)) {
             c.w = ov.size.x;
             c.h = ov.size.y;
         }
         if (LAYOUT_OV.some(k => ov[k] !== undefined) && (m.stackMode === 'HORIZONTAL' || m.stackMode === 'VERTICAL')) {
             const keep = { h: c.layoutSizingH, v: c.layoutSizingV };
-            applyLayout(c, m);
+            applyLayout(c, m, !!c.isInstance);
             // A layer that fills its parent keeps doing so: the override only changes its own content.
             if (keep.h === 'fill')
                 c.layoutSizingH = 'fill';
@@ -15220,6 +15235,9 @@ async function figToMidas(file, onProgress, abortSignal) {
             const targetGuid = guids[guids.length - 1];
             const targetSrc = idMap.get(gkey(targetGuid));
             let c = targetSrc ? clones.get(targetSrc) : null;
+            // Only an override whose path is a single step and names a layer of this very instance is applied for layout / size:
+            // a deeper path through nested instances cannot be told apart from the same layer elsewhere by its source alone.
+            const exact = guids.length === 1 && !!c;
             // An override whose path is just the component itself applies to the instance root.
             if (!c && targetSrc && targetSrc === src.id)
                 c = n;
@@ -15268,9 +15286,9 @@ async function figToMidas(file, onProgress, abortSignal) {
                 applyEffects(c, ov);
             if (ov.fontSize)
                 c.fontSize = ov.fontSize;
-            {
+            if (exact || c === n) {
                 const parentClone = [...clones.values()].find(x => x.id === c.parentId), pSrcId = c.id === n.id ? null : parentClone ? parentClone.sourceId : src.id;
-                applyLayoutOverride(c, ov, figOfMidas.get(targetSrc), pSrcId ? figOfMidas.get(pSrcId) : null);
+                applyLayoutOverride(c, ov, figOfMidas.get(targetSrc), pSrcId ? figOfMidas.get(pSrcId) : null, c === n);
             }
             for (const key of Object.keys(c))
                 if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== null && typeof c[key] === 'object' ? JSON.stringify(c[key]) !== JSON.stringify(before[key]) : c[key] !== before[key]))
@@ -15351,6 +15369,15 @@ async function figToMidas(file, onProgress, abortSignal) {
     // ---- sanitize + assemble ----
     for (const p of pages)
         for (const n of p.nodes) {
+            // A layer is driven by its component property or by a variable, not both: the property is what Figma shows.
+            for (const k of ['visible', 'text']) {
+                if (n.propBind?.[k] && n.vars?.[k] !== undefined)
+                    delete n.vars[k];
+                if (n.propBind?.[k] && n.overrides?.vars?.[k] !== undefined)
+                    delete n.overrides.vars[k];
+            }
+            if (n.vars && !Object.keys(n.vars).length)
+                delete n.vars;
             for (const k of ['x', 'y', 'w', 'h', 'rotation', 'opacity'])
                 if (!Number.isFinite(n[k]))
                     n[k] = k === 'opacity' ? 1 : 0;
@@ -16983,7 +17010,8 @@ $('#page-list').addEventListener('dragover', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     const r = row.getBoundingClientRect(), rel = (e.clientY - r.top) / Math.max(1, r.height);
     let mode = rel < .28 ? 'before' : rel > .72 ? 'after' : 'into';
-    if (mode === 'into' && (!p || isPageDivider(p)))
+    // Only a page without any layer can become a folder.
+    if (mode === 'into' && (!p || isPageDivider(p) || pageHasNodes(p)))
         mode = rel < .5 ? 'before' : 'after';
     row.classList.add('drop-' + mode);
     state.pageDrop = { targetId: row.dataset.page, mode };
