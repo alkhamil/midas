@@ -27,6 +27,8 @@ docs/specs/     # spesifikasi & workflow
 
 Developer baru: ikuti [docs/setup-lokal.md](docs/setup-lokal.md) (install, akun pertama, login CLI, seed design system).
 
+Deploy gratis (Render + Neon + Cloudflare R2): [docs/deploy-gratis.md](docs/deploy-gratis.md).
+
 Butuh Node 22 dan Docker.
 
 ```bash

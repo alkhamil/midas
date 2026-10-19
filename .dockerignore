@@ -1,0 +1,8 @@
+.git
+.gen-test
+**/node_modules
+**/dist
+contoh_base_code
+.env
+**/.env
+.DS_Store
