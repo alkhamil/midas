@@ -29,6 +29,9 @@ Developer baru: ikuti [docs/setup-lokal.md](docs/setup-lokal.md) (install, akun 
 
 Deploy gratis (Render + Neon + Cloudflare R2): [docs/deploy-gratis.md](docs/deploy-gratis.md).
 
+Deploy di Coolify (satu stack: app + Postgres + S3): [docs/deploy-coolify.md](docs/deploy-coolify.md) — compose:
+[`docker-compose.coolify.yml`](docker-compose.coolify.yml).
+
 Butuh Node 22 dan Docker.
 
 ```bash

@@ -1,21 +1,67 @@
-# Midas (server + Studio) as one image: the Fastify server also serves the built Studio, so a single free web
-# service is enough (plus an external Postgres and an S3-compatible bucket). See docs/deploy-gratis.md.
-FROM node:22-slim AS build
-WORKDIR /app
-COPY . .
-RUN npm ci --no-audit --no-fund
-RUN npm run build --workspace @midas/studio && npm run build --workspace @midas/server
-# Keep only what the server needs at runtime.
-RUN npm prune --omit=dev --no-audit --no-fund && find templates -name node_modules -prune -exec rm -rf {} +
+# Midas production image: the Fastify API also serves the built React Studio.
+#
+# The runtime image only contains the compiled server, the Studio build, the
+# base project template, and the server's production dependencies. That keeps
+# the deployed image small (~Node + Fastify/AWS SDK) instead of shipping the
+# whole monorepo and every dev dependency.
+#
+# Stages:
+#   build     -> install everything, compile Studio (Vite) and server (tsc)
+#   prod-deps -> install only @midas/server production dependencies
+#   runtime   -> minimal runtime used by Docker/Coolify and Render
 
-FROM node:22-slim
+FROM node:22-alpine AS build
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 AUTO_MIGRATE=true COOKIE_SECURE=true
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/server/package.json ./apps/server/package.json
-COPY --from=build /app/apps/server/dist ./apps/server/dist
-COPY --from=build /app/apps/server/drizzle ./apps/server/drizzle
-COPY --from=build /app/apps/studio/dist ./apps/studio/dist
-COPY --from=build /app/templates ./templates
+
+# Copy workspace manifests first so `npm ci` is cached when only source changes.
+COPY package.json package-lock.json ./
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/studio/package.json ./apps/studio/package.json
+COPY packages/builder-core/package.json ./packages/builder-core/package.json
+COPY packages/cli/package.json ./packages/cli/package.json
+COPY packages/ui-cms/package.json ./packages/ui-cms/package.json
+COPY templates/base-project/package.json ./templates/base-project/package.json
+RUN npm ci --no-audit --no-fund
+
+COPY . .
+RUN npm run build --workspace @midas/studio \
+    && npm run build --workspace @midas/server
+
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+
+# Only the server package is needed at runtime. `npm ci --workspace` keeps the
+# lockfile and installs just this workspace's production dependency tree.
+COPY package.json package-lock.json ./
+COPY apps/server/package.json ./apps/server/package.json
+RUN npm ci --omit=dev --workspace @midas/server --ignore-scripts --no-audit --no-fund \
+    && npm cache clean --force
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=4000 \
+    AUTO_MIGRATE=true \
+    COOKIE_SECURE=true \
+    STUDIO_DIST=/app/apps/studio/dist \
+    TEMPLATES_DIR=/app/templates
+
+RUN addgroup -S midas && adduser -S -G midas midas
+
+COPY --from=prod-deps --chown=midas:midas /app/node_modules ./node_modules
+# package.json is required so Node treats dist/*.js as ES modules.
+COPY --from=build --chown=midas:midas /app/apps/server/package.json ./apps/server/package.json
+COPY --from=build --chown=midas:midas /app/apps/server/dist ./apps/server/dist
+COPY --from=build --chown=midas:midas /app/apps/server/drizzle ./apps/server/drizzle
+COPY --from=build --chown=midas:midas /app/apps/studio/dist ./apps/studio/dist
+COPY --from=build --chown=midas:midas /app/templates ./templates
+
+USER midas
 EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:4000/api/health >/dev/null || exit 1
+
 CMD ["node", "apps/server/dist/index.js"]
