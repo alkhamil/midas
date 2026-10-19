@@ -1,8 +1,8 @@
 {
   "package": "@midas/ui-cms",
-  "version": "2.7.3",
+  "version": "2.8.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-19T15:54:58.114Z",
+  "publishedAt": "2026-10-19T17:21:08.712Z",
   "themes": [
     "light",
     "dark"
@@ -156,7 +156,7 @@
   "components": [
     {
       "exportName": "Button",
-      "componentKey": "ds-15-5ftnkn",
+      "componentKey": "ds-15-9uyby4",
       "componentName": "Button",
       "props": [
         {
@@ -208,98 +208,8 @@
       }
     },
     {
-      "exportName": "Topbar",
-      "componentKey": "ds-1k-vle2pq",
-      "componentName": "Topbar",
-      "props": [
-        {
-          "name": "menu",
-          "type": "enum",
-          "source": "variant",
-          "label": "Menu",
-          "values": [
-            "open",
-            "closed"
-          ]
-        },
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "breadcrumb",
-          "type": "string",
-          "source": "text",
-          "label": "Breadcrumb"
-        },
-        {
-          "name": "userName",
-          "type": "string",
-          "source": "text",
-          "label": "UserName"
-        },
-        {
-          "name": "userRole",
-          "type": "string",
-          "source": "text",
-          "label": "UserRole"
-        }
-      ],
-      "defaults": {
-        "menu": "closed",
-        "title": "Page title",
-        "breadcrumb": "Home / Page",
-        "userName": "Administrator",
-        "userRole": "admin"
-      }
-    },
-    {
-      "exportName": "SectionHeader",
-      "componentKey": "ds-1l-f2zglf",
-      "componentName": "SectionHeader",
-      "props": [
-        {
-          "name": "action",
-          "type": "enum",
-          "source": "variant",
-          "label": "Action",
-          "values": [
-            "none",
-            "primary",
-            "secondary"
-          ]
-        },
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "description",
-          "type": "string",
-          "source": "text",
-          "label": "Description"
-        },
-        {
-          "name": "actionLabel",
-          "type": "string",
-          "source": "text",
-          "label": "ActionLabel"
-        }
-      ],
-      "defaults": {
-        "action": "primary",
-        "title": "Section title",
-        "description": "Short description of this section",
-        "actionLabel": "Add"
-      }
-    },
-    {
       "exportName": "IconButton",
-      "componentKey": "ds-2g-nnx1nl",
+      "componentKey": "ds-2g-n94j8p",
       "componentName": "IconButton",
       "props": [
         {
@@ -328,7 +238,7 @@
     },
     {
       "exportName": "Badge",
-      "componentKey": "ds-2s-maa4uw",
+      "componentKey": "ds-2u-9yi4dn",
       "componentName": "Badge",
       "props": [
         {
@@ -358,7 +268,7 @@
     },
     {
       "exportName": "Avatar",
-      "componentKey": "ds-38-ep6lj1",
+      "componentKey": "ds-3a-vefbh0",
       "componentName": "Avatar",
       "props": [
         {
@@ -385,7 +295,7 @@
     },
     {
       "exportName": "Alert",
-      "componentKey": "ds-3i-71787e",
+      "componentKey": "ds-3k-tn4les",
       "componentName": "Alert",
       "props": [
         {
@@ -414,7 +324,7 @@
     },
     {
       "exportName": "Card",
-      "componentKey": "ds-41-u4jnra",
+      "componentKey": "ds-43-vx5042",
       "componentName": "Card",
       "props": [
         {
@@ -436,7 +346,7 @@
     },
     {
       "exportName": "StatCard",
-      "componentKey": "ds-4d-b1m06u",
+      "componentKey": "ds-4f-0pbeut",
       "componentName": "StatCard",
       "props": [
         {
@@ -478,7 +388,7 @@
     },
     {
       "exportName": "TextField",
-      "componentKey": "ds-52-drc2jk",
+      "componentKey": "ds-54-nv351d",
       "componentName": "TextField",
       "props": [
         {
@@ -508,7 +418,7 @@
     },
     {
       "exportName": "TextAreaField",
-      "componentKey": "ds-6b-fnk7ng",
+      "componentKey": "ds-6d-syfcms",
       "componentName": "TextAreaField",
       "props": [
         {
@@ -538,7 +448,7 @@
     },
     {
       "exportName": "PasswordField",
-      "componentKey": "ds-7k-4qo0v8",
+      "componentKey": "ds-7m-7bpdpy",
       "componentName": "PasswordField",
       "props": [
         {
@@ -568,7 +478,7 @@
     },
     {
       "exportName": "SelectField",
-      "componentKey": "ds-8z-4tp3od",
+      "componentKey": "ds-91-oihptq",
       "componentName": "SelectField",
       "props": [
         {
@@ -597,44 +507,8 @@
       }
     },
     {
-      "exportName": "Drawer",
-      "componentKey": "ds-9-12jmf0",
-      "componentName": "Drawer",
-      "props": [
-        {
-          "name": "title",
-          "type": "string",
-          "source": "text",
-          "label": "Title"
-        },
-        {
-          "name": "secondaryLabel",
-          "type": "string",
-          "source": "text",
-          "label": "SecondaryLabel"
-        },
-        {
-          "name": "primaryLabel",
-          "type": "string",
-          "source": "text",
-          "label": "PrimaryLabel"
-        },
-        {
-          "name": "children",
-          "type": "node",
-          "source": "slot",
-          "label": "Content"
-        }
-      ],
-      "defaults": {
-        "title": "Filters",
-        "secondaryLabel": "Reset",
-        "primaryLabel": "Apply"
-      }
-    },
-    {
       "exportName": "SwitchField",
-      "componentKey": "ds-as-lrpuhb",
+      "componentKey": "ds-au-knews1",
       "componentName": "SwitchField",
       "props": [
         {
@@ -657,7 +531,7 @@
     },
     {
       "exportName": "Dialog",
-      "componentKey": "ds-bn-lj4uvt",
+      "componentKey": "ds-bs-e2cdrv",
       "componentName": "Dialog",
       "props": [
         {
@@ -721,15 +595,51 @@
       }
     },
     {
+      "exportName": "Drawer",
+      "componentKey": "ds-d9-7lpzmv",
+      "componentName": "Drawer",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "secondaryLabel",
+          "type": "string",
+          "source": "text",
+          "label": "SecondaryLabel"
+        },
+        {
+          "name": "primaryLabel",
+          "type": "string",
+          "source": "text",
+          "label": "PrimaryLabel"
+        },
+        {
+          "name": "children",
+          "type": "node",
+          "source": "slot",
+          "label": "Content"
+        }
+      ],
+      "defaults": {
+        "title": "Filters",
+        "secondaryLabel": "Reset",
+        "primaryLabel": "Apply"
+      }
+    },
+    {
       "exportName": "Table",
-      "componentKey": "ds-ce-0ambl8",
+      "componentKey": "ds-dx-djm8h5",
       "componentName": "Table",
       "props": [],
       "defaults": {}
     },
     {
       "exportName": "Sidebar",
-      "componentKey": "ds-ez-1rv9vb",
+      "componentKey": "ds-hm-dlsy7g",
       "componentName": "Sidebar",
       "props": [
         {
@@ -759,15 +669,105 @@
       }
     },
     {
+      "exportName": "Topbar",
+      "componentKey": "ds-jr-2xx5aa",
+      "componentName": "Topbar",
+      "props": [
+        {
+          "name": "menu",
+          "type": "enum",
+          "source": "variant",
+          "label": "Menu",
+          "values": [
+            "open",
+            "closed"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "breadcrumb",
+          "type": "string",
+          "source": "text",
+          "label": "Breadcrumb"
+        },
+        {
+          "name": "userName",
+          "type": "string",
+          "source": "text",
+          "label": "UserName"
+        },
+        {
+          "name": "userRole",
+          "type": "string",
+          "source": "text",
+          "label": "UserRole"
+        }
+      ],
+      "defaults": {
+        "menu": "closed",
+        "title": "Page title",
+        "breadcrumb": "Home / Page",
+        "userName": "Administrator",
+        "userRole": "admin"
+      }
+    },
+    {
+      "exportName": "SectionHeader",
+      "componentKey": "ds-kt-84ay03",
+      "componentName": "SectionHeader",
+      "props": [
+        {
+          "name": "action",
+          "type": "enum",
+          "source": "variant",
+          "label": "Action",
+          "values": [
+            "none",
+            "primary",
+            "secondary"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "source": "text",
+          "label": "Title"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "source": "text",
+          "label": "Description"
+        },
+        {
+          "name": "actionLabel",
+          "type": "string",
+          "source": "text",
+          "label": "ActionLabel"
+        }
+      ],
+      "defaults": {
+        "action": "primary",
+        "title": "Section title",
+        "description": "Short description of this section",
+        "actionLabel": "Add"
+      }
+    },
+    {
       "exportName": "FilterToolbar",
-      "componentKey": "ds-g9-29wrba",
+      "componentKey": "ds-le-h2tb20",
       "componentName": "FilterToolbar",
       "props": [],
       "defaults": {}
     },
     {
       "exportName": "AppShell",
-      "componentKey": "ds-gk-u2raog",
+      "componentKey": "ds-lp-10yjvb",
       "componentName": "AppShell",
       "props": [],
       "defaults": {}
