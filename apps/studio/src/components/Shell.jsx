@@ -191,7 +191,7 @@ export function Overlays() {
             </div>
             <input type="file" id="file-input" accept=".midas,.vellum,.fig,.json,application/json" hidden />
             <input type="file" id="fill-image-input" accept={IMAGE_TYPES} hidden />
-            <input type="file" id="image-input" accept={IMAGE_TYPES} hidden />
+            <input type="file" id="image-input" accept={IMAGE_TYPES} multiple hidden />
         </>
     );
 }

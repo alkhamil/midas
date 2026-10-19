@@ -737,7 +737,7 @@ const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
-    const n = activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
+    const n = varOwnerNode() || activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
     if (!set)
         return null;
     return binaryPair(variantValues(set, name)) ? 'boolean' : 'string';
@@ -754,7 +754,7 @@ function cpropById(pid) {
 }
 function bindType(prop) { if (String(prop).startsWith('cprop:')) {
     const p = cpropById(prop.slice(6));
-    return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' ? 'string' : null;
+    return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' || p?.type === 'instance' ? 'string' : null;
 }
 if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
@@ -924,7 +924,15 @@ function applyVariables(d) {
                     touched.add(n);
                     continue;
                 }
-                const val = varValue(d, vi, n), next = vi.type === 'boolean' ? !!val : String(val ?? '');
+                const val = varValue(d, vi, n), cp = cpropById(pid);
+                let next = vi.type === 'boolean' ? !!val : String(val ?? '');
+                // An instance-swap property takes the component named (or identified) by the variable's text.
+                if (cp.type === 'instance') {
+                    const comp = allNodes().find(c => c.component && (c.id === next || c.name === next || parentSetOf(c) && `${parentSetOf(c).name}/${c.name}` === next));
+                    if (!comp)
+                        continue;
+                    next = comp.id;
+                }
                 if (val !== undefined && n.propValues?.[pid] !== next) {
                     n.propValues = { ...(n.propValues || {}), [pid]: next };
                     touched.add(n);
@@ -1010,15 +1018,20 @@ function varIdOf(n, prop) {
         return v.padT;
     return undefined;
 }
-function boundVarId(prop) { return varIdOf(activeNode(), prop); }
+// A binding button inside a nested instance's properties acts on that instance, not on the selected layer.
+let varOwnerId = null;
+const varOwnerNode = () => varOwnerId ? doc.get(varOwnerId) || allNodes().find(n => n.id === varOwnerId) || null : null;
+const varTargets = () => { const o = varOwnerNode(); return o ? [o] : selected(); };
+function withVarOwner(id, fn) { const prev = varOwnerId; varOwnerId = id || null; try { return fn(); } finally { varOwnerId = prev; } }
+function boundVarId(prop) { return varIdOf(varOwnerNode() || activeNode(), prop); }
 function boundVar(prop) { const id = boundVarId(prop); return id ? varItem(id) : null; }
 const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5" cy="5" r="2.6"/><circle cx="11" cy="5" r="2.6"/><circle cx="5" cy="11" r="2.6"/><circle cx="11" cy="11" r="2.6"/></svg>';
-function varBindButton(prop) { return bindType(prop) ? `<button class="var-btn" data-var-bind="${prop}" title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
-function varChip(prop, v) {
-    const val = varDisplayValue(v, activeNode());
+function varBindButton(prop, owner = null) { return withVarOwner(owner, () => bindType(prop)) ? `<button class="var-btn" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
+function varChip(prop, v, owner = null) {
+    const val = varDisplayValue(v, (owner && allNodes().find(n => n.id === owner)) || activeNode());
     const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
-    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}" title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}" title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
+    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
 // Component property a layer is bound to (visibility ↔ boolean property, text ↔ text property).
 function holderForLayer(n) {
@@ -1190,7 +1203,7 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
 }
 function bindVariable(prop, id) {
     transaction('Apply variable', () => {
-        for (const n of selected()) {
+        for (const n of varTargets()) {
             if (/^fills\./.test(prop))
                 materializeFills(n);
             n.vars = { ...(n.vars || {}), [prop]: id };
@@ -1209,7 +1222,7 @@ function bindVariable(prop, id) {
 }
 function detachVariable(prop) {
     transaction('Detach variable', () => {
-        for (const n of selected()) {
+        for (const n of varTargets()) {
             if (n.vars) {
                 delete n.vars[prop];
                 if (prop === 'fills.0' && !Array.isArray(n.fills))
@@ -1248,6 +1261,7 @@ document.addEventListener('pointerdown', e => {
         return;
     e.preventDefault();
     varBindDownAt = performance.now();
+    varOwnerId = null;
     openVarBind(prop, f);
 }, true);
 document.addEventListener('pointerdown', e => {
@@ -1265,7 +1279,7 @@ document.addEventListener('click', e => {
 // component's matching properties on top for text / visibility), with Detach at the bottom.
 function openVarBind(prop, el) {
     const rect = el.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
-    const an0 = activeNode(), po = an0 ? layerPropOptions(an0, prop) : { props: [] };
+    const an0 = varOwnerNode() || activeNode(), po = an0 && !varOwnerId ? layerPropOptions(an0, prop) : { props: [] };
     if (po.props.length) {
         // Same window as the variable picker, with the component's matching properties on top.
         const applyProp = pid => transaction('Apply property', () => { const p = po.props.find(x => x.id === pid); if (!p) return; an0.propBind = { ...(an0.propBind || {}), [CPROP_FIELD[p.type]]: p.id }; if (p.type === 'boolean') an0.visible = p.def !== false; doc.touch(an0); });
@@ -1281,6 +1295,8 @@ function openVarBind(prop, el) {
 }
 function handleVarClick(e) {
     const bind = e.target.closest('[data-var-bind]'), det = e.target.closest('[data-var-detach]');
+    if (bind || det)
+        varOwnerId = (bind || det).dataset.varOwner || null;
     const pd = e.target.closest('[data-prop-detach]');
     if (pd) {
         const n = activeNode(), field = pd.dataset.propDetach;
@@ -1379,7 +1395,9 @@ function strokeSectionHtml(n) {
     if (!on)
         return section('Stroke', '', head);
     const col = n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', bound = boundVar('stroke'), hidden = n.strokeVisible === false, so = n.strokeOpacity ?? 1;
-    const sw = `<label class="fr-sw st-sw" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Stroke color"><input type="color" data-prop="stroke" value="${safeColor(col)}" aria-label="Stroke color"></label>`;
+    const sw = bound
+        ? `<span class="fr-sw st-sw locked" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Bound to a variable"></span>`
+        : `<label class="fr-sw st-sw" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Stroke color"><input type="color" data-prop="stroke" value="${safeColor(col)}" aria-label="Stroke color"></label>`;
     const hex = bound
         ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
@@ -1641,6 +1659,9 @@ function clampMM(n, dim, v) {
     // An empty slot of an instance stays big enough to see and click (its "+" placeholder).
     if (n.propBind?.slot && n.sourceId && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug' && !doc.children(n.id).length)
         lo = Math.max(lo ?? 0, dim === 'w' ? 120 : 56);
+    const imp = dim === 'w' ? n.implicitW : n.implicitH;
+    if (imp && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug')
+        lo = Math.max(lo ?? 0, imp);
     if (lo != null)
         v = Math.max(v, lo);
     if (hi != null)
@@ -2679,7 +2700,26 @@ function scopeKeyFor(prop, node) {
         return 'visible';
     return null;
 }
+// Every text a string variable can take (across its modes, following aliases).
+function varStringValues(item, depth = 0) {
+    const out = [];
+    for (const v of Object.values(item.values || {})) {
+        if (typeof v === 'string')
+            out.push(v);
+        else if (v?.alias && depth < 8) {
+            const t = varItem(v.alias);
+            if (t)
+                out.push(...varStringValues(t, depth + 1));
+        }
+    }
+    return out;
+}
 function varInScope(item, prop, node) {
+    if (prop && String(prop).startsWith('vprop:') && item.type === 'string') {
+        const n = varOwnerNode() || node || activeNode(), comp = n && chainComponent(n), set = comp && parentSetOf(comp), opts = set ? variantValues(set, String(prop).slice(6)) : [];
+        if (opts.length && !varStringValues(item).some(v => opts.includes(v)))
+            return false;
+    }
     if (!prop || !Array.isArray(item.scope))
         return true;
     let k = scopeKeyFor(prop, node || activeNode());
@@ -3701,7 +3741,7 @@ async function libImportFile(file) {
             data = DocumentModel.parse(res.data);
         }
         else
-            data = DocumentModel.parse(await file.text());
+            data = DocumentModel.parse(await readMidasText(file));
         showBusy(label, 'Preparing the file…', isFig ? 50 : 10);
         await paintTick();
         if (state.dirty)
@@ -3779,7 +3819,7 @@ async function libDownload(id) {
         return;
     try {
         const json = await projectStorage.exportProject(id);
-        download(new Blob([json], { type: 'application/json' }), safeName(meta.name) + '.midas');
+        download(await packMidas(json), safeName(meta.name) + '.midas');
     } catch {
         toast('Could not export document.');
     }
@@ -4953,7 +4993,9 @@ function fillRow(n, f, i, simple) {
     const hidden = f.visible === false, col = f.color || '#d9d9d9';
     const sw = f.type === 'image'
         ? `<button class="fr-sw img" data-fill-open="${i}" data-img-asset="${esc(f.image || '')}" title="Edit fill" aria-label="Edit fill">${f.image ? '' : '＋'}</button>`
-        : `<button class="fr-sw" style="background:${swatchBg(f, false)}" data-fill-open="${i}" title="Edit fill" aria-label="Edit fill"></button>`;
+        : f.type === 'solid' && bindVarFor(`fills.${i}`)
+            ? `<span class="fr-sw locked" style="background:${swatchBg(f, false)}" title="Bound to a variable"></span>`
+            : `<button class="fr-sw" style="background:${swatchBg(f, false)}" data-fill-open="${i}" title="Edit fill" aria-label="Edit fill"></button>`;
     let field;
     if (f.type === 'solid') {
         const bound = bindVarFor(`fills.${i}`);
@@ -5485,6 +5527,555 @@ const POS_ICONS = {
     flipH: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 2v12" stroke-dasharray="1.6 1.6"/><path d="M6.5 4.5L2.5 12h4zM9.5 4.5l4 7.5h-4z"/></svg>',
     flipV: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 8h12" stroke-dasharray="1.6 1.6"/><path d="M4.5 6.5L12 2.5v4zM4.5 9.5l7.5 4v-4z"/></svg>'
 };
+// ===== Selection colors: every solid colour used by the selection (and what is inside it), grouped; edit or bind them all at once =====
+function selColorGroups() {
+    const roots = selectedRoots();
+    if (!roots.length)
+        return [];
+    const nodes = [];
+    for (const r of roots)
+        nodes.push(r, ...doc.descendants(r.id));
+    const groups = new Map();
+    const add = (key, base, usage) => {
+        let g = groups.get(key);
+        if (!g)
+            groups.set(key, g = { key, ...base, usages: [] });
+        g.usages.push(usage);
+    };
+    const masked = new Set();
+    for (const n of nodes)
+        if (n.isMask) {
+            masked.add(n.id);
+            for (const x of doc.descendants(n.id))
+                masked.add(x.id);
+        }
+    for (const n of nodes) {
+        if (n.visible === false || n.type === 'group' || masked.has(n.id))
+            continue;
+        getFills(n).forEach((fl, i) => {
+            if (fl.type !== 'solid' || fl.visible === false)
+                return;
+            const vid = varIdOf(n, 'fills.' + i), color = (fl.color || '#000000').slice(0, 7).toLowerCase(), op = Math.round((fl.opacity ?? 1) * 100);
+            add(vid && varItem(vid) ? 'v:' + vid : 'c:' + color + '|' + op, { varId: vid && varItem(vid) ? vid : null, color, opacity: op }, { id: n.id, kind: 'fill', i });
+        });
+        if (strokeIsOn(n) && strokeClosed(n) !== undefined) {
+            const vid = varIdOf(n, 'stroke'), color = (n.stroke || '#000000').slice(0, 7).toLowerCase(), op = Math.round((n.strokeOpacity ?? 1) * 100);
+            add(vid && varItem(vid) ? 'v:' + vid : 'c:' + color + '|' + op, { varId: vid && varItem(vid) ? vid : null, color, opacity: op }, { id: n.id, kind: 'stroke' });
+        }
+    }
+    const all = [...groups.values()];
+    return [...all.filter(g => g.varId), ...all.filter(g => !g.varId)];
+}
+const SC_TARGET_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>';
+const SC_UNLINK_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M6.5 9.5 9.5 6.5M7 4.5l.8-.8a2.5 2.5 0 0 1 3.5 3.5l-.8.8M9 11.5l-.8.8a2.5 2.5 0 0 1-3.5-3.5l.8-.8M2.5 2.5l11 11"/></svg>';
+function selectionColorsHtml() {
+    const groups = selColorGroups();
+    if (!groups.length)
+        return '';
+    const open = state.scOpen !== false, chev = '<button class="sc-toggle" data-sc-toggle aria-expanded="' + open + '" aria-label="Toggle selection colors">' + icon(open ? 'chevronDown' : 'chevronRight', 10) + '<span>Selection colors</span></button>';
+    if (!open) {
+        const prev = groups.slice(0, 3).map(g => '<i class="sc-prev" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></i>').join('');
+        return '<section class="inspector-section sc-section"><div class="section-heading">' + chev + '<span class="sc-previews">' + prev + (groups.length > 3 ? '<em>+' + (groups.length - 3) + '</em>' : '') + '</span></div></section>';
+    }
+    const shown = state.scAll ? groups : groups.slice(0, 12);
+    const rows = shown.map(g => {
+        const key = esc(g.key), n = g.usages.length, target = '<button class="icon-button small" data-sc-select title="Select ' + n + ' using this color" aria-label="Select layers using this color">' + SC_TARGET_ICON + '</button>';
+        const sw = '<span class="fr-sw locked" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></span>';
+        if (g.varId) {
+            const it = varItem(g.varId);
+            return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><button class="sc-var" data-sc-var title="' + esc(it.name) + '"><i class="vw-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></i><span>' + esc(it.name) + '</span></button><span class="sc-acts"><button class="icon-button small" data-sc-detach title="Detach variable" aria-label="Detach variable">' + SC_UNLINK_ICON + '</button>' + target + '</span></div>';
+        }
+        return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><label class="fr-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '" title="Color"><input type="color" data-sc-color value="' + safeColor(g.color) + '" aria-label="Color"></label><div class="fr-field"><input class="fr-hex-in" data-sc-hex value="' + esc(g.color.replace('#', '').toUpperCase()) + '" spellcheck="false" autocomplete="off" aria-label="Hex"></div><label class="fr-op-in"><input type="number" min="0" max="100" step="1" data-sc-op value="' + g.opacity + '" aria-label="Opacity"><i>%</i></label><span class="sc-acts"><button class="icon-button small" data-sc-bind title="Apply variable" aria-label="Apply variable">' + VAR_ICON + '</button>' + target + '</span></div>';
+    }).join('');
+    const more = !state.scAll && groups.length > shown.length ? '<button class="sc-all" data-sc-all><span>⋮⋮</span> See all ' + groups.length + ' colors</button>' : '';
+    return '<section class="inspector-section sc-section"><div class="section-heading">' + chev + '</div><div class="sc-list">' + rows + more + '</div></section>';
+}
+function scUsageNodes(g) { return [...new Set(g.usages.map(u => u.id))].map(id => doc.get(id)).filter(Boolean); }
+function scApply(g, fn) {
+    transaction('Selection colors', () => {
+        for (const u of g.usages) {
+            const n = doc.get(u.id);
+            if (!n)
+                continue;
+            fn(n, u);
+            doc.touch(n);
+        }
+    });
+}
+function scSetColor(g, color, opacity) {
+    scApply(g, (n, u) => {
+        if (u.kind === 'fill') {
+            materializeFills(n);
+            const fl = n.fills[u.i];
+            if (!fl)
+                return;
+            if (color)
+                fl.color = color;
+            if (opacity !== undefined)
+                fl.opacity = opacity;
+            syncLegacyFill(n);
+        }
+        else {
+            if (color)
+                n.stroke = color;
+            if (opacity !== undefined)
+                n.strokeOpacity = opacity;
+        }
+    });
+}
+function scBind(g, id) {
+    scApply(g, (n, u) => {
+        const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
+        if (u.kind === 'fill')
+            materializeFills(n);
+        n.vars = { ...(n.vars || {}), [prop]: id };
+        if (u.kind === 'fill' && u.i === 0)
+            delete n.vars.fill;
+    });
+}
+function scDetach(g) {
+    scApply(g, (n, u) => {
+        if (!n.vars)
+            return;
+        if (u.kind === 'fill') {
+            materializeFills(n);
+            delete n.vars['fills.' + u.i];
+            if (u.i === 0)
+                delete n.vars.fill;
+        }
+        else
+            delete n.vars.stroke;
+        if (!Object.keys(n.vars).length)
+            delete n.vars;
+    });
+}
+const scGroupOf = el => { const key = el.closest('[data-sc-key]')?.dataset.scKey; return key ? selColorGroups().find(g => g.key === key) : null; };
+document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#inspector [data-sc-toggle]')) {
+        state.scOpen = state.scOpen === false;
+        renderInspector();
+        return;
+    }
+    if (t.closest('#inspector [data-sc-all]')) {
+        state.scAll = true;
+        renderInspector();
+        return;
+    }
+    const row = t.closest('#inspector .sc-row');
+    if (!row)
+        return;
+    const g = scGroupOf(row);
+    if (!g)
+        return;
+    let b;
+    if (t.closest('[data-sc-select]')) {
+        select(scUsageNodes(g).map(n => n.id));
+        return;
+    }
+    if (t.closest('[data-sc-detach]'))
+        return scDetach(g);
+    if ((b = t.closest('[data-sc-var]')) || (b = t.closest('[data-sc-bind]'))) {
+        const rect = b.getBoundingClientRect(), anchor = { getBoundingClientRect: () => rect };
+        openVarPicker(anchor, { type: 'color', types: ['color'], prop: 'fill', current: g.varId, onPick: id => scBind(g, id), onDetach: g.varId ? () => scDetach(g) : null });
+    }
+});
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.closest?.('#inspector .sc-row'))
+        return;
+    const g = scGroupOf(el);
+    if (!g)
+        return;
+    if (el.matches('[data-sc-color]'))
+        scSetColor(g, el.value.toLowerCase());
+    else if (el.matches('[data-sc-hex]')) {
+        const v = '#' + el.value.replace('#', '').trim();
+        if (/^#([0-9a-f]{6}|[0-9a-f]{3})$/i.test(v))
+            scSetColor(g, hex6(v).toLowerCase());
+        else
+            renderInspector();
+    }
+    else if (el.matches('[data-sc-op]'))
+        scSetColor(g, null, clamp((+el.value || 0) / 100, 0, 1));
+});
+// ===== Layout grids (Grid / Columns / Rows guides on a frame) =====
+// n.layoutGrids = [{ id, type: 'grid' | 'columns' | 'rows', size, count (0 = auto), gutter, margin, align: 'stretch' | 'min' | 'center' | 'max', color, opacity, visible }]
+const LG_TYPES = [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']];
+const LG_ALIGN = [['stretch', 'Stretch'], ['min', 'Left / Top'], ['center', 'Center'], ['max', 'Right / Bottom']];
+function newLayoutGrid(type = 'grid') {
+    return type === 'grid' ? { id: uid(), type, size: 10, color: '#ff0000', opacity: .1, visible: true }
+        : { id: uid(), type, count: 5, gutter: 20, margin: 0, align: 'stretch', size: 80, color: '#ff0000', opacity: .1, visible: true };
+}
+// Stripes of one grid along a length: [start, size] pairs.
+function lgStripes(g, length) {
+    const m = g.margin || 0, gut = g.gutter || 0;
+    const out = [];
+    if (g.align === 'stretch' || !g.align) {
+        const n = Math.max(1, g.count || 1), w = (length - 2 * m - gut * (n - 1)) / n;
+        for (let i = 0; i < n; i++)
+            out.push([m + i * (w + gut), w]);
+        return out;
+    }
+    const w = Math.max(1, g.size || 1), n = g.count > 0 ? g.count : Math.max(1, Math.floor((length - 2 * m + gut) / (w + gut))), total = n * w + gut * (n - 1);
+    const start = g.align === 'min' ? m : g.align === 'max' ? length - m - total : (length - total) / 2;
+    for (let i = 0; i < n; i++)
+        out.push([start + i * (w + gut), w]);
+    return out;
+}
+function drawLayoutGrids(c) {
+    const z = state.camera.zoom;
+    for (const s of doc.scene()) {
+        const n = s.node;
+        if (!n.layoutGrids?.length || s.hidden || n.type !== 'frame')
+            continue;
+        const p = worldToScreen(s.box.x, s.box.y);
+        if (p.x > area.clientWidth || p.y > area.clientHeight || p.x + s.box.w * z < 0 || p.y + s.box.h * z < 0)
+            continue;
+        c.save();
+        c.translate(state.camera.x, state.camera.y);
+        c.scale(z, z);
+        c.transform(...s.matrix);
+        c.beginPath();
+        c.rect(0, 0, n.w, n.h);
+        c.clip();
+        for (const g of n.layoutGrids) {
+            if (g.visible === false)
+                continue;
+            c.fillStyle = c.strokeStyle = g.color || '#ff0000';
+            c.globalAlpha = g.opacity ?? .1;
+            if (g.type === 'grid') {
+                const step = Math.max(1, g.size || 10);
+                if (step * z < 3)
+                    continue;
+                c.lineWidth = 1 / z;
+                c.beginPath();
+                for (let x = step; x < n.w; x += step) {
+                    c.moveTo(x, 0);
+                    c.lineTo(x, n.h);
+                }
+                for (let y = step; y < n.h; y += step) {
+                    c.moveTo(0, y);
+                    c.lineTo(n.w, y);
+                }
+                c.stroke();
+            }
+            else if (g.type === 'columns')
+                for (const [x, w] of lgStripes(g, n.w))
+                    c.fillRect(x, 0, w, n.h);
+            else
+                for (const [y, h] of lgStripes(g, n.h))
+                    c.fillRect(0, y, n.w, h);
+        }
+        c.restore();
+    }
+}
+// ----- Layout guide: inspector section, editor popup and saved styles (Figma's "Layout guide" / "Layout guide styles") -----
+const svgI = d => '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+const LG_ICONS = {
+    grid: svgI('<path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11M2.5 6.2h11M2.5 9.8h11"/>'),
+    columns: svgI('<path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11"/>'),
+    rows: svgI('<path d="M2.5 2.5h11v11h-11zM2.5 6.2h11M2.5 9.8h11"/>')
+};
+const LG_BOOK_ICON = svgI('<path d="M3 3.5h4.5v9H3zM8.5 3.5H13v9H8.5z"/>');
+function lgSummary(g) {
+    if (g.type === 'grid')
+        return 'Grid ' + (g.size || 10) + 'px';
+    const word = g.type === 'columns' ? 'columns' : 'rows', fixed = g.align && g.align !== 'stretch';
+    return g.count > 0 ? g.count + ' ' + word + (fixed ? ' (' + (g.size || 0) + 'px)' : '') : (g.type === 'columns' ? 'Columns' : 'Rows') + (fixed ? ' (' + (g.size || 0) + 'px)' : ' auto');
+}
+const lgStyles = () => (doc.data.guideStyles ||= []);
+function lgTarget(t) {
+    if (!t)
+        return null;
+    if (t.kind === 'style') {
+        const st = lgStyles().find(x => x.id === t.id);
+        return st && { list: () => (st.grids ||= []), commit: () => lgSyncStyle(st) };
+    }
+    const n = doc.get(t.id) || allNodes().find(x => x.id === t.id);
+    return n && { list: () => (n.layoutGrids ||= []), commit: () => { if (!n.layoutGrids?.length) delete n.layoutGrids; doc.touch(n); } };
+}
+// Frames linked to a style follow it.
+function lgSyncStyle(st) {
+    for (const n of allNodes())
+        if (n.guideStyleId === st.id) {
+            n.layoutGrids = structuredClone(st.grids || []).map(g => ({ ...g, id: uid() }));
+            doc.touch(n);
+        }
+}
+function lgEdit(t, fn) {
+    const tg = lgTarget(t);
+    if (!tg)
+        return;
+    transaction('Layout guide', () => { fn(tg.list()); tg.commit(); });
+    lgRenderPanels();
+}
+function lgRowHtml(g) {
+    return '<div class="lg-row" data-lg-gid="' + g.id + '"><button class="lg-ico" data-lg-edit title="Edit layout guide" aria-label="Edit layout guide">' + LG_ICONS[g.type] + '</button><button class="lg-sum" data-lg-type title="Change type"><span>' + esc(lgSummary(g)) + '</span>' + icon('chevronDown', 10) + '</button><button class="icon-button small" data-lg-vis title="' + (g.visible === false ? 'Show' : 'Hide') + ' guide" aria-label="Toggle guide">' + icon(g.visible === false ? 'eyeOff' : 'eye', 14) + '</button><button class="icon-button small" data-lg-del title="Remove guide" aria-label="Remove guide">' + icon('minus', 14) + '</button></div>';
+}
+function layoutGuideSectionHtml(n) {
+    const st = n.guideStyleId && lgStyles().find(x => x.id === n.guideStyleId);
+    let body = '';
+    if (st)
+        body = '<div class="lg-row lg-styled"><button class="lg-ico" data-lg-style-edit="' + st.id + '" title="Edit style" aria-label="Edit style">' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '</button><span class="lg-stylename" title="' + esc(st.name) + '">' + esc(st.name) + '</span><button class="icon-button small" data-lg-detach title="Detach style" aria-label="Detach style">' + icon('minus', 14) + '</button></div>';
+    else
+        body = (n.layoutGrids || []).map(lgRowHtml).join('');
+    // Same header pattern as Fill / Stroke / Effects: styles icon, then +, grouped on the right.
+    const actions = '<div style="display:flex;align-items:center;gap:8px;"><button class="icon-button small" data-lg-styles title="Layout guide styles" aria-label="Layout guide styles">' + VAR_ICON + '</button><button class="icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>';
+    return '<div data-lg-t="node" data-lg-tid="' + n.id + '" data-lg-ctl>' + section('Layout guide', body, actions) + '</div>';
+}
+const lgPanels = { pop: null, styles: null, edit: null };
+function lgClose(kind) {
+    const p = lgPanels[kind];
+    if (p)
+        p.el.remove();
+    lgPanels[kind] = null;
+}
+const lgCloseAll = () => ['pop', 'styles', 'edit'].forEach(lgClose);
+function lgPlace(el, anchor, left) {
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(left ?? r.left - el.offsetWidth - 12, innerWidth - el.offsetWidth - 8)) + 'px';
+    el.style.top = Math.max(8, Math.min(r.top - 8, innerHeight - el.offsetHeight - 8)) + 'px';
+}
+function lgPanel(kind, anchor, cls) {
+    lgClose(kind);
+    const el = document.createElement('div');
+    el.className = 'prop-pop lg-panel ' + cls;
+    document.body.appendChild(el);
+    lgPanels[kind] = { el, anchor };
+    return lgPanels[kind];
+}
+function lgPopRows(g) {
+    const num = (key, label, opts = {}) => '<div class="pp-row"><label>' + label + '</label><input type="number" min="' + (opts.min ?? 0) + '" step="1" data-lgp="' + key + '" value="' + (opts.disabled || (opts.blank && !g[key]) ? '' : fmt(g[key] ?? 0)) + '" placeholder="' + (opts.ph || '') + '" ' + (opts.disabled ? 'disabled' : '') + ' aria-label="' + label + '"></div>';
+    const aligns = g.type === 'rows' ? [['stretch', 'Stretch'], ['min', 'Top'], ['center', 'Center'], ['max', 'Bottom']] : [['stretch', 'Left & Right'], ['min', 'Left'], ['center', 'Center'], ['max', 'Right']];
+    const aligns2 = [['stretch', 'Stretch'], ['min', g.type === 'rows' ? 'Top' : 'Left'], ['center', 'Center'], ['max', g.type === 'rows' ? 'Bottom' : 'Right']];
+    const color = '<div class="pp-row"><label>Color</label><div class="lgp-color"><div class="hex-field"><input type="color" data-lgp="color" value="' + safeColor(g.color) + '" aria-label="Color"><input type="text" data-lgp="colorHex" value="' + esc((g.color || '#ff0000').replace('#', '').toUpperCase()) + '" spellcheck="false" aria-label="Hex"></div><label class="lgp-pct"><input type="number" data-lgp="opacity" min="0" max="100" value="' + Math.round((g.opacity ?? .1) * 100) + '" aria-label="Opacity">%</label></div></div>';
+    if (g.type === 'grid')
+        return num('size', 'Size', { min: 1 }) + color;
+    const stretch = !g.align || g.align === 'stretch';
+    return num('count', 'Count', { blank: true, ph: 'Auto' }) + color
+        + '<div class="pp-row"><label>Type</label><select data-lgp="align" aria-label="Type">' + aligns2.map(([v, l]) => '<option value="' + v + '"' + ((g.align || 'stretch') === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>'
+        + num('size', g.type === 'rows' ? 'Height' : 'Width', { min: 1, disabled: stretch, ph: 'Auto', blank: stretch }) + num('margin', 'Margin') + num('gutter', 'Gutter');
+}
+function lgRenderPanels() {
+    const pop = lgPanels.pop;
+    if (pop) {
+        const g = lgTarget(pop.t)?.list().find(x => x.id === pop.gid);
+        if (!g)
+            lgClose('pop');
+        else {
+            const st = Object.fromEntries(['scrollTop'].map(k => [k, pop.el[k]]));
+            pop.el.innerHTML = '<div class="pp-head"><select class="lgp-type" data-lgp="type" aria-label="Type">' + [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']].map(([v, l]) => '<option value="' + v + '"' + (g.type === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div>' + lgPopRows(g);
+            pop.el.scrollTop = st.scrollTop;
+        }
+    }
+    const styles = lgPanels.styles;
+    if (styles)
+        lgRenderStyles();
+    const edit = lgPanels.edit;
+    if (edit)
+        lgRenderStyleEdit();
+}
+function openLgPop(anchor, t, gid) {
+    const p = lgPanel('pop', anchor, 'lg-pop');
+    p.t = t;
+    p.gid = gid;
+    lgRenderPanels();
+    lgPlace(p.el, anchor);
+}
+function lgRenderStyles() {
+    const p = lgPanels.styles;
+    if (!p)
+        return;
+    const q = (p.q || '').toLowerCase(), list = lgStyles().filter(x => !q || x.name.toLowerCase().includes(q));
+    const rows = list.map(st => '<div class="lgs-row" data-lgs-id="' + st.id + '"><button class="lgs-name" data-lgs-apply>' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '<span>' + esc(st.name) + '</span></button><button class="icon-button small lgs-edit" data-lgs-edit title="Edit style" aria-label="Edit style">' + svgI('<path d="M3 5h10M3 11h10M6 3v4M10 9v4"/>') + '</button></div>').join('');
+    const keep = p.el.querySelector('[data-lgs-q]');
+    const focused = keep && document.activeElement === keep;
+    p.el.innerHTML = '<div class="pp-head"><span>Layout guide styles</span><span class="lgs-actions"><button class="icon-button small" data-lgs-new title="Create style" aria-label="Create style">' + icon('plus', 14) + '</button><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></span></div><label class="lgs-search">' + icon('search', 13) + '<input data-lgs-q placeholder="Search" value="' + esc(p.q || '') + '" spellcheck="false" autocomplete="off" aria-label="Search styles"></label><div class="lgs-list">' + (rows || '<div class="pp-note">' + (lgStyles().length ? 'No match.' : 'No layout guide styles yet. Add guides to a frame, then press + to save them as a style.') + '</div>') + '</div>';
+    if (focused)
+        p.el.querySelector('[data-lgs-q]').focus();
+}
+function openLgStyles(anchor) {
+    const p = lgPanel('styles', anchor, 'lg-styles');
+    p.q = '';
+    lgRenderStyles();
+    lgPlace(p.el, anchor);
+}
+function lgRenderStyleEdit() {
+    const p = lgPanels.edit, st = p && lgStyles().find(x => x.id === p.id);
+    if (!st)
+        return lgClose('edit');
+    const focus = document.activeElement?.dataset?.lgsf;
+    p.el.innerHTML = '<div class="pp-head"><span>Edit layout guide style</span><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div><div class="pp-row"><label>Name</label><input data-lgsf="name" value="' + esc(st.name) + '" maxlength="120" spellcheck="false" aria-label="Name"></div><div class="pp-row"><label>Description</label><input data-lgsf="description" value="' + esc(st.description || '') + '" placeholder="What\'s it for?" maxlength="300" spellcheck="false" aria-label="Description"></div><div class="lgs-props" data-lg-t="style" data-lg-tid="' + st.id + '"><div class="pp-vals-h"><span>Properties</span><button class="icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>' + (st.grids || []).map(lgRowHtml).join('') + '</div><div class="pp-foot"><button class="wide-button" data-lgs-delete>Delete style</button></div>';
+    if (focus)
+        p.el.querySelector('[data-lgsf="' + focus + '"]')?.focus();
+}
+function openLgStyleEdit(anchor, id) {
+    const p = lgPanel('edit', anchor, 'lg-edit-style');
+    p.id = id;
+    lgRenderStyleEdit();
+    const sp = lgPanels.styles?.el;
+    lgPlace(p.el, anchor, sp ? sp.getBoundingClientRect().left - p.el.offsetWidth - 12 : undefined);
+}
+function lgSelectedFrames() { return selected().filter(n => n.type === 'frame' && !n.isSection); }
+function lgApplyStyle(st) {
+    const frames = lgSelectedFrames();
+    if (!frames.length)
+        return toast('Select a frame to apply the style.');
+    transaction('Apply layout guide style', () => {
+        for (const n of frames) {
+            n.guideStyleId = st.id;
+            n.layoutGrids = structuredClone(st.grids || []).map(g => ({ ...g, id: uid() }));
+            doc.touch(n);
+        }
+    });
+}
+function lgNewStyle() {
+    const n = lgSelectedFrames()[0];
+    if (!n)
+        return toast('Select a frame with layout guides first.');
+    if (!n.layoutGrids?.length)
+        return toast('Add a layout guide to the frame first.');
+    promptText('New layout guide style', 'Layout guide', name => {
+        const st = { id: uid(), name, description: '', grids: structuredClone(n.layoutGrids).map(g => ({ ...g, id: uid() })) };
+        transaction('Create layout guide style', () => {
+            lgStyles().push(st);
+            n.guideStyleId = st.id;
+            doc.touch(n);
+        });
+        if (lgPanels.styles)
+            lgRenderStyles();
+    });
+}
+const lgTargetOf = el => { const host = el.closest('[data-lg-t]'); return host ? { kind: host.dataset.lgT, id: host.dataset.lgTid } : null; };
+document.addEventListener('pointerdown', e => {
+    if (!Object.values(lgPanels).some(Boolean))
+        return;
+    if (e.target.closest('.lg-panel, [data-lg-ctl], .stp-menu, .sel-menu, #modal-backdrop'))
+        return;
+    lgCloseAll();
+}, true);
+document.addEventListener('click', e => {
+    const t = e.target, host = lgTargetOf(t), gid = t.closest('[data-lg-gid]')?.dataset.lgGid;
+    let b;
+    if (t.closest('[data-lgp-close]')) {
+        const panel = t.closest('.lg-panel');
+        const kind = Object.keys(lgPanels).find(k => lgPanels[k]?.el === panel);
+        if (kind)
+            lgClose(kind);
+        return;
+    }
+    if (t.closest('#inspector [data-lg-styles]')) {
+        lgPanels.styles ? lgClose('styles') : openLgStyles(t.closest('[data-lg-styles]'));
+        return;
+    }
+    if (t.closest('[data-lgs-new]'))
+        return lgNewStyle();
+    if ((b = t.closest('[data-lgs-apply]'))) {
+        const st = lgStyles().find(x => x.id === b.closest('[data-lgs-id]').dataset.lgsId);
+        if (st)
+            lgApplyStyle(st);
+        return;
+    }
+    if ((b = t.closest('[data-lgs-edit]')) || (b = t.closest('#inspector [data-lg-style-edit]'))) {
+        const id = b.closest('[data-lgs-id]')?.dataset.lgsId || b.dataset.lgStyleEdit;
+        if (id)
+            openLgStyleEdit(b, id);
+        return;
+    }
+    if (t.closest('[data-lgs-delete]')) {
+        const id = lgPanels.edit?.id;
+        transaction('Delete layout guide style', () => {
+            doc.data.guideStyles = lgStyles().filter(x => x.id !== id);
+            for (const n of allNodes())
+                if (n.guideStyleId === id) {
+                    delete n.guideStyleId;
+                    doc.touch(n);
+                }
+        });
+        lgClose('edit');
+        lgRenderPanels();
+        return;
+    }
+    if (t.closest('#inspector [data-lg-detach]')) {
+        const n = activeNode();
+        if (n)
+            transaction('Detach layout guide style', () => { delete n.guideStyleId; doc.touch(n); });
+        return;
+    }
+    if (!host)
+        return;
+    if (t.closest('[data-lg-add]')) {
+        const g = newLayoutGrid('columns');
+        lgEdit(host, list => list.push(g));
+        if (host.kind === 'node' && lgTarget(host)) {
+            const el = document.querySelector('#inspector [data-lg-gid="' + g.id + '"] [data-lg-edit]');
+            if (el)
+                openLgPop(el, host, g.id);
+        }
+    }
+    else if (gid && t.closest('[data-lg-del]'))
+        lgEdit(host, list => { const i = list.findIndex(g => g.id === gid); if (i > -1) list.splice(i, 1); });
+    else if (gid && t.closest('[data-lg-vis]'))
+        lgEdit(host, list => { const g = list.find(x => x.id === gid); if (g) g.visible = g.visible === false; });
+    else if (gid && (b = t.closest('[data-lg-edit]')))
+        lgPanels.pop?.gid === gid && lgPanels.pop.t.id === host.id ? lgClose('pop') : openLgPop(b, host, gid);
+    else if (gid && (b = t.closest('[data-lg-type]')))
+        openPopMenu(b, [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']].map(([v, l]) => ({ label: l, checked: lgTarget(host)?.list().find(g => g.id === gid)?.type === v, run: () => lgEdit(host, list => lgSetType(list.find(g => g.id === gid), v)) })), { alignLeft: true, width: 160 });
+});
+function lgSetType(g, type) {
+    if (!g)
+        return;
+    const fresh = newLayoutGrid(type);
+    g.type = type;
+    if (type !== 'grid')
+        Object.assign(g, { count: g.count ?? fresh.count, gutter: g.gutter ?? fresh.gutter, margin: g.margin ?? fresh.margin, align: g.align ?? fresh.align });
+    g.size = g.size || fresh.size;
+}
+document.addEventListener('change', e => {
+    const el = e.target;
+    const pop = el.closest?.('.lg-pop') && lgPanels.pop, key = el.dataset?.lgp;
+    if (pop && key) {
+        lgEdit(pop.t, list => {
+            const g = list.find(x => x.id === pop.gid);
+            if (!g)
+                return;
+            if (key === 'type')
+                lgSetType(g, el.value);
+            else if (key === 'colorHex') {
+                const v = '#' + el.value.replace('#', '').trim();
+                if (/^#[0-9a-f]{6}$/i.test(v))
+                    g.color = v.toLowerCase();
+            }
+            else if (key === 'color')
+                g.color = el.value;
+            else if (key === 'opacity')
+                g.opacity = clamp((+el.value || 0) / 100, 0, 1);
+            else if (key === 'align')
+                g.align = el.value;
+            else if (key === 'count')
+                g.count = el.value === '' ? 0 : Math.max(0, Math.round(+el.value || 0));
+            else
+                g[key] = Math.max(0, +el.value || 0);
+        });
+        return;
+    }
+    const sf = el.closest?.('.lg-edit-style') && el.dataset?.lgsf;
+    if (sf) {
+        const st = lgStyles().find(x => x.id === lgPanels.edit?.id);
+        if (st) {
+            transaction('Edit layout guide style', () => { st[sf] = sf === 'name' ? (el.value.trim() || st.name) : el.value; });
+            lgRenderPanels();
+        }
+    }
+});
+document.addEventListener('input', e => {
+    const q = e.target.closest?.('[data-lgs-q]');
+    if (q && lgPanels.styles) {
+        lgPanels.styles.q = q.value;
+        lgRenderStyles();
+    }
+});
 function positionSectionHtml(n) {
     const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
     const p = doc.get(n.parentId), cons = !!p && (p.type === 'group' || p.booleanOp || p.type === 'frame' && (!isAutoLayout(p) || n.layoutPositioning === 'absolute'));
@@ -5722,7 +6313,8 @@ class DocumentModel {
             pageId: this.data.pageId,
             tokens: this.data.tokens,
             variables: this.data.variables,
-            thumbnailId: this.data.thumbnailId ?? null
+            thumbnailId: this.data.thumbnailId ?? null,
+            guideStyles: this.data.guideStyles ?? []
         };
         // Kept as separate chunks: an undo entry shares the strings of every page that did not change, instead of
         // holding a full copy of the document (that copy x 40 entries ran big files out of memory).
@@ -5736,7 +6328,7 @@ class DocumentModel {
         Object.assign(this.data, { ...JSON.parse(s.meta), pages: s.pages.map(p => JSON.parse(p)) });
         this.refresh();
     }
-    serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }, null, 2); }
+    serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }); }
     static parse(text) {
         const d = typeof text === 'string' ? JSON.parse(text) : text;
         if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
@@ -6420,7 +7012,10 @@ class Atlas {
         if (needsRasterFill(n) && getFills(n).some(f => f.visible !== false && f.type === 'image' && f.image && images.doc.data.assets[f.image] && !images.get(f.image)))
             return null;
         // Raster-only paths carry stroke padding; the geometry stays editable in the document.
-        const padding = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
+        const basePad = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
+        // Always a transparent border of about 2 texels: the bilinear sampler at the edge of a quad would otherwise pick up the
+        // neighbouring atlas entry (thin streaks along text boxes while zooming).
+        const padding = Math.max(basePad, Math.ceil(2 / Math.max(.05, Math.min(res, 1))));
         const width = n.w + padding * 2, height = n.h + padding * 2;
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
@@ -6636,7 +7231,7 @@ class Renderer {
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
         // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
         // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
-        const resolution = clamp(2 ** Math.ceil(Math.log2(camera.zoom * this.dpr)), 1 / 16, 32) * quality;
+        const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
         const push = (s, n, clipId, shadow = false) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
@@ -7258,10 +7853,8 @@ function invalidate() {
         drawOverlay();
         $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
         $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
-        const spacing = 20 * state.camera.zoom;
-        $('#canvas-world').style.backgroundImage = options.grid && spacing >= 5 ? 'radial-gradient(var(--page-dot) .7px, transparent .7px)' : 'none';
-        $('#canvas-world').style.backgroundSize = `${spacing}px ${spacing}px`;
-        $('#canvas-world').style.backgroundPosition = `${state.camera.x}px ${state.camera.y}px`;
+        $('#canvas-world').style.backgroundImage = 'none';
+        drawDotGrid();
         if (state.editing || state.pendingText)
             positionTextEditor();
     });
@@ -7494,6 +8087,10 @@ function changed({ ui = true, commit = false } = {}) {
 }
 function transaction(label, fn) { finishText(); history.begin(label); fn(); changed({ commit: true }); }
 function select(ids, { reveal = true } = {}) {
+    varOwnerId = null;
+    // Selecting anything other than the main component we jumped to ends the "Return to instance" shortcut.
+    if (state.returnTo && !(ids.length === 1 && ids[0] === state.returnTo.target))
+        hideReturnBar();
     closeFillPicker();
     closeFillDropdown();
     closeFxWindow();
@@ -7590,6 +8187,7 @@ function switchPageWithLoading(id) {
     setTimeout(go, 80); // a throttled (background) tab never runs animation frames
 }
 function switchPage(id) {
+    hideReturnBar(); // the shortcut only lives on the page it was made for
     finishText();
     state.pageViews.set(doc.page.id, { camera: { ...state.camera }, selection: [...state.selection] });
     doc.data.pageId = id;
@@ -7868,10 +8466,16 @@ function renderInspector() {
             html += strokeSectionHtml(n);
         if (n.type !== 'group')
             html += effectsSection(n);
+        html += selectionColorsHtml();
+        if (!multi && n.type === 'frame' && !n.isSection && !insideInstance(n))
+            html += layoutGuideSectionHtml(n);
         html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
     $('#inspector').innerHTML = html;
+    // In an auto layout the layout decides where a layer sits: X / Y can not be typed.
+    if (ns.length >= 1 && ns.every(x => { const p = doc.get(x.parentId); return p?.type === 'frame' && isAutoLayout(p) && x.layoutPositioning !== 'absolute'; }))
+        $('#inspector').querySelectorAll('input[data-prop="x"], input[data-prop="y"]').forEach(el => { el.disabled = true; el.closest('.field')?.classList.add('inst-locked'); });
     // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
     if (ns.length === 1 && n.isInstance && !insideInstance(n))
         $('#inspector').querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
@@ -7892,7 +8496,11 @@ function renderInspector() {
                     }
                     return;
                 }
-                if (el.tagName === 'INPUT' && el.matches('[data-prop="x"],[data-prop="y"],[data-prop="rotation"],[data-prop="w"],[data-prop="h"]'))
+                if (el.tagName === 'INPUT' && el.matches('[data-prop="x"],[data-prop="y"],[data-prop="rotation"]')) {
+                    el.disabled = true;
+                    el.closest('.field')?.classList.add('inst-locked');
+                }
+                else if (el.tagName === 'INPUT' && el.matches('[data-prop="w"],[data-prop="h"]'))
                     el.readOnly = true;
                 if (el.tagName === 'INPUT' && el.matches('[data-prop="w"],[data-prop="h"]'))
                     el.dataset.sizeWindow = el.dataset.prop === 'w' ? 'h' : 'v';
@@ -8513,6 +9121,19 @@ function redo() {
     invalidate();
     toast('Redo: ' + label);
 }
+// .midas = compact JSON, gzip-compressed. Opening accepts both that and the older plain-text files.
+async function packMidas(json) {
+    if (typeof CompressionStream === 'undefined')
+        return new Blob([json], { type: 'application/json' });
+    const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/gzip' });
+}
+async function readMidasText(file) {
+    const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+    if (head[0] === 0x1f && head[1] === 0x8b && typeof DecompressionStream !== 'undefined')
+        return new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return file.text();
+}
 function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
 function safeName(s) { return s.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').slice(0, 120) || 'Midas'; }
 async function saveFile() {
@@ -8520,11 +9141,11 @@ async function saveFile() {
     toast('Preparing .midas export…');
     try {
         const json = await projectStorage.exportProject(lib.fileId, doc.data);
-        download(new Blob([json], { type: 'application/json' }), safeName(doc.data.name) + '.midas');
+        download(await packMidas(json), safeName(doc.data.name) + '.midas');
         toast('Portable document exported. Includes all pages and images.');
     }
     catch (e) {
-        download(new Blob([doc.serialize()], { type: 'application/json' }), safeName(doc.data.name) + '.midas');
+        download(await packMidas(doc.serialize()), safeName(doc.data.name) + '.midas');
         toast('Portable document exported.');
     }
 }
@@ -8576,6 +9197,32 @@ async function importImage(file, location = null) {
     }
     catch (e) {
         toast(e.message || 'Could not read the image.');
+    }
+}
+// Several images at once: each one is placed like a single image, then they sit in a row (and stay selected together).
+async function importImages(files, location = null) {
+    const list = [...files].filter(x => x?.type?.startsWith('image/'));
+    if (list.length < 2)
+        return importImage(list[0] || files[0], location);
+    const placed = [];
+    for (const file of list) {
+        await importImage(file, location);
+        const id = [...state.selection][0];
+        if (id && !placed.includes(id))
+            placed.push(id);
+    }
+    const nodes = placed.map(id => doc.get(id)).filter(Boolean);
+    if (nodes.length > 1) {
+        transaction('Arrange images', () => {
+            let x = nodes[0].x;
+            for (const n of nodes) {
+                n.x = Math.round(x);
+                n.y = nodes[0].y;
+                x += n.w + 24;
+                doc.touch(n);
+            }
+        });
+        select(nodes.map(n => n.id));
     }
 }
 // Arc handles on a selected circle (Start / Sweep / Ratio), shown while the outline is hovered.
@@ -8747,6 +9394,36 @@ function drawSlots(c) {
     }
 }
 function slotBadgeAt(p) { return (state.slotBadges || []).find(b => Math.hypot(b.cx - p.x, b.cy - p.y) <= b.r) || null; }
+// Dot grid (every 20 units): painted on its own canvas behind the artwork, on whole device pixels, so nothing smears or leaves
+// seams while zooming (a CSS tiled gradient with a fractional tile size did).
+let dotCanvas = null, dotColor = null, dotKey = null;
+function drawDotGrid() {
+    const world = $('#canvas-world');
+    if (!dotCanvas) {
+        dotCanvas = document.createElement('canvas');
+        dotCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+        world.insertBefore(dotCanvas, world.firstChild);
+    }
+    const dpr = window.devicePixelRatio || 1, W = area.clientWidth, H = area.clientHeight, step = 20 * state.camera.zoom;
+    if (dotCanvas.width !== Math.round(W * dpr) || dotCanvas.height !== Math.round(H * dpr)) {
+        dotCanvas.width = Math.round(W * dpr);
+        dotCanvas.height = Math.round(H * dpr);
+    }
+    const c = dotCanvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, dotCanvas.width, dotCanvas.height);
+    if (!options.grid || step < 5)
+        return;
+    if (dotKey !== options.theme || !dotColor) {
+        dotKey = options.theme;
+        dotColor = getComputedStyle(document.documentElement).getPropertyValue('--page-dot').trim() || '#c4c2cc';
+    }
+    c.fillStyle = dotColor;
+    const x0 = ((state.camera.x % step) + step) % step, y0 = ((state.camera.y % step) + step) % step, d = Math.max(1, Math.round(1.4 * dpr));
+    for (let x = x0; x < W; x += step)
+        for (let y = y0; y < H; y += step)
+            c.fillRect(Math.round(x * dpr - d / 2), Math.round(y * dpr - d / 2), d, d);
+}
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -8796,6 +9473,7 @@ function drawOverlay() {
         else
             c.fillText(label, p.x, p.y - 12);
     }
+    drawLayoutGrids(c);
     drawSlots(c);
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
@@ -9248,7 +9926,7 @@ function pointerDown(e) {
         const under = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w)),
             // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
             parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
-        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
+        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: 0 }));
         state.selection = new Set([n.id]);
         state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
         // Frames/sections show only their bounding box while drawing; the background comes back on release.
@@ -10151,7 +10829,8 @@ function finishText(cancel = false) {
     invalidate();
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
-function showMenu(items, x, y) { const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
+let lastMenuAt = { x: 0, y: 0 };
+function showMenu(items, x, y) { lastMenuAt = { x, y }; const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
 // A layer inside an instance (not the instance's own root).
 function insideInstance(n) { return !!n && doc.ancestors(n).some(a => a.isInstance); }
 // Copy what an instance overrides back into its main component, then clear the overrides.
@@ -10496,7 +11175,7 @@ function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = act
 } if (state.selection.size === 1 && an?.isInstance) {
     showMenu(instanceMenuItems(an), x, y);
     return;
-} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
+} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
 function modal(content) { closeMenu(); $('#modal').innerHTML = content; $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
 function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#modal').innerHTML = ''; overlay.focus({ preventScroll: true }); }
 function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
@@ -10512,7 +11191,34 @@ function promptText(title, value, callback) {
     };
     $('#prompt-value').select();
 }
+// Rename many layers at once: a name pattern ({name} keeps the old name, {n} numbers them, {parent} is the parent's name) and an optional find & replace.
+function renameLayers() {
+    const ns = selectedRoots().length > 1 ? selectedRoots() : selected();
+    const list = [...ns].sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
+    const make = (pattern, find, repl, start) => list.map((n, i) => {
+        let name = pattern.replace(/\{name\}/g, n.name).replace(/\{parent\}/g, doc.get(n.parentId)?.name || '').replace(/\{n(?::(\d+))?\}/g, (_, w) => String(start + i).padStart(+w || 0, '0'));
+        if (find)
+            name = name.split(find).join(repl);
+        return name.trim() || n.name;
+    });
+    modal(`${modalHeader(`Rename ${list.length} layers`, 'Use {name}, {n} (number) and {parent} in the new name.')}<form id="rename-many" class="rename-many"><label>New name<input class="form-input" id="rm-pattern" value="{name}" maxlength="200" autocomplete="off"></label><div class="rm-row"><label>Find<input class="form-input" id="rm-find" autocomplete="off"></label><label>Replace with<input class="form-input" id="rm-repl" autocomplete="off"></label><label>Start at<input class="form-input" id="rm-start" type="number" value="1" min="0"></label></div><div class="rm-preview" id="rm-preview"></div><div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" type="submit">Rename</button></div></form>`);
+    const val = id => $('#' + id).value, preview = () => {
+        const names = make(val('rm-pattern'), val('rm-find'), val('rm-repl'), +val('rm-start') || 0);
+        $('#rm-preview').innerHTML = list.slice(0, 6).map((n, i) => `<div><span>${esc(n.name)}</span><i>→</i><b>${esc(names[i])}</b></div>`).join('') + (list.length > 6 ? `<div class="rm-more">+ ${list.length - 6} more</div>` : '');
+    };
+    $('#rename-many').addEventListener('input', preview);
+    preview();
+    $('#rename-many').onsubmit = e => {
+        e.preventDefault();
+        const names = make(val('rm-pattern'), val('rm-find'), val('rm-repl'), +val('rm-start') || 0);
+        closeModal();
+        transaction('Rename layers', () => list.forEach((n, i) => { n.name = names[i]; doc.touch(n); }));
+    };
+    $('#rm-pattern').select();
+}
 function renameLayer() {
+    if (selected().length > 1)
+        return renameLayers();
     const n = activeNode();
     if (!n)
         return;
@@ -10521,6 +11227,35 @@ function renameLayer() {
         inlineRename(span, n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
     else
         promptText('Rename layer', n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
+}
+// Select matching layers: every layer of the page that shares fill, stroke, text style, effects, name, type or component with the selection.
+const matchSig = {
+    fill: n => n.fill && n.fill !== 'none' || n.fills?.length ? JSON.stringify([n.fill, n.fillType, n.fill2, n.fillOpacity, n.fills]) : null,
+    stroke: n => strokeIsOn(n) ? JSON.stringify([n.stroke, n.strokeWidth, n.strokeAlign, n.strokeStyle]) : null,
+    text: n => n.type === 'text' ? JSON.stringify([n.fontFamily, n.fontSize, n.fontWeight, n.fontStyle, n.lineHeight, n.letterSpacing]) : null,
+    effects: n => getEffects(n).length ? JSON.stringify(getEffects(n)) : null,
+    name: n => n.name,
+    type: n => n.type + (n.isSection ? ':section' : ''),
+    component: n => n.isInstance || n.component ? chainComponent(n)?.id || null : null
+};
+function selectMatching(kind) {
+    const base = selected();
+    if (!base.length)
+        return;
+    const sigs = new Set(base.map(matchSig[kind]).filter(v => v != null));
+    if (!sigs.size)
+        return toast('Nothing to match on the selection.');
+    const ids = doc.nodes.filter(n => n.visible !== false && !n.locked && n.type !== 'group' && sigs.has(matchSig[kind](n))).map(n => n.id);
+    select(ids.length ? ids : base.map(n => n.id));
+    toast(`${ids.length} matching layer${ids.length === 1 ? '' : 's'} selected.`);
+}
+function selectMatchingMenu() {
+    const base = selected();
+    if (!base.length)
+        return toast('Select a layer first.');
+    const rows = [['fill', 'Same fill'], ['stroke', 'Same stroke'], ['text', 'Same text style'], ['effects', 'Same effects'], ['component', 'Same component'], ['type', 'Same type'], ['name', 'Same name']].filter(([k]) => base.some(n => matchSig[k](n) != null));
+    const x = lastMenuAt.x, y = lastMenuAt.y, anchor = { getBoundingClientRect: () => ({ left: x, right: x, top: y, bottom: y, width: 0, height: 0 }) };
+    openPopMenu(anchor, rows.map(([k, label]) => ({ label, run: () => selectMatching(k) })), { alignLeft: true, width: 190 });
 }
 function renameFile() { inlineRename($('#file-name'), doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
 function renameDocFrom(el) { inlineRename(el, doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
@@ -11471,19 +12206,25 @@ function showReturnBar() {
         });
     }
 }
+function hideReturnBar() {
+    state.returnTo = null;
+    document.getElementById('return-bar')?.remove();
+}
 function goToMainComponent(id, fromId = null) {
     const page = pageOfNode(id);
     if (!page)
         return;
-    if (fromId && fromId !== id) {
-        state.returnTo = { id: fromId };
-        showReturnBar();
-    }
+    hideReturnBar();
     if (page.id !== doc.page.id)
         switchPage(page.id);
     select([id]);
     fit([id]);
     refreshUI();
+    // Set last: switching page / selecting above would otherwise clear it.
+    if (fromId && fromId !== id) {
+        state.returnTo = { id: fromId, target: id };
+        showReturnBar();
+    }
 }
 const thumbCache = new Map();
 async function ensureThumb(n) {
@@ -12326,7 +13067,7 @@ function selNameHtml(n, multi, ns) {
 }
 // Chevrons that sit right next to the layer name: the "···" button: kind switcher for frames / groups, instance swap for instances.
 function headerChevronHtml(n) {
-    if (n.isInstance && n.sourceId && !insideInstance(n))
+    if (n.isInstance && n.sourceId && (!insideInstance(n) || inSlot(n)))
         return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
     if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
         return `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
@@ -12337,6 +13078,11 @@ function swapInstanceTo(inst, compId) {
     const target = componentById(compId);
     if (!target || chainComponent(inst)?.id === target.id)
         return;
+    // Inside another instance it is a swap of that nested layer (kept through syncing with its container).
+    if (inSlot(inst) && !componentById(inst.sourceId)) {
+        transaction('Swap instance', () => { swapNestedNode(inst, target.id); syncComponents(true); });
+        return;
+    }
     transaction('Swap instance', () => {
         const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(x => x.id));
         page.nodes = page.nodes.filter(x => !gone.has(x.id));
@@ -12551,7 +13297,7 @@ function openAddInstances(slotId, opts = {}) {
         else if ((b = t.closest('[data-ai-comp]'))) {
             const id = b.dataset.aiComp, lib = b.dataset.aiLib || null, w = addInst;
             if (w.pick) {
-                w.pick(id);
+                w.pick(id, lib);
                 closeAddInstances();
             }
             else {
@@ -12580,6 +13326,8 @@ async function addInstanceToSlot(slotId, compId, libId = null) {
         instantiate(main ? main.id : compId, null, slot);
     }
 }
+// An instance placed in a slot of another instance.
+function inSlot(n) { const p = n && doc.get(n.parentId); return p?.propBind?.slot && p.sourceId ? p : null; }
 // A frame inside a main component can become a slot: instances drop their own layers into it.
 const SLOT_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 5.5v5M5.5 8h5"/></svg>';
 function canBeSlot(n) {
@@ -13024,7 +13772,7 @@ function chainComponent(x, idx = null) {
         seen.add(s.id);
         if (!s.sourceId)
             break;
-        s = idx ? idx.get(s.sourceId) : (doc.get(s.sourceId) || componentById(s.sourceId));
+        s = idx ? idx.get(s.sourceId) : (doc.get(s.sourceId) || nodeIndex().get(s.sourceId));
     }
     return s?.component ? s : null;
 }
@@ -13113,6 +13861,32 @@ function bindLayer(holder, p, layerId) {
     doc.touch(n);
 }
 // Instance-swap picker: the same searchable, grouped list as the variable picker (page ≙ library, name path ≙ group).
+// Preview of a component in the swap list: its own SVG, a cached render, or the instance glyph until the render arrives.
+function swapThumbHtml(id) {
+    const c = componentById(id), svg = c && svgThumbOf(c), cached = thumbCache.get(id)?.url;
+    return svg ? '<img src="' + esc(svg) + '" alt="">' : cached ? '<img src="' + cached + '" alt="">' : '<i class="vc-glyph">' + CPROP_ICON.instance + '</i>';
+}
+let swapThumbObserver = null;
+function watchSwapThumbs(root) {
+    swapThumbObserver?.disconnect();
+    const holders = [...root.querySelectorAll('.swp-thumb')].filter(h => !h.querySelector('img'));
+    if (!holders.length)
+        return;
+    const load = h => { const c = componentById(h.dataset.thumb); if (c) ensureThumb(c); };
+    if (typeof IntersectionObserver === 'undefined') {
+        holders.slice(0, 24).forEach(load);
+        return;
+    }
+    swapThumbObserver = new IntersectionObserver(hits => {
+        for (const h of hits)
+            if (h.isIntersecting) {
+                swapThumbObserver.unobserve(h.target);
+                load(h.target);
+            }
+    });
+    holders.slice(0, 12).forEach(load);
+    holders.forEach(h => swapThumbObserver.observe(h));
+}
 function swapEntries() {
     const out = [], seenSets = new Set();
     for (const p of doc.data.pages)
@@ -13172,15 +13946,18 @@ function openSwapPicker(anchor, { current = null, onPick }) {
             }
             else if (!e.group)
                 lastGroup = null;
-            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e.id === current ? 'on' : ''}" data-pick="${e.id}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><i class="vc-glyph">${CPROP_ICON.instance}</i><span class="vp-name">${esc(e.leaf)}</span>${e.id === current ? icon('check', 12) : ''}</button>`;
+            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e.id === current ? 'on' : ''}" data-pick="${e.id}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" data-thumb="${e.id}">${swapThumbHtml(e.id)}</span><span class="vp-name">${esc(e.leaf)}</span>${e.id === current ? icon('check', 12) : ''}</button>`;
         }
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
         pop.querySelector('.vp-list').innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        if (pop.isConnected)
+            watchSwapThumbs(pop.querySelector('.vp-list'));
     };
     pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Page"><option value="">All pages</option>${pages.map(p => `<option value="${esc(p)}" ${SWP.page === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
     list();
     document.body.appendChild(pop);
+    watchSwapThumbs(pop.querySelector('.vp-list'));
     const r = anchor.getBoundingClientRect(), w = 280;
     pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
     pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
@@ -13540,10 +14317,10 @@ function renderCpropPop() {
 // Controls on an instance for the component's own properties and for exposed nested instances.
 function instancePropsHtml(owner, holder) {
     const bindable = (owner, p, attrs, html) => {
-        if (attrs || (p.type !== 'text' && p.type !== 'boolean'))
+        if (p.type !== 'text' && p.type !== 'boolean' && p.type !== 'instance')
             return html;
-        const key = 'cprop:' + p.id, bv = owner.vars?.[key] && varItem(owner.vars[key]);
-        return bv ? varChip(key, bv) : html + varBindButton(key);
+        const key = 'cprop:' + p.id, bv = owner.vars?.[key] && varItem(owner.vars[key]), own = attrs ? owner.id : null;
+        return bv ? varChip(key, bv, own) : html + varBindButton(key, own);
     };
     const ctl = (owner, p, attrs = '') => bindable(owner, p, attrs, ctl0(owner, p, attrs));
     const ctl0 = (owner, p, attrs = '') => {
@@ -13558,8 +14335,13 @@ function instancePropsHtml(owner, holder) {
         return slot ? `<button class="cmp-slot add" data-slot-add="${slot.id}" title="Add instances to this slot">${CPROP_ICON.slot}<span>${doc.children(slot.id).length ? `${doc.children(slot.id).length} layer${doc.children(slot.id).length === 1 ? '' : 's'}` : 'Empty'}</span><i>${icon('plus', 12)}</i></button>` : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
     };
     const row = (o, p, attrs) => `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.type]} ${esc(p.name)}</span><div class="cmp-ctl">${ctl(o, p, attrs)}</div></div>`;
-    let html = cpropsOf(holder).map(p => row(owner, p)).join('');
     const page = pageOfNode(owner.id), tree = page ? instanceTree(page, owner.id) : [];
+    // A property is shown only when a layer of this variant is driven by it (a variant without a description layer has no "Description").
+    const driven = new Set();
+    for (const y of [owner, ...(page ? pageTree(page, owner.id) : [])])
+        for (const pid of Object.values(y.propBind || {}))
+            driven.add(pid);
+    let html = cpropsOf(holder).filter(p => !driven.size || driven.has(p.id)).map(p => row(owner, p)).join('');
     for (const nid of holder.exposedNested || []) {
         const x = tree.find(y => (y.swapOf || y.sourceId) === nid);
         if (!x)
@@ -13567,7 +14349,7 @@ function instancePropsHtml(owner, holder) {
         const comp = chainComponent(x), set = comp && parentSetOf(comp), nh = propHolderOf(comp);
         let inner = '';
         if (set)
-            inner += variantProps(set).map(pr => `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${variantSelect(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr)}</div></div>`).join('');
+            inner += variantProps(set).map(pr => { const key = 'vprop:' + pr, bv = x.vars?.[key] && varItem(x.vars[key]); return `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${bv ? varChip(key, bv, x.id) : variantSelect(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr) + varBindButton(key, x.id)}</div></div>`; }).join('');
         if (nh)
             inner += cpropsOf(nh).filter(p => p.type !== 'slot').map(p => row(x, p, `data-owner="${x.id}"`)).join('');
         html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
@@ -13619,6 +14401,86 @@ document.addEventListener('click', e => {
     }
 });
 // Swap an instance to another variant of the same component set (position is kept, overrides are reset).
+// Switching a variant keeps what the instance itself carries (the Appearance modes, variable bindings, property values,
+// visibility, sizing), so only the variant's own layers change: nothing is switched on or off by the swap.
+const SWAP_KEEP = ['varModes', 'vars', 'propValues', 'opacity', 'visible', 'layoutSizingH', 'layoutSizingV', 'minW', 'maxW', 'minH', 'maxH', 'lockRatio', 'aspect', 'clip'];
+// The layers of an instance by path (names, with a counter for twins): the same layer is found again after a variant swap rebuilt them.
+function treeKeyed(rootId) {
+    const page = pageOfNode(rootId), by = new Map(), out = new Map();
+    for (const n of page?.nodes || [])
+        (by.get(n.parentId) || by.set(n.parentId, []).get(n.parentId)).push(n);
+    const walk = (id, prefix) => {
+        const seen = new Map();
+        for (const c of by.get(id) || []) {
+            const idx = seen.get(c.name) || 0;
+            seen.set(c.name, idx + 1);
+            const key = prefix + '/' + c.name + '#' + idx;
+            out.set(key, c);
+            walk(c.id, key);
+        }
+    };
+    walk(rootId, '');
+    return out;
+}
+const SWAP_SKIP_OV = new Set(['w', 'h', 'x', 'y', 'rotation', 'sourceId', 'swapOf', 'isInstance', 'component', 'id', 'parentId', 'version', 'overrides']);
+function keepRootAcrossSwap(inst, fn) {
+    const saved = {};
+    for (const k of SWAP_KEEP)
+        if (inst[k] !== undefined)
+            saved[k] = structuredClone(inst[k]);
+    // Everything inside the instance that was customised: nested instances (their variant, modes, properties) and overridden layers.
+    const snap = new Map();
+    for (const [key, n] of treeKeyed(inst.id)) {
+        const isInst = !!n.isInstance && !!n.sourceId, keep = {};
+        if (isInst)
+            for (const k of SWAP_KEEP)
+                if (n[k] !== undefined)
+                    keep[k] = structuredClone(n[k]);
+        const ov = n.overrides && Object.keys(n.overrides).length ? structuredClone(n.overrides) : null;
+        if (isInst || ov)
+            snap.set(key, { isInst, comp: isInst ? chainComponent(n)?.id : null, keep, ov });
+    }
+    fn();
+    // A nested instance that had been switched to another variant / component keeps that choice.
+    const tried = new Set();
+    for (let round = 0; round < 12; round++) {
+        let swapped = false;
+        for (const [key, n] of treeKeyed(inst.id)) {
+            const s0 = snap.get(key);
+            if (!s0?.isInst || !s0.comp || !n.isInstance || tried.has(key) || chainComponent(n)?.id === s0.comp)
+                continue;
+            tried.add(key);
+            if (swapNestedNode(n, s0.comp)) {
+                syncComponents(true);
+                swapped = true;
+                break;
+            }
+        }
+        if (!swapped)
+            break;
+    }
+    for (const [key, n] of treeKeyed(inst.id)) {
+        const s0 = snap.get(key);
+        if (!s0)
+            continue;
+        for (const [k, v] of Object.entries(s0.keep)) {
+            n[k] = structuredClone(v);
+            (n.overrides ||= {})[k] = structuredClone(v);
+        }
+        for (const [k, v] of Object.entries(s0.ov || {}))
+            if (!SWAP_SKIP_OV.has(k) && !(k in s0.keep)) {
+                n[k] = structuredClone(v);
+                (n.overrides ||= {})[k] = structuredClone(v);
+            }
+        doc.touch(n);
+    }
+    const now = doc.get(inst.id) || inst;
+    for (const k of Object.keys(saved)) {
+        now[k] = saved[k];
+        (now.overrides ||= {})[k] = structuredClone(saved[k]);
+    }
+    doc.touch(now);
+}
 function swapVariant(inst, prop, value) {
     const src = componentById(inst.sourceId) || chainComponent(inst), set = src && parentSetOf(src);
     if (!set)
@@ -13629,10 +14491,10 @@ function swapVariant(inst, prop, value) {
         return;
     // A variant picked on an instance nested in another instance is a swap of that nested layer (kept through syncing with its container).
     if (insideInstance(inst)) {
-        transaction('Swap variant', () => { swapNestedNode(inst, target.id); syncComponents(); });
+        transaction('Swap variant', () => keepRootAcrossSwap(inst, () => { swapNestedNode(inst, target.id); syncComponents(); }));
         return;
     }
-    transaction('Swap variant', () => {
+    transaction('Swap variant', () => keepRootAcrossSwap(inst, () => {
         const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(n => n.id));
         page.nodes = page.nodes.filter(n => !gone.has(n.id));
         inst.sourceId = target.id;
@@ -13640,7 +14502,7 @@ function swapVariant(inst, prop, value) {
         doc.refresh();
         doc.touch(inst);
         syncComponents();
-    });
+    }));
 }
 document.addEventListener('click', e => {
     const b = e.target.closest('[data-cmp]');
@@ -14245,7 +15107,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         else
             n.radius = f.cornerRadius || 0;
     };
-    const applyLayout = (n, f, asInstance = f.type === 'INSTANCE') => {
+    const applyLayout = (n, f, asInstance = f.type === 'INSTANCE', symF = asInstance && f.type === 'INSTANCE' ? fig.get(gkey(f.symbolData?.symbolID)) : null) => {
         if (f.stackMode !== 'HORIZONTAL' && f.stackMode !== 'VERTICAL') {
             if (f.stackMode === 'GRID')
                 note('grid layout imported as a plain frame');
@@ -14261,11 +15123,12 @@ async function figToMidas(file, onProgress, abortSignal) {
         n.padB = f.stackPaddingBottom ?? t;
         const just = f.stackPrimaryAlignItems || f.stackJustify || 'MIN';
         n.primaryAlign = just === 'CENTER' ? 'center' : just === 'MAX' ? 'end' : 'start';
+        // In the file Figma's "Between" is called SPACE_EVENLY (its old name) and "Evenly" is SPACE_BETWEEN.
         if (just === 'SPACE_BETWEEN' || just === 'SPACE_EVENLY' || just === 'SPACE_AROUND')
             n.gapAuto = true;
         if (just === 'SPACE_AROUND')
             n.gapMode = 'around';
-        if (just === 'SPACE_EVENLY')
+        if (just === 'SPACE_BETWEEN')
             n.gapMode = 'evenly';
         // Auto layout settings
         if (f.strokesIncludedInLayout)
@@ -14278,15 +15141,27 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.alignBaseline = true;
         const ca = f.stackCounterAlignItems || 'MIN';
         n.counterAlign = ca === 'CENTER' ? 'center' : ca === 'MAX' ? 'end' : 'start';
-        // An instance keeps the size Figma stored for it ("hug with implicit size" is how Figma remembers it): a hug there
-        // would shrink it to its content (a 44px avatar to its 10px badge, a 20px icon holder to 12px).
-        const hug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' && !asInstance ? 'hug' : 'fixed';
+        // "Hug with implicit size" on an instance keeps hugging when its component hugs on that axis (a button hugging its label);
+        // when the component is fixed there it is only Figma remembering the size (a 44px avatar around a 10px badge).
+        const isHug = s => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE';
+        const hug = (s) => s === 'RESIZE_TO_FIT' || s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE' ? 'hug' : 'fixed';
         // An omitted stackPrimarySizing is Figma's default (RESIZE_TO_FIT = hug); an instance without one takes its component's.
         // An omitted stackCounterSizing is FIXED.
-        const primDefault = asInstance && f.type === 'INSTANCE' ? fig.get(gkey(f.symbolData?.symbolID))?.stackPrimarySizing ?? 'RESIZE_TO_FIT' : 'RESIZE_TO_FIT';
-        const prim = hug(f.stackPrimarySizing ?? primDefault), counter = hug(f.stackCounterSizing);
+        const primDefault = symF ? symF.stackPrimarySizing ?? 'RESIZE_TO_FIT' : 'RESIZE_TO_FIT';
+        const prim = hug(f.stackPrimarySizing ?? primDefault, symF?.stackPrimarySizing ?? 'RESIZE_TO_FIT'), counter = hug(f.stackCounterSizing, symF?.stackCounterSizing);
         n.layoutSizingH = horiz ? prim : counter;
         n.layoutSizingV = horiz ? counter : prim;
+        // An instance hugging "with implicit size" never shrinks below the size Figma stored for it.
+        if (asInstance) {
+            const imp = s => s === 'RESIZE_TO_FIT_WITH_IMPLICIT_SIZE';
+            const primImp = imp(f.stackPrimarySizing), counterImp = imp(f.stackCounterSizing);
+            delete n.implicitW;
+            delete n.implicitH;
+            if (horiz ? primImp : counterImp)
+                n.implicitW = n.w;
+            if (horiz ? counterImp : primImp)
+                n.implicitH = n.h;
+        }
         if (f.stackWrap) {
             n.layoutWrap = true;
             n.gapCross = f.stackCounterSpacing ?? n.gap;
@@ -14327,6 +15202,8 @@ async function figToMidas(file, onProgress, abortSignal) {
     const LAYOUT_OV = ['stackSpacing', 'stackHorizontalPadding', 'stackVerticalPadding', 'stackPaddingRight', 'stackPaddingBottom', 'stackPrimarySizing', 'stackCounterSizing', 'stackPrimaryAlignItems', 'stackCounterAlignItems', 'stackWrap', 'stackCounterSpacing'];
     const applyLayoutOverride = (c, ov, base, pf, isRoot = false) => {
         const m = { ...base, ...ov };
+        if (ov.frameMaskDisabled !== undefined && c.type === 'frame')
+            c.clip = !ov.frameMaskDisabled;
         // On the instance itself the size in an override is the component's own; the instance keeps the size Figma stored for it.
         if (!isRoot && ov.size && Number.isFinite(ov.size.x) && Number.isFinite(ov.size.y)) {
             c.w = ov.size.x;
@@ -14334,7 +15211,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         if (LAYOUT_OV.some(k => ov[k] !== undefined) && (m.stackMode === 'HORIZONTAL' || m.stackMode === 'VERTICAL')) {
             const keep = { h: c.layoutSizingH, v: c.layoutSizingV };
-            applyLayout(c, m, !!c.isInstance);
+            applyLayout(c, m, isRoot && !!c.isInstance, isRoot ? base : null);
             // A layer that fills its parent keeps doing so: the override only changes its own content.
             if (keep.h === 'fill')
                 c.layoutSizingH = 'fill';
@@ -14713,6 +15590,16 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.clip = f.type === 'SECTION' ? false : !f.frameMaskDisabled;
             applyFills(n, f);
             applyLayout(n, f);
+            // Layout grids (Grid / Columns / Rows guides)
+            if (f.layoutGrids?.length) {
+                const lg = f.layoutGrids.map(g => {
+                    const stripes = g.pattern !== 'GRID', align = { STRETCH: 'stretch', MIN: 'min', CENTER: 'center', MAX: 'max' }[g.type] || 'stretch';
+                    return stripes ? { id: uid(), type: g.axis === 'Y' ? 'rows' : 'columns', count: g.numSections >= 1e6 ? 0 : g.numSections || 0, gutter: g.gutterSize || 0, margin: g.offset || 0, align, size: g.sectionSize || 80, color: hexOf(g.color), opacity: g.color?.a ?? .1, visible: g.visible !== false }
+                        : { id: uid(), type: 'grid', size: g.sectionSize || 10, color: hexOf(g.color), opacity: g.color?.a ?? .1, visible: g.visible !== false };
+                });
+                if (lg.length)
+                    n.layoutGrids = lg;
+            }
         }
         else if (type === 'rect' || type === 'ellipse') {
             applyFills(n, f);
@@ -14812,6 +15699,12 @@ async function figToMidas(file, onProgress, abortSignal) {
             // The editable vector network is preferred (true open/closed paths, real strokes); baked geometry is the fallback.
             const net = networkSubs(f), fillGeo = net ? null : geometrySubs(f.fillGeometry);
             let geo = net || fillGeo, strokeOnly = false;
+            // A network without a closed region would lose the fill (a thin letter stem drawn as an open path): the baked fill outline is exact.
+            if (net && !net.subs.some(x => x.closed) && f.fillGeometry?.length && (f.fillPaints || []).some(p => p.visible !== false)) {
+                const baked = geometrySubs(f.fillGeometry);
+                if (baked?.subs.some(x => x.closed))
+                    geo = baked;
+            }
             if (!geo) {
                 // Stroke-only vector with no fill geometry: use the outlined stroke as the shape, filled with the stroke paint.
                 geo = geometrySubs(f.strokeGeometry);
@@ -15077,12 +15970,14 @@ async function figToMidas(file, onProgress, abortSignal) {
             if (!info)
                 continue;
             let v;
+            // The chosen value sits in `value`, or in `varValue.value` (the form that can also hold a variable).
+            const val = a.value ?? a.varValue?.value;
             if (info.type === 'text')
-                v = a.value?.textValue?.characters;
+                v = val?.textValue?.characters;
             else if (info.type === 'boolean')
-                v = a.value?.boolValue;
+                v = val?.boolValue;
             else if (info.type === 'instance') {
-                const g = realGuid(a.value?.guidValue || a.varValue?.value?.symbolIdValue?.guid), id = g && idMap.get(gkey(g));
+                const g = realGuid(val?.guidValue || val?.symbolIdValue?.guid), id = g && idMap.get(gkey(g));
                 v = id && midasById.get(id)?.component ? id : undefined;
             }
             if (v !== undefined)
@@ -15224,6 +16119,35 @@ async function figToMidas(file, onProgress, abortSignal) {
             constrainImported(n, src.w, src.h, kidsOfClone);
         }
         assignProps(n, f);
+        // Layers driven by a visibility / text property show the value this instance (or nested instance) chose.
+        const cloneById = new Map([[n.id, n], ...[...clones.values()].map(c => [c.id, c])]);
+        const applyBound = holder => {
+            const pv = holder.propValues;
+            if (!pv)
+                return;
+            for (const y of clones.values()) {
+                if (!y.propBind || y === holder)
+                    continue;
+                let h = null;
+                for (let p = cloneById.get(y.parentId); p; p = cloneById.get(p.parentId))
+                    if (p === n || p.isInstance) {
+                        h = p;
+                        break;
+                    }
+                if (h !== holder)
+                    continue;
+                const vis = y.propBind.visible, txt = y.propBind.text;
+                if (vis && pv[vis] !== undefined) {
+                    y.visible = pv[vis] !== false;
+                    (y.overrides ||= {}).visible = y.visible;
+                }
+                if (txt && typeof pv[txt] === 'string') {
+                    y.text = pv[txt];
+                    (y.overrides ||= {}).text = y.text;
+                }
+            }
+        };
+        applyBound(n);
         for (const [pid, val] of Object.entries(n.propValues || {}))
             for (const y of [...clones.values()])
                 if (y.propBind?.swap === pid)
@@ -15234,10 +16158,33 @@ async function figToMidas(file, onProgress, abortSignal) {
                 continue;
             const targetGuid = guids[guids.length - 1];
             const targetSrc = idMap.get(gkey(targetGuid));
-            let c = targetSrc ? clones.get(targetSrc) : null;
-            // Only an override whose path is a single step and names a layer of this very instance is applied for layout / size:
-            // a deeper path through nested instances cannot be told apart from the same layer elsewhere by its source alone.
-            const exact = guids.length === 1 && !!c;
+            // A path through nested instances is followed step by step (the first step is a layer of this component, the next ones
+            // layers of the nested instance's component): two nested instances of one component are told apart by where they sit.
+            let c = null, byPath = false;
+            if (guids.length > 1) {
+                let cur = clones.get(idMap.get(gkey(guids[0])));
+                for (let i = 1; i < guids.length && cur; i++) {
+                    const want = idMap.get(gkey(guids[i]));
+                    let hit = null;
+                    const queue = [...(byParent.get(cur.id) || [])];
+                    while (queue.length && !hit && want) {
+                        const x = queue.shift();
+                        for (let y = x, guard = 0; y && guard++ < 20 && !hit; y = midasById.get(y.sourceId))
+                            if (y.sourceId === want || y.swapOf === want)
+                                hit = x;
+                        if (!hit)
+                            queue.push(...(byParent.get(x.id) || []));
+                    }
+                    cur = hit;
+                }
+                if (cur) {
+                    c = cur;
+                    byPath = true;
+                }
+            }
+            if (!c)
+                c = targetSrc ? clones.get(targetSrc) : null;
+            const exact = byPath || (guids.length === 1 && !!c);
             // An override whose path is just the component itself applies to the instance root.
             if (!c && targetSrc && targetSrc === src.id)
                 c = n;
@@ -15254,6 +16201,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             // Property values set on a nested instance (its icon swapped, its label changed, a layer shown or hidden).
             if (ov.componentPropAssignments?.length) {
                 assignProps(c, ov);
+                applyBound(c);
                 for (const [pid, val] of Object.entries(c.propValues || {}))
                     for (const y of [...clones.values()])
                         if (y.propBind?.swap === pid && isUnder(clones, y, c))
@@ -15296,7 +16244,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         // How the instance itself sits in its parent and lays out its content (Fill / Hug, gap, padding, min / max, ratio) is its own:
         // keep every difference from the main component as an override, otherwise syncing with it resets e.g. Fill back to Hug.
-        for (const key of ['layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'gap', 'gapAuto', 'gapMode', 'gapCross', 'padding', 'padL', 'padT', 'padR', 'padB', 'primaryAlign', 'counterAlign', 'layoutWrap', 'minW', 'minH', 'maxW', 'maxH', 'lockRatio', 'aspect'])
+        for (const key of ['layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'gap', 'gapAuto', 'gapMode', 'gapCross', 'padding', 'padL', 'padT', 'padR', 'padB', 'primaryAlign', 'counterAlign', 'layoutWrap', 'minW', 'minH', 'maxW', 'maxH', 'lockRatio', 'aspect', 'clip'])
             if (n[key] !== undefined && JSON.stringify(n[key]) !== JSON.stringify(src[key]))
                 n.overrides[key] = structuredClone(n[key]);
         // The variable modes and bindings the instance itself carries (its Appearance in Figma) differ from the main component:
@@ -16496,7 +17444,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -16726,16 +17674,31 @@ document.addEventListener('click', e => {
             return;
         }
         state.lastLayerClick = { id, t: now };
-        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+        if (e.shiftKey || e.altKey) {
+            // Shift / Alt + click selects every layer between the anchor and the click (like the pages list).
+            const order = [...document.querySelectorAll('#layer-tree [data-layer]')].map(r => r.dataset.layer);
+            const anchor = state.layerAnchor && order.includes(state.layerAnchor) ? state.layerAnchor : [...state.selection].find(x => order.includes(x));
+            const from = order.indexOf(anchor), to = order.indexOf(id);
+            if (from >= 0 && to >= 0)
+                select(order.slice(Math.min(from, to), Math.max(from, to) + 1).filter(x => !doc.world(x)?.locked));
+            else
+                select([id]);
+            if (!state.layerAnchor)
+                state.layerAnchor = id;
+        }
+        else if (e.metaKey || e.ctrlKey) {
             const set = new Set(state.selection);
             if (set.has(id))
                 set.delete(id);
             else
                 set.add(id);
+            state.layerAnchor = id;
             select([...set]);
         }
-        else
+        else {
+            state.layerAnchor = id;
             select([id]);
+        }
         return;
     }
     const a = e.target.closest('[data-align]');
@@ -17522,7 +18485,7 @@ function showZoomMenu(e) {
 }
 $('#zoom-value').onclick = e => showZoomMenu(e);
 $('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
-$('#image-input').onchange = e => { importImage(e.target.files[0]); e.target.value = ''; };
+$('#image-input').onchange = e => { importImages(e.target.files); e.target.value = ''; };
 $('#modal-backdrop').onclick = e => {
     if (e.target === $('#modal-backdrop'))
         closeModal();
@@ -17733,7 +18696,7 @@ area.addEventListener('drop', e => {
         if (/\.(midas|vellum|fig|json)$/i.test(f.name))
             importDocument(f);
         else
-            importImage(f, eventWorld(e));
+            importImages(e.dataTransfer.files, eventWorld(e));
     }
 });
 $('#text-editor').addEventListener('keydown', e => {
@@ -17968,9 +18931,9 @@ document.addEventListener('paste', e => {
         pasteFromFigma(html);
         return;
     }
-    const image = [...(cd?.files || [])].find(f => f.type.startsWith('image/'));
-    if (image) {
-        importImage(image);
+    const images = [...(cd?.files || [])].filter(f => f.type.startsWith('image/'));
+    if (images.length) {
+        importImages(images);
         return;
     }
     pasteSelection(cd?.getData('text/plain') ?? '');
@@ -18528,7 +19491,7 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
-window.midas = { doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
+window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());

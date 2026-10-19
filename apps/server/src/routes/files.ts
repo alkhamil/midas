@@ -67,6 +67,7 @@ const docShape = z.object({
     tokens: z.unknown().optional(),
     variables: z.unknown().optional(),
     thumbnailId: z.string().nullish(),
+    guideStyles: z.unknown().optional(),
     assets: z.record(z.string(), z.string()).optional(),
     created: z.number().optional(),
 }).passthrough();
