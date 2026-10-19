@@ -1,0 +1,108 @@
+# Midas — production stack for Coolify.
+#
+# Coolify setup:
+#   1. New resource -> Docker Compose -> this repository -> docker-compose.coolify.yml
+#   2. Open "Environment Variables" and set the values used below (at minimum
+#      POSTGRES_PASSWORD, S3_SECRET_KEY, MIDAS_PUBLIC_URL and COOKIE_SECURE).
+#   3. Set the domain for the `app` service to container port 4000.
+#
+# Every value is read from the environment, with a safe local fallback in
+# ${VAR:-default}. Do not commit real secrets: put them in Coolify.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify
+      target: runtime
+    restart: unless-stopped
+    # Coolify routes its domain to this port. For plain `docker compose` on a
+    # laptop, uncomment the ports mapping below instead.
+    expose:
+      - "4000"
+    # ports:
+    #   - "${APP_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4000"
+      AUTO_MIGRATE: "true"
+      STUDIO_DIST: /app/apps/studio/dist
+      TEMPLATES_DIR: /app/templates
+
+      # Internal Postgres by default. Set DATABASE_URL to use a managed database
+      # (Neon, Supabase, ...) without changing the rest of the stack.
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-midas}:${POSTGRES_PASSWORD:-midas}@postgres:5432/${POSTGRES_DB:-midas}}
+
+      # Internal SeaweedFS S3 by default. Set S3_ENDPOINT/S3_* to use R2 or S3.
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://s3:8333}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-midas}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-midas-secret}
+      S3_BUCKET: ${S3_BUCKET:-midas}
+
+      # Public URL of the app, written into generated library scaffolds.
+      MIDAS_PUBLIC_URL: ${MIDAS_PUBLIC_URL:-http://localhost:4000}
+      # No Verdaccio in production; generated .npmrc files point at npmjs.
+      REGISTRY_URL: ${REGISTRY_URL:-https://registry.npmjs.org/}
+
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-true}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      BODY_LIMIT_MB: ${BODY_LIMIT_MB:-100}
+      TOKEN_DAYS: ${TOKEN_DAYS:-365}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-midas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-midas}
+      POSTGRES_DB: ${POSTGRES_DB:-midas}
+    # Keep the default cluster small; Midas only needs a handful of connections.
+    command: ["postgres", "-c", "max_connections=50"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  s3:
+    image: chrislusf/seaweedfs:4.48
+    restart: unless-stopped
+    # Bind every listener to 0.0.0.0 (SeaweedFS otherwise binds to the detected
+    # container IP), so both the app and the localhost healthcheck can reach S3.
+    command: server -ip.bind=0.0.0.0 -dir=/data -s3 -s3.port=8333 -master.volumeSizeLimitMB=1024
+    environment:
+      # SeaweedFS turns these into an admin S3 identity at startup. Avoid a
+      # config-file bind mount here: Coolify's compose deployments do not keep
+      # repo files on the host, so the source would become an empty directory
+      # and SeaweedFS would exit ("is a directory").
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-midas}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-midas-secret}
+    volumes:
+      - s3_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS -o /dev/null http://127.0.0.1:8333/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  s3_data:
