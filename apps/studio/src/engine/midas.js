@@ -203,15 +203,23 @@ function runLayout(d) {
     // Phase "down": hand out Fill sizes top-down on one axis.
     const assign = (c, axis, v) => {
         v = clampMM(c, axis === 'h' ? 'w' : 'h', v);
+        // Locked proportions: a Fill side hands the other (fixed) side its matching size straight away.
+        if (c.lockRatio && !(c.aspect > 0) && c.w > 0 && c.h > 0)
+            c.aspect = c.w / c.h;
+        const ratio = c.lockRatio && c.aspect > 0 ? c.aspect : 0;
         if (axis === 'h') {
             c.w = v;
             c._fw = true;
             if (c.type === 'text')
                 c.autoW = false;
+            if (ratio && sizingOf(c, 'v') === 'fixed')
+                c.h = Math.max(.1, clampMM(c, 'h', +(v / ratio).toFixed(3)));
         }
         else {
             c.h = v;
             c._fh = true;
+            if (ratio && sizingOf(c, 'h') === 'fixed')
+                c.w = Math.max(.1, clampMM(c, 'w', +(v * ratio).toFixed(3)));
         }
     };
     const down = (n, axis) => {
@@ -677,10 +685,15 @@ document.addEventListener('click', e => {
     }
     if ((el = t.closest('[data-lock-ratio]'))) {
         transaction('Lock proportions', () => { const on = !activeNode()?.lockRatio; for (const n of selected()) {
-            if (on)
+            if (on) {
                 n.lockRatio = true;
-            else
+                if (n.w > 0 && n.h > 0)
+                    n.aspect = n.w / n.h;
+            }
+            else {
                 delete n.lockRatio;
+                delete n.aspect;
+            }
             doc.touch(n);
         } });
         return;
@@ -1169,7 +1182,7 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
             document.removeEventListener('pointerdown', away, true);
             return;
         }
-        if (!pop.contains(ev.target)) {
+        if (!pop.contains(ev.target) && !ev.target.closest?.('.stp-menu')) {
             closeVarPicker();
             document.removeEventListener('pointerdown', away, true);
         }
@@ -1623,7 +1636,11 @@ document.addEventListener('click', e => {
 // ===== W/H sizing dropdown, min/max, gap dropdown =====
 const CHEV_SVG = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg>';
 function clampMM(n, dim, v) {
-    const lo = dim === 'w' ? n.minW : n.minH, hi = dim === 'w' ? n.maxW : n.maxH;
+    let lo = dim === 'w' ? n.minW : n.minH;
+    const hi = dim === 'w' ? n.maxW : n.maxH;
+    // An empty slot of an instance stays big enough to see and click (its "+" placeholder).
+    if (n.propBind?.slot && n.sourceId && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug' && !doc.children(n.id).length)
+        lo = Math.max(lo ?? 0, dim === 'w' ? 120 : 56);
     if (lo != null)
         v = Math.max(v, lo);
     if (hi != null)
@@ -1639,6 +1656,16 @@ function sizeModeOf(n, axis) {
 }
 // Like Figma: no variable button on W / H, only a chevron on hover that opens the sizing menu.
 function szChevron(axis, word) { return `<button class="sz-hchev" data-size-menu="${axis}" tabindex="-1" title="${word} options" aria-label="${word} options">${CHEV_SVG}</button>`; }
+// A width / height with a min and / or max: a small tag in the field (accent when the limit is what sets the size right now).
+function mmMarker(n, dim) {
+    const mn = dim === 'w' ? n.minW : n.minH, mx = dim === 'w' ? n.maxW : n.maxH, word = dim === 'w' ? 'width' : 'height';
+    if (mn == null && mx == null)
+        return { cls: '', html: '' };
+    const hit = mn != null && n[dim] <= mn + .01 ? 'min' : mx != null && n[dim] >= mx - .01 ? 'max' : '';
+    const tip = [mn != null ? `Min ${word} ${fmt(mn)}` : '', mx != null ? `Max ${word} ${fmt(mx)}` : ''].filter(Boolean).join(' · ');
+    const label = mn != null && mx != null ? 'Min·Max' : mn != null ? 'Min' : 'Max';
+    return { cls: 'has-mm' + (hit ? ' mm-hit' : ''), html: `<span class="sz-mm" title="${esc(tip)}">${label}</span>` };
+}
 function sizeFieldHtml(n, axis) {
     const dim = axis === 'h' ? 'w' : 'h', label = axis === 'h' ? 'W' : 'H', { mode } = sizeModeOf(n, axis), bound = boundVar(dim), word = axis === 'h' ? 'Width' : 'Height';
     if (n.type === 'text') {
@@ -1646,11 +1673,13 @@ function sizeFieldHtml(n, axis) {
         const off = axis === 'h' ? tm === 'auto-w' : tm !== 'fixed';
         const lab = inAuto ? `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>` : `<span class="sz-lab">${label}</span>`;
         const fill = mode === 'fill' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">Fill</button>` : '';
-        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${fill}${szChevron(axis, word)}</div>`;
+        const mmT = mmMarker(n, dim);
+        return `<div class="field sz-field ${off || mode === 'fill' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''} ${mmT.cls}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min="1" step="1" aria-label="${word}" ${off ? 'disabled' : ''}>${mmT.html}${fill}${szChevron(axis, word)}</div>`;
     }
     const lab = `<button class="sz-lab" data-size-menu="${axis}" title="${word} options" aria-label="${word} options">${label}</button>`;
+    const mm = mmMarker(n, dim);
     const modeBtn = mode !== 'fixed' ? `<button class="sz-mode" data-size-menu="${axis}" tabindex="-1" aria-label="${word} options">${mode === 'hug' ? 'Hug' : 'Fill'}</button>` : '';
-    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${modeBtn}${szChevron(axis, word)}</div>`;
+    return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''} ${mm.cls}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${mm.html}${modeBtn}${szChevron(axis, word)}</div>`;
 }
 const MM_ICON = {
     min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
@@ -1670,19 +1699,68 @@ function minMaxHtml(n) {
 }
 let popMenu = null;
 function closePopMenu() { popMenu?.el.remove(); popMenu = null; }
-function openPopMenu(anchor, items) {
+function openPopMenu(anchor, items, opts = {}) {
     closePopMenu();
     const el = document.createElement('div');
     el.className = 'stp stp-menu';
-    el.style.width = '220px';
+    el.style.width = (opts.width || 220) + 'px';
     el.innerHTML = items.map((it, i) => it === '-' ? '<div class="menu-divider"></div>' : it.header ? `<div class="pm-header">${esc(it.header)}</div>` : `<button data-pm="${i}" ${it.disabled ? 'disabled' : ''}>${it.checked !== undefined || !it.icon ? `<span class="chk">${it.checked ? '✓' : ''}</span>` : ''}${it.icon ? `<span class="pm-icon">${it.icon}</span>` : ''}<span class="pm-label">${esc(it.label)}</span>${it.count !== undefined && it.count !== '' ? `<span class="pm-count">${esc(String(it.count))}</span>` : ''}</button>`).join('');
     document.body.appendChild(el);
     const a = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(a.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8)) + 'px';
+    el.style.left = Math.max(8, Math.min(opts.alignLeft ? a.left : a.right - el.offsetWidth, window.innerWidth - el.offsetWidth - 8)) + 'px';
     el.style.top = Math.max(8, Math.min(a.bottom + 6, window.innerHeight - el.offsetHeight - 8)) + 'px';
+    el.querySelector('button.on')?.scrollIntoView?.({ block: 'nearest' });
     // born: the click that opened the menu is still bubbling to the document listener below; it must not close it.
     popMenu = { el, items, anchor, born: performance.now() };
 }
+// Every native <select> opens the app's own menu (same look as the other dropdowns) instead of the browser's list.
+function openSelectMenu(sel) {
+    const items = [];
+    for (const child of sel.children) {
+        const opts = child.tagName === 'OPTGROUP' ? [...child.children] : [child];
+        if (child.tagName === 'OPTGROUP')
+            items.push({ header: child.label });
+        for (const o of opts)
+            items.push({ label: o.textContent.trim() || '\u00a0', checked: o.selected, disabled: o.disabled, run: () => {
+                    if (sel.value === o.value)
+                        return;
+                    sel.value = o.value;
+                    sel.dispatchEvent(new Event('input', { bubbles: true }));
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                } });
+    }
+    openPopMenu(sel, items, { width: Math.max(160, Math.round(sel.getBoundingClientRect().width)), alignLeft: true });
+    popMenu?.el.classList.add('sel-menu');
+}
+// Pressing inside a dropdown menu is not an "outside click" for the popup that holds the select (variable window, auto layout settings, ...).
+window.addEventListener('pointerdown', e => { if (e.target.closest?.('.sel-menu'))
+    e.stopImmediatePropagation(); }, true);
+const customSelect = e => { const sel = e.target.closest?.('select'); return sel && e.button === 0 && !sel.multiple && !(sel.size > 1) && !sel.disabled && sel.dataset.native === undefined ? sel : null; };
+// The browser's own list is suppressed on press; the menu opens on the click that follows (like the other dropdowns).
+document.addEventListener('pointerdown', e => {
+    const sel = customSelect(e);
+    if (!sel)
+        return;
+    e.preventDefault();
+    sel.focus({ preventScroll: true });
+}, true);
+document.addEventListener('mousedown', e => { if (customSelect(e))
+    e.preventDefault(); }, true);
+document.addEventListener('click', e => {
+    const sel = customSelect(e);
+    if (!sel)
+        return;
+    if (popMenu?.anchor === sel)
+        return closePopMenu();
+    openSelectMenu(sel);
+}, true);
+document.addEventListener('keydown', e => {
+    const sel = e.target;
+    if (sel?.tagName === 'SELECT' && !sel.multiple && sel.dataset.native === undefined && (e.key === ' ' || e.key === 'Enter' || (e.altKey && e.key === 'ArrowDown'))) {
+        e.preventDefault();
+        openSelectMenu(sel);
+    }
+}, true);
 function pickVariableFor(anchor, prop) {
     openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
 }
@@ -4658,6 +4736,18 @@ function insideNodeBox(node, w) {
     const q = point(s.inverse, w.x, w.y);
     return q.x >= 0 && q.y >= 0 && q.x <= node.w && q.y <= node.h;
 }
+// A frame under the pointer, narrowed to somewhere layers may go: instances are closed except for their slots.
+function closeToSlot(t) {
+    while (t) {
+        const chain = [t, ...doc.ancestors(t)], at = chain.findIndex(a => a.isInstance);
+        if (at < 0 || chain.slice(0, at).some(a => a.propBind?.slot))
+            return t;
+        t = doc.get(chain[at].parentId) || null;
+        while (t && t.type !== 'frame')
+            t = doc.get(t.parentId) || null;
+    }
+    return t;
+}
 function findDropTarget(g, w) {
     const exclude = new Set();
     for (const id of g.roots) {
@@ -4665,17 +4755,8 @@ function findDropTarget(g, w) {
         for (const d of doc.descendants(id))
             exclude.add(d.id);
     }
-    let t = resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w);
     // Instances are closed: layers can only be dropped into frames marked as a slot property.
-    while (t && !t.propBind?.slot) {
-        const top = [t, ...doc.ancestors(t)].filter(a => a.isInstance).pop();
-        if (!top)
-            break;
-        t = doc.get(top.parentId) || null;
-        while (t && t.type !== 'frame')
-            t = doc.get(t.parentId) || null;
-    }
-    return t;
+    return closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w));
 }
 // Where a dragged layer will land. Children of an auto layout frame stay put (and just reorder) while the pointer is still inside it.
 function dropTargetFor(g, n) {
@@ -5528,6 +5609,11 @@ class DocumentModel {
         return a;
     }
     remove(ids) {
+        for (const id of ids) {
+            const n = this.get(id), p = n && this.get(n.parentId);
+            if (p?.propBind?.slot && p.sourceId)
+                p.slotOwned = true; // the instance now decides what this slot holds
+        }
         const all = new Set(ids);
         for (const id of ids)
             for (const n of this.descendants(id))
@@ -7702,7 +7788,7 @@ function renderLayers() {
             const children = doc.children(n.id), hasChildren = children.length > 0, open = state.expanded.has(n.id) || !!q;
             if (depth === 0)
                 html += '<div class="layer-group">';
-            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${inComponentTree(n) ? 'component' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || (n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13))}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
+            html += `<div class="layer-row ${stickyRoots.has(n.id) ? 'sticky-root' : ''} ${state.selection.has(n.id) ? 'selected' : ''} ${!n.visible ? 'dim' : ''} ${inComponentTree(n) ? 'component' : ''} ${n.propBind?.slot ? 'slot' : ''} ${doc.data.thumbnailId === n.id ? 'is-thumb' : ''}" data-layer="${n.id}" style="--depth:${depth}" role="treeitem" aria-selected="${state.selection.has(n.id)}" ${hasChildren ? `aria-expanded="${open}"` : ''} draggable="true"><button class="expand" data-expand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(n.name)}">${hasChildren ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || (n.propBind?.slot ? SLOT_ICON : n.booleanOp ? MENU_ICONS[n.booleanOp] : n.type === 'frame' && n.isSection ? icon('section', 13) : n.type === 'frame' && isAutoLayout(n) && !n.component && !n.componentSet && !n.isInstance ? LY_ICONS.autoLayout.replace(/width="16" height="16"/, 'width="13" height="13"') : icon(n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 13))}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span><button class="lock ${n.locked ? 'is-locked' : ''}" data-lock="${n.id}" title="${n.locked ? 'Unlock' : 'Lock'}">${icon(n.locked ? 'lock' : 'unlock', 12)}</button><button class="visibility ${!n.visible ? 'is-hidden' : ''}" data-visibility="${n.id}" title="${n.visible ? 'Hide' : 'Show'}">${icon(n.visible ? 'eye' : 'eyeOff', 12)}</button></div>`;
             if (hasChildren && open)
                 walk(n.id, depth + 1);
             if (depth === 0)
@@ -7740,6 +7826,7 @@ function selectField(prop, value, values) { return `<select class="full-width" d
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
+    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
     let html = '';
     if (!n && state.tool === 'frame') {
@@ -7752,7 +7839,7 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${slotButtonHtml(n, multi)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
@@ -7952,6 +8039,7 @@ function setProperty(prop, value, { live = false } = {}) {
         if (prop === 'radius' && hasRadii(n))
             n.radii = [v, v, v, v];
         if (n.lockRatio && (prop === 'w' || prop === 'h') && ow > 0 && oh > 0) {
+            n.aspect = n.aspect > 0 ? n.aspect : ow / oh;
             if (prop === 'w') {
                 n.h = Math.max(.1, +(oh * v / ow).toFixed(3));
                 n.layoutSizingV = 'fixed';
@@ -8310,7 +8398,7 @@ function makeComponent() {
     transaction('Create component', () => { const n = activeNode(); n.component = true; n.isInstance = false; doc.touch(n); });
     toast('Main component created. Find it in Components.');
 }
-function instantiate(id, at = null) {
+function instantiate(id, at = null, parent = null) {
     const sourcePage = doc.data.pages.find(p => p.nodes.some(n => n.id === id));
     const source = sourcePage?.nodes.find(n => n.id === id);
     if (!source)
@@ -8345,9 +8433,25 @@ function instantiate(id, at = null) {
         if (vset)
             root.name = vset.name;
         const c = at || screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
-        root.parentId = null;
-        root.x = Math.round(c.x - root.w / 2);
-        root.y = Math.round(c.y - root.h / 2);
+        if (parent) {
+            // Into a frame / slot: its auto layout places it; a plain frame puts it where it was dropped (or centred).
+            root.parentId = parent.id;
+            const local = at && parent.world !== false && doc.world(parent.id) ? point(doc.world(parent.id).inverse, c.x, c.y) : null;
+            root.x = isAutoLayout(parent) ? 0 : Math.round(local ? local.x - root.w / 2 : (parent.w - root.w) / 2);
+            root.y = isAutoLayout(parent) ? 0 : Math.round(local ? local.y - root.h / 2 : (parent.h - root.h) / 2);
+            if (isAutoLayout(parent))
+                root.layoutPositioning = undefined;
+            delete root.layoutPositioning;
+            state.expanded.add(parent.id);
+            if (parent.propBind?.slot && parent.sourceId)
+                parent.slotOwned = true; // the instance now decides what this slot holds
+        }
+        else {
+            root.parentId = null;
+            root.x = Math.round(c.x - root.w / 2);
+            root.y = Math.round(c.y - root.h / 2);
+        }
+        doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
         select([root.id]);
     });
@@ -8578,6 +8682,63 @@ function drawMeasure(c) {
     }
     c.restore();
 }
+// Slots of instances: a pink outline when the slot (or something inside it) is selected or hovered, a pink placeholder with
+// a "+" when it is empty, and a "+" badge on its top edge to add instances.
+const SLOT_PINK = '#ff2db4';
+function drawSlots(c) {
+    state.slotBadges = [];
+    if (state.tool !== 'select' || state.gesture)
+        return;
+    const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean);
+    for (const s of doc.scene()) {
+        const n = s.node;
+        if (!n.propBind?.slot || !n.sourceId || n.visible === false)
+            continue;
+        const empty = !doc.children(n.id).length;
+        const active = state.selection.has(n.id) || state.hover === n.id || selNodes.some(x => doc.ancestors(x).some(a => a.id === n.id));
+        if (!empty && !active)
+            continue;
+        const a = worldToScreen(s.box.x, s.box.y), b = worldToScreen(s.box.x + s.box.w, s.box.y + s.box.h), x = a.x, y = a.y, w = b.x - a.x, h = b.y - a.y;
+        c.save();
+        if (empty) {
+            c.fillStyle = 'rgba(255,45,181,.12)';
+            c.fillRect(x, y, w, h);
+        }
+        c.strokeStyle = SLOT_PINK;
+        c.lineWidth = 1;
+        c.setLineDash(empty ? [] : [4, 3]);
+        c.strokeRect(x + .5, y + .5, Math.max(1, w - 1), Math.max(1, h - 1));
+        c.setLineDash([]);
+        // The badge sits where the next layer would go: on the right edge of a horizontal auto layout, otherwise on the bottom edge.
+        const horiz = isAutoLayout(n) && n.layout === 'horizontal', r = 9;
+        const cx = empty ? x + w / 2 : horiz ? x + w : x + w / 2, cy = empty ? y + h / 2 : horiz ? y + h / 2 : y + h;
+        c.fillStyle = SLOT_PINK;
+        c.beginPath();
+        c.roundRect(cx - r, cy - r, r * 2, r * 2, 4);
+        c.fill();
+        c.strokeStyle = '#fff';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(cx - 4, cy);
+        c.lineTo(cx + 4, cy);
+        c.moveTo(cx, cy - 4);
+        c.lineTo(cx, cy + 4);
+        c.stroke();
+        state.slotBadges.push({ id: n.id, cx, cy, r: r + 3 });
+        if (state.badgeHover === n.id) {
+            c.font = '11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            const label = 'Add instances', tw = c.measureText(label).width + 16;
+            c.fillStyle = '#111';
+            c.beginPath();
+            c.roundRect(cx - tw / 2, cy - r - 30, tw, 22, 5);
+            c.fill();
+            c.fillStyle = '#fff';
+            c.fillText(label, cx - tw / 2 + 8, cy - r - 15);
+        }
+        c.restore();
+    }
+}
+function slotBadgeAt(p) { return (state.slotBadges || []).find(b => Math.hypot(b.cx - p.x, b.cy - p.y) <= b.r) || null; }
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -8627,6 +8788,7 @@ function drawOverlay() {
         else
             c.fillText(label, p.x, p.y - 12);
     }
+    drawSlots(c);
     if (state.hover && !state.selection.has(state.hover) && state.tool === 'select' && !state.gesture && !state.editing) {
         const s = doc.world(state.hover);
         if (s)
@@ -8871,9 +9033,9 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
         if (world.x < s.box.x - tol || world.x > s.box.x + s.box.w + tol ||
             world.y < s.box.y - tol || world.y > s.box.y + s.box.h + tol)
             continue;
-        // A top-level frame or section that already holds layers is only picked through its label or the layers panel,
-        // so clicking its empty area no longer grabs (and drags) the whole frame.
-        if (!framesOnly && !deep && n.type === 'frame' && !n.componentSet && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
+        // A plain top-level frame that already holds layers is only picked through its label, the layers panel or a selection box,
+        // so clicking its empty area no longer grabs (and drags) the whole frame. Sections and auto layout frames are picked by a click.
+        if (!framesOnly && !deep && n.type === 'frame' && !n.componentSet && !n.isSection && !isAutoLayout(n) && (!n.parentId || doc.get(n.parentId)?.isSection) && doc.children(n.id).length)
             continue;
         let clipped = false;
         for (const clip of s.clips) {
@@ -8902,13 +9064,16 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
                 const anc = doc.ancestors(n), variantOf = [n, ...anc].find(a => a.component && doc.get(a.parentId)?.componentSet);
                 if (variantOf)
                     return variantOf;
-                const groups = anc.filter(p => p.type === 'group' || p.booleanOp || p.isInstance || p.component);
-                // Inside an auto layout frame a click always picks that frame first (the outermost one); Ctrl/Cmd reaches the smallest node.
-                if (groups.length)
-                    return groups[0];
-                const auto = anc.filter(isAutoLayout).pop();
-                if (auto)
-                    return auto;
+                // A click picks the outermost container above the layer: a group / instance / component, or an auto layout frame
+                // (so nothing inside an auto layout or an instance is picked directly); Ctrl/Cmd reaches the smallest node.
+                // An empty slot of an instance is the exception: it is picked directly (its "+" placeholder).
+                const container = p => p.type === 'group' || p.booleanOp || p.isInstance || p.component || p.type === 'frame' && isAutoLayout(p);
+                const slotAt = [n, ...anc].findIndex(a => a.propBind?.slot && a.sourceId);
+                if (slotAt === 0 && !doc.children(n.id).length)
+                    return n;
+                const outer = anc.filter(container).pop();
+                if (outer)
+                    return outer;
             }
             return n;
         }
@@ -9061,7 +9226,7 @@ function pointerDown(e) {
             refocusText();
             return;
         }
-        const parent = resolveSetTarget(hitTest(w, { framesOnly: true }), w), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
+        const parent = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w)), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
         state.tool = 'select';
         $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === 'select'));
         startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, parent ? '#302937' : options.theme === 'dark' ? '#efe8f8' : '#302937');
@@ -9072,7 +9237,7 @@ function pointerDown(e) {
         history.begin('Draw ' + state.tool);
         const isSection = state.tool === 'section';
         // A section is the outermost container, so it is always created at the top level of the page.
-        const under = resolveSetTarget(hitTest(w, { framesOnly: true }), w),
+        const under = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w)),
             // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
             parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
         const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: type === 'rect' ? 8 : 0 }));
@@ -9082,6 +9247,12 @@ function pointerDown(e) {
         if (type === 'frame') { state.gesture.origFill = n.fill; n.fill = 'none'; }
         refreshUI();
         invalidate();
+        return;
+    }
+    const badge = state.tool === 'select' && !e.shiftKey ? slotBadgeAt(p) : null;
+    if (badge) {
+        select([badge.id]);
+        openAddInstances(badge.id);
         return;
     }
     const arcN = state.tool === 'select' && state.arcShow ? arcSelected() : null;
@@ -9132,6 +9303,18 @@ function pointerDown(e) {
         if (owner)
             hit = owner;
     }
+    // A selected frame / auto layout / section moves when dragged from anywhere inside its box (over its layers too);
+    // a plain click without dragging still picks the layer under the cursor.
+    let pendingPick = null;
+    if (hit && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && !labelHit && state.selection.size === 1) {
+        const cont = doc.get([...state.selection][0]), cs = cont && cont.type === 'frame' && !cont.locked ? doc.world(cont.id) : null;
+        if (cs && !cs.locked && hit.id !== cont.id && doc.children(cont.id).length
+            && w.x >= cs.box.x && w.x <= cs.box.x + cs.box.w && w.y >= cs.box.y && w.y <= cs.box.y + cs.box.h
+            && doc.ancestors(hit).some(a => a.id === cont.id)) {
+            pendingPick = hit;
+            hit = cont;
+        }
+    }
     if (hit) {
         if (e.shiftKey) {
             if (state.selection.has(hit.id))
@@ -9151,7 +9334,7 @@ function pointerDown(e) {
             select(altDuplicate(selectedRoots()).map(n => n.id));
         }
         const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
-        state.gesture = { kind: 'move', altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
+        state.gesture = { kind: 'move', pendingPick: pendingPick?.id || null, altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
     }
     else if (keepTextId && state.tool === 'select' && !e.shiftKey) {
         // Clicking empty canvas while typing only exits edit mode; the text layer stays selected (like Figma).
@@ -9273,10 +9456,17 @@ function pointerMove(e) {
                 state.arcShow = arcOn;
                 invalidate();
             }
+            const onBadge = slotBadgeAt(p);
+            if ((onBadge?.id || null) !== (state.badgeHover || null)) {
+                state.badgeHover = onBadge?.id || null;
+                invalidate();
+            }
             const hit = (!e.ctrlKey && !e.metaKey && !e.altKey && siblingHit(w)) || hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
             overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', n: 'ns-resize', ne: 'nesw-resize', e: 'ew-resize', se: 'nwse-resize', s: 'ns-resize', sw: 'nesw-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
+            if (onBadge)
+                overlay.style.cursor = 'pointer';
             if (hover !== state.hover) {
                 state.hover = hover;
                 invalidate();
@@ -9733,6 +9923,9 @@ function pointerUp(e) {
         else {
             if (history.pending && history.pending.label === 'Move layers')
                 history.cancel();
+            // Pressed a layer inside the selected container without dragging: that is a click on the layer.
+            if (g.pendingPick && doc.get(g.pendingPick))
+                select([g.pendingPick]);
             refreshUI();
         }
     }
@@ -11104,6 +11297,18 @@ function syncInstanceStructure(activeOnly = true) {
                 sources.set(n.id, n);
     const targetPages = activeOnly ? [doc.page] : doc.data.pages;
     for (const page of targetPages) {
+        // Layers placed in a slot of an instance belong to the instance: they are not part of the main component.
+        let pnLen = -1, pn = null;
+        const slotOf = (n, rootId) => {
+            if (pnLen !== page.nodes.length) {
+                pn = new Map(page.nodes.map(x => [x.id, x]));
+                pnLen = page.nodes.length;
+            }
+            for (let p = pn.get(n.parentId), i = 0; p && p.id !== rootId && i < 200; p = pn.get(p.parentId), i++)
+                if (p.propBind?.slot && p.sourceId)
+                    return p;
+            return null;
+        };
         for (const root of [...page.nodes]) {
             if (!root.isInstance || !root.sourceId)
                 continue;
@@ -11121,7 +11326,7 @@ function syncInstanceStructure(activeOnly = true) {
                 if (slotKey(n))
                     bySource.set(slotKey(n), n);
             for (const n of inst)
-                if (slotKey(n) && !srcIds.has(slotKey(n))) {
+                if (slotKey(n) && !srcIds.has(slotKey(n)) && !slotOf(n, root.id)) {
                     const gone = new Set([n.id, ...pageTree(page, n.id).map(x => x.id)]);
                     page.nodes = page.nodes.filter(x => !gone.has(x.id));
                     bySource.delete(slotKey(n));
@@ -11134,6 +11339,10 @@ function syncInstanceStructure(activeOnly = true) {
                 const parent = s.parentId === src.id ? root : bySource.get(s.parentId);
                 // A swapped nested instance is skipped while its outer instance syncs, but it builds its own layers when it is the root.
                 if (!parent || parent !== root && parent.swapOf)
+                    continue;
+                // A slot the instance has edited keeps exactly what the instance put (or left) there.
+                const owner = parent.propBind?.slot && parent.sourceId ? parent : parent === root ? null : slotOf(parent, root.id);
+                if (owner?.slotOwned)
                     continue;
                 const c = structuredClone(s);
                 c.id = uid();
@@ -11765,7 +11974,7 @@ function isInLibComp(n, c, snap, map) {
     }
     return false;
 }
-async function libInstantiate(libId, compId, at = null) {
+async function libInstantiate(libId, compId, at = null, parent = null) {
     const snap = await libSnap(libId);
     const entry = snap?.components.find(c => c.id === compId);
     if (!entry) {
@@ -11779,7 +11988,7 @@ async function libInstantiate(libId, compId, at = null) {
     }
     const main = root.componentSet ? page.nodes.find(n => n.parentId === root.id && n.component) : root;
     if (main)
-        instantiate(main.id, at);
+        instantiate(main.id, at, parent);
 }
 async function libUpdate(libId) {
     const snap = await libSnap(libId, true);
@@ -12039,7 +12248,7 @@ function componentBlockHtml(n) {
         const vs = setVariants(n);
         return `<div class="cmp-block main">${variantEditorHtml(n, null)}</div>`;
     }
-    if (!n.sourceId)
+    if (!n.sourceId && !inComponentTree(n))
         return `<div class="cmp-block"><button class="cmp-btn wide" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
     return '';
 }
@@ -12101,7 +12310,7 @@ function selNameHtml(n, multi, ns) {
         return `<span class="selection-name">${ns.length} layers selected</span>`;
     if (n.component && parentSetOf(n))
         return `<span class="selection-name">${esc(n.name)}</span>`;
-    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200" style="width:${Math.min(Math.max(String(n.name).length + 1, 4), 28)}ch">`;
+    const input = `<input class="selection-name selection-name-input" data-rename-inline value="${esc(n.name)}" aria-label="Layer name" spellcheck="false" maxlength="200" style="width:calc(${Math.min(Math.max(String(n.name).length + 1, 5), 28)}ch + 14px)">`;
     // Frame / section / group can switch kind from a chevron next to the name.
     return input + headerChevronHtml(n);
 }
@@ -12197,6 +12406,214 @@ document.addEventListener('click', e => {
     }
     showMenu(items, Math.max(8, r.right - 220), r.bottom + 4);
 });
+// ===== Add instances window (for slots) =====
+let addInst = null;
+function closeAddInstances() {
+    if (!addInst)
+        return;
+    document.removeEventListener('pointerdown', addInst.away, true);
+    addInst.el.remove();
+    addInst = null;
+}
+function addInstEntries(src) {
+    // [{ group, id, name, variants, lib }] — components of this file grouped by page, or of a library.
+    const out = [];
+    if (src === 'file') {
+        for (const page of doc.data.pages) {
+            if (/^Library \u00b7/.test(page.name))
+                continue;
+            for (const n of page.nodes) {
+                if (/^[_.]/.test(n.name) || n.libRef)
+                    continue;
+                if (n.componentSet)
+                    out.push({ group: page.name.trim() || 'Untitled', pageId: page.id, id: n.id, name: n.name, variants: page.nodes.filter(v => v.parentId === n.id && v.component).length });
+                else if (n.component && !doc.get(n.parentId)?.componentSet)
+                    out.push({ group: page.name.trim() || 'Untitled', pageId: page.id, id: n.id, name: n.name, variants: 0 });
+            }
+        }
+    }
+    else {
+        const snap = LIBS.snaps.get(src);
+        for (const c of snap?.components || [])
+            if (!/^[_.]/.test(c.name))
+                out.push({ group: snap.name, id: c.id, name: c.name, variants: c.set ? c.nodes.filter(v => v.parentId === c.id && v.component).length : 0, lib: src });
+    }
+    return out;
+}
+function renderAddInstances() {
+    const w = addInst;
+    if (!w)
+        return;
+    const q = w.q.trim().toLowerCase(), sources = [['file', 'Created in this file'], ...(LIBS.use || []).filter(u => LIBS.snaps.get(u.id)).map(u => [u.id, LIBS.snaps.get(u.id).name])];
+    let entries = addInstEntries(w.src);
+    if (w.restrict)
+        entries = entries.filter(e => w.restrict.has(e.id));
+    if (w.kind === 'component')
+        entries = entries.filter(e => !e.variants);
+    else if (w.kind === 'set')
+        entries = entries.filter(e => e.variants);
+    const groups = [...new Set(entries.map(e => e.group))];
+    const item = e => `<button class="ai-row item" data-ai-comp="${e.id}" ${e.lib ? `data-ai-lib="${e.lib}"` : ''}><span class="ai-ico">${icon('component', 14)}</span><span class="ai-name">${esc(e.name)}</span>${e.variants ? `<small>${e.variants} variants</small>` : ''}</button>`;
+    let body;
+    if (q)
+        body = entries.filter(e => e.name.toLowerCase().includes(q)).map(item).join('') || '<div class="ai-empty">No components match.</div>';
+    else if (w.folder && groups.includes(w.folder))
+        body = `<button class="ai-row back" data-ai-back>${icon('chevronLeft', 12)}<span class="ai-name">${esc(w.folder)}</span></button>` + entries.filter(e => e.group === w.folder).map(item).join('');
+    else if (w.src !== 'file' || groups.length < 2 && w.src !== 'file')
+        body = entries.map(item).join('') || '<div class="ai-empty">No components yet.</div>';
+    else
+        body = groups.map(g => `<button class="ai-row folder" data-ai-folder="${esc(g)}"><span class="ai-ico">${icon('folder', 14)}</span><span class="ai-name">${esc(g)}</span><span class="ai-chev">${icon('chevronRight', 12)}</span></button>`).join('') || '<div class="ai-empty">No components yet.</div>';
+    const keep = w.el.querySelector('[data-ai-search]'), had = keep && document.activeElement === keep;
+    w.el.innerHTML = `<div class="pp-head"><span>${w.pick ? 'Preferred instances' : 'Add instances'}</span><button class="icon-button small" data-ai-close aria-label="Close">${icon('close', 14)}</button></div>
+<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-ai-search placeholder="Search in this library" value="${esc(w.q)}" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-ai-src aria-label="Library">${sources.map(([id, l]) => `<option value="${esc(id)}" ${id === w.src ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label><button class="icon-button small ${w.kind ? 'active' : ''}" data-ai-filter title="Filter" aria-label="Filter">${icon('sliders', 14)}</button></div></div>
+<div class="ai-list">${body}</div>`;
+    if (had) {
+        const i = w.el.querySelector('[data-ai-search]');
+        i.focus();
+        i.setSelectionRange(i.value.length, i.value.length);
+    }
+}
+function openAddInstances(slotId, opts = {}) {
+    closeAddInstances();
+    const slot = slotId && doc.get(slotId);
+    if (slotId && !slot)
+        return;
+    const p = slot && cpropById(slot.propBind?.slot);
+    const el = document.createElement('div');
+    el.className = 'prop-pop add-inst';
+    document.body.appendChild(el);
+    addInst = { el, slotId, q: '', src: 'file', folder: null, kind: '', pick: opts.pick || null, restrict: !opts.pick && p?.onlyPreferred && p.preferred?.length ? new Set(p.preferred) : null };
+    addInst.away = ev => { if (!el.contains(ev.target) && !ev.target.closest('.stp-menu, [data-cmp="edit-cprop"]'))
+        closeAddInstances(); };
+    setTimeout(() => addInst && document.addEventListener('pointerdown', addInst.away, true), 0);
+    // Libraries in use may not be loaded yet.
+    libsLoad().then(() => Promise.all((LIBS.use || []).map(u => libSnap(u.id)))).then(() => addInst && renderAddInstances()).catch(() => { });
+    renderAddInstances();
+    // Next to the slot on the canvas (or next to the property window).
+    let x = innerWidth / 2, y = 120;
+    if (slot) {
+        const s = doc.world(slot.id), r = area.getBoundingClientRect();
+        if (s) {
+            const q = worldToScreen(s.box.x + s.box.w, s.box.y);
+            x = r.left + q.x + 12;
+            y = r.top + q.y;
+        }
+    }
+    else if (opts.anchor) {
+        const r = opts.anchor.getBoundingClientRect();
+        x = r.left - el.offsetWidth - 12;
+        y = r.top;
+    }
+    el.style.left = Math.max(8, Math.min(x, innerWidth - el.offsetWidth - 8)) + 'px';
+    el.style.top = Math.max(8, Math.min(y, innerHeight - el.offsetHeight - 8)) + 'px';
+    el.addEventListener('keydown', ev => { if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        closeAddInstances();
+    } });
+    el.addEventListener('input', ev => {
+        if (ev.target.matches('[data-ai-search]')) {
+            addInst.q = ev.target.value;
+            renderAddInstances();
+        }
+    });
+    el.addEventListener('change', ev => {
+        if (ev.target.matches('[data-ai-src]')) {
+            addInst.src = ev.target.value;
+            addInst.folder = null;
+            renderAddInstances();
+        }
+    });
+    el.addEventListener('click', ev => {
+        const t = ev.target;
+        let b;
+        if (t.closest('[data-ai-close]'))
+            closeAddInstances();
+        else if (t.closest('[data-ai-back]')) {
+            addInst.folder = null;
+            renderAddInstances();
+        }
+        else if ((b = t.closest('[data-ai-folder]'))) {
+            addInst.folder = b.dataset.aiFolder;
+            renderAddInstances();
+        }
+        else if (t.closest('[data-ai-filter]'))
+            openPopMenu(t.closest('[data-ai-filter]'), [['', 'All'], ['component', 'Components'], ['set', 'Component sets']].map(([k, l]) => ({ label: l, checked: addInst.kind === k, run: () => { addInst.kind = k; renderAddInstances(); } })));
+        else if ((b = t.closest('[data-ai-comp]'))) {
+            const id = b.dataset.aiComp, lib = b.dataset.aiLib || null, w = addInst;
+            if (w.pick) {
+                w.pick(id);
+                closeAddInstances();
+            }
+            else {
+                closeAddInstances();
+                addInstanceToSlot(w.slotId, id, lib);
+            }
+        }
+    });
+}
+async function addInstanceToSlot(slotId, compId, libId = null) {
+    const slot = doc.get(slotId), prop = slot && cpropById(slot.propBind?.slot);
+    if (!slot)
+        return;
+    if (!slot.slotOwned) {
+        slot.slotOwned = true;
+        doc.touch(slot);
+    }
+    if (prop?.max && doc.children(slot.id).length >= prop.max)
+        return toast(`This slot holds at most ${prop.max} layer${prop.max === 1 ? '' : 's'}.`);
+    if (libId)
+        await libInstantiate(libId, compId, null, slot);
+    else {
+        // A component set drops its default variant.
+        const set = doc.get(compId)?.componentSet || allNodes().find(n => n.id === compId)?.componentSet;
+        const main = set ? allNodes().find(n => n.parentId === compId && n.component) : null;
+        instantiate(main ? main.id : compId, null, slot);
+    }
+}
+// A frame inside a main component can become a slot: instances drop their own layers into it.
+const SLOT_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 5.5v5M5.5 8h5"/></svg>';
+function canBeSlot(n) {
+    return !!n && n.type === 'frame' && !n.component && !n.componentSet && !n.isInstance && !n.isSection && !insideInstance(n) && !!holderForLayer(n);
+}
+function slotButtonHtml(n, multi) {
+    if (multi || !canBeSlot(n))
+        return '';
+    const on = !!n.propBind?.slot;
+    return `<button class="icon-button small ${on ? 'active' : ''}" data-action="convertSlot" title="${on ? 'Remove slot' : 'Convert to slot'} (Ctrl+Shift+S)" aria-label="${on ? 'Remove slot' : 'Convert to slot'}" aria-pressed="${on}">${SLOT_ICON}</button>`;
+}
+function convertToSlot(n = activeNode()) {
+    if (!canBeSlot(n))
+        return;
+    const holder = holderForLayer(n);
+    if (n.propBind?.slot) {
+        // Back to a normal frame: the slot property goes away with it.
+        const pid = n.propBind.slot;
+        transaction('Remove slot', () => {
+            delete n.propBind.slot;
+            if (!Object.keys(n.propBind).length)
+                delete n.propBind;
+            holder.cprops = cpropsOf(holder).filter(p => p.id !== pid);
+            if (!holder.cprops.length)
+                delete holder.cprops;
+            doc.touch(n);
+            doc.touch(holder);
+        });
+        return;
+    }
+    const taken = new Set([...cpropsOf(holder).map(p => p.name), ...(holder.componentSet ? variantProps(holder) : [])]);
+    let name = String(n.name || 'Slot').trim() || 'Slot', k = 1;
+    const base = name;
+    while (taken.has(name))
+        name = `${base} ${++k}`;
+    const p = { id: uid(), name, type: 'slot', def: null };
+    transaction('Convert to slot', () => {
+        holder.cprops = [...cpropsOf(holder), p];
+        bindLayer(holder, p, n.id);
+        doc.touch(holder);
+        doc.touch(n);
+    });
+    toast(`\u201c${name}\u201d is now a slot.`);
+}
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
         return '';
@@ -13008,6 +13425,18 @@ function openFloatingPop(anchor, state) {
     el.addEventListener('click', ev => {
         if (ev.target.closest('[data-pp-close]'))
             closeCpropPop();
+        else if (ev.target.closest('[data-cp-pref-add]')) {
+            const { holderId, pid } = cpropPop, holder = allNodes().find(n => n.id === holderId), p = holder && findCprop(holder, pid);
+            if (p)
+                openAddInstances(null, { anchor: ev.target.closest('[data-cp-pref-add]'), pick: id => { transaction('Add preferred instance', () => { p.preferred = [...new Set([...(p.preferred || []), id])]; doc.touch(holder); }); renderCpropPop(); } });
+        }
+        else if (ev.target.closest('[data-cp-pref-del]')) {
+            const { holderId, pid } = cpropPop, holder = allNodes().find(n => n.id === holderId), p = holder && findCprop(holder, pid), id = ev.target.closest('[data-cp-pref-del]').dataset.cpPrefDel;
+            if (p) {
+                transaction('Remove preferred instance', () => { p.preferred = (p.preferred || []).filter(x => x !== id); doc.touch(holder); });
+                renderCpropPop();
+            }
+        }
         else if (ev.target.closest('[data-cp-delete]')) {
             const { holderId, pid } = cpropPop;
             closeCpropPop();
@@ -13038,6 +13467,14 @@ function openFloatingPop(anchor, state) {
             }
             else if (t.matches('[data-cp-layer]'))
                 transaction('Bind property', () => { bindLayer(holder, p, t.value); doc.touch(holder); });
+            else if (t.matches('[data-cp-desc]'))
+                transaction('Slot description', () => { p.desc = t.value; doc.touch(holder); });
+            else if (t.matches('[data-cp-min], [data-cp-max]')) {
+                const v = t.value.trim() === '' ? null : Math.max(t.matches('[data-cp-max]') ? 1 : 0, Math.floor(+t.value) || 0);
+                transaction('Slot limits', () => { p[t.matches('[data-cp-max]') ? 'max' : 'min'] = v; doc.touch(holder); });
+            }
+            else if (t.matches('[data-cp-opt]'))
+                transaction('Slot settings', () => { p[t.dataset.cpOpt] = t.checked; doc.touch(holder); });
             else if (t.matches('[data-cp-def]'))
                 setPropDefault(holder, p.id, p.type === 'boolean' ? (t.type === 'checkbox' ? t.checked : t.value === 'true') : t.value);
         }
@@ -13083,11 +13520,11 @@ function renderCpropPop() {
     else if (p.type === 'instance')
         def = swapButtonHtml('data-swap-def', p.def);
     const layerLabel = { text: 'Text layer', boolean: 'Layer', instance: 'Instance', slot: 'Slot frame' }[p.type];
-    pp.el.innerHTML = head(`${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
+    pp.el.innerHTML = head(p.type === 'slot' ? `${CPROP_ICON[p.type]} Edit slot property` : `${CPROP_ICON[p.type]} ${CPROP_LABEL[p.type]} property`) +
         `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
-        (p.type === 'boolean' ? '' : `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>`) +
+        (p.type === 'boolean' || p.type === 'slot' ? '' : `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>`) +
         (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Value' : 'Default value'}</label>${def}</div>` : '') +
-        (p.type === 'slot' ? '<p class="pp-note">Instances can drop their own layers into this frame.</p>' : '') +
+        (p.type === 'slot' ? `<div class="pp-row col"><label>Description</label><textarea data-cp-desc rows="3" spellcheck="false" aria-label="Description" placeholder="Describe what belongs in this slot">${esc(p.desc || '')}</textarea></div><div class="pp-sec">Settings</div><div class="pp-row"><label>Minimum layers</label><input type="number" min="0" step="1" data-cp-min value="${p.min ?? ''}" placeholder="None" aria-label="Minimum layers"></div><div class="pp-row"><label>Maximum layers</label><input type="number" min="1" step="1" data-cp-max value="${p.max ?? ''}" placeholder="None" aria-label="Maximum layers"></div><label class="pp-check"><input type="checkbox" data-cp-opt="onlyPreferred" ${p.onlyPreferred ? 'checked' : ''}>Only allow preferred instances</label><label class="pp-check"><input type="checkbox" data-cp-opt="showEmpty" ${p.showEmpty ? 'checked' : ''}>By default, display empty slot</label><label class="pp-check"><input type="checkbox" data-cp-opt="fillCounter" ${p.fillCounter ? 'checked' : ''}>By default, fill items on slot's counter axis</label><div class="pp-sec row">Preferred instances<button class="icon-button small" data-cp-pref-add title="Add preferred instance" aria-label="Add preferred instance">${icon('plus', 14)}</button></div>${(p.preferred || []).map(id => `<div class="pp-pref"><span>${esc(allNodes().find(n => n.id === id)?.name || 'Missing component')}</span><button class="icon-button small" data-cp-pref-del="${id}" aria-label="Remove">${icon('minus', 14)}</button></div>`).join('')}` : '') +
         `<div class="pp-foot"><button class="cmp-btn wide" data-cp-delete>Delete property</button></div>`;
 }
 // Controls on an instance for the component's own properties and for exposed nested instances.
@@ -13108,7 +13545,7 @@ function instancePropsHtml(owner, holder) {
         if (p.type === 'instance')
             return swapButtonHtml(`data-swap-iprop="${p.id}" ${attrs}`, v);
         const page = pageOfNode(owner.id), slot = page && pageTree(page, owner.id).find(y => y.propBind?.slot === p.id);
-        return `<span class="cmp-slot">${CPROP_ICON.slot}${esc(slot?.name || 'Slot')} · drop layers in</span>`;
+        return slot ? `<button class="cmp-slot add" data-slot-add="${slot.id}" title="Add instances to this slot">${CPROP_ICON.slot}<span>${doc.children(slot.id).length ? `${doc.children(slot.id).length} layer${doc.children(slot.id).length === 1 ? '' : 's'}` : 'Empty'}</span><i>${icon('plus', 12)}</i></button>` : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
     };
     const row = (o, p, attrs) => `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.type]} ${esc(p.name)}</span><div class="cmp-ctl">${ctl(o, p, attrs)}</div></div>`;
     let html = cpropsOf(holder).map(p => row(owner, p)).join('');
@@ -13149,6 +13586,12 @@ document.addEventListener('change', e => {
     setInstanceProp(owner, el.dataset.iprop, el.type === 'checkbox' ? el.checked : el.value);
 });
 document.addEventListener('click', e => {
+    const sa = e.target.closest('#inspector [data-slot-add]');
+    if (sa && doc.get(sa.dataset.slotAdd)) {
+        select([sa.dataset.slotAdd]);
+        openAddInstances(sa.dataset.slotAdd);
+        return;
+    }
     const b = e.target.closest('#inspector [data-select-layer]');
     if (b)
         select([b.dataset.selectLayer]);
@@ -13167,13 +13610,18 @@ document.addEventListener('click', e => {
 });
 // Swap an instance to another variant of the same component set (position is kept, overrides are reset).
 function swapVariant(inst, prop, value) {
-    const src = componentById(inst.sourceId), set = src && parentSetOf(src);
+    const src = componentById(inst.sourceId) || chainComponent(inst), set = src && parentSetOf(src);
     if (!set)
         return;
     const sibs = setVariants(set), want = { ...(src.variant || {}), [prop]: value };
     const target = sibs.find(s => Object.entries(want).every(([k, v]) => s.variant?.[k] === v)) || sibs.find(s => s.variant?.[prop] === value);
     if (!target || target.id === src.id)
         return;
+    // A variant picked on an instance nested in another instance is a swap of that nested layer (kept through syncing with its container).
+    if (insideInstance(inst)) {
+        transaction('Swap variant', () => { swapNestedNode(inst, target.id); syncComponents(); });
+        return;
+    }
     transaction('Swap variant', () => {
         const page = pageOfNode(inst.id), gone = new Set(pageTree(page, inst.id).map(n => n.id));
         page.nodes = page.nodes.filter(n => !gone.has(n.id));
@@ -13844,6 +14292,74 @@ async function figToMidas(file, onProgress, abortSignal) {
         if (f.stackChildAlignSelf === 'STRETCH')
             n[horiz ? 'layoutSizingV' : 'layoutSizingH'] = 'fill';
     };
+    // Min / max width and height ({ value: { x, y } }; an unset side is 0 or null).
+    const applyMinMax = (n, f) => {
+        const num = v => Number.isFinite(v) && v > 0 ? v : null;
+        for (const [key, a, b] of [['minSize', 'minW', 'minH'], ['maxSize', 'maxW', 'maxH']]) {
+            if (f[key] === undefined)
+                continue;
+            const v = f[key]?.value || f[key], x = num(v?.x), y = num(v?.y);
+            if (x != null)
+                n[a] = x;
+            else
+                delete n[a];
+            if (y != null)
+                n[b] = y;
+            else
+                delete n[b];
+        }
+    };
+    // Per-instance overrides of a layer's size, auto layout, min / max, ratio, corners and stroke weight.
+    const LAYOUT_OV = ['stackSpacing', 'stackHorizontalPadding', 'stackVerticalPadding', 'stackPaddingRight', 'stackPaddingBottom', 'stackPrimarySizing', 'stackCounterSizing', 'stackPrimaryAlignItems', 'stackCounterAlignItems', 'stackWrap', 'stackCounterSpacing'];
+    const applyLayoutOverride = (c, ov, base, pf) => {
+        const m = { ...base, ...ov };
+        if (ov.size && Number.isFinite(ov.size.x) && Number.isFinite(ov.size.y)) {
+            c.w = ov.size.x;
+            c.h = ov.size.y;
+        }
+        if (LAYOUT_OV.some(k => ov[k] !== undefined) && (m.stackMode === 'HORIZONTAL' || m.stackMode === 'VERTICAL')) {
+            const keep = { h: c.layoutSizingH, v: c.layoutSizingV };
+            applyLayout(c, m);
+            // A layer that fills its parent keeps doing so: the override only changes its own content.
+            if (keep.h === 'fill')
+                c.layoutSizingH = 'fill';
+            if (keep.v === 'fill')
+                c.layoutSizingV = 'fill';
+        }
+        if (pf && (pf.stackMode === 'HORIZONTAL' || pf.stackMode === 'VERTICAL')) {
+            const horiz = pf.stackMode === 'HORIZONTAL', along = horiz ? 'layoutSizingH' : 'layoutSizingV', across = horiz ? 'layoutSizingV' : 'layoutSizingH';
+            if (ov.stackPositioning === 'ABSOLUTE')
+                c.layoutPositioning = 'absolute';
+            else if (ov.stackPositioning !== undefined)
+                delete c.layoutPositioning;
+            if (ov.stackChildPrimaryGrow !== undefined) {
+                if (ov.stackChildPrimaryGrow > 0)
+                    c[along] = 'fill';
+                else if (c[along] === 'fill')
+                    c[along] = 'fixed';
+            }
+            if (ov.stackChildAlignSelf !== undefined) {
+                if (ov.stackChildAlignSelf === 'STRETCH')
+                    c[across] = 'fill';
+                else if (c[across] === 'fill')
+                    c[across] = 'fixed';
+            }
+        }
+        applyMinMax(c, ov);
+        if (ov.proportionsConstrained !== undefined || ov.targetAspectRatio !== undefined) {
+            const tar = ov.targetAspectRatio?.value || ov.targetAspectRatio;
+            if ((ov.proportionsConstrained || tar?.x > 0 && tar?.y > 0) && c.w > 0 && c.h > 0) {
+                c.lockRatio = true;
+                c.aspect = tar?.x > 0 && tar?.y > 0 ? tar.x / tar.y : c.w / c.h;
+            }
+            else if (ov.proportionsConstrained === false) {
+                delete c.lockRatio;
+                delete c.aspect;
+            }
+        }
+        if (['cornerRadius', 'rectangleTopLeftCornerRadius', 'rectangleTopRightCornerRadius', 'rectangleBottomLeftCornerRadius', 'rectangleBottomRightCornerRadius'].some(k => ov[k] !== undefined) && (c.type === 'frame' || c.type === 'rect'))
+            applyRadius(c, m);
+    };
     const applyConstraints = (n, f0) => {
         // Groups and boolean operations have no constraints of their own in the file: Figma shows the ones of their layers.
         let f = f0;
@@ -14218,7 +14734,14 @@ async function figToMidas(file, onProgress, abortSignal) {
             applyEffects(n, f);
         }
         applyChildLayout(n, f, pf);
+        applyMinMax(n, f);
         applyVarBindings(n, f);
+        // "Lock aspect ratio": the older flag, or the newer target ratio ({ value: { x, y } }).
+        const tar = f.targetAspectRatio?.value || f.targetAspectRatio;
+        if ((f.proportionsConstrained || tar?.x > 0 && tar?.y > 0) && n.w > 0 && n.h > 0) {
+            n.lockRatio = true;
+            n.aspect = tar?.x > 0 && tar?.y > 0 ? tar.x / tar.y : n.w / n.h;
+        }
         if (f.type === 'SYMBOL')
             n.component = true;
         if (f.isStateGroup)
@@ -14745,10 +15268,19 @@ async function figToMidas(file, onProgress, abortSignal) {
                 applyEffects(c, ov);
             if (ov.fontSize)
                 c.fontSize = ov.fontSize;
+            {
+                const parentClone = [...clones.values()].find(x => x.id === c.parentId), pSrcId = c.id === n.id ? null : parentClone ? parentClone.sourceId : src.id;
+                applyLayoutOverride(c, ov, figOfMidas.get(targetSrc), pSrcId ? figOfMidas.get(pSrcId) : null);
+            }
             for (const key of Object.keys(c))
                 if (!['id', 'parentId', 'sourceId', 'component', 'isInstance', 'overrides', 'version'].includes(key) && (c[key] !== null && typeof c[key] === 'object' ? JSON.stringify(c[key]) !== JSON.stringify(before[key]) : c[key] !== before[key]))
                     c.overrides[key] = structuredClone(c[key]);
         }
+        // How the instance itself sits in its parent and lays out its content (Fill / Hug, gap, padding, min / max, ratio) is its own:
+        // keep every difference from the main component as an override, otherwise syncing with it resets e.g. Fill back to Hug.
+        for (const key of ['layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'gap', 'gapAuto', 'gapMode', 'gapCross', 'padding', 'padL', 'padT', 'padR', 'padB', 'primaryAlign', 'counterAlign', 'layoutWrap', 'minW', 'minH', 'maxW', 'maxH', 'lockRatio', 'aspect'])
+            if (n[key] !== undefined && JSON.stringify(n[key]) !== JSON.stringify(src[key]))
+                n.overrides[key] = structuredClone(n[key]);
         // The variable modes and bindings the instance itself carries (its Appearance in Figma) differ from the main component:
         // keep them as overrides, otherwise syncing with the main component resets them to the defaults.
         for (const key of ['varModes', 'vars'])
@@ -15937,7 +16469,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -17146,18 +17678,25 @@ area.addEventListener('dragover', e => {
     if ([...e.dataTransfer.types].includes('Files'))
         e.dataTransfer.dropEffect = 'copy';
 });
+// The frame a component dropped at `w` goes into: the frame under the pointer (a slot when it is inside an instance), or null for the page.
+function dropFrameAt(w) {
+    const t = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w));
+    return t && t.type === 'frame' && !t.component && !t.componentSet ? t : null;
+}
 area.addEventListener('drop', e => {
     const libComp = e.dataTransfer.getData('application/x-midas-libcomp');
     if (libComp) {
         e.preventDefault();
         const [lid, cid] = libComp.split(':');
-        libInstantiate(lid, cid, eventWorld(e));
+        const w = eventWorld(e);
+        libInstantiate(lid, cid, w, dropFrameAt(w));
         return;
     }
     const compId = e.dataTransfer.getData('application/x-midas-component');
     if (compId) {
         e.preventDefault();
-        instantiate(compId, eventWorld(e));
+        const w = eventWorld(e);
+        instantiate(compId, w, dropFrameAt(w));
         return;
     }
     if (e.dataTransfer.files.length) {
@@ -17683,6 +18222,11 @@ document.addEventListener('keydown', e => {
             return;
         }
         if (key === 's') {
+            if (e.shiftKey) {
+                e.preventDefault();
+                convertToSlot();
+                return;
+            }
             saveFile();
             return;
         }

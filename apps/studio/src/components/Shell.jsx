@@ -6,10 +6,9 @@ const RailIcon = ({ children, viewBox = '0 0 24 24', strokeWidth = 1.5 }) => (
     <svg width="18" height="18" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
 );
 
-const VariablesIcon = ({ size }) => (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-        <circle cx="5" cy="5" r="2.6" /><circle cx="11" cy="5" r="2.6" /><circle cx="5" cy="11" r="2.6" /><circle cx="11" cy="11" r="2.6" />
-    </svg>
+// Same grid, size and stroke as the other rail icons.
+const VariablesIcon = () => (
+    <RailIcon><circle cx="7.5" cy="7.5" r="3.5" /><circle cx="16.5" cy="7.5" r="3.5" /><circle cx="7.5" cy="16.5" r="3.5" /><circle cx="16.5" cy="16.5" r="3.5" /></RailIcon>
 );
 
 export function Topbar({ user }) {
@@ -51,7 +50,7 @@ export function LeftRail() {
             <button className="rail-btn" data-rail="assets" title="Components" aria-label="Components">
                 <RailIcon><path d="m12 2 4 4-4 4-4-4ZM18 8l4 4-4 4-4-4ZM6 8l4 4-4 4-4-4ZM12 14l4 4-4 4-4-4Z" /></RailIcon>
             </button>
-            <button className="rail-btn" data-rail="variables" title="Variables" aria-label="Variables"><VariablesIcon size={18} /></button>
+            <button className="rail-btn" data-rail="variables" title="Variables" aria-label="Variables"><VariablesIcon /></button>
             <button className="rail-btn" data-rail="plugins" title="Plugins" aria-label="Plugins">
                 <RailIcon><path d="M9 3v3.2a1.8 1.8 0 0 1-1.8 1.8H4v4h1.6a1.9 1.9 0 1 1 0 3.8H4V19a2 2 0 0 0 2 2h3.2v-1.6a1.9 1.9 0 1 1 3.8 0V21H16a2 2 0 0 0 2-2v-3.2h1.6a1.9 1.9 0 1 0 0-3.8H18V8a2 2 0 0 0-2-2h-1.2V4.4a1.9 1.9 0 1 0-3.8 0V3Z" /></RailIcon>
             </button>
