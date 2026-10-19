@@ -268,7 +268,8 @@ function LibraryLine({ project, onChange }) {
 }
 
 function ModuleForm({ pages, modules, currentPage, initial, onCancel, onSave }) {
-    const usable = pages.filter(p => !p.folder);
+    // Only pages flagged "Use in Code Builder" (page context menu) are module sources; a module being edited keeps its own page.
+    const usable = pages.filter(p => p.codeBuilder || p.id === initial?.pageId);
     const [pageId, setPageId] = useState(initial?.pageId || (usable.some(p => p.id === currentPage) ? currentPage : usable[0]?.id || ''));
     const pageName = usable.find(p => p.id === pageId)?.name || '';
     const [label, setLabel] = useState(initial?.label || pageName);
@@ -285,11 +286,12 @@ function ModuleForm({ pages, modules, currentPage, initial, onCancel, onSave }) 
             onSave({ pageId, label: label.trim() || name, name, parentId: parentId || null, ...(permissionKey ? { permissionKey } : {}) });
         }}>
             <b>{initial ? 'Edit module' : 'New module'}</b>
-            <label>Source page<Select value={pageId} onChange={e => {
+            <label>Source page<Select value={pageId} disabled={!usable.length} onChange={e => {
                 setPageId(e.target.value);
                 const n = usable.find(p => p.id === e.target.value)?.name || '';
                 if (!touched) { setLabel(n); setName(kebabCase(n)); }
-            }}>{usable.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>
+            }}>{usable.length ? usable.map(p => <option key={p.id} value={p.id}>{p.name}</option>) : <option value="">No flagged pages</option>}</Select></label>
+            {!usable.length && <small className="cb-hint">Flag a page first: right-click it in the Pages list and choose “Use in Code Builder”.</small>}
             <label>Label<input value={label} onChange={e => { setLabel(e.target.value); if (!touched) setName(kebabCase(e.target.value)); }} /></label>
             <label>Folder name (kebab-case)<input className={valid && !taken ? '' : 'invalid'} value={name} onChange={e => { setName(e.target.value); setTouched(true); }} /></label>
             {!valid && <small className="cb-error">Huruf kecil & tanda hubung, mis. user-management</small>}
@@ -299,7 +301,7 @@ function ModuleForm({ pages, modules, currentPage, initial, onCancel, onSave }) 
                 {modules.filter(m => m.id !== initial?.id).map(m => <option key={m.id} value={m.id}>{m.label} ({m.name})</option>)}
             </Select></label>
             <label>Permission key<input placeholder={name} value={permissionKey} onChange={e => setPermissionKey(e.target.value)} /></label>
-            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Cancel</button><button className="wide-button primary" disabled={!valid || taken}>Save</button></div>
+            <div className="cb-form-actions"><button type="button" className="wide-button" onClick={onCancel}>Cancel</button><button className="wide-button primary" disabled={!valid || taken || !pageId}>Save</button></div>
         </form>
     );
 }
@@ -314,6 +316,17 @@ function ModuleTree({ modules, parentId = null, depth = 0, ...rest }) {
     ));
 }
 
+const Chevron = ({ open }) => <svg className={`cb-chev ${open ? 'open' : ''}`} width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const RevealIcon = () => <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="8" cy="8" r="3.2" /><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15" /></svg>;
+const CloseIcon = () => <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="m2.5 2.5 7 7m0-7-7 7" /></svg>;
+
+/** `src/modules/<parent>/<child>`: the folder the generator writes the module to. */
+const moduleDir = (modules, m) => {
+    const parts = [];
+    for (let c = m, n = 0; c && n < 20; c = modules.find(x => x.id === c.parentId), n++) parts.unshift(c.name);
+    return `src/modules/${parts.join('/')}`;
+};
+
 function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, issues, onOpenScreen, onReveal, form, setForm, selection, byId, onUpdate, onRemove }) {
     const isOpen = open.has(m.name);
     const crud = m.screens.some(s => CRUD_ROLES.includes(s.role));
@@ -323,31 +336,39 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
     return (
         <div className="cb-module" style={{ '--depth': depth }}>
             <div className="cb-module-row" onClick={() => setOpen(s => { const n = new Set(s); n.has(m.name) ? n.delete(m.name) : n.add(m.name); return n; })}>
-                <span className="cb-caret">{isOpen ? '▾' : '▸'}</span>
-                <span className="cb-module-name" title={`${m.name} · page ${pageName}`}>{m.label}</span>
-                <span className="cb-badge">{m.screens.length ? (crud ? 'CRUD' : 'custom') : 'empty'}</span>
+                <span className="cb-caret"><Chevron open={isOpen} /></span>
+                <span className="cb-module-name" title={`${m.label} · ${moduleDir(modules, m)}`}>{m.label}</span>
+                <span className="cb-badge">{m.screens.length ? (crud ? 'CRUD' : 'custom') : modules.some(c => c.parentId === m.id) ? 'group' : 'empty'}</span>
                 {count > 0 && <span className="cb-badge warn" title={`${count} issue`}>{count}</span>}
             </div>
             {isOpen && (
                 <div className="cb-module-body">
-                    <div className="small-label cb-mono">src/modules/{m.name} · page {pageName}</div>
+                    <dl className="cb-module-meta">
+                        <dt>Folder</dt><dd className="cb-mono-wrap">{moduleDir(modules, m)}</dd>
+                        <dt>Page</dt><dd>{pageName}</dd>
+                    </dl>
                     {m.screens.map(s => (
                         <div key={s.id} className={`cb-screen ${screenId === s.id ? 'active' : ''}`}>
-                            <span className={`cb-role r-${s.role}`}>{ROLE_LABEL[s.role]}</span>
-                            <button className="cb-screen-name" title="Open in the Live DOM Renderer" onClick={() => onOpenScreen(s.id)}>{s.name}{!byId.has(s.frameId) && ' ⚠'}</button>
-                            <button className="icon-button small" title="Show frame on the canvas" aria-label="Show frame" onClick={() => onReveal(s.frameId)}>◎</button>
-                            <button className="icon-button small" title="Unregister screen" aria-label="Unregister screen" onClick={() => onUpdate(m.id, mm => ({ screens: mm.screens.filter(x => x.id !== s.id) }))}>×</button>
+                            <span className={`cb-role r-${s.role}`} title={s.role === 'dialog' && s.purpose ? `Dialog · ${s.purpose}` : ROLE_LABEL[s.role]}>{ROLE_LABEL[s.role]}</span>
+                            <button className="cb-screen-name" title={`${s.name} — open in the Live DOM Renderer`} onClick={() => onOpenScreen(s.id)}>{s.name}{!byId.has(s.frameId) && ' ⚠'}</button>
+                            <span className="cb-screen-actions">
+                                <button className="cb-icon-btn" title="Show frame on the canvas" aria-label="Show frame" onClick={() => onReveal(s.frameId)}><RevealIcon /></button>
+                                <button className="cb-icon-btn danger" title="Unregister screen" aria-label="Unregister screen" onClick={() => onUpdate(m.id, mm => ({ screens: mm.screens.filter(x => x.id !== s.id) }))}><CloseIcon /></button>
+                            </span>
                         </div>
                     ))}
-                    {registering
-                        ? <ScreenForm module={m} selection={selection} onCancel={() => setForm(null)} onSave={s => { onUpdate(m.id, mm => ({ screens: [...mm.screens, { id: uid('scr'), ...s }] })); setForm(null); }} />
-                        : <button className="cb-link" onClick={() => setForm({ screenFor: m.id })}>＋ Register frame</button>}
-                    {crud && (fields
-                        ? <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-link" onClick={() => setForm(null)}>Done</button></>
-                        : <button className="cb-link" onClick={() => setForm({ fieldsFor: m.id })}>Entity fields ({m.entity?.fields?.length || 0})</button>)}
-                    {editing
-                        ? <ModuleForm pages={pages} modules={modules} initial={m} onCancel={() => setForm(null)} onSave={v => { onUpdate(m.id, () => v); setForm(null); }} />
-                        : <div className="cb-row-actions"><button className="cb-link" onClick={() => setForm({ editModule: m.id })}>Edit</button><button className="cb-link danger" onClick={async () => (await confirmDialog({ title: `Delete module ${m.name}?`, message: 'Its screens and entity fields are removed from the project. Frames in the design are not deleted.', confirmLabel: 'Delete', danger: true })) && onRemove(m.id)}>Delete</button></div>}
+                    {registering && <ScreenForm module={m} selection={selection} onCancel={() => setForm(null)} onSave={s => { onUpdate(m.id, mm => ({ screens: [...mm.screens, { id: uid('scr'), ...s }] })); setForm(null); }} />}
+                    {fields && <><EntityEditor module={m} modules={modules} onChange={f => onUpdate(m.id, () => ({ entity: { fields: f } }))} /><button className="cb-pill" onClick={() => setForm(null)}>Done</button></>}
+                    {editing && <ModuleForm pages={pages} modules={modules} initial={m} onCancel={() => setForm(null)} onSave={v => { onUpdate(m.id, () => v); setForm(null); }} />}
+                    {!registering && !fields && !editing && (
+                        <div className="cb-module-actions">
+                            <button className="cb-pill primary" onClick={() => setForm({ screenFor: m.id })}>＋ Register frame</button>
+                            {crud && <button className="cb-pill" onClick={() => setForm({ fieldsFor: m.id })}>Entity fields <b>{m.entity?.fields?.length || 0}</b></button>}
+                            <span className="cb-spacer" />
+                            <button className="cb-pill" onClick={() => setForm({ editModule: m.id })}>Edit</button>
+                            <button className="cb-pill danger" onClick={async () => (await confirmDialog({ title: `Delete module ${m.name}?`, message: 'Its screens and entity fields are removed from the project. Frames in the design are not deleted.', confirmLabel: 'Delete', danger: true })) && onRemove(m.id)}>Delete</button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

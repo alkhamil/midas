@@ -283,7 +283,8 @@ const addPage = (name, specs, parentName = null) => {
         frames.push({ page: name, name: spec.inner ?? spec.name, id: built.find(n => n.name === (spec.inner ?? spec.name)).id });
         x += built[0].w + 120;
     });
-    pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: parentName ? ids.get(`page:${parentName}`) : null });
+    // Flagged "Use in Code Builder": these pages are the module sources offered in the Code Builder.
+    pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: parentName ? ids.get(`page:${parentName}`) : null, codeBuilder: true });
 };
 addPage('User', userScreens);
 addPage('Role', roleScreens);
