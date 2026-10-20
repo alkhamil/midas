@@ -62,7 +62,12 @@ export interface ComponentMapping {
     componentKey: string;
     componentName: string;
     exportName: string;
-    propsMap: { props: PropMapping[] };
+    /**
+     * `implementation`: how the code of this component comes about. `design` = generated from the design (any component);
+     * `standard:<Name>` = the behaviour of a component of Midas' standard kit (the design supplies tokens and props). Absent
+     * means automatic: `standard:<exportName>` when the standard kit has that component, otherwise `design`.
+     */
+    propsMap: { props: PropMapping[]; implementation?: string };
 }
 
 const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).filter(Boolean);
@@ -148,6 +153,7 @@ export function deriveMappings(snapshot: LibrarySnapshot, previous: ComponentMap
             ...d,
             exportName: p.exportName,
             propsMap: {
+                ...(p.propsMap.implementation ? { implementation: p.propsMap.implementation } : {}),
                 props: d.propsMap.props.map(x => {
                     const o = pp.get(`${x.source}:${x.key}`);
                     if (!o || o.type !== x.type)
@@ -260,4 +266,28 @@ export function compareSemver(a: string, b: string): number {
 export function bumpSemver(v: string, part: 'major' | 'minor' | 'patch'): string {
     const [M, m, p] = parseSemver(v)!;
     return part === 'major' ? `${M + 1}.0.0` : part === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`;
+}
+
+/**
+ * Components the chosen ones are built from: every component whose main component (or variant) an instance inside a chosen
+ * component points to, transitively. They travel with the snapshot as internal parts, so code can be generated from them.
+ */
+export function dependencyClosure(components: SnapshotComponent[], start: Set<string>): Set<string> {
+    const ownerOf = new Map<string, string>();
+    for (const c of components)
+        for (const n of c.nodes)
+            ownerOf.set(n.id, c.id);
+    const byId = new Map(components.map(c => [c.id, c]));
+    const out = new Set(start);
+    const queue = [...start];
+    for (let id = queue.shift(); id; id = queue.shift())
+        for (const n of byId.get(id)?.nodes ?? []) {
+            const source = (n as { sourceId?: string }).sourceId;
+            const owner = source ? ownerOf.get(source) : undefined;
+            if (owner && !out.has(owner)) {
+                out.add(owner);
+                queue.push(owner);
+            }
+        }
+    return out;
 }

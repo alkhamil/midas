@@ -12780,19 +12780,20 @@ async function publishLibraryInner(busy) {
         toast(`Could not prepare the library: ${e?.message || e}`);
         return;
     }
-    publishDialog(snapshot, draft, new Set(iconKeys));
+    const standard = await libraryApi.standardKit().then(r => r.components.map(c => c.name)).catch(() => []);
+    publishDialog(snapshot, draft, new Set(iconKeys), standard);
 }
 const semverBump = (v, part) => { const [M, m, p] = String(v).split('.').map(Number); return part === 'major' ? `${M + 1}.0.0` : part === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`; };
 // Publish Library form (spec §3.2): library + package name, version, release notes, the component → code mapping
 // and which components are icons (icons become React icon components in the Library Kit instead of mapped components).
-function publishDialog(snapshot, draft, iconKeys) {
+function publishDialog(snapshot, draft, iconKeys, standard = []) {
     const isNew = !draft.library, latest = draft.latest;
     const mappings = structuredClone(draft.mappings);
     const include = mappings.map(m => !/^[_.]/.test(m.componentName));
     const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
     const vars = snapshot.variables.items.length;
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><select class="lp-input lp-impl" data-lp-impl="${i}" title="Where this component's code comes from" aria-label="Implementation of ${esc(m.componentName)}"><option value="design"${(m.propsMap.implementation ?? 'design') === 'design' ? ' selected' : ''}>From design</option>${standard.map(n => `<option value="standard:${esc(n)}"${m.propsMap.implementation === 'standard:' + n ? ' selected' : ''}>Standard: ${esc(n)}</option>`).join('')}</select><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
     const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
     // ---- what to publish: search + select all/none, components first, icons grouped by category ----
     let query = '';
@@ -12869,6 +12870,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
     // Ambil isian form ke model sebelum daftar digambar ulang atau dikirim.
     const collect = () => {
         form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
+        form.querySelectorAll('[data-lp-impl]').forEach(el => { mappings[+el.dataset.lpImpl].propsMap.implementation = el.value; });
         form.querySelectorAll('[data-lp-export]').forEach(el => { mappings[+el.dataset.lpExport].exportName = el.value.trim(); });
         form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
         form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });

@@ -170,8 +170,12 @@ const LAYOUT_COMPONENTS = new Set(['sidebar', 'topbar', 'appshell']);
 const LAYOUT_FRAME_NAME = /^(side ?bar|nav ?bar|top ?bar|top ?navigation|app ?shell)$/i;
 const LAYOUT_DEPTH = 2; // only the page wrapper levels (frame → shell → area), never deep inside the content
 
-/** Pohon render + daftar issue untuk satu frame (screen). */
-export function screenTree(ctx, frameId, nodeCfg = {}) {
+/**
+ * Pohon render + daftar issue untuk satu frame (screen).
+ * `options.component`: the frame is a component (variant) of a library, not a page: keep its own sizing (hug/fixed) and do
+ * not leave out Sidebar/Topbar-like children.
+ */
+export function screenTree(ctx, frameId, nodeCfg = {}, options = {}) {
     const issues = [];
     const root = ctx.byId.get(frameId);
     if (!root) return { tree: null, issues: [{ nodeId: frameId, nodeName: 'Frame', severity: 'error', message: 'Screen frame not found — it may have been deleted' }] };
@@ -202,7 +206,7 @@ export function screenTree(ctx, frameId, nodeCfg = {}) {
         if (n.type === 'text') return { kind: 'text', text: cfg.text ?? n.text ?? '', designText: n.text ?? '', cfg, style: { ...textStyle(ctx, n, issues), ...box }, nodeId: n.id, name: n.name };
         if (n.type === 'frame' || n.type === 'group' || n.type === 'section') {
             let kids = childrenOf(ctx, n.id);
-            if (depth < LAYOUT_DEPTH) {
+            if (depth < LAYOUT_DEPTH && !options.component) {
                 const parts = kids.filter(isLayoutPart);
                 if (parts.length) {
                     prunedLayout = true;
@@ -220,6 +224,7 @@ export function screenTree(ctx, frameId, nodeCfg = {}) {
         return { kind: 'unsupported', nodeId: n.id, name: n.name, box: { ...box, width: `${round(n.w)}px`, height: `${round(n.h)}px` }, reason };
     };
     let tree = walk(root, null);
+    if (options.component) return { tree, issues };
     const rootCfg = nodeCfg[root.id] || {};
     let width = root.w, height = root.h;
     if (prunedLayout) {

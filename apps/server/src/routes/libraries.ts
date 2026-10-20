@@ -11,7 +11,7 @@ import {
 } from '../lib/library.js';
 import { config } from '../config.js';
 import { buildKit, buildManifest, kitBreakingChanges, tokenBreakingChanges, type KitInput } from '../lib/kit.js';
-import { buildLibraryPackage } from '../lib/library-builder.js';
+import { buildLibraryPackage, defaultImplementation, implementationError, standardCatalog } from '../lib/library-builder.js';
 import { buildScaffold } from '../lib/scaffold.js';
 import { deletePrefix, getObject, putObject } from '../lib/s3.js';
 import { zipFiles } from '../lib/zip.js';
@@ -45,7 +45,7 @@ const mappingShape = z.object({
     componentKey: z.string().min(1),
     componentName: z.string(),
     exportName: z.string(),
-    propsMap: z.object({ props: z.array(propShape) }),
+    propsMap: z.object({ props: z.array(propShape), implementation: z.string().max(80).optional() }),
 });
 
 async function sourceFile(req: FastifyRequest, id: string) {
@@ -178,10 +178,9 @@ async function storeBundle(l: typeof libraries.$inferSelect, v: VersionRow, js: 
 export async function buildCodePackage(l: typeof libraries.$inferSelect, v: VersionRow) {
     const input = await kitInput(l, v);
     const kit = buildKit(input);
-    const manifest = JSON.parse(kit['src/generated/manifest.json']) as { components: { exportName: string; props: { name: string }[] }[] };
     const built = await buildLibraryPackage({
         packageName: l.packageName, version: v.version, libraryName: input.libraryName, kit,
-        components: manifest.components.map(c => ({ exportName: c.exportName, props: c.props.map(p => p.name) })),
+        snapshot: input.snapshot, mappings: input.mappings,
     });
     await storeBundle(l, v, built.bundleJs, built.bundleCss);
     await putObject(packageKey(l.id, v.version), built.tarball, 'application/gzip');
@@ -216,6 +215,9 @@ export async function libraryRoutes(app: FastifyInstance) {
         await deletePrefix(`libraries/${l.id}/`).catch(() => { });
         return { ok: true };
     });
+
+    // Components of Midas' standard kit a library component can take its behaviour from (Publish dialog: "Implementation").
+    app.get('/api/libraries/standard-kit', async () => ({ components: standardCatalog() }));
 
     app.get<{ Params: { id: string } }>('/api/libraries/:id', async (req, reply) => {
         const l = await libraryOf(req, req.params.id);
@@ -266,7 +268,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const previous = latest ? await mappingsOf(latest.id) : [];
         const snapshot = body.data.snapshot as LibrarySnapshot, iconKeys = new Set(body.data.iconKeys);
         // Mapping untuk semua komponen (termasuk tebakan ikon) supaya desainer bisa memindahkan komponen ↔ ikon di form.
-        const mappings = deriveMappings(snapshot, previous, new Set());
+        const mappings = deriveMappings(snapshot, previous, new Set()).map(m => ({ ...m, propsMap: { ...m.propsMap, implementation: m.propsMap.implementation ?? defaultImplementation(m.exportName) } }));
         // Ikon dicek saat publish (SVG baru diekspor di sana); token bisa dicek sekarang.
         const breaking = [...breakingChanges(previous, mappings.filter(m => !iconKeys.has(m.componentKey))), ...(latest ? tokenBreakingChanges(latest.manifest, snapshot) : [])];
         const name = l?.name ?? (body.data.name || f.name);
@@ -330,6 +332,11 @@ export async function libraryRoutes(app: FastifyInstance) {
             if (!snapshotIds.has(i.componentKey))
                 errors.push(`Icon ${i.name} is not in the snapshot`);
         errors.push(...validateMappings(mappings));
+        for (const m of mappings) {
+            const bad = implementationError(m.propsMap.implementation);
+            if (bad)
+                errors.push(`${m.componentName}: ${bad}`);
+        }
         const latest = l ? await latestVersion(l.id) : null;
         const previous = latest ? await mappingsOf(latest.id) : [];
         const breaking = [...breakingChanges(previous, mappings), ...(latest ? kitBreakingChanges(latest.manifest, b.snapshot as LibrarySnapshot) : [])];

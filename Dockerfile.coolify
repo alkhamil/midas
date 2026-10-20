@@ -42,6 +42,7 @@ WORKDIR /app
 # lockfile and installs just this workspace's production dependency tree.
 COPY package.json package-lock.json ./
 COPY apps/server/package.json ./apps/server/package.json
+COPY packages/builder-core/package.json ./packages/builder-core/package.json
 RUN npm ci --omit=dev --workspace @midas/server --ignore-scripts --no-audit --no-fund \
     && npm cache clean --force
 
@@ -66,6 +67,8 @@ COPY --from=build --chown=midas:midas /app/apps/server/dist ./apps/server/dist
 COPY --from=build --chown=midas:midas /app/apps/server/drizzle ./apps/server/drizzle
 COPY --from=build --chown=midas:midas /app/apps/studio/dist ./apps/studio/dist
 COPY --from=build --chown=midas:midas /app/templates ./templates
+COPY --from=build --chown=midas:midas /app/packages/builder-core/package.json ./packages/builder-core/package.json
+COPY --from=build --chown=midas:midas /app/packages/builder-core/src ./packages/builder-core/src
 COPY --from=build --chown=midas:midas /app/packages/ui-standard/package.json ./packages/ui-standard/package.json
 COPY --from=build --chown=midas:midas /app/packages/ui-standard/src ./packages/ui-standard/src
 COPY --from=build --chown=midas:midas /app/packages/ui-standard/dist ./packages/ui-standard/dist
