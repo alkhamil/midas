@@ -11,6 +11,7 @@ import {
 } from '../lib/library.js';
 import { config } from '../config.js';
 import { buildKit, buildManifest, kitBreakingChanges, tokenBreakingChanges, type KitInput } from '../lib/kit.js';
+import { buildLibraryPackage } from '../lib/library-builder.js';
 import { buildScaffold } from '../lib/scaffold.js';
 import { deletePrefix, getObject, putObject } from '../lib/s3.js';
 import { zipFiles } from '../lib/zip.js';
@@ -134,6 +135,59 @@ async function versionOf(libraryId: string, version?: string): Promise<VersionRo
 async function kitInput(l: typeof libraries.$inferSelect, v: VersionRow): Promise<KitInput> {
     const snap = JSON.parse((await getObject(v.snapshotKey)).toString('utf8')) as LibrarySnapshot & { name?: string };
     return { packageName: l.packageName, version: v.version, libraryName: snap.name ?? l.name, publishedAt: v.publishedAt, snapshot: snap, mappings: await mappingsOf(v.id) };
+}
+
+type CodeReport = { exportName: string; status: 'ready' | 'not_implemented' | 'mismatch'; detail?: string }[];
+
+/** Store the code status of one version: per component, and `ready` / `partial` for the version. */
+async function applyCodeReport(v: VersionRow, components: CodeReport, bundleUrl?: string) {
+    const reported = new Map(components.map(c => [c.exportName, c]));
+    const mappings = await db.select().from(componentMappings).where(eq(componentMappings.libraryVersionId, v.id));
+    // Komponen di desain yang tidak ada di laporan dianggap belum diimplementasikan.
+    const statuses = mappings.map(m => reported.get(m.exportName) ?? { exportName: m.exportName, status: 'not_implemented' as const, detail: 'not in the report' });
+    const codeStatus = !statuses.length || statuses.every(c => c.status === 'ready') ? 'ready' : 'partial';
+    await db.transaction(async tx => {
+        for (const m of mappings) {
+            const r = statuses.find(c => c.exportName === m.exportName)!;
+            await tx.update(componentMappings).set({ codeStatus: r.status, codeDetail: r.detail ?? null })
+                .where(and(eq(componentMappings.libraryVersionId, v.id), eq(componentMappings.componentKey, m.componentKey)));
+        }
+        await tx.update(libraryVersions).set({ codeStatus, codeReportedAt: new Date(), ...(bundleUrl ? { bundleUrl } : {}) })
+            .where(eq(libraryVersions.id, v.id));
+    });
+    const count = (st: string) => statuses.filter(c => c.status === st).length;
+    return { codeStatus, ready: count('ready'), notImplemented: count('not_implemented'), mismatch: count('mismatch') };
+}
+
+/** Store the Studio preview bundle (JS + CSS) of one version and point the version at it. */
+async function storeBundle(l: typeof libraries.$inferSelect, v: VersionRow, js: string, css: string) {
+    await putObject(bundleKey(l.id, v.version, 'index.js'), Buffer.from(js), 'text/javascript');
+    await putObject(bundleKey(l.id, v.version, 'style.css'), Buffer.from(css), 'text/css');
+    // Hash isi di URL: unggah ulang versi yang sama (mis. perbaikan bundle) tidak terhalang cache immutable browser.
+    const hash = createHash('sha1').update(js).update(css).digest('hex').slice(0, 12);
+    const base = `/api/libraries/${encodeURIComponent(l.id)}/versions/${encodeURIComponent(v.version)}/bundle`;
+    const bundleUrl = `${base}/index.js?h=${hash}`;
+    await db.update(libraryVersions).set({ bundleUrl }).where(eq(libraryVersions.id, v.id));
+    return { bundleUrl, cssUrl: `${base}/style.css?h=${hash}`, size: js.length + css.length };
+}
+
+/**
+ * Build the code package of a version from Midas' standard component kit and the library's own generated layer: preview bundle,
+ * npm tarball and per-component code status. Runs on publish; the code status is `ready` as soon as it finishes.
+ */
+export async function buildCodePackage(l: typeof libraries.$inferSelect, v: VersionRow) {
+    const input = await kitInput(l, v);
+    const kit = buildKit(input);
+    const manifest = JSON.parse(kit['src/generated/manifest.json']) as { components: { exportName: string; props: { name: string }[] }[] };
+    const built = await buildLibraryPackage({
+        packageName: l.packageName, version: v.version, libraryName: input.libraryName, kit,
+        components: manifest.components.map(c => ({ exportName: c.exportName, props: c.props.map(p => p.name) })),
+    });
+    await storeBundle(l, v, built.bundleJs, built.bundleCss);
+    await putObject(packageKey(l.id, v.version), built.tarball, 'application/gzip');
+    const fresh = await versionOf(l.id, v.version);
+    const report = await applyCodeReport(fresh ?? v, built.statuses);
+    return { ...report, warnings: built.warnings, size: built.tarball.length };
 }
 
 export async function libraryRoutes(app: FastifyInstance) {
@@ -315,7 +369,19 @@ export async function libraryRoutes(app: FastifyInstance) {
             libraryId: f.id, workspaceId: req.user!.workspaceId, userId: req.user!.id, name: b.name, packageName: l?.packageName ?? b.packageName,
             isNew: !l, seq: (latest?.seq ?? 0) + 1, version: b.version, releaseNotes: b.releaseNotes, snapshot, mappings,
         });
-        return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: mappings.length, icons: iconKeys.size, variables: snapshot.variables?.items?.length ?? 0, codeStatus: 'pending' }, breaking };
+        // The code package is built right away from the standard component kit: the library is usable as soon as it is published.
+        let code: Awaited<ReturnType<typeof buildCodePackage>> | null = null, codeError: string | null = null;
+        const lib = await libraryOf(req, f.id), ver = await versionOf(f.id, b.version);
+        if (lib && ver) {
+            try {
+                code = await buildCodePackage(lib, ver);
+            }
+            catch (e) {
+                req.log.error(e);
+                codeError = (e as Error).message;
+            }
+        }
+        return { library: { id: f.id, name: b.name, packageName: snap.packageName, version: snap.version, semver: snap.semver, updated: snap.updated, components: mappings.length, icons: iconKeys.size, variables: snapshot.variables?.items?.length ?? 0, codeStatus: code?.codeStatus ?? 'pending' }, breaking, code, codeError };
     });
 
     // Laporan status kode dari repo paket (`midas report`, biasanya di CI setelah build/publish).
@@ -334,22 +400,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const v = l ? await versionOf(l.id, req.params.version) : null;
         if (!l || !v)
             return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
-        const reported = new Map(body.data.components.map(c => [c.exportName, c]));
-        const mappings = await db.select().from(componentMappings).where(eq(componentMappings.libraryVersionId, v.id));
-        // Komponen di desain yang tidak ada di laporan dianggap belum diimplementasikan.
-        const statuses = mappings.map(m => reported.get(m.exportName) ?? { exportName: m.exportName, status: 'not_implemented' as const, detail: 'not in the report' });
-        const codeStatus = !statuses.length || statuses.every(c => c.status === 'ready') ? 'ready' : 'partial';
-        await db.transaction(async tx => {
-            for (const m of mappings) {
-                const r = statuses.find(c => c.exportName === m.exportName)!;
-                await tx.update(componentMappings).set({ codeStatus: r.status, codeDetail: r.detail ?? null })
-                    .where(and(eq(componentMappings.libraryVersionId, v.id), eq(componentMappings.componentKey, m.componentKey)));
-            }
-            await tx.update(libraryVersions).set({ codeStatus, codeReportedAt: new Date(), ...(body.data.bundleUrl ? { bundleUrl: body.data.bundleUrl } : {}) })
-                .where(eq(libraryVersions.id, v.id));
-        });
-        const count = (st: string) => statuses.filter(c => c.status === st).length;
-        return { codeStatus, ready: count('ready'), notImplemented: count('not_implemented'), mismatch: count('mismatch') };
+        return applyCodeReport(v, body.data.components, body.data.bundleUrl);
     });
 
     // Bundle ESM + CSS satu versi untuk Live DOM Renderer Studio (spec §7.5), diunggah oleh `midas bundle`.
@@ -362,14 +413,7 @@ export async function libraryRoutes(app: FastifyInstance) {
         const v = l ? await versionOf(l.id, req.params.version) : null;
         if (!l || !v)
             return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
-        await putObject(bundleKey(l.id, v.version, 'index.js'), Buffer.from(body.data.js), 'text/javascript');
-        await putObject(bundleKey(l.id, v.version, 'style.css'), Buffer.from(body.data.css), 'text/css');
-        // Hash isi di URL: unggah ulang versi yang sama (mis. perbaikan bundle) tidak terhalang cache immutable browser.
-        const hash = createHash('sha1').update(body.data.js).update(body.data.css).digest('hex').slice(0, 12);
-        const base = `/api/libraries/${encodeURIComponent(l.id)}/versions/${encodeURIComponent(v.version)}/bundle`;
-        const bundleUrl = `${base}/index.js?h=${hash}`;
-        await db.update(libraryVersions).set({ bundleUrl }).where(eq(libraryVersions.id, v.id));
-        return { bundleUrl, cssUrl: `${base}/style.css?h=${hash}`, size: body.data.js.length + body.data.css.length };
+        return storeBundle(l, v, body.data.js, body.data.css);
     });
 
     app.get<{ Params: { id: string; version: string; file: string } }>('/api/libraries/:id/versions/:version/bundle/:file', async (req, reply) => {
@@ -414,6 +458,21 @@ export async function libraryRoutes(app: FastifyInstance) {
         }
         catch {
             return reply.code(404).send({ error: 'not_found', message: 'Package not uploaded yet (run `midas bundle` in the package repo)' });
+        }
+    });
+
+    // Build (or rebuild) the code package of a version, e.g. one published before code was built automatically.
+    app.post<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/build', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l ? await versionOf(l.id, req.params.version) : null;
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found', message: `Version ${req.params.version} has not been published in Midas` });
+        try {
+            return await buildCodePackage(l, v);
+        }
+        catch (e) {
+            req.log.error(e);
+            return reply.code(500).send({ error: 'build_failed', message: (e as Error).message });
         }
     });
 

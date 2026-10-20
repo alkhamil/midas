@@ -12977,7 +12977,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
-            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
+            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}. ${published.codeError ? `Code could not be built: ${published.codeError}` : published.code ? (published.code.codeStatus === 'ready' ? 'Code is ready.' : `Code built: ${published.code.ready} ready, ${published.code.notImplemented} not implemented${published.code.mismatch ? `, ${published.code.mismatch} mismatch` : ''}.`) : ''}`);
             renderAssets();
         }
         catch (err) {
@@ -13002,13 +13002,17 @@ async function developerKitDialog() {
     }
     const server = location.origin, pkg = mine.packageName, dir = pkg.split('/')[1];
     const code = (s) => `<pre class="token-code lp-code">${esc(s)}</pre>`;
-    modal(`${modalHeader('Developer kit', `Frontend package <span class="lp-mono">${esc(pkg)}</span> for “${esc(mine.name)}”.`)}
+    modal(`${modalHeader('Code', `Package <span class="lp-mono">${esc(pkg)}</span> for “${esc(mine.name)}”.`)}
 <div class="lp-form">
+<p class="small-label dk-intro">The code is built automatically when you publish: Midas' standard components, themed with this library's tokens, props types and icons. Developers use it through <b>Download project</b> in Code Builder; nothing to install or write. Components without a standard implementation show <b>Not implemented</b> (a placeholder is exported so apps still compile).</p>
 <label class="lp-field"><span>Version</span><select class="lp-input" id="dk-version">${versions.map(v => `<option value="${esc(v.version)}">${esc(v.version)}${v.releaseNotes ? ` — ${esc(v.releaseNotes.slice(0, 60))}` : ''}</option>`).join('')}</select></label>
-<div class="lp-field"><span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit. Create it once; after that the repository belongs to the developers.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a></div>
-<div class="lp-field"><span>Or with the CLI</span>${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}</div>
-<div class="lp-field"><span>Code status</span><small>Reported by <span class="lp-mono">midas report</span> after the package is built (usually in CI).</small><div id="dk-code" class="dk-code"><p class="small-label">Loading…</p></div></div>
-<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version. <span class="lp-mono">npm run build</span> already pulls the newest kit first and sends the code status and the Studio bundle afterwards, so no extra command is needed.</small>${code(`npm run build`)}<small>Without the CLI: download the kit and replace <span class="lp-mono">src/generated/</span> with it.</small><a class="wide-button" id="dk-kit-zip" download>${icon('download', 13)} Download Library Kit (.zip)</a></div>
+<div class="lp-field"><span>Code status</span><div id="dk-code" class="dk-code"><p class="small-label">Loading…</p></div><button type="button" class="wide-button" id="dk-rebuild">Rebuild code for this version</button></div>
+<details class="lp-field dk-advanced"><summary>Write the components yourself (advanced)</summary>
+<small>Only when you need behaviour the standard components do not have. The developers own the repository; <span class="lp-mono">npm run build</span> there pulls the newest kit first, then reports the code status and uploads the bundle (it replaces the automatic one).</small>
+<span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a>
+${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}
+<span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> and sets the package version.</small>${code(`npm run build`)}<a class="wide-button" id="dk-kit-zip" download>${icon('download', 13)} Download Library Kit (.zip)</a>
+</details>
 <div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
 </div>`);
     const sel = $('#dk-version'), zip = $('#dk-zip');
@@ -13021,7 +13025,7 @@ async function developerKitDialog() {
                 return;
             box.innerHTML = r.reportedAt
                 ? `<p class="small-label">Reported ${timeAgo(r.reportedAt)}.</p>${r.components.map(c => `<div class="dk-row"><span class="lp-mono">${esc(c.exportName)}</span><span class="code-status cs-${esc(c.status)}" title="${esc(c.detail || '')}">${esc(LABEL[c.status] || c.status)}</span></div>${c.detail && c.status !== 'ready' ? `<small class="dk-detail">${esc(c.detail)}</small>` : ''}`).join('')}`
-                : '<p class="small-label">Not reported yet for this version. Run <span class="lp-mono">midas report</span> in the package repository after building.</p>';
+                : '<p class="small-label">No code built for this version yet (it was published before code was built automatically). Use “Rebuild code”.</p>';
         }
         catch (e) {
             if (box)
@@ -13036,6 +13040,22 @@ async function developerKitDialog() {
         $('#modal').querySelectorAll('.lp-code').forEach(el => { el.textContent = el.textContent.replace(/--version \S+$/m, `--version ${v}`); });
     };
     sel.onchange = update;
+    $('#dk-rebuild').onclick = async () => {
+        const btn = $('#dk-rebuild'), v = sel.value;
+        btn.disabled = true;
+        btn.textContent = 'Building…';
+        try {
+            const r = await libraryApi.buildCode(lib.fileId, v);
+            toast(`Code built for ${v}: ${r.ready} ready${r.notImplemented ? `, ${r.notImplemented} not implemented` : ''}${r.mismatch ? `, ${r.mismatch} mismatch` : ''}.`);
+            LIBS.published = (await libraryApi.list().catch(() => null)) || LIBS.published;
+        }
+        catch (e) {
+            toast(`Could not build the code: ${e?.message || e}`);
+        }
+        btn.disabled = false;
+        btn.textContent = 'Rebuild code for this version';
+        showCode(v);
+    };
     update();
 }
 // Import ikon SVG (folder atau beberapa file) ke page "Icons": satu component set per ikon,
@@ -13242,7 +13262,7 @@ async function libUpdate(libId) {
 function libPanelHtml() {
     const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
     const used = new Set(LIBS.use.map(u => u.id));
-    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<button class="wide-button lib-publish" data-lib-devkit>${icon('download', 13)} Developer kit</button>` : ''}${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · <span class="code-status cs-${esc(mine.codeStatus || 'pending')}" title="Status kode dari \`midas report\` di repo paket">code ${esc({ ready: 'ready', partial: 'partial', pending: 'not reported' }[mine.codeStatus] || mine.codeStatus)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<button class="wide-button lib-publish" data-lib-devkit>${icon('download', 13)} Code</button>` : ''}${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · <span class="code-status cs-${esc(mine.codeStatus || 'pending')}" title="Code status of the latest version: the standard components built with this library's tokens (open Code for the details)">code ${esc({ ready: 'ready', partial: 'partial', pending: 'not built' }[mine.codeStatus] || mine.codeStatus)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
     h += `<div class="lib-head"><b>Libraries</b></div>`;
     h += others.length ? others.map(l => {
         const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;

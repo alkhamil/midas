@@ -418,10 +418,12 @@ export const libraryApi = {
     history: id => api('GET', `/api/libraries/${enc(id)}`),
     /** Status kode per komponen untuk satu versi (dari `midas report`). */
     codeStatus: (id, version) => api('GET', `/api/libraries/${enc(id)}/versions/${enc(version)}/code`),
+    /** Build (or rebuild) the code package of a version from Midas' standard components. */
+    buildCode: (id, version) => api('POST', `/api/libraries/${enc(id)}/versions/${enc(version)}/build`),
     /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
     draft: (id, name, snapshot, iconKeys = []) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot, iconKeys }),
     packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
-    publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => r.library),
+    publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => ({ ...r.library, code: r.code, codeError: r.codeError })),
     fileUses: async fileId => {
         try {
             return (await api('GET', `${fileUrl(fileId)}/libraries`)).libraries;

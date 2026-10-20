@@ -47,7 +47,7 @@ async function importFrom(dir, name) {
 export function latinFontsOnly(css) {
     return css.replace(/@font-face\{[^}]*\}/g, block => {
         const range = /unicode-range:([^;}]*)/.exec(block)?.[1];
-        return !range || /U\+0000-00FF|U\+0100-02/i.test(range) ? block : '';
+        return !range || /^U\+(?:00)?\?\?|^U\+(?:0000|0)-(?:00)?FF\b|^U\+(?:0100|100)-/i.test(range.trim()) ? block : '';  // the minifier shortens the latin range U+0000-00FF to U+??
     });
 }
 

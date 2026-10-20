@@ -160,22 +160,24 @@ UI components from the **${input.libraryName}** design system in Midas (spec §3
 
 ## Workflow
 
-1. The designer publishes a new library version in Midas.
-2. Pull the Library Kit for that version:
+1. The designer publishes a library version in Midas. Until your code reports in, its code status is "Not reported".
+2. Install and sign in once:
 
    \`\`\`bash
-   npx midas sync --version <version>
+   npm install
+   npx midas login --server ${input.serverUrl}
    \`\`\`
 
-   This overwrites \`src/generated/\` (theme tokens, props types, manifest) and aligns \`version\` in \`package.json\`.
-3. Implement / adjust the components in \`src/components/\`. Props must use the types from \`src/generated/props\`.
+   (\`@midas/cli\` is a dev dependency; if it is not available from your registry, point it at a local copy of the CLI in package.json, e.g. \`"@midas/cli": "file:../midas/packages/cli"\`.)
+3. Implement the components in \`src/components/\`. Props must use the types from \`src/generated/props\`.
    Scaffolded components are marked \`midasStub = true\` — remove the marker once the component is done.
-4. Run \`npm run build\`, then publish to the Midas Registry:
+4. Run \`npm run build\`. It does everything else for you:
+   - before: \`midas sync --soft\` pulls the newest Library Kit (stay on a version with \`"pin": "X.Y.Z"\` in midas.config.json);
+   - after: \`midas report --soft && midas bundle --soft\` send the code status of each component (ready / not implemented /
+     mismatch) and the bundle used by Midas' preview and "Download project".
 
-   \`\`\`bash
-   MIDAS_REGISTRY_TOKEN=... npm publish
-   npx midas report     # code status of each component (ready / not implemented / mismatch) → Midas
-   \`\`\`
+   \`--soft\` never fails the build when Midas is unreachable or you are not signed in; \`MIDAS_OFFLINE=1\` skips these steps.
+5. Optional, to share the package: \`MIDAS_REGISTRY_TOKEN=... npm publish\` to the Midas Registry.
 
 ## Using it in a project
 
