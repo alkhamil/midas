@@ -12,7 +12,7 @@
 // Nama paket: --package, lalu library yang sudah dipublish file ini, lalu nama di paket kode (--code-dir), lalu turunan nama file.
 // Versi: --version, atau --bump dari versi terakhir; tanpa keduanya = saran server (atau versi paket kode untuk publish pertama).
 // --only / --exclude memilih komponen yang dipublish (bagian internal `_X` selalu ikut); --icons memilih kategori ikon.
-// --code-dir: folder paket kode library (default packages/ui-cms) — untuk menguji di workspace lain tanpa bentrok id.
+// --code-dir: folder paket kode library (opsional; tanpa opsi ini tidak ada paket kode yang dibaca atau diperbarui).
 // File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
 // (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
@@ -23,14 +23,13 @@ import { buildDocument, existingIds } from './design-system/document.mjs';
 import { bumpVersion, listArg, listLibraries, pickPackageName, readCodePackage } from './lib/library-name.mjs';
 import { connect, findFile, parseArgs, saveDocument, whoami } from './lib/midas-api.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
 const DEFAULT_FILE = 'CMS Design System';
 /** Paket kode library (dibuat dengan `midas init`); bila ada, id library & versi awal mengikutinya. */
 /** Nama prop kode yang berbeda dari nama property desain. */
 const PROP_NAMES = { Button: { label: 'children' }, Badge: { label: 'children' } };
 
 const args = parseArgs();
-const CODE_PACKAGE_DIR = typeof args['code-dir'] === 'string' ? resolve(args['code-dir']) : join(ROOT, 'packages/ui-cms');
+const CODE_PACKAGE_DIR = typeof args['code-dir'] === 'string' ? resolve(args['code-dir']) : null;
 const FILE_NAME = typeof args.file === 'string' ? args.file : DEFAULT_FILE;
 const { api } = connect(args);
 
@@ -108,7 +107,7 @@ const mappings = draft.mappings.filter(m => !keys.has(m.componentKey) && !/^[_.]
     return m;
 });
 if (draft.breaking.length) console.log(`Breaking change: ${draft.breaking.join('; ')}`);
-// Publish pertama di server baru mengikuti versi paket kode (packages/ui-cms) bila ada, supaya `midas report` cocok.
+// Publish pertama mengikuti versi paket kode (--code-dir) bila ada, supaya `midas report` cocok.
 const codeVersion = (() => {
     try {
         return JSON.parse(readFileSync(join(CODE_PACKAGE_DIR, 'package.json'), 'utf8')).version;

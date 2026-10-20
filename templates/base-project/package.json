@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@midas/ui-cms": "2.8.0",
+    "@midas/ui-cms": "file:../../examples/ui-cms",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.0",
     "axios": "^1.20.0",

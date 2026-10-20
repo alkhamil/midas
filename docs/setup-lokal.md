@@ -79,19 +79,17 @@ node scripts/seed-design-system.mjs --create
 
 Script ini membuat file **CMS Design System** di workspace akunmu (Cover, Foundations, Icons, page per komponen) dan mempublish library `@midas/ui-cms`. Ikon digambar di `scripts/design-system/icons.mjs`, tidak ada berkas yang perlu dibagikan terpisah.
 
-Lalu siapkan paket kodenya supaya status kode **ready** dan Live DOM Renderer di Code Builder bisa memuat komponennya:
+Lalu siapkan paket kodenya supaya status kode **ready** dan Live DOM Renderer di Code Builder bisa memuat komponennya. Paket kode **dibuat dari library yang baru dipublish**, bukan sudah ada di repo ini:
 
 ```bash
-cd packages/ui-cms
-npm run sync        # Library Kit dari library di servermu
-npm run build
-npm test
-npx midas report    # status kode 18/18 ready
-npm run bundle      # bundle untuk Live DOM Renderer
-cd ../..
+# di Studio: Developer kit → New repository (.zip), atau dengan CLI:
+npx midas init ../ui-cms-app --library <paket-yang-dipublish>     # repo berisi kerangka (stub) per komponen
+cd ../ui-cms-app && npm install
+# developer menulis komponen di src/components/ mengikuti props dari desain, lalu:
+npm run build       # menarik kit terbaru, build, melapor status kode, dan mengunggah bundle (otomatis)
 ```
 
-> Versi di `packages/ui-cms/package.json` harus sama dengan versi library yang baru dipublish. Di server baru versi pertama mengikuti versi paket itu; setelah mempublish versi berikutnya, naikkan versinya lalu `npm run sync`.
+> `examples/ui-cms` hanya contoh implementasi 20 komponen. Untuk memakainya sebagai paket kode library dengan nama yang sama (`@midas/ui-cms`), jalankan `npm install && npm run build` di folder itu setelah library `@midas/ui-cms` dipublish; `npm run build` menyamakan versinya otomatis.
 
 ## 8. Project demo untuk menguji Code Builder
 
