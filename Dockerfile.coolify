@@ -25,13 +25,14 @@ COPY apps/server/package.json ./apps/server/package.json
 COPY apps/studio/package.json ./apps/studio/package.json
 COPY packages/builder-core/package.json ./packages/builder-core/package.json
 COPY packages/cli/package.json ./packages/cli/package.json
-# base-project links the example UI package (file:), so its manifest must exist for `npm ci`.
-COPY examples/ui-cms/package.json ./examples/ui-cms/package.json
+COPY packages/ui-standard/package.json ./packages/ui-standard/package.json
 COPY templates/base-project/package.json ./templates/base-project/package.json
 RUN npm ci --no-audit --no-fund
 
 COPY . .
-RUN npm run build --workspace @midas/studio \
+# ui-standard: the standard component kit the server builds every published library from.
+RUN npm run build --workspace @midas/ui-standard \
+    && npm run build --workspace @midas/studio \
     && npm run build --workspace @midas/server
 
 FROM node:22-alpine AS prod-deps
@@ -53,7 +54,8 @@ ENV NODE_ENV=production \
     AUTO_MIGRATE=true \
     COOKIE_SECURE=true \
     STUDIO_DIST=/app/apps/studio/dist \
-    TEMPLATES_DIR=/app/templates
+    TEMPLATES_DIR=/app/templates \
+    STANDARD_KIT_DIR=/app/packages/ui-standard
 
 RUN addgroup -S midas && adduser -S -G midas midas
 
@@ -64,6 +66,9 @@ COPY --from=build --chown=midas:midas /app/apps/server/dist ./apps/server/dist
 COPY --from=build --chown=midas:midas /app/apps/server/drizzle ./apps/server/drizzle
 COPY --from=build --chown=midas:midas /app/apps/studio/dist ./apps/studio/dist
 COPY --from=build --chown=midas:midas /app/templates ./templates
+COPY --from=build --chown=midas:midas /app/packages/ui-standard/package.json ./packages/ui-standard/package.json
+COPY --from=build --chown=midas:midas /app/packages/ui-standard/src ./packages/ui-standard/src
+COPY --from=build --chown=midas:midas /app/packages/ui-standard/dist ./packages/ui-standard/dist
 
 USER midas
 EXPOSE 4000

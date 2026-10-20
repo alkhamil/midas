@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { gunzipSync } from 'node:zlib';
 import { after, before, test } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
@@ -199,9 +200,10 @@ test('removing a published icon requires a major version', async () => {
 });
 
 test('code status report from the package repo', async () => {
+    // Publishing builds the code package from the standard component kit, so nothing stays "pending".
     const before = await call('GET', `/api/libraries/${dsFile}/versions/2.0.0/code`);
-    assert.equal(before.body.codeStatus, 'pending');
-    assert.ok(before.body.components.every((c: { status: string }) => c.status === 'pending'));
+    assert.notEqual(before.body.codeStatus, 'pending');
+    assert.ok(before.body.components.every((c: { status: string }) => c.status !== 'pending'));
     const missing = await call('POST', `/api/libraries/${dsFile}/versions/9.9.9/code`, { components: [] });
     assert.equal(missing.status, 404);
     const partial = await call('POST', `/api/libraries/${dsFile}/versions/2.0.0/code`, { components: [{ exportName: 'Button', status: 'mismatch', detail: 'props tidak sesuai desain: type' }] });
@@ -212,4 +214,27 @@ test('code status report from the package repo', async () => {
     assert.deepEqual(after.body.components.map((c: { exportName: string; status: string }) => [c.exportName, c.status]), [['Button', 'ready']]);
     const list = await call('GET', '/api/libraries');
     assert.equal(list.body.libraries.find((l: { id: string }) => l.id === dsFile).codeStatus, 'ready', 'list shows the status of the latest version');
+});
+
+test('publishing builds a usable code package: status, tarball and preview bundle', async () => {
+    const snap = { components: [button()], variables: { collections: [], items: [] }, icons: [] };
+    const d = await call('POST', `/api/libraries/${dsFile}/draft`, { snapshot: snap, iconKeys: [] });
+    const latest = (await call('GET', `/api/libraries/${dsFile}`)).body.versions[0].version as string;
+    const [M, m] = latest.split('.').map(Number);
+    const res = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'DS', packageName: d.body.packageName, version: `${M}.${m + 1}.0`, snapshot: snap, mappings: d.body.mappings });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.codeError, null);
+    assert.ok(['ready', 'partial'].includes(res.body.library.codeStatus), res.body.library.codeStatus);
+    const pkg = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/package`, headers: { cookie } });
+    assert.equal(pkg.statusCode, 200);
+    const tar = gunzipSync(pkg.rawPayload).toString('latin1');
+    assert.match(tar, /package\/package\.json/);
+    assert.match(tar, /package\/dist\/index\.js/);
+    assert.match(tar, /package\/dist\/generated\/props\/Button\.d\.ts/);
+    assert.match(tar, /package\/dist\/tokens\.css/);
+    const css = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/bundle/style.css`, headers: { cookie } });
+    assert.match(css.body, /@font-face/);
+    // A version published without code can be built on demand.
+    const rebuilt = await call('POST', `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/build`);
+    assert.equal(rebuilt.status, 200);
 });

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { buttonDefaults, type ButtonProps as DesignProps } from '../../generated/props';
 import { cx } from '../../internal/cx';
 
@@ -14,7 +14,10 @@ const sizes = { sm: 'h-8 px-3 text-xs', md: 'h-10 px-4 text-sm' } as const;
 
 /** Aksi. Primary untuk aksi utama (satu per area), Secondary pendamping, Ghost ringan, Danger merusak. */
 export function Button(props: ButtonProps) {
-  const { variant, size, children, icon, testId, className, type = 'button', disabled, ...rest } = { ...buttonDefaults, ...props };
+  // `label` is the design's own text property; libraries may also map it to `children` — both are accepted.
+  const { variant, size, children: kids, icon, testId, className, type = 'button', disabled, ...rest } = { ...buttonDefaults, ...props };
+  const children = kids ?? (props as { label?: ReactNode }).label;
+  delete (rest as { label?: unknown }).label;
   return (
     <button
       type={type}

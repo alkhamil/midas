@@ -296,7 +296,7 @@ test('suggestScreens guesses roles from frame names', () => {
 test('the UI library package is named in one place: generated pages import it from shared/ui', () => {
     assert.match(libraryFiles('@acme/ui')['src/shared/ui/index.ts'], /export \* from '@acme\/ui';/);
     assert.match(libraryFiles('@acme/ui')['src/shared/ui/library.css'], /@import '@acme\/ui\/tailwind\.css';/);
-    assert.match(libraryFiles()['src/shared/ui/index.ts'], /export \* from '@midas\/ui-cms';/);
+    assert.match(libraryFiles()['src/shared/ui/index.ts'], /export \* from '@midas\/ui-standard';/);
     const modules = [{ id: 'm', name: 'user', label: 'User', parentId: null, screens: [] }];
     const out = generateProject({ name: 'P', library: { packageName: '@acme/ui' }, config: { modules, layout: {} } }, new Map());
     assert.match(out.files['src/shared/ui/index.ts'], /@acme\/ui/);

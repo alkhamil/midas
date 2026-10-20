@@ -1,7 +1,7 @@
 {
-  "name": "@midas/ui-cms",
-  "version": "2.8.0",
-  "description": "Komponen UI dari design system \"CMS Design System\" di Midas (React + Tailwind CSS v4)",
+  "name": "@midas/ui-standard",
+  "version": "1.0.0",
+  "description": "Standard component kit of Midas (React + Tailwind CSS v4): the behaviour of the CMS components. A library publish in Midas swaps its generated layer (tokens, props types, icons) for the library's own.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -24,21 +24,15 @@
     "*.css"
   ],
   "scripts": {
-    "sync": "midas sync",
-    "prebuild": "midas sync --soft",
-    "build": "tsc -p tsconfig.build.json && vite build && node scripts/copy-assets.mjs",
-    "postbuild": "midas report --soft && midas bundle --soft",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && vite build && node scripts/copy-assets.mjs && node scripts/build-studio-css.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "prepublishOnly": "npm run build",
-    "test": "node --test test/*.test.mjs",
-    "bundle": "midas bundle"
+    "test": "node --test test/*.test.mjs"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@midas/cli": "^0.1.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -49,10 +43,8 @@
     "typescript": "~5.9.0",
     "vite": "^6.0.7"
   },
-  "publishConfig": {
-    "registry": "http://127.0.0.1:4873/"
-  },
   "dependencies": {
     "@fontsource/inter": "^5.3.0"
-  }
+  },
+  "private": true
 }

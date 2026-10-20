@@ -146,8 +146,10 @@ test('invalid config, unknown library version and unknown file are rejected', as
 });
 
 test('library bundle upload is served immutable and shown on the project', async () => {
-    const missing = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/versions/1.0.0/bundle/index.js`, headers: { cookie } });
-    assert.equal(missing.statusCode, 404);
+    // Publishing already built a bundle from the standard component kit; an upload replaces it.
+    const built = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/versions/1.0.0/bundle/index.js`, headers: { cookie } });
+    assert.equal(built.statusCode, 200);
+    assert.match(built.body, /__midasRuntime/);
     const up = await call('PUT', `/api/libraries/${dsFile}/versions/1.0.0/bundle`, { js: 'export const Button = () => null;', css: '.btn{}' });
     assert.equal(up.status, 200);
     assert.match(up.body.bundleUrl, /\/bundle\/index\.js\?h=[0-9a-f]{12}$/);
