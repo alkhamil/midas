@@ -12,7 +12,7 @@ import { GEN_HEADER, iconComponent, moduleDir, q } from './util.js';
 
 export { dialogTexts, pageNameOf } from './page.js';
 
-export const DEFAULT_LIBRARY = '@midas/ui-cms';
+export const DEFAULT_LIBRARY = '@midas/ui-standard';
 
 /** The two files that tie the app to its UI library (the only places that name the package besides package.json). */
 export function libraryFiles(packageName = DEFAULT_LIBRARY) {

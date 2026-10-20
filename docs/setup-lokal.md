@@ -79,17 +79,13 @@ node scripts/seed-design-system.mjs --create
 
 Script ini membuat file **CMS Design System** di workspace akunmu (Cover, Foundations, Icons, page per komponen) dan mempublish library `@midas/ui-cms`. Ikon digambar di `scripts/design-system/icons.mjs`, tidak ada berkas yang perlu dibagikan terpisah.
 
-Lalu siapkan paket kodenya supaya status kode **ready** dan Live DOM Renderer di Code Builder bisa memuat komponennya. Paket kode **dibuat dari library yang baru dipublish**, bukan sudah ada di repo ini:
+Kode library **dibangun otomatis saat publish**: server memasang token, tipe props, dan ikon library ke kit komponen standar (`packages/ui-standard`), membuat bundle preview dan paket npm, lalu menetapkan status kode. Pastikan kit standar sudah dibangun sekali di mesin Anda (server membacanya dari `packages/ui-standard`):
 
 ```bash
-# di Studio: Developer kit → New repository (.zip), atau dengan CLI:
-npx midas init ../ui-cms-app --library <paket-yang-dipublish>     # repo berisi kerangka (stub) per komponen
-cd ../ui-cms-app && npm install
-# developer menulis komponen di src/components/ mengikuti props dari desain, lalu:
-npm run build       # menarik kit terbaru, build, melapor status kode, dan mengunggah bundle (otomatis)
+npm run build --workspace @midas/ui-standard
 ```
 
-> `examples/ui-cms` hanya contoh implementasi 20 komponen. Untuk memakainya sebagai paket kode library dengan nama yang sama (`@midas/ui-cms`), jalankan `npm install && npm run build` di folder itu setelah library `@midas/ui-cms` dipublish; `npm run build` menyamakan versinya otomatis.
+Statusnya langsung `ready` untuk komponen standar (lihat panel Library atau dialog **Code**). Tidak ada repo kode atau CLI yang perlu disiapkan.
 
 ## 8. Project demo untuk menguji Code Builder
 
@@ -102,7 +98,7 @@ Membuat file **CMS Demo** (layar User, Role, Dashboard dari komponen library) da
 ## 9. Cek hasil
 
 - Studio → **Recents / All files** → buka *CMS Demo* → rail **Code Builder**: klik nama screen → workspace dengan pratinjau + Properties Inspector. Klik komponen di pratinjau untuk mengatur propertinya; klik sidebar/topbar untuk mengatur layout aplikasi.
-- Base project (aplikasi contoh yang memakai `@midas/ui-cms`):
+- Base project (aplikasi contoh yang memakai kit standar `@midas/ui-standard`):
 
   ```bash
   npm run dev --workspace @midas/base-project
@@ -112,8 +108,8 @@ Membuat file **CMS Demo** (layar User, Role, Dashboard dari komponen library) da
 - Paket UI:
 
   ```bash
-  npm run build --workspace @midas/ui-cms
-  npm test --workspace @midas/ui-cms
+  npm run build --workspace @midas/ui-standard
+  npm test --workspace @midas/ui-standard
   ```
 
 ## 10. Test lainnya (infra harus jalan)
