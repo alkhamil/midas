@@ -12474,12 +12474,42 @@ function publishDialog(snapshot, draft, iconKeys) {
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
     const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
     const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
+    // ---- what to publish: search + select all/none, components first, icons grouped by category ----
+    let query = '';
+    const openCats = new Set();
+    const catOf = m => iconNameParts(m.componentName).category;
+    const shortName = m => String(m.componentName).split('/').pop();
+    const matches = m => !query || `${m.componentName} ${m.exportName}`.toLowerCase().includes(query);
+    const chevron = open => `<svg class="lp-chev ${open ? 'open' : ''}" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const iconCell = (m, i) => `<label class="lp-icon-cell" title="${esc(m.componentName)}"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name">${esc(shortName(m))}</span><button type="button" class="lp-mini" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></label>`;
     const lists = () => {
-        const comps = mappings.map((m, i) => (isIcon[i] ? '' : compRow(m, i))).join(''), icons = mappings.map((m, i) => (isIcon[i] ? iconRow(m, i) : '')).join('');
+        const comps = [], internal = [], cats = new Map();
+        mappings.forEach((m, i) => {
+            if (!matches(m)) return;
+            if (isIcon[i]) { const c = catOf(m); (cats.get(c) || cats.set(c, []).get(c)).push(i); }
+            else if (/^[_.]/.test(m.componentName)) internal.push(i);
+            else comps.push(i);
+        });
         const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
-        return `<div class="lp-field"><span>Components (${nComp}) · export name in code</span><div class="lp-comps">${comps || '<p class="small-label">No components.</p>'}</div></div>
-<details class="lp-field lp-icons" ${nIcon && nIcon <= 12 ? 'open' : ''}><summary>Icons (${nIcon}) · React icon components, color follows the text</summary><small>Detected from the Icons page and names starting with “Icon/”. Each variant (e.g. Style=Bold) becomes an icon style.</small><div class="lp-comps">${icons || '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</div></details>`;
+        const selComp = mappings.filter((_, i) => include[i] && !isIcon[i]).length, selIcon = mappings.filter((_, i) => include[i] && isIcon[i]).length;
+        const catHtml = [...cats.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([cat, idx]) => {
+            const open = openCats.has(cat) || (!!query && idx.length <= 60);
+            const on = idx.filter(i => include[i]).length;
+            return `<div class="lp-cat"><div class="lp-cat-head"><input type="checkbox" data-lp-group="${esc(cat)}" ${on === idx.length ? 'checked' : ''} aria-label="Publish all ${esc(cat)} icons"><button type="button" class="lp-cat-toggle" data-lp-catfold="${esc(cat)}">${chevron(open)}<span>${esc(cat)}</span></button><span class="lp-count" data-lp-count="${esc(cat)}">${on}/${idx.length}</span></div>${open ? `<div class="lp-cat-body">${idx.map(i => iconCell(mappings[i], i)).join('')}</div>` : ''}</div>`;
+        }).join('');
+        const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, not published on their own</summary><div class="lp-comps">${internal.map(i => compRow(mappings[i], i)).join('')}</div></details>` : '';
+        const none = query ? 'Nothing matches your search.' : '';
+        return `<div class="lp-summary"><span><b>${selComp}</b> of ${nComp} components</span><span><b>${selIcon}</b> of ${nIcon} icons</span></div>
+<section class="lp-section"><h4>Components <small>export name in code</small></h4><div class="lp-comps">${comps.map(i => compRow(mappings[i], i)).join('') || `<p class="small-label">${none || 'No components.'}</p>`}</div>${internalHtml}</section>
+<section class="lp-section"><h4>Icons <small>React icon components, color follows the text</small></h4>${nIcon ? `<div class="lp-cats">${catHtml || `<p class="small-label">${none}</p>`}</div>` : '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</section>`;
     };
+    // Group checkboxes show a partial state when only some of their icons are selected.
+    const syncGroups = () => form.querySelectorAll('[data-lp-group]').forEach(el => {
+        const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup && matches(m) ? i : -1)).filter(i => i >= 0);
+        const on = idx.filter(i => include[i]).length;
+        el.checked = idx.length > 0 && on === idx.length;
+        el.indeterminate = on > 0 && on < idx.length;
+    });
     modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables; developers get a frontend package with the same version.')}
 <form id="lp-form" class="lp-form" novalidate>
 <label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
@@ -12487,6 +12517,7 @@ function publishDialog(snapshot, draft, iconKeys) {
 <div class="lp-field"><span>Version</span><div class="lp-version"><input class="lp-input lp-mono" id="lp-version" value="${esc(draft.suggestedVersion)}" spellcheck="false" autocomplete="off">${latest ? ['patch', 'minor', 'major'].map(k => `<button type="button" class="cmp-btn" data-lp-bump="${k}">${k}</button>`).join('') : ''}</div><small>${latest ? `Latest: ${esc(latest.version)} · published ${timeAgo(latest.publishedAt)}` : 'First release.'}</small></div>
 ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a major version</b><ul>${draft.breaking.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
 <label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
+<div class="lp-toolbar"><input type="search" class="lp-input lp-search" id="lp-search" placeholder="Search components and icons" autocomplete="off" aria-label="Search components and icons"><button type="button" class="wide-button" data-lp-all="1">Select all</button><button type="button" class="wide-button" data-lp-all="0">Select none</button></div>
 <div id="lp-lists">${lists()}</div>
 <small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are included as theme tokens.</small>
 <div id="lp-errors" class="lp-errors hidden" role="alert"></div>
@@ -12527,8 +12558,49 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             collect();
             isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
             $('#lp-lists').innerHTML = lists();
+            form.querySelectorAll('[data-lp-group]').forEach(el => { const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup ? i : -1)).filter(i => i >= 0); const on = idx.filter(i => include[i]).length; el.checked = idx.length > 0 && on === idx.length; el.indeterminate = on > 0 && on < idx.length; });
         }
     });
+    const redraw = () => { $('#lp-lists').innerHTML = lists(); syncGroups(); };
+    // Cheap refresh after a checkbox change: counters and group states only, so the lists keep their scroll position.
+    const applyIncludes = () => form.querySelectorAll('[data-lp-include]').forEach(el => { el.checked = !!include[+el.dataset.lpInclude]; });
+    const updateCounts = () => {
+        const summary = form.querySelector('.lp-summary');
+        if (summary) summary.innerHTML = `<span><b>${mappings.filter((_, i) => include[i] && !isIcon[i]).length}</b> of ${isIcon.filter(x => !x).length} components</span><span><b>${mappings.filter((_, i) => include[i] && isIcon[i]).length}</b> of ${isIcon.filter(Boolean).length} icons</span>`;
+        form.querySelectorAll('[data-lp-count]').forEach(el => {
+            const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpCount && matches(m) ? i : -1)).filter(i => i >= 0);
+            el.textContent = `${idx.filter(i => include[i]).length}/${idx.length}`;
+        });
+        syncGroups();
+    };
+    $('#lp-search').oninput = e => { collect(); query = e.target.value.trim().toLowerCase(); redraw(); };
+    form.addEventListener('click', e => {
+        const all = e.target.closest('[data-lp-all]'), fold = e.target.closest('[data-lp-catfold]');
+        if (all) {
+            collect();
+            // Only what the search currently shows; internal parts keep their own choice.
+            mappings.forEach((m, i) => { if (matches(m) && !(!isIcon[i] && /^[_.]/.test(m.componentName))) include[i] = all.dataset.lpAll === '1'; });
+            applyIncludes();
+            updateCounts();
+        }
+        if (fold) {
+            collect();
+            const c = fold.dataset.lpCatfold;
+            if (openCats.has(c)) openCats.delete(c); else openCats.add(c);
+            redraw();
+        }
+    });
+    form.addEventListener('change', e => {
+        const g = e.target.closest('[data-lp-group]');
+        if (g) {
+            collect();
+            mappings.forEach((m, i) => { if (isIcon[i] && catOf(m) === g.dataset.lpGroup && matches(m)) include[i] = g.checked; });
+            applyIncludes();
+            updateCounts();
+        }
+        else if (e.target.matches('[data-lp-include]')) { collect(); updateCounts(); }
+    });
+    syncGroups();
     form.onsubmit = async e => {
         e.preventDefault();
         collect();
@@ -16984,6 +17056,8 @@ const builderBridge = {
     pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p), codeBuilder: !!p.codeBuilder })),
     /** Semua node file (lintas page), termasuk salinan komponen library. */
     nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    // Flag or unflag a page as a Code Builder module source (same as the page context menu).
+    flagPage: (pageId, on = true) => { const p = doc.data.pages.find(x => x.id === pageId); if (p && !!p.codeBuilder !== !!on) togglePageCodeBuilder(pageId); },
     // Top-level frames of a page (candidates when registering Code Builder screens), left to right.
     pageFrames: pageId => (doc.data.pages.find(p => p.id === pageId)?.nodes || []).filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && n.visible !== false).map(n => ({ id: n.id, name: n.name, x: n.x, y: n.y, pageId })).sort((a, b) => (a.x - b.x) || (a.y - b.y)),
     pageOf: id => pageOfNode(id)?.id ?? null,

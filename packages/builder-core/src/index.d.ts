@@ -35,5 +35,6 @@ export const kebabCase: (s: string) => string;
 export const pascalCase: (s: string) => string;
 export const titleCase: (s: string) => string;
 
+export function inferFields(ctx: any, frameIds: string[], modules?: { id: string; label: string; name: string }[]): any[];
 export function suggestScreens(frameName: string): { role: string; purpose?: string }[];
 export function activeNavPath(layout: { items: NavEntry[] }, modules: BuilderModule[], module: BuilderModule): string | undefined;
