@@ -2,6 +2,7 @@
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
+import { generateComponent, usageSnippet, previewHtml, tokenVar, pascalCase, camelCase, kebabCase } from './codegen.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
@@ -8603,11 +8604,384 @@ function colorField(prop, value, opacityProp = null, opacity = 1) {
 function section(title, body, action = '', extra = '') { return `<section class="inspector-section ${extra}"><div class="section-heading"><span>${title}</span>${action}</div>${body}</section>`; }
 function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
+// ===== React Props tab: the code contract of a component (what the generated React code is made from) =====
+const REACT = { view: 'tsx', sel: {}, gens: new Map(), busy: new Set() };
+// The component whose code settings apply: the set (or standalone component) a selected layer belongs to.
+function reactHolderOf(n) {
+    if (!n)
+        return null;
+    if (n.componentSet)
+        return n;
+    if (n.component)
+        return parentSetOf(n) || n;
+    if (n.isInstance && !insideInstance(n)) {
+        const m = chainComponent(n);
+        return m ? (parentSetOf(m) || m) : null;
+    }
+    return null;
+}
+const reactEligible = n => !!reactHolderOf(n);
+// A standalone icon: no title / description, no clips of the frames it sat in, no empty layers; a single colour follows the text colour.
+function sanitizeSvg(s) {
+    const cols = new Set([...s.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{3,8})"/g)].map(m => m[1].toLowerCase()));
+    if (cols.size === 1)
+        s = s.replace(/(fill|stroke)="#[0-9a-fA-F]{3,8}"/g, '$1="currentColor"');
+    s = s.replace(/<\?xml[^>]*>\s*/, '').replace(/<title>[\s\S]*?<\/title>/g, '').replace(/<desc>[\s\S]*?<\/desc>/g, '').replace(/<clipPath[\s\S]*?<\/clipPath>/g, '').replace(/\sclip-path="[^"]*"/g, '').replace(/<defs>\s*<\/defs>/g, '').replace(/\s+xmlns:xlink="[^"]*"/g, '').replace(/<rect\b[^>]*fill="none"[^>]*stroke="none"[^>]*\/>/g, '');
+    for (let i = 0; i < 4; i++)
+        s = s.replace(/<g\b[^>]*>\s*<\/g>/g, '');
+    return s;
+}
+// Exporting a layer to SVG needs its page to be the open one, and opening a page rebuilds the editor's indexes. So the code
+// generator asks for SVGs by placeholder, and they are all exported here afterwards: one page switch per page.
+const codegenSvgCache = new Map();
+const svgKey = n => n.id + ':' + (n.version || 0) + ':' + (n.w | 0) + 'x' + (n.h | 0);
+function exportSvgBatch(nodes) {
+    const byPage = new Map(), out = new Map(), prev = doc.data.pageId;
+    for (const n of nodes) {
+        const p = pageOfNode(n.id);
+        if (p)
+            (byPage.get(p) || byPage.set(p, []).get(p)).push(n);
+        else
+            out.set(n.id, null);
+    }
+    try {
+        for (const [page, list] of byPage) {
+            if (page.id !== doc.data.pageId) {
+                doc.data.pageId = page.id;
+                doc.refresh();
+            }
+            for (const n of list) {
+                try {
+                    out.set(n.id, sanitizeSvg(exportSVG(doc, [n.id])));
+                }
+                catch {
+                    out.set(n.id, null);
+                }
+            }
+        }
+    }
+    finally {
+        if (doc.data.pageId !== prev) {
+            doc.data.pageId = prev;
+            doc.refresh();
+        }
+    }
+    return out;
+}
+// The generated code of the components that `g` uses (and those they use), for the preview.
+function resolveDeps(g, depth = 0, out = new Map()) {
+    for (const [, h] of g.deps || []) {
+        if (out.has(h.id) || depth > 3)
+            continue;
+        const dg = generateResolved(h);
+        out.set(h.id, dg);
+        resolveDeps(dg, depth + 1, out);
+    }
+    return out;
+}
+// Generate the code of a component with its inline SVGs filled in.
+function generateResolved(holder) {
+    const ctx = codegenContext();
+    ctx.pending = new Map();
+    const g = generateComponent(ctx, holder);
+    if (ctx.pending.size) {
+        const nodes = [...ctx.pending.values()], svgs = exportSvgBatch(nodes);
+        const byToken = new Map();
+        for (const [token, n] of ctx.pending) {
+            const svg = svgs.get(n.id) || '';
+            byToken.set(token, svg);
+            if (svg)
+                codegenSvgCache.set(svgKey(n), svg);
+        }
+        const fill = text => { let t = text; for (const [token, svg] of byToken) t = t.split(token).join(svg); return t; };
+        const fillJson = text => { let t = text; for (const [token, svg] of byToken) t = t.split(token).join(JSON.stringify(svg).slice(1, -1)); return t; };
+        g.tsx = fillJson(g.tsx);
+        (function walk(ir) { if (ir.svg) ir.svg = fill(ir.svg); ir.children.forEach(walk); })(g.ir);
+    }
+    return g;
+}
+function codegenContext() {
+    ensureGlobalIndexes();
+    const ctx = {
+        kids: id => _kidsMap.get(id) || [],
+        variants: set => setVariants(set),
+        parentSet: n => parentSetOf(n),
+        chain: n => chainComponent(n),
+        isAuto: n => isAutoLayout(n),
+        sizing: (n, axis) => sizingOf(n, axis),
+        pads: n => {
+            const p = { ...lyPads(n) };
+            if (n.strokesIncluded && strokeIsOn(n) && n.strokeAlign !== 'outside') {
+                const s = strokeSideWidths(n), k = n.strokeAlign === 'inside' ? 1 : .5;
+                p.t += s.t * k; p.r += s.r * k; p.b += s.b * k; p.l += s.l * k;
+            }
+            return p;
+        },
+        fills: n => getFills(n),
+        effects: n => getEffects(n),
+        radii: n => cornerRadii(n),
+        sides: n => strokeSideWidths(n),
+        strokeOn: n => strokeIsOn(n),
+        token: (n, prop) => { const id = n.vars?.[prop], it = id && varItem(id); return it ? tokenVar(it.name, it.type) : null; },
+        svg: n => {
+            if (ctx.skipSvg)
+                return '';
+            const key = svgKey(n);
+            if (codegenSvgCache.has(key))
+                return codegenSvgCache.get(key);
+            if (!ctx.pending)
+                return null;
+            const token = `__MIDAS_SVG_${ctx.pending.size}__`;
+            ctx.pending.set(token, n);
+            return token;
+        },
+        exportName: holder => holder.code?.exportName || pascalCase(holder.name),
+        isIcon: holder => looksLikeIcon(holder.name, pageOfNode(holder.id)?.name),
+        gen: holder => {
+            if (REACT.gens.has(holder.id))
+                return REACT.gens.get(holder.id);
+            if (REACT.busy.has(holder.id))
+                return { props: [] };
+            REACT.busy.add(holder.id);
+            const skip = ctx.skipSvg;
+            ctx.skipSvg = true; // only the props of a nested component are needed here
+            try {
+                const g = generateComponent(ctx, holder);
+                REACT.gens.set(holder.id, g);
+                return g;
+            }
+            finally {
+                ctx.skipSvg = skip;
+                REACT.busy.delete(holder.id);
+            }
+        },
+        // The attributes an instance sets on its component in JSX: the variant it shows, text / boolean / instance-swap values.
+        codeProps: (holder, main, inst) => {
+            const g = ctx.gen(holder), out = [];
+            for (const p of g.props || []) {
+                if (p.source === 'variant') {
+                    const val = main.variant?.[p.vkey];
+                    if (p.type === 'boolean') {
+                        const on = String(val) === String(p.trueValue);
+                        if (on !== !!p.def)
+                            out.push(on ? p.name : `${p.name}={false}`);
+                    }
+                    else if (val !== undefined && p.values[val] !== p.def)
+                        out.push(`${p.name}=${JSON.stringify(p.values[val])}`);
+                }
+                else if (p.source === 'text') {
+                    const v = inst.propValues?.[p.cid];
+                    if (typeof v === 'string' && v !== p.def)
+                        out.push(`${p.name}=${JSON.stringify(v)}`);
+                }
+                else if (p.source === 'boolean') {
+                    const v = inst.propValues?.[p.cid];
+                    if (typeof v === 'boolean' && v !== (p.def ?? true))
+                        out.push(v ? p.name : `${p.name}={false}`);
+                }
+                else if (p.source === 'instance') {
+                    const v = inst.propValues?.[p.cid], t = v && (doc.get(v) || nodeIndex().get(v)), h = t && (parentSetOf(t) || t);
+                    if (h)
+                        out.push(`${p.name}={<${ctx.exportName(h)} />}`);
+                }
+            }
+            return out;
+        },
+    };
+    return ctx;
+}
+// The :root block of the file's variables (first mode of every collection), so a preview looks like the design.
+function codegenThemeCss() {
+    const store = varStore(), lines = [];
+    for (const it of store.items) {
+        if (it.type === 'effect')
+            continue;
+        const c = varColl(it.collectionId);
+        if (!c?.modes?.length)
+            continue;
+        let v = varValue(doc, it, null);
+        if (v && typeof v === 'object')
+            continue;
+        v = it.type === 'number' ? (v === 0 ? '0' : `${v}px`) : String(v);
+        lines.push(`  ${tokenVar(it.name, it.type)}: ${v};`);
+    }
+    return `:root {\n${lines.join('\n')}\n}\n`;
+}
+const REACT_ELEMENTS = ['div', 'button', 'a', 'span', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'ul', 'li', 'label', 'p', 'form', 'input'];
+const REACT_TAGS = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'a', 'label', 'ul', 'li', 'nav', 'section', 'header', 'footer'];
+const REACT_EVENTS = ['onClick', 'onChange', 'onFocus', 'onBlur', 'onKeyDown', 'onMouseEnter', 'onMouseLeave'];
+function reactPanelHtml(n) {
+    const holder = reactHolderOf(n), inst = n.isInstance ? n : null;
+    if (!holder)
+        return '';
+    const ctx = codegenContext();
+    if (ctx.isIcon(holder))
+        return section('React Props', '<p class="small-label">This is an icon: the Library Kit turns icons into React components on its own (style variants become icon styles). Nothing to set here.</p>');
+    REACT.gens.clear();
+    let g;
+    try {
+        g = generateResolved(holder);
+    }
+    catch (e) {
+        console.error(e);
+        return section('React Props', `<p class="small-label">The code of this component could not be generated: ${esc(e?.message || e)}</p>`);
+    }
+    REACT.gens.set(holder.id, g);
+    const code = holder.code || {}, ro = !!inst;
+    const optHtml = (list, cur) => list.map(v => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`).join('');
+    let html = '';
+    // instance: how it is used
+    if (inst) {
+        const snippet = usageSnippet(ctx, inst, h => ctx.exportName(h));
+        html += section('Usage', `<pre class="code-pre">${esc(snippet)}</pre><div class="code-row"><button class="cmp-btn" data-code-copytext="${esc(snippet)}">Copy</button><button class="cmp-btn" data-cmp="goto">Go to main component</button></div><p class="small-label">Edit the code settings in the main component; every instance follows.</p>`);
+    }
+    // identity
+    html += section('Component', `<div class="code-grid"><label>Export name<input class="lp-input lp-mono" data-code="exportName" value="${esc(g.exportName)}" spellcheck="false" ${ro ? 'disabled' : ''}></label><label>Root element<select class="lp-input" data-code="element" ${ro ? 'disabled' : ''}>${optHtml(REACT_ELEMENTS, code.element || 'div')}</select></label></div>`);
+    // props
+    const propRows = g.props.map(p => `<div class="code-prop"><span class="code-prop-src" title="${esc(p.source)}">${esc(p.label)}</span>${p.source === 'event' ? `<span class="lp-mono">${esc(p.name)}</span>` : `<input class="lp-input lp-mono" data-code-prop="${esc(p.key)}" value="${esc(p.name)}" spellcheck="false" ${ro ? 'disabled' : ''}>`}<span class="lp-type">${p.type === 'enum' ? esc(Object.values(p.values).join(' | ')) : esc(p.type)}</span></div>`).join('');
+    html += section('Props', propRows || '<p class="small-label">No variants or component properties. Add them to the component to get props.</p>');
+    // roles of the variant properties
+    if (g.holder.componentSet) {
+        const keys = [...new Set(g.variants.flatMap(v => Object.keys(v.variant || {})))];
+        if (keys.length)
+            html += section('Variant roles', keys.map(k => `<div class="code-prop"><span class="code-prop-src">${esc(k)}</span><select class="lp-input" data-code-role="${esc(k)}" ${ro ? 'disabled' : ''}>${[['prop', 'Prop'], ['state', 'State (CSS)'], ['boolean', 'Boolean']].map(([v, l]) => `<option value="${v}" ${g.roles?.[k] === v || (!g.roles && v === 'prop') ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('') + '<p class="small-label">A State (Hover, Pressed, Focus) becomes CSS; other states become a boolean prop.</p>');
+    }
+    // parts
+    const parts = [];
+    (function walk(ir, depth) { if (depth > 0 || ir.children.length || ir.kind !== 'box') parts.push([ir, depth]); if (parts.length < 120) ir.children.forEach(c => walk(c, depth + 1)); })(g.ir, 0);
+    const partRows = parts.filter(([ir]) => ir !== g.ir).map(([ir, d]) => `<div class="code-part" style="padding-left:${d * 10}px"><span class="code-part-name" title="${esc(ir.name)}">${esc(ir.name)}</span><input class="lp-input lp-mono" data-code-part="${ir.id}" value="${esc(code.parts?.[ir.id]?.part || '')}" placeholder="${esc(ir.part)}" spellcheck="false" ${ro ? 'disabled' : ''}><select class="lp-input" data-code-tag="${ir.id}" ${ro || ir.kind === 'svg' || ir.kind === 'instance' || ir.kind === 'img' ? 'disabled' : ''}>${optHtml(REACT_TAGS, code.parts?.[ir.id]?.tag || ir.tag)}</select></div>`).join('');
+    html += section('Parts', `<p class="small-label">Name a layer (becomes <span class="lp-mono">${esc(g.block)}__name</span>) and choose its HTML tag.</p>${partRows || '<p class="small-label">No layers.</p>'}`);
+    // events
+    const evRows = (code.events || []).map((e, i) => `<div class="code-prop"><span class="lp-mono">${esc(e.name)}</span><span class="small-label">on ${esc(e.part || 'root')}</span>${ro ? '' : `<button class="icon-button small" data-code-ev-del="${i}" title="Remove" aria-label="Remove event">${icon('minus', 12)}</button>`}</div>`).join('');
+    html += section('Events', `${evRows}${ro ? '' : `<div class="code-add"><select class="lp-input" id="code-ev-name">${optHtml(REACT_EVENTS, 'onClick')}</select><select class="lp-input" id="code-ev-part"><option value="">root</option>${parts.filter(([ir]) => ir !== g.ir && ir.part).map(([ir]) => `<option value="${esc(ir.part)}">${esc(ir.part)}</option>`).join('')}</select><button class="cmp-btn" data-code-ev-add>Add</button></div>`}`);
+    // warnings
+    if (g.warnings.length)
+        html += section('Notes', `<ul class="code-warn">${g.warnings.slice(0, 12).map(w => `<li>${esc(w)}</li>`).join('')}</ul>`);
+    // code
+    const tab = (v, l) => `<button class="${REACT.view === v ? 'on' : ''}" data-code-view="${v}">${l}</button>`;
+    let body;
+    if (REACT.view === 'css')
+        body = `<pre class="code-pre code-big">${esc(g.css)}</pre>`;
+    else if (REACT.view === 'preview') {
+        const deps = resolveDeps(g), keys = g.props.filter(p => p.source === 'variant' || p.source === 'state' || p.source === 'boolean'), sel = REACT.sel;
+        // What a nested instance shows: its variant, and the text / boolean values it sets.
+        const resolver = inst => {
+            const dg = deps.get(inst.holder.id);
+            if (!dg)
+                return null;
+            const select = {}, texts = {};
+            for (const p of dg.props) {
+                if (p.source === 'variant') {
+                    const val = inst.main.variant?.[p.vkey];
+                    if (p.type === 'boolean')
+                        select[p.key] = String(val) === String(p.trueValue);
+                    else if (val !== undefined)
+                        select[p.key] = p.values[val];
+                }
+                else if (p.source === 'text' && typeof inst.node.propValues?.[p.cid] === 'string')
+                    texts[p.key] = inst.node.propValues[p.cid];
+                else if (p.source === 'boolean' && typeof inst.node.propValues?.[p.cid] === 'boolean')
+                    select[p.key] = inst.node.propValues[p.cid];
+            }
+            return { gen: dg, select, texts };
+        };
+        const ctl = keys.map(p => p.type === 'enum' ? `<label>${esc(p.label)}<select class="lp-input" data-code-sel="${esc(p.key)}">${Object.values(p.values).map(v => `<option value="${esc(v)}" ${(sel[p.key] ?? p.def) === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>` : `<label class="code-check"><input type="checkbox" data-code-sel="${esc(p.key)}" ${(sel[p.key] ?? p.def) ? 'checked' : ''}>${esc(p.label)}</label>`).join('');
+        REACT.lastHtml = previewHtml(g, sel, codegenThemeCss(), resolver);
+        body = `<div class="code-ctl">${ctl}</div><div class="code-frame-wrap" data-code-wrap><iframe class="code-frame" sandbox title="Preview" srcdoc="${esc(REACT.lastHtml)}"></iframe></div><div class="code-row"><button class="cmp-btn" data-code-open>Open full size</button></div><p class="small-label">The generated code, drawn with its own CSS (nested components included).</p>`;
+    }
+    else
+        body = `<pre class="code-pre code-big">${esc(g.tsx)}</pre>`;
+    html += section('Code', `<div class="code-tabs">${tab('tsx', 'TSX')}${tab('css', 'CSS')}${tab('preview', 'Preview')}<span class="grow"></span>${REACT.view !== 'preview' ? `<button class="cmp-btn" data-code-copy="${REACT.view}">Copy</button>` : ''}</div>${body}`);
+    REACT.last = g;
+    return html;
+}
+// The preview is laid out at 900 px wide and scaled to the width of the panel.
+function reactFitPreview() {
+    const wrap = document.querySelector('#inspector [data-code-wrap]');
+    if (!wrap)
+        return;
+    const s = Math.min(1, wrap.clientWidth / 900);
+    wrap.firstElementChild.style.transform = `scale(${s})`;
+    wrap.style.height = Math.round(640 * s) + 'px';
+}
+// Edits go to the code settings of the component (the set); every change is one undo step.
+function codeEdit(holder, fn) {
+    transaction('Edit component code', () => {
+        holder.code = holder.code ? structuredClone(holder.code) : {};
+        fn(holder.code);
+        doc.touch(holder);
+    });
+    renderInspector();
+}
+document.addEventListener('change', e => {
+    const t = e.target;
+    if (!t.closest?.('#inspector') || state.inspectorTab !== 'react')
+        return;
+    const holder = reactHolderOf(activeNode());
+    if (!holder || activeNode()?.isInstance)
+        return;
+    if (t.matches('[data-code]'))
+        codeEdit(holder, c => { const v = t.value.trim(); if (v) c[t.dataset.code] = t.dataset.code === 'exportName' ? pascalCase(v) : v; else delete c[t.dataset.code]; });
+    else if (t.matches('[data-code-prop]'))
+        codeEdit(holder, c => { const v = t.value.trim(), k = t.dataset.codeProp; c.props = { ...(c.props || {}) }; if (v) c.props[k] = { ...(c.props[k] || {}), name: camelCase(v) }; else delete c.props[k]; });
+    else if (t.matches('[data-code-role]'))
+        codeEdit(holder, c => { c.variantRoles = { ...(c.variantRoles || {}), [t.dataset.codeRole]: t.value }; });
+    else if (t.matches('[data-code-part]'))
+        codeEdit(holder, c => { c.parts = { ...(c.parts || {}) }; const id = t.dataset.codePart, v = kebabCase(t.value.trim() || ''); const cur = { ...(c.parts[id] || {}) }; if (t.value.trim()) cur.part = v; else delete cur.part; if (Object.keys(cur).length) c.parts[id] = cur; else delete c.parts[id]; });
+    else if (t.matches('[data-code-tag]'))
+        codeEdit(holder, c => { c.parts = { ...(c.parts || {}) }; const id = t.dataset.codeTag, cur = { ...(c.parts[id] || {}), tag: t.value }; c.parts[id] = cur; });
+});
+document.addEventListener('change', e => {
+    const t = e.target;
+    if (!t.matches?.('[data-code-sel]') || !t.closest('#inspector'))
+        return;
+    REACT.sel = { ...REACT.sel, [t.dataset.codeSel]: t.type === 'checkbox' ? t.checked : t.value };
+    renderInspector();
+});
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('#inspector [data-code-view], #inspector [data-code-copy], #inspector [data-code-copytext], #inspector [data-code-ev-add], #inspector [data-code-ev-del], #inspector [data-code-open]');
+    if (!b)
+        return;
+    if (b.dataset.codeOpen !== undefined) {
+        if (REACT.lastHtml)
+            window.open(URL.createObjectURL(new Blob([REACT.lastHtml], { type: 'text/html' })), '_blank');
+    }
+    else if (b.dataset.codeView) {
+        REACT.view = b.dataset.codeView;
+        renderInspector();
+    }
+    else if (b.dataset.codeCopy || b.dataset.codeCopytext !== undefined) {
+        const text = b.dataset.codeCopytext !== undefined ? b.dataset.codeCopytext : (b.dataset.codeCopy === 'css' ? REACT.last?.css : REACT.last?.tsx);
+        navigator.clipboard?.writeText(text || '').then(() => toast('Copied.'), () => toast('Could not copy.'));
+    }
+    else {
+        const holder = reactHolderOf(activeNode());
+        if (!holder || activeNode()?.isInstance)
+            return;
+        if (b.dataset.codeEvAdd !== undefined)
+            codeEdit(holder, c => { const name = $('#code-ev-name').value, part = $('#code-ev-part').value; c.events = [...(c.events || []).filter(x => !(x.name === name && (x.part || '') === part)), { name, part }]; });
+        else
+            codeEdit(holder, c => { c.events = (c.events || []).filter((_, i) => i !== +b.dataset.codeEvDel); });
+    }
+});
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
     doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
+    // React Props: the code contract of a component (or of an instance of one)
+    const canReact = ns.length === 1 && reactEligible(n);
+    $('#react-tab')?.classList.toggle('hidden', !canReact);
+    if (!canReact && state.inspectorTab === 'react') {
+        state.inspectorTab = 'design';
+        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el.dataset.inspectorTab === 'design'));
+    }
+    if (canReact && state.inspectorTab === 'react') {
+        $('#inspector').innerHTML = reactPanelHtml(n);
+        reactFitPreview();
+        lastInspector = performance.now();
+        return;
+    }
     let html = '';
     if (!n && state.tool === 'frame') {
         html += framePresetPanel();
@@ -20341,7 +20715,15 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
-window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
+window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate,
+    // The generated React code of a component (or of the component an instance comes from): { tsx, css, props, warnings, … }.
+    generateCode(id) {
+        const n = doc.get(id) || nodeIndex().get(id), h = reactHolderOf(n);
+        if (!h)
+            return null;
+        REACT.gens.clear();
+        return generateResolved(h);
+    }, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());

@@ -158,6 +158,7 @@ export function RightPanel() {
         <aside className="right-panel" id="right-panel" aria-label="Properties inspector">
             <div className="inspector-tabs">
                 <button className="active" data-inspector-tab="design">Design</button>
+                <button className="hidden" id="react-tab" data-inspector-tab="react">React Props</button>
                 <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>
