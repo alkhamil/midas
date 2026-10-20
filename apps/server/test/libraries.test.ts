@@ -238,3 +238,30 @@ test('publishing builds a usable code package: status, tarball and preview bundl
     const rebuilt = await call('POST', `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/build`);
     assert.equal(rebuilt.status, 200);
 });
+
+test('a component outside the standard kit is written from its design; implementation is validated', async () => {
+    const chip = {
+        id: 'chip', name: 'Tag Pill', set: false,
+        nodes: [
+            { id: 'chip', parentId: null, type: 'frame', component: true, name: 'Tag Pill', x: 0, y: 0, w: 80, h: 24, layout: 'horizontal', gap: 4, padX: 8, padY: 4, fills: [{ type: 'solid', color: '#eeeeee' }], cprops: [{ id: 'cp-t', name: 'Label', type: 'text', def: 'Tag' }] },
+            { id: 'chip-t', parentId: 'chip', type: 'text', name: 'Label', text: 'Tag', x: 0, y: 0, w: 30, h: 16, propBind: { text: 'cp-t' } },
+        ],
+    };
+    const snap = { components: [button(), chip], variables: { collections: [], items: [] }, icons: [] };
+    const d = await call('POST', `/api/libraries/${dsFile}/draft`, { snapshot: snap, iconKeys: [] });
+    const mk = (impl?: string) => d.body.mappings.map((m: { exportName: string; propsMap: object }) => m.exportName === 'TagPill' ? { ...m, propsMap: { ...m.propsMap, implementation: impl } } : m);
+    assert.ok(d.body.mappings.some((m: { exportName: string }) => m.exportName === 'TagPill'));
+    assert.equal((await call('GET', '/api/libraries/standard-kit')).body.components.some((c: { name: string }) => c.name === 'Button'), true);
+    const latest = (await call('GET', `/api/libraries/${dsFile}`)).body.versions[0].version as string;
+    const [M, m] = latest.split('.').map(Number);
+    const bad = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'DS', packageName: d.body.packageName, version: `${M}.${m + 1}.0`, snapshot: snap, mappings: mk('standard:Nope') });
+    assert.equal(bad.status, 400);
+    const res = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'DS', packageName: d.body.packageName, version: `${M}.${m + 1}.0`, snapshot: snap, mappings: mk('design') });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.codeError, null);
+    const tag = (await call('GET', `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/code`)).body;
+    assert.equal(tag.components.find((c: { exportName: string }) => c.exportName === 'TagPill').status, 'ready');
+    const pkg = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/versions/${M}.${m + 1}.0/package`, headers: { cookie } });
+    const tar = gunzipSync(pkg.rawPayload).toString('latin1');
+    assert.match(tar, /dist\/components\/__design\/TagPill\.d\.ts/);
+});

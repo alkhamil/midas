@@ -38,3 +38,11 @@ export const titleCase: (s: string) => string;
 export function inferFields(ctx: any, frameIds: string[], modules?: { id: string; label: string; name: string }[]): any[];
 export function suggestScreens(frameName: string): { role: string; purpose?: string }[];
 export function activeNavPath(layout: { items: NavEntry[] }, modules: BuilderModule[], module: BuilderModule): string | undefined;
+
+export function generateComponent(opts: {
+  ctx: any;
+  mapping: { componentKey: string; componentName: string; exportName: string; propsMap: { props: any[] } };
+  types?: 'generated' | 'inline';
+  iconOf?: (componentKey: string) => string | null;
+  importPrefix?: string;
+}): { source: string; dts: string; warnings: string[]; components: string[]; icons: string[] };

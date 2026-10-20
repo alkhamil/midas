@@ -1,0 +1,15 @@
+{
+  "auth": {
+    "login": "Masuk",
+    "loginTitle": "Masuk",
+    "username": "Nama pengguna",
+    "password": "Kata sandi",
+    "usernameRequired": "Nama pengguna dan kata sandi wajib diisi.",
+    "demoAccounts": "Akun demo (mock)",
+    "demoHint": "Klik untuk isi otomatis",
+    "processing": "Memproses…",
+    "noPermission": "Anda tidak memiliki akses ke halaman ini.",
+    "invalidCredentials": "Username atau password salah.",
+    "loginFailed": "Login gagal."
+  }
+}

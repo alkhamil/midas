@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { generateComponent } from '../src/component-codegen.js';
 import { cssVarOf, inferFields, makeContext, projectIssues, screenTree } from '../src/screen.js';
 
 const variables = { items: [{ id: 'v-primary', name: 'color/primary', type: 'color' }, { id: 'v-bg', name: 'color/background', type: 'color' }] };
@@ -122,4 +123,41 @@ test('inferFields reads form fields from the design (labels, types, relation to 
     assert.deepEqual(fields[1].relation, { moduleId: 'mod-role', labelField: 'name' });
     assert.deepEqual(fields[2].options, ['Option 1', 'Option 2', 'Option 3']);
     assert.equal(fields[0].sortable, true);
+});
+
+test('generateComponent writes a React component from the design: variants, bound text, hidden layers, icons, nested components', () => {
+    const nodes = [
+        { id: 'chip', name: 'Chip', type: 'frame', componentSet: true, cprops: [{ id: 'cp-l', name: 'Label', type: 'text', def: 'Chip' }, { id: 'cp-i', name: 'Show icon', type: 'boolean', def: true }] },
+        { id: 'chip-a', parentId: 'chip', name: 'Tone=Soft', type: 'frame', component: true, variant: { Tone: 'Soft' }, layout: 'horizontal', gap: 4, padL: 8, padR: 8, padT: 2, padB: 2, w: 60, h: 24, layoutSizingH: 'hug', radius: 999, fill: '#E2E8F0', vars: { fill: 'v-bg' } },
+        { id: 'chip-a-i', parentId: 'chip-a', name: 'Icon', type: 'frame', isInstance: true, sourceId: 'ico-v', w: 16, h: 16, propBind: { visible: 'cp-i' } },
+        { id: 'chip-a-t', parentId: 'chip-a', name: 'Label', type: 'text', text: 'Chip', fontSize: 12, fontWeight: 500, autoW: true, w: 30, h: 16, propBind: { text: 'cp-l' }, fill: '#0F172A' },
+        { id: 'chip-b', parentId: 'chip', name: 'Tone=Solid', type: 'frame', component: true, variant: { Tone: 'Solid' }, layout: 'horizontal', gap: 4, w: 60, h: 24, layoutSizingH: 'hug', radius: 4, fill: '#4338CA', vars: { fill: 'v-primary' } },
+        { id: 'chip-b-t', parentId: 'chip-b', name: 'Label', type: 'text', text: 'Chip', fontSize: 12, autoW: true, w: 30, h: 16, propBind: { text: 'cp-l' }, fill: '#FFFFFF' },
+        { id: 'ico', name: 'Icon/ui/star', type: 'frame', componentSet: true },
+        { id: 'ico-v', parentId: 'ico', name: 'Style=outline', type: 'frame', component: true, variant: { Style: 'outline' } },
+        { id: 'card', name: 'Card', type: 'frame', component: true, layout: 'vertical', gap: 8, w: 200, h: 80, fill: '#FFFFFF', vars: { fill: 'v-bg' } },
+        { id: 'card-chip', parentId: 'card', name: 'Chip', type: 'frame', isInstance: true, sourceId: 'chip-b', w: 60, h: 24 },
+    ];
+    const mapChip = { componentKey: 'chip', componentName: 'Chip', exportName: 'Chip', propsMap: { props: [
+        { source: 'variant', key: 'Tone', name: 'tone', type: 'enum', label: 'Tone', values: { Soft: 'soft', Solid: 'solid' } },
+        { source: 'text', key: 'cp-l', name: 'label', type: 'string', label: 'Label' },
+        { source: 'boolean', key: 'cp-i', name: 'showIcon', type: 'boolean', label: 'Show icon' },
+    ] } };
+    const mapCard = { componentKey: 'card', componentName: 'Card', exportName: 'Card', propsMap: { props: [] } };
+    const ctx = makeContext({ nodes, variables, mappings: [mapChip, mapCard].map(m => ({ componentKey: m.componentKey, ...m })), libraryId: 'self', fileId: 'self' });
+    const chip = generateComponent({ ctx, mapping: mapChip, iconOf: key => (key === 'ico' ? 'StarIcon' : null) });
+    assert.match(chip.source, /export function Chip\(props: ChipProps\): ReactElement/);
+    assert.match(chip.source, /"Soft": \(\) => \(/);
+    assert.match(chip.source, /"Solid": \(\) => \(/);
+    assert.match(chip.source, /\{label\}/);                                   // text bound to the label property
+    assert.match(chip.source, /showIcon !== false && \(/);                     // layer shown/hidden by the boolean property
+    assert.match(chip.source, /<StarIcon size=\{16\} \/>/);                    // icon instance → the generated icon component
+    assert.match(chip.source, /import \{ StarIcon \} from '..\/..\/generated\/icons';/);
+    assert.match(chip.source, /var\(--theme-primary, #4338CA\)/);              // fills use the library's theme tokens
+    assert.match(chip.source, /\{\.\.\.rest\}/);                               // everything else reaches the root element
+    assert.match(chip.dts, /export declare function Chip/);
+    const card = generateComponent({ ctx, mapping: mapCard, iconOf: () => null });
+    assert.match(card.source, /<Chip tone=\{"solid"\}/);                  // nested instance → the other component, variant mapped to its code value
+    assert.match(card.source, /import \{ Chip \} from '\.\/Chip';/);
+    assert.ok(!/const variants/.test(card.source), 'a single component has no variant table');
 });

@@ -2753,6 +2753,7 @@ select.vw-text { cursor: pointer }
 .lp-comp-head { display: flex; align-items: center; gap: 8px }
 .lp-comp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text) }
 .lp-export { width: 140px; flex: none }
+.lp-impl { width: 150px; flex: none }
 .lp-props { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 2px 22px }
 .lp-props.hidden { display: none }
 .lp-prop { display: grid; grid-template-columns: minmax(0, 1fr) auto 120px 52px; gap: 6px; align-items: center }

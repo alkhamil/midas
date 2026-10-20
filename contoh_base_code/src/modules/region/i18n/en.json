@@ -1,0 +1,45 @@
+{
+  "region": {
+    "label": "Region",
+    "labelPlural": "Regions",
+    "breadcrumbs": {
+      "list": "Regions",
+      "create": "Create",
+      "detail": "Detail",
+      "edit": "Edit"
+    },
+    "fields": {
+      "text": {
+        "label": "Text",
+        "placeholder": "Enter text"
+      },
+      "number": {
+        "label": "Number",
+        "placeholder": "Enter number"
+      },
+      "textarea": {
+        "label": "Textarea",
+        "placeholder": "Enter textarea"
+      },
+      "textarea2": {
+        "label": "Textarea",
+        "placeholder": "Enter textarea"
+      },
+      "password": {
+        "label": "Password",
+        "placeholder": "Enter password"
+      },
+      "select": {
+        "label": "Select",
+        "placeholder": "Select select"
+      }
+    },
+    "toast": {
+      "created": "Region created successfully.",
+      "updated": "Region updated successfully.",
+      "deleted": "Region deleted successfully",
+      "restored": "Region restored successfully",
+      "notFound": "Region not found"
+    }
+  }
+}

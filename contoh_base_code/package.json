@@ -1,0 +1,46 @@
+{
+  "name": "generator-module-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint src vite.config.ts",
+    "preview": "vite preview",
+    "verify:generator": "node scripts/verify-generator/emission.mjs && node scripts/verify-generator/compile.mjs",
+    "i18n:translate": "node scripts/i18n-translate.mjs --write",
+    "i18n:check": "node scripts/i18n-translate.mjs --check"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.104.0",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "axios": "^1.20.0",
+    "i18next": "^26.4.2",
+    "lucide-react": "^1.51.0",
+    "react": "^19.2.8",
+    "react-datepicker": "^9.1.0",
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.89.0",
+    "react-i18next": "^17.0.15",
+    "react-router": "^7.18.4",
+    "tailwindcss": "^4.3.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-datepicker": "^6.2.0",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jiti": "^2.7.0",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

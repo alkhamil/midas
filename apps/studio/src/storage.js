@@ -422,6 +422,7 @@ export const libraryApi = {
     buildCode: (id, version) => api('POST', `/api/libraries/${enc(id)}/versions/${enc(version)}/build`),
     /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
     draft: (id, name, snapshot, iconKeys = []) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot, iconKeys }),
+    standardKit: () => api('GET', '/api/libraries/standard-kit'),
     packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
     publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => ({ ...r.library, code: r.code, codeError: r.codeError })),
     fileUses: async fileId => {
