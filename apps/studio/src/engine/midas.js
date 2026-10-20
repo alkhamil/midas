@@ -12652,8 +12652,7 @@ async function developerKitDialog() {
 <div class="lp-field"><span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit. Create it once; after that the repository belongs to the developers.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a></div>
 <div class="lp-field"><span>Or with the CLI</span>${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}</div>
 <div class="lp-field"><span>Code status</span><small>Reported by <span class="lp-mono">midas report</span> after the package is built (usually in CI).</small><div id="dk-code" class="dk-code"><p class="small-label">Loading…</p></div></div>
-<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version.</small>${code(`npx midas sync --version <version>
-npm run build && npx midas report`)}</div>
+<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version. <span class="lp-mono">npm run build</span> already pulls the newest kit first and sends the code status and the Studio bundle afterwards, so no extra command is needed.</small>${code(`npm run build`)}<small>Without the CLI: download the kit and replace <span class="lp-mono">src/generated/</span> with it.</small><a class="wide-button" id="dk-kit-zip" download>${icon('download', 13)} Download Library Kit (.zip)</a></div>
 <div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
 </div>`);
     const sel = $('#dk-version'), zip = $('#dk-zip');
@@ -12677,6 +12676,7 @@ npm run build && npx midas report`)}</div>
         const v = sel.value;
         showCode(v);
         zip.href = `/api/libraries/${encodeURIComponent(lib.fileId)}/scaffold?format=zip&version=${encodeURIComponent(v)}`;
+        $('#dk-kit-zip').href = `/api/libraries/${encodeURIComponent(lib.fileId)}/kit?format=zip&version=${encodeURIComponent(v)}`;
         $('#modal').querySelectorAll('.lp-code').forEach(el => { el.textContent = el.textContent.replace(/--version \S+$/m, `--version ${v}`); });
     };
     sel.onchange = update;

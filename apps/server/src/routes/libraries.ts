@@ -415,12 +415,20 @@ export async function libraryRoutes(app: FastifyInstance) {
     });
 
     // Library Kit satu versi (spec §3.3) — file untuk `src/generated/`.
-    app.get<{ Params: { id: string }; Querystring: { version?: string } }>('/api/libraries/:id/kit', async (req, reply) => {
+    // `?format=zip`: the same files as a download, for developers who do not want the CLI (replace src/generated with them).
+    app.get<{ Params: { id: string }; Querystring: { version?: string; format?: string } }>('/api/libraries/:id/kit', async (req, reply) => {
         const l = await libraryOf(req, req.params.id);
         const v = l ? await versionOf(l.id, req.query.version) : null;
         if (!l || !v)
             return reply.code(404).send({ error: 'not_found', message: req.query.version ? `Version ${req.query.version} not found` : 'Library not found' });
-        return { libraryId: l.id, package: l.packageName, version: v.version, files: buildKit(await kitInput(l, v)) };
+        const files = buildKit(await kitInput(l, v));
+        if (req.query.format !== 'zip')
+            return { libraryId: l.id, package: l.packageName, version: v.version, files };
+        const dir = l.packageName.split('/')[1];
+        const readme = `Library Kit ${l.packageName}@${v.version}\n\n1. Replace the src/generated folder of the package repository with the one in this zip.\n2. Set "version" in package.json to ${v.version}.\n3. npm run build (it also reports the code status to Midas when you are signed in).\n`;
+        return reply.header('content-type', 'application/zip')
+            .header('content-disposition', `attachment; filename="${dir}-kit-${v.version}.zip"`)
+            .send(zipFiles({ ...files, 'KIT-README.txt': readme }));
     });
 
     // Kerangka repo paket (spec §3.4) + Library Kit. `?format=zip` untuk unduhan dari Studio.

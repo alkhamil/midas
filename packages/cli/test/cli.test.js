@@ -142,3 +142,17 @@ test('seed scripts derive the library package name and version instead of hardco
     assert.deepEqual([...listArg('Button, Table')], ['button', 'table']);
     assert.equal(listArg(undefined), null);
 });
+
+test('--soft steps never fail the build: unreachable Midas is skipped with one line, MIDAS_OFFLINE=1 is silent', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const dir = mkdtempSync(join(tmpdir(), 'midas-soft-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@midas/ui-x', version: '1.0.0' }));
+    writeFileSync(join(dir, 'midas.config.json'), JSON.stringify({ server: 'http://127.0.0.1:9', libraryId: 'lib', package: '@midas/ui-x' }));
+    const bin = new URL('../bin/midas.js', import.meta.url).pathname;
+    for (const cmd of ['sync', 'report', 'bundle']) {
+        const out = execFileSync(process.execPath, [bin, cmd, '--soft', '--dir', dir], { encoding: 'utf8', env: { ...process.env, MIDAS_TOKEN: 'x' } });
+        assert.match(out, new RegExp(`midas ${cmd}: skipped`), cmd);
+    }
+    const quiet = execFileSync(process.execPath, [bin, 'sync', '--soft', '--dir', dir], { encoding: 'utf8', env: { ...process.env, MIDAS_OFFLINE: '1', MIDAS_TOKEN: 'x' } });
+    assert.equal(quiet, '');
+});

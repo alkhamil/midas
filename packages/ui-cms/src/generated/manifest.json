@@ -237,6 +237,59 @@
       }
     },
     {
+      "exportName": "TextField",
+      "componentKey": "ds-54-y1uqzf",
+      "componentName": "TextField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "source": "text",
+          "label": "Placeholder"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Full name",
+        "placeholder": "Type here…",
+        "disabled": false
+      }
+    },
+    {
+      "exportName": "SwitchField",
+      "componentKey": "ds-au-icxb8g",
+      "componentName": "SwitchField",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "source": "text",
+          "label": "Label"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "source": "boolean",
+          "label": "Disabled"
+        }
+      ],
+      "defaults": {
+        "label": "Active",
+        "disabled": false
+      }
+    },
+    {
       "exportName": "Badge",
       "componentKey": "ds-2u-aexhr0",
       "componentName": "Badge",
@@ -292,6 +345,13 @@
         "size": "sm",
         "initial": "A"
       }
+    },
+    {
+      "exportName": "Table",
+      "componentKey": "ds-dx-j46n3a",
+      "componentName": "Table",
+      "props": [],
+      "defaults": {}
     },
     {
       "exportName": "Alert",
@@ -387,36 +447,6 @@
       }
     },
     {
-      "exportName": "TextField",
-      "componentKey": "ds-54-y1uqzf",
-      "componentName": "TextField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "placeholder",
-          "type": "string",
-          "source": "text",
-          "label": "Placeholder"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Full name",
-        "placeholder": "Type here…",
-        "disabled": false
-      }
-    },
-    {
       "exportName": "TextAreaField",
       "componentKey": "ds-6d-z5650u",
       "componentName": "TextAreaField",
@@ -503,29 +533,6 @@
       "defaults": {
         "label": "Role",
         "placeholder": "Select…",
-        "disabled": false
-      }
-    },
-    {
-      "exportName": "SwitchField",
-      "componentKey": "ds-au-icxb8g",
-      "componentName": "SwitchField",
-      "props": [
-        {
-          "name": "label",
-          "type": "string",
-          "source": "text",
-          "label": "Label"
-        },
-        {
-          "name": "disabled",
-          "type": "boolean",
-          "source": "boolean",
-          "label": "Disabled"
-        }
-      ],
-      "defaults": {
-        "label": "Active",
         "disabled": false
       }
     },
@@ -629,13 +636,6 @@
         "secondaryLabel": "Reset",
         "primaryLabel": "Apply"
       }
-    },
-    {
-      "exportName": "Table",
-      "componentKey": "ds-dx-j46n3a",
-      "componentName": "Table",
-      "props": [],
-      "defaults": {}
     },
     {
       "exportName": "Sidebar",

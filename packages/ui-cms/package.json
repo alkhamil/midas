@@ -25,7 +25,9 @@
   ],
   "scripts": {
     "sync": "midas sync",
+    "prebuild": "midas sync --soft",
     "build": "tsc -p tsconfig.build.json && vite build && node scripts/copy-assets.mjs",
+    "postbuild": "midas report --soft && midas bundle --soft",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build",
     "test": "node --test test/*.test.mjs",

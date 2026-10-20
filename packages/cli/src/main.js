@@ -2,7 +2,7 @@
 //   midas login [--server URL] [--email E]   store the access token in ~/.midas/config.json
 //   midas whoami                             show the account in use
 //   midas init <folder> --library <paket>    create a package repo from the scaffold + Library Kit
-//   midas sync [--version X] [--library P]   overwrite src/generated with the Library Kit of version X (default: latest)
+//   midas sync [--version X] [--library P]   overwrite src/generated with the Library Kit of version X (default: "pin" in midas.config.json, else latest)
 //   midas report [--no-upload] [--json]      after build: code status of each component (ready / not_implemented / mismatch)
 //   midas bundle [--no-upload]               after build: ESM + CSS bundle for the Studio Live DOM Renderer
 //   midas generate [project] [--out DIR]     pull Code Builder output (modules, routes, menu) into an app repo
@@ -27,13 +27,14 @@ Commands:
   midas login [--server URL] [--email EMAIL]
   midas whoami
   midas init <folder> --library <@midas/package> [--version X] [--force]
-  midas sync [--version X] [--library <@midas/package>] [--dir FOLDER]
-  midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
-  midas bundle [--dir FOLDER] [--no-upload]
+  midas sync [--version X] [--library <@midas/package>] [--dir FOLDER] [--soft]
+  midas report [--dir FOLDER] [--no-upload] [--json] [--strict] [--soft]
+  midas bundle [--dir FOLDER] [--no-upload] [--soft]
   midas generate [<project>] [--out FOLDER] [--list] [--dry-run]
   midas extract <Component> [--dir APP] [--to FOLDER] [--package <@midas/ui-…>] [--from <package folder>] [--force]
 
 Environment:
+  MIDAS_OFFLINE   set to 1 to skip the --soft steps (sync/report/bundle at build time)
   MIDAS_SERVER    Midas API URL (default from midas.config.json / login)
   MIDAS_TOKEN     access token (for CI), replaces the token from login
   MIDAS_PASSWORD  password for \`midas login\` without a prompt
@@ -169,6 +170,27 @@ async function init(args) {
     console.log(`Next: cd ${dir} && npm install, then implement the components in src/components/.`);
 }
 
+/** Same files with the same content already in src/generated (so an automatic sync at build time changes nothing). */
+function kitUpToDate(dir, files) {
+    const root = join(dir, GENERATED_DIR);
+    if (!existsSync(root)) return false;
+    const onDisk = [];
+    const walk = d => { for (const e of readdirSync(d, { withFileTypes: true })) (e.isDirectory() ? walk(join(d, e.name)) : onDisk.push(join(d, e.name))); };
+    walk(root);
+    const wanted = Object.keys(files).filter(f => f.startsWith(`${GENERATED_DIR}/`));
+    if (onDisk.length !== wanted.length) return false;
+    return wanted.every(f => existsSync(join(dir, f)) && readFileSync(join(dir, f), 'utf8') === files[f]);
+}
+
+/** package.json follows the library version when it is the same package. */
+function syncPackageVersion(dir, pkg, kit) {
+    if (pkg && pkg.name === kit.package && pkg.version !== kit.version) {
+        pkg.version = kit.version;
+        writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+        console.log(`package.json version → ${kit.version}`);
+    }
+}
+
 async function sync(args) {
     const dir = resolve(args.dir || process.cwd());
     const repo = readRepoConfig(dir);
@@ -181,14 +203,18 @@ async function sync(args) {
         if (!wanted) throw new Error('midas.config.json not found — use --library <@midas/package>');
         libraryId = (await resolveLibrary(request, wanted)).id;
     }
-    const q = args.version ? `?version=${encodeURIComponent(args.version)}` : '';
+    // Version: --version, else the "pin" of midas.config.json (stay on a version), else the latest.
+    const targetVersion = args.version || repo?.pin;
+    const q = targetVersion ? `?version=${encodeURIComponent(targetVersion)}` : '';
     const kit = await request('GET', `/api/libraries/${encodeURIComponent(libraryId)}/kit${q}`);
+    if (kitUpToDate(dir, kit.files)) {
+        syncPackageVersion(dir, pkg, kit);
+        if (!args.quiet) console.log(`Library Kit ${kit.package}@${kit.version} is up to date.`);
+        return;
+    }
     rmSync(join(dir, GENERATED_DIR), { recursive: true, force: true });
     writeFiles(dir, kit.files);
-    if (pkg && pkg.name === kit.package && pkg.version !== kit.version) {
-        pkg.version = kit.version;
-        writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n');
-    }
+    syncPackageVersion(dir, pkg, kit);
     if (!repo) writeFiles(dir, { 'midas.config.json': JSON.stringify({ server: connection(args, null).server, libraryId, package: kit.package }, null, 2) + '\n' });
     const manifest = JSON.parse(kit.files[`${GENERATED_DIR}/manifest.json`]);
     console.log(`Library Kit ${kit.package}@${kit.version} written to ${GENERATED_DIR}/ (${manifest.components.length} components, ${manifest.tokens.length} tokens).`);
@@ -330,6 +356,21 @@ async function extract(args) {
     return 0;
 }
 
+/**
+ * `--soft` (used by the package scripts that run at build time): never fail the build because Midas is unreachable, the
+ * user is not signed in, or this is not a Midas package; print one line and carry on. MIDAS_OFFLINE=1 skips the step.
+ */
+async function soft(args, run) {
+    if (!args.soft) return run();
+    if (process.env.MIDAS_OFFLINE === '1') return 0;
+    try {
+        return await run();
+    } catch (e) {
+        console.log(`midas ${args._[0]}: skipped (${e.message})`);
+        return 0;
+    }
+}
+
 export async function main(argv) {
     const args = parseArgs(argv);
     const cmd = args._[0];
@@ -340,9 +381,9 @@ export async function main(argv) {
     if (cmd === 'login') return login(args);
     if (cmd === 'whoami') return whoami(args);
     if (cmd === 'init') return init(args);
-    if (cmd === 'sync') return sync(args);
-    if (cmd === 'report') return report(args);
-    if (cmd === 'bundle') return bundle(args);
+    if (cmd === 'sync') return soft(args, () => sync({ ...args, ...(args.soft ? { quiet: true } : {}) }));
+    if (cmd === 'report') return soft(args, () => report(args));
+    if (cmd === 'bundle') return soft(args, () => bundle(args));
     if (cmd === 'generate') return generate(args);
     if (cmd === 'extract') return extract(args);
     console.error(`unknown command: ${cmd}\n\n${HELP}`);
