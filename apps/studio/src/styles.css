@@ -3456,3 +3456,13 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .cb-form .cb-pick { flex-direction: row; align-items: center; gap: 8px; text-align: left }
 .cb-form .cb-pick input { width: auto; height: auto; flex: none }
 .cb-form .cb-pick span { flex: 1; min-width: 0 }
+
+/* Dialogs: fixed header, scrolling body */
+.modal.has-head { display: flex; flex-direction: column; overflow: hidden; padding: 0 }
+.modal.has-head > .modal-header { flex: none; margin: 0; padding: 22px 25px 14px; border-bottom: 1px solid var(--border-soft, var(--border)) }
+.modal.has-head > .modal-body { flex: 1; min-height: 0; overflow: auto; padding: 16px 25px 25px }
+.lp-toolbar { top: -16px }
+/* Publish library: nested folders */
+.lp-cat-sub { display: flex; flex-direction: column; gap: 4px; padding: 2px 8px 8px 22px }
+.lp-cat-sub .lp-cat-body { padding: 2px 0 2px 4px }
+.lp-cat-sub .lp-comps { display: flex; flex-direction: column; gap: 4px }

@@ -11331,7 +11331,19 @@ function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = act
     showMenu(instanceMenuItems(an), x, y);
     return;
 } showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
-function modal(content) { closeMenu(); $('#modal').innerHTML = content; $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
+function modal(content) { closeMenu(); $('#modal').innerHTML = content; modalFixHeader(); $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
+// The header stays in place; everything below it scrolls.
+function modalFixHeader() {
+    const m = $('#modal'), head = m.querySelector(':scope > .modal-header');
+    m.classList.toggle('has-head', !!head);
+    if (!head)
+        return;
+    const body = document.createElement('div');
+    body.className = 'modal-body';
+    while (head.nextSibling)
+        body.appendChild(head.nextSibling);
+    m.appendChild(body);
+}
 function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#modal').innerHTML = ''; overlay.focus({ preventScroll: true }); }
 function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
 function promptText(title, value, callback) {
@@ -12714,41 +12726,62 @@ function publishDialog(snapshot, draft, iconKeys) {
     const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
     const vars = snapshot.variables.items.length;
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
     const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
     // ---- what to publish: search + select all/none, components first, icons grouped by category ----
     let query = '';
     const openCats = new Set();
-    const catOf = m => iconNameParts(m.componentName).category;
-    const shortName = m => String(m.componentName).split('/').pop();
+    // Names are folders: "Bold / Messages / Dialog" sits in the folder Bold, inside Messages; every folder has one checkbox for all that is under it.
+    const folderParts = m => String(m.componentName).split('/').map(x => x.trim()).filter(Boolean).slice(0, -1);
+    const isInternalName = i => !isIcon[i] && /^[_.]/.test(mappings[i].componentName);
+    const folderKeyOf = i => (isIcon[i] ? 'i:' : 'c:') + folderParts(mappings[i]).join('/');
+    const inFolder = (i, key) => { const k = folderKeyOf(i); return k === key || k.startsWith(key + '/'); };
+    const shortName = m => String(m.componentName).split('/').pop().trim() || String(m.componentName);
     const matches = m => !query || `${m.componentName} ${m.exportName}`.toLowerCase().includes(query);
+    // Indexes under a folder that the current search shows (internal parts keep their own choice).
+    const groupIdx = key => mappings.map((m, i) => (matches(m) && !isInternalName(i) && inFolder(i, key) ? i : -1)).filter(i => i >= 0);
     const chevron = open => `<svg class="lp-chev ${open ? 'open' : ''}" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const iconCell = (m, i) => `<label class="lp-icon-cell" title="${esc(m.componentName)}"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name">${esc(shortName(m))}</span><button type="button" class="lp-mini" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></label>`;
+    // The folder tree of a list of mapping indexes: folders first (alphabetical), then what sits at this level.
+    const tree = (idx, wantIcon) => {
+        const root = { dirs: new Map(), rows: [] };
+        for (const i of idx) {
+            let at = root;
+            for (const d of folderParts(mappings[i])) {
+                if (!at.dirs.has(d))
+                    at.dirs.set(d, { dirs: new Map(), rows: [] });
+                at = at.dirs.get(d);
+            }
+            at.rows.push(i);
+        }
+        const all = node => [...node.rows, ...[...node.dirs.values()].flatMap(all)];
+        const rowsHtml = list => !list.length ? '' : wantIcon ? `<div class="lp-cat-body">${list.map(i => iconCell(mappings[i], i)).join('')}</div>` : `<div class="lp-comps">${list.map(i => compRow(mappings[i], i)).join('')}</div>`;
+        const draw = (node, path) => [...node.dirs].sort(([a], [b]) => a.localeCompare(b)).map(([name, sub]) => {
+            const parts = [...path, name], key = (wantIcon ? 'i:' : 'c:') + parts.join('/'), ids = all(sub), on = ids.filter(i => include[i]).length;
+            const open = openCats.has(key) || (!!query && ids.length <= 60);
+            return `<div class="lp-cat"><div class="lp-cat-head"><input type="checkbox" data-lp-group="${esc(key)}" ${on === ids.length ? 'checked' : ''} aria-label="Publish everything in ${esc(name)}"><button type="button" class="lp-cat-toggle" data-lp-catfold="${esc(key)}">${chevron(open)}<span>${esc(name)}</span></button><span class="lp-count" data-lp-count="${esc(key)}">${on}/${ids.length}</span></div>${open ? `<div class="lp-cat-sub">${draw(sub, parts)}${rowsHtml(sub.rows)}</div>` : ''}</div>`;
+        }).join('');
+        return draw(root, []) + rowsHtml(root.rows);
+    };
     const lists = () => {
-        const comps = [], internal = [], cats = new Map();
+        const compIdx = [], internal = [], iconIdx = [];
         mappings.forEach((m, i) => {
             if (!matches(m)) return;
-            if (isIcon[i]) { const c = catOf(m); (cats.get(c) || cats.set(c, []).get(c)).push(i); }
-            else if (/^[_.]/.test(m.componentName)) internal.push(i);
-            else comps.push(i);
+            if (isIcon[i]) iconIdx.push(i);
+            else if (isInternalName(i)) internal.push(i);
+            else compIdx.push(i);
         });
         const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
         const selComp = mappings.filter((_, i) => include[i] && !isIcon[i]).length, selIcon = mappings.filter((_, i) => include[i] && isIcon[i]).length;
-        const catHtml = [...cats.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([cat, idx]) => {
-            const open = openCats.has(cat) || (!!query && idx.length <= 60);
-            const on = idx.filter(i => include[i]).length;
-            return `<div class="lp-cat"><div class="lp-cat-head"><input type="checkbox" data-lp-group="${esc(cat)}" ${on === idx.length ? 'checked' : ''} aria-label="Publish all ${esc(cat)} icons"><button type="button" class="lp-cat-toggle" data-lp-catfold="${esc(cat)}">${chevron(open)}<span>${esc(cat)}</span></button><span class="lp-count" data-lp-count="${esc(cat)}">${on}/${idx.length}</span></div>${open ? `<div class="lp-cat-body">${idx.map(i => iconCell(mappings[i], i)).join('')}</div>` : ''}</div>`;
-        }).join('');
         const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, not published on their own</summary><div class="lp-comps">${internal.map(i => compRow(mappings[i], i)).join('')}</div></details>` : '';
         const none = query ? 'Nothing matches your search.' : '';
         return `<div class="lp-summary"><span><b>${selComp}</b> of ${nComp} components</span><span><b>${selIcon}</b> of ${nIcon} icons</span></div>
-<section class="lp-section"><h4>Components <small>export name in code</small></h4><div class="lp-comps">${comps.map(i => compRow(mappings[i], i)).join('') || `<p class="small-label">${none || 'No components.'}</p>`}</div>${internalHtml}</section>
-<section class="lp-section"><h4>Icons <small>React icon components, color follows the text</small></h4>${nIcon ? `<div class="lp-cats">${catHtml || `<p class="small-label">${none}</p>`}</div>` : '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</section>`;
+<section class="lp-section"><h4>Components <small>export name in code</small></h4><div class="lp-cats">${tree(compIdx, false) || `<p class="small-label">${none || 'No components.'}</p>`}</div>${internalHtml}</section>
+<section class="lp-section"><h4>Icons <small>React icon components, color follows the text</small></h4>${nIcon ? `<div class="lp-cats">${tree(iconIdx, true) || `<p class="small-label">${none}</p>`}</div>` : '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</section>`;
     };
-    // Group checkboxes show a partial state when only some of their icons are selected.
+    // Folder checkboxes show a partial state when only some of what is inside is selected.
     const syncGroups = () => form.querySelectorAll('[data-lp-group]').forEach(el => {
-        const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup && matches(m) ? i : -1)).filter(i => i >= 0);
-        const on = idx.filter(i => include[i]).length;
+        const idx = groupIdx(el.dataset.lpGroup), on = idx.filter(i => include[i]).length;
         el.checked = idx.length > 0 && on === idx.length;
         el.indeterminate = on > 0 && on < idx.length;
     });
@@ -12800,7 +12833,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             collect();
             isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
             $('#lp-lists').innerHTML = lists();
-            form.querySelectorAll('[data-lp-group]').forEach(el => { const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup ? i : -1)).filter(i => i >= 0); const on = idx.filter(i => include[i]).length; el.checked = idx.length > 0 && on === idx.length; el.indeterminate = on > 0 && on < idx.length; });
+            syncGroups();
         }
     });
     const redraw = () => { $('#lp-lists').innerHTML = lists(); syncGroups(); };
@@ -12810,7 +12843,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         const summary = form.querySelector('.lp-summary');
         if (summary) summary.innerHTML = `<span><b>${mappings.filter((_, i) => include[i] && !isIcon[i]).length}</b> of ${isIcon.filter(x => !x).length} components</span><span><b>${mappings.filter((_, i) => include[i] && isIcon[i]).length}</b> of ${isIcon.filter(Boolean).length} icons</span>`;
         form.querySelectorAll('[data-lp-count]').forEach(el => {
-            const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpCount && matches(m) ? i : -1)).filter(i => i >= 0);
+            const idx = groupIdx(el.dataset.lpCount);
             el.textContent = `${idx.filter(i => include[i]).length}/${idx.length}`;
         });
         syncGroups();
@@ -12836,7 +12869,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         const g = e.target.closest('[data-lp-group]');
         if (g) {
             collect();
-            mappings.forEach((m, i) => { if (isIcon[i] && catOf(m) === g.dataset.lpGroup && matches(m)) include[i] = g.checked; });
+            groupIdx(g.dataset.lpGroup).forEach(i => { include[i] = g.checked; });
             applyIncludes();
             updateCounts();
         }
@@ -19189,10 +19222,8 @@ function showZoomMenu(e) {
 $('#zoom-value').onclick = e => showZoomMenu(e);
 $('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
 $('#image-input').onchange = e => { importImages(e.target.files); e.target.value = ''; };
-$('#modal-backdrop').onclick = e => {
-    if (e.target === $('#modal-backdrop'))
-        closeModal();
-};
+// A click outside the dialog does not close it (an accidental click would lose what was typed): use the close button, Cancel or Escape.
+$('#modal-backdrop').onclick = null;
 document.addEventListener('pointerdown', e => {
     if (!e.target.closest('#context-menu,#main-menu,#zoom-value'))
         closeMenu();
