@@ -3858,6 +3858,7 @@ async function libRename(id, name) {
         await libSaveIndex();
     }
     renderHome();
+    homeLibsLoad(); // a library carries its file's name
 }
 async function libDownload(id) {
     const meta = lib.index.find(m => m.id === id);
@@ -3937,7 +3938,9 @@ function timeAgo(ts) {
 const HOME_ICONS = { star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', library: '<path d="m12 4 8 4-8 4-8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/>' };
 // Libraries published from design files (Home → Library). A library lives as long as its file: trashing or deleting the file removes it.
 const HOME_LIBS = { list: [], loaded: false };
-async function homeLibsLoad() {
+// A file that is published as a library lives in Home → Library only: Recents and All files do not list it.
+const libFileIds = () => new Set(HOME_LIBS.list.map(l => l.fileId));
+async function homeLibsLoad(render = true) {
     try {
         HOME_LIBS.list = await libraryApi.list();
     }
@@ -3945,12 +3948,12 @@ async function homeLibsLoad() {
         HOME_LIBS.list = [];
     }
     HOME_LIBS.loaded = true;
-    if (lib.view === 'library')
+    if (render)
         renderHome();
 }
 function libraryCard(l) {
     const initial = esc((l.name || '?').trim()[0]?.toUpperCase() || '?');
-    return `<div class="hf lib-card" data-home-lib="${l.fileId}" tabindex="0" title="Open ${esc(l.fileName || l.name)}"><div class="hf-thumb">${l.thumbnail ? `<img src="${l.thumbnail}" alt="">` : `<span>${initial}</span>`}<em class="lib-ver">v${esc(l.semver)}</em></div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(l.name)}">${esc(l.name)}</div><div class="hf-sub">${l.components} component${l.components === 1 ? '' : 's'} · ${l.variables} variable${l.variables === 1 ? '' : 's'} · ${timeAgo(l.updated)}</div></div></div></div>`;
+    return `<div class="hf lib-card" data-hf="${l.fileId}" data-home-lib="${l.fileId}" tabindex="0" title="Open ${esc(l.fileName || l.name)}"><div class="hf-thumb">${l.thumbnail ? `<img src="${l.thumbnail}" alt="">` : `<span>${initial}</span>`}<em class="lib-ver">v${esc(l.semver)}</em></div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(l.name)}">${esc(l.name)}</div><div class="hf-sub">${l.components} component${l.components === 1 ? '' : 's'} · ${l.variables} variable${l.variables === 1 ? '' : 's'} · ${timeAgo(l.updated)}</div></div></div></div>`;
 }
 const homeIcon = n => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${HOME_ICONS[n]}</svg>`;
 function ensureHome() {
@@ -4189,12 +4192,47 @@ function openHomeMenu(x, y, items) {
     }, true), 0);
     return menu;
 }
+// A library's file: like any file, but it cannot be moved into a folder, and it can be unpublished.
+async function libUnpublish(id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!await confirmDialog({ title: 'Unpublish library?', message: `“${meta?.name || 'This library'}” stops being a library. Files that already use it keep their copies, but they no longer get updates and nobody can add it. The design file itself stays in All files.`, confirmLabel: 'Unpublish', danger: true }))
+        return;
+    try {
+        await libraryApi.unpublish(id);
+    }
+    catch (e) {
+        toast(`Could not unpublish: ${e?.message || e}`);
+        return;
+    }
+    LIBS.published = LIBS.published.filter(x => x.id !== id);
+    LIBS.snaps.delete(id);
+    await homeLibsLoad();
+    toast(`“${meta?.name || 'Library'}” is no longer a library.`);
+}
+function openLibraryMenu(x, y, id) {
+    const meta = lib.index.find(m => m.id === id);
+    if (!meta)
+        return;
+    openHomeMenu(x, y, [
+        ['Open', () => libOpen(id)],
+        ['Open in new tab', () => window.open('/file/' + encodeURIComponent(id), '_blank')],
+        ['Rename', () => libStartRename(id)],
+        [meta.starred ? 'Remove from sidebar' : 'Add to sidebar', () => libStar(id)],
+        ['Download', () => libDownload(id)],
+        ['Duplicate', () => libDuplicate(id)],
+        ['Move to trash', () => Promise.resolve(libTrash(id, true)).then(() => homeLibsLoad()), 'danger'],
+        '-',
+        ['Unpublish library', () => libUnpublish(id), 'danger'],
+    ]);
+}
 function openFileMenu(x, y, id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta)
         return;
     if (meta.trashed)
-        return openHomeMenu(x, y, [['Restore', () => libTrash(id, false)], ['Delete permanently', () => libDelete(id), 'danger']]);
+        return openHomeMenu(x, y, [['Restore', () => libTrash(id, false).then?.(() => homeLibsLoad()) || homeLibsLoad()], ['Delete permanently', () => libDelete(id), 'danger']]);
+    if (libFileIds().has(id))
+        return openLibraryMenu(x, y, id);
     openHomeMenu(x, y, [
         ['Open', () => libOpen(id)],
         ['Open in new tab', () => window.open('/file/' + encodeURIComponent(id), '_blank')],
@@ -4369,6 +4407,10 @@ async function libMoveFolder(id, parent) {
 }
 // The files the current Home view lists (after search), used by select-all.
 function homeShown() {
+    const all = homeShownAll();
+    return lib.view === 'trash' ? all : all.filter(m => !libFileIds().has(m.id));
+}
+function homeShownAll() {
     const q = lib.search.trim().toLowerCase(), match = m => !q || (m.name || '').toLowerCase().includes(q);
     return lib.view === 'trash' ? lib.index.filter(m => m.trashed && match(m)) : lib.view === 'templates' ? [] : lib.view === 'all' && !q ? lib.index.filter(m => !m.trashed && fileFolder(m) === lib.folder) : lib.view === 'recent' ? lib.index.filter(m => !m.trashed && !m.hiddenRecent && match(m)) : lib.index.filter(m => !m.trashed && match(m));
 }
@@ -4433,14 +4475,14 @@ function fileCard(m) {
     return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0" draggable="${m.trashed ? 'false' : 'true'}"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div>${m.starred ? `<span class="hf-star" title="In the sidebar">${homeIcon('star')}</span>` : ''}</div></div>`;
 }
 function folderCard(f) {
-    const files = lib.index.filter(m => !m.trashed && fileFolder(m) === f.id).length, subs = lib.folders.filter(x => (x.parent || null) === f.id).length;
+    const files = lib.index.filter(m => !m.trashed && !libFileIds().has(m.id) && fileFolder(m) === f.id).length, subs = lib.folders.filter(x => (x.parent || null) === f.id).length;
     const sub = [subs ? `${subs} folder${subs > 1 ? 's' : ''}` : '', `${files} file${files === 1 ? '' : 's'}`].filter(Boolean).join(' \u00b7 ');
     return `<div class="hf folder" data-hfolder="${f.id}" data-drop-folder="${f.id}" tabindex="0" draggable="true"><div class="hf-thumb folder-thumb">${homeIcon('folder')}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(f.name)}">${esc(f.name)}</div><div class="hf-sub">${sub}</div></div></div></div>`;
 }
 function renderHome() {
     updateDocFolderLabel();
     const home = ensureHome();
-    const q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed), trash = lib.index.filter(m => m.trashed);
+    const libFiles = libFileIds(), q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed && !libFiles.has(m.id)), trash = lib.index.filter(m => m.trashed);
     const match = m => !q || (m.name || '').toLowerCase().includes(q);
     const nav = [['recent', 'Recents'], ['all', 'All files'], ['templates', 'Templates'], ['library', 'Library'], ['trash', 'Trash']];
     let main = '';
@@ -4463,10 +4505,11 @@ function renderHome() {
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
         main = `${create}${head}${folderGrid}${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : subfolders.length ? '' : `<div class="home-empty">${q ? 'No files match your search.' : inAll && lib.folder ? 'This folder is empty. Drag files here, or use Move file in a file\'s right-click menu.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
-    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${live.filter(m => m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${lib.index.filter(m => !m.trashed && m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
 }
 async function showHome({ thumb = true } = {}) {
+    await homeLibsLoad(false); // which files are libraries decides what Recents and All files show
     finishText();
     closeMenu();
     toggleVarsWindow(false);

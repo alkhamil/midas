@@ -405,6 +405,8 @@ export const libraryApi = {
         return { name: res.headers.get('x-package-file') || `${id}-${version}.tgz`, bytes: new Uint8Array(await res.arrayBuffer()) };
     },
     list: () => api('GET', '/api/libraries').then(r => r.libraries),
+    /** Unpublish: removes the library and its versions; the file itself stays. */
+    unpublish: id => api('DELETE', `/api/libraries/${enc(id)}`),
     snapshot: async (id, seq) => {
         try {
             return await api('GET', `/api/libraries/${enc(id)}/snapshot${seq ? `?seq=${seq}` : ''}`);

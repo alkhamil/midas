@@ -12,7 +12,7 @@ import {
 import { config } from '../config.js';
 import { buildKit, buildManifest, kitBreakingChanges, tokenBreakingChanges, type KitInput } from '../lib/kit.js';
 import { buildScaffold } from '../lib/scaffold.js';
-import { getObject, putObject } from '../lib/s3.js';
+import { deletePrefix, getObject, putObject } from '../lib/s3.js';
 import { zipFiles } from '../lib/zip.js';
 
 type VersionRow = typeof libraryVersions.$inferSelect;
@@ -151,6 +151,16 @@ export async function libraryRoutes(app: FastifyInstance) {
                 out.push({ ...summary(l, v), fileId: l.id, fileName, thumbnail });
         }
         return { libraries: out };
+    });
+
+    // Unpublish: the library (all versions, mappings, snapshots) is removed; the design file stays as an ordinary file.
+    app.delete<{ Params: { id: string } }>('/api/libraries/:id', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        if (!l)
+            return reply.code(404).send({ error: 'not_found' });
+        await db.delete(libraries).where(eq(libraries.id, l.id));
+        await deletePrefix(`libraries/${l.id}/`).catch(() => { });
+        return { ok: true };
     });
 
     app.get<{ Params: { id: string } }>('/api/libraries/:id', async (req, reply) => {

@@ -152,6 +152,8 @@ export async function fileRoutes(app: FastifyInstance) {
         if (b.name !== undefined) {
             set.name = b.name;
             set.meta = { ...(f.meta as object), name: b.name };
+            // A library is its file: it carries the file's name.
+            await db.update(libraries).set({ name: b.name }).where(eq(libraries.id, f.id));
         }
         if (b.opened !== undefined)
             set.openedAt = b.opened ? new Date(b.opened) : null;
