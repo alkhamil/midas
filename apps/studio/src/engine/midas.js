@@ -48,6 +48,8 @@ function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.l
 function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
 const lyPadsBase = lyPads;
 function lyGap(n) { return n.gap ?? 16; }
+// Gap between wrapped rows; a missing or non-numeric value (imported wrap layouts) follows the main gap instead of turning every size into NaN.
+function lyGapCross(n, gap) { return Number.isFinite(n.gapCross) ? n.gapCross : gap; }
 function sizingOf(n, axis) {
     const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
     if (v)
@@ -77,14 +79,20 @@ function runLayout(d) {
     // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
     // frame's own inner stroke pushes its content in, like Figma.
     const strokeOut = c => !strokeIsOn(c) ? 0 : c.strokeAlign === 'inside' ? 0 : c.strokeAlign === 'outside' ? (c.strokeWidth || 0) : (c.strokeWidth || 0) / 2;
-    const strokeIn = n => !strokeIsOn(n) ? 0 : n.strokeAlign === 'outside' ? 0 : n.strokeAlign === 'inside' ? (n.strokeWidth || 0) : (n.strokeWidth || 0) / 2;
+    // Per side: a frame with a stroke on its left edge only takes room on that side only.
+    const strokeIn = n => {
+        if (!strokeIsOn(n) || n.strokeAlign === 'outside')
+            return { t: 0, r: 0, b: 0, l: 0 };
+        const k = n.strokeAlign === 'inside' ? 1 : .5, s = strokeSideWidths(n);
+        return { t: s.t * k, r: s.r * k, b: s.b * k, l: s.l * k };
+    };
     const ext = c => parentOf(c)?.strokesIncluded ? strokeOut(c) : 0;
     const lyPads = n => {
         const P = lyPadsBase(n);
         if (!n.strokesIncluded)
             return P;
         const s = strokeIn(n);
-        return { t: P.t + s, r: P.r + s, b: P.b + s, l: P.l + s };
+        return { t: P.t + s.t, r: P.r + s.r, b: P.b + s.b, l: P.l + s.l };
     };
     // First-line baseline of a layer, measured from its top (non-text layers sit on their bottom edge).
     const baselineOf = c => c.type === 'text' ? ((c.fontSize || 16) * (c.lineHeight || 1.2) - (c.fontSize || 16)) / 2 + (c.fontSize || 16) * .8 : c.h;
@@ -167,7 +175,7 @@ function runLayout(d) {
         if (!isAutoLayout(n) || eff(n, axis) !== 'hug')
             return;
         if (n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), T = gridTracks(n, fl);
             const total = axis === 'h'
                 ? T.colW.reduce((s, v) => s + v, 0) + gap * Math.max(0, Math.min(T.cols, fl.length) - 1) + P.l + P.r
                 : T.rowH.reduce((s, v) => s + v, 0) + gapC * Math.max(0, T.rowH.length - 1) + P.t + P.b;
@@ -184,7 +192,7 @@ function runLayout(d) {
             total = fl.reduce((s, c) => s + sizeOn(c, axis), 0) + gap * Math.max(0, fl.length - 1);
         else if (wrap) {
             const lines = breakLines(fl, Math.max(0, horiz ? n.w - P.l - P.r : n.h - P.t - P.b), gap, horiz);
-            total = lines.reduce((s, l) => s + Math.max(0, ...l.map(c => sizeOn(c, axis))), 0) + (n.gapCross ?? gap) * Math.max(0, lines.length - 1);
+            total = lines.reduce((s, l) => s + Math.max(0, ...l.map(c => sizeOn(c, axis))), 0) + (lyGapCross(n, gap)) * Math.max(0, lines.length - 1);
         }
         else
             total = Math.max(0, ...fl.map(c => sizeOn(c, axis)));
@@ -225,7 +233,7 @@ function runLayout(d) {
     const down = (n, axis) => {
         const ch = kids.get(n.id) || [];
         if (isAutoLayout(n) && n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), cols = gridCols(n);
+            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), cols = gridCols(n);
             if (axis === 'h') {
                 const share = Math.max(0, (Math.max(0, n.w - P.l - P.r) - gap * (cols - 1)) / cols);
                 for (const c of fl)
@@ -279,7 +287,7 @@ function runLayout(d) {
     };
     const place = (n, ch) => {
         if (n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), T = gridTracks(n, fl);
             const colX = [], rowY = [];
             let ax = 0, ay = 0;
             T.colW.forEach((w, i) => { colX[i] = ax; ax += w + gap; });
@@ -296,7 +304,7 @@ function runLayout(d) {
             });
             return;
         }
-        const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), gapC = n.gapCross ?? gap, fl = ch.filter(inFlow);
+        const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow);
         const innerW = Math.max(0, n.w - P.l - P.r), innerH = Math.max(0, n.h - P.t - P.b), innerP = horiz ? innerW : innerH, innerC = horiz ? innerH : innerW;
         const prim = c => (horiz ? c.w : c.h) + 2 * ext(c), crossOf = c => (horiz ? c.h : c.w) + 2 * ext(c);
         const lines = wrap ? breakLines(fl, innerP, gap, horiz) : [fl];
@@ -466,7 +474,7 @@ function autoLayoutControls(n) {
             cells.push(`<button class="ly-cell ${on ? 'on' : ''}" data-ly-cell="${pi},${ci}" aria-label="Align ${aligns[pi]} / ${aligns[ci]}"><i></i></button>`);
         }
     const individual = state.padSides || P.l !== P.r || P.t !== P.b;
-    const padFields = individual ? `<div class="property-grid">${field('L', 'padL', P.l, { min: 0 })}${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
+    const padFields = individual ? `<div class="property-grid">${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}${field('L', 'padL', P.l, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
     const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
     const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }));
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
@@ -1071,17 +1079,26 @@ function aliasReaches(item, targetId, depth = 0) {
 function closeVarPicker() { document.getElementById('var-picker')?.remove(); }
 // ----- shared variable list (Figma-style): search, collection filter, list / grid, collection → group hierarchy -----
 const VPK = { coll: '', view: 'list' };
+// The filter is one of: all libraries, what was created in this file, one library, or one collection.
+const libName = id => LIBS.snaps.get(id)?.name || LIBS.published.find(l => l.id === id)?.name || 'Library';
+function vpkLibIds(store) { return [...new Set(store.collections.map(c => c.libId).filter(Boolean))]; }
+function vpkValid(v) { return v === '@file' || v.startsWith('lib:') && vpkLibIds(varStore()).includes(v.slice(4)) || !!varColl(v); }
+function vpkMatch(c) { return !VPK.coll || (VPK.coll === '@file' ? !c.libId : VPK.coll.startsWith('lib:') ? c.libId === VPK.coll.slice(4) : c.id === VPK.coll); }
+function vpkOptions(store) {
+    const opt = (v, label) => `<option value="${esc(v)}" ${VPK.coll === v ? 'selected' : ''}>${esc(label)}</option>`, libs = vpkLibIds(store);
+    return opt('', 'All libraries') + opt('@file', 'Created in this file') + libs.map(id => opt('lib:' + id, libName(id))).join('') + `<optgroup label="Collections">${store.collections.map(c => opt(c.id, c.libId ? `${libName(c.libId)} / ${c.name}` : c.name)).join('')}</optgroup>`;
+}
 function varListHead(q, searchAttrs = '', types = []) {
     const store = varStore(), grid = VPK.view === 'grid', canGrid = types.length && types.every(t => t === 'color');
-    if (VPK.coll && !varColl(VPK.coll))
+    if (VPK.coll && !vpkValid(VPK.coll))
         VPK.coll = '';
-    return `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search ${searchAttrs} placeholder="Search" value="${esc(q)}" spellcheck="false" autocomplete="off" aria-label="Search variables"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Collection"><option value="">All libraries</option>${store.collections.map(c => `<option value="${c.id}" ${VPK.coll === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label>${canGrid ? `<button class="icon-button small" data-vpk-view title="${grid ? 'List view' : 'Grid view'}" aria-label="Toggle grid view">${icon(grid ? 'layers' : 'grid', 14)}</button>` : ''}</div></div>`;
+    return `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search ${searchAttrs} placeholder="Search" value="${esc(q)}" spellcheck="false" autocomplete="off" aria-label="Search variables"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Library or collection">${vpkOptions(store)}</select>${icon('chevronDown', 10)}</label>${canGrid ? `<button class="icon-button small" data-vpk-view title="${grid ? 'List view' : 'Grid view'}" aria-label="Toggle grid view">${icon(grid ? 'layers' : 'grid', 14)}</button>` : ''}</div></div>`;
 }
 function varListHtml({ types, filter = () => true, q = '', current = null, attr = 'data-pick', limit = 400 }) {
     const store = varStore(), ql = q.trim().toLowerCase(), grid = VPK.view === 'grid' && types.every(t => t === 'color');
     let html = '', shown = 0, hidden = 0;
     for (const c of store.collections) {
-        if (VPK.coll && c.id !== VPK.coll)
+        if (!vpkMatch(c))
             continue;
         const items = store.items.filter(i => i.collectionId === c.id && types.includes(i.type) && filter(i) && (!ql || i.name.toLowerCase().includes(ql)));
         if (!items.length)
@@ -2143,6 +2160,11 @@ function renderVarsWindow() {
         if (el)
             el.scrollTop = top;
     }
+    // A library collection can be looked at (and its values copied), not changed.
+    const ro = vwReadOnly();
+    win.classList.toggle('vw-readonly', ro);
+    if (ro)
+        win.querySelectorAll('.vw-main input:not(.vw-search), .vw-main select:not(.vw-mode), .vw-main [data-vw-alias], .vw-main [data-vw-unalias]').forEach(el => { el.disabled = true; });
 }
 function vwRenameGroup(coll, old, nn) {
     nn = nn.replace(/\s*\/\s*/g, '/');
@@ -2158,7 +2180,13 @@ function vwRenameGroup(coll, old, nn) {
     else if (vw.group.startsWith(old + '/'))
         vw.group = nn + vw.group.slice(old.length);
 }
+// Collections that come from a library are changed in the library file only.
+const vwReadOnly = () => !!varColl(vw.coll)?.libId;
 function vwTx(label, fn, rerender = true) {
+    if (vwReadOnly()) {
+        toast('This collection comes from a library: edit it in the library file.');
+        return;
+    }
     finishText();
     history.begin(label);
     fn();
@@ -2195,7 +2223,7 @@ function vwRawColor(key) { const [id, modeId] = key.split('|'), raw = varItem(id
 function vwWithAlpha(key, rgb) { return rgb.length === 9 ? rgb.toLowerCase() : vwJoinColor(rgb.toLowerCase(), vwSplitColor(vwRawColor(key)).alpha); }
 function vwSetValue(key, val, live) {
     const [itemId, modeId] = key.split('|'), item = varItem(itemId);
-    if (!item)
+    if (!item || item.libId)
         return;
     if (!history.pending)
         history.begin('Edit variable');
@@ -3105,6 +3133,23 @@ function fillsSection(n) {
     const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="fill" title="Apply variable" aria-label="Apply variable to fill">${VAR_ICON}</button>`;
     return section('Fill', rows, simple ? varBtn : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
 }
+// Text color that reads on whatever sits behind it: black on light backgrounds, white on dark ones.
+function backdropColor(parentId) {
+    for (let p = parentId && doc.get(parentId); p; p = doc.get(p.parentId)) {
+        if (p.type !== 'frame' || p.fill === 'none')
+            continue;
+        const f = getFills(p).find(x => x.visible !== false && (x.opacity ?? 1) > .5 && (x.type === 'solid' || x.type === 'linear') && x.color);
+        if (f)
+            return hex6(f.color);
+        if (/^#[\da-f]{6}$/i.test(p.fill || '') && (p.fillOpacity ?? 1) > .5)
+            return p.fill;
+    }
+    return options.canvasColor || (options.theme === 'dark' ? '#1e1e1e' : '#e3e3e3');
+}
+function contrastTextColor(parentId) {
+    const c = hex6(backdropColor(parentId)), r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 140 ? '#000000' : '#ffffff';
+}
 function addFill() {
     closeFillPicker();
     transaction('Add fill', () => {
@@ -3112,7 +3157,7 @@ function addFill() {
             if (n.type === 'text' || n.type === 'group')
                 continue;
             const fills = materializeFills(n), has = fills.length > 0;
-            fills.unshift({ type: 'solid', color: has ? '#000000' : '#d9d9d9', opacity: has ? .5 : 1, visible: true });
+            fills.unshift({ type: 'solid', color: has ? '#000000' : '#ffffff', opacity: has ? .5 : 1, visible: true });
             remapFillVars(n, 0, 1);
             syncLegacyFill(n);
             doc.touch(n);
@@ -3888,7 +3933,24 @@ function timeAgo(ts) {
     const d = Math.round(h / 24);
     return d < 30 ? `${d} day${d > 1 ? 's' : ''} ago` : new Date(ts).toLocaleDateString();
 }
-const HOME_ICONS = { star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>' };
+const HOME_ICONS = { star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', library: '<path d="m12 4 8 4-8 4-8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/>' };
+// Libraries published from design files (Home → Library). A library lives as long as its file: trashing or deleting the file removes it.
+const HOME_LIBS = { list: [], loaded: false };
+async function homeLibsLoad() {
+    try {
+        HOME_LIBS.list = await libraryApi.list();
+    }
+    catch {
+        HOME_LIBS.list = [];
+    }
+    HOME_LIBS.loaded = true;
+    if (lib.view === 'library')
+        renderHome();
+}
+function libraryCard(l) {
+    const initial = esc((l.name || '?').trim()[0]?.toUpperCase() || '?');
+    return `<div class="hf lib-card" data-home-lib="${l.fileId}" tabindex="0" title="Open ${esc(l.fileName || l.name)}"><div class="hf-thumb">${l.thumbnail ? `<img src="${l.thumbnail}" alt="">` : `<span>${initial}</span>`}<em class="lib-ver">v${esc(l.semver)}</em></div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(l.name)}">${esc(l.name)}</div><div class="hf-sub">${l.components} component${l.components === 1 ? '' : 's'} · ${l.variables} variable${l.variables === 1 ? '' : 's'} · ${timeAgo(l.updated)}</div></div></div></div>`;
+}
 const homeIcon = n => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${HOME_ICONS[n]}</svg>`;
 function ensureHome() {
     let home = document.getElementById('home');
@@ -3940,7 +4002,11 @@ function ensureHome() {
                 lib.folder = null;
             lib.sel.clear();
             renderHome();
+            if (lib.view === 'library')
+                homeLibsLoad();
         }
+        else if ((el = t.closest('[data-home-lib]')))
+            libOpen(el.dataset.homeLib);
         else if ((el = t.closest('[data-home-folder]'))) {
             lib.view = 'all';
             lib.folder = el.dataset.homeFolder || null;
@@ -4375,9 +4441,13 @@ function renderHome() {
     const home = ensureHome();
     const q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed), trash = lib.index.filter(m => m.trashed);
     const match = m => !q || (m.name || '').toLowerCase().includes(q);
-    const nav = [['recent', 'Recents'], ['all', 'All files'], ['templates', 'Templates'], ['trash', 'Trash']];
+    const nav = [['recent', 'Recents'], ['all', 'All files'], ['templates', 'Templates'], ['library', 'Library'], ['trash', 'Trash']];
     let main = '';
-    if (lib.view === 'templates')
+    if (lib.view === 'library') {
+        const list = HOME_LIBS.list.filter(l => !q || (l.name || '').toLowerCase().includes(q)).sort((a, b) => b.updated - a.updated);
+        main = `<h2>Library</h2><p class="home-note">Design files published as a library. Open one from any file's Components panel to reuse its components and variables; they can only be edited here, in the library file.</p>${!HOME_LIBS.loaded ? '<div class="home-empty">Loading…</div>' : list.length ? `<div class="home-grid">${list.map(libraryCard).join('')}</div>` : `<div class="home-empty">${q ? 'No libraries match your search.' : 'No libraries yet. Open a design file, go to Components and choose Publish as library.'}</div>`}`;
+    }
+    else if (lib.view === 'templates')
         main = `<h2>Templates</h2><div class="home-grid">${TEMPLATES.filter(t => !q || t.name.toLowerCase().includes(q)).map(t => `<div class="hf tpl" data-home-new="${t.id}" tabindex="0"><div class="hf-thumb tpl-thumb"><i style="aspect-ratio:${t.frame ? t.frame[1] + '/' + t.frame[2] : '4/3'}"></i></div><div class="hf-meta"><div class="hf-text"><div class="hf-name">${esc(t.name)}</div><div class="hf-sub">${esc(t.note)}</div></div></div></div>`).join('')}</div>`;
     else if (lib.view === 'trash') {
         const list = trash.filter(match).sort((a, b) => b.trashed - a.trashed);
@@ -7000,11 +7070,34 @@ fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let t
  if(item.props.y>0.){let sc=1.-smoothstep(-aa,aa,abs(d)-item.props.y*.5);let sa=item.stroke.a*sc;rgb=item.stroke.rgb*sa+rgb*(1.-sa);alpha=sa+alpha*(1.-sa);}
  return vec4(rgb,alpha)*item.props.w*clipAlpha;
 }`;
+// A frame's stroke sits above its children (Figma): an inner field whose fill covers the whole frame must not hide the border.
+// Frames with a stroke and children are split into a fill item (mode 'fill') and a stroke item (mode 'stroke') after their last descendant.
+function deferFrameStrokes(scene) {
+    const hasKid = new Set();
+    for (const s of scene)
+        if (s.node.parentId)
+            hasKid.add(s.node.parentId);
+    const defers = s => s.node.type === 'frame' && hasKid.has(s.node.id) && strokeIsOn(s.node) && !s.node.isMask;
+    if (!scene.some(defers))
+        return scene;
+    const out = [], chain = [], close = () => { const top = chain.pop(); if (top.defer)
+        out.push({ ...top.s, mode: 'stroke' }); };
+    for (const s of scene) {
+        while (chain.length && chain[chain.length - 1].s.node.id !== s.node.parentId)
+            close();
+        const defer = defers(s);
+        out.push(defer ? { ...s, mode: 'fill' } : s);
+        chain.push({ s, defer });
+    }
+    while (chain.length)
+        close();
+    return out;
+}
 class Atlas {
     constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.canvas = document.createElement('canvas'); }
     reset() { this.entries.clear(); this.packer.reset(); this.epoch++; }
-    get(n, res, images) {
-        const key = `${n.id}:${n.version}:${res}`;
+    get(n, res, images, mode = '') {
+        const key = `${n.id}:${n.version}:${res}${mode ? ':' + mode : ''}`;
         if (this.entries.has(key))
             return this.entries.get(key);
         if (n.type === 'image' && !images.get(n.assetId))
@@ -7050,9 +7143,11 @@ class Atlas {
         }
         else {
             const path = pathFor(n);
-            paintFills(ctx, n, path, 1);
+            if (mode !== 'stroke')
+                paintFills(ctx, n, path, 1);
             ctx.globalAlpha = 1;
-            paintStroke(ctx, n, path);
+            if (mode !== 'fill')
+                paintStroke(ctx, n, path);
         }
         this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w, h]);
         const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
@@ -7156,7 +7251,7 @@ class Renderer {
             return;
         const start = performance.now();
         const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, w: this.width / camera.zoom, h: this.height / camera.zoom };
-        const scene = this.doc.scene().filter(s => s.node.id !== this.skipId && s.node.type !== 'group' && !s.node.isMask && !s.boolChild && intersects({ ...s.box, x: s.box.x - 100, y: s.box.y - 100, w: s.box.w + 200, h: s.box.h + 200 }, viewport));
+        const scene = deferFrameStrokes(this.doc.scene().filter(s => s.node.id !== this.skipId && s.node.type !== 'group' && !s.node.isMask && !s.boolChild && intersects({ ...s.box, x: s.box.x - 100, y: s.box.y - 100, w: s.box.w + 200, h: s.box.h + 200 }, viewport)));
         this.visibleCount = scene.length;
         // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
         // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
@@ -7241,6 +7336,12 @@ class Renderer {
             d.set([0, 0, 0, 0], base + 20);
             d.set(color(n.fill2, n.fillOpacity), base + 24);
             d.set([n.fillType === 'linear' && n.fill !== 'none' ? n.gradientAngle * Math.PI / 180 : -1000, 0, clipId, 0], base + 28);
+            if (s.mode === 'fill')
+                d[base + 17] = 0; // the stroke comes later, above the children
+            else if (s.mode === 'stroke') {
+                d.set([0, 0, 0, 0], base + 8);
+                d[base + 28] = -1000;
+            }
             if (shadow) {
                 d[base + 4] += n.shadowX || 0;
                 d[base + 5] += n.shadowY || 0;
@@ -7252,7 +7353,7 @@ class Renderer {
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
                 // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
-                const entry = this.atlas.get(n, resolution, this.images);
+                const entry = this.atlas.get(n, resolution, this.images, s.mode || '');
                 if (!entry) {
                     count--;
                     return;
@@ -7273,7 +7374,7 @@ class Renderer {
                 this.clipData.set([m[0], m[1], m[2], m[3], m[4] + m[0] * originX + m[2] * originY, m[5] + m[1] * originX + m[3] * originY, clip.w, clip.h, clip.radius || 0, clipId, 0, 0, cr[0], cr[1], cr[2], cr[3]], i);
                 clipId = clipN - 1;
             }
-            if (s.node.shadow && !['text', 'path', 'line'].includes(s.node.type))
+            if (s.node.shadow && !['text', 'path', 'line'].includes(s.node.type) && s.mode !== 'stroke')
                 push(s, s.node, clipId, true);
             push(s, s.node, clipId);
         }
@@ -7422,24 +7523,28 @@ class Renderer {
             }
             else {
                 const ss = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
-                for (const e of fx)
-                    if (e.type === 'drop')
-                        paintDropShadow(ctx, n, path, e);
-                for (const e of fx) {
-                    if (e.type === 'bgBlur')
-                        paintBackdropBlur(ctx, path, (e.radius || 0) / 2 * ss);
-                    else if (e.type === 'glass')
-                        paintGlassBackdrop(ctx, n, path, e);
+                if (s.mode !== 'stroke') {
+                    for (const e of fx)
+                        if (e.type === 'drop')
+                            paintDropShadow(ctx, n, path, e);
+                    for (const e of fx) {
+                        if (e.type === 'bgBlur')
+                            paintBackdropBlur(ctx, path, (e.radius || 0) / 2 * ss);
+                        else if (e.type === 'glass')
+                            paintGlassBackdrop(ctx, n, path, e);
+                    }
+                    paintFills(ctx, n, path, s.opacity);
+                    ctx.globalAlpha = s.opacity;
+                    for (const e of fx)
+                        if (e.type === 'inner')
+                            paintInnerShadow(ctx, n, path, e);
+                    for (const e of fx)
+                        if (e.type === 'glass')
+                            paintGlassHighlights(ctx, n, path, e);
                 }
-                paintFills(ctx, n, path, s.opacity);
                 ctx.globalAlpha = s.opacity;
-                for (const e of fx)
-                    if (e.type === 'inner')
-                        paintInnerShadow(ctx, n, path, e);
-                for (const e of fx)
-                    if (e.type === 'glass')
-                        paintGlassHighlights(ctx, n, path, e);
-                paintStroke(ctx, n, path);
+                if (s.mode !== 'fill')
+                    paintStroke(ctx, n, path);
             }
             ctx.restore();
         }
@@ -7505,7 +7610,7 @@ class Renderer {
         const ctx = canvas.getContext('2d');
         ctx.scale(scale, scale);
         ctx.translate(-box.x, -box.y);
-        this.paintScene(ctx, this.doc.scene().filter(s => included.has(s.node.id)));
+        this.paintScene(ctx, deferFrameStrokes(this.doc.scene().filter(s => included.has(s.node.id))));
         return canvas;
     }
     destroy() { this.atlas?.destroy(); this.instanceBuffer?.destroy(); this.clipBuffer?.destroy(); this.uniform?.destroy(); this.device?.destroy(); }
@@ -7897,7 +8002,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -8220,6 +8325,9 @@ function togglePageExpand(id) {
     renderPages();
 }
 function renderPages() {
+    for (const p of doc.data.pages)
+        if (/^Library \u00b7/.test(p.name) && !p.internal)
+            p.internal = true;
     const out = [];
     const walk = (parentId, depth) => {
         for (const p of pageChildren(parentId)) {
@@ -9073,7 +9181,7 @@ function instantiate(id, at = null, parent = null) {
     });
 }
 function createAtCenter(type, props = {}) { const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2); let n; transaction(`Insert ${type}`, () => { n = node(type, props); n.x = Math.round(c.x - n.w / 2); n.y = Math.round(c.y - n.h / 2); doc.add(n); select([n.id]); }); return n; }
-function createTextAtCenter(text) { const n = createAtCenter('text', { text, name: text.slice(0, 28), w: 360, h: 70, fontSize: 28, fill: options.theme === 'dark' ? '#f0eaf8' : '#282431' }); n.h = layoutText(n).height; doc.touch(n); changed({ commit: true }); }
+function createTextAtCenter(text) { const n = createAtCenter('text', { text, name: text.slice(0, 28), w: 360, h: 70, fontSize: 28, fill: contrastTextColor(null) }); n.h = layoutText(n).height; doc.touch(n); changed({ commit: true }); }
 function insertAsset(type) {
     const center = screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
     transaction('Insert ' + type, () => {
@@ -9233,8 +9341,13 @@ function arcHandles(n) {
     // Handles sit slightly inside the outline so the bounding box never covers them.
     const inset = Math.min(1 - 14 / Math.max(28, Math.min(n.w, n.h) / 2 * state.camera.zoom), .9);
     const at = (a, k) => { const q = point(m, n.w / 2 + Math.cos(a) * n.w / 2 * k, n.h / 2 + Math.sin(a) * n.h / 2 * k); return worldToScreen(q.x, q.y); };
-    return [{ name: 'arc-end', ...at(a0 + sweep, inset) }, { name: 'arc-ratio', ...at(a0, ratio) }, { name: 'arc-start', ...at(a0, inset) }];
+    // On small circles the handles shrink (and their hit area with them) instead of vanishing.
+    const rpx = Math.max(1, Math.min(n.w, n.h) / 2 * state.camera.zoom), sz = Math.max(2.5, Math.min(4.5, rpx * .3)), hit = Math.max(4.5, Math.min(9, rpx * .5));
+    return [{ name: 'arc-end', sz, hit, ...at(a0 + sweep, inset) }, { name: 'arc-ratio', sz, hit, ...at(a0, ratio) }, { name: 'arc-start', sz, hit, ...at(a0, inset) }];
 }
+// Figma shows the arc handles from 75 px up on screen (74 px at 100% shows none; one wheel step of zoom, ×1.0409, brings them).
+const ARC_MIN_PX = 75;
+function arcBigEnough(n) { return Math.min(n.w, n.h) * state.camera.zoom >= ARC_MIN_PX; }
 function arcSelected() {
     const roots = selectedRoots();
     return roots.length === 1 && roots[0].type === 'ellipse' ? roots[0] : null;
@@ -9424,6 +9537,25 @@ function drawDotGrid() {
         for (let y = y0; y < H; y += step)
             c.fillRect(Math.round(x * dpr - d / 2), Math.round(y * dpr - d / 2), d, d);
 }
+// Components and instances carry a small purple marker in front of their canvas name: four diamonds for a component, one for an instance.
+function labelKind(n) { return n.component || n.componentSet ? 'component' : n.isInstance ? 'instance' : null; }
+const LABEL_ICON_W = 14;
+function drawLabelIcon(c, kind, x, y) {
+    // (x, y) is the left edge and the text baseline of the label; the icon is 9px tall and centered on the cap height.
+    const cy = y - 3.5, r = kind === 'component' ? 2.1 : 4;
+    const dia = (dx, dy, rr) => { c.moveTo(dx, dy - rr); c.lineTo(dx + rr, dy); c.lineTo(dx, dy + rr); c.lineTo(dx - rr, dy); c.closePath(); };
+    c.beginPath();
+    if (kind === 'component') {
+        const cx = x + 4.5;
+        dia(cx, cy - 2.4, r); dia(cx, cy + 2.4, r); dia(cx - 2.4, cy, r); dia(cx + 2.4, cy, r);
+        c.fill();
+    }
+    else {
+        dia(x + 4.5, cy, r);
+        c.lineWidth = 1.3;
+        c.stroke();
+    }
+}
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -9452,9 +9584,10 @@ function drawOverlay() {
         c.font = `${s.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         if (p.y < -30 || p.x > area.clientWidth || p.x + s.box.w * z < 0)
             continue;
-        c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? compPurple() : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
+        const kind = labelKind(s.node), purple = compPurple();
+        c.fillStyle = kind ? purple : state.selection.has(s.node.id) ? (inComponentTree(s.node) ? purple : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
         // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
-        const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0));
+        const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0) - (kind ? LABEL_ICON_W : 0));
         let label = s.node.name;
         if (c.measureText(label).width > maxW) {
             while (label.length > 1 && c.measureText(label + '…').width > maxW)
@@ -9469,6 +9602,11 @@ function drawOverlay() {
             c.fill();
             c.fillStyle = state.selection.has(s.node.id) ? (inComponentTree(s.node) ? compPurple() : blue) : '#5b5566';
             c.fillText(label, p.x + 6, p.y - 10);
+        }
+        else if (kind && label) {
+            c.strokeStyle = purple;
+            drawLabelIcon(c, kind, p.x, p.y - 12);
+            c.fillText(label, p.x + LABEL_ICON_W, p.y - 12);
         }
         else
             c.fillText(label, p.x, p.y - 12);
@@ -9507,23 +9645,6 @@ function drawOverlay() {
             }
             catch { }
         }
-        if (arcNode && (state.arcShow || state.gesture?.kind === 'arc')) {
-            // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line.
-            c.save();
-            c.lineWidth = 1.5;
-            c.strokeStyle = accent;
-            c.fillStyle = '#ffffff';
-            const hs = arcHandles(arcNode), pr = arcParams(arcNode);
-            for (const h of hs) {
-                if (h.name === 'arc-start' && pr.full)
-                    continue;
-                c.beginPath();
-                c.arc(h.x, h.y, 4.5, 0, Math.PI * 2);
-                c.fill();
-                c.stroke();
-            }
-            c.restore();
-        }
         if (!state.gesture || !['move', 'marquee'].includes(state.gesture.kind)) {
             const handles = handlesFor(g);
             c.strokeStyle = accent;
@@ -9547,6 +9668,23 @@ function drawOverlay() {
                     c.strokeRect(h.x - 3, h.y - 3, 6, 6);
                 }
             }
+        }
+        if (arcNode && state.tool === 'select' && arcBigEnough(arcNode) && (state.arcShow || state.gesture?.kind === 'arc')) {
+            // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line. Drawn last: on a small circle they must stay above the resize handles.
+            c.save();
+            c.lineWidth = 1.5;
+            c.strokeStyle = accent;
+            c.fillStyle = '#ffffff';
+            const hs = arcHandles(arcNode), pr = arcParams(arcNode);
+            for (const h of hs) {
+                if (h.name === 'arc-start' && pr.full)
+                    continue;
+                c.beginPath();
+                c.arc(h.x, h.y, h.sz, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            }
+            c.restore();
         }
         const label = `${fmt(g.w)} × ${fmt(g.h)}`, p = { x: (corners[2].x + corners[3].x) / 2, y: Math.max(corners[2].y, corners[3].y) + 15 };
         c.font = '9px Inter, sans-serif';
@@ -9817,7 +9955,7 @@ function frameLabelHit(p) {
         if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked)
             continue;
         octx.font = `${sc.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
-        const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width;
+        const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width + (labelKind(sc.node) ? LABEL_ICON_W : 0);
         if (p.x >= q.x - 3 && p.x <= q.x + w + 6 && p.y >= q.y - 26 && p.y <= q.y - 2)
             return sc.node;
     }
@@ -9915,7 +10053,7 @@ function pointerDown(e) {
         const parent = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w)), local = parent ? point(doc.world(parent.id).inverse, w.x, w.y) : w;
         state.tool = 'select';
         $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === 'select'));
-        startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, parent ? '#302937' : options.theme === 'dark' ? '#efe8f8' : '#302937');
+        startPendingText(Math.round(local.x), Math.round(local.y), parent?.id || null, contrastTextColor(parent?.id || null));
         refocusText();
         return;
     }
@@ -9942,8 +10080,8 @@ function pointerDown(e) {
         return;
     }
     const arcN = state.tool === 'select' && state.arcShow ? arcSelected() : null;
-    if (arcN) {
-        const ah = arcHandles(arcN).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 9 && !(h.name === 'arc-start' && arcParams(arcN).full));
+    if (arcN && arcBigEnough(arcN)) {
+        const ah = arcHandles(arcN).find(h => Math.hypot(h.x - p.x, h.y - p.y) < h.hit && !(h.name === 'arc-start' && arcParams(arcN).full));
         if (ah) {
             history.begin('Edit arc');
             const pr = arcParams(arcN);
@@ -10137,7 +10275,7 @@ function pointerMove(e) {
                 state.altDown = !!e.altKey;
                 invalidate();
             }
-            const arcN = arcSelected(), arcOn = !!arcN && (arcNearOutline(arcN, p, w) || hitTest(w, { deep: true })?.id === arcN.id);
+            const arcN = arcSelected(), arcOn = !!arcN && arcBigEnough(arcN) && (arcNearOutline(arcN, p, w) || hitTest(w, { deep: true })?.id === arcN.id);
             if (arcOn !== !!state.arcShow) {
                 state.arcShow = arcOn;
                 invalidate();
@@ -11169,6 +11307,23 @@ function useAsMask() {
     select([g.id]);
 }
 // Right-click menu on the canvas and layer list keeps the full command set.
+// Right-click on empty canvas.
+function canvasContextMenu(x, y) {
+    const hidden = document.body.classList.contains('panels-hidden');
+    const plugins = loadPlugins().map(p => ({ label: p.name || 'Untitled plugin', action: 'plugin-run:' + p.id }));
+    showMenu([
+        { label: 'Paste here', action: 'pasteHere', key: kbd('⌘V', 'Ctrl+V') },
+        { label: 'Select all', action: 'selectAll', key: kbd('⌘A', 'Ctrl+A') },
+        '-',
+        { label: hidden ? 'Show UI' : 'Hide UI', action: 'togglePanels', key: 'Tab' },
+        { label: 'Zoom to fit', action: 'fit', key: '⇧1' },
+        { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' },
+        '-',
+        { label: 'Insert component…', action: 'assetPicker', key: '⇧I' },
+        { label: 'Actions…', action: 'commandPalette', key: kbd('⌘K', 'Ctrl+K') },
+        ...(plugins.length ? ['-', { header: 'Plugins' }, ...plugins] : []),
+    ], x, y);
+}
 function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = activeNode(); if (state.selection.size === 1 && an && insideInstance(an)) {
     selectionMenu(x, y);
     return;
@@ -11993,7 +12148,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -12226,7 +12381,24 @@ function hideReturnBar() {
     state.returnTo = null;
     document.getElementById('return-bar')?.remove();
 }
+// A component that comes from a library is edited in the library's own file.
+async function goToLibrarySource(libId, nodeId) {
+    const meta = lib.index.find(m => m.id === libId);
+    if (!meta || meta.trashed) {
+        toast('The file of this library is not available.');
+        return;
+    }
+    await libOpen(libId);
+    if (nodeId && allNodes().some(n => n.id === nodeId))
+        goToMainComponent(nodeId);
+}
 function goToMainComponent(id, fromId = null) {
+    const own = allNodes().find(n => n.id === id);
+    if (own?.libRef) {
+        const i = own.libRef.indexOf(':');
+        goToLibrarySource(own.libRef.slice(0, i), own.libRef.slice(i + 1));
+        return;
+    }
     const page = pageOfNode(id);
     if (!page)
         return;
@@ -12265,8 +12437,7 @@ async function ensureThumb(n) {
         c.drawImage(src, (220 - w) / 2, (130 - h) / 2, w, h);
         const url = out.toDataURL('image/png');
         thumbCache.set(n.id, { key, url });
-        const holder = document.querySelector(`[data-thumb="${n.id}"]`);
-        if (holder)
+        for (const holder of document.querySelectorAll(`[data-thumb="${n.id}"]`))
             holder.innerHTML = `<img src="${url}" alt="">`;
     }
     catch { }
@@ -12314,12 +12485,65 @@ function subtreeOf(rootId) {
     ensureGlobalIndexes();
     return subtreeFrom({ nodeMap: _nodeMap, kidsMap: _kidsMap }, rootId);
 }
+// A main component deleted in Figma (kept by the importer only so its instances keep working).
+const isSoftDeletedComp = c => !!(c.softDeleted || parentSetOf(c)?.softDeleted);
+// The subtree of a layer, parents before children and siblings in document order (subtreeOf walks them last-to-first).
+function subtreeInOrder(rootId) {
+    ensureGlobalIndexes();
+    const out = [], root = _nodeMap.get(rootId), stack = root ? [root] : [];
+    while (stack.length) {
+        const n = stack.pop();
+        out.push(n);
+        const kids = _kidsMap.get(n.id);
+        if (kids)
+            for (let i = kids.length - 1; i >= 0; i--)
+                stack.push(kids[i]);
+    }
+    return out;
+}
+// Ids of the given snapshot components plus every snapshot component they use (through sourceId / swapOf), transitively.
+function snapshotDependencies(snap, ids) {
+    const owner = new Map(), byId = new Map(snap.components.map(c => [c.id, c]));
+    for (const c of snap.components)
+        for (const n of c.nodes)
+            owner.set(n.id, c.id);
+    const keep = new Set(ids), queue = [...ids];
+    while (queue.length) {
+        const c = byId.get(queue.pop());
+        if (!c)
+            continue;
+        for (const n of c.nodes)
+            for (const k of ['sourceId', 'swapOf']) {
+                const o = n[k] && owner.get(n[k]);
+                if (o && !keep.has(o)) {
+                    keep.add(o);
+                    queue.push(o);
+                }
+            }
+    }
+    return keep;
+}
+// Snapshots published before siblings were kept in order list them last-to-first: put them back.
+function snapshotNodesInOrder(c) {
+    if (c.ordered)
+        return c.nodes;
+    const byParent = new Map(), roots = [];
+    for (const n of c.nodes)
+        n.parentId ? (byParent.get(n.parentId) || byParent.set(n.parentId, []).get(n.parentId)).push(n) : roots.push(n);
+    const out = [], stack = [...roots].reverse();
+    while (stack.length) {
+        const n = stack.pop();
+        out.push(n);
+        stack.push(...(byParent.get(n.id) || []));
+    }
+    return out.length === c.nodes.length ? out : c.nodes;
+}
 function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
     vars.collections = vars.collections.filter(c => !c.libId);
     vars.items = vars.items.filter(i => !i.libId && vars.collections.some(c => c.id === i.collectionId));
-    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, nodes: subtreeOf(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
+    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, ordered: true, hidden: isSoftDeletedComp(r) || undefined, nodes: subtreeInOrder(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
             c.parentId = null; return c; }) }));
     return { components, variables: vars };
 }
@@ -12368,23 +12592,46 @@ async function iconVariantSvg(v) {
 }
 // Sumber ikon untuk snapshot: satu entri per komponen ikon, gaya dari variant (tanpa variant → "default").
 async function iconSources(roots, onProgress = null) {
-    const out = [];
-    let done = 0;
+    // Exporting needs the icon's page to be the open one, and opening a page rebuilds all of it (100+ ms on big pages).
+    // So icons are exported in batches per page: one switch for many icons, back to the open page between batches.
+    const groups = new Map(), done = { n: 0 }, byRoot = new Map(), BATCH = 60, back = doc.data.pageId;
     for (const r of roots) {
-        onProgress?.(done++, roots.length);
-        if (done % 8 === 0)
-            await nextPaint();
-        const variants = r.componentSet ? setVariants(r) : [r], styles = {};
-        for (const v of variants) {
-            try {
-                styles[r.componentSet ? iconStyleOf(v.variant) : 'default'] = await iconVariantSvg(v);
-            }
-            catch { }
-        }
-        if (Object.keys(styles).length)
-            out.push({ componentKey: r.id, ...iconNameParts(r.name), styles });
+        const p = pageOfNode(r.id);
+        (groups.get(p) || groups.set(p, []).get(p)).push(r);
     }
-    return out;
+    try {
+        for (const [page, list] of groups)
+            for (let i = 0; i < list.length; i += BATCH) {
+                if (page.id !== doc.data.pageId) {
+                    doc.data.pageId = page.id;
+                    doc.refresh();
+                }
+                for (const r of list.slice(i, i + BATCH)) {
+                    onProgress?.(done.n++, roots.length);
+                    const variants = r.componentSet ? setVariants(r) : [r], styles = {};
+                    for (const v of variants) {
+                        try {
+                            styles[r.componentSet ? iconStyleOf(v.variant) : 'default'] = await iconVariantSvg(v);
+                        }
+                        catch { }
+                    }
+                    if (Object.keys(styles).length)
+                        byRoot.set(r.id, { componentKey: r.id, ...iconNameParts(r.name), styles });
+                }
+                if (doc.data.pageId !== back) {
+                    doc.data.pageId = back;
+                    doc.refresh();
+                }
+                await nextPaint();
+            }
+    }
+    finally {
+        if (doc.data.pageId !== back) {
+            doc.data.pageId = back;
+            doc.refresh();
+        }
+    }
+    return roots.map(r => byRoot.get(r.id)).filter(Boolean);
 }
 // Busy indicator: a pill with a spinner, a label and (when the progress is known) a bar, so long work never looks like a freeze.
 const nextPaint = () => new Promise(r => setTimeout(r, 30));
@@ -12431,7 +12678,7 @@ async function publishLibrary() {
 }
 async function publishLibraryInner(busy) {
     const snapshot = librarySnapshot();
-    if (!snapshot.components.length && !snapshot.variables.items.length) {
+    if (!snapshot.components.some(c => !c.hidden) && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
         return;
     }
@@ -12439,22 +12686,17 @@ async function publishLibraryInner(busy) {
         busy.set('Saving the file…', 20);
         await save();
     }
-    busy.set('Reading the images used by components…', 45);
-    await nextPaint();
-    try {
-        snapshot.assets = await snapshotAssets(snapshot.components);
-    }
-    catch (e) {
-        toast(`Could not read the images used by components: ${e?.message || e}`);
-        return;
-    }
+    // Images are read later, for the components that are actually published.
+    snapshot.assets = {};
     // Tebakan awal: komponen di page "Icons" atau bernama "Icon/…" adalah ikon; bisa diubah di form.
-    const iconKeys = snapshot.components.filter(c => looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
+    const iconKeys = snapshot.components.filter(c => !c.hidden && looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
     let draft;
     busy.set('Comparing with the published version…', 75);
     await nextPaint();
     try {
-        draft = await libraryApi.draft(lib.fileId, doc.data.name, snapshot, iconKeys);
+        // The form only needs each component's name, variants and properties: send those, not every layer (tens of thousands).
+        const slim = { components: snapshot.components.filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, set: c.set, nodes: c.nodes.filter(n => n.id === c.id || n.parentId === c.id && n.component).map(n => ({ id: n.id, parentId: n.parentId, component: n.component, variant: n.variant, cprops: n.cprops })) })), variables: snapshot.variables, assets: {} };
+        draft = await libraryApi.draft(lib.fileId, doc.data.name, slim, iconKeys);
     }
     catch (e) {
         toast(`Could not prepare the library: ${e?.message || e}`);
@@ -12472,10 +12714,40 @@ function publishDialog(snapshot, draft, iconKeys) {
     const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
     const vars = snapshot.variables.items.length;
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
-    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
+    const leafOf = name => name.split('/').pop().trim() || name;
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(leafOf(m.componentName))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(leafOf(m.componentName))}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
+    // "Bold / Messages / Dialog" sits in the folder Bold, inside Messages; each folder has one checkbox for everything under it.
+    const tree = (wantIcon, row) => {
+        const root = { dirs: new Map(), rows: [] };
+        mappings.forEach((m, i) => {
+            if (isIcon[i] !== wantIcon)
+                return;
+            const parts = m.componentName.split('/').map(s => s.trim()).filter(Boolean);
+            let at = root;
+            for (const d of parts.slice(0, -1)) {
+                if (!at.dirs.has(d))
+                    at.dirs.set(d, { dirs: new Map(), rows: [] });
+                at = at.dirs.get(d);
+            }
+            at.rows.push(i);
+        });
+        const all = node => [...node.rows, ...[...node.dirs.values()].flatMap(all)];
+        const draw = (node, path) => [...node.dirs].map(([name, sub]) => {
+            const key = (wantIcon ? 'i:' : 'c:') + path + '/' + name, ids = all(sub);
+            return `<details class="lp-folder" data-lp-fkey="${esc(key)}" ${openFolders.has(key) ? 'open' : ''}><summary><input type="checkbox" data-lp-folder="${ids.join(',')}" aria-label="Publish everything in ${esc(name)}"><span class="lp-folder-name" title="${esc(name)}">${esc(name)}</span><small>${ids.length}</small></summary>${draw(sub, path + '/' + name)}</details>`;
+        }).join('') + node.rows.map(i => row(mappings[i], i)).join('');
+        return draw(root, '');
+    };
+    const openFolders = new Set();
+    // Folder checkboxes follow their children: checked, unchecked or partly checked.
+    const syncFolders = () => form.querySelectorAll('[data-lp-folder]').forEach(f => {
+        const boxes = f.closest('details').querySelectorAll('[data-lp-include]'), on = [...boxes].filter(b => b.checked).length;
+        f.checked = on > 0 && on === boxes.length;
+        f.indeterminate = on > 0 && on < boxes.length;
+    });
     const lists = () => {
-        const comps = mappings.map((m, i) => (isIcon[i] ? '' : compRow(m, i))).join(''), icons = mappings.map((m, i) => (isIcon[i] ? iconRow(m, i) : '')).join('');
+        const comps = tree(false, compRow), icons = tree(true, iconRow);
         const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
         return `<div class="lp-field"><span>Components (${nComp}) · export name in code</span><div class="lp-comps">${comps || '<p class="small-label">No components.</p>'}</div></div>
 <details class="lp-field lp-icons" ${nIcon && nIcon <= 12 ? 'open' : ''}><summary>Icons (${nIcon}) · React icon components, color follows the text</summary><small>Detected from the Icons page and names starting with “Icon/”. Each variant (e.g. Style=Bold) becomes an icon style.</small><div class="lp-comps">${icons || '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</div></details>`;
@@ -12515,7 +12787,22 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
                 }
             }, 300);
         };
+    form.addEventListener('change', e => {
+        const f = e.target.closest('[data-lp-folder]');
+        if (f)
+            f.closest('details').querySelectorAll('[data-lp-include]').forEach(b => { b.checked = f.checked; });
+        if (f || e.target.matches('[data-lp-include]'))
+            syncFolders();
+    });
+    form.addEventListener('toggle', e => {
+        const key = e.target.dataset?.lpFkey;
+        if (key)
+            e.target.open ? openFolders.add(key) : openFolders.delete(key);
+    }, true);
+    syncFolders();
     form.addEventListener('click', e => {
+        if (e.target.closest('[data-lp-folder]'))
+            e.stopPropagation();
         const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]'), kind = e.target.closest('[data-lp-kind]');
         if (bump) {
             version.value = semverBump(latest.version, bump.dataset.lpBump);
@@ -12527,6 +12814,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             collect();
             isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
             $('#lp-lists').innerHTML = lists();
+            syncFolders();
         }
     });
     form.onsubmit = async e => {
@@ -12542,9 +12830,13 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         const busy = startBusy(iconRoots.length ? 'Exporting icons…' : 'Publishing…', iconRoots.length ? 0 : null);
         try {
             const icons = await iconSources(iconRoots, (i, total) => busy.set(`Exporting icons… ${i + 1} / ${total}`, (i / total) * 60));
-            busy.set(`Uploading ${chosen.length} component${chosen.length === 1 ? '' : 's'}${icons.length ? ` and ${icons.length} icon${icons.length === 1 ? '' : 's'}` : ''}…`, iconRoots.length ? 75 : null);
+            busy.set('Reading the images used by components…', iconRoots.length ? 70 : null);
+            // Components that the chosen ones are built from (nested instances, swap defaults) travel along, or their copies in other files would lose those parts.
+            const send = snapshotDependencies(snapshot, new Set([...chosen.map(m => m.componentKey), ...icons.map(i => i.componentKey)])), components = snapshot.components.filter(c => send.has(c.id));
+            const assets = await snapshotAssets(components);
+            busy.set(`Uploading ${chosen.length} component${chosen.length === 1 ? '' : 's'}${icons.length ? ` and ${icons.length} icon${icons.length === 1 ? '' : 's'}` : ''}…`, iconRoots.length ? 80 : null);
             submit.textContent = 'Publishing…';
-            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, icons }, mappings: chosen });
+            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, components, assets, icons }, mappings: chosen });
             busy.done();
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
@@ -12682,21 +12974,24 @@ function libImportComponents(snap, onlyIds = null) {
             doc.data.assets[id] = url;
     let page = doc.data.pages.find(p => p.name === name);
     if (!page) {
-        page = { id: uid(), name, nodes: [] };
+        page = { id: uid(), name, nodes: [], internal: true };
         doc.data.pages.push(page);
     }
+    page.internal = true; // the copies are working parts of the file, not pages to browse or edit
     const byRef = new Map(page.nodes.filter(n => n.libRef).map(n => [n.libRef, n]));
     let y = page.nodes.filter(n => !n.parentId).reduce((m, n) => Math.max(m, n.y + n.h), -80) + 80;
-    const idFor = new Map();
-    for (const c of snap.components)
+    const idFor = new Map(), ordered = new Map();
+    for (const c of snap.components) {
+        ordered.set(c.id, snapshotNodesInOrder(c));
         for (const n of c.nodes)
             idFor.set(n.id, byRef.get(`${snap.id}:${n.id}`)?.id || uid());
+    }
     const map = v => idFor.get(v) ?? v;
     for (const c of snap.components) {
         if (onlyIds && !onlyIds.has(c.id))
             continue;
         const keep = new Set();
-        for (const src of c.nodes) {
+        for (const src of ordered.get(c.id)) {
             const ref = `${snap.id}:${src.id}`, existing = byRef.get(ref), n = structuredClone(src);
             n.id = map(src.id);
             n.parentId = src.parentId ? map(src.parentId) : null;
@@ -12705,6 +13000,13 @@ function libImportComponents(snap, onlyIds = null) {
                     n[k] = map(n[k]);
             if (Array.isArray(n.exposedNested))
                 n.exposedNested = n.exposedNested.map(map);
+            // Instance-swap values (chosen on an instance, or the default / preferred ones of a property) are layer ids too.
+            if (n.propValues)
+                for (const [k, v] of Object.entries(n.propValues))
+                    if (typeof v === 'string' && idFor.has(v))
+                        n.propValues[k] = map(v);
+            if (Array.isArray(n.cprops))
+                n.cprops = n.cprops.map(p => p?.type === 'instance' ? { ...p, def: idFor.has(p.def) ? map(p.def) : p.def, preferred: Array.isArray(p.preferred) ? p.preferred.map(map) : p.preferred } : p);
             n.libRef = ref;
             n.libVersion = snap.version;
             if (!n.parentId && !existing) {
@@ -12724,6 +13026,13 @@ function libImportComponents(snap, onlyIds = null) {
                 page.nodes.push(n);
             }
         }
+        // Layers copied by an earlier import take the order of the snapshot (the slots they occupy are reused).
+        const copies = ordered.get(c.id).map(s => byRef.get(`${snap.id}:${s.id}`)).filter(Boolean);
+        if (copies.length > 1) {
+            const at = new Map(page.nodes.map((x, i) => [x, i])), slots = copies.map(x => at.get(x)).filter(i => i !== undefined).sort((a, b) => a - b);
+            if (slots.length === copies.length)
+                copies.forEach((x, i) => { page.nodes[slots[i]] = x; });
+        }
         // Layers that no longer exist in the library disappear from the copy.
         page.nodes = page.nodes.filter(n => !(n.libRef?.startsWith(snap.id + ':') && c.nodes.some(o => map(o.id) === n.id) === false && byRef.has(n.libRef) && isInLibComp(n, c, snap, map) && !keep.has(n.id)));
     }
@@ -12741,6 +13050,19 @@ function isInLibComp(n, c, snap, map) {
     }
     return false;
 }
+// The main component of a library component inside this file (imported when it is not there yet), or null.
+async function libLocalMain(libId, compId) {
+    const snap = await libSnap(libId);
+    if (!snap?.components.some(c => c.id === compId))
+        return null;
+    let page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`), root = page?.nodes.find(n => n.libRef === `${libId}:${compId}`);
+    const need = snapshotDependencies(snap, new Set([compId]));
+    if (!root || [...need].some(id => !page.nodes.some(n => n.libRef === `${libId}:${id}` && !n.parentId))) {
+        transaction('Import library component', () => { page = libImportComponents(snap, need); });
+        root = page.nodes.find(n => n.libRef === `${libId}:${compId}`);
+    }
+    return root?.componentSet ? page.nodes.find(n => n.parentId === root.id && n.component) : root || null;
+}
 async function libInstantiate(libId, compId, at = null, parent = null) {
     const snap = await libSnap(libId);
     const entry = snap?.components.find(c => c.id === compId);
@@ -12749,8 +13071,9 @@ async function libInstantiate(libId, compId, at = null, parent = null) {
         return;
     }
     let page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`), root = page?.nodes.find(n => n.libRef === `${libId}:${compId}`);
-    if (!root) {
-        transaction('Import library component', () => { page = libImportComponents(snap, new Set([compId])); });
+    const need = snapshotDependencies(snap, new Set([compId]));
+    if (!root || [...need].some(id => !page.nodes.some(n => n.libRef === `${libId}:${id}` && !n.parentId))) {
+        transaction('Import library component', () => { page = libImportComponents(snap, need); });
         root = page.nodes.find(n => n.libRef === `${libId}:${compId}`);
     }
     const main = root.componentSet ? page.nodes.find(n => n.parentId === root.id && n.component) : root;
@@ -12765,7 +13088,7 @@ async function libUpdate(libId) {
         libSyncVariables(snap);
         const page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`);
         if (page)
-            libImportComponents(snap, new Set(page.nodes.filter(n => n.libRef && !n.parentId).map(n => n.libRef.slice(libId.length + 1))));
+            libImportComponents(snap, snapshotDependencies(snap, new Set(page.nodes.filter(n => n.libRef && !n.parentId).map(n => n.libRef.slice(libId.length + 1)))));
         for (const n of allNodes())
             if (n.libRef?.startsWith(libId + ':'))
                 doc.touch(n);
@@ -12798,10 +13121,10 @@ function libThumbBase(c) {
     return (c.set ? c.nodes.find(n => n.parentId === c.id && n.component) : null) || c.nodes.find(n => n.id === c.id) || null;
 }
 function libThumbTree(c, base) {
-    const out = [base], seen = new Set([base.id]);
+    const out = [base], seen = new Set([base.id]), nodes = snapshotNodesInOrder(c);
     for (let grew = true; grew;) {
         grew = false;
-        for (const n of c.nodes)
+        for (const n of nodes)
             if (!seen.has(n.id) && seen.has(n.parentId)) {
                 seen.add(n.id);
                 out.push(n);
@@ -12904,7 +13227,7 @@ function libComponentsHtml() {
             continue;
         const open = !LIBS.open.has(u.id);
         // Komponen berawalan _ atau . adalah bagian internal library (dipakai komponen lain), tidak ditawarkan di Assets.
-        const shown = snap.components.filter(c => !/^[_.]/.test(c.name));
+        const shown = snap.components.filter(c => !c.hidden && !/^[_.]/.test(c.name));
         h += `<div class="lib-group"><button class="lib-group-head" data-lib-fold="${u.id}">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>${esc(snap.name)}</span><small>${shown.length}</small></button>`;
         if (open)
             h += shown.map(c => { return `<div class="asset-card lib-card" data-lib-comp="${u.id}:${c.id}" draggable="true"><div class="asset-preview" data-lib-thumb="${u.id}:${c.id}">${libThumbHtml(snap, c)}</div><div class="asset-caption"><span class="asset-name">${esc(c.name)}</span><span class="asset-meta">${c.set ? 'Component set' : 'Component'}</span></div></div>`; }).join('');
@@ -13178,6 +13501,226 @@ document.addEventListener('click', e => {
     }
     showMenu(items, Math.max(8, r.right - 220), r.bottom + 4);
 });
+// ===== Asset picker (Shift + I): components of this file and of its libraries as a grid of previews =====
+const AP = { el: null, q: '', tab: 'all', sel: 0, limit: 60, view: [], obs: null, cols: 5 };
+function apFileItems() {
+    const out = [];
+    for (const p of doc.data.pages) {
+        if (p.internal || /^Library \u00b7/.test(p.name))
+            continue;
+        for (const n of p.nodes) {
+            if (n.libRef || n.softDeleted || !(n.component || n.componentSet) || /^[_.]/.test(n.name))
+                continue;
+            if (n.component && !parentSetOf(n))
+                out.push({ kind: 'file', id: n.id, comp: n, target: n.id, name: n.name, sub: doc.data.name });
+            else if (n.componentSet) {
+                const vs = setVariants(n);
+                if (vs.length)
+                    out.push({ kind: 'file', id: vs[0].id, comp: vs[0], target: n.id, name: n.name, sub: doc.data.name });
+            }
+        }
+    }
+    return out;
+}
+function apLibItems(libId) {
+    const snap = LIBS.snaps.get(libId);
+    return (snap?.components || []).filter(c => !c.hidden && !/^[_.]/.test(c.name)).map(c => ({ kind: 'lib', libId, id: c.id, snap, c, name: c.name, sub: snap.name }));
+}
+function apTabs() {
+    return [['all', 'All'], ['file', doc.data.name || 'This file'], ...(LIBS.use || []).filter(u => LIBS.snaps.get(u.id)).map(u => [u.id, LIBS.snaps.get(u.id).name])];
+}
+function apItems() {
+    let items = [];
+    if (AP.tab === 'all' || AP.tab === 'file')
+        items = items.concat(apFileItems());
+    if (AP.tab === 'all')
+        for (const u of LIBS.use || [])
+            items = items.concat(apLibItems(u.id));
+    else if (AP.tab !== 'file')
+        items = apLibItems(AP.tab);
+    const words = AP.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length)
+        items = items.filter(it => { const hay = (it.name + ' ' + it.sub).toLowerCase(); return words.every(w => hay.includes(w)); });
+    return items;
+}
+function apThumbHtml(it) {
+    if (it.kind === 'lib')
+        return libThumbHtml(it.snap, it.c);
+    const svg = svgThumbOf(it.comp), cached = thumbCache.get(it.comp.id)?.url;
+    return svg ? '<img src="' + esc(svg) + '" alt="" class="asset-svg">' : cached ? '<img src="' + cached + '" alt="">' : '<div class="asset-skel"></div>';
+}
+function apRenderGrid(keepScroll = false) {
+    const grid = AP.el?.querySelector('.ap-grid');
+    if (!grid)
+        return;
+    const top = keepScroll ? grid.scrollTop : 0;
+    AP.view = apItems();
+    AP.sel = Math.max(0, Math.min(AP.sel, AP.view.length - 1));
+    const shown = AP.view.slice(0, AP.limit);
+    grid.innerHTML = shown.map((it, i) => '<button type="button" class="ap-cell' + (i === AP.sel ? ' on' : '') + '" draggable="true" data-ap="' + i + '" title="' + esc(it.name) + '"><span class="ap-prev"' + (it.kind === 'file' ? ' data-thumb="' + it.comp.id + '"' : '') + ' data-ap-i="' + i + '">' + apThumbHtml(it) + '</span><span class="ap-name">' + esc(it.name) + '</span><span class="ap-sub">' + esc(it.sub) + '</span></button>').join('') + (AP.view.length ? '' : '<div class="ap-empty">' + (AP.q.trim() ? 'No components match your search.' : 'No components yet.') + '</div>');
+    grid.scrollTop = top;
+    AP.el.querySelector('[data-ap-insert]').disabled = !AP.view.length;
+    AP.el.querySelector('[data-ap-goto]').disabled = AP.view[AP.sel]?.kind !== 'file';
+    apWatchThumbs(grid);
+}
+// Previews are drawn when their cell scrolls into view (each one renders the component's layers).
+function apWatchThumbs(grid) {
+    AP.obs?.disconnect();
+    const holders = [...grid.querySelectorAll('.ap-prev')].filter(h => h.querySelector('.asset-skel'));
+    if (!holders.length)
+        return;
+    const load = h => {
+        const it = AP.view[+h.dataset.apI];
+        if (!it)
+            return;
+        if (it.kind === 'file')
+            ensureThumb(it.comp);
+        else
+            renderLibThumb(it.snap, it.c).then(url => { if (url && h.isConnected)
+                h.innerHTML = '<img src="' + url + '" alt="">'; });
+    };
+    if (typeof IntersectionObserver === 'undefined') {
+        holders.slice(0, 30).forEach(load);
+        return;
+    }
+    AP.obs = new IntersectionObserver(hits => { for (const h of hits)
+        if (h.isIntersecting) {
+            AP.obs.unobserve(h.target);
+            load(h.target);
+        } }, { root: grid, rootMargin: '150px 0px' });
+    holders.forEach(h => AP.obs.observe(h));
+}
+function apRenderTabs() {
+    const box = AP.el?.querySelector('.ap-tabs');
+    if (box)
+        box.innerHTML = apTabs().map(([id, label]) => '<button type="button" class="ap-tab' + (AP.tab === id ? ' on' : '') + '" data-ap-tab="' + esc(id) + '" title="' + esc(label) + '">' + esc(label) + '</button>').join('');
+}
+function closeAssetPicker() {
+    if (!AP.el)
+        return;
+    AP.obs?.disconnect();
+    document.removeEventListener('pointerdown', AP.away, true);
+    AP.el.remove();
+    AP.el = null;
+    overlay.focus({ preventScroll: true });
+}
+function apInsert(i = AP.sel) {
+    const it = AP.view[i];
+    if (!it)
+        return;
+    closeAssetPicker();
+    if (it.kind === 'file')
+        instantiate(it.id);
+    else
+        libInstantiate(it.libId, it.id);
+}
+function apMove(delta) {
+    if (!AP.view.length)
+        return;
+    AP.sel = Math.max(0, Math.min(AP.view.length - 1, AP.sel + delta));
+    if (AP.sel >= AP.limit)
+        AP.limit = AP.sel + AP.cols * 4;
+    apRenderGrid(true);
+    AP.el.querySelector('.ap-cell.on')?.scrollIntoView({ block: 'nearest' });
+}
+function openAssetPicker() {
+    if (AP.el) {
+        AP.el.querySelector('.ap-search input').focus();
+        return;
+    }
+    closeMenu();
+    AP.q = '';
+    AP.tab = 'all';
+    AP.sel = 0;
+    AP.limit = 60;
+    const el = document.createElement('div');
+    el.className = 'asset-picker';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Insert component');
+    el.innerHTML = '<div class="ap-search">' + icon('search', 16) + '<span class="ap-chip">' + icon('component', 14) + 'Components</span><input placeholder="Search components by name" spellcheck="false" autocomplete="off" aria-label="Search components"></div><div class="ap-tabs"></div><div class="ap-grid" role="listbox"></div><div class="ap-foot"><span>Enter to insert · arrows to move · Esc to close</span><span class="ap-actions"><button type="button" class="wide-button" data-ap-goto>Go to main component</button><button type="button" class="wide-button primary" data-ap-insert>Insert</button></span></div>';
+    document.body.appendChild(el);
+    AP.el = el;
+    apRenderTabs();
+    apRenderGrid();
+    const input = el.querySelector('input');
+    input.focus();
+    // Libraries load in the background; their components appear as soon as the snapshots are in.
+    libsLoad().then(() => Promise.all((LIBS.use || []).map(u => libSnap(u.id)))).then(() => { if (AP.el === el) {
+        apRenderTabs();
+        apRenderGrid(true);
+    } }).catch(() => { });
+    input.addEventListener('input', () => { AP.q = input.value; AP.sel = 0; AP.limit = 60; apRenderGrid(); });
+    el.addEventListener('keydown', e => {
+        const k = e.key;
+        if (k === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAssetPicker();
+        }
+        else if (k === 'Enter') {
+            e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && AP.view[AP.sel]?.kind === 'file') {
+                const t = AP.view[AP.sel].target;
+                closeAssetPicker();
+                goToMainComponent(t, activeNode()?.id);
+            }
+            else
+                apInsert();
+        }
+        else if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(k) && (e.target !== input || k === 'ArrowDown' || k === 'ArrowUp' || !input.value)) {
+            e.preventDefault();
+            apMove(k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : k === 'ArrowDown' ? AP.cols : -AP.cols);
+        }
+        e.stopPropagation();
+    });
+    el.addEventListener('click', e => {
+        const tab = e.target.closest('[data-ap-tab]'), cell = e.target.closest('[data-ap]');
+        if (tab) {
+            AP.tab = tab.dataset.apTab;
+            AP.sel = 0;
+            AP.limit = 60;
+            apRenderTabs();
+            apRenderGrid();
+        }
+        else if (cell) {
+            AP.sel = +cell.dataset.ap;
+            el.querySelectorAll('.ap-cell').forEach(c => c.classList.toggle('on', c === cell));
+            el.querySelector('[data-ap-goto]').disabled = AP.view[AP.sel]?.kind !== 'file';
+            input.focus();
+        }
+        else if (e.target.closest('[data-ap-insert]'))
+            apInsert();
+        else if (e.target.closest('[data-ap-goto]') && AP.view[AP.sel]?.kind === 'file') {
+            const t = AP.view[AP.sel].target;
+            closeAssetPicker();
+            goToMainComponent(t, activeNode()?.id);
+        }
+    });
+    el.addEventListener('dblclick', e => { const cell = e.target.closest('[data-ap]'); if (cell)
+        apInsert(+cell.dataset.ap); });
+    el.querySelector('.ap-grid').addEventListener('scroll', e => {
+        const g = e.target;
+        if (AP.limit < AP.view.length && g.scrollTop + g.clientHeight > g.scrollHeight - 300) {
+            AP.limit += 60;
+            apRenderGrid(true);
+        }
+    });
+    // Drag a component out of the window onto the canvas: the window steps aside while the drag runs.
+    el.addEventListener('dragstart', e => {
+        const cell = e.target.closest?.('[data-ap]'), it = cell && AP.view[+cell.dataset.ap];
+        if (!it) {
+            e.preventDefault();
+            return;
+        }
+        e.dataTransfer.setData(it.kind === 'lib' ? 'application/x-midas-libcomp' : 'application/x-midas-component', it.kind === 'lib' ? it.libId + ':' + it.id : it.id);
+        e.dataTransfer.effectAllowed = 'copy';
+        setTimeout(() => el.classList.add('dragging'), 0);
+    });
+    el.addEventListener('dragend', () => closeAssetPicker());
+    AP.away = ev => { if (!el.contains(ev.target) && !ev.target.closest?.('#asset-picker-button'))
+        closeAssetPicker(); };
+    setTimeout(() => AP.el === el && document.addEventListener('pointerdown', AP.away, true), 0);
+}
 // ===== Add instances window (for slots) =====
 let addInst = null;
 function closeAddInstances() {
@@ -13195,7 +13738,7 @@ function addInstEntries(src) {
             if (/^Library \u00b7/.test(page.name))
                 continue;
             for (const n of page.nodes) {
-                if (/^[_.]/.test(n.name) || n.libRef)
+                if (/^[_.]/.test(n.name) || n.libRef || n.softDeleted)
                     continue;
                 if (n.componentSet)
                     out.push({ group: page.name.trim() || 'Untitled', pageId: page.id, id: n.id, name: n.name, variants: page.nodes.filter(v => v.parentId === n.id && v.component).length });
@@ -13207,7 +13750,7 @@ function addInstEntries(src) {
     else {
         const snap = LIBS.snaps.get(src);
         for (const c of snap?.components || [])
-            if (!/^[_.]/.test(c.name))
+            if (!c.hidden && !/^[_.]/.test(c.name))
                 out.push({ group: snap.name, id: c.id, name: c.name, variants: c.set ? c.nodes.filter(v => v.parentId === c.id && v.component).length : 0, lib: src });
     }
     return out;
@@ -13888,7 +14431,18 @@ function watchSwapThumbs(root) {
     const holders = [...root.querySelectorAll('.swp-thumb')].filter(h => !h.querySelector('img'));
     if (!holders.length)
         return;
-    const load = h => { const c = componentById(h.dataset.thumb); if (c) ensureThumb(c); };
+    const load = h => {
+        if (h.dataset.libThumb) {
+            const [lid, cid] = h.dataset.libThumb.split(':'), snap = LIBS.snaps.get(lid), c = snap?.components.find(x => x.id === cid);
+            if (c)
+                renderLibThumb(snap, c).then(url => { if (url && h.isConnected)
+                    h.innerHTML = '<img src="' + url + '" alt="">'; });
+            return;
+        }
+        const c = componentById(h.dataset.thumb);
+        if (c)
+            ensureThumb(c);
+    };
     if (typeof IntersectionObserver === 'undefined') {
         holders.slice(0, 24).forEach(load);
         return;
@@ -13907,7 +14461,7 @@ function swapEntries() {
     const out = [], seenSets = new Set();
     for (const p of doc.data.pages)
         for (const c of p.nodes) {
-            if (!c.component)
+            if (!c.component || isSoftDeletedComp(c))
                 continue;
             const set = parentSetOf(c);
             let group, leaf;
@@ -13925,24 +14479,48 @@ function swapEntries() {
                 leaf = parts.pop();
                 group = parts.join(' / ');
             }
-            out.push({ id: c.id, page: p.name.trim() || 'Page', group, leaf });
+            out.push({ id: c.id, libId: c.libRef ? c.libRef.slice(0, c.libRef.indexOf(':')) : null, page: p.name.trim() || 'Page', group, leaf, ids: set ? new Set(p.nodes.filter(v => v.parentId === set.id && v.component).map(v => v.id)) : new Set([c.id]) });
         }
     return out;
 }
+// Library components that this file has not imported yet are listed too; picking one imports it.
+function swapLibEntries(have) {
+    const out = [];
+    for (const u of LIBS.use || []) {
+        const snap = LIBS.snaps.get(u.id);
+        for (const c of snap?.components || []) {
+            if (c.hidden || /^[_.]/.test(c.name) || have.has(`${snap.id}:${c.id}`))
+                continue;
+            const parts = c.name.split('/').map(s => s.trim()), leaf = parts.pop();
+            out.push({ id: null, libId: snap.id, libComp: c.id, snap, c, page: 'Library · ' + snap.name, group: parts.join(' / '), leaf, ids: new Set() });
+        }
+    }
+    return out;
+}
 const SWP = { page: '' };
+function swapMatch(e) { const v = SWP.page; return !v || (v === '@file' ? !e.libId : v.startsWith('lib:') ? e.libId === v.slice(4) : v.startsWith('page:') ? e.page === v.slice(5) : e.page === v); }
 function openSwapPicker(anchor, { current = null, onPick }) {
     closeVarPicker();
-    const pop = document.createElement('div'), entries = swapEntries(), pages = [...new Set(entries.map(e => e.page))];
+    const have = new Set();
+    for (const p of doc.data.pages)
+        for (const n of p.nodes)
+            if (n.libRef && !n.parentId)
+                have.add(n.libRef);
+    const pop = document.createElement('div'), entries = [...swapEntries(), ...swapLibEntries(have)], pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
     pop.id = 'var-picker';
     pop.className = 'var-picker';
     let q = '', limit = 300;
-    if (SWP.page && !pages.includes(SWP.page))
+    const cur = current && entries.find(e => e.ids.has(current));
+    if (SWP.page && (SWP.page.startsWith('page:') && !pages.includes(SWP.page.slice(5)) || SWP.page.startsWith('lib:') && !libIds.includes(SWP.page.slice(4)) || !['@file'].includes(SWP.page) && !/^(page|lib):/.test(SWP.page) || cur && !swapMatch(cur)))
         SWP.page = '';
+    // A component set is listed once (its first variant): the entry holding the current variant is the selected one.
+    if (cur)
+        limit = Math.max(limit, entries.indexOf(cur) + 20);
     const list = () => {
         const ql = q.trim().toLowerCase();
         let html = '', shown = 0, hidden = 0, lastPage = null, lastGroup = null;
         for (const e of entries) {
-            if (SWP.page && e.page !== SWP.page)
+            if (!swapMatch(e))
                 continue;
             if (ql && !(e.group + ' ' + e.leaf).toLowerCase().includes(ql))
                 continue;
@@ -13962,7 +14540,7 @@ function openSwapPicker(anchor, { current = null, onPick }) {
             }
             else if (!e.group)
                 lastGroup = null;
-            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e.id === current ? 'on' : ''}" data-pick="${e.id}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" data-thumb="${e.id}">${swapThumbHtml(e.id)}</span><span class="vp-name">${esc(e.leaf)}</span>${e.id === current ? icon('check', 12) : ''}</button>`;
+            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e === cur ? 'on' : ''}" data-pick="${e.id || `lib:${e.libId}:${e.libComp}`}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" ${e.id ? `data-thumb="${e.id}"` : `data-lib-thumb="${e.libId}:${e.libComp}"`}>${e.id ? swapThumbHtml(e.id) : libThumbHtml(e.snap, e.c)}</span><span class="vp-name">${esc(e.leaf)}</span>${e === cur ? icon('check', 12) : ''}</button>`;
         }
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
@@ -13970,15 +14548,22 @@ function openSwapPicker(anchor, { current = null, onPick }) {
         if (pop.isConnected)
             watchSwapThumbs(pop.querySelector('.vp-list'));
     };
-    pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Page"><option value="">All pages</option>${pages.map(p => `<option value="${esc(p)}" ${SWP.page === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
+    pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Library or page"><option value="">All libraries</option><option value="@file" ${SWP.page === '@file' ? 'selected' : ''}>Created in this file</option>${libIds.map(id => `<option value="lib:${esc(id)}" ${SWP.page === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}<optgroup label="Pages">${pages.map(p => `<option value="page:${esc(p)}" ${SWP.page === 'page:' + p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</optgroup></select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
     list();
     document.body.appendChild(pop);
     watchSwapThumbs(pop.querySelector('.vp-list'));
     const r = anchor.getBoundingClientRect(), w = 280;
     pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
     pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
-    pop.querySelector('[data-vpk-search]').focus();
-    pop.querySelector('.vp-item.on')?.scrollIntoView({ block: 'center' });
+    pop.querySelector('[data-vpk-search]').focus({ preventScroll: true });
+    // Open on the component that is currently chosen.
+    const centerCurrent = () => {
+        const lst = pop.querySelector('.vp-list'), on = lst.querySelector('.vp-item.on');
+        if (on)
+            lst.scrollTop = on.getBoundingClientRect().top - lst.getBoundingClientRect().top + lst.scrollTop - (lst.clientHeight - on.offsetHeight) / 2;
+    };
+    centerCurrent();
+    requestAnimationFrame(centerCurrent);
     pop.addEventListener('input', e => {
         if (e.target.matches('[data-vpk-search]')) {
             q = e.target.value;
@@ -14002,7 +14587,13 @@ function openSwapPicker(anchor, { current = null, onPick }) {
         const b = e.target.closest('[data-pick]');
         if (b) {
             closeVarPicker();
-            onPick(b.dataset.pick);
+            const v = b.dataset.pick;
+            if (v.startsWith('lib:')) {
+                const [, libId, compId] = v.split(':');
+                libLocalMain(libId, compId).then(main => main ? onPick(main.id) : toast('This library component is no longer available.'));
+            }
+            else
+                onPick(v);
         }
     });
     pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVarPicker(); } });
@@ -14026,7 +14617,7 @@ function swappableComponents() {
     const out = [], seenSets = new Set();
     for (const p of doc.data.pages) {
         for (const c of p.nodes) {
-            if (c.component) {
+            if (c.component && !isSoftDeletedComp(c)) {
                 const set = parentSetOf(c);
                 if (set) {
                     if (seenSets.has(set.id))
@@ -15003,10 +15594,11 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         if (f.borderStrokeWeightsIndependent && ['rect', 'frame'].includes(n.type)) {
             n.strokeSides = 'custom';
-            n.strokeT = f.borderTopWeight ?? weight;
-            n.strokeR = f.borderRightWeight ?? weight;
-            n.strokeB = f.borderBottomWeight ?? weight;
-            n.strokeL = f.borderLeftWeight ?? weight;
+            // Figma leaves out a side that has no stroke (zero); only the sides that are present get a width.
+            n.strokeT = f.borderTopWeight ?? 0;
+            n.strokeR = f.borderRightWeight ?? 0;
+            n.strokeB = f.borderBottomWeight ?? 0;
+            n.strokeL = f.borderLeftWeight ?? 0;
             n.strokeWidth = Math.max(n.strokeT, n.strokeR, n.strokeB, n.strokeL);
         }
     };
@@ -15180,7 +15772,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         if (f.stackWrap) {
             n.layoutWrap = true;
-            n.gapCross = f.stackCounterSpacing ?? n.gap;
+            n.gapCross = Number.isFinite(f.stackCounterSpacing) ? f.stackCounterSpacing : n.gap;
         }
         n.gapAuto = !!n.gapAuto;
     };
@@ -15664,6 +16256,12 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.component = true;
         if (f.isStateGroup)
             n.componentSet = true;
+        // A component deleted in Figma is moved aside (to the hidden "Internal Only Canvas") with the path it came from, and instances may
+        // still point at it: it stays so they keep working, but is hidden and never published.
+        const figDeleted = x => !!(x && (x.isSoftDeleted || x.ancestorPathBeforeDeletion));
+        if ((f.type === 'SYMBOL' || f.isStateGroup) && (figDeleted(f) || fig.get(gkey(f.parentIndex?.guid))?.isStateGroup && figDeleted(fig.get(gkey(f.parentIndex?.guid))))) {
+            n.softDeleted = true;
+        }
         // Property definitions live on the set, or on a component that is not part of one.
         if (f.componentPropDefs?.length && (f.isStateGroup || f.type === 'SYMBOL' && !fig.get(gkey(f.parentIndex?.guid))?.isStateGroup)) {
             const props = [];
@@ -15774,7 +16372,35 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         return n;
     };
+    // Components deleted in Figma are left out of the import, unless a layer still uses them (an instance, a swap value): those stay, hidden.
+    const usedSymbols = new Set();
+    const useSym = g => { const r = realGuid(g); if (r) usedSymbols.add(gkey(r)); };
+    const useAssign = list => { for (const a of list || []) { useSym(a.value?.guidValue); useSym(a.varValue?.value?.symbolIdValue?.guid); } };
+    for (const f of fig.values()) {
+        if (f.type === 'INSTANCE')
+            useSym(f.symbolData?.symbolID);
+        for (const ov of f.symbolData?.symbolOverrides || []) {
+            useSym(ov.overriddenSymbolID);
+            useAssign(ov.componentPropAssignments);
+        }
+        useAssign(f.componentPropAssignments);
+        for (const d of f.componentPropDefs || [])
+            if (d.type === 'INSTANCE_SWAP')
+                useSym(d.initialValue?.guidValue);
+    }
+    const goneUnused = f => {
+        const gone = x => !!(x && (x.isSoftDeleted || x.ancestorPathBeforeDeletion));
+        if (f.type !== 'SYMBOL' && !f.isStateGroup)
+            return false;
+        const pf = fig.get(gkey(f.parentIndex?.guid));
+        if (!gone(f) && !(f.type === 'SYMBOL' && pf?.isStateGroup && gone(pf)))
+            return false;
+        const top = f.type === 'SYMBOL' && pf?.isStateGroup ? pf : f;
+        return ![top, ...(kids.get(gkey(top.guid)) || [])].some(x => usedSymbols.has(gkey(x.guid)));
+    };
     const walk = (f, parentMidas, pf, out) => {
+        if (goneUnused(f))
+            return;
         const hasKids = (kids.get(gkey(f.guid)) || []).length > 0;
         const n = makeMidas(f, pf, out, parentMidas);
         if (!n)
@@ -15987,7 +16613,8 @@ async function figToMidas(file, onProgress, abortSignal) {
                 continue;
             let v;
             // The chosen value sits in `value`, or in `varValue.value` (the form that can also hold a variable).
-            const val = a.value ?? a.varValue?.value;
+            // Figma writes an empty `value: {}` next to a filled `varValue` for instance swaps, so an empty one does not count.
+            const val = a.value && Object.keys(a.value).length ? a.value : a.varValue?.value ?? a.value;
             if (info.type === 'text')
                 v = val?.textValue?.characters;
             else if (info.type === 'boolean')
@@ -17564,6 +18191,8 @@ document.addEventListener('click', e => {
             applyFramePreset(act.slice(13));
         else if (act.startsWith('page-duplicate:'))
             duplicatePage(act.slice(15));
+        else if (act.startsWith('plugin-run:'))
+            runPlugin(loadPlugins().find(p => p.id === act.slice(11)));
         else if (act.startsWith('page-codebuilder:'))
             togglePageCodeBuilder(act.slice(17));
         else if (act.startsWith('vwcoll:'))
@@ -18156,6 +18785,32 @@ $('#present').onclick = async () => {
         present();
 };
 $('#insert-image').onclick = () => $('#image-input').click();
+$('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
+Object.assign(actions, {
+    assetPicker: openAssetPicker,
+    commandPalette,
+    togglePanels: () => document.body.classList.toggle('panels-hidden'),
+    selectAll: () => select(doc.nodes.filter(n => !n.parentId && n.visible && !n.locked).map(n => n.id)),
+    // Paste where the menu was opened: the pasted layers end up centred on that point.
+    pasteHere: async () => {
+        const at = state.contextWorld;
+        await pasteSelection();
+        const roots = selectedRoots();
+        if (!at || !roots.length)
+            return;
+        const b = union(roots.map(n => doc.world(n.id).box));
+        if (!b)
+            return;
+        const dx = Math.round(at.x - (b.x + b.w / 2)), dy = Math.round(at.y - (b.y + b.h / 2));
+        transaction('Paste here', () => { for (const n of roots) {
+            if (n.parentId)
+                continue;
+            n.x += dx;
+            n.y += dy;
+            doc.touch(n);
+        } });
+    },
+});
 $('#command-button').onclick = commandPalette;
 // Account menu: a dropdown (no browser confirm) with the signed-in user, Settings and Sign out.
 async function signOut() {
@@ -18631,10 +19286,21 @@ overlay.addEventListener('click', e => {
 });
 overlay.addEventListener('contextmenu', e => {
     e.preventDefault();
-    const hit = hitTest(eventWorld(e));
-    if (hit && !state.selection.has(hit.id))
-        select([hit.id]);
-    layerContextMenu(e.clientX, e.clientY);
+    const w = eventWorld(e), deep = hitTest(w, { deep: true });
+    // The pointer is over something that is already selected (the layer itself, or anything inside it): its menu opens.
+    const inSelection = !!deep && [deep, ...doc.ancestors(deep)].some(n => state.selection.has(n.id));
+    if (!inSelection) {
+        const hit = hitTest(w);
+        if (hit)
+            select([hit.id]);
+        else if (state.selection.size)
+            select([]);
+    }
+    state.contextWorld = w;
+    if (state.selection.size)
+        layerContextMenu(e.clientX, e.clientY);
+    else
+        canvasContextMenu(e.clientX, e.clientY);
 });
 $('#layer-tree').addEventListener('contextmenu', e => {
     const row = e.target.closest('[data-layer]');
@@ -19176,6 +19842,11 @@ document.addEventListener('keydown', e => {
     if (cmd && e.altKey && !e.shiftKey && e.code === 'KeyM') {
         e.preventDefault();
         useAsMask();
+        return;
+    }
+    if (!cmd && !e.altKey && e.shiftKey && e.code === 'KeyI') {
+        e.preventDefault();
+        openAssetPicker();
         return;
     }
     if (!cmd && e.altKey && e.shiftKey) {

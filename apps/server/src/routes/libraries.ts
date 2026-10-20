@@ -139,13 +139,16 @@ async function kitInput(l: typeof libraries.$inferSelect, v: VersionRow): Promis
 export async function libraryRoutes(app: FastifyInstance) {
     app.addHook('preHandler', requireUser);
 
+    // A library lives as long as its source file: files in the trash or deleted take their library away with them.
     app.get('/api/libraries', async req => {
-        const libs = await db.select().from(libraries).where(eq(libraries.workspaceId, req.user!.workspaceId));
+        const libs = await db.select({ l: libraries, thumbnail: designFiles.thumbnail, fileName: designFiles.name })
+            .from(libraries).innerJoin(designFiles, eq(designFiles.id, libraries.id))
+            .where(and(eq(libraries.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt), isNull(designFiles.trashedAt)));
         const out = [];
-        for (const l of libs) {
+        for (const { l, thumbnail, fileName } of libs) {
             const v = await latestVersion(l.id);
             if (v)
-                out.push(summary(l, v));
+                out.push({ ...summary(l, v), fileId: l.id, fileName, thumbnail });
         }
         return { libraries: out };
     });
@@ -276,7 +279,22 @@ export async function libraryRoutes(app: FastifyInstance) {
             return reply.code(400).send({ error: 'invalid', message: errors[0], errors, breaking });
         // Komponen yang dipilih (punya mapping) dan semua ikon masuk snapshot, beserta aset yang dipakainya.
         const chosen = new Set(mappings.map(m => m.componentKey));
-        const components = b.snapshot.components.filter(c => chosen.has(c.id) || iconKeys.has(c.id));
+        // The chosen components and icons, plus the components they are built from (nested instances, swap defaults), so copies keep those parts.
+        const keep = new Set([...chosen, ...iconKeys]), owner = new Map<string, string>(), byId = new Map(b.snapshot.components.map(c => [c.id, c]));
+        for (const c of b.snapshot.components)
+            for (const n of c.nodes)
+                owner.set(n.id, c.id);
+        for (const queue = [...keep]; queue.length;)
+            for (const n of byId.get(queue.pop()!)?.nodes ?? [])
+                for (const k of ['sourceId', 'swapOf'] as const) {
+                    const o = (n as Record<string, unknown>)[k];
+                    const dep = typeof o === 'string' ? owner.get(o) : undefined;
+                    if (dep && !keep.has(dep)) {
+                        keep.add(dep);
+                        queue.push(dep);
+                    }
+                }
+        const components = b.snapshot.components.filter(c => keep.has(c.id));
         const used = new Set(components.flatMap(c => c.nodes).flatMap(n => {
             const x = n as { assetId?: string; fills?: { type?: string; image?: string }[] };
             return [x.assetId, ...(Array.isArray(x.fills) ? x.fills.filter(f => f?.type === 'image').map(f => f.image) : [])].filter((v): v is string => !!v);
