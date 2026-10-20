@@ -9,7 +9,7 @@
 //
 // Pakai:
 //   node scripts/seed-cms-demo.mjs [--server URL] [--package <paket library>] [--file "CMS Demo"] [--modules user,role,region,dashboard] [--no-project]
-// Library: --package, atau satu-satunya library yang dipublish, atau yang namanya sama dengan paket kode (packages/ui-cms).
+// Library: --package, atau satu-satunya library yang dipublish, atau yang namanya sama dengan paket kode (--code-dir).
 // --modules memilih modul yang dibuat (user membawa role karena relasinya; region membawa grup menu Master Data); tanpa opsi = semua.
 // Prasyarat: library sudah dipublish (`node scripts/seed-design-system.mjs`) dan sudah login (`midas login`).
 import { svgToDataUrl } from '../apps/studio/src/iconSet.js';
@@ -27,7 +27,7 @@ const { api } = connect(args);
 
 // ---------------------------------------------------------------- library (versi terbaru yang dipublish)
 const libraries = await listLibraries(api);
-const codePackage = readCodePackage(resolve(import.meta.dirname, '../packages/ui-cms'));
+const codePackage = typeof args['code-dir'] === 'string' ? readCodePackage(resolve(args['code-dir'])) : null;
 const picked = typeof args.package === 'string' ? libraries.find(l => l.packageName === args.package)
     : libraries.length === 1 ? libraries[0] : libraries.find(l => l.packageName === codePackage?.name);
 if (!picked) throw new Error(libraries.length
