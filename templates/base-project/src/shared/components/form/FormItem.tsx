@@ -9,7 +9,7 @@ import {
   type Path,
   type UseFormReturn,
 } from 'react-hook-form';
-import { InfoCircleIcon as Info } from '@midas/ui-cms';
+import { InfoCircleIcon as Info } from '../../ui';
 
 type LabelFontWeight = 'light' | 'normal' | 'medium' | 'semibold' | 'bold';
 

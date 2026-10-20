@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Card } from '@midas/ui-cms';
+import { Card } from '../../../../shared/ui';
 import { demoAccounts } from '../api';
 
 interface DemoAccountsCardProps {

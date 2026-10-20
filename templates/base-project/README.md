@@ -14,12 +14,14 @@ Login demo (mock): `admin` / `admin123`.
 
 ## Styling
 
-`src/index.css` cukup:
+`src/index.css` cukup mengimpor Tailwind dan `shared/ui/library.css`:
 
 ```css
 @import 'tailwindcss';
-@import '@midas/ui-cms/tailwind.css';   /* font, token tema, utility Tailwind & utilitas spacing library */
+@import './shared/ui/library.css';   /* → @import '<paket library>/tailwind.css': font, token tema, utility Tailwind & spacing */
 ```
+
+Nama paket library hanya tertulis di dua file kecil (`src/shared/ui/index.ts`: `export * from '<paket>'`, dan `src/shared/ui/library.css`) serta `package.json`. Kode lain mengimpor komponen dari `shared/ui`. Code Builder membangkitkan kedua file itu sesuai library yang dipilih di project, jadi mengganti library tidak menyentuh kode lain.
 
 ## Modul baru
 

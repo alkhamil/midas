@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { bumpVersion, listArg, packageFromFileName, pickPackageName } from '../../../scripts/lib/library-name.mjs';
 import { extractComponent } from '../src/extract.js';
 import { parseArgs, writeFiles } from '../src/main.js';
 
@@ -126,4 +127,18 @@ test('extract copies a component with its internal helpers and points other comp
     assert.equal(readFileSync(join(custom, '_shared/internal/cx.ts'), 'utf8'), '// edited\n');
     assert.equal(readFileSync(join(custom, 'index.ts'), 'utf8').match(/Foo/g).length, 2);
     assert.throws(() => extractComponent({ appDir: app, pkgDir: pkg, name: 'Nope' }), /not found in @midas\/ui-test\. Available: Bar, Foo/);
+});
+
+test('seed scripts derive the library package name and version instead of hardcoding them', () => {
+    assert.equal(packageFromFileName('CMS Design System'), '@midas/ui-cms-design-system');
+    const pick = o => pickPackageName({ fileName: 'My Lib', ...o });
+    assert.deepEqual(pick({ arg: '@acme/x', published: { packageName: '@old/y' }, codePackage: { name: '@c/z' } }), { name: '@acme/x', from: '--package' });
+    assert.equal(pick({ published: { packageName: '@old/y' }, codePackage: { name: '@c/z' } }).name, '@old/y');   // locked after the first publish
+    assert.equal(pick({ codePackage: { name: '@c/z' } }).name, '@c/z');
+    assert.equal(pick({}).name, '@midas/ui-my-lib');
+    assert.equal(bumpVersion('1.2.3', 'patch'), '1.2.4');
+    assert.equal(bumpVersion('1.2.3', 'minor'), '1.3.0');
+    assert.equal(bumpVersion('1.2.3', 'major'), '2.0.0');
+    assert.deepEqual([...listArg('Button, Table')], ['button', 'table']);
+    assert.equal(listArg(undefined), null);
 });
