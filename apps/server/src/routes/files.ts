@@ -2,9 +2,9 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { assets, designFilePages, designFiles, designFolders } from '../db/schema.js';
+import { assets, designFilePages, designFiles, designFolders, libraries } from '../db/schema.js';
 import { requireUser } from '../lib/auth.js';
-import { assetKey, getObject, putObject } from '../lib/s3.js';
+import { assetKey, deletePrefix, getObject, putObject } from '../lib/s3.js';
 
 type FileRow = typeof designFiles.$inferSelect;
 
@@ -152,6 +152,8 @@ export async function fileRoutes(app: FastifyInstance) {
         if (b.name !== undefined) {
             set.name = b.name;
             set.meta = { ...(f.meta as object), name: b.name };
+            // A library is its file: it carries the file's name.
+            await db.update(libraries).set({ name: b.name }).where(eq(libraries.id, f.id));
         }
         if (b.opened !== undefined)
             set.openedAt = b.opened ? new Date(b.opened) : null;
@@ -240,6 +242,9 @@ export async function fileRoutes(app: FastifyInstance) {
         if (!f)
             return;
         await db.update(designFiles).set({ deletedAt: new Date() }).where(eq(designFiles.id, f.id));
+        // The library published from this file goes with it (its versions and mappings follow through the foreign keys).
+        await db.delete(libraries).where(eq(libraries.id, f.id));
+        await deletePrefix(`libraries/${f.id}/`).catch(() => { });
         return { ok: true };
     });
 

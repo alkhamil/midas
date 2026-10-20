@@ -139,6 +139,7 @@ export function CanvasArea() {
                 {TOOLS.map((t, i) => t
                     ? <button key={t[0]} className={'tool' + (t[0] === 'select' ? ' active' : '')} data-tool={t[0]} title={t[1]} aria-label={t[2]} data-icon={t[3]}></button>
                     : <div key={'d' + i} className="toolbar-divider"></div>)}
+                <button className="tool" id="asset-picker-button" title="Components (⇧I)" aria-label="Insert component" data-icon="component"></button>
                 <button className="tool" id="insert-image" title="Place image (⇧⌘K)" aria-label="Place image" data-icon="image"></button>
                 <div className="toolbar-divider"></div>
                 <button className="tool accent-tool" id="command-button" title="Commands (⌘K)" aria-label="Command palette" data-icon="sparkles"></button>
