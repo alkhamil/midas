@@ -1,0 +1,47 @@
+{
+  "role": {
+    "label": "Peran",
+    "labelPlural": "Peran",
+    "breadcrumbs": {
+      "list": "Peran",
+      "create": "Buat",
+      "detail": "Detail",
+      "edit": "Ubah"
+    },
+    "fields": {
+      "name": {
+        "label": "Nama Peran",
+        "placeholder": "Masukkan nama peran"
+      },
+      "permissions": {
+        "label": "Izin Akses"
+      },
+      "status": {
+        "label": "Status",
+        "placeholder": "Pilih status"
+      }
+    },
+    "permissionsTable": {
+      "title": "Izin",
+      "view": "Lihat",
+      "create": "Buat",
+      "update": "Ubah",
+      "delete": "Hapus",
+      "bulkUpload": "Unggah Massal",
+      "export": "Ekspor"
+    },
+    "bulk": {
+      "nameLabel": "Nama"
+    },
+    "validation": {
+      "permissionsRequired": "Minimal satu izin akses wajib dipilih."
+    },
+    "toast": {
+      "created": "Peran berhasil dibuat.",
+      "updated": "Peran berhasil diubah.",
+      "deleted": "Peran berhasil dihapus.",
+      "restored": "Peran berhasil dipulihkan.",
+      "notFound": "Peran tidak ditemukan"
+    }
+  }
+}
