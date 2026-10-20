@@ -86,6 +86,29 @@ Hasilnya mencakup halaman per layar, hook dan mock API, i18n, rute, navigasi, da
 
 ---
 
+## Disimpan di mana
+
+Midas hanya menyimpan data di dua tempat: **Postgres** (data terstruktur) dan **object storage S3/R2** (berkas besar). Server sendiri tidak menyimpan apa pun, jadi boleh di-redeploy kapan saja.
+
+| Apa | Tempat | Rinci |
+|---|---|---|
+| File desain, folder, page | Postgres | tabel `design_files`, `design_folders`, `design_file_pages` |
+| Gambar yang dipakai desain | S3/R2 + Postgres | berkas di bucket, metadata di tabel `assets` |
+| Library (nama, nama paket, versi) | Postgres | tabel `libraries`, `library_versions` (status kode, URL bundle) |
+| **Snapshot** desain yang di-publish (node komponen, variabel, ikon) | S3/R2 | `libraries/<id>/<seq>.json`; tabel `library_versions` hanya menyimpan kuncinya |
+| Mapping komponen → kode (nama export, prop, **Implementation**, status per komponen) | Postgres | tabel `component_mappings` (kolom `props_map` jsonb) |
+| **Bundle preview** (dipakai Studio) | S3/R2 | `libraries/<id>/bundles/<versi>/index.js` dan `style.css` |
+| **Paket npm** hasil build otomatis | S3/R2 | `libraries/<id>/packages/<versi>/package.tgz` |
+| File yang dipakai file desain lain | Postgres | tabel `file_libraries` |
+| Project Code Builder (module, layar, layout, validasi) | Postgres | tabel `builder_projects` (kolom `config` jsonb) |
+| Akun, sesi, workspace | Postgres | `users`, `sessions`, `workspaces`, `workspace_members` |
+
+Sisi pengguna:
+- **Download project (.zip)**: dirakit saat diminta, tidak disimpan. Isinya base project, kode hasil generate, dan paket library di `vendor/`.
+- **Developer**: kode ada di repositori mereka sendiri. Nama paket library hanya tertulis di `package.json` dan `src/shared/ui`. Komponen hasil `midas extract` ada di `src/shared/components/custom`.
+- **CLI**: token login di `~/.midas/config.json` pada komputer masing-masing.
+- **Kode sumber Midas**: komponen standar (`packages/ui-standard`) dan generator (`packages/builder-core`) ada di repo ini, ikut masuk image Docker. Repo ini tidak berisi kode library hasil publish.
+
 ## Siklus perubahan
 
 | Yang berubah | Langkah |
