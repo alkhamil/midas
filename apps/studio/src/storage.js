@@ -7,6 +7,7 @@
 // Setiap simpan membawa versi terakhir yang diketahui; bila server punya versi lebih baru
 // → ConflictError (409).
 
+import { boot } from './boot.js';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -291,10 +292,36 @@ export const projectStorage = {
             if (e.status === 404) return null;
             throw e;
         }
-        const [{ pages: rows }, { assets: assetIds }] = await Promise.all([
-            api('GET', `${fileUrl(fileId)}/pages`),
-            api('GET', `${fileUrl(fileId)}/assets`)
-        ]);
+        // The pages are the bulk of a file. They are fetched one by one (six at a time): the start bar follows how many are in
+        // (38% → 70%), and no single huge response has to be parsed in one go.
+        boot.set(38);
+        const pageIds = (file.meta?.pageMeta || []).map(pm => pm.id);
+        let rows;
+        const assetsReq = api('GET', `${fileUrl(fileId)}/assets`);
+        if (!pageIds.length)
+            rows = (await api('GET', `${fileUrl(fileId)}/pages`)).pages;
+        else {
+            rows = [];
+            const queue = [...pageIds];
+            let done = 0;
+            const worker = async () => {
+                for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+                    try {
+                        const r = (await api('GET', `${fileUrl(fileId)}/pages/${enc(id)}`)).page;
+                        if (r)
+                            rows.push(r);
+                    }
+                    catch (e) {
+                        if (e.status !== 404)
+                            throw e;
+                    }
+                    boot.set(38 + (++done / pageIds.length) * 32);
+                }
+            };
+            await Promise.all(Array.from({ length: 6 }, worker));
+        }
+        const { assets: assetIds } = await assetsReq;
+        boot.set(70);
         fileVersions.set(fileId, file.version);
         const known = pagesOf(fileId);
         known.clear();

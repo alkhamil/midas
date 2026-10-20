@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Topbar, LeftRail, LeftPanel, CanvasArea, RightPanel, Overlays } from './components/Shell.jsx';
 import { AuthScreen, LegacyImport, listLegacyFiles } from './components/Gate.jsx';
 import { auth, migrateLegacyLibraries } from './storage.js';
+import { boot } from './boot.js';
 import { kv as legacyKv } from './legacyStorage.js';
 
 let started = null;
@@ -13,6 +14,8 @@ function startEngine() {
 // Shown while the engine starts (the editor module, fonts, the renderer and the last file); fades out when it is ready.
 function Splash({ done }) {
     const [gone, setGone] = useState(false);
+    const [p, setP] = useState(() => boot.get());
+    useEffect(() => boot.subscribe((pct, label) => setP({ pct, label })), []);
     useEffect(() => {
         if (!done) return;
         const t = setTimeout(() => setGone(true), 400);
@@ -20,9 +23,10 @@ function Splash({ done }) {
     }, [done]);
     if (gone) return null;
     return (
-        <div className={'splash' + (done ? ' out' : '')} role="status" aria-label="Starting Midas">
+        <div className={'splash' + (done ? ' out' : '')} role="progressbar" aria-label="Starting Midas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(done ? 100 : p.pct)} aria-valuetext={p.label}>
             <svg width="40" height="40" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor" /></svg>
-            <div className="splash-bar"><i></i></div>
+            <div className="splash-bar"><i style={{ width: (done ? 100 : p.pct) + '%' }}></i></div>
+            <span className="splash-pct">{Math.round(done ? 100 : p.pct)}%</span>
         </div>
     );
 }
@@ -51,6 +55,7 @@ export default function App() {
     useEffect(check, []);
     useEffect(() => {
         if (phase !== 'ready') return;
+        boot.set(10, 'Starting');
         // Library dari penyimpanan lama dipindahkan dulu, supaya panel Assets langsung membaca dari server.
         migrateLegacyLibraries(legacyKv).catch(e => console.warn('Legacy library migration skipped:', e))
             .then(startEngine).then(() => setEngineReady(true)).catch(e => { console.error(e); setError(e.message); });

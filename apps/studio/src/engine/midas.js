@@ -1,6 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, assetsAsDataUrls } from '../storage.js';
+import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
@@ -6400,11 +6401,29 @@ class DocumentModel {
     }
     serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }); }
     static parse(text) {
+        const g = DocumentModel.parseGen(text);
+        let r;
+        while (!(r = g.next()).done)
+            ;
+        return r.value;
+    }
+    // Same, one page at a time: `onProgress(0..1)` after each page and the page gets to paint in between (start bar).
+    static async parseAsync(text, onProgress) {
+        const g = DocumentModel.parseGen(text);
+        for (;;) {
+            const r = g.next();
+            if (r.done)
+                return r.value;
+            onProgress?.(r.value);
+            await new Promise(res => setTimeout(res, 0));
+        }
+    }
+    static *parseGen(text) {
         const d = typeof text === 'string' ? JSON.parse(text) : text;
         if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
             throw new Error('This is not a supported Midas document.');
         const all = new Set();
-        let total = 0;
+        let total = 0, donePages = 0;
         const valid = new Set(['rect', 'ellipse', 'text', 'frame', 'group', 'path', 'line', 'image']);
         for (const p of d.pages) {
             if (typeof p.id !== 'string' || !/^[-_a-zA-Z0-9]{1,128}$/.test(p.id) || typeof p.name !== 'string' || !Array.isArray(p.nodes))
@@ -6454,6 +6473,7 @@ class DocumentModel {
                     par = map.get(par.parentId);
                 }
             }
+            yield ++donePages / d.pages.length;
         }
         // Pages may nest: a page with no layers acts as a folder for other pages.
         const pageIds = new Set(d.pages.map(p => p.id));
@@ -7807,11 +7827,13 @@ async function openDB() { return null; }
 
 // Toast singkat: 2,5 dtk, ditambah ±40 ms per huruf di atas 40 karakter (maks. 6 dtk) supaya pesan panjang tetap terbaca.
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.add('hidden'), Math.min(6000, 2500 + Math.max(0, String(message).length - 40) * 40)); }
+await boot.step(30, 'Loading editor');
 const saved = await libBoot();
+await boot.step(74, 'Preparing document');
 let initial;
 try {
     if (saved)
-        initial = DocumentModel.parse(saved);
+        initial = await DocumentModel.parseAsync(saved, f => boot.set(74 + f * 6));
 }
 catch (e) {
     console.warn('Saved file could not be restored', e);
@@ -7823,6 +7845,7 @@ catch (e) {
 }
 if (initial && deepLink?.used && deepLink.page && initial.pages?.some(p => p.id === deepLink.page))
     initial.pageId = deepLink.page;
+await boot.step(80, 'Preparing document');
 const doc = new DocumentModel(initial), history = new History(doc);
 const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
@@ -20228,8 +20251,11 @@ fontInput.onchange = async () => {
     }
     fontInput.value = '';
 };
+await boot.step(84, 'Loading fonts');
 await loadStoredFonts();
+await boot.step(90, 'Starting renderer');
 await renderer.initialize();
+await boot.step(95, 'Drawing');
 renderer.resize(area.clientWidth, area.clientHeight);
 overlay.width = Math.round(area.clientWidth * renderer.dpr);
 overlay.height = Math.round(area.clientHeight * renderer.dpr);

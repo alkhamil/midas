@@ -3473,6 +3473,7 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .splash { position: fixed; inset: 0; z-index: 9999; background: #1e1e1e; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; transition: opacity .35s ease }
 .splash.out { opacity: 0; pointer-events: none }
 .splash-bar { position: relative; width: 225px; height: 6px; border-radius: 3px; background: #3b3b3b; overflow: hidden }
-.splash-bar i { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 3px; background: #d9d9d9; animation: splash-slide 1.3s ease-in-out infinite }
-@keyframes splash-slide { 0% { transform: translateX(-100%) } 100% { transform: translateX(265%) } }
-@media (prefers-reduced-motion: reduce) { .splash-bar i { animation: none; width: 60% } }
+.splash-bar i { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 3px; background: #d9d9d9; transition: width .25s ease-out }
+
+.splash { gap: 20px }
+.splash-pct { font-size: 12px; font-variant-numeric: tabular-nums; color: #8d8d8d; letter-spacing: .02em }
