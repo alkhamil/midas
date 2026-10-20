@@ -6,7 +6,7 @@ Ada **tiga tahap** yang dikerjakan orang. Kode komponen **tidak ditulis develope
  DESAINER (Studio)               MIDAS (otomatis)                 DESAINER / PM (Studio)          DEVELOPER (aplikasi)
 ┌──────────────────┐ publish  ┌──────────────────────────┐ ready ┌─────────────────────┐ hasil ┌──────────────────────┐
 │ 1. Design system │ ───────► │ 2. Paket kode dibangun   │ ────► │ 3. Project CMS dan  │ ────► │ 4. Download project, │
-│    + Publish     │          │    dari komponen standar │       │    Code Builder     │       │    jalankan, update  │
+│    + Publish     │          │    dari desain           │       │    Code Builder     │       │    jalankan, update  │
 └──────────────────┘          └──────────────────────────┘       └─────────────────────┘       └──────────────────────┘
 ```
 
@@ -32,21 +32,28 @@ Ada **tiga tahap** yang dikerjakan orang. Kode komponen **tidak ditulis develope
 
 ## Tahap 2 — Paket kode dibangun otomatis (Midas)
 
-Midas membawa **kit komponen standar** (`packages/ui-standard`: 20 komponen CMS dengan perilaku lengkap, seperti dropdown, dialog, sidebar bersarang, pagination). Saat publish, server:
+**Desain adalah sumber utama.** Untuk setiap komponen yang di-publish, Midas menulis komponen React dari desainnya: auto layout menjadi flex, fill/stroke menjadi gaya yang memakai token tema, teks yang terikat component property menjadi prop, boolean property menjadi tampil/sembunyi, instance di dalamnya menjadi komponen lain, dan ikon menjadi komponen ikon. Komponen apa pun (tidak harus ada di kit standar) jadi kode. Bagian internal (nama diawali `_` atau `.`) ikut dibuat untuk dipakai komponen lain, tapi tidak diekspor.
 
-1. Mengganti lapisan `generated` kit itu dengan milik library: **token tema**, **tipe props**, dan **ikon** dari desain.
-2. Membundel hasilnya (esbuild) untuk **preview Studio** dan membuat **paket npm** (`dist` + deklarasi tipe + `src`) yang dipakai **Download project**.
+Desain hanya menggambarkan tampilan statis. Untuk **perilaku** (dropdown, dialog, sidebar bersarang, pagination), Midas membawa **kit komponen standar** (`packages/ui-standard`, 20 komponen) sebagai katalog opsional. Di dialog Publish, tiap komponen punya pilihan **Implementation**:
+
+- **From design**: kode ditulis dari desain (tampilan saja).
+- **Standard: \<Nama\>**: memakai perilaku komponen standar itu. Default otomatis bila namanya sama dengan komponen standar.
+
+Saat publish, server:
+
+1. Mengganti lapisan `generated` kit standar dengan milik library: **token tema**, **tipe props**, dan **ikon** dari desain.
+2. Menulis/menghubungkan komponen sesuai pilihan Implementation, lalu membundel (esbuild) untuk **preview Studio** dan membuat **paket npm** (`dist` + deklarasi tipe + `src`) yang dipakai **Download project**.
 3. Menghitung **status kode** tiap komponen:
-   - `ready`: ada implementasi standar dan semua props desain tertangani.
-   - `mismatch`: desain punya props yang tidak ditangani implementasi standar.
-   - `not_implemented`: tidak ada implementasi standar. Midas mengekspor *placeholder* supaya aplikasi tetap bisa dikompilasi.
+   - `ready`: ditulis dari desain, atau komponen standar menangani semua props desain.
+   - `mismatch`: desain punya props yang tidak ditangani komponen standar yang dipilih.
+   - `not_implemented`: kode dari desain gagal dibuat (placeholder diekspor supaya aplikasi tetap bisa dikompilasi).
 
-Library dianggap `ready` bila semuanya `ready`, dan `partial` bila ada yang lain. Statusnya terlihat di panel Library dan di dialog **Code** (Assets → Library → Code), yang juga punya tombol **Rebuild code** (mis. untuk versi yang di-publish sebelum fitur ini).
+Library dianggap `ready` bila semuanya `ready`, dan `partial` bila ada yang lain. Statusnya terlihat di panel Library dan di dialog **Code** (Assets → Library → Code), yang juga punya tombol **Rebuild code**.
 
 Konsekuensinya:
 - Warna, radius, font, spasi, dan ikon mengikuti desain, tanpa developer.
-- Komponen standar punya struktur tetap. Varian baru pada komponen standar muncul di tipe props, tapi tampilannya baru berubah kalau komponen standarnya mendukung. Komponen di luar set standar berstatus `not_implemented` sampai ditangani.
-- **Jalur lanjutan (opsional):** bila Anda butuh perilaku yang tidak ada di komponen standar, dialog Code punya bagian *Write the components yourself*: unduh repo kerangka (`midas init`), tulis komponen, lalu `npm run build` (sync, report, dan bundle otomatis lewat `--soft`). Bundle dari repo itu menggantikan yang otomatis. Untuk mengubah satu komponen di app, pakai `midas extract` (tahap 4).
+- Komponen dari desain berupa markup statis; interaksi hanya ada pada komponen yang memakai implementasi standar.
+- **Jalur lanjutan (opsional):** bila butuh perilaku khusus, dialog Code punya bagian *Write the components yourself*: unduh repo kerangka (`midas init`), tulis komponen, lalu `npm run build`. Bundle dari repo itu menggantikan yang otomatis. Untuk mengubah satu komponen di app, pakai `midas extract` (tahap 4).
 
 ## Tahap 3 — Project CMS dan Code Builder (Studio)
 
@@ -84,8 +91,8 @@ Hasilnya mencakup halaman per layar, hook dan mock API, i18n, rute, navigasi, da
 | Yang berubah | Langkah |
 |---|---|
 | Warna, radius, font, ikon, teks default | Desainer publish versi baru. Kode otomatis dibangun ulang. Di Code Builder pilih versi baru lalu generate ulang. |
-| Varian atau prop baru di komponen standar | Publish versi baru. Cek status di dialog Code (`mismatch` bila belum ditangani). |
-| Komponen baru di luar set standar | Publish. Statusnya `not_implemented`; tangani lewat jalur lanjutan atau tambahkan ke kit standar. |
+| Varian atau prop baru | Publish versi baru. Komponen dari desain ikut berubah; untuk yang memakai komponen standar, cek status (`mismatch` bila belum ditangani). |
+| Komponen baru | Publish. Kodenya otomatis ditulis dari desain; pilih Implementation "Standard: ..." bila butuh perilaku. |
 | Layar atau field baru | Ubah desain, flag page bila baru, tambah module atau frame di Code Builder, generate ulang. |
 | Library diganti | Pilih library lain di project, generate ulang. |
 

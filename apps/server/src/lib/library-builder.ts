@@ -1,18 +1,23 @@
 // Library Builder: turns a published library version into a usable code package without a developer.
 //
-// Midas ships a standard component kit (packages/ui-standard: the behaviour of the CMS components, built once with Midas).
-// A library is its design — tokens, props types, icons — so on publish this module swaps the kit's *generated layer* for
-// the library's own, bundles the result with esbuild (the Studio preview bundle and the app package), emits the type
-// declarations of the generated layer, packs an npm tarball, and reports each component's code status:
-//   ready            the standard kit implements the component and its design props are all handled
-//   mismatch         the design has props the standard implementation does not handle
-//   not_implemented  no standard implementation (a placeholder is exported so apps still compile)
+// Every component of the library gets code from one of two sources (its `implementation`):
+//   design           generated from the design (any component): variants, bound text, show/hide, nested components, icons
+//   standard:<Name>  the behaviour of a component of Midas' standard kit (packages/ui-standard), themed by the library
+// Both are bundled with esbuild on top of the library's own *generated layer* (tokens, props types, icons), which also gives
+// the Studio preview bundle; the layer's type declarations are emitted, an npm tarball is packed, and each component's code
+// status is reported:
+//   ready            code exists and every design prop is handled
+//   mismatch         a standard implementation does not handle some design props
+//   not_implemented  code generation failed for the component (a placeholder is exported so apps still compile)
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build as esbuild, type Plugin } from 'esbuild';
+import { generateComponent, makeContext } from '@midas/builder-core';
 import ts from 'typescript';
+import { iconExportName } from './icons.js';
 import type { KitFiles } from './kit.js';
+import { deriveMapping, pascalCase, type ComponentMapping, type LibrarySnapshot } from './library.js';
 import { packageTarball } from './tar.js';
 
 const STANDARD_DIR = process.env.STANDARD_KIT_DIR ?? fileURLToPath(new URL('../../../../packages/ui-standard/', import.meta.url));
@@ -37,7 +42,9 @@ export interface BuildInput {
     libraryName: string;
     /** Library Kit files (src/generated/**, with manifest.json, tokens.css, tailwind-theme.css). */
     kit: KitFiles;
-    components: { exportName: string; props: string[] }[];
+    /** The published version: component nodes (also the internal parts), variables, icons, and the mappings. */
+    snapshot: LibrarySnapshot;
+    mappings: ComponentMapping[];
 }
 
 interface StandardKit {
@@ -112,6 +119,39 @@ import type { ${name}Props } from '../../generated/props';
 /** Placeholder: this component has no standard implementation yet. */
 export declare const ${name}: ((props: ${name}Props) => ReactElement) & { midasStub: boolean };
 `;
+
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Components of the standard kit a library component can take its behaviour from. */
+export function standardCatalog(): { name: string; props: string[] }[] {
+    return [...standardKit().referenceProps].map(([name, props]) => ({ name, props: [...props] })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Automatic choice: the standard component of that name when there is one, otherwise the design. */
+export function defaultImplementation(exportName: string): string {
+    try {
+        const hit = [...standardKit().referenceProps.keys()].find(n => normalize(n) === normalize(exportName));
+        return hit ? `standard:${hit}` : 'design';
+    }
+    catch {
+        return 'design';
+    }
+}
+
+/** Validation message for an `implementation` value, or null. */
+export function implementationError(impl?: string): string | null {
+    if (impl === undefined || impl === 'design')
+        return null;
+    const m = /^standard:(.+)$/.exec(impl);
+    if (!m)
+        return 'implementation must be "design" or "standard:<Component>"';
+    try {
+        return standardKit().referenceProps.has(m[1]) ? null : `the standard kit has no component "${m[1]}"`;
+    }
+    catch {
+        return null;
+    }
+}
 
 /** The library's generated TS layer, with the reference files filling in what the library did not publish. */
 function generatedLayer(std: StandardKit, kit: KitFiles): Map<string, string> {
@@ -206,25 +246,86 @@ function generatedDeclarations(layer: Map<string, string>): { files: Map<string,
 export async function buildLibraryPackage(input: BuildInput): Promise<BuiltLibrary> {
     const std = standardKit();
     const warnings: string[] = [];
-    const wanted = input.components.map(c => c.exportName);
-    const implemented = new Set([...std.referenceProps.keys()]);
-    const kitComponents = wanted.filter(n => implemented.has(n));
-    const stubs = wanted.filter(n => !implemented.has(n) && input.kit[`src/generated/props/${n}.ts`] !== undefined);
-
-    // ---- sources the bundle is built from (virtual, under src/)
     const layer = generatedLayer(std, input.kit);
     const files = new Map<string, string>();
     for (const [rel, text] of std.sources) files.set(rel, text);
     for (const [rel, text] of layer) files.set(`${GEN}${rel}`, text);
-    for (const n of stubs) files.set(`components/${n}/${n}.tsx`, stubSource(n));
-    // index.ts: the standard exports for the published components, plus placeholders for the rest.
+    const dts = new Map<string, string>();
+
+    // ---- which implementation each component has
+    const implementationOf = (m: ComponentMapping) => m.propsMap.implementation ?? defaultImplementation(m.exportName);
+    const mapped = new Set(input.mappings.map(m => m.componentKey));
+    const iconKeys = new Set((input.snapshot.icons ?? []).map(i => i.componentKey));
+    const iconNames = new Map((input.snapshot.icons ?? []).map(i => [i.componentKey, iconExportName(i.name)]));
+    // Internal parts: components the published ones are built from (e.g. _SidebarItem); generated, not exported.
+    const taken = new Set(input.mappings.map(m => m.exportName));
+    const internal: ComponentMapping[] = input.snapshot.components.filter(c => !mapped.has(c.id) && !iconKeys.has(c.id)).map(c => {
+        const d = deriveMapping(c);
+        let name = pascalCase(c.name.replace(/^[_.\s]+/, '')) || 'Part', n = 2;
+        while (taken.has(name) || std.referenceProps.has(name)) name = `${pascalCase(c.name.replace(/^[_.\s]+/, '')) || 'Part'}${n++}`;
+        taken.add(name);
+        return { ...d, exportName: name };
+    });
+    const ctx = makeContext({
+        nodes: input.snapshot.components.flatMap(c => c.nodes) as never,
+        variables: input.snapshot.variables as never,
+        mappings: [...input.mappings, ...internal].map(m => ({ ...m, componentKey: m.componentKey })) as never,
+        libraryId: 'self', fileId: 'self',
+    });
+
+    const statuses: BuiltComponentStatus[] = [];
+    const exportLines: string[] = [];
+    const delegated = new Set<string>();
+    const design = (m: ComponentMapping, inline: boolean) => {
+        const out = generateComponent({ ctx, mapping: m as never, types: inline ? 'inline' : 'generated', iconOf: key => iconNames.get(key) ?? null, importPrefix: '../..' });
+        files.set(`components/__design/${m.exportName}.tsx`, out.source);
+        dts.set(`components/__design/${m.exportName}.d.ts`, out.dts);
+        return out;
+    };
+    const placeholder = (m: ComponentMapping) => {
+        files.set(`components/__design/${m.exportName}.tsx`, stubSource(m.exportName).replace("'../../generated/props'", "'../../generated/props'"));
+        dts.set(`components/__design/${m.exportName}.d.ts`, stubDts(m.exportName));
+    };
+    for (const m of input.mappings) {
+        const impl = implementationOf(m), std1 = /^standard:(.+)$/.exec(impl)?.[1];
+        const propNames = m.propsMap.props.map(p => p.name);
+        if (std1 && std.referenceProps.has(std1)) {
+            delegated.add(std1);
+            files.set(`components/__design/${m.exportName}.tsx`, `export { ${std1} as ${m.exportName} } from '../${std1}/${std1}';\n`);
+            dts.set(`components/__design/${m.exportName}.d.ts`, `export { ${std1} as ${m.exportName} } from '../${std1}/${std1}';\n`);
+            const unhandled = propNames.filter(p => !std.referenceProps.get(std1)!.has(p));
+            statuses.push(unhandled.length
+                ? { exportName: m.exportName, status: 'mismatch', detail: `design props not handled by the standard ${std1}: ${unhandled.join(', ')}` }
+                : { exportName: m.exportName, status: 'ready', ...(std1 !== m.exportName ? { detail: `behaviour of the standard ${std1}` } : {}) });
+        }
+        else {
+            try {
+                const out = design(m, false);
+                statuses.push({ exportName: m.exportName, status: 'ready', detail: out.warnings.length ? `generated from the design; ${out.warnings.length} layer(s) not generated: ${out.warnings.slice(0, 2).join('; ')}` : 'generated from the design' });
+            }
+            catch (e) {
+                placeholder(m);
+                statuses.push({ exportName: m.exportName, status: 'not_implemented', detail: `could not be generated from the design: ${(e as Error).message}` });
+            }
+        }
+        exportLines.push(`export { ${m.exportName} } from './components/__design/${m.exportName}';`);
+    }
+    for (const m of internal) {
+        try { design(m, true); }
+        catch (e) { warnings.push(`internal part ${m.exportName}: ${(e as Error).message}`); placeholder(m); }
+    }
+
+    // ---- index.ts: the kit's own exports (theme, generated layer, preview data), the components, and the types of the standard ones
+    const stdLines = std.sources.get('index.ts')!.split('\n');
     const keep = (line: string) => {
         const m = /from '\.\/components\/([A-Za-z0-9]+)\//.exec(line);
-        return !m || kitComponents.includes(m[1]);
+        if (!m) return true;
+        return /^export type /.test(line) && delegated.has(m[1]);
     };
-    const stubLines = stubs.map(n => `export { ${n} } from './components/${n}/${n}';`);
-    const indexTs = `${std.sources.get('index.ts')!.split('\n').filter(keep).join('\n')}\n${stubLines.join('\n')}\n`;
-    files.set('index.ts', indexTs);
+    const nonComponent = stdLines.filter(l => keep(l) && !/^export \{ [A-Za-z0-9]+ \} from '\.\/components\//.test(l));
+    files.set('index.ts', `${nonComponent.join('\n')}\n${exportLines.join('\n')}\n`);
+    const stdDts = std.indexDts.split('\n');
+    dts.set('index.d.ts', `${stdDts.filter(l => keep(l) && !/^export \{ [A-Za-z0-9]+ \} from '\.\/components\//.test(l)).join('\n')}\n${exportLines.join('\n')}\n`);
 
     // ---- bundles
     const run = (minify: boolean) => esbuild({
@@ -235,24 +336,11 @@ export async function buildLibraryPackage(input: BuildInput): Promise<BuiltLibra
     const indexJs = plain.outputFiles[0].text;
     const bundleJs = `${small.outputFiles[0].text}\nexport const __midasRuntime = {};\n`;
 
-    // ---- declarations: standard (prebuilt) + generated layer (compiled now) + index
+    // ---- declarations: standard (prebuilt) + generated layer (compiled now) + the components written above
     const generated = generatedDeclarations(layer);
     warnings.push(...generated.diagnostics.slice(0, 5).map(d => `types: ${d}`));
-    const dts = new Map<string, string>();
-    for (const [rel, text] of std.declarations) dts.set(rel, text);
+    for (const [rel, text] of std.declarations) if (!dts.has(rel)) dts.set(rel, text);
     for (const [rel, text] of generated.files) dts.set(rel, text);
-    for (const n of stubs) dts.set(`components/${n}/${n}.d.ts`, stubDts(n));
-    dts.set('index.d.ts', `${std.indexDts.split('\n').filter(keep).join('\n')}\n${stubLines.join('\n')}\n`);
-
-    // ---- statuses
-    const statuses: BuiltComponentStatus[] = input.components.map(c => {
-        const ref = std.referenceProps.get(c.exportName);
-        if (!ref) return { exportName: c.exportName, status: 'not_implemented', detail: 'no standard implementation (placeholder exported)' };
-        const unhandled = c.props.filter(p => !ref.has(p));
-        return unhandled.length
-            ? { exportName: c.exportName, status: 'mismatch', detail: `design props not handled by the standard component: ${unhandled.join(', ')}` }
-            : { exportName: c.exportName, status: 'ready' };
-    });
 
     // ---- npm package
     const manifestJson = input.kit['src/generated/manifest.json'] ?? '{}';
