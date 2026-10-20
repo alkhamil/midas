@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { extractComponent } from '../src/extract.js';
 import { parseArgs, writeFiles } from '../src/main.js';
 
 test('parseArgs reads flags and positionals', () => {
@@ -90,4 +91,39 @@ test('generate writes module files, removes stale ones and pins the library vers
     finally {
         console.log = quiet;
     }
+});
+
+test('extract copies a component with its internal helpers and points other components and icons at the package', () => {
+    const root = mkdtempSync(join(tmpdir(), 'midas-extract-'));
+    const pkg = join(root, 'pkg'), app = join(root, 'app');
+    const put = (base, rel, text) => { mkdirSync(join(base, rel, '..'), { recursive: true }); writeFileSync(join(base, rel), text); };
+    put(pkg, 'package.json', JSON.stringify({ name: '@midas/ui-test', version: '1.2.3' }));
+    put(pkg, 'src/index.ts', "export * from './components/Foo/Foo';\n");
+    put(pkg, 'src/components/Foo/Foo.tsx', "import { cx } from '../../internal/cx';\nimport { fooDefaults } from '../../generated/props';\nimport { Bar } from '../Bar/Bar';\nimport { CloseIcon } from '../../generated/icons';\nexport const Foo = () => cx(fooDefaults, Bar, CloseIcon);\n");
+    put(pkg, 'src/components/Bar/Bar.tsx', 'export const Bar = 1;\n');
+    put(pkg, 'src/internal/cx.ts', 'export const cx = (...a) => a.join(" ");\n');
+    put(pkg, 'src/generated/props/index.ts', "export * from './Foo';\n");
+    put(pkg, 'src/generated/props/Foo.ts', 'export const fooDefaults = {};\n');
+    put(pkg, 'src/generated/icons/index.ts', 'export const CloseIcon = 1;\n');
+    put(app, 'package.json', '{}');
+    const res = extractComponent({ appDir: app, pkgDir: pkg, name: 'Foo' });
+    const custom = join(app, 'src/shared/components/custom');
+    const main = readFileSync(join(custom, 'Foo/Foo.tsx'), 'utf8');
+    assert.match(main, /Extracted from @midas\/ui-test@1\.2\.3/);
+    assert.match(main, /from '\.\.\/_shared\/internal\/cx'/);
+    assert.match(main, /from '\.\.\/_shared\/generated\/props'/);          // directory import stays a directory import
+    assert.match(main, /import \{ Bar \} from '@midas\/ui-test'/);           // other component → package
+    assert.match(main, /import \{ CloseIcon \} from '@midas\/ui-test'/);     // icons → package
+    assert.ok(existsSync(join(custom, '_shared/internal/cx.ts')));
+    assert.ok(existsSync(join(custom, '_shared/generated/props/Foo.ts')));
+    assert.ok(!existsSync(join(custom, 'Bar')), 'other components are not copied');
+    assert.equal(readFileSync(join(custom, 'index.ts'), 'utf8'), "export * from './Foo/Foo';\n");
+    assert.equal(res.importPath, 'src/shared/components/custom');
+    // Running it again keeps edited files and does not duplicate the index line.
+    writeFileSync(join(custom, '_shared/internal/cx.ts'), '// edited\n');
+    const again = extractComponent({ appDir: app, pkgDir: pkg, name: 'Foo', force: false });
+    assert.ok(again.skipped.some(f => f.endsWith('internal/cx.ts')));
+    assert.equal(readFileSync(join(custom, '_shared/internal/cx.ts'), 'utf8'), '// edited\n');
+    assert.equal(readFileSync(join(custom, 'index.ts'), 'utf8').match(/Foo/g).length, 2);
+    assert.throws(() => extractComponent({ appDir: app, pkgDir: pkg, name: 'Nope' }), /not found in @midas\/ui-test\. Available: Bar, Foo/);
 });

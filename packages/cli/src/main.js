@@ -6,6 +6,7 @@
 //   midas report [--no-upload] [--json]      after build: code status of each component (ready / not_implemented / mismatch)
 //   midas bundle [--no-upload]               after build: ESM + CSS bundle for the Studio Live DOM Renderer
 //   midas generate [project] [--out DIR]     pull Code Builder output (modules, routes, menu) into an app repo
+//   midas extract <Component> [--to DIR]     copy a library component's source into the app (src/shared/components/custom)
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -14,6 +15,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { buildStudioBundle } from './bundle.js';
+import { DEFAULT_CUSTOM_DIR, extractComponent, findPackageDir } from './extract.js';
 import { generateFromServer, listProjects } from './generate.js';
 
 const GENERATED_DIR = 'src/generated';
@@ -29,6 +31,7 @@ Commands:
   midas report [--dir FOLDER] [--no-upload] [--json] [--strict]
   midas bundle [--dir FOLDER] [--no-upload]
   midas generate [<project>] [--out FOLDER] [--list] [--dry-run]
+  midas extract <Component> [--dir APP] [--to FOLDER] [--package <@midas/ui-…>] [--from <package folder>] [--force]
 
 Environment:
   MIDAS_SERVER    Midas API URL (default from midas.config.json / login)
@@ -313,6 +316,20 @@ async function generate(args) {
     return generateFromServer(request, { out, project: args._[1], dryRun: !!args['dry-run'] });
 }
 
+/** Copy a library component into the app for customising (default folder src/shared/components/custom). */
+async function extract(args) {
+    const name = args._[1];
+    if (!name) throw new Error('usage: midas extract <Component> [--to src/shared/components/custom] [--package @midas/ui-…]');
+    const appDir = resolve(args.dir || process.cwd());
+    const pkgDir = findPackageDir(appDir, { from: args.from, packageName: args.package });
+    const res = extractComponent({ appDir, pkgDir, name, to: typeof args.to === 'string' ? args.to : DEFAULT_CUSTOM_DIR, force: !!args.force });
+    console.log(`Extracted ${name} from ${res.packageName}@${res.version}:`);
+    for (const f of res.written) console.log(`  + ${f}`);
+    for (const f of res.skipped) console.log(`  = ${f} (already there, kept — use --force to overwrite)`);
+    console.log(`\nImport your copy instead of the package component, e.g.\n  import { ${name} } from '@/${res.importPath.replace(/^src\//, '')}';   // or a relative path`);
+    return 0;
+}
+
 export async function main(argv) {
     const args = parseArgs(argv);
     const cmd = args._[0];
@@ -327,6 +344,7 @@ export async function main(argv) {
     if (cmd === 'report') return report(args);
     if (cmd === 'bundle') return bundle(args);
     if (cmd === 'generate') return generate(args);
+    if (cmd === 'extract') return extract(args);
     console.error(`unknown command: ${cmd}\n\n${HELP}`);
     return 1;
 }

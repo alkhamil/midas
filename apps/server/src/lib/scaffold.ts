@@ -53,7 +53,7 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
                 './tailwind.css': './dist/tailwind.css',
                 './manifest.json': './dist/manifest.json',
             },
-            files: ['dist'],
+            files: ['dist', 'src'], // src ships with the package so `midas extract` can copy a component into an app
             sideEffects: ['*.css'],
             scripts: {
                 sync: 'midas sync',

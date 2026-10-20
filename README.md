@@ -104,6 +104,14 @@ Tombol **Generate code…** (panel Code Builder atau bar workspace):
    npm install && npm run dev
    ```
 
+   **Mengubah komponen library untuk app ini (custom).** Paket library membawa `src/` (selain `dist/`), jadi sebuah komponen bisa disalin ke app dan diubah bebas:
+
+   ```bash
+   npx midas extract Table            # → src/shared/components/custom/Table/ (+ _shared/ untuk helper & props yang dibutuhkan)
+   ```
+
+   Komponen library lain dan ikon yang dipakai salinan tetap di-import dari paket. Setelah itu app meng-import salinan dari `src/shared/components/custom` menggantikan komponen paket; salinan itu tidak lagi ikut update library (`midas sync` tidak menyentuhnya). File yang sudah ada tidak ditimpa tanpa `--force`.
+
    Aman diulang: generator menulis module di `src/modules/<nama>/` (types, `api/{mock,service,resolver,queries}`, `pages/`, `i18n/`, `index.ts`) dan `src/app/generated/{routes,navigation,locales,layout}`. File yang pernah dibangkitkan tapi tak lagi dihasilkan dihapus (manifest `.midas/generated.json`); kode tulisan tangan tidak disentuh. Versi library di `package.json` disamakan dengan versi project. Data masih **mock** (`USE_MOCK` di `api/mock.ts`) sampai endpoint backend dihubungkan.
 2. **Unduh hanya file hasil generate (.zip)** — folder `src/` saja, dibangkitkan di browser.
 

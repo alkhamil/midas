@@ -17,7 +17,8 @@
     "./tailwind.css": "./dist/tailwind.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "sideEffects": [
     "*.css"
