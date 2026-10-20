@@ -1,32 +1,35 @@
 #!/usr/bin/env node
-// Bangun design system "CMS" di Midas lalu publish sebagai library @midas/ui-cms.
+// Bangun design system "CMS" di Midas lalu (opsional) publish sebagai library. Nama paket, versi, dan komponen yang
+// dipublish tidak ditulis di script: ikuti opsi di bawah atau turunan dari file/paket kode yang ada.
 // The design lives in scripts/design-system/ (tokens, components, icons, pages). An existing file is updated
 // with the same ids (components, variants, properties, Variables), so an update is not a breaking change
 // dan file yang memakai library tetap tersambung.
 //
 // Pakai:
-//   node scripts/seed-design-system.mjs [--server URL] [--version X.Y.Z] [--notes TEKS] [--no-publish] [--file NAMA] [--create] [--package @midas/ui-x] [--code-dir FOLDER]
-// --code-dir: folder paket kode library (default packages/ui-cms) — untuk menguji di workspace lain tanpa bentrok id.
+//   node scripts/seed-design-system.mjs [--server URL] [--file NAMA] [--create] [--no-publish]
+//        [--package @midas/ui-x] [--version X.Y.Z | --bump major|minor|patch] [--notes TEKS] [--code-dir FOLDER]
+//        [--only Button,Table] [--exclude Alert] [--icons none|all|ui,arrows]
+// Nama paket: --package, lalu library yang sudah dipublish file ini, lalu nama di paket kode (--code-dir), lalu turunan nama file.
+// Versi: --version, atau --bump dari versi terakhir; tanpa keduanya = saran server (atau versi paket kode untuk publish pertama).
+// --only / --exclude memilih komponen yang dipublish (bagian internal `_X` selalu ikut); --icons memilih kategori ikon.
+// --code-dir: folder paket kode library (opsional; tanpa opsi ini tidak ada paket kode yang dibaca atau diperbarui).
 // File dicari berdasarkan nama di workspace akun yang login; --create membuat file baru bila belum ada
 // (tanpa itu script berhenti, supaya tidak membuat duplikat di workspace yang salah).
 // Token: MIDAS_TOKEN atau hasil `midas login` (~/.midas/config.json).
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { dataUrlToSvg, iconNameParts, iconStyleOf } from '../apps/studio/src/iconSet.js';
-import { COMPONENTS } from './design-system/components.mjs';
-import { PACKAGE_NAME } from './design-system/tokens.mjs';
 import { buildDocument, existingIds } from './design-system/document.mjs';
+import { bumpVersion, listArg, listLibraries, pickPackageName, readCodePackage } from './lib/library-name.mjs';
 import { connect, findFile, parseArgs, saveDocument, whoami } from './lib/midas-api.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
 const DEFAULT_FILE = 'CMS Design System';
-const PACKAGE = PACKAGE_NAME;
 /** Paket kode library (dibuat dengan `midas init`); bila ada, id library & versi awal mengikutinya. */
 /** Nama prop kode yang berbeda dari nama property desain. */
 const PROP_NAMES = { Button: { label: 'children' }, Badge: { label: 'children' } };
 
 const args = parseArgs();
-const CODE_PACKAGE_DIR = typeof args['code-dir'] === 'string' ? resolve(args['code-dir']) : join(ROOT, 'packages/ui-cms');
+const CODE_PACKAGE_DIR = typeof args['code-dir'] === 'string' ? resolve(args['code-dir']) : null;
 const FILE_NAME = typeof args.file === 'string' ? args.file : DEFAULT_FILE;
 const { api } = connect(args);
 
@@ -34,7 +37,12 @@ const { api } = connect(args);
 const existingFile = await findFile(api, FILE_NAME);
 const existing = existingFile ? existingIds({ pages: existingFile.currentPages.map(p => p.data), variables: existingFile.current.meta.variables }) : new Map();
 
-const { doc, iconCount, iconStyles } = buildDocument({ existing });
+const codePackage = readCodePackage(CODE_PACKAGE_DIR);
+const published = existingFile ? (await listLibraries(api)).find(l => l.id === existingFile.file.id) : null;
+const pkgChoice = pickPackageName({ arg: args.package, published, codePackage, fileName: FILE_NAME });
+console.log(`Library package: ${pkgChoice.name} (from ${pkgChoice.from})`);
+
+const { doc, iconCount, iconStyles } = buildDocument({ existing, packageName: pkgChoice.name });
 console.log(`Design system: ${doc.pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')} · ${iconCount} icons (${iconStyles.join(', ')}) · ${doc.variables.items.length} variables`);
 
 // ---------------------------------------------------------------- simpan ke Midas
@@ -42,15 +50,7 @@ if (!existingFile && !args.create) {
     const me = await whoami(api);
     throw new Error(`File "${FILE_NAME}" not found in the workspace of ${me?.email ?? 'this account'}. Sign in with the file owner's account, or add --create to create a new file.`);
 }
-// File default memakai id library di packages/ui-cms/midas.config.json (bila paket kodenya sudah ada) supaya `midas sync` langsung tersambung.
-const kitId = !existingFile && FILE_NAME === DEFAULT_FILE ? (() => {
-    try {
-        return JSON.parse(readFileSync(join(CODE_PACKAGE_DIR, 'midas.config.json'), 'utf8')).libraryId;
-    } catch {
-        return null;
-    }
-})() : null;
-const saved = await saveDocument(api, { name: FILE_NAME, doc, existing: existingFile, id: kitId, idPrefix: 'midas-ds' });
+const saved = await saveDocument(api, { name: FILE_NAME, doc, existing: existingFile, idPrefix: 'midas-ds' });
 const fileId = saved.fileId;
 console.log(saved.created ? `File created: ${fileId}` : `File updated: ${fileId} (${saved.newAssets} new assets)`);
 if (args['no-publish']) process.exit(0);
@@ -81,6 +81,21 @@ for (const page of doc.pages) {
         icons.push({ componentKey: r.id, ...iconNameParts(r.name), styles });
     }
 }
+// What to publish: --only / --exclude pick components, --icons picks icon categories (internal `_X` parts always stay).
+const only = listArg(args.only), exclude = listArg(args.exclude);
+const iconSel = typeof args.icons === 'string' && args.icons !== 'all' ? (args.icons === 'none' ? new Set() : listArg(args.icons)) : null;
+const dropIcons = new Set(icons.filter(i => iconSel && !iconSel.has(String(i.category).toLowerCase())).map(i => i.componentKey));
+const iconSet = new Set(icons.map(i => i.componentKey));
+const wanted = c => {
+    if (dropIcons.has(c.id)) return false;
+    if (iconSet.has(c.id) || /^[_.]/.test(c.name)) return true;
+    const n = c.name.toLowerCase();
+    return (!only || only.has(n)) && !(exclude && exclude.has(n));
+};
+const allComponents = components.length;
+components.splice(0, components.length, ...components.filter(wanted));
+icons.splice(0, icons.length, ...icons.filter(i => !dropIcons.has(i.componentKey)));
+if (only || exclude || iconSel) console.log(`Publishing ${components.length - icons.length} of ${allComponents - iconSet.size} components and ${icons.length} icons`);
 const used = new Set(components.flatMap(c => c.nodes).map(n => n.assetId).filter(Boolean));
 const snapshot = { components, variables: doc.variables, assets: Object.fromEntries([...used].map(id => [id, doc.assets[id]])), icons };
 const iconKeys = icons.map(i => i.componentKey);
@@ -92,7 +107,7 @@ const mappings = draft.mappings.filter(m => !keys.has(m.componentKey) && !/^[_.]
     return m;
 });
 if (draft.breaking.length) console.log(`Breaking change: ${draft.breaking.join('; ')}`);
-// Publish pertama di server baru mengikuti versi paket kode (packages/ui-cms) bila ada, supaya `midas report` cocok.
+// Publish pertama mengikuti versi paket kode (--code-dir) bila ada, supaya `midas report` cocok.
 const codeVersion = (() => {
     try {
         return JSON.parse(readFileSync(join(CODE_PACKAGE_DIR, 'package.json'), 'utf8')).version;
@@ -100,10 +115,22 @@ const codeVersion = (() => {
         return null;
     }
 })();
-const version = args.version || (draft.latest ? draft.suggestedVersion : codeVersion || draft.suggestedVersion);
+const part = ['major', 'minor', 'patch'].includes(args.bump) ? args.bump : null;
+if (args.bump && !part) throw new Error('--bump takes major, minor or patch');
+const version = args.version || (part && draft.latest ? bumpVersion(draft.latest.version, part) : draft.latest ? draft.suggestedVersion : codeVersion || draft.suggestedVersion);
 const res = await api('POST', `/api/libraries/${fileId}/versions`, {
-    name: FILE_NAME, packageName: draft.library?.packageName || (typeof args.package === 'string' ? args.package : PACKAGE), version,
-    releaseNotes: args.notes || `Design system CMS: ${COMPONENTS.filter(c => !c.name.startsWith('_')).length} components, ${iconCount} icons (${iconStyles.join(' & ')}), foundations`,
+    name: FILE_NAME, packageName: draft.library?.packageName || pkgChoice.name, version,
+    releaseNotes: args.notes || `${FILE_NAME}: ${mappings.length} components, ${icons.length} icons (${iconStyles.join(' & ')}), foundations`,
     snapshot, mappings,
 });
 console.log(`Published ${res.library.packageName}@${res.library.semver}: ${res.library.components} components, ${res.library.icons} icons, ${res.library.variables} variables`);
+// Connect the code package folder to this library, so `midas sync` finds it without editing midas.config.json by hand.
+if (codePackage) {
+    if (codePackage.name === res.library.packageName) {
+        const cfgFile = join(CODE_PACKAGE_DIR, 'midas.config.json');
+        const cfg = { server: connect(args).server, libraryId: fileId, package: res.library.packageName };
+        writeFileSync(cfgFile, `${JSON.stringify(cfg, null, 2)}\n`);
+        console.log(`Updated ${cfgFile} (libraryId ${fileId})`);
+    }
+    else console.log(`Note: the code package in ${CODE_PACKAGE_DIR} is named ${codePackage.name} but the library is ${res.library.packageName} — rename one so \`midas sync\` and the app imports match.`);
+}

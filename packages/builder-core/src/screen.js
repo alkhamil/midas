@@ -238,6 +238,52 @@ export function screenTree(ctx, frameId, nodeCfg = {}) {
     return { tree, issues };
 }
 
+const FIELD_TYPE_OF = { TextField: 'string', TextAreaField: 'text', PasswordField: 'password', SelectField: 'enum', SwitchField: 'boolean' };
+
+/**
+ * First draft of a module's entity fields, read from the form frames of the design: every TextField / TextAreaField /
+ * PasswordField / SelectField / SwitchField instance becomes a field (its label text gives the name). A select whose label
+ * is another module (e.g. "Role") becomes a relation to it. Works on the raw design nodes, so it needs no library mapping.
+ */
+export function inferFields(ctx, frameIds, modules = []) {
+    const fields = [], names = new Set();
+    const holderName = inst => {
+        const main = ctx.byId.get(inst.sourceId);
+        const holder = main?.variant ? ctx.byId.get(main.parentId) : main;
+        return holder?.name || '';
+    };
+    const labelOf = inst => {
+        const queue = [...(ctx.kids.get(inst.id) || [])];
+        for (let n = queue.shift(); n; n = queue.shift()) {
+            if (n.type === 'text' && /^label$/i.test(String(n.name || '').trim()) && String(n.text || '').trim()) return String(n.text).trim();
+            queue.push(...(ctx.kids.get(n.id) || []));
+        }
+        return '';
+    };
+    const visit = n => {
+        if (n.visible === false) return;
+        if (n.isInstance) {
+            const type = FIELD_TYPE_OF[holderName(n)];
+            const label = type ? labelOf(n) : '';
+            if (!type || !label) return;
+            let name = camelCase(label);
+            if (!/^[a-z][a-zA-Z0-9]*$/.test(name)) name = `field${fields.length + 1}`;
+            while (names.has(name)) name += '2';
+            names.add(name);
+            const target = type === 'enum' ? modules.find(m => [m.label, m.name].some(x => String(x).toLowerCase() === label.toLowerCase())) : null;
+            fields.push({
+                name, label, type: target ? 'relation' : type, required: false,
+                sortable: type === 'string' || type === 'text', filterable: type !== 'password' && type !== 'text',
+                ...(target ? { relation: { moduleId: target.id, labelField: 'name' } } : type === 'enum' ? { options: ['Option 1', 'Option 2', 'Option 3'] } : {}),
+            });
+            return;
+        }
+        for (const k of ctx.kids.get(n.id) || []) visit(k);
+    };
+    for (const id of frameIds) { const root = ctx.byId.get(id); if (root) visit(root); }
+    return fields;
+}
+
 /**
  * Issue konfigurasi project (spec §4.3 Issues panel): library belum dipilih / bundle belum ada, module tanpa
  * screen, CRUD tanpa field entity, frame screen hilang atau pindah page.

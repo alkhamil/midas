@@ -1,6 +1,6 @@
 @import 'tailwindcss';
-/* Token tema, utility Tailwind, CSS komponen, dan class komponen dari library design system. */
-@import '@midas/ui-cms/tailwind.css';
+/* Token tema, utility Tailwind, CSS komponen, dan class komponen dari library design system (paket dipilih di shared/ui/library.css). */
+@import './shared/ui/library.css';
 
 body {
   background-color: var(--theme-background);

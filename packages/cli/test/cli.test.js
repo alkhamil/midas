@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { bumpVersion, listArg, packageFromFileName, pickPackageName } from '../../../scripts/lib/library-name.mjs';
+import { extractComponent } from '../src/extract.js';
 import { parseArgs, writeFiles } from '../src/main.js';
 
 test('parseArgs reads flags and positionals', () => {
@@ -90,4 +92,67 @@ test('generate writes module files, removes stale ones and pins the library vers
     finally {
         console.log = quiet;
     }
+});
+
+test('extract copies a component with its internal helpers and points other components and icons at the package', () => {
+    const root = mkdtempSync(join(tmpdir(), 'midas-extract-'));
+    const pkg = join(root, 'pkg'), app = join(root, 'app');
+    const put = (base, rel, text) => { mkdirSync(join(base, rel, '..'), { recursive: true }); writeFileSync(join(base, rel), text); };
+    put(pkg, 'package.json', JSON.stringify({ name: '@midas/ui-test', version: '1.2.3' }));
+    put(pkg, 'src/index.ts', "export * from './components/Foo/Foo';\n");
+    put(pkg, 'src/components/Foo/Foo.tsx', "import { cx } from '../../internal/cx';\nimport { fooDefaults } from '../../generated/props';\nimport { Bar } from '../Bar/Bar';\nimport { CloseIcon } from '../../generated/icons';\nexport const Foo = () => cx(fooDefaults, Bar, CloseIcon);\n");
+    put(pkg, 'src/components/Bar/Bar.tsx', 'export const Bar = 1;\n');
+    put(pkg, 'src/internal/cx.ts', 'export const cx = (...a) => a.join(" ");\n');
+    put(pkg, 'src/generated/props/index.ts', "export * from './Foo';\n");
+    put(pkg, 'src/generated/props/Foo.ts', 'export const fooDefaults = {};\n');
+    put(pkg, 'src/generated/icons/index.ts', 'export const CloseIcon = 1;\n');
+    put(app, 'package.json', '{}');
+    const res = extractComponent({ appDir: app, pkgDir: pkg, name: 'Foo' });
+    const custom = join(app, 'src/shared/components/custom');
+    const main = readFileSync(join(custom, 'Foo/Foo.tsx'), 'utf8');
+    assert.match(main, /Extracted from @midas\/ui-test@1\.2\.3/);
+    assert.match(main, /from '\.\.\/_shared\/internal\/cx'/);
+    assert.match(main, /from '\.\.\/_shared\/generated\/props'/);          // directory import stays a directory import
+    assert.match(main, /import \{ Bar \} from '@midas\/ui-test'/);           // other component → package
+    assert.match(main, /import \{ CloseIcon \} from '@midas\/ui-test'/);     // icons → package
+    assert.ok(existsSync(join(custom, '_shared/internal/cx.ts')));
+    assert.ok(existsSync(join(custom, '_shared/generated/props/Foo.ts')));
+    assert.ok(!existsSync(join(custom, 'Bar')), 'other components are not copied');
+    assert.equal(readFileSync(join(custom, 'index.ts'), 'utf8'), "export * from './Foo/Foo';\n");
+    assert.equal(res.importPath, 'src/shared/components/custom');
+    // Running it again keeps edited files and does not duplicate the index line.
+    writeFileSync(join(custom, '_shared/internal/cx.ts'), '// edited\n');
+    const again = extractComponent({ appDir: app, pkgDir: pkg, name: 'Foo', force: false });
+    assert.ok(again.skipped.some(f => f.endsWith('internal/cx.ts')));
+    assert.equal(readFileSync(join(custom, '_shared/internal/cx.ts'), 'utf8'), '// edited\n');
+    assert.equal(readFileSync(join(custom, 'index.ts'), 'utf8').match(/Foo/g).length, 2);
+    assert.throws(() => extractComponent({ appDir: app, pkgDir: pkg, name: 'Nope' }), /not found in @midas\/ui-test\. Available: Bar, Foo/);
+});
+
+test('seed scripts derive the library package name and version instead of hardcoding them', () => {
+    assert.equal(packageFromFileName('CMS Design System'), '@midas/ui-cms-design-system');
+    const pick = o => pickPackageName({ fileName: 'My Lib', ...o });
+    assert.deepEqual(pick({ arg: '@acme/x', published: { packageName: '@old/y' }, codePackage: { name: '@c/z' } }), { name: '@acme/x', from: '--package' });
+    assert.equal(pick({ published: { packageName: '@old/y' }, codePackage: { name: '@c/z' } }).name, '@old/y');   // locked after the first publish
+    assert.equal(pick({ codePackage: { name: '@c/z' } }).name, '@c/z');
+    assert.equal(pick({}).name, '@midas/ui-my-lib');
+    assert.equal(bumpVersion('1.2.3', 'patch'), '1.2.4');
+    assert.equal(bumpVersion('1.2.3', 'minor'), '1.3.0');
+    assert.equal(bumpVersion('1.2.3', 'major'), '2.0.0');
+    assert.deepEqual([...listArg('Button, Table')], ['button', 'table']);
+    assert.equal(listArg(undefined), null);
+});
+
+test('--soft steps never fail the build: unreachable Midas is skipped with one line, MIDAS_OFFLINE=1 is silent', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const dir = mkdtempSync(join(tmpdir(), 'midas-soft-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@midas/ui-x', version: '1.0.0' }));
+    writeFileSync(join(dir, 'midas.config.json'), JSON.stringify({ server: 'http://127.0.0.1:9', libraryId: 'lib', package: '@midas/ui-x' }));
+    const bin = new URL('../bin/midas.js', import.meta.url).pathname;
+    for (const cmd of ['sync', 'report', 'bundle']) {
+        const out = execFileSync(process.execPath, [bin, cmd, '--soft', '--dir', dir], { encoding: 'utf8', env: { ...process.env, MIDAS_TOKEN: 'x' } });
+        assert.match(out, new RegExp(`midas ${cmd}: skipped`), cmd);
+    }
+    const quiet = execFileSync(process.execPath, [bin, 'sync', '--soft', '--dir', dir], { encoding: 'utf8', env: { ...process.env, MIDAS_OFFLINE: '1', MIDAS_TOKEN: 'x' } });
+    assert.equal(quiet, '');
 });

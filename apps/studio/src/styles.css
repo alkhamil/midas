@@ -3408,3 +3408,51 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 /* Variables window: a collection from a library is shown, not edited */
 .vw-readonly .vw-main { opacity: .8 }
 .vw-readonly .vw-main input:disabled, .vw-readonly .vw-main select:disabled { cursor: not-allowed }
+/* ---- Publish library: what to publish ---- */
+.lp-toolbar { display: flex; gap: 8px; align-items: center; position: sticky; top: -1px; z-index: 2; padding: 6px 0; background: var(--panel) }
+.lp-toolbar .lp-search { flex: 1; min-width: 0 }
+.lp-toolbar .wide-button { width: auto; padding: 0 10px; height: 28px; white-space: nowrap }
+.lp-summary { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary) }
+.lp-summary b { color: var(--text); font-weight: 600 }
+.lp-section { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--border-soft); border-radius: 8px }
+.lp-section > h4 { margin: 0; font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: baseline; gap: 8px }
+.lp-section > h4 small { font-weight: 400; color: var(--muted); font-size: 10px }
+.lp-cats { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow: auto }
+.lp-cat { border: 1px solid var(--border-soft); border-radius: 6px; background: var(--panel-2) }
+.lp-cat-head { display: flex; align-items: center; gap: 8px; padding: 5px 8px }
+.lp-cat-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--text); font: inherit; font-weight: 500; text-align: left; cursor: pointer; padding: 0 }
+.lp-chev { transition: transform .12s; color: var(--text-secondary) }
+.lp-chev.open { transform: rotate(90deg) }
+.lp-count { font-size: 10px; color: var(--text-secondary) }
+.lp-cat-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 8px; padding: 2px 8px 8px 26px }
+.lp-icon-cell { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 0; color: var(--text); cursor: pointer }
+.lp-icon-cell .lp-mini { display: none; margin-left: auto; border: 0; background: none; color: var(--accent); font-size: 10px; cursor: pointer }
+.lp-icon-cell:hover .lp-mini { display: inline }
+.lp-internal { font-size: 11px; color: var(--text-secondary) }
+.lp-internal summary { cursor: pointer; padding: 2px 0 }
+.lp-internal .lp-comps { margin-top: 6px }
+
+/* ---- New module wizard ---- */
+.cb-wizard { gap: 8px }
+.cb-wiz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.cb-steps { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0 }
+.cb-steps li { flex: 1; height: 3px; border-radius: 2px; background: var(--border) }
+.cb-steps li.done { background: color-mix(in srgb, var(--accent) 55%, transparent) }
+.cb-steps li.on { background: var(--accent) }
+.cb-pick { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 12px }
+.cb-pick.on { border-color: var(--accent); background: var(--accent-bg) }
+.cb-pick input { margin: 0 }
+.cb-pick small { margin-left: auto; color: var(--text-secondary); font-size: 10px }
+.cb-more { font-size: 11px; color: var(--text-secondary) }
+.cb-more summary { cursor: pointer; padding: 2px 0 }
+.cb-flag-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; color: var(--text) }
+.cb-flag-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cb-path { padding: 5px 8px; border-radius: 6px; background: rgba(127,127,127,.08); font-size: 11px; color: var(--text-secondary); word-break: break-all }
+.cb-path code { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+.cb-review { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 12px }
+.cb-review dt { color: var(--text-secondary) }
+.cb-review dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0 }
+.cb-review .cb-role { padding: 1px 6px }
+.cb-form .cb-pick { flex-direction: row; align-items: center; gap: 8px; text-align: left }
+.cb-form .cb-pick input { width: auto; height: auto; flex: none }
+.cb-form .cb-pick span { flex: 1; min-width: 0 }

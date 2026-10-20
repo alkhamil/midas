@@ -6,7 +6,7 @@ import {
   Card,
   PasswordField,
   TextField,
-} from '@midas/ui-cms';
+} from '../../../../shared/ui';
 
 interface LoginFormProps {
   username: string;

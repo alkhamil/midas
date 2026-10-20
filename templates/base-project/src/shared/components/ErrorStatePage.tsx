@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { Button } from '@midas/ui-cms';
+import { Button } from '../ui';
 
 export type ErrorStateType = '403' | '404' | '500';
 

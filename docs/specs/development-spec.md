@@ -176,7 +176,7 @@ ui-cms/
 └── .github/workflows/release.yml   # CI: sync → build → publish → midas report
 ```
 
-Contoh nyata: `packages/ui-cms` (`@midas/ui-cms`) — dibuat dengan `midas init` dari library "CMS Design System": desainer membuat desainnya di Midas (`scripts/design-system/` menuliskannya sebagai kode untuk demo), developer menulis 18 komponennya di `src/components/` mengikuti tipe props hasil generate, ikon dan token berasal dari Library Kit. Komponen tidak bergantung pada router/i18n (`Sidebar`/`AppShell` menerima `activePath` + `onNavigate`, `Dialog` tanpa portal) sehingga tetap benar di Live DOM Renderer. Contoh data untuk renderer ada di export `midasPreview`. Peer dependency hanya `react` dan `react-dom`.
+Contoh nyata: `examples/ui-cms` (`@midas/ui-cms`) — dibuat dengan `midas init` dari library "CMS Design System": desainer membuat desainnya di Midas (`scripts/design-system/` menuliskannya sebagai kode untuk demo), developer menulis 18 komponennya di `src/components/` mengikuti tipe props hasil generate, ikon dan token berasal dari Library Kit. Komponen tidak bergantung pada router/i18n (`Sidebar`/`AppShell` menerima `activePath` + `onNavigate`, `Dialog` tanpa portal) sehingga tetap benar di Live DOM Renderer. Contoh data untuk renderer ada di export `midasPreview`. Peer dependency hanya `react` dan `react-dom`.
 
 Aplikasi cukup:
 

@@ -25,7 +25,8 @@ COPY apps/server/package.json ./apps/server/package.json
 COPY apps/studio/package.json ./apps/studio/package.json
 COPY packages/builder-core/package.json ./packages/builder-core/package.json
 COPY packages/cli/package.json ./packages/cli/package.json
-COPY packages/ui-cms/package.json ./packages/ui-cms/package.json
+# base-project links the example UI package (file:), so its manifest must exist for `npm ci`.
+COPY examples/ui-cms/package.json ./examples/ui-cms/package.json
 COPY templates/base-project/package.json ./templates/base-project/package.json
 RUN npm ci --no-audit --no-fund
 

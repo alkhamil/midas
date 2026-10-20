@@ -10,10 +10,11 @@ apps/
 └── server/     # Midas API (Fastify + Drizzle + Postgres + S3)
 packages/
 ├── builder-core/  # @midas/builder-core: inti Code Builder (pemetaan node → screen, layout/properti, generator kode, zip); dipakai Studio & CLI
-├── cli/           # @midas/cli: login, init, sync, report, bundle, generate
-└── ui-cms/        # @midas/ui-cms: paket kode library "CMS Design System" (dibuat dengan `midas init`, komponennya ditulis developer)
+└── cli/           # @midas/cli: login, init, sync, report, bundle, generate, extract
+examples/
+└── ui-cms/        # contoh paket kode library (komponen React tulisan tangan); bukan bagian workspace dan tidak terhubung ke alur. Paket kode sungguhan dibuat dari library yang dipublish
 templates/
-└── base-project/   # base project aplikasi (spec §5.2); memakai @midas/ui-cms
+└── base-project/   # base project aplikasi (spec §5.2); library UI-nya dipilih per project (shared/ui). Di repo ini tersambung ke examples/ui-cms (`file:`) supaya bisa di-typecheck
 scripts/
 ├── design-system/            # isi design system "CMS": tokens, komponen, ikon, halaman (generator)
 ├── lib/midas-api.mjs         # klien Midas API untuk script (koneksi, token, simpan dokumen)
@@ -63,11 +64,15 @@ npm run build --workspace @midas/base-project
 ```bash
 node packages/cli/bin/midas.js login --server http://127.0.0.1:4000
 node packages/cli/bin/midas.js init ui-cms --library @midas/ui-cms
-cd ui-cms && npx midas sync --version <versi>
+cd ui-cms && npm run build        # menarik kit terbaru, build, lalu melapor dan mengunggah bundle (lihat di bawah)
 ```
 
-3. Setelah build: `npx midas report` mengirim status kode tiap komponen (ready / not implemented / mismatch) — tampil di panel Library & dialog Developer kit.
-4. `npx midas bundle` (atau `npm run bundle`) membangun bundle ESM + CSS untuk **Live DOM Renderer** Code Builder dan mengunggahnya ke Midas. Data contoh untuk renderer (kolom tabel, menu, handler) diambil dari export `midasPreview` paket.
+   Tanpa CLI: dialog **Developer kit** punya tombol **Download Library Kit (.zip)**; ganti `src/generated/` dengan isinya.
+
+   `npm run build` di paket kode sudah mencakup semuanya: `prebuild` menjalankan `midas sync --soft` (kit terbaru; `"pin": "X.Y.Z"` di `midas.config.json` menahan versi), `postbuild` menjalankan `midas report --soft && midas bundle --soft`. Opsi `--soft` tidak pernah menggagalkan build bila Midas tidak terjangkau atau belum login (satu baris "skipped"); `MIDAS_OFFLINE=1` melewatinya sama sekali (mis. CI yang tidak boleh mengunggah). Yang tetap dikerjakan developer hanya **menulis komponen**.
+
+3. Setelah build: `midas report` (otomatis di `postbuild`) mengirim status kode tiap komponen (ready / not implemented / mismatch) — tampil di panel Library & dialog Developer kit.
+4. `midas bundle` (otomatis di `postbuild`; atau `npm run bundle`) membangun bundle ESM + CSS untuk **Live DOM Renderer** Code Builder dan mengunggahnya ke Midas. Data contoh untuk renderer (kolom tabel, menu, handler) diambil dari export `midasPreview` paket.
 5. Paket di-publish ke Verdaccio lokal (`http://127.0.0.1:4873/`, scope `@midas`). `@midas/cli` sendiri juga perlu di-publish ke sana sekali (`npm publish` di `packages/cli`) supaya `npm install` di repo paket menemukan devDependency-nya.
 
 ## Code Builder
@@ -104,6 +109,14 @@ Tombol **Generate code…** (panel Code Builder atau bar workspace):
    npm install && npm run dev
    ```
 
+   **Mengubah komponen library untuk app ini (custom).** Paket library membawa `src/` (selain `dist/`), jadi sebuah komponen bisa disalin ke app dan diubah bebas:
+
+   ```bash
+   npx midas extract Table            # → src/shared/components/custom/Table/ (+ _shared/ untuk helper & props yang dibutuhkan)
+   ```
+
+   Komponen library lain dan ikon yang dipakai salinan tetap di-import dari paket. Setelah itu app meng-import salinan dari `src/shared/components/custom` menggantikan komponen paket; salinan itu tidak lagi ikut update library (`midas sync` tidak menyentuhnya). File yang sudah ada tidak ditimpa tanpa `--force`.
+
    Aman diulang: generator menulis module di `src/modules/<nama>/` (types, `api/{mock,service,resolver,queries}`, `pages/`, `i18n/`, `index.ts`) dan `src/app/generated/{routes,navigation,locales,layout}`. File yang pernah dibangkitkan tapi tak lagi dihasilkan dihapus (manifest `.midas/generated.json`); kode tulisan tangan tidak disentuh. Versi library di `package.json` disamakan dengan versi project. Data masih **mock** (`USE_MOCK` di `api/mock.ts`) sampai endpoint backend dihubungkan.
 2. **Unduh hanya file hasil generate (.zip)** — folder `src/` saja, dibangkitkan di browser.
 
@@ -132,16 +145,15 @@ Alurnya meniru alur sebenarnya: desainer membuat design system → di-publish se
 ```bash
 node packages/cli/bin/midas.js login --server http://127.0.0.1:4000
 node scripts/seed-design-system.mjs --create     # 1. desain "CMS Design System" + publish @midas/ui-cms (kali berikutnya tanpa --create)
-cd packages/ui-cms                               # 2. paket kode (dibuat dengan `midas init`, komponennya ditulis developer)
-npm run sync && npm run build && npm test        #    ambil Library Kit, build, test
-npx midas report && npm run bundle               #    status kode 18/18 ready + bundle untuk Live DOM Renderer
+cd ../<repo-paket-kode>                          # 2. paket kode: dibuat dari library yang dipublish (Developer kit → New repository, atau `npx midas init <folder> --library <paket>`); komponennya ditulis developer. Contoh jadi: examples/ui-cms
+npm run build && npm test                        #    kit terbaru + build + status kode (ready) + bundle untuk Live DOM Renderer, lalu test
 cd ../.. && node scripts/seed-cms-demo.mjs       # 3. file "CMS Demo" (User, Role, Dashboard) + project Code Builder
 npm run dev --workspace @midas/base-project      # base project; login demo: admin / admin123
 ```
 
-Versi paket kode (`packages/ui-cms/package.json`) harus sama dengan versi library yang dipublish; setelah mempublish versi baru, naikkan versinya lalu `npm run sync`.
+Versi paket kode (`package.json` repo paket) mengikuti versi library: `npm run build` menyamakannya otomatis dengan versi terbaru (atau versi yang di-`pin`).
 
-`seed-design-system.mjs`: `--create` (buat file baru), `--no-publish` (hanya perbarui file), `--version X.Y.Z`, `--notes TEKS`, `--file NAMA`, `--package @midas/ui-x`. Seed mencari file berdasarkan nama di workspace akun yang login dan berhenti bila tidak ada, kecuali `--create`. Seed berikutnya memakai ulang id komponen, variant, property, Variable, dan ikon, jadi update tidak memutus file yang memakai library.
+`seed-design-system.mjs`: nama paket, versi, dan komponen yang dipublish **tidak ditulis di skrip**. Opsi: `--create` (buat file baru), `--no-publish` (hanya perbarui file), `--file NAMA`, `--package @midas/ui-x` (bila tidak diisi: library yang sudah dipublish file itu → nama di paket kode `--code-dir` → turunan nama file), `--version X.Y.Z` atau `--bump major|minor|patch`, `--notes TEKS`, `--only Button,Table` / `--exclude Alert` (komponen yang dipublish; bagian internal `_X` selalu ikut), `--icons none|all|ui,arrows` (kategori ikon). Setelah publish, `midas.config.json` paket kode ikut diperbarui bila nama paketnya sama. `seed-cms-demo.mjs`: library diambil dari `--package`, atau satu-satunya library yang dipublish, atau yang namanya sama dengan paket kode; `--modules dashboard,user,role,region` memilih modul (user membawa role; region membawa grup menu Master Data). Seed mencari file berdasarkan nama di workspace akun yang login dan berhenti bila tidak ada, kecuali `--create`. Seed berikutnya memakai ulang id komponen, variant, property, Variable, dan ikon, jadi update tidak memutus file yang memakai library.
 
 Design system "CMS" (karakter tegas, rapi, fokus pada data; sidebar gelap, aksen indigo `#4338CA`, font Inter) ditulis sebagai kode di `scripts/design-system/`:
 

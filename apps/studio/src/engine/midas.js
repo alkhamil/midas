@@ -12714,44 +12714,44 @@ function publishDialog(snapshot, draft, iconKeys) {
     const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
     const vars = snapshot.variables.items.length;
     const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const leafOf = name => name.split('/').pop().trim() || name;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(leafOf(m.componentName))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
-    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(leafOf(m.componentName))}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
-    // "Bold / Messages / Dialog" sits in the folder Bold, inside Messages; each folder has one checkbox for everything under it.
-    const tree = (wantIcon, row) => {
-        const root = { dirs: new Map(), rows: [] };
-        mappings.forEach((m, i) => {
-            if (isIcon[i] !== wantIcon)
-                return;
-            const parts = m.componentName.split('/').map(s => s.trim()).filter(Boolean);
-            let at = root;
-            for (const d of parts.slice(0, -1)) {
-                if (!at.dirs.has(d))
-                    at.dirs.set(d, { dirs: new Map(), rows: [] });
-                at = at.dirs.get(d);
-            }
-            at.rows.push(i);
-        });
-        const all = node => [...node.rows, ...[...node.dirs.values()].flatMap(all)];
-        const draw = (node, path) => [...node.dirs].map(([name, sub]) => {
-            const key = (wantIcon ? 'i:' : 'c:') + path + '/' + name, ids = all(sub);
-            return `<details class="lp-folder" data-lp-fkey="${esc(key)}" ${openFolders.has(key) ? 'open' : ''}><summary><input type="checkbox" data-lp-folder="${ids.join(',')}" aria-label="Publish everything in ${esc(name)}"><span class="lp-folder-name" title="${esc(name)}">${esc(name)}</span><small>${ids.length}</small></summary>${draw(sub, path + '/' + name)}</details>`;
-        }).join('') + node.rows.map(i => row(mappings[i], i)).join('');
-        return draw(root, '');
-    };
-    const openFolders = new Set();
-    // Folder checkboxes follow their children: checked, unchecked or partly checked.
-    const syncFolders = () => form.querySelectorAll('[data-lp-folder]').forEach(f => {
-        const boxes = f.closest('details').querySelectorAll('[data-lp-include]'), on = [...boxes].filter(b => b.checked).length;
-        f.checked = on > 0 && on === boxes.length;
-        f.indeterminate = on > 0 && on < boxes.length;
-    });
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
+    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
+    // ---- what to publish: search + select all/none, components first, icons grouped by category ----
+    let query = '';
+    const openCats = new Set();
+    const catOf = m => iconNameParts(m.componentName).category;
+    const shortName = m => String(m.componentName).split('/').pop();
+    const matches = m => !query || `${m.componentName} ${m.exportName}`.toLowerCase().includes(query);
+    const chevron = open => `<svg class="lp-chev ${open ? 'open' : ''}" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const iconCell = (m, i) => `<label class="lp-icon-cell" title="${esc(m.componentName)}"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name">${esc(shortName(m))}</span><button type="button" class="lp-mini" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></label>`;
     const lists = () => {
-        const comps = tree(false, compRow), icons = tree(true, iconRow);
+        const comps = [], internal = [], cats = new Map();
+        mappings.forEach((m, i) => {
+            if (!matches(m)) return;
+            if (isIcon[i]) { const c = catOf(m); (cats.get(c) || cats.set(c, []).get(c)).push(i); }
+            else if (/^[_.]/.test(m.componentName)) internal.push(i);
+            else comps.push(i);
+        });
         const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
-        return `<div class="lp-field"><span>Components (${nComp}) · export name in code</span><div class="lp-comps">${comps || '<p class="small-label">No components.</p>'}</div></div>
-<details class="lp-field lp-icons" ${nIcon && nIcon <= 12 ? 'open' : ''}><summary>Icons (${nIcon}) · React icon components, color follows the text</summary><small>Detected from the Icons page and names starting with “Icon/”. Each variant (e.g. Style=Bold) becomes an icon style.</small><div class="lp-comps">${icons || '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</div></details>`;
+        const selComp = mappings.filter((_, i) => include[i] && !isIcon[i]).length, selIcon = mappings.filter((_, i) => include[i] && isIcon[i]).length;
+        const catHtml = [...cats.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([cat, idx]) => {
+            const open = openCats.has(cat) || (!!query && idx.length <= 60);
+            const on = idx.filter(i => include[i]).length;
+            return `<div class="lp-cat"><div class="lp-cat-head"><input type="checkbox" data-lp-group="${esc(cat)}" ${on === idx.length ? 'checked' : ''} aria-label="Publish all ${esc(cat)} icons"><button type="button" class="lp-cat-toggle" data-lp-catfold="${esc(cat)}">${chevron(open)}<span>${esc(cat)}</span></button><span class="lp-count" data-lp-count="${esc(cat)}">${on}/${idx.length}</span></div>${open ? `<div class="lp-cat-body">${idx.map(i => iconCell(mappings[i], i)).join('')}</div>` : ''}</div>`;
+        }).join('');
+        const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, not published on their own</summary><div class="lp-comps">${internal.map(i => compRow(mappings[i], i)).join('')}</div></details>` : '';
+        const none = query ? 'Nothing matches your search.' : '';
+        return `<div class="lp-summary"><span><b>${selComp}</b> of ${nComp} components</span><span><b>${selIcon}</b> of ${nIcon} icons</span></div>
+<section class="lp-section"><h4>Components <small>export name in code</small></h4><div class="lp-comps">${comps.map(i => compRow(mappings[i], i)).join('') || `<p class="small-label">${none || 'No components.'}</p>`}</div>${internalHtml}</section>
+<section class="lp-section"><h4>Icons <small>React icon components, color follows the text</small></h4>${nIcon ? `<div class="lp-cats">${catHtml || `<p class="small-label">${none}</p>`}</div>` : '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</section>`;
     };
+    // Group checkboxes show a partial state when only some of their icons are selected.
+    const syncGroups = () => form.querySelectorAll('[data-lp-group]').forEach(el => {
+        const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup && matches(m) ? i : -1)).filter(i => i >= 0);
+        const on = idx.filter(i => include[i]).length;
+        el.checked = idx.length > 0 && on === idx.length;
+        el.indeterminate = on > 0 && on < idx.length;
+    });
     modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables; developers get a frontend package with the same version.')}
 <form id="lp-form" class="lp-form" novalidate>
 <label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
@@ -12759,6 +12759,7 @@ function publishDialog(snapshot, draft, iconKeys) {
 <div class="lp-field"><span>Version</span><div class="lp-version"><input class="lp-input lp-mono" id="lp-version" value="${esc(draft.suggestedVersion)}" spellcheck="false" autocomplete="off">${latest ? ['patch', 'minor', 'major'].map(k => `<button type="button" class="cmp-btn" data-lp-bump="${k}">${k}</button>`).join('') : ''}</div><small>${latest ? `Latest: ${esc(latest.version)} · published ${timeAgo(latest.publishedAt)}` : 'First release.'}</small></div>
 ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a major version</b><ul>${draft.breaking.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
 <label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
+<div class="lp-toolbar"><input type="search" class="lp-input lp-search" id="lp-search" placeholder="Search components and icons" autocomplete="off" aria-label="Search components and icons"><button type="button" class="wide-button" data-lp-all="1">Select all</button><button type="button" class="wide-button" data-lp-all="0">Select none</button></div>
 <div id="lp-lists">${lists()}</div>
 <small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are included as theme tokens.</small>
 <div id="lp-errors" class="lp-errors hidden" role="alert"></div>
@@ -12787,22 +12788,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
                 }
             }, 300);
         };
-    form.addEventListener('change', e => {
-        const f = e.target.closest('[data-lp-folder]');
-        if (f)
-            f.closest('details').querySelectorAll('[data-lp-include]').forEach(b => { b.checked = f.checked; });
-        if (f || e.target.matches('[data-lp-include]'))
-            syncFolders();
-    });
-    form.addEventListener('toggle', e => {
-        const key = e.target.dataset?.lpFkey;
-        if (key)
-            e.target.open ? openFolders.add(key) : openFolders.delete(key);
-    }, true);
-    syncFolders();
     form.addEventListener('click', e => {
-        if (e.target.closest('[data-lp-folder]'))
-            e.stopPropagation();
         const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]'), kind = e.target.closest('[data-lp-kind]');
         if (bump) {
             version.value = semverBump(latest.version, bump.dataset.lpBump);
@@ -12814,9 +12800,49 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             collect();
             isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
             $('#lp-lists').innerHTML = lists();
-            syncFolders();
+            form.querySelectorAll('[data-lp-group]').forEach(el => { const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpGroup ? i : -1)).filter(i => i >= 0); const on = idx.filter(i => include[i]).length; el.checked = idx.length > 0 && on === idx.length; el.indeterminate = on > 0 && on < idx.length; });
         }
     });
+    const redraw = () => { $('#lp-lists').innerHTML = lists(); syncGroups(); };
+    // Cheap refresh after a checkbox change: counters and group states only, so the lists keep their scroll position.
+    const applyIncludes = () => form.querySelectorAll('[data-lp-include]').forEach(el => { el.checked = !!include[+el.dataset.lpInclude]; });
+    const updateCounts = () => {
+        const summary = form.querySelector('.lp-summary');
+        if (summary) summary.innerHTML = `<span><b>${mappings.filter((_, i) => include[i] && !isIcon[i]).length}</b> of ${isIcon.filter(x => !x).length} components</span><span><b>${mappings.filter((_, i) => include[i] && isIcon[i]).length}</b> of ${isIcon.filter(Boolean).length} icons</span>`;
+        form.querySelectorAll('[data-lp-count]').forEach(el => {
+            const idx = mappings.map((m, i) => (isIcon[i] && catOf(m) === el.dataset.lpCount && matches(m) ? i : -1)).filter(i => i >= 0);
+            el.textContent = `${idx.filter(i => include[i]).length}/${idx.length}`;
+        });
+        syncGroups();
+    };
+    $('#lp-search').oninput = e => { collect(); query = e.target.value.trim().toLowerCase(); redraw(); };
+    form.addEventListener('click', e => {
+        const all = e.target.closest('[data-lp-all]'), fold = e.target.closest('[data-lp-catfold]');
+        if (all) {
+            collect();
+            // Only what the search currently shows; internal parts keep their own choice.
+            mappings.forEach((m, i) => { if (matches(m) && !(!isIcon[i] && /^[_.]/.test(m.componentName))) include[i] = all.dataset.lpAll === '1'; });
+            applyIncludes();
+            updateCounts();
+        }
+        if (fold) {
+            collect();
+            const c = fold.dataset.lpCatfold;
+            if (openCats.has(c)) openCats.delete(c); else openCats.add(c);
+            redraw();
+        }
+    });
+    form.addEventListener('change', e => {
+        const g = e.target.closest('[data-lp-group]');
+        if (g) {
+            collect();
+            mappings.forEach((m, i) => { if (isIcon[i] && catOf(m) === g.dataset.lpGroup && matches(m)) include[i] = g.checked; });
+            applyIncludes();
+            updateCounts();
+        }
+        else if (e.target.matches('[data-lp-include]')) { collect(); updateCounts(); }
+    });
+    syncGroups();
     form.onsubmit = async e => {
         e.preventDefault();
         collect();
@@ -12872,8 +12898,7 @@ async function developerKitDialog() {
 <div class="lp-field"><span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit. Create it once; after that the repository belongs to the developers.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a></div>
 <div class="lp-field"><span>Or with the CLI</span>${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}</div>
 <div class="lp-field"><span>Code status</span><small>Reported by <span class="lp-mono">midas report</span> after the package is built (usually in CI).</small><div id="dk-code" class="dk-code"><p class="small-label">Loading…</p></div></div>
-<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version.</small>${code(`npx midas sync --version <version>
-npm run build && npx midas report`)}</div>
+<div class="lp-field"><span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> (theme tokens, props types, manifest) and sets the package version. <span class="lp-mono">npm run build</span> already pulls the newest kit first and sends the code status and the Studio bundle afterwards, so no extra command is needed.</small>${code(`npm run build`)}<small>Without the CLI: download the kit and replace <span class="lp-mono">src/generated/</span> with it.</small><a class="wide-button" id="dk-kit-zip" download>${icon('download', 13)} Download Library Kit (.zip)</a></div>
 <div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
 </div>`);
     const sel = $('#dk-version'), zip = $('#dk-zip');
@@ -12897,6 +12922,7 @@ npm run build && npx midas report`)}</div>
         const v = sel.value;
         showCode(v);
         zip.href = `/api/libraries/${encodeURIComponent(lib.fileId)}/scaffold?format=zip&version=${encodeURIComponent(v)}`;
+        $('#dk-kit-zip').href = `/api/libraries/${encodeURIComponent(lib.fileId)}/kit?format=zip&version=${encodeURIComponent(v)}`;
         $('#modal').querySelectorAll('.lp-code').forEach(el => { el.textContent = el.textContent.replace(/--version \S+$/m, `--version ${v}`); });
     };
     sel.onchange = update;
@@ -17611,6 +17637,8 @@ const builderBridge = {
     pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p), codeBuilder: !!p.codeBuilder })),
     /** Semua node file (lintas page), termasuk salinan komponen library. */
     nodes: () => doc.data.pages.flatMap(p => p.nodes),
+    // Flag or unflag a page as a Code Builder module source (same as the page context menu).
+    flagPage: (pageId, on = true) => { const p = doc.data.pages.find(x => x.id === pageId); if (p && !!p.codeBuilder !== !!on) togglePageCodeBuilder(pageId); },
     // Top-level frames of a page (candidates when registering Code Builder screens), left to right.
     pageFrames: pageId => (doc.data.pages.find(p => p.id === pageId)?.nodes || []).filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && n.visible !== false).map(n => ({ id: n.id, name: n.name, x: n.x, y: n.y, pageId })).sort((a, b) => (a.x - b.x) || (a.y - b.y)),
     pageOf: id => pageOfNode(id)?.id ?? null,

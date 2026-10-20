@@ -5,7 +5,7 @@ Aturan project untuk coding agent (dan developer) di project hasil Midas.
 ## Project
 
 - Stack: React 19 + TypeScript + Vite + Tailwind CSS 4 + TanStack Query + React Hook Form + react-router 7 + i18next. Package manager: npm.
-- Komponen UI, layout, ikon, dan token tema berasal dari library design system (saat ini `@midas/ui-cms`, atau paket `@midas/ui-*` lain dari Midas Registry). **Jangan** menyalin komponen UI ke project dan **jangan** memakai paket ikon pihak ketiga.
+- Komponen UI, layout, ikon, dan token tema berasal dari library design system (paket `@midas/ui-*` yang dipilih untuk project; namanya hanya tertulis di `src/shared/ui/index.ts`, `src/shared/ui/library.css`, dan `package.json`). Import komponen, ikon, dan tema dari `shared/ui`, **bukan** langsung dari nama paket. **Jangan** menyalin komponen UI ke project dan **jangan** memakai paket ikon pihak ketiga.
 - Mesin form (`FormGroup`, `FormItem`, `FormArray`, `FormDefaultValuesWatcher`) ada di `src/shared/components/form`.
 
 ## Struktur

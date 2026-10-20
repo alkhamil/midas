@@ -3,9 +3,11 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { builderApi, libraryApi } from '../storage.js';
-import { cleanNodeCfg, CRUD_ROLES, kebabCase, makeContext, projectIssues, resolveLayout, ROLE_LABEL, screenTree, suggestScreens } from '@midas/builder-core';
+import { cleanNodeCfg, CRUD_ROLES, kebabCase, makeContext, projectIssues, resolveLayout, ROLE_LABEL, screenTree } from '@midas/builder-core';
 import { GenerateDialog } from './Generate.jsx';
 import { EntityEditor } from './Inspector.jsx';
+import { FrameChoiceList, useFrameChoices } from './frames.jsx';
+import { ModuleWizard } from './Wizard.jsx';
 import { confirmDialog } from '../confirm.js';
 import { Select } from './Select.jsx';
 import { Workspace } from './Workspace.jsx';
@@ -175,8 +177,8 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
                 <>
                     <LibraryLine project={project} onChange={(libraryId, libraryVersion) => builderApi.save(project.id, { version: pending.current?.version ?? project.version, libraryId, libraryVersion }).then(setProject, e => setStatus(e.message))} />
                     <div className="cb-section-head"><span>Modules</span><button className="cb-link" onClick={() => setForm('module')}>＋ Module</button></div>
-                    {form === 'module' && <ModuleForm pages={pages} modules={project.config.modules} currentPage={bridge.currentPageId()} onCancel={() => setForm(null)} onSave={m => {
-                        updateModules(list => [...list, { id: uid('mod'), screens: [], entity: { fields: [] }, ...m }]);
+                    {form === 'module' && <ModuleWizard pages={pages} modules={project.config.modules} ctx={ctx} pageFrames={bridge.pageFrames} currentPage={bridge.currentPageId()} onFlagPage={id => bridge.flagPage(id, true)} onCancel={() => setForm(null)} onCreate={m => {
+                        updateModules(list => [...list, { id: uid('mod'), ...m, screens: m.screens.map(s => ({ id: uid('scr'), ...s })) }]);
                         setOpen(s => new Set(s).add(m.name));
                         setForm(null);
                     }} />}
@@ -375,18 +377,6 @@ function ModuleRow({ module: m, modules, depth, pages, open, setOpen, screenId, 
     );
 }
 
-// What a frame can be registered as. "form" is one frame used for both the create and the edit screen.
-const FRAME_CHOICES = [['list', 'List'], ['form', 'Create + Edit'], ['create', 'Create'], ['edit', 'Edit'], ['view', 'View'], ['dialog:delete', 'Dialog · Delete'], ['dialog:restore', 'Dialog · Restore'], ['dialog:discard', 'Dialog · Discard'], ['custom', 'Custom page'], ['skip', 'Skip']];
-const choiceOf = list => (!list.length ? 'skip' : list.length === 2 ? 'form' : list[0].role === 'dialog' ? `dialog:${list[0].purpose}` : list[0].role);
-const screensOf = (choice, name, frame) => {
-    if (choice === 'skip') return [];
-    const base = { frameId: frame.id, pageId: frame.pageId, name };
-    if (choice === 'form') return [{ ...base, role: 'create' }, { ...base, role: 'edit' }];
-    if (choice.startsWith('dialog:')) return [{ ...base, role: 'dialog', purpose: choice.slice(7) }];
-    return [{ ...base, role: choice }];
-};
-const rolesOfChoice = choice => (choice === 'form' ? ['create', 'edit'] : choice.startsWith('dialog:') ? [choice] : choice === 'skip' || choice === 'custom' ? [] : [choice]);
-
 /**
  * Register frames in one go: the module's source page lists every top-level frame that is not registered yet, with the
  * screen each one probably is (guessed from its name). Adjust where needed, then add them all.
@@ -395,26 +385,7 @@ function FrameRegistrar({ module: m, pageFrames, selection, onCancel, onAdd }) {
     const [manual, setManual] = useState(false);
     const registered = useMemo(() => new Set(m.screens.map(s => s.frameId)), [m.screens]);
     const candidates = useMemo(() => pageFrames(m.pageId).filter(f => !registered.has(f.id)), [pageFrames, m.pageId, registered]);
-    // Defaults follow the names, but a role the module already has (or an earlier row takes) starts as Skip.
-    const initial = useMemo(() => {
-        const used = new Set(m.screens.map(s => (s.role === 'dialog' ? `dialog:${s.purpose}` : s.role)));
-        return Object.fromEntries(candidates.map(f => {
-            let choice = choiceOf(suggestScreens(f.name));
-            const taken = rolesOfChoice(choice).filter(r => used.has(r));
-            if (taken.length) choice = choice === 'form' && taken.length === 1 ? (taken[0] === 'create' ? 'edit' : 'create') : 'skip';
-            rolesOfChoice(choice).forEach(r => used.add(r));
-            return [f.id, choice];
-        }));
-    }, [candidates, m.screens]);
-    const [choices, setChoices] = useState(initial);
-    useEffect(() => setChoices(initial), [initial]);
-    const clash = useMemo(() => {
-        const seen = new Set(), dup = new Set();
-        for (const f of candidates) for (const r of rolesOfChoice(choices[f.id] || 'skip')) { if (seen.has(r)) dup.add(r); seen.add(r); }
-        return dup;
-    }, [candidates, choices]);
-    const clean = f => String(f.name || '').replace(/^page\s*[·:-]\s*/i, '').trim() || f.name;
-    const entries = candidates.flatMap(f => screensOf(choices[f.id] || 'skip', clean(f), f));
+    const { choices, setChoice, clash, entries, count } = useFrameChoices(candidates, m.screens);
     if (manual) return <ScreenForm module={m} selection={selection} onCancel={() => setManual(false)} onSave={s => onAdd([s])} />;
     return (
         <div className="cb-form cb-registrar">
@@ -422,18 +393,10 @@ function FrameRegistrar({ module: m, pageFrames, selection, onCancel, onAdd }) {
             {candidates.length
                 ? <p className="small-label">Frames on this module's page that are not registered yet. Roles are guessed from the names.</p>
                 : <p className="small-label">Every frame on this module's page is already registered. Draw a new frame on the page, then reopen this.</p>}
-            {candidates.map(f => (
-                <div key={f.id} className="cb-reg-row">
-                    <span className="cb-reg-name" title={f.name}>{clean(f)}</span>
-                    <Select aria-label={`Role of ${f.name}`} value={choices[f.id] || 'skip'} onChange={e => setChoices(c => ({ ...c, [f.id]: e.target.value }))}>
-                        {FRAME_CHOICES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </Select>
-                </div>
-            ))}
-            {clash.size > 0 && <small className="cb-error">Two frames share the {[...clash].map(r => r.replace('dialog:', 'dialog ')).join(', ')} role — a module has one of each.</small>}
+            <FrameChoiceList candidates={candidates} choices={choices} setChoice={setChoice} clash={clash} />
             <div className="cb-form-actions">
                 <button type="button" className="wide-button" onClick={onCancel}>Cancel</button>
-                <button type="button" className="wide-button primary" disabled={!entries.length || clash.size > 0} onClick={() => onAdd(entries)}>{entries.length ? `Add ${candidates.filter(f => (choices[f.id] || 'skip') !== 'skip').length} frame${candidates.filter(f => (choices[f.id] || 'skip') !== 'skip').length > 1 ? 's' : ''}` : 'Add'}</button>
+                <button type="button" className="wide-button primary" disabled={!entries.length || clash.size > 0} onClick={() => onAdd(entries)}>{entries.length ? `Add ${count} frame${count > 1 ? 's' : ''}` : 'Add'}</button>
             </div>
             <button type="button" className="cb-link" onClick={() => setManual(true)}>Pick a frame on the canvas instead…</button>
         </div>

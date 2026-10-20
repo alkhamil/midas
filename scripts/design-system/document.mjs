@@ -4,7 +4,7 @@ import { buildIconPage, svgToDataUrl } from '../../apps/studio/src/iconSet.js';
 import { build, col, frame, icon, Ids, instance, row, text, Vars } from './build.mjs';
 import { COMPONENTS } from './components.mjs';
 import { UI_ICONS, uiIconFiles } from './icons.mjs';
-import { COLOR_NOTES, COLORS, ELEVATION, FONT_FAMILY, PACKAGE_NAME, RADIUS, SPACING, TYPE_SCALE } from './tokens.mjs';
+import { COLOR_NOTES, COLORS, ELEVATION, FONT_FAMILY, RADIUS, SPACING, TYPE_SCALE } from './tokens.mjs';
 
 const MUTED_FG = 'color/muted-foreground';
 const combos = variants => Object.entries(variants).reduce((acc, [k, vals]) => acc.flatMap(o => vals.map(v => ({ ...o, [k]: v }))), [{}]);
@@ -62,7 +62,9 @@ function stabilizeIconIds(iconPage, assets) {
     for (const [id, url] of Object.entries(iconPage.assets)) assets[assetMap.get(id)] = url;
 }
 
-export function buildDocument({ existing = new Map() }) {
+/** `packageName` = the code package of the library: the import line shown on each component page. */
+export function buildDocument({ existing = new Map(), packageName }) {
+    if (!packageName) throw new Error('buildDocument needs the library packageName');
     const ids = new Ids(existing);
     const vars = new Vars(ids);
     const assets = {};
@@ -141,7 +143,7 @@ export function buildDocument({ existing = new Map() }) {
         const header = place(build(col({ gap: 6, w: 720, name: `Header — ${spec.name}` }, [
             text(spec.name, { size: internal ? 18 : 32, line: internal ? 28 : 40, weight: 600 }),
             text(spec.description, { w: 720, color: MUTED_FG }),
-            text(internal ? 'Internal part — assembled by other components, not exported to code.' : `import { ${spec.name} } from '${PACKAGE_NAME}';`, { size: 12, line: 16, color: internal ? MUTED_FG : 'color/primary', name: 'Code' }),
+            text(internal ? 'Internal part — assembled by other components, not exported to code.' : `import { ${spec.name} } from '${packageName}';`, { size: 12, line: 16, color: internal ? MUTED_FG : 'color/primary', name: 'Code' }),
         ]), ctx, { key: `doc:${spec.name}/header` }));
         y += header.h + 32;
         // `def` = nilai default component property di engine Midas.

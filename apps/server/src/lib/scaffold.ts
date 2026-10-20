@@ -53,11 +53,15 @@ export function buildScaffold(input: ScaffoldInput): KitFiles {
                 './tailwind.css': './dist/tailwind.css',
                 './manifest.json': './dist/manifest.json',
             },
-            files: ['dist'],
+            files: ['dist', 'src'], // src ships with the package so `midas extract` can copy a component into an app
             sideEffects: ['*.css'],
             scripts: {
                 sync: 'midas sync',
+                // Build keeps Midas in step without extra commands: the Library Kit is pulled before, the code status and the
+                // Studio bundle are sent after. --soft = never fails when Midas is unreachable; MIDAS_OFFLINE=1 skips them.
+                prebuild: 'midas sync --soft',
                 build: 'tsc -p tsconfig.build.json && vite build && node scripts/copy-assets.mjs',
+                postbuild: 'midas report --soft && midas bundle --soft',
                 typecheck: 'tsc -p tsconfig.json --noEmit',
                 prepublishOnly: 'npm run build',
             },

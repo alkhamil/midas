@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cssVarOf, makeContext, projectIssues, screenTree } from '../src/screen.js';
+import { cssVarOf, inferFields, makeContext, projectIssues, screenTree } from '../src/screen.js';
 
 const variables = { items: [{ id: 'v-primary', name: 'color/primary', type: 'color' }, { id: 'v-bg', name: 'color/background', type: 'color' }] };
 // Library "lib": Button (set, variant Variant=Primary|Secondary, cprop Label) disalin ke file app dengan libRef.
@@ -95,4 +95,31 @@ test('screenTree leaves out Sidebar/Topbar drawn inside a page mockup (no second
     const deep = [{ id: 'f2', name: 'Detail', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'w', parentId: 'f2', name: 'Wrap', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'w2', parentId: 'w', name: 'Wrap 2', type: 'frame', w: 800, h: 600, layout: 'vertical' }, { id: 'keep', parentId: 'w2', name: 'Sidebar', type: 'frame', w: 200, h: 200, layout: 'vertical' }];
     const t2 = screenTree(makeContext({ nodes: [...libNodes, ...deep], variables, mappings, libraryId: 'lib', fileId: 'app' }), 'f2');
     assert.equal(t2.issues.filter(i => i.severity === 'info').length, 0);
+});
+
+test('inferFields reads form fields from the design (labels, types, relation to another module)', () => {
+    const nodes = [
+        { id: 'tf', name: 'TextField', type: 'frame', componentSet: true },
+        { id: 'tf1', parentId: 'tf', name: 'State=Default', type: 'frame', component: true, variant: { State: 'Default' } },
+        { id: 'sf', name: 'SelectField', type: 'frame', component: true },
+        { id: 'sw', name: 'SwitchField', type: 'frame', component: true },
+        { id: 'bt', name: 'Button', type: 'frame', component: true },
+        { id: 'form', name: 'User — Form', type: 'frame', w: 600, h: 400, layout: 'vertical' },
+        { id: 'name', parentId: 'form', name: 'TextField', type: 'frame', isInstance: true, sourceId: 'tf1', w: 300, h: 60 },
+        { id: 'name-l', parentId: 'name', name: 'Label', type: 'text', text: 'Full name', w: 60, h: 20 },
+        { id: 'role', parentId: 'form', name: 'SelectField', type: 'frame', isInstance: true, sourceId: 'sf', w: 300, h: 60 },
+        { id: 'role-l', parentId: 'role', name: 'Label', type: 'text', text: 'Role', w: 30, h: 20 },
+        { id: 'city', parentId: 'form', name: 'SelectField', type: 'frame', isInstance: true, sourceId: 'sf', w: 300, h: 60 },
+        { id: 'city-l', parentId: 'city', name: 'Label', type: 'text', text: 'City', w: 30, h: 20 },
+        { id: 'act', parentId: 'form', name: 'SwitchField', type: 'frame', isInstance: true, sourceId: 'sw', w: 100, h: 20 },
+        { id: 'act-l', parentId: 'act', name: 'Label', type: 'text', text: 'Active account', w: 90, h: 20 },
+        { id: 'save', parentId: 'form', name: 'Save', type: 'frame', isInstance: true, sourceId: 'bt', w: 80, h: 40 },
+        { id: 'save-l', parentId: 'save', name: 'Label', type: 'text', text: 'Save', w: 30, h: 20 },
+    ];
+    const c = makeContext({ nodes, variables: { items: [] }, mappings: [], libraryId: null, fileId: 'f' });
+    const fields = inferFields(c, ['form'], [{ id: 'mod-role', label: 'Role', name: 'role' }]);
+    assert.deepEqual(fields.map(f => [f.name, f.type]), [['fullName', 'string'], ['role', 'relation'], ['city', 'enum'], ['activeAccount', 'boolean']]);
+    assert.deepEqual(fields[1].relation, { moduleId: 'mod-role', labelField: 'name' });
+    assert.deepEqual(fields[2].options, ['Option 1', 'Option 2', 'Option 3']);
+    assert.equal(fields[0].sortable, true);
 });
