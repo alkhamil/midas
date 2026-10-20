@@ -10,6 +10,23 @@ function startEngine() {
     return started;
 }
 
+// Shown while the engine starts (the editor module, fonts, the renderer and the last file); fades out when it is ready.
+function Splash({ done }) {
+    const [gone, setGone] = useState(false);
+    useEffect(() => {
+        if (!done) return;
+        const t = setTimeout(() => setGone(true), 400);
+        return () => clearTimeout(t);
+    }, [done]);
+    if (gone) return null;
+    return (
+        <div className={'splash' + (done ? ' out' : '')} role="status" aria-label="Starting Midas">
+            <svg width="40" height="40" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor" /></svg>
+            <div className="splash-bar"><i></i></div>
+        </div>
+    );
+}
+
 export default function App() {
     // checking → (auth) → (import) → ready. Editor (engine) hanya dimulai saat ready.
     const [phase, setPhase] = useState('checking');
@@ -17,6 +34,7 @@ export default function App() {
     const [legacy, setLegacy] = useState([]);
     const [expired, setExpired] = useState(false);
     const [error, setError] = useState(null);
+    const [engineReady, setEngineReady] = useState(false);
 
     async function afterSignIn(u) {
         setUser(u);
@@ -35,7 +53,7 @@ export default function App() {
         if (phase !== 'ready') return;
         // Library dari penyimpanan lama dipindahkan dulu, supaya panel Assets langsung membaca dari server.
         migrateLegacyLibraries(legacyKv).catch(e => console.warn('Legacy library migration skipped:', e))
-            .then(startEngine).catch(e => { console.error(e); setError(e.message); });
+            .then(startEngine).then(() => setEngineReady(true)).catch(e => { console.error(e); setError(e.message); });
         // Sesi habis saat editor terbuka: login ulang di atas editor tanpa menutup file.
         const onUnauthorized = () => setExpired(true);
         window.addEventListener('midas:unauthorized', onUnauthorized);
@@ -51,6 +69,7 @@ export default function App() {
     if (phase === 'import') return <LegacyImport files={legacy} onDone={() => setPhase('ready')} />;
     return (
         <>
+            <Splash done={engineReady} />
             <Topbar user={user} />
             <main className="workspace">
                 <LeftRail />
