@@ -12807,6 +12807,15 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
         form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });
     };
+    // Redrawing the lists must not throw the view back to the top: the dialog and the lists keep their scroll position.
+    const keepScroll = fn => {
+        const body = document.querySelector('#modal .modal-body'), top = body?.scrollTop, cats = [...form.querySelectorAll('.lp-cats')].map(c => c.scrollTop);
+        fn();
+        if (body)
+            body.scrollTop = top;
+        form.querySelectorAll('.lp-cats').forEach((c, i) => { if (cats[i] !== undefined)
+            c.scrollTop = cats[i]; });
+    };
     version.oninput = () => { submit.textContent = `Publish ${version.value.trim() || ''}`; };
     let pkgTimer;
     if (isNew)
@@ -12832,8 +12841,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         if (kind) {
             collect();
             isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
-            $('#lp-lists').innerHTML = lists();
-            syncGroups();
+            keepScroll(() => { $('#lp-lists').innerHTML = lists(); syncGroups(); });
         }
     });
     const redraw = () => { $('#lp-lists').innerHTML = lists(); syncGroups(); };
@@ -12862,7 +12870,10 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             collect();
             const c = fold.dataset.lpCatfold;
             if (openCats.has(c)) openCats.delete(c); else openCats.add(c);
-            redraw();
+            keepScroll(redraw);
+            // An opened folder comes into view, at the top of the list.
+            if (openCats.has(c))
+                [...form.querySelectorAll('[data-lp-catfold]')].find(b => b.dataset.lpCatfold === c)?.closest('.lp-cat-head')?.scrollIntoView({ block: 'start' });
         }
     });
     form.addEventListener('change', e => {
