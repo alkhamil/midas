@@ -1,7 +1,7 @@
 import { useEffect, type MutableRefObject } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useBlocker } from 'react-router';
-import { Dialog } from '@midas/ui-cms';
+import { Dialog } from '../ui';
 
 interface LeaveGuardProps {
   /** Set `bypass.current = true` right before a deliberate navigation (e.g. after a successful save). */

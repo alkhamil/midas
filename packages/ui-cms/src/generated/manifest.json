@@ -2,7 +2,7 @@
   "package": "@midas/ui-cms",
   "version": "2.8.0",
   "library": "CMS Design System",
-  "publishedAt": "2026-10-19T17:21:08.712Z",
+  "publishedAt": "2026-10-20T06:22:03.780Z",
   "themes": [
     "light",
     "dark"
@@ -156,7 +156,7 @@
   "components": [
     {
       "exportName": "Button",
-      "componentKey": "ds-15-9uyby4",
+      "componentKey": "ds-15-eajr7e",
       "componentName": "Button",
       "props": [
         {
@@ -209,7 +209,7 @@
     },
     {
       "exportName": "IconButton",
-      "componentKey": "ds-2g-n94j8p",
+      "componentKey": "ds-2g-4u9xm2",
       "componentName": "IconButton",
       "props": [
         {
@@ -238,7 +238,7 @@
     },
     {
       "exportName": "Badge",
-      "componentKey": "ds-2u-9yi4dn",
+      "componentKey": "ds-2u-aexhr0",
       "componentName": "Badge",
       "props": [
         {
@@ -268,7 +268,7 @@
     },
     {
       "exportName": "Avatar",
-      "componentKey": "ds-3a-vefbh0",
+      "componentKey": "ds-3a-qlbvmm",
       "componentName": "Avatar",
       "props": [
         {
@@ -295,7 +295,7 @@
     },
     {
       "exportName": "Alert",
-      "componentKey": "ds-3k-tn4les",
+      "componentKey": "ds-3k-r2da1u",
       "componentName": "Alert",
       "props": [
         {
@@ -324,7 +324,7 @@
     },
     {
       "exportName": "Card",
-      "componentKey": "ds-43-vx5042",
+      "componentKey": "ds-43-cxayzr",
       "componentName": "Card",
       "props": [
         {
@@ -346,7 +346,7 @@
     },
     {
       "exportName": "StatCard",
-      "componentKey": "ds-4f-0pbeut",
+      "componentKey": "ds-4f-l7tpya",
       "componentName": "StatCard",
       "props": [
         {
@@ -388,7 +388,7 @@
     },
     {
       "exportName": "TextField",
-      "componentKey": "ds-54-nv351d",
+      "componentKey": "ds-54-y1uqzf",
       "componentName": "TextField",
       "props": [
         {
@@ -418,7 +418,7 @@
     },
     {
       "exportName": "TextAreaField",
-      "componentKey": "ds-6d-syfcms",
+      "componentKey": "ds-6d-z5650u",
       "componentName": "TextAreaField",
       "props": [
         {
@@ -448,7 +448,7 @@
     },
     {
       "exportName": "PasswordField",
-      "componentKey": "ds-7m-7bpdpy",
+      "componentKey": "ds-7m-6hzhxm",
       "componentName": "PasswordField",
       "props": [
         {
@@ -478,7 +478,7 @@
     },
     {
       "exportName": "SelectField",
-      "componentKey": "ds-91-oihptq",
+      "componentKey": "ds-91-l8pibl",
       "componentName": "SelectField",
       "props": [
         {
@@ -508,7 +508,7 @@
     },
     {
       "exportName": "SwitchField",
-      "componentKey": "ds-au-knews1",
+      "componentKey": "ds-au-icxb8g",
       "componentName": "SwitchField",
       "props": [
         {
@@ -531,7 +531,7 @@
     },
     {
       "exportName": "Dialog",
-      "componentKey": "ds-bs-e2cdrv",
+      "componentKey": "ds-bs-w7s64m",
       "componentName": "Dialog",
       "props": [
         {
@@ -596,7 +596,7 @@
     },
     {
       "exportName": "Drawer",
-      "componentKey": "ds-d9-7lpzmv",
+      "componentKey": "ds-d9-zgprxo",
       "componentName": "Drawer",
       "props": [
         {
@@ -632,14 +632,14 @@
     },
     {
       "exportName": "Table",
-      "componentKey": "ds-dx-djm8h5",
+      "componentKey": "ds-dx-j46n3a",
       "componentName": "Table",
       "props": [],
       "defaults": {}
     },
     {
       "exportName": "Sidebar",
-      "componentKey": "ds-hm-dlsy7g",
+      "componentKey": "ds-hm-ibgsbn",
       "componentName": "Sidebar",
       "props": [
         {
@@ -670,7 +670,7 @@
     },
     {
       "exportName": "Topbar",
-      "componentKey": "ds-jr-2xx5aa",
+      "componentKey": "ds-jr-ejsau6",
       "componentName": "Topbar",
       "props": [
         {
@@ -718,7 +718,7 @@
     },
     {
       "exportName": "SectionHeader",
-      "componentKey": "ds-kt-84ay03",
+      "componentKey": "ds-kt-jb7g6d",
       "componentName": "SectionHeader",
       "props": [
         {
@@ -760,14 +760,14 @@
     },
     {
       "exportName": "FilterToolbar",
-      "componentKey": "ds-le-h2tb20",
+      "componentKey": "ds-le-sbuxus",
       "componentName": "FilterToolbar",
       "props": [],
       "defaults": {}
     },
     {
       "exportName": "AppShell",
-      "componentKey": "ds-lp-10yjvb",
+      "componentKey": "ds-lp-9lorp0",
       "componentName": "AppShell",
       "props": [],
       "defaults": {}

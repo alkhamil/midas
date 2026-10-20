@@ -426,7 +426,8 @@ ${fieldsJsx.join('\n')}
     if (react.size) imports.push(`import { ${[...react].sort().join(', ')} } from 'react';`);
     imports.push("import { useTranslation } from 'react-i18next';");
     if (rr.size) imports.push(`import { ${[...rr].join(', ')} } from 'react-router';`);
-    if (uiList.length) imports.push(`import { ${uiList.join(', ')} } from '@midas/ui-cms';`);
+    // The library package is named in one place of the app (shared/ui); pages import it from there.
+    if (uiList.length) imports.push(`import { ${uiList.join(', ')} } from '${sharedRel}shared/ui';`);
     if (formPage) imports.push(`import { FormGroup, FormItem } from '${sharedRel}shared/components/form';`);
     if (formPage && b.isForm) imports.push(`import LeaveGuard from '${sharedRel}shared/components/LeaveGuard';`);
     if (b.usesEmoticon) imports.push(`import { hasEmoticon } from '${sharedRel}shared/utils';`);

@@ -8,23 +8,41 @@
 // adalah frame konten di dalamnya — sidebar/topbar di aplikasi datang dari layout project + AppShell library.
 //
 // Pakai:
-//   node scripts/seed-cms-demo.mjs [--server URL] [--package @midas/ui-cms] [--file "CMS Demo"] [--no-project]
+//   node scripts/seed-cms-demo.mjs [--server URL] [--package <paket library>] [--file "CMS Demo"] [--modules user,role,region,dashboard] [--no-project]
+// Library: --package, atau satu-satunya library yang dipublish, atau yang namanya sama dengan paket kode (packages/ui-cms).
+// --modules memilih modul yang dibuat (user membawa role karena relasinya; region membawa grup menu Master Data); tanpa opsi = semua.
 // Prasyarat: library sudah dipublish (`node scripts/seed-design-system.mjs`) dan sudah login (`midas login`).
 import { svgToDataUrl } from '../apps/studio/src/iconSet.js';
 import { build, col, icon, Ids, instance, row, text } from './design-system/build.mjs';
 import { UI_ICONS } from './design-system/icons.mjs';
 import { existingIds } from './design-system/document.mjs';
-import { PACKAGE_NAME } from './design-system/tokens.mjs';
+import { listArg, listLibraries, readCodePackage } from './lib/library-name.mjs';
 import { connect, enc, findFile, parseArgs, saveDocument } from './lib/midas-api.mjs';
+import { resolve } from 'node:path';
 
 const args = parseArgs();
 const FILE_NAME = typeof args.file === 'string' ? args.file : 'CMS Demo';
-const PACKAGE = typeof args.package === 'string' ? args.package : PACKAGE_NAME;
 const MUTED = 'color/muted-foreground';
 const { api } = connect(args);
 
 // ---------------------------------------------------------------- library (versi terbaru yang dipublish)
+const libraries = await listLibraries(api);
+const codePackage = readCodePackage(resolve(import.meta.dirname, '../packages/ui-cms'));
+const picked = typeof args.package === 'string' ? libraries.find(l => l.packageName === args.package)
+    : libraries.length === 1 ? libraries[0] : libraries.find(l => l.packageName === codePackage?.name);
+if (!picked) throw new Error(libraries.length
+    ? `${typeof args.package === 'string' ? `Library ${args.package} is not published.` : 'Several libraries are published.'} Pass --package <name>: ${libraries.map(l => l.packageName).join(', ')}`
+    : 'No published library in this workspace: publish the design system first (node scripts/seed-design-system.mjs).');
+const PACKAGE = picked.packageName;
 const lib = await api('GET', `/api/libraries/resolve?package=${enc(PACKAGE)}`);
+
+// ---------------------------------------------------------------- which modules to build
+const ALL_MODULES = ['dashboard', 'user', 'role', 'region'];
+const asked = listArg(args.modules);
+const want = new Set(asked ?? ALL_MODULES);
+for (const m of want) if (!ALL_MODULES.includes(m)) throw new Error(`Unknown module "${m}" — choose from ${ALL_MODULES.join(', ')}`);
+if (want.has('user') && !want.has('role')) { want.add('role'); console.log('Adding module role: user has a relation to it'); }
+if (!want.size) throw new Error('--modules is empty');
 const snap = await api('GET', `/api/libraries/${enc(lib.id)}/snapshot`);
 console.log(`Library ${snap.packageName}@${snap.semver} (seq ${snap.version}): ${snap.components.length} components`);
 
@@ -133,7 +151,10 @@ const topbarFor = name => {
 // Sidebar untuk canvas: dirakit dari frame biasa (bagian internal library `_SidebarItem` tidak ikut dipublish).
 // Menu items may nest one level: Master Data (parent, chevron) → Region (child). The parent holding the active page is
 // expanded and shown bold white; the active child gets the primary fill.
-const NAV = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check'], ['Master Data', 'database', ['Region']]];
+const NAV_ALL = [['Dashboard', 'widget'], ['User', 'user'], ['Role', 'shield-check'], ['Master Data', 'database', ['Region']]];
+// Sidebar rows follow the chosen modules (Master Data is the group of Region).
+const NAV_MODULE = { Dashboard: 'dashboard', User: 'user', Role: 'role', 'Master Data': 'region' };
+const NAV = NAV_ALL.filter(([label]) => want.has(NAV_MODULE[label]));
 const sidebarFrame = active => col({ w: 256, h: 'fill', pad: [0, 12, 12, 12], gap: 4, fill: 'color/sidebar', name: 'Sidebar' }, [
     row({ w: 'fill', h: 72, pad: [0, 4], justify: 'between', name: 'Brand' }, [
         row({ gap: 10 }, [
@@ -286,15 +307,17 @@ const addPage = (name, specs, parentName = null) => {
     // Flagged "Use in Code Builder": these pages are the module sources offered in the Code Builder.
     pages.push({ id: ids.get(`page:${name}`), name, nodes, parentId: parentName ? ids.get(`page:${parentName}`) : null, codeBuilder: true });
 };
-addPage('User', userScreens);
-addPage('Role', roleScreens);
-addPage('Dashboard', [dashboard, userMenuFrame]);
+if (want.has('user')) addPage('User', userScreens);
+if (want.has('role')) addPage('Role', roleScreens);
+if (want.has('dashboard')) addPage('Dashboard', [dashboard, userMenuFrame]);
 // Parent → child: the page "Master Data" only groups; "Region" is nested under it (module path /master-data/region).
-addPage('Master Data', []);
-addPage('Region', regionScreens, 'Master Data');
+if (want.has('region')) {
+    addPage('Master Data', []);
+    addPage('Region', regionScreens, 'Master Data');
+}
 pages.push({ id: ids.get('page:library'), name: `Library · ${snap.name}`, nodes: libNodes, parentId: null });
-const pageOf = name => pages.find(p => p.name === name).id;
-const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name).id;
+const pageOf = name => pages.find(p => p.name === name)?.id;
+const frameOf = (page, name) => frames.find(f => f.page === page && f.name === name)?.id;
 const doc = { format: 'midas', version: 1, name: FILE_NAME, pageId: pages[0].id, pages, tokens: {}, variables: vars.toJSON(), assets: { ...structuredClone(snap.assets ?? {}), ...extraAssets } };
 console.log(`CMS Demo: ${pages.map(p => `${p.name} (${p.nodes.length})`).join(', ')}`);
 
@@ -307,6 +330,7 @@ await api('PUT', `/api/files/${enc(fileId)}/libraries`, { libraries: [{ id: lib.
 if (args['no-project']) process.exit(0);
 const str = (name, label, extra = {}) => ({ name, label, type: 'string', required: false, sortable: false, filterable: false, ...extra });
 const screenOf = (id, page, name, role, purpose) => ({ id, frameId: frameOf(page, name), pageId: pageOf(page), name, role, ...(purpose ? { purpose } : {}) });
+const MODULE_OF = { 'mod-dashboard': 'dashboard', 'mod-user': 'user', 'mod-role': 'role', 'mod-master-data': 'region', 'mod-region': 'region' };
 const config = {
     modules: [
         {
@@ -382,6 +406,8 @@ const config = {
         ],
     },
 };
+config.modules = config.modules.filter(m => want.has(MODULE_OF[m.id]));
+config.layout.items = config.layout.items.filter(i => want.has(MODULE_OF[i.moduleId]));
 const { projects } = await api('GET', `/api/builder-projects?fileId=${enc(fileId)}`);
 const old = projects.find(p => p.name === FILE_NAME);
 let project;

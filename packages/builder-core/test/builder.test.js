@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeNavPath, assembleProject, suggestScreens, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
+import { libraryFiles, activeNavPath, assembleProject, suggestScreens, autoAction, breadcrumbsOf, filterFields, formItemOf, pageTitle, validateField, validateValues, buildTrees, cleanNodeCfg, fieldBinding, findTreeNode, generateProject, makeContext, parseRules, relationOf, relationSampleOptions, resolveLayout, ruleError, screenPath, screenTree, tableModel, withRule, zipFiles } from '../src/index.js';
 
 const variables = { items: [] };
 const comp = (key, name) => ({ id: `${key}-set`, name, type: 'frame', componentSet: true, libRef: `lib:${key}`, cprops: [{ id: `${key}-label`, name: 'Label', type: 'text', def: name }] });
@@ -291,4 +291,20 @@ test('suggestScreens guesses roles from frame names', () => {
     assert.equal(roles('Confirm · Discard changes (user)'), 'dialog:discard');
     assert.equal(roles('Drawer · Filters'), '');
     assert.equal(roles('Dashboard'), 'custom');
+});
+
+test('the UI library package is named in one place: generated pages import it from shared/ui', () => {
+    assert.match(libraryFiles('@acme/ui')['src/shared/ui/index.ts'], /export \* from '@acme\/ui';/);
+    assert.match(libraryFiles('@acme/ui')['src/shared/ui/library.css'], /@import '@acme\/ui\/tailwind\.css';/);
+    assert.match(libraryFiles()['src/shared/ui/index.ts'], /export \* from '@midas\/ui-cms';/);
+    const modules = [{ id: 'm', name: 'user', label: 'User', parentId: null, screens: [] }];
+    const out = generateProject({ name: 'P', library: { packageName: '@acme/ui' }, config: { modules, layout: {} } }, new Map());
+    assert.match(out.files['src/shared/ui/index.ts'], /@acme\/ui/);
+    assert.ok(!Object.values(out.files).some(t => typeof t === 'string' && /from '@midas\/ui-cms'/.test(t)), 'no hardcoded package import');
+    assert.match(out.files['src/app/generated/navigation.tsx'] ?? '', /(?:from '\.\.\/\.\.\/shared\/ui'|generatedNavItems)/);
+    // The assembled project swaps the template's default library for the project's.
+    const files = assembleProject({ 'package.json': JSON.stringify({ dependencies: { '@midas/ui-cms': '1.0.0', react: '19' } }) }, out.files, { appName: 'App', libraryName: '@acme/ui', tarballName: 'acme-ui-1.0.0.tgz', tarball: new Uint8Array() });
+    const deps = JSON.parse(files['package.json']).dependencies;
+    assert.deepEqual(Object.keys(deps).sort(), ['@acme/ui', 'react']);
+    assert.equal(deps['@acme/ui'], 'file:vendor/acme-ui-1.0.0.tgz');
 });

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { matchPath, Outlet, useLocation, useNavigate } from 'react-router';
-import { AppShell } from '@midas/ui-cms';
+import { AppShell } from '../shared/ui';
 import { filterNavItems, resolveNavLabel } from '../shared/utils/navigation';
 import { appLayout } from './generated/layout';
 import { generatedPages } from './generated/pages';

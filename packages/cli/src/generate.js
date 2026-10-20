@@ -76,14 +76,20 @@ export async function generateFromServer(request, { out, project: ref, dryRun })
     return errors.length ? 2 : 0;
 }
 
-/** Samakan versi library di package.json aplikasi dengan versi yang dipakai project (spec §6). */
+/**
+ * Keep package.json on the library of the project (spec §6): same version when the dependency exists, and when the project
+ * uses another @midas/ui-* package than the app (the library was switched) the dependency is replaced — the app code
+ * only names the library in src/shared/ui, which this run has just regenerated.
+ */
 function pinLibrary(out, lib) {
     const file = join(out, 'package.json');
     if (!existsSync(file) || !lib.packageName) return;
     const pkg = JSON.parse(readFileSync(file, 'utf8'));
-    if (pkg.dependencies?.[lib.packageName] && pkg.dependencies[lib.packageName] !== lib.version) {
-        pkg.dependencies[lib.packageName] = lib.version;
-        writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
-        console.log(`package.json: ${lib.packageName} → ${lib.version} (run npm install)`);
-    }
+    const deps = pkg.dependencies || (pkg.dependencies = {});
+    const others = Object.keys(deps).filter(n => /^@midas\/ui-/.test(n) && n !== lib.packageName);
+    if (deps[lib.packageName] === lib.version && !others.length) return;
+    for (const n of others) delete deps[n];
+    deps[lib.packageName] = lib.version;
+    writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+    console.log(`package.json: ${others.length ? `${others.join(', ')} → ` : ''}${lib.packageName}@${lib.version} (run npm install)`);
 }

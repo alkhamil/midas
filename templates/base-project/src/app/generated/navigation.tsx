@@ -1,5 +1,5 @@
 // Dibangkitkan oleh Midas Code Builder — jangan diedit manual; ubah desain/konfigurasi lalu generate ulang.
-import { WidgetIcon } from '@midas/ui-cms';
+import { WidgetIcon } from '../../shared/ui';
 import type { NavItemType } from '../../shared/types/navigation';
 
 export const generatedNavItems: NavItemType[] = [

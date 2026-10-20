@@ -2,9 +2,6 @@
 // Sidebar gelap (slate) memisahkan navigasi dari konten; satu aksen indigo; warna status hanya untuk makna.
 // Kontras teks ≥ 4.5:1 di kedua tema.
 
-/** Nama paket kode library ini (dipakai teks di page komponen dan script seed). */
-export const PACKAGE_NAME = '@midas/ui-cms';
-
 /** Warna semantik: [light, dark]. Nama = token `--theme-<nama>` yang dipakai komponen. */
 export const COLORS = {
     primary: ['#4338CA', '#818CF8'],
