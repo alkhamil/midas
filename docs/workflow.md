@@ -30,6 +30,16 @@ Ada **tiga tahap** yang dikerjakan orang. Kode komponen **tidak ditulis develope
    - Perubahan yang merusak (komponen atau prop dihapus/berganti nama) meminta versi **major**.
 3. Hasil: library terpublish **dan kodenya langsung dibangun** (tahap 2). Toast setelah publish menyebut hasilnya, mis. "Code is ready."
 
+**Hasil publish, disimpan di mana, dipakai bagaimana**
+
+| Hasil | Disimpan di | Dipakai untuk |
+|---|---|---|
+| Record library + versi (mis. `@midas/ui-cms` 1.0.0) | Postgres (`libraries`, `library_versions`) | Muncul di panel Library; dipilih saat membuat project Code Builder |
+| Snapshot desain (komponen, variant, variabel, ikon) | S3/R2 `libraries/<id>/<seq>.json` | Sumber untuk membangun kode dan membaca desain di Code Builder |
+| Mapping komponen → kode (nama export, prop, Implementation) | Postgres (`component_mappings`) | Menentukan nama komponen dan prop di kode |
+
+Cara pakai: tidak ada yang perlu diunduh atau dijalankan. Library langsung bisa dipilih di Code Builder, dan file desain lain bisa memakai komponennya.
+
 ## Tahap 2 — Paket kode dibangun otomatis (Midas)
 
 **Desain adalah sumber utama.** Untuk setiap komponen yang di-publish, Midas menulis komponen React dari desainnya: auto layout menjadi flex, fill/stroke menjadi gaya yang memakai token tema, teks yang terikat component property menjadi prop, boolean property menjadi tampil/sembunyi, instance di dalamnya menjadi komponen lain, dan ikon menjadi komponen ikon. Komponen apa pun (tidak harus ada di kit standar) jadi kode. Bagian internal (nama diawali `_` atau `.`) ikut dibuat untuk dipakai komponen lain, tapi tidak diekspor.
@@ -55,6 +65,16 @@ Konsekuensinya:
 - Komponen dari desain berupa markup statis; interaksi hanya ada pada komponen yang memakai implementasi standar.
 - **Jalur lanjutan (opsional):** bila butuh perilaku khusus, dialog Code punya bagian *Write the components yourself*: unduh repo kerangka (`midas init`), tulis komponen, lalu `npm run build`. Bundle dari repo itu menggantikan yang otomatis. Untuk mengubah satu komponen di app, pakai `midas extract` (tahap 4).
 
+**Hasil tahap ini, disimpan di mana, dipakai bagaimana**
+
+| Hasil | Disimpan di | Dipakai untuk |
+|---|---|---|
+| Bundle preview (`index.js`, `style.css`) | S3/R2 `libraries/<id>/bundles/<versi>/` | Studio memakainya untuk preview komponen dan app. Tidak perlu diunduh |
+| Paket npm (`package.tgz`: `dist`, tipe, `src`) | S3/R2 `libraries/<id>/packages/<versi>/package.tgz` | Dimasukkan otomatis ke "Download project" (`vendor/`) dan `midas generate` |
+| Status kode per komponen | Postgres (`component_mappings`, `library_versions`) | Terlihat di panel Library dan dialog Code |
+
+Cara pakai: desainer cukup melihat status `ready` di toast atau dialog Code. Developer tidak mengambil paket ini langsung; paket ikut terbungkus di project yang diunduh.
+
 ## Tahap 3 — Project CMS dan Code Builder (Studio)
 
 1. Buat file desain aplikasi (mis. "CMS Demo") yang **memakai library** itu. Susun satu **page per fitur** (User, Role, Region, ...), berisi frame: `X — List`, `X — Form`, `X — Detail`, dan dialog (`Confirm · Delete X`, `Confirm · Restore X`, `Confirm · Discard changes (X)`), serta `Drawer · Filters` bila ada filter.
@@ -71,6 +91,14 @@ Konsekuensinya:
 7. Tombol ▶ **Preview app** memberi pratinjau yang bisa diklik: navigasi, pencarian, filter, pagination, form tervalidasi, simpan, hapus dan pulihkan, dialog konfirmasi, dan peringatan perubahan belum disimpan.
 8. Panel **Issues** menunjukkan yang perlu diperbaiki (library belum dipilih, komponen bukan dari library, CRUD tanpa field, frame hilang).
 
+**Hasil tahap ini, disimpan di mana, dipakai bagaimana**
+
+| Hasil | Disimpan di | Dipakai untuk |
+|---|---|---|
+| Project Code Builder (module, layar, layout, validasi) | Postgres (`builder_projects`) | Dibuka kembali di Studio; sumber untuk generate |
+
+Cara pakai: tidak ada kode yang dibuat di tahap ini. Kode baru dibuat saat developer mengunduh atau menjalankan generate (tahap 4).
+
 ## Tahap 4 — Ambil kode dan jalankan (developer)
 
 Pilih salah satu:
@@ -79,6 +107,14 @@ Pilih salah satu:
 2. **CLI untuk app yang sudah ada**: `npx midas generate "<project>" --out .` (`--list` melihat project, `--dry-run` hanya daftar file). Aman diulang: hanya file hasil generate yang ditimpa dan kode tulisan tangan tidak disentuh.
 
 Hasilnya mencakup halaman per layar, hook dan mock API, i18n, rute, navigasi, dan judul/breadcrumb. Data masih mock (`USE_MOCK` di `api/mock.ts`) sampai endpoint backend dihubungkan.
+
+**Hasilnya ada di komputer developer, bukan di server.** ZIP dirakit saat diminta dan tidak disimpan. Isinya aplikasi lengkap; library masuk sebagai paket di `vendor/` dan dipakai lewat `src/shared/ui`. Contoh pemakaian di kode developer:
+
+```ts
+import { AppShell, Button } from '../shared/ui';   // komponen dari library
+```
+
+Update library: desainer publish versi baru, di Code Builder pilih versi baru, developer mengunduh atau menjalankan `midas generate` lagi. Hanya file hasil generate yang ditimpa.
 
 **Nama paket library hanya tertulis di `src/shared/ui` dan `package.json`**; kode lain mengimpor komponen dari `shared/ui`. Berpindah library berarti memilih library lain di project lalu generate ulang; Midas menulis ulang `shared/ui` dan menyamakan dependensi.
 
