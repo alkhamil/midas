@@ -1,0 +1,13 @@
+{
+  "settings": {
+    "title": "Pengaturan",
+    "breadcrumb": "Pengaturan",
+    "application": "Aplikasi",
+    "applicationDesc": "Nama aplikasi dan ikon brand sidebar langsung diterapkan.",
+    "appName": "Nama aplikasi",
+    "appNamePlaceholder": "Aplikasi Saya",
+    "brandIcon": "Ikon brand",
+    "theme": "Thema",
+    "reset": "Kembalikan bawaan"
+  }
+}
