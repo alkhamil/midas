@@ -27,14 +27,6 @@ export async function createSession(reply: FastifyReply, userId: string): Promis
     reply.setCookie(SESSION_COOKIE, id, { path: '/', httpOnly: true, sameSite: 'lax', secure: config.cookieSecure, expires: expiresAt });
 }
 
-/** Token akses untuk CLI/CI: sesi berumur panjang yang dikirim lewat `Authorization: Bearer <token>`. */
-export async function createToken(userId: string): Promise<{ token: string; expiresAt: Date }> {
-    const token = `mdt_${randomBytes(32).toString('base64url')}`;
-    const expiresAt = new Date(Date.now() + config.tokenDays * 864e5);
-    await db.insert(sessions).values({ id: token, userId, expiresAt });
-    return { token, expiresAt };
-}
-
 export async function destroySession(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const id = req.cookies[SESSION_COOKIE];
     if (id)
@@ -42,10 +34,9 @@ export async function destroySession(req: FastifyRequest, reply: FastifyReply): 
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
 }
 
-/** Isi `req.user` dari cookie sesi atau token Bearer; tidak menolak request. */
+/** Isi `req.user` dari cookie sesi; tidak menolak request. */
 export async function loadUser(req: FastifyRequest): Promise<void> {
-    const bearer = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '')?.[1];
-    const id = bearer ?? req.cookies[SESSION_COOKIE];
+    const id = req.cookies[SESSION_COOKIE];
     if (!id)
         return;
     const [row] = await db

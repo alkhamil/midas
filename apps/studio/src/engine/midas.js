@@ -2606,10 +2606,10 @@ function inlineRename(el, value, commit) {
 // ===== sidebar rail =====
 function syncRail() {
     for (const b of document.querySelectorAll('[data-rail]'))
-        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : ['assets', 'plugins', 'code-builder'].includes(state.leftTab) ? state.leftTab : 'design'));
+        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : ['assets', 'plugins'].includes(state.leftTab) ? state.leftTab : 'design'));
 }
 function setLeftTab(k) {
-    state.leftTab = ['assets', 'plugins', 'code-builder'].includes(k) ? k : 'layers';
+    state.leftTab = ['assets', 'plugins'].includes(k) ? k : 'layers';
     state.varCollMenu = false;
     $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
     syncRail();
@@ -3953,7 +3953,7 @@ async function homeLibsLoad(render = true) {
 }
 function libraryCard(l) {
     const initial = esc((l.name || '?').trim()[0]?.toUpperCase() || '?');
-    return `<div class="hf lib-card" data-hf="${l.fileId}" data-home-lib="${l.fileId}" tabindex="0" title="Open ${esc(l.fileName || l.name)}"><div class="hf-thumb">${l.thumbnail ? `<img src="${l.thumbnail}" alt="">` : `<span>${initial}</span>`}<em class="lib-ver">v${esc(l.semver)}</em></div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(l.name)}">${esc(l.name)}</div><div class="hf-sub">${l.components} component${l.components === 1 ? '' : 's'} · ${l.variables} variable${l.variables === 1 ? '' : 's'} · ${timeAgo(l.updated)}</div></div></div></div>`;
+    return `<div class="hf lib-card" data-hf="${l.fileId}" data-home-lib="${l.fileId}" tabindex="0" title="Open ${esc(l.fileName || l.name)}"><div class="hf-thumb">${l.thumbnail ? `<img src="${l.thumbnail}" alt="">` : `<span>${initial}</span>`}<em class="lib-ver">v${esc(l.version)}</em></div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(l.name)}">${esc(l.name)}</div><div class="hf-sub">${l.components} component${l.components === 1 ? '' : 's'} · ${l.variables} variable${l.variables === 1 ? '' : 's'} · ${timeAgo(l.updated)}</div></div></div></div>`;
 }
 const homeIcon = n => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${HOME_ICONS[n]}</svg>`;
 function ensureHome() {
@@ -7908,7 +7908,7 @@ function pageSig(p) {
     let s = 0;
     for (const n of p.nodes)
         s += (n.version || 0) + 1;
-    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}:${p.codeBuilder ? 1 : 0}`;
+    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}:`;
 }
 function markPagesSaved() {
     savedPageSigs.clear();
@@ -8279,7 +8279,6 @@ function select(ids, { reveal = true } = {}) {
     scrollSelectionIntoView();
     syncUrl();
     invalidate();
-    notifyBuilder();
 }
 function scrollSelectionIntoView() {
     requestAnimationFrame(() => {
@@ -8402,7 +8401,7 @@ function renderPages() {
                 continue;
             }
             const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
-            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span>${p.codeBuilder ? `<span class="page-cb" title="Available as a Code Builder module source">${icon('code', 12)}</span>` : ''}</div>`);
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
             if (folder && open)
                 walk(p.id, depth + 1);
         }
@@ -8502,18 +8501,14 @@ function vectorThumb(n) {
     return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 function renderLayers() {
-    // Plugins dan Code Builder memakai seluruh panel kiri (tanpa pages/layers).
-    const pluginsMode = state.leftTab === 'plugins', builderMode = state.leftTab === 'code-builder';
+    // Plugins memakai seluruh panel kiri (tanpa pages/layers).
+    const pluginsMode = state.leftTab === 'plugins';
     $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
-    $('#code-builder-panel').classList.toggle('hidden', !builderMode);
-    $('#layers-heading').classList.toggle('hidden', pluginsMode || builderMode);
-    if (pluginsMode || builderMode) {
+    $('#layers-heading').classList.toggle('hidden', pluginsMode);
+    if (pluginsMode) {
         for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layer-tree', '#assets-panel', '#layer-search-box', '#search-results'])
             $(id).classList.add('hidden');
-        if (pluginsMode)
-            renderPlugins();
-        else
-            renderCodeBuilder();
+        renderPlugins();
         return;
     }
     const assetsMode = state.leftTab === 'assets';
@@ -11512,22 +11507,6 @@ function addPage() {
     if (created)
         setTimeout(() => renamePageInline(created.id), 0);
 }
-/** Flag a page as a Code Builder module source: only flagged pages are offered in the "New module" Source page list. */
-function togglePageCodeBuilder(id) {
-    const p = doc.data.pages.find(x => x.id === id);
-    if (!p)
-        return;
-    const on = !p.codeBuilder;
-    transaction(on ? 'Use page in Code Builder' : 'Remove page from Code Builder', () => {
-        if (on)
-            p.codeBuilder = true;
-        else
-            delete p.codeBuilder;
-    });
-    renderPages();
-    notifyBuilder();
-    toast(on ? `“${p.name}” can now be used as a Code Builder module source.` : `“${p.name}” removed from the Code Builder module sources.`);
-}
 function duplicatePage(id) {
     const src = doc.data.pages.find(x => x.id === id);
     if (!src)
@@ -12522,7 +12501,7 @@ async function ensureThumb(n) {
 }
 // ===== libraries: publish this file, use another file's components and variable collections =====
 // A published library is a versioned snapshot kept on the Midas server (/api/libraries), shared by the whole workspace;
-// its id is the id of the source file, and each publish also fixes the frontend package name and semver (spec §3).
+// its id is the id of the source file; each publish is a numbered version.
 // Files that add a library get its variable collections (tagged with libId) and can place its components: the main
 // component is copied once into a "Library · name" page of the file (every copied layer remembers its origin in
 // libRef), and placed components are ordinary instances of that copy. Updating a library re-syncs those copies in place.
@@ -12633,84 +12612,6 @@ async function snapshotAssets(components) {
             used[id] = doc.data.assets[id];
     return assetsAsDataUrls(lib.fileId, used);
 }
-// ===== ikon untuk library: komponen di page "Icons" / bernama "Icon/…" → SVG per gaya =====
-// Ekspor SVG node di page mana pun (exportSVG hanya membaca page aktif).
-function exportSvgAnyPage(id) {
-    const page = pageOfNode(id);
-    if (!page)
-        throw new Error('Layer not found.');
-    if (page.id === doc.page.id)
-        return exportSVG(doc, [id]);
-    const prev = doc.data.pageId;
-    doc.data.pageId = page.id;
-    doc.refresh();
-    try {
-        return exportSVG(doc, [id]);
-    }
-    finally {
-        doc.data.pageId = prev;
-        doc.refresh();
-    }
-}
-// SVG satu variant ikon. Isi berupa satu gambar SVG dipakai apa adanya; selain itu (vector, shape, boolean,
-// hasil import Figma) diekspor dari layer-nya.
-async function iconVariantSvg(v) {
-    const kids = subtreeOf(v.id).filter(n => n.id !== v.id && n.visible !== false);
-    const only = kids.length === 1 ? kids[0] : kids.length === 0 ? v : null;
-    const imageId = only && (only.type === 'image' ? only.assetId : (Array.isArray(only.fills) && only.fills.length === 1 && only.fills[0].type === 'image' ? only.fills[0].image : null));
-    const url = imageId && doc.data.assets[imageId];
-    if (url) {
-        let text = dataUrlToSvg(url);
-        if (!text && url.startsWith('/api/'))
-            text = await fetch(url, { credentials: 'same-origin' }).then(r => (r.ok && /svg/.test(r.headers.get('content-type') || '') ? r.text() : null)).catch(() => null);
-        if (text && /<svg[\s>]/i.test(text))
-            return text;
-    }
-    return exportSvgAnyPage(v.id);
-}
-// Sumber ikon untuk snapshot: satu entri per komponen ikon, gaya dari variant (tanpa variant → "default").
-async function iconSources(roots, onProgress = null) {
-    // Exporting needs the icon's page to be the open one, and opening a page rebuilds all of it (100+ ms on big pages).
-    // So icons are exported in batches per page: one switch for many icons, back to the open page between batches.
-    const groups = new Map(), done = { n: 0 }, byRoot = new Map(), BATCH = 60, back = doc.data.pageId;
-    for (const r of roots) {
-        const p = pageOfNode(r.id);
-        (groups.get(p) || groups.set(p, []).get(p)).push(r);
-    }
-    try {
-        for (const [page, list] of groups)
-            for (let i = 0; i < list.length; i += BATCH) {
-                if (page.id !== doc.data.pageId) {
-                    doc.data.pageId = page.id;
-                    doc.refresh();
-                }
-                for (const r of list.slice(i, i + BATCH)) {
-                    onProgress?.(done.n++, roots.length);
-                    const variants = r.componentSet ? setVariants(r) : [r], styles = {};
-                    for (const v of variants) {
-                        try {
-                            styles[r.componentSet ? iconStyleOf(v.variant) : 'default'] = await iconVariantSvg(v);
-                        }
-                        catch { }
-                    }
-                    if (Object.keys(styles).length)
-                        byRoot.set(r.id, { componentKey: r.id, ...iconNameParts(r.name), styles });
-                }
-                if (doc.data.pageId !== back) {
-                    doc.data.pageId = back;
-                    doc.refresh();
-                }
-                await nextPaint();
-            }
-    }
-    finally {
-        if (doc.data.pageId !== back) {
-            doc.data.pageId = back;
-            doc.refresh();
-        }
-    }
-    return roots.map(r => byRoot.get(r.id)).filter(Boolean);
-}
 // Busy indicator: a pill with a spinner, a label and (when the progress is known) a bar, so long work never looks like a freeze.
 const nextPaint = () => new Promise(r => setTimeout(r, 30));
 function startBusy(label, pct = null) {
@@ -12745,76 +12646,44 @@ function startBusy(label, pct = null) {
     return api;
 }
 async function publishLibrary() {
-    const busy = startBusy('Preparing library…', 5);
-    try {
-        await nextPaint();
-        await publishLibraryInner(busy);
-    }
-    finally {
-        busy.done();
-    }
-}
-async function publishLibraryInner(busy) {
     const snapshot = librarySnapshot();
     if (!snapshot.components.some(c => !c.hidden) && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
         return;
     }
     if (state.dirty) {
-        busy.set('Saving the file…', 20);
-        await save();
+        const busy = startBusy('Saving the file…', 20);
+        try {
+            await save();
+        }
+        finally {
+            busy.done();
+        }
     }
-    // Images are read later, for the components that are actually published.
     snapshot.assets = {};
-    // Tebakan awal: komponen di page "Icons" atau bernama "Icon/…" adalah ikon; bisa diubah di form.
-    const iconKeys = snapshot.components.filter(c => !c.hidden && looksLikeIcon(c.name, pageOfNode(c.id)?.name)).map(c => c.id);
-    let draft;
-    busy.set('Comparing with the published version…', 75);
-    await nextPaint();
-    try {
-        // The form only needs each component's name, variants and properties: send those, not every layer (tens of thousands).
-        const slim = { components: snapshot.components.filter(c => !c.hidden).map(c => ({ id: c.id, name: c.name, set: c.set, nodes: c.nodes.filter(n => n.id === c.id || n.parentId === c.id && n.component).map(n => ({ id: n.id, parentId: n.parentId, component: n.component, variant: n.variant, cprops: n.cprops })) })), variables: snapshot.variables, assets: {} };
-        draft = await libraryApi.draft(lib.fileId, doc.data.name, slim, iconKeys);
-    }
-    catch (e) {
-        toast(`Could not prepare the library: ${e?.message || e}`);
-        return;
-    }
-    const standard = await libraryApi.standardKit().then(r => r.components.map(c => c.name)).catch(() => []);
-    publishDialog(snapshot, draft, new Set(iconKeys), standard);
+    publishDialog(snapshot, LIBS.published.find(x => x.id === lib.fileId) || null);
 }
-const semverBump = (v, part) => { const [M, m, p] = String(v).split('.').map(Number); return part === 'major' ? `${M + 1}.0.0` : part === 'minor' ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`; };
-// Publish Library form (spec §3.2): library + package name, version, release notes, the component → code mapping
-// and which components are icons (icons become React icon components in the Library Kit instead of mapped components).
-function publishDialog(snapshot, draft, iconKeys, standard = []) {
-    const isNew = !draft.library, latest = draft.latest;
-    const mappings = structuredClone(draft.mappings);
-    const include = mappings.map(m => !/^[_.]/.test(m.componentName));
-    const isIcon = mappings.map(m => iconKeys.has(m.componentKey));
-    const vars = snapshot.variables.items.length;
-    const propRow = (i, j, p) => `<div class="lp-prop"><span class="lp-prop-src" title="${esc(p.source)}">${esc(p.label)}</span><span class="lp-arrow">→</span><input class="lp-input lp-mono" data-lp-prop="${i}:${j}" value="${esc(p.name)}" spellcheck="false" aria-label="Prop name for ${esc(p.label)}"><span class="lp-type">${esc(p.type)}</span></div>${p.type === 'enum' ? `<div class="lp-values">${Object.entries(p.values || {}).map(([k, v]) => `<label class="lp-value"><span>${esc(k)}</span><input class="lp-input lp-mono" data-lp-val="${i}:${j}" data-key="${esc(k)}" value="${esc(v)}" spellcheck="false"></label>`).join('')}</div>` : ''}`;
-    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span><input class="lp-input lp-mono lp-export" data-lp-export="${i}" value="${esc(m.exportName)}" spellcheck="false" aria-label="Export name"><select class="lp-input lp-impl" data-lp-impl="${i}" title="Where this component's code comes from" aria-label="Implementation of ${esc(m.componentName)}"><option value="design"${(m.propsMap.implementation ?? 'design') === 'design' ? ' selected' : ''}>From design</option>${standard.map(n => `<option value="standard:${esc(n)}"${m.propsMap.implementation === 'standard:' + n ? ' selected' : ''}>Standard: ${esc(n)}</option>`).join('')}</select><button type="button" class="cmp-btn" data-lp-fold="${i}">${m.propsMap.props.length} prop${m.propsMap.props.length === 1 ? '' : 's'}</button><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as an icon instead">Icon</button></div><div class="lp-props hidden" data-lp-props="${i}">${m.propsMap.props.length ? m.propsMap.props.map((p, j) => propRow(i, j, p)).join('') : '<p class="small-label">No variants or component properties.</p>'}</div></div>`;
-    const iconRow = (m, i) => `<div class="lp-icon-row"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(m.componentName)}</span><button type="button" class="cmp-btn" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></div>`;
-    // ---- what to publish: search + select all/none, components first, icons grouped by category ----
+// Publish form: the library name, release notes, and which components to share. Other files in the workspace can then use them.
+function publishDialog(snapshot, current) {
+    const comps = snapshot.components.filter(c => !c.hidden).map(c => ({ componentKey: c.id, componentName: c.name }));
+    const include = comps.map(m => !/^[_.]/.test(m.componentName));
+    const vars = snapshot.variables.items.length, nextVersion = (current?.version || 0) + 1;
     let query = '';
     const openCats = new Set();
     // Names are folders: "Bold / Messages / Dialog" sits in the folder Bold, inside Messages; every folder has one checkbox for all that is under it.
     const folderParts = m => String(m.componentName).split('/').map(x => x.trim()).filter(Boolean).slice(0, -1);
-    const isInternalName = i => !isIcon[i] && /^[_.]/.test(mappings[i].componentName);
-    const folderKeyOf = i => (isIcon[i] ? 'i:' : 'c:') + folderParts(mappings[i]).join('/');
-    const inFolder = (i, key) => { const k = folderKeyOf(i); return k === key || k.startsWith(key + '/'); };
+    const isInternalName = i => /^[_.]/.test(comps[i].componentName);
     const shortName = m => String(m.componentName).split('/').pop().trim() || String(m.componentName);
-    const matches = m => !query || `${m.componentName} ${m.exportName}`.toLowerCase().includes(query);
-    // Indexes under a folder that the current search shows (internal parts keep their own choice).
-    const groupIdx = key => mappings.map((m, i) => (matches(m) && !isInternalName(i) && inFolder(i, key) ? i : -1)).filter(i => i >= 0);
+    const matches = m => !query || String(m.componentName).toLowerCase().includes(query);
+    const inFolder = (i, key) => { const k = folderParts(comps[i]).join('/'); return k === key || k.startsWith(key + '/'); };
+    const groupIdx = key => comps.map((m, i) => (matches(m) && !isInternalName(i) && inFolder(i, key) ? i : -1)).filter(i => i >= 0);
     const chevron = open => `<svg class="lp-chev ${open ? 'open' : ''}" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    const iconCell = (m, i) => `<label class="lp-icon-cell" title="${esc(m.componentName)}"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name">${esc(shortName(m))}</span><button type="button" class="lp-mini" data-lp-kind="${i}" title="Publish as a component with props instead">Component</button></label>`;
-    // The folder tree of a list of mapping indexes: folders first (alphabetical), then what sits at this level.
-    const tree = (idx, wantIcon) => {
+    const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span></div></div>`;
+    const tree = idx => {
         const root = { dirs: new Map(), rows: [] };
         for (const i of idx) {
             let at = root;
-            for (const d of folderParts(mappings[i])) {
+            for (const d of folderParts(comps[i])) {
                 if (!at.dirs.has(d))
                     at.dirs.set(d, { dirs: new Map(), rows: [] });
                 at = at.dirs.get(d);
@@ -12822,59 +12691,39 @@ function publishDialog(snapshot, draft, iconKeys, standard = []) {
             at.rows.push(i);
         }
         const all = node => [...node.rows, ...[...node.dirs.values()].flatMap(all)];
-        const rowsHtml = list => !list.length ? '' : wantIcon ? `<div class="lp-cat-body">${list.map(i => iconCell(mappings[i], i)).join('')}</div>` : `<div class="lp-comps">${list.map(i => compRow(mappings[i], i)).join('')}</div>`;
+        const rowsHtml = list => !list.length ? '' : `<div class="lp-comps">${list.map(i => compRow(comps[i], i)).join('')}</div>`;
         const draw = (node, path) => [...node.dirs].sort(([a], [b]) => a.localeCompare(b)).map(([name, sub]) => {
-            const parts = [...path, name], key = (wantIcon ? 'i:' : 'c:') + parts.join('/'), ids = all(sub), on = ids.filter(i => include[i]).length;
+            const parts = [...path, name], key = parts.join('/'), ids = all(sub), on = ids.filter(i => include[i]).length;
             const open = openCats.has(key) || (!!query && ids.length <= 60);
             return `<div class="lp-cat"><div class="lp-cat-head"><input type="checkbox" data-lp-group="${esc(key)}" ${on === ids.length ? 'checked' : ''} aria-label="Publish everything in ${esc(name)}"><button type="button" class="lp-cat-toggle" data-lp-catfold="${esc(key)}">${chevron(open)}<span>${esc(name)}</span></button><span class="lp-count" data-lp-count="${esc(key)}">${on}/${ids.length}</span></div>${open ? `<div class="lp-cat-sub">${draw(sub, parts)}${rowsHtml(sub.rows)}</div>` : ''}</div>`;
         }).join('');
         return draw(root, []) + rowsHtml(root.rows);
     };
     const lists = () => {
-        const compIdx = [], internal = [], iconIdx = [];
-        mappings.forEach((m, i) => {
+        const shown = [], internal = [];
+        comps.forEach((m, i) => {
             if (!matches(m)) return;
-            if (isIcon[i]) iconIdx.push(i);
-            else if (isInternalName(i)) internal.push(i);
-            else compIdx.push(i);
+            (isInternalName(i) ? internal : shown).push(i);
         });
-        const nComp = isIcon.filter(x => !x).length, nIcon = isIcon.filter(Boolean).length;
-        const selComp = mappings.filter((_, i) => include[i] && !isIcon[i]).length, selIcon = mappings.filter((_, i) => include[i] && isIcon[i]).length;
-        const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, not published on their own</summary><div class="lp-comps">${internal.map(i => compRow(mappings[i], i)).join('')}</div></details>` : '';
-        const none = query ? 'Nothing matches your search.' : '';
-        return `<div class="lp-summary"><span><b>${selComp}</b> of ${nComp} components</span><span><b>${selIcon}</b> of ${nIcon} icons</span></div>
-<section class="lp-section"><h4>Components <small>export name in code</small></h4><div class="lp-cats">${tree(compIdx, false) || `<p class="small-label">${none || 'No components.'}</p>`}</div>${internalHtml}</section>
-<section class="lp-section"><h4>Icons <small>React icon components, color follows the text</small></h4>${nIcon ? `<div class="lp-cats">${tree(iconIdx, true) || `<p class="small-label">${none}</p>`}</div>` : '<p class="small-label">No icons. Put icon components on a page named “Icons”, or use “Icon” on a component above.</p>'}</section>`;
+        const total = comps.filter((_, i) => !isInternalName(i)).length, chosen = comps.filter((_, i) => include[i] && !isInternalName(i)).length;
+        const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, shared along with them</summary></details>` : '';
+        return `<div class="lp-summary"><span><b>${chosen}</b> of ${total} components</span></div>
+<section class="lp-section"><div class="lp-cats">${tree(shown) || `<p class="small-label">${query ? 'Nothing matches your search.' : 'No components.'}</p>`}</div>${internalHtml}</section>`;
     };
-    // Folder checkboxes show a partial state when only some of what is inside is selected.
-    const syncGroups = () => form.querySelectorAll('[data-lp-group]').forEach(el => {
-        const idx = groupIdx(el.dataset.lpGroup), on = idx.filter(i => include[i]).length;
-        el.checked = idx.length > 0 && on === idx.length;
-        el.indeterminate = on > 0 && on < idx.length;
-    });
-    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables; developers get a frontend package with the same version.')}
+    modal(`${modalHeader(current ? 'Publish library update' : 'Publish as library', 'Other files in your workspace can use the components and variables you share here.')}
 <form id="lp-form" class="lp-form" novalidate>
-<label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
-<label class="lp-field"><span>Frontend package</span><input class="lp-input lp-mono" id="lp-pkg" value="${esc(draft.packageName)}" ${isNew ? '' : 'disabled'} spellcheck="false" autocomplete="off"><small id="lp-pkg-msg">${isNew ? 'Locked after the first publish. Format: @midas/name' : 'Locked — set on the first publish.'}</small></label>
-<div class="lp-field"><span>Version</span><div class="lp-version"><input class="lp-input lp-mono" id="lp-version" value="${esc(draft.suggestedVersion)}" spellcheck="false" autocomplete="off">${latest ? ['patch', 'minor', 'major'].map(k => `<button type="button" class="cmp-btn" data-lp-bump="${k}">${k}</button>`).join('') : ''}</div><small>${latest ? `Latest: ${esc(latest.version)} · published ${timeAgo(latest.publishedAt)}` : 'First release.'}</small></div>
-${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a major version</b><ul>${draft.breaking.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : ''}
+<label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(current?.name || doc.data.name)}" required maxlength="120"></label>
+<div class="lp-field"><span>Version</span><small>${current ? `Publishing version ${nextVersion} · latest is ${current.version}` : 'First release.'}</small></div>
 <label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
-<div class="lp-toolbar"><input type="search" class="lp-input lp-search" id="lp-search" placeholder="Search components and icons" autocomplete="off" aria-label="Search components and icons"><button type="button" class="wide-button" data-lp-all="1">Select all</button><button type="button" class="wide-button" data-lp-all="0">Select none</button></div>
+<div class="lp-toolbar"><input type="search" class="lp-input lp-search" id="lp-search" placeholder="Search components" autocomplete="off" aria-label="Search components"><button type="button" class="wide-button" data-lp-all="1">Select all</button><button type="button" class="wide-button" data-lp-all="0">Select none</button></div>
 <div id="lp-lists">${lists()}</div>
-<small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are included as theme tokens.</small>
+<small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are shared as well.</small>
 <div id="lp-errors" class="lp-errors hidden" role="alert"></div>
-<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="lp-submit">Publish ${esc(draft.suggestedVersion)}</button></div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="lp-submit">Publish version ${nextVersion}</button></div>
 </form>`);
-    const form = $('#lp-form'), version = $('#lp-version'), submit = $('#lp-submit'), errorsBox = $('#lp-errors');
+    const form = $('#lp-form'), submit = $('#lp-submit'), errorsBox = $('#lp-errors');
     const showErrors = list => { errorsBox.innerHTML = list.length ? `<ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; errorsBox.classList.toggle('hidden', !list.length); };
-    // Ambil isian form ke model sebelum daftar digambar ulang atau dikirim.
-    const collect = () => {
-        form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
-        form.querySelectorAll('[data-lp-impl]').forEach(el => { mappings[+el.dataset.lpImpl].propsMap.implementation = el.value; });
-        form.querySelectorAll('[data-lp-export]').forEach(el => { mappings[+el.dataset.lpExport].exportName = el.value.trim(); });
-        form.querySelectorAll('[data-lp-prop]').forEach(el => { const [i, j] = el.dataset.lpProp.split(':').map(Number); mappings[i].propsMap.props[j].name = el.value.trim(); });
-        form.querySelectorAll('[data-lp-val]').forEach(el => { const [i, j] = el.dataset.lpVal.split(':').map(Number); mappings[i].propsMap.props[j].values[el.dataset.key] = el.value.trim(); });
-    };
+    const collect = () => form.querySelectorAll('[data-lp-include]').forEach(el => { include[+el.dataset.lpInclude] = el.checked; });
     // Redrawing the lists must not throw the view back to the top: the dialog and the lists keep their scroll position.
     const keepScroll = fn => {
         const body = document.querySelector('#modal .modal-body'), top = body?.scrollTop, cats = [...form.querySelectorAll('.lp-cats')].map(c => c.scrollTop);
@@ -12884,40 +12733,17 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         form.querySelectorAll('.lp-cats').forEach((c, i) => { if (cats[i] !== undefined)
             c.scrollTop = cats[i]; });
     };
-    version.oninput = () => { submit.textContent = `Publish ${version.value.trim() || ''}`; };
-    let pkgTimer;
-    if (isNew)
-        $('#lp-pkg').oninput = e => {
-            clearTimeout(pkgTimer);
-            const name = e.target.value.trim(), msg = $('#lp-pkg-msg');
-            pkgTimer = setTimeout(async () => {
-                const r = await libraryApi.packageAvailable(name, lib.fileId).catch(() => null);
-                if (r && $('#lp-pkg')?.value.trim() === name) {
-                    msg.textContent = r.available ? `${name} is available. Locked after the first publish.` : r.reason;
-                    msg.classList.toggle('lp-bad', !r.available);
-                }
-            }, 300);
-        };
-    form.addEventListener('click', e => {
-        const bump = e.target.closest('[data-lp-bump]'), fold = e.target.closest('[data-lp-fold]'), kind = e.target.closest('[data-lp-kind]');
-        if (bump) {
-            version.value = semverBump(latest.version, bump.dataset.lpBump);
-            version.oninput();
-        }
-        if (fold)
-            form.querySelector(`[data-lp-props="${fold.dataset.lpFold}"]`).classList.toggle('hidden');
-        if (kind) {
-            collect();
-            isIcon[+kind.dataset.lpKind] = !isIcon[+kind.dataset.lpKind];
-            keepScroll(() => { $('#lp-lists').innerHTML = lists(); syncGroups(); });
-        }
+    // Folder checkboxes show a partial state when only some of what is inside is selected.
+    const syncGroups = () => form.querySelectorAll('[data-lp-group]').forEach(el => {
+        const idx = groupIdx(el.dataset.lpGroup), on = idx.filter(i => include[i]).length;
+        el.checked = idx.length > 0 && on === idx.length;
+        el.indeterminate = on > 0 && on < idx.length;
     });
     const redraw = () => { $('#lp-lists').innerHTML = lists(); syncGroups(); };
-    // Cheap refresh after a checkbox change: counters and group states only, so the lists keep their scroll position.
     const applyIncludes = () => form.querySelectorAll('[data-lp-include]').forEach(el => { el.checked = !!include[+el.dataset.lpInclude]; });
     const updateCounts = () => {
         const summary = form.querySelector('.lp-summary');
-        if (summary) summary.innerHTML = `<span><b>${mappings.filter((_, i) => include[i] && !isIcon[i]).length}</b> of ${isIcon.filter(x => !x).length} components</span><span><b>${mappings.filter((_, i) => include[i] && isIcon[i]).length}</b> of ${isIcon.filter(Boolean).length} icons</span>`;
+        if (summary) summary.innerHTML = `<span><b>${comps.filter((_, i) => include[i] && !isInternalName(i)).length}</b> of ${comps.filter((_, i) => !isInternalName(i)).length} components</span>`;
         form.querySelectorAll('[data-lp-count]').forEach(el => {
             const idx = groupIdx(el.dataset.lpCount);
             el.textContent = `${idx.filter(i => include[i]).length}/${idx.length}`;
@@ -12930,7 +12756,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
         if (all) {
             collect();
             // Only what the search currently shows; internal parts keep their own choice.
-            mappings.forEach((m, i) => { if (matches(m) && !(!isIcon[i] && /^[_.]/.test(m.componentName))) include[i] = all.dataset.lpAll === '1'; });
+            comps.forEach((m, i) => { if (matches(m) && !isInternalName(i)) include[i] = all.dataset.lpAll === '1'; });
             applyIncludes();
             updateCounts();
         }
@@ -12939,7 +12765,6 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             const c = fold.dataset.lpCatfold;
             if (openCats.has(c)) openCats.delete(c); else openCats.add(c);
             keepScroll(redraw);
-            // An opened folder comes into view, at the top of the list.
             if (openCats.has(c))
                 [...form.querySelectorAll('[data-lp-catfold]')].find(b => b.dataset.lpCatfold === c)?.closest('.lp-cat-head')?.scrollIntoView({ block: 'start' });
         }
@@ -12958,107 +12783,31 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
     form.onsubmit = async e => {
         e.preventDefault();
         collect();
-        const chosen = mappings.filter((_, i) => include[i] && !isIcon[i]);
-        const byId = new Map(allNodes().map(n => [n.id, n]));
-        const iconRoots = mappings.filter((_, i) => include[i] && isIcon[i]).map(m => byId.get(m.componentKey)).filter(Boolean);
-        if (!chosen.length && !vars && !iconRoots.length)
-            return showErrors(['Choose at least one component or icon to publish.']);
+        const chosen = comps.filter((_, i) => include[i]);
+        if (!chosen.length && !vars)
+            return showErrors(['Choose at least one component to publish.']);
         submit.disabled = true;
-        submit.textContent = iconRoots.length ? `Exporting ${iconRoots.length} icon${iconRoots.length === 1 ? '' : 's'}…` : 'Publishing…';
-        const busy = startBusy(iconRoots.length ? 'Exporting icons…' : 'Publishing…', iconRoots.length ? 0 : null);
+        submit.textContent = 'Publishing…';
+        const busy = startBusy('Publishing…');
         try {
-            const icons = await iconSources(iconRoots, (i, total) => busy.set(`Exporting icons… ${i + 1} / ${total}`, (i / total) * 60));
-            busy.set('Reading the images used by components…', iconRoots.length ? 70 : null);
             // Components that the chosen ones are built from (nested instances, swap defaults) travel along, or their copies in other files would lose those parts.
-            const send = snapshotDependencies(snapshot, new Set([...chosen.map(m => m.componentKey), ...icons.map(i => i.componentKey)])), components = snapshot.components.filter(c => send.has(c.id));
+            const send = snapshotDependencies(snapshot, new Set(chosen.map(m => m.componentKey))), components = snapshot.components.filter(c => send.has(c.id));
             const assets = await snapshotAssets(components);
-            busy.set(`Uploading ${chosen.length} component${chosen.length === 1 ? '' : 's'}${icons.length ? ` and ${icons.length} icon${icons.length === 1 ? '' : 's'}` : ''}…`, iconRoots.length ? 80 : null);
-            submit.textContent = 'Publishing…';
-            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), packageName: $('#lp-pkg').value.trim(), version: version.value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, components, assets, icons }, mappings: chosen });
+            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, components, assets }, componentKeys: chosen.map(m => m.componentKey) });
             busy.done();
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
-            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}. ${published.codeError ? `Code could not be built: ${published.codeError}` : published.code ? (published.code.codeStatus === 'ready' ? 'Code is ready.' : `Code built: ${published.code.ready} ready, ${published.code.notImplemented} not implemented${published.code.mismatch ? `, ${published.code.mismatch} mismatch` : ''}.`) : ''}`);
+            toast(`Published “${published.name}” version ${published.version}: ${published.components} component${published.components === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
             renderAssets();
         }
         catch (err) {
             busy.done();
             showErrors(err?.body?.errors || [err?.message || String(err)]);
             submit.disabled = false;
-            version.oninput();
+            submit.textContent = `Publish version ${nextVersion}`;
         }
     };
-}
-// Developer kit (spec §3.3–§3.4): repo paket frontend + Library Kit untuk developer, per versi library.
-async function developerKitDialog() {
-    const mine = LIBS.published.find(x => x.id === lib.fileId);
-    if (!mine)
-        return toast('Publish this file as a library first.');
-    let versions = [];
-    try {
-        versions = (await libraryApi.history(lib.fileId)).versions;
-    }
-    catch (e) {
-        return toast(`Could not load the library: ${e?.message || e}`);
-    }
-    const server = location.origin, pkg = mine.packageName, dir = pkg.split('/')[1];
-    const code = (s) => `<pre class="token-code lp-code">${esc(s)}</pre>`;
-    modal(`${modalHeader('Code', `Package <span class="lp-mono">${esc(pkg)}</span> for “${esc(mine.name)}”.`)}
-<div class="lp-form">
-<p class="small-label dk-intro">The code is built automatically when you publish: Midas' standard components, themed with this library's tokens, props types and icons. Developers use it through <b>Download project</b> in Code Builder; nothing to install or write. Components without a standard implementation show <b>Not implemented</b> (a placeholder is exported so apps still compile).</p>
-<label class="lp-field"><span>Version</span><select class="lp-input" id="dk-version">${versions.map(v => `<option value="${esc(v.version)}">${esc(v.version)}${v.releaseNotes ? ` — ${esc(v.releaseNotes.slice(0, 60))}` : ''}</option>`).join('')}</select></label>
-<div class="lp-field"><span>Code status</span><div id="dk-code" class="dk-code"><p class="small-label">Loading…</p></div><button type="button" class="wide-button" id="dk-rebuild">Rebuild code for this version</button></div>
-<details class="lp-field dk-advanced"><summary>Write the components yourself (advanced)</summary>
-<small>Only when you need behaviour the standard components do not have. The developers own the repository; <span class="lp-mono">npm run build</span> there pulls the newest kit first, then reports the code status and uploads the bundle (it replaces the automatic one).</small>
-<span>New repository</span><small>Package skeleton (one stub per component) plus the generated Library Kit.</small><a class="wide-button" id="dk-zip" download>${icon('download', 13)} Download ${esc(dir)}.zip</a>
-${code(`npx @midas/cli login --server ${server}\nnpx @midas/cli init ${dir} --library ${pkg} --version <version>`)}
-<span>Update an existing repository</span><small>Overwrites <span class="lp-mono">src/generated/</span> and sets the package version.</small>${code(`npm run build`)}<a class="wide-button" id="dk-kit-zip" download>${icon('download', 13)} Download Library Kit (.zip)</a>
-</details>
-<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
-</div>`);
-    const sel = $('#dk-version'), zip = $('#dk-zip');
-    const LABEL = { ready: 'Ready', not_implemented: 'Not implemented', mismatch: 'Mismatch', pending: 'Not reported' };
-    const showCode = async v => {
-        const box = $('#dk-code');
-        try {
-            const r = await libraryApi.codeStatus(lib.fileId, v);
-            if (sel.value !== v || !box)
-                return;
-            box.innerHTML = r.reportedAt
-                ? `<p class="small-label">Reported ${timeAgo(r.reportedAt)}.</p>${r.components.map(c => `<div class="dk-row"><span class="lp-mono">${esc(c.exportName)}</span><span class="code-status cs-${esc(c.status)}" title="${esc(c.detail || '')}">${esc(LABEL[c.status] || c.status)}</span></div>${c.detail && c.status !== 'ready' ? `<small class="dk-detail">${esc(c.detail)}</small>` : ''}`).join('')}`
-                : '<p class="small-label">No code built for this version yet (it was published before code was built automatically). Use “Rebuild code”.</p>';
-        }
-        catch (e) {
-            if (box)
-                box.innerHTML = `<p class="small-label">Could not load the code status: ${esc(e?.message || e)}</p>`;
-        }
-    };
-    const update = () => {
-        const v = sel.value;
-        showCode(v);
-        zip.href = `/api/libraries/${encodeURIComponent(lib.fileId)}/scaffold?format=zip&version=${encodeURIComponent(v)}`;
-        $('#dk-kit-zip').href = `/api/libraries/${encodeURIComponent(lib.fileId)}/kit?format=zip&version=${encodeURIComponent(v)}`;
-        $('#modal').querySelectorAll('.lp-code').forEach(el => { el.textContent = el.textContent.replace(/--version \S+$/m, `--version ${v}`); });
-    };
-    sel.onchange = update;
-    $('#dk-rebuild').onclick = async () => {
-        const btn = $('#dk-rebuild'), v = sel.value;
-        btn.disabled = true;
-        btn.textContent = 'Building…';
-        try {
-            const r = await libraryApi.buildCode(lib.fileId, v);
-            toast(`Code built for ${v}: ${r.ready} ready${r.notImplemented ? `, ${r.notImplemented} not implemented` : ''}${r.mismatch ? `, ${r.mismatch} mismatch` : ''}.`);
-            LIBS.published = (await libraryApi.list().catch(() => null)) || LIBS.published;
-        }
-        catch (e) {
-            toast(`Could not build the code: ${e?.message || e}`);
-        }
-        btn.disabled = false;
-        btn.textContent = 'Rebuild code for this version';
-        showCode(v);
-    };
-    update();
 }
 // Import ikon SVG (folder atau beberapa file) ke page "Icons": satu component set per ikon,
 // satu variant per gaya (Style=outline, bold, …). Set dengan nama sama diganti.
@@ -13257,18 +13006,18 @@ async function libUpdate(libId) {
         u.name = snap.name;
     }
     await libraryApi.setFileUses(lib.fileId, LIBS.use);
-    toast(`Library “${snap.name}” updated to ${snap.semver || `v${snap.version}`}.`);
+    toast(`Library “${snap.name}” updated to v${snap.version}.`);
     renderAssets();
     renderInspector();
 }
 function libPanelHtml() {
     const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
     const used = new Set(LIBS.use.map(u => u.id));
-    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<button class="wide-button lib-publish" data-lib-devkit>${icon('download', 13)} Code</button>` : ''}${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · <span class="code-status cs-${esc(mine.codeStatus || 'pending')}" title="Code status of the latest version: the standard components built with this library's tokens (open Code for the details)">code ${esc({ ready: 'ready', partial: 'partial', pending: 'not built' }[mine.codeStatus] || mine.codeStatus)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (v${esc(mine.version)})` : 'Publish as library'}</button>${mine ? `<p class="small-label">published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
     h += `<div class="lib-head"><b>Libraries</b></div>`;
     h += others.length ? others.map(l => {
         const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;
-        return `<div class="lib-row"><div class="lib-info"><span class="lib-name" title="${esc(l.name)}">${esc(l.name)}</span><small>${esc(l.semver || `v${l.version}`)} · ${l.components} comp · ${l.variables} var</small></div>${stale ? `<button class="cmp-btn" data-lib-update="${l.id}">Update</button>` : ''}<button class="cmp-btn ${used.has(l.id) ? 'on' : ''}" data-lib-toggle="${l.id}">${used.has(l.id) ? 'Remove' : 'Add'}</button></div>`;
+        return `<div class="lib-row"><div class="lib-info"><span class="lib-name" title="${esc(l.name)}">${esc(l.name)}</span><small>v${esc(l.version)} · ${l.components} comp · ${l.variables} var</small></div>${stale ? `<button class="cmp-btn" data-lib-update="${l.id}">Update</button>` : ''}<button class="cmp-btn ${used.has(l.id) ? 'on' : ''}" data-lib-toggle="${l.id}">${used.has(l.id) ? 'Remove' : 'Add'}</button></div>`;
     }).join('') : '<p class="small-label">No other published libraries yet. Publish another file to see it here.</p>';
     return h + '</div>';
 }
@@ -17760,56 +17509,6 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
-// ===== Code Builder (spec §4): frame → screen → kode. UI-nya modul React terpisah (src/codebuilder/), dipasang
-// sekali ke panel kiri; engine hanya menyediakan jembatan baca dokumen + navigasi canvas.
-const builderBridge = {
-    fileId: () => lib.fileId,
-    fileName: () => doc.data.name,
-    currentPageId: () => doc.page.id,
-    pages: () => doc.data.pages.filter(p => !isPageDivider(p)).map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null, folder: pageIsFolder(p), codeBuilder: !!p.codeBuilder })),
-    /** Semua node file (lintas page), termasuk salinan komponen library. */
-    nodes: () => doc.data.pages.flatMap(p => p.nodes),
-    // Flag or unflag a page as a Code Builder module source (same as the page context menu).
-    flagPage: (pageId, on = true) => { const p = doc.data.pages.find(x => x.id === pageId); if (p && !!p.codeBuilder !== !!on) togglePageCodeBuilder(pageId); },
-    // Top-level frames of a page (candidates when registering Code Builder screens), left to right.
-    pageFrames: pageId => (doc.data.pages.find(p => p.id === pageId)?.nodes || []).filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && n.visible !== false).map(n => ({ id: n.id, name: n.name, x: n.x, y: n.y, pageId })).sort((a, b) => (a.x - b.x) || (a.y - b.y)),
-    pageOf: id => pageOfNode(id)?.id ?? null,
-    variables: () => doc.data.variables || { collections: [], items: [] },
-    /** Layer terpilih: { id, name, type, pageId, top } (top = frame teratas di page). */
-    selection: () => [...state.selection].map(id => doc.get(id)).filter(Boolean).map(n => ({ id: n.id, name: n.name, type: n.type, pageId: doc.page.id, top: !n.parentId && n.type === 'frame' })),
-    /** Buka page node, pilih, dan zoom ke node. */
-    reveal(id) {
-        const page = pageOfNode(id);
-        if (!page) return false;
-        if (page.id !== doc.page.id) switchPage(page.id);
-        select([id]);
-        fit([id]);
-        refreshUI();
-        return true;
-    },
-    libraries: async () => {
-        await libsLoad(true);
-        return LIBS.published;
-    },
-};
-let builderMounted = null;
-function renderCodeBuilder() {
-    const host = $('#code-builder-panel');
-    builderMounted ??= import('../codebuilder/mount.jsx').then(m => m.mountCodeBuilder(host, builderBridge)).catch(e => {
-        console.error(e);
-        builderMounted = null;
-        host.innerHTML = `<div class="cb-empty">${icon('code', 22)}<b>Code Builder</b><p class="small-label">${esc(e.message || 'Failed to load')}</p></div>`;
-    });
-}
-// Panel Code Builder mendengarkan perubahan dokumen/seleksi (digabung per frame).
-let builderTick = 0;
-function notifyBuilder() {
-    if (!builderMounted || builderTick) return;
-    builderTick = requestAnimationFrame(() => {
-        builderTick = 0;
-        window.dispatchEvent(new CustomEvent('midas:change'));
-    });
-}
 function renderPlugins() {
     const list = loadPlugins();
     $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
@@ -18353,8 +18052,6 @@ document.addEventListener('click', e => {
             duplicatePage(act.slice(15));
         else if (act.startsWith('plugin-run:'))
             runPlugin(loadPlugins().find(p => p.id === act.slice(11)));
-        else if (act.startsWith('page-codebuilder:'))
-            togglePageCodeBuilder(act.slice(17));
         else if (act.startsWith('vwcoll:'))
             vwCollAction(act);
         else
@@ -18751,7 +18448,7 @@ $('#page-list').addEventListener('contextmenu', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     if (!p)
         return;
-    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, { label: p.codeBuilder ? '✓ Use in Code Builder' : 'Use in Code Builder', action: 'page-codebuilder:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
+    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
 });
 $('#page-list').addEventListener('dblclick', e => {
     const row = e.target.closest('[data-page]');
@@ -18876,8 +18573,6 @@ $('#assets-panel').addEventListener('click', e => {
     let el;
     if (e.target.closest('[data-lib-publish]'))
         publishLibrary();
-    else if (e.target.closest('[data-lib-devkit]'))
-        developerKitDialog();
     else if ((el = e.target.closest('[data-lib-toggle]')))
         libUse(el.dataset.libToggle, !LIBS.use.some(u => u.id === el.dataset.libToggle));
     else if ((el = e.target.closest('[data-lib-update]')))
@@ -18938,12 +18633,7 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-// Preview app: interactive live preview of the Code Builder project; falls back to the frame slideshow when the file has none.
-$('#present').onclick = async () => {
-    const m = await import('../codebuilder/preview.jsx');
-    if (!(await m.openAppPreview(builderBridge)))
-        present();
-};
+$('#present').onclick = () => present();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {

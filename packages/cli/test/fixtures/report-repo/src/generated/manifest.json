@@ -1,1 +1,0 @@
-{ "package": "@midas/ui-fixture", "version": "1.0.0", "components": [ { "exportName": "Good", "props": [] }, { "exportName": "Bad", "props": [] }, { "exportName": "Stub", "props": [] }, { "exportName": "Missing", "props": [] } ] }

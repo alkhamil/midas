@@ -1,4 +1,4 @@
-# Infrastruktur lokal Midas: database, object storage, dan registry paket library.
+# Infrastruktur lokal Midas: database dan object storage.
 services:
   postgres:
     image: postgres:16-alpine
@@ -26,15 +26,7 @@ services:
       - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
       - s3data:/data
 
-  verdaccio:
-    image: verdaccio/verdaccio:6
-    ports:
-      - "4873:4873"
-    volumes:
-      - ./infra/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
-      - verdacciostorage:/verdaccio/storage
 
 volumes:
   pgdata:
   s3data:
-  verdacciostorage:

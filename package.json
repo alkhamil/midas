@@ -3,9 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/*",
-    "packages/*",
-    "templates/*"
+    "apps/*"
   ],
   "scripts": {
     "dev": "npm run dev --workspace @midas/server & npm run dev --workspace @midas/studio",

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { config } from '../config.js';
 import { db } from '../db/index.js';
 import { users, workspaceMembers, workspaces } from '../db/schema.js';
-import { createSession, createToken, destroySession, requireUser } from '../lib/auth.js';
+import { createSession, destroySession, requireUser } from '../lib/auth.js';
 
 const credentials = z.object({
     email: z.string().trim().toLowerCase().email(),
@@ -58,21 +58,4 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     app.get('/api/auth/me', { preHandler: requireUser }, async req => ({ user: req.user }));
-
-    // Token untuk CLI / CI (`midas login`). Bisa dibuat dengan sesi browser atau email + password.
-    app.post('/api/auth/tokens', async (req, reply) => {
-        let userId = req.user?.id;
-        if (!userId) {
-            const body = credentials.safeParse(req.body);
-            // Tanpa sesi: body wajib email + password; isian kosong/pendek dilaporkan seperti kredensial salah.
-            if (!body.success)
-                return reply.code(401).send({ error: 'invalid_credentials', message: 'Wrong email or password' });
-            const [u] = await db.select().from(users).where(eq(users.email, body.data.email)).limit(1);
-            if (!u || !(await bcrypt.compare(body.data.password, u.passwordHash)))
-                return reply.code(401).send({ error: 'invalid_credentials', message: 'Wrong email or password' });
-            userId = u.id;
-        }
-        const { token, expiresAt } = await createToken(userId);
-        return { token, expiresAt: expiresAt.getTime() };
-    });
 }

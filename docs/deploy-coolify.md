@@ -23,11 +23,9 @@ dibangun lewat multi-stage [`Dockerfile.coolify`](../Dockerfile.coolify) — tid
 | `S3_SECRET_KEY` | ya | Secret S3 internal. Samakan dengan yang dipakai app. |
 | `S3_ACCESS_KEY` | tidak | Default `midas`. |
 | `S3_BUCKET` | tidak | Default `midas`. |
-| `MIDAS_PUBLIC_URL` | ya | URL publik, mis. `https://midas.example.com`. Dipakai di scaffold library/CLI. |
 | `COOKIE_SECURE` | ya | `true` untuk HTTPS (Coolify default). Set `false` hanya untuk HTTP lokal. |
 | `ALLOW_REGISTER` | tidak | `true` sampai akun pertama dibuat, lalu ubah ke `false`. |
 | `BODY_LIMIT_MB` | tidak | Default `100`; naikkan bila mengimpor file desain besar. |
-| `REGISTRY_URL` | tidak | Default `https://registry.npmjs.org/` (tanpa Verdaccio). |
 | `DATABASE_URL` | tidak | Isi untuk memakai Postgres eksternal (Neon/Supabase); mengabaikan variabel `POSTGRES_*`. |
 | `S3_ENDPOINT` | tidak | Isi untuk memakai R2/S3 eksternal. |
 
@@ -41,7 +39,7 @@ saat deployment compose, sehingga bind mount file (mis. `s3.env.json`) dibuat se
 SeaweedFS gagal start (`fail to read ...: is a directory`). Kredensial diberikan lewat `AWS_ACCESS_KEY_ID`
 dan `AWS_SECRET_ACCESS_KEY`; SeaweedFS otomatis membuat identity admin S3 dari kedua variabel tersebut.
 
-`HOST`, `PORT`, `AUTO_MIGRATE`, `STUDIO_DIST`, dan `TEMPLATES_DIR` sudah diatur di compose/`Dockerfile.coolify`.
+`HOST`, `PORT`, `AUTO_MIGRATE`, `STUDIO_DIST` sudah diatur di compose/`Dockerfile.coolify`.
 
 ## 3. Domain dan port
 
@@ -52,11 +50,6 @@ port **4000**. Coolify menangani TLS; karena itu `COOKIE_SECURE=true`.
 
 1. Buka domain, buat akun pertama (akun pertama selalu diizinkan).
 2. Set `ALLOW_REGISTER=false` di Coolify, lalu redeploy.
-3. Login CLI ke server publik:
-
-   ```bash
-   node packages/cli/bin/midas.js login --server https://midas.example.com
-   ```
 
 Data tersimpan di named volume Postgres dan S3 (prefix mengikuti nama project Coolify). Jangan hapus volume saat redeploy.
 
@@ -65,6 +58,6 @@ Data tersimpan di named volume Postgres dan S3 (prefix mengikuti nama project Co
 Coolify memakai `expose`. Untuk Docker Compose biasa, buka blok `ports` yang dikomentari di service `app`, lalu:
 
 ```bash
-MIDAS_PUBLIC_URL=http://localhost:4000 COOKIE_SECURE=false \
+COOKIE_SECURE=false \
   docker compose -f docker-compose.coolify.yml up -d --build
 ```

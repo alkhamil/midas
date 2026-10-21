@@ -24,10 +24,4 @@ export const config = {
     allowRegister: env('ALLOW_REGISTER', 'true') === 'true',
     cookieSecure: env('COOKIE_SECURE', 'false') === 'true',
     sessionDays: 30,
-    /** Masa berlaku token CLI/CI (hari). */
-    tokenDays: Number(env('TOKEN_DAYS', '365')),
-    /** URL publik Midas API — ditulis ke midas.config.json repo paket. */
-    publicUrl: env('MIDAS_PUBLIC_URL', 'http://127.0.0.1:4000'),
-    /** URL Midas Registry (Verdaccio) untuk paket @midas/*. */
-    registryUrl: env('REGISTRY_URL', 'http://127.0.0.1:4873/'),
 };

@@ -20,11 +20,7 @@ services:
         sync: false
       - key: S3_BUCKET
         value: midas
-      - key: MIDAS_PUBLIC_URL    # https://<your-service>.onrender.com
-        sync: false
       - key: ALLOW_REGISTER      # set to false after creating your account
         value: "true"
       - key: BODY_LIMIT_MB       # free instances have 512 MB of RAM
         value: "100"
-      - key: REGISTRY_URL
-        value: https://registry.npmjs.org/
