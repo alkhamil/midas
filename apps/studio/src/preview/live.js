@@ -9,7 +9,7 @@
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
-import { normalizeInteractions, overridesFor, stateChain } from '../engine/behavior.js';
+import { normalizeInteractions, normalizePlacement, overridesFor, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -139,8 +139,9 @@ const pick = (map, state) => {
     return undefined;
 };
 
-export function openLivePreview(ctx, host) {
-    const root = el('div', { position: 'absolute', inset: '0', zIndex: 50, background: '#e3e3e3', overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }, host);
+export function openLivePreview(ctx, host, { onExit } = {}) {
+    // The whole window: the editor's panels are covered; a small button opens the side menu (frames, exit).
+    const root = el('div', { position: 'fixed', inset: '0', zIndex: 350, background: '#e3e3e3', overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }, host);
     root.className = 'live-preview';
     const stage = el('div', { position: 'relative', flex: 'none', transformOrigin: 'center center' }, root);
     const css = el('style', null, root);
@@ -398,12 +399,13 @@ export function openLivePreview(ctx, host) {
             // A number field takes digits, a sign and one decimal point.
             if (kind === 'number') input.value = input.value.replace(/[^0-9.\-]/g, '').replace(/(\..*?)\./g, '$1');
             const was = runtime.get(inst.id) || {};
-            runtime.set(inst.id, { ...was, value: input.value, error: false });
+            runtime.set(inst.id, { ...was, value: input.value, error: false, touched: was.touched || !!input.value });
             if (was.state !== 'typing') update(inst, { state: 'typing' });
         });
         input.addEventListener('blur', () => {
             if (rendering) return;
-            const bad = required && !input.value.trim();
+            // Leaving a required field that was never filled is not an error: it goes back to default. Emptying one that had text is.
+            const bad = required && !input.value.trim() && !!runtime.get(inst.id)?.touched;
             update(inst, { state: bad ? 'error' : input.value ? 'filled' : 'default', error: bad, value: input.value });
             runTriggers(inst, 'onBlur', input);
         });
@@ -416,10 +418,10 @@ export function openLivePreview(ctx, host) {
         const list = normalizeInteractions(ctx.interactionsFor?.(inst));
         for (const it of list) {
             if (it.trigger !== trigger) continue;
-            runAction(it.action, inst, anchor, rect);
+            runAction(it.action, inst, anchor, rect, trigger);
         }
     }
-    function runAction(action, inst, anchor, rect) {
+    function runAction(action, inst, anchor, rect, trigger) {
         if (!action) return;
         if (action.type === 'navigate') {
             if (action.targetFrameId && ctx.node(action.targetFrameId)) show(action.targetFrameId);
@@ -429,15 +431,22 @@ export function openLivePreview(ctx, host) {
             closeLayers(action.close === 'all' ? 'all' : 'current');
             return;
         }
-        if (action.type === 'open-dropdown' || action.type === 'open-overlay' || action.type === 'open-popover') openLayer(action, anchor, rect);
+        if (action.type === 'open-dropdown' || action.type === 'open-overlay' || action.type === 'open-popover') openLayer(action, anchor, rect, { inst, trigger });
     }
 
     /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
-    function openLayer(action, anchor, rect) {
+    function openLayer(action, anchor, rect, from) {
         // A component picked in the Behavior tab, else a frame chosen before components were offered.
         const frame = action.targetComponentId ? ctx.componentTarget(action.targetComponentId) : ctx.node(action.targetFrameId);
         if (!frame) return;
         const kind = action.type === 'open-dropdown' ? 'dropdown' : action.type === 'open-overlay' ? 'overlay' : 'popover';
+        // The same trigger on the same layer: a hover that redraws its anchor must not stack copies; a click toggles it.
+        const key = `${from?.inst?.id}|${action.type}|${action.targetComponentId || action.targetFrameId}`;
+        const already = layers.findIndex(l => l.key === key);
+        if (already >= 0) {
+            if (!/^(onHover|onMouseEnter)$/.test(from?.trigger)) closeLayer(layers[already]);
+            return;
+        }
         const holder = el('div', { position: 'absolute', zIndex: 70 }, root);
         let backdrop = null;
         const content = renderScene(buildScene(frame), holder);
@@ -448,9 +457,8 @@ export function openLivePreview(ctx, host) {
         const r = root.getBoundingClientRect();
         // Posisi jangkar diambil sebelum scene digambar ulang (elemen lama sudah lepas dari DOM).
         const a = rect || anchor?.getBoundingClientRect?.();
-        const pos = action.position || (kind === 'overlay' ? 'center' : kind === 'dropdown' ? 'bottom-left' : 'top');
         const place = (left, top) => { holder.style.left = px(Math.max(4, left)); holder.style.top = px(Math.max(4, top)); };
-        if (kind === 'overlay' || pos === 'center') {
+        if (kind === 'overlay') {
             if (action.backdrop !== false) {
                 backdrop = el('div', { position: 'absolute', inset: '0', zIndex: 69, background: 'rgba(15,23,42,.45)' }, root);
                 if (action.closeOnBackdrop) backdrop.addEventListener('click', () => closeLayers('all'));
@@ -458,17 +466,38 @@ export function openLivePreview(ctx, host) {
             place((r.width - w) / 2, (r.height - h) / 2);
         }
         else if (a) {
-            const x = a.left - r.left, y = a.top - r.top;
-            if (pos === 'top' || pos === 'top-left' || pos === 'top-right') place(pos === 'top' ? x + (a.width - w) / 2 : pos === 'top-left' ? x : x + a.width - w, y - h);
-            else if (pos === 'bottom' || pos === 'bottom-left' || pos === 'bottom-right') place(pos === 'bottom' ? x + (a.width - w) / 2 : pos === 'bottom-left' ? x : x + a.width - w, y + a.height);
-            else if (pos === 'left') place(x - w, y + (a.height - h) / 2);
-            else if (pos === 'right') place(x + a.width, y + (a.height - h) / 2);
-            else place(x, y + a.height);
+            // A side of the anchor (top / right / bottom / left), lined up at its start, middle or end, `offset` px away.
+            const [side, align = 'center'] = normalizePlacement(action.position, kind === 'dropdown' ? 'bottom-start' : 'top').split('-');
+            const off = Number(action.offset) || 0, x = a.left - r.left, y = a.top - r.top;
+            const along = (start, size, anchorSize) => align === 'start' ? start : align === 'end' ? start + anchorSize - size : start + (anchorSize - size) / 2;
+            if (side === 'top' || side === 'bottom') place(along(x, w, a.width), side === 'top' ? y - h - off : y + a.height + off);
+            else place(side === 'left' ? x - w - off : x + a.width + off, along(y, h, a.height));
         }
-        layers.push({ holder, backdrop, kind });
+        const layer = { holder, backdrop, kind, key };
+        // A layer that opened on hover goes away when the pointer is no longer over what opened it or over the layer itself.
+        if (/^(onHover|onMouseEnter)$/.test(from?.trigger) && a) {
+            const near = (b, ev) => ev.clientX >= b.left - 4 && ev.clientX <= b.right + 4 && ev.clientY >= b.top - 4 && ev.clientY <= b.bottom + 4;
+            const move = ev => {
+                const h = holder.getBoundingClientRect();
+                const bridge = { left: Math.min(a.left, h.left), right: Math.max(a.right, h.right), top: Math.min(a.top, h.top), bottom: Math.max(a.bottom, h.bottom) };
+                if (!near(a, ev) && !near(h, ev) && !near(bridge, ev)) closeLayer(layer);
+            };
+            root.addEventListener('pointermove', move);
+            root.addEventListener('pointerleave', () => closeLayer(layer), { once: true });
+            layer.off = () => root.removeEventListener('pointermove', move);
+        }
+        layers.push(layer);
+    }
+    function closeLayer(layer) {
+        const i = layers.indexOf(layer);
+        if (i < 0) return;
+        layers.splice(i, 1);
+        layer.off?.();
+        layer.holder.remove();
+        layer.backdrop?.remove();
     }
     function closeLayers(scope) {
-        const kill = layer => { layer.holder.remove(); layer.backdrop?.remove(); };
+        const kill = layer => { layer.off?.(); layer.holder.remove(); layer.backdrop?.remove(); };
         if (scope === 'all') { layers.splice(0).forEach(kill); return; }
         if (scope === 'current') { const last = layers.pop(); if (last) kill(last); return; }
         for (let i = layers.length - 1; i >= 0; i--) if (layers[i].kind === scope) { kill(layers[i]); layers.splice(i, 1); }
@@ -527,7 +556,7 @@ export function openLivePreview(ctx, host) {
         rendering = true;
         stage.replaceChildren();
         const nodes = buildScene(f), rootNode = nodes[0];
-        const sc = Math.min(1, (root.clientWidth - 48) / rootNode.w, (root.clientHeight - 48) / rootNode.h);
+        const sc = Math.min(1, (root.clientWidth - 24) / rootNode.w, (root.clientHeight - 24) / rootNode.h);
         Object.assign(stage.style, { width: px(rootNode.w), height: px(rootNode.h), transform: `scale(${sc})` });
         renderScene(nodes).style.position = 'relative';
         const again = keep && stage.querySelector(`[data-field="${keep}"]`);
@@ -537,20 +566,62 @@ export function openLivePreview(ctx, host) {
             try { again.setSelectionRange(at, at); } catch { /* caret is not available on every input type */ }
         }
         rendering = false;
-        pick_.value = frameId;
+        markCurrent();
     }
 
     function show(id) { frameId = id; runtime.clear(); closeLayers('all'); draw(); }
 
-    const bar = el('div', { position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 10px', borderRadius: '10px', background: 'rgba(30,30,30,.9)', color: '#fff', font: '12px Inter, sans-serif' }, root);
-    el('span', null, bar).textContent = 'Preview';
-    const pick_ = el('select', { background: '#222', color: 'inherit', border: '1px solid rgba(255,255,255,.25)', borderRadius: '6px', font: 'inherit', padding: '2px 4px' }, bar);
-    for (const f of ctx.frames) el('option', null, pick_).textContent = f.label, pick_.lastChild.value = f.id;
-    pick_.onchange = () => show(pick_.value);
-    const onKey = e => { if (e.key === 'Escape' && layers.length) { closeLayers('current'); e.stopPropagation(); } };
+    // Side menu, folded away until the menu button is clicked: the frames to move between, and the way out.
+    const chrome = { font: '12px Inter, system-ui, sans-serif', color: '#fff' };
+    const menuBtn = el('button', { ...chrome, position: 'absolute', top: '12px', left: '12px', zIndex: 60, width: '32px', height: '32px', display: 'grid', placeItems: 'center', border: '0', borderRadius: '8px', background: 'rgba(30,30,30,.82)', cursor: 'pointer', opacity: '.75' }, root);
+    menuBtn.title = 'Menu';
+    menuBtn.setAttribute('aria-label', 'Preview menu');
+    menuBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+    menuBtn.onmouseenter = () => { menuBtn.style.opacity = '1'; };
+    menuBtn.onmouseleave = () => { menuBtn.style.opacity = '.75'; };
+    const drawer = el('aside', { ...chrome, position: 'absolute', top: '0', left: '0', bottom: '0', width: '248px', zIndex: 65, display: 'flex', flexDirection: 'column', background: 'rgba(24,24,24,.97)', boxShadow: '8px 0 28px rgba(0,0,0,.28)', transform: 'translateX(-100%)', transition: 'transform .16s ease', visibility: 'hidden' }, root);
+    drawer.setAttribute('aria-label', 'Preview menu');
+    const head = el('div', { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 12px 10px 16px', fontWeight: 600 }, drawer);
+    el('span', null, head).textContent = 'Preview';
+    const shut = el('button', { ...chrome, width: '24px', height: '24px', border: '0', borderRadius: '6px', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1' }, head);
+    shut.textContent = '\u00d7';
+    shut.title = 'Close menu';
+    const frameList = el('div', { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }, drawer);
+    for (const f of ctx.frames) {
+        const b = el('button', { ...chrome, display: 'block', width: '100%', padding: '7px 8px', border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }, frameList);
+        b.textContent = f.label;
+        b.title = f.label;
+        b.dataset.frame = f.id;
+        b.onclick = () => show(f.id);
+    }
+    const exit = el('button', { ...chrome, margin: '8px', padding: '8px 10px', border: '1px solid rgba(255,255,255,.22)', borderRadius: '8px', background: 'transparent', cursor: 'pointer' }, drawer);
+    exit.textContent = 'Exit preview';
+    function markCurrent() {
+        for (const b of frameList.children) b.style.background = b.dataset.frame === frameId ? 'rgba(255,255,255,.14)' : 'transparent';
+    }
+    const setMenu = on => {
+        drawer.style.visibility = 'visible';
+        drawer.style.transform = on ? 'translateX(0)' : 'translateX(-100%)';
+        drawer.dataset.open = on ? '1' : '';
+        if (!on) setTimeout(() => { if (!drawer.dataset.open) drawer.style.visibility = 'hidden'; }, 180);
+    };
+    menuBtn.onclick = () => setMenu(!drawer.dataset.open);
+    shut.onclick = () => setMenu(false);
+    exit.onclick = () => onExit?.();
+    // Clicking the design itself folds the menu away again.
+    root.addEventListener('pointerdown', ev => { if (drawer.dataset.open && !drawer.contains(ev.target) && !menuBtn.contains(ev.target)) setMenu(false); }, true);
+    // Escape closes the top layer, then the menu, then leaves the preview (a field being typed in just loses focus).
+    const onKey = e => {
+        if (e.key !== 'Escape') return;
+        e.stopPropagation();
+        if (layers.length) closeLayers('current');
+        else if (drawer.dataset.open) setMenu(false);
+        else if (document.activeElement?.dataset?.field) document.activeElement.blur();
+        else onExit?.();
+    };
     const resize = () => draw();
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', resize);
     draw();
-    return { close() { document.removeEventListener('keydown', onKey); window.removeEventListener('resize', resize); root.remove(); } };
+    return { close() { document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', resize); root.remove(); } };
 }

@@ -5,7 +5,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, normalizeInputBehavior, normalizeInteractions, modeForState, normalizeStateMapping, pickedModeId, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
 
 
 // ===== document.js =====
@@ -14772,7 +14772,7 @@ function swapEntries() {
                 leaf = parts.pop();
                 group = parts.join(' / ');
             }
-            out.push({ id: c.id, libId: c.libRef ? c.libRef.slice(0, c.libRef.indexOf(':')) : null, page: p.name.trim() || 'Page', group, leaf, ids: set ? new Set(p.nodes.filter(v => v.parentId === set.id && v.component).map(v => v.id)) : new Set([c.id]) });
+            out.push({ id: c.id, libId: c.libRef ? c.libRef.slice(0, c.libRef.indexOf(':')) : null, page: p.name.trim() || 'Page', group, path: group ? group.split(' / ') : [], leaf, ids: set ? new Set(p.nodes.filter(v => v.parentId === set.id && v.component).map(v => v.id)) : new Set([c.id]) });
         }
     return out;
 }
@@ -14785,7 +14785,7 @@ function swapLibEntries(have) {
             if (c.hidden || /^[_.]/.test(c.name) || have.has(`${snap.id}:${c.id}`))
                 continue;
             const parts = c.name.split('/').map(s => s.trim()), leaf = parts.pop();
-            out.push({ id: null, libId: snap.id, libComp: c.id, snap, c, page: 'Library · ' + snap.name, group: parts.join(' / '), leaf, ids: new Set() });
+            out.push({ id: null, libId: snap.id, libComp: c.id, snap, c, page: 'Library · ' + snap.name, group: parts.join(' / '), path: parts.slice(), leaf, ids: new Set() });
         }
     }
     return out;
@@ -14809,37 +14809,67 @@ function openSwapPicker(anchor, { current = null, onPick }) {
     // A component set is listed once (its first variant): the entry holding the current variant is the selected one.
     if (cur)
         limit = Math.max(limit, entries.indexOf(cur) + 20);
+    // The list is a tree: a page is a folder, and so is every "Folder / Sub" part of a component's name. Folders start closed,
+    // except the ones leading to the component that is chosen now; a search opens every folder that holds a match.
+    const open = new Set(), nodeKey = (e, depth) => [e.page, ...e.path.slice(0, depth)].join(' › ');
+    if (cur)
+        for (let d = 0; d <= cur.path.length; d++)
+            open.add(nodeKey(cur, d));
+    // Picking a page or library in the filter opens it.
+    const openFiltered = () => {
+        if (SWP.page)
+            for (const e of entries)
+                if (swapMatch(e))
+                    open.add(nodeKey(e, 0));
+    };
+    openFiltered();
     const list = () => {
         const ql = q.trim().toLowerCase();
-        let html = '', shown = 0, hidden = 0, lastPage = null, lastGroup = null;
+        let html = '', shown = 0, hidden = 0;
+        const roots = new Map();
         for (const e of entries) {
             if (!swapMatch(e))
                 continue;
             if (ql && !(e.group + ' ' + e.leaf).toLowerCase().includes(ql))
                 continue;
-            if (shown >= limit) {
-                hidden++;
-                continue;
+            let node = roots.get(e.page);
+            if (!node)
+                roots.set(e.page, node = { name: e.page, key: nodeKey(e, 0), kids: new Map(), items: [], count: 0, page: true });
+            node.count++;
+            for (let d = 1; d <= e.path.length; d++) {
+                let kid = node.kids.get(e.path[d - 1]);
+                if (!kid)
+                    node.kids.set(e.path[d - 1], kid = { name: e.path[d - 1], key: nodeKey(e, d), kids: new Map(), items: [], count: 0 });
+                kid.count++;
+                node = kid;
             }
-            shown++;
-            if (e.page !== lastPage) {
-                html += `<div class="vpk-coll">${esc(e.page)}</div>`;
-                lastPage = e.page;
-                lastGroup = null;
-            }
-            if (e.group && e.group !== lastGroup) {
-                html += `<div class="vpk-group">${esc(e.group)}</div>`;
-                lastGroup = e.group;
-            }
-            else if (!e.group)
-                lastGroup = null;
-            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e === cur ? 'on' : ''}" data-pick="${e.id || `lib:${e.libId}:${e.libComp}`}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" ${e.id ? `data-thumb="${e.id}"` : `data-lib-thumb="${e.libId}:${e.libComp}"`}>${e.id ? swapThumbHtml(e.id) : libThumbHtml(e.snap, e.c)}</span><span class="vp-name">${esc(e.leaf)}</span>${e === cur ? icon('check', 12) : ''}</button>`;
+            node.items.push(e);
         }
+        const render = (node, depth) => {
+            const isOpen = !!ql || open.has(node.key) || (node.page && roots.size === 1);
+            html += `<button class="vpk-node ${node.page ? 'is-page' : ''}" style="--d:${depth}" data-vpk-toggle="${esc(node.key)}" aria-expanded="${isOpen}"><i class="vpk-chev">${icon(isOpen ? 'chevronDown' : 'chevron', 10)}</i><span class="vp-name">${esc(node.name)}</span><span class="vpk-count">${node.count.toLocaleString()}</span></button>`;
+            if (!isOpen)
+                return;
+            for (const kid of node.kids.values())
+                render(kid, depth + 1);
+            for (const e of node.items) {
+                if (shown >= limit) {
+                    hidden++;
+                    continue;
+                }
+                shown++;
+                html += `<button class="vp-item vpk-item ${e === cur ? 'on' : ''}" style="--d:${depth + 1}" data-pick="${e.id || `lib:${e.libId}:${e.libComp}`}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" ${e.id ? `data-thumb="${e.id}"` : `data-lib-thumb="${e.libId}:${e.libComp}"`}>${e.id ? swapThumbHtml(e.id) : libThumbHtml(e.snap, e.c)}</span><span class="vp-name">${esc(e.leaf)}</span>${e === cur ? icon('check', 12) : ''}</button>`;
+            }
+        };
+        for (const node of roots.values())
+            render(node, 0);
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
-        pop.querySelector('.vp-list').innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        const lst = pop.querySelector('.vp-list'), top = lst.scrollTop;
+        lst.innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        lst.scrollTop = top;
         if (pop.isConnected)
-            watchSwapThumbs(pop.querySelector('.vp-list'));
+            watchSwapThumbs(lst);
     };
     pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Library or page"><option value="">All libraries</option><option value="@file" ${SWP.page === '@file' ? 'selected' : ''}>Created in this file</option>${libIds.map(id => `<option value="lib:${esc(id)}" ${SWP.page === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}<optgroup label="Pages">${pages.map(p => `<option value="page:${esc(p)}" ${SWP.page === 'page:' + p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</optgroup></select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
     list();
@@ -14868,12 +14898,20 @@ function openSwapPicker(anchor, { current = null, onPick }) {
         if (e.target.matches('[data-swp-page]')) {
             SWP.page = e.target.value;
             limit = 300;
+            openFiltered();
             list();
         }
     });
     pop.addEventListener('click', e => {
         if (e.target.closest('[data-vpk-more]')) {
             limit += 300;
+            list();
+            return;
+        }
+        const fold = e.target.closest('[data-vpk-toggle]');
+        if (fold) {
+            const k = fold.dataset.vpkToggle;
+            if (open.has(k)) open.delete(k); else open.add(k);
             list();
             return;
         }
@@ -18120,19 +18158,15 @@ async function startLivePreview() {
     }
     stopLivePreview();
     const m = await import('../preview/live.js');
-    livePreview = m.openLivePreview(ctx, area);
-    $('#mode-design')?.classList.remove('active');
-    $('#mode-preview')?.classList.add('active');
+    livePreview = m.openLivePreview(ctx, document.body, { onExit: stopLivePreview });
+    $('#present')?.classList.add('active');
     return true;
 }
 function stopLivePreview() {
     livePreview?.close();
     livePreview = null;
-    $('#mode-preview')?.classList.remove('active');
-    $('#mode-design')?.classList.add('active');
+    $('#present')?.classList.remove('active');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && livePreview && !isInput(document.activeElement))
-    stopLivePreview(); });
 // ===== Behavior tab: what a layer does in Preview =====
 // Isi tab kontekstual: mengikuti tipe komponen yang dipilih. Tombol → state mapping + interaction,
 // input → label + area typeable + error + interaction. State tidak pernah memakai nilai hardcoded dari
@@ -18202,34 +18236,29 @@ function bhTypeOf(n) {
     return 'generic';
 }
 /**
- * Components a behavior can point at: standalone components and component sets (a set stands for its variants).
- * `kind` 'icon' lists only icons (the show / hide icon pickers); 'other' leaves them out (a design system has thousands).
+ * A component a behavior points at (an icon, a dropdown's content…): a button that opens the same grouped, searchable picker as
+ * "Swap instance". A component set is stored by its own id, so any of its variants counts.
  */
-function bhComponents(kind = 'other') {
-    const multi = doc.data.pages.length > 1, out = [];
-    for (const p of doc.data.pages) {
-        for (const n of p.nodes) {
-            const standalone = n.component && !parentSetOf(n);
-            if (!n.componentSet && !standalone) continue;
-            if (n.softDeleted) continue;
-            const icon = looksLikeIcon(n.name, p.name);
-            if (icon !== (kind === 'icon')) continue;
-            out.push({ id: n.id, label: multi ? `${p.name} / ${n.name}` : n.name });
-        }
-    }
-    return out.sort((a, b) => a.label.localeCompare(b.label));
+function bhComponentButton(path, value, label) {
+    const c = value && allNodes().find(n => n.id === value);
+    const text = c ? c.name : value ? '(missing component)' : 'Choose component';
+    return `<div class="field bh-pickrow"><span>${esc(label)}</span><button type="button" class="swap-btn" data-bh-pick="${esc(path)}" data-bh-value="${esc(value || '')}" title="${esc(text)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(text)}</span>${CHEV_SVG}</button>${value ? `<button type="button" class="icon-button small" data-bh-pick-clear="${esc(path)}" title="Clear" aria-label="Clear ${esc(label)}">${icon('close', 12)}</button>` : ''}</div>`;
 }
-function bhComponentSelect(path, value, label, list) {
-    const known = list.some(c => c.id === value);
-    // A long list (icons) gets a search box that narrows the options.
-    const search = list.length > 30 ? `<input class="full-width" data-bh-filter placeholder="Search ${list.length} components…" aria-label="Search components">` : '';
-    return `<label class="field"><span>${esc(label)}</span>${search}<select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${value && !known ? `<option value="${esc(value)}" selected>(missing component)</option>` : ''}${list.map(c => `<option value="${c.id}" ${c.id === value ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>`;
-}
-$('#inspector').addEventListener('input', e => {
-    const box = e.target.closest?.('[data-bh-filter]');
-    if (!box) return;
-    const q = box.value.trim().toLowerCase(), select = box.closest('label').querySelector('select');
-    for (const o of select.options) o.hidden = !!q && o.value !== '' && !o.selected && !o.text.toLowerCase().includes(q);
+document.addEventListener('click', e => {
+    const clear = e.target.closest?.('[data-bh-pick-clear]'), pick = e.target.closest?.('[data-bh-pick]');
+    if (!clear && !pick) return;
+    const n = activeNode();
+    if (!n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
+    const write = id => { transaction('Behavior', () => { bhWrite(n, path, id || undefined); doc.touch(n); }); renderInspector(); };
+    if (clear) return write(null);
+    const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
+    openSwapPicker(pick, {
+        current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); write(set ? set.id : id); },
+    });
 });
 function bhFrameSelect(path, value, frames, action, label) {
     const roles = TARGET_ROLES[action] || ['page'];
@@ -18240,17 +18269,18 @@ function bhFrameSelect(path, value, frames, action, label) {
 function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
-    const comps = bhComponents();
     // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
-    const openPick = (i, a, label) => bhComponentSelect(`interactions.${i}.action.targetComponentId`, a.targetComponentId, label, comps)
+    // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
+    const placementRows = (i, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`interactions.${i}.action.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(p => [p, p]))}</label><label class="field"><span>Offset</span><input type="number" data-bh-path="interactions.${i}.action.offset" data-bh-kind="plain" value="${a.offset ?? ''}" placeholder="0" aria-label="Offset in px"><i class="unit">px</i></label>`;
+    const openPick = (i, a, label) => bhComponentButton(`interactions.${i}.action.targetComponentId`, a.targetComponentId, label)
         + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
     return list.map((it, i) => {
         const a = it.action;
         let extra = '';
         if (a.type === 'navigate') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
-        if (a.type === 'open-dropdown') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'bottom-left', POSITIONS);
+        if (a.type === 'open-dropdown') extra = openPick(i, a, 'Open') + placementRows(i, a, 'bottom-start');
         if (a.type === 'open-overlay') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
-        if (a.type === 'open-popover') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'top', POSITIONS);
+        if (a.type === 'open-popover') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(i, a, 'top');
         if (a.type === 'close-overlay') extra = bhSelect(`interactions.${i}.action.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
         return `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
             <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
@@ -18270,10 +18300,9 @@ function bhInputHtml(n, layers) {
     typeParts.push(`<label class="field"><span>Typeable layer</span><select class="full-width" data-bh-path="input.typeable.frameId" data-bh-kind="plain">${opt(texts, ib.typeable.frameId)}</select></label>`);
     typeParts.push(`<label class="field"><span>Input type</span>${bhSelect('input.typeable.inputType', 'plain', ib.typeable.inputType || 'text', INPUT_TYPES.map(t => [t.id, t.label]))}</label>`);
     if (ib.typeable.inputType === 'password') {
-        const icons = bhComponents('icon');
         typeParts.push(`<p class="small-label">Clicking the icon in the field swaps it between these two components.</p>`);
-        typeParts.push(bhComponentSelect('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden', icons));
-        typeParts.push(bhComponentSelect('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown', icons));
+        typeParts.push(bhComponentButton('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden'));
+        typeParts.push(bhComponentButton('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown'));
     }
     typeParts.push(bhStyleValue('input.typeable.placeholder', ib.typeable.placeholder, 'Placeholder'));
     typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
@@ -18337,6 +18366,14 @@ function bhStateCollections(n) {
  * Section State mapping: state dibaca dari variable collection yang disambungkan ke layer
  * (terisi otomatis), plus override per state kalau sebuah state perlu nilai lain.
  */
+// Which state rows are open, kept across re-renders of the panel.
+const BH_OPEN = new Set();
+document.addEventListener('toggle', e => {
+    const key = e.target?.dataset?.bhOpen;
+    if (key === undefined) return;
+    if (e.target.open) BH_OPEN.add(key);
+    else BH_OPEN.delete(key);
+}, true);
 function bhStateSection(n) {
     const colls = bhStateCollections(n);
     const stateColls = bhCollections().filter(isStateCollection);
@@ -18356,17 +18393,21 @@ function bhStateSection(n) {
             const used = Object.keys(overrides);
             const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
             const options = [`<option value="">${esc(auto ? `Automatic · ${auto.name}` : 'Not set · uses the fallback state')}</option>`, ...sc.coll.modes.map(m => `<option value="${esc(m.id)}" ${m.id === picked ? 'selected' : ''}>${esc(m.name)}</option>`)].join('');
-            return `<div class="bh-state">
-                <div class="bh-card-head"><b>${esc(STATE_LABEL[state] || state)}</b><span class="small-label">${esc(STATE_HINT[state] || '')}</span></div>
+            const openKey = `${sc.coll.id}:${state}`;
+            return `<details class="bh-state" data-bh-open="${esc(openKey)}" ${BH_OPEN.has(openKey) ? 'open' : ''}>
+                <summary><b>${esc(STATE_LABEL[state] || state)}</b><span class="small-label">${esc(mode ? mode.name : 'Not set')}</span></summary>
+                <div class="bh-state-body">
+                <p class="small-label">${esc(STATE_HINT[state] || '')}</p>
                 <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(STATE_LABEL[state] || state)}">${options}</select>
                 ${values.length
                     ? `<details class="bh-values"><summary class="small-label">${values.length} bound value${values.length === 1 ? '' : 's'} in mode ${esc(mode.name)}</summary>${values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(v.layer ? `${v.layer} · ${bhPropLabel(v.prop)}` : bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')}</details>`
                     : (mode ? '<p class="small-label">No variable from this collection is bound to this layer.</p>' : '')}
                 ${used.map(prop => bhOverrideRow(state, prop, overrides[prop])).join('')}
                 ${free.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
-            </div>`;
+                </div>
+            </details>`;
         }).join('');
-        return `<div class="bh-card"><div class="bh-card-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
+        return `<div class="bh-coll"><div class="bh-coll-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
     }).join('');
     return section('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
 }
@@ -19704,8 +19745,7 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-$('#mode-preview').onclick = () => startLivePreview();
-$('#mode-design').onclick = stopLivePreview;
+$('#present').onclick = () => startLivePreview();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {

@@ -33,10 +33,7 @@ export function Topbar({ user }) {
             </div>
             <div className="top-actions">
                 <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
-                <div className="mode-toggle" role="tablist" aria-label="Canvas mode">
-                    <button className="active" id="mode-design" role="tab">Design</button>
-                    <button id="mode-preview" role="tab">Preview</button>
-                </div>
+                <button className="icon-button" id="present" title="Preview" aria-label="Preview" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>

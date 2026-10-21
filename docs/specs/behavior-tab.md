@@ -70,7 +70,9 @@ State yang dikenal Preview:
 | Error / Disabled | gagal validasi / dinonaktifkan |
 
 Kalau sebuah state belum dipetakan, Preview memakai rantai fallback (mis. Selected → Focused → Default).
-Daftar nilai variable di tiap state hanya tampilan baca (dilipat).
+Setiap state adalah baris yang bisa dibuka-tutup (ringkasannya menampilkan mode yang dipakai); bagian dalamnya
+berisi dropdown mode, nilai variable (hanya tampilan baca, dilipat), dan override. Baris yang sedang terbuka tetap
+terbuka saat panel digambar ulang.
 
 Collection dianggap "collection state" kalau namanya menyebut state (`/state/i`) atau punya beberapa mode
 yang berarti state (hover / pressed / focused / …). Collection tema (Light/Dark) bukan state.
@@ -106,9 +108,17 @@ boleh berbeda.
 | Close overlay | `Current overlay` / `All overlays` | — |
 
 Beberapa interaction boleh per komponen (mis. `onClick → Navigate` **dan** `onHover → Open tooltip`).
-Dropdown, overlay, dan popover membuka sebuah **component** (`targetComponentId`), bukan frame: daftar memuat
-component dan component set (ikon tidak ikut, dan ada kotak cari). Component set dibuka sebagai variant
+Dropdown, overlay, dan popover membuka sebuah **component** (`targetComponentId`), bukan frame. Memilihnya
+memakai jendela yang sama dengan *Swap instance*: pohon yang bisa dicari, di mana setiap page adalah folder dan
+setiap bagian nama `Folder / Sub / Nama` juga folder di dalamnya. Folder tertutup, kecuali jalur menuju component
+yang sedang dipilih (dan semua folder yang berisi hasil pencarian). Component set dibuka sebagai variant
 pertamanya. Interaction lama yang menunjuk frame (`targetFrameId`) tetap jalan sampai diganti component.
+
+Dropdown dan popover punya **Placement** (`top-start`, `top`, `top-end`, `right-start`, `right`,
+`right-end`, `bottom-start`, `bottom`, `bottom-end`, `left-start`, `left`, `left-end`) dan **Offset**
+(px dari component yang membukanya). Nama sudut lama (`bottom-left` dst.) dibaca sebagai padanannya. Layer yang
+dibuka lewat **On hover** / **On mouse enter** tertutup saat pointer tidak lagi berada di atas pemicunya maupun
+layer itu, dan tidak menumpuk saat pemicunya digambar ulang; layer yang dibuka lewat klik menutup saat dipicu lagi.
 
 ## Bagian 3 — Input field
 
@@ -167,7 +177,12 @@ component set / main component.
   dibaca dari state mapping;
 - interaction dijalankan saat trigger-nya cocok: navigasi mengganti frame, dropdown / overlay / popover
   dirender sebagai layer di atas preview (overlay memakai backdrop), Escape menutup layer teratas;
-- input: hanya layer typeable yang bisa diketik, frame error muncul pada state `error`.
+- input: hanya layer typeable yang bisa diketik, frame error muncul pada state `error`. Meninggalkan field wajib
+  yang belum pernah diisi kembali ke `default`; error hanya muncul kalau teks sempat diisi lalu dikosongkan.
+
+Preview dibuka dengan tombol **play** di header dan memenuhi jendela (tanpa panel editor). Satu tombol menu kecil
+di pojok kiri atas membuka sidebar yang berisi daftar frame dan **Exit preview**; klik pada desain atau Escape
+menutupnya, dan Escape berikutnya keluar dari Preview.
 
 ## Batasan
 

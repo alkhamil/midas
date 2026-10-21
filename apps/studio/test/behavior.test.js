@@ -1,7 +1,7 @@
 // Model perilaku (tab Behavior): tipe komponen, state mapping ke variable, interaction, input behavior.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { componentTypeOf, getPath, isStateCollection, modeForState, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, statesFor } from '../src/engine/behavior.js';
+import { componentTypeOf, getPath, isStateCollection, modeForState, normalizeInputBehavior, normalizePlacement, PLACEMENTS, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, statesFor } from '../src/engine/behavior.js';
 
 test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('Button Primary'), 'button');
@@ -78,6 +78,25 @@ test('a dropdown, overlay or popover opens a component; a frame picked earlier k
     assert.equal(navigate.action.targetComponentId, undefined);
     assert.equal(legacy.action.targetFrameId, 'frame');
     assert.equal(both.action.targetFrameId, undefined);
+});
+
+test('a dropdown or popover sits on a side of its anchor, a number of pixels away', () => {
+    assert.equal(PLACEMENTS.length, 12);
+    assert.equal(normalizePlacement('right-start'), 'right-start');
+    assert.equal(normalizePlacement('bottom-left'), 'bottom-start', 'the corner names used before still work');
+    assert.equal(normalizePlacement('top-right'), 'top-end');
+    assert.equal(normalizePlacement('nonsense', 'top'), 'top');
+    const [dd, pop, overlay] = normalizeInteractions([
+        { action: { type: 'open-dropdown', position: 'bottom-left', offset: '8' } },
+        { action: { type: 'open-popover', position: 'left-end', offset: 'x' } },
+        { action: { type: 'open-overlay', position: 'center', offset: 4 } },
+    ]);
+    assert.equal(dd.action.position, 'bottom-start');
+    assert.equal(dd.action.offset, 8);
+    assert.equal(pop.action.position, 'left-end');
+    assert.equal(pop.action.offset, undefined, 'an offset that is not a number is dropped');
+    assert.equal(overlay.action.position, 'center', 'an overlay is placed on the screen, not around an anchor');
+    assert.equal(overlay.action.offset, undefined);
 });
 
 test('the error state is only asked for input fields', () => {

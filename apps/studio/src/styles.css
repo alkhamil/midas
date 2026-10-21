@@ -2609,6 +2609,13 @@ select.vw-text { cursor: pointer }
 .vpk-coll { padding: 8px 8px 2px; font-size: 12px; font-weight: 600; color: var(--text) }
 .vpk-group { padding: 6px 8px 2px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary) }
 .vpk-item.in-group { padding-left: 14px }
+/* Component picker tree: pages and name folders open and close; items are indented under them */
+.vpk-node { display: flex; align-items: center; gap: 6px; width: 100%; height: 28px; padding: 0 8px 0 calc(4px + var(--d, 0) * 14px); border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer }
+.vpk-node.is-page { color: var(--text); font-size: 12px }
+.vpk-node:hover { background: var(--accent-bg) }
+.vpk-chev { display: grid; place-items: center; width: 14px; flex: none }
+.vpk-count { margin-left: auto; padding-left: 8px; font-weight: 400; font-size: 11px; color: var(--text-secondary); opacity: .7 }
+.vpk-node + .vpk-item, .vpk-item[style*="--d"] { padding-left: calc(8px + var(--d, 0) * 14px) }
 .vpk-item svg { color: var(--accent); flex: none }
 .vpk-grid { display: grid; grid-template-columns: repeat(auto-fill, 24px); gap: 6px; padding: 4px 8px 8px }
 .vpk-sw { width: 24px; height: 24px; border-radius: 5px; border: 1px solid #0003; cursor: pointer; padding: 0 }
@@ -3516,8 +3523,20 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 /* Dialog yang dibuka interaction (preview app) */
 .cb-preview-modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:rgba(15,23,42,.45)}
 .cb-preview-modal-card{max-width:min(92vw,640px);max-height:86vh;overflow:auto;border-radius:12px;background:var(--canvas);box-shadow:0 24px 64px rgba(0,0,0,.4)}
-.bh-state{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:8px;background:var(--canvas)}
+.bh-coll{display:flex;flex-direction:column}
+.bh-coll-head{display:flex;align-items:center;justify-content:space-between;padding:2px 0 6px;font-size:11px;font-weight:600}
+.bh-coll-head .icon-button{margin:-3px -3px -3px 0}
+.bh-state{border-top:1px solid var(--border-soft)}
+.bh-state>summary{display:flex;align-items:center;gap:8px;height:32px;list-style:none;font-size:12px;cursor:pointer}
+.bh-state>summary::-webkit-details-marker{display:none}
+.bh-state>summary::before{content:'';flex:none;width:5px;height:5px;margin:0 3px 0 2px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .12s}
+.bh-state[open]>summary::before{transform:rotate(45deg)}
+.bh-state>summary .small-label{margin-left:auto;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-state-body{display:flex;flex-direction:column;gap:8px;padding:0 0 10px 16px}
 .bh-value-line{display:flex;align-items:center;gap:6px}
+.bh-pickrow>span{cursor:default}
+.bh-pickrow .swap-btn{background:transparent;height:29px}
+.bh-pickrow .icon-button{flex:none;margin-right:2px}
 .bh-values{display:flex;flex-direction:column;gap:6px}
 .bh-values>summary{cursor:pointer;margin-bottom:4px}
 .bh-values[open]>summary{margin-bottom:6px}

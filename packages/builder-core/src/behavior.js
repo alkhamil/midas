@@ -90,6 +90,23 @@ export const POSITIONS = [
     { id: 'bottom-right', label: 'Bottom right' },
 ];
 
+/**
+ * Where a dropdown or popover sits around the thing that opened it: a side, then how it lines up along that side.
+ * (An overlay is placed on the screen instead: see POSITIONS.)
+ */
+export const PLACEMENTS = [
+    'top-start', 'top', 'top-end', 'right-start', 'right', 'right-end',
+    'bottom-start', 'bottom', 'bottom-end', 'left-start', 'left', 'left-end',
+];
+
+const LEGACY_PLACEMENT = { 'top-left': 'top-start', 'top-right': 'top-end', 'bottom-left': 'bottom-start', 'bottom-right': 'bottom-end' };
+
+/** A placement id, also for the corner names used before (bottom-left → bottom-start); `fallback` when it is none of them. */
+export function normalizePlacement(pos, fallback = 'bottom-start') {
+    const p = LEGACY_PLACEMENT[pos] || pos;
+    return PLACEMENTS.includes(p) ? p : fallback;
+}
+
 const BUTTON_NAME = /button|btn|cta|action|link|iconbutton/i;
 const INPUT_NAME = /input|field|textbox|textarea|select|switch|checkbox|radio/i;
 const DROPDOWN_NAME = /dropdown|menu|combobox|listbox/i;
@@ -251,7 +268,8 @@ function normalizeInteraction(it, i, type, component) {
             type,
             ...(component ? { targetComponentId: component } : {}),
             ...(it?.action?.targetFrameId && !component ? { targetFrameId: String(it.action.targetFrameId) } : {}),
-            ...(it?.action?.position ? { position: String(it.action.position) } : {}),
+            ...(it?.action?.position ? { position: type === 'open-dropdown' || type === 'open-popover' ? normalizePlacement(String(it.action.position), type === 'open-dropdown' ? 'bottom-start' : 'top') : String(it.action.position) } : {}),
+            ...(/^open-(dropdown|popover)$/.test(type) && it?.action?.offset !== undefined && it.action.offset !== '' && Number.isFinite(Number(it.action.offset)) ? { offset: Number(it.action.offset) } : {}),
             ...(it?.action?.anchor ? { anchor: String(it.action.anchor) } : {}),
             ...(it?.action?.backdrop !== undefined ? { backdrop: !!it.action.backdrop } : {}),
             ...(it?.action?.closeOnBackdrop !== undefined ? { closeOnBackdrop: !!it.action.closeOnBackdrop } : {}),

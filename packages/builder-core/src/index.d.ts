@@ -23,6 +23,7 @@ export interface Interaction {
     targetFrameId?: string;
     targetComponentId?: string;
     position?: string;
+    offset?: number;
     anchor?: string;
     backdrop?: boolean;
     closeOnBackdrop?: boolean;
