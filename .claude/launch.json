@@ -26,21 +26,6 @@
         "--strictPort"
       ],
       "port": 5174
-    },
-    {
-      "name": "base-project",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev",
-        "--workspace",
-        "@midas/base-project",
-        "--",
-        "--port",
-        "5181",
-        "--strictPort"
-      ],
-      "port": 5181
     }
   ]
 }

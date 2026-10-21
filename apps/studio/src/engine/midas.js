@@ -8033,7 +8033,7 @@ function invalidate() {
 function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW.open && !document.getElementById('fx-window')?.contains(document.activeElement))
     renderFxWindow(); if (FP.open && !document.getElementById('fill-picker')?.contains(document.activeElement))
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
-    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; updateDocFolderLabel(); $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); notifyBuilder(); }
+    renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; updateDocFolderLabel(); $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
 function syncComponents(activeOnly = true) {
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
