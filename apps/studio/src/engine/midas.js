@@ -8638,8 +8638,6 @@ function renderInspector() {
         html += selectionColorsHtml();
         if (!multi && n.type === 'frame' && !n.isSection && !insideInstance(n))
             html += layoutGuideSectionHtml(n);
-        if (!multi && !n.component && !n.componentSet)
-            html += protoSectionHtml(n);
         html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
@@ -17993,121 +17991,17 @@ function commandPalette() {
     };
     render();
 }
-// ===== Prototype: what a layer does in Preview =====
-// `prototypeTarget` = the frame to open when the layer is clicked ("back" = the previous screen);
-// `inputField` = people can type in this layer in Preview ('text' | 'email' | 'password').
-const protoFrames = () => doc.data.pages.filter(p => !p.internal && !isPageDivider(p)).flatMap(p => p.nodes
-    .filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isSection && n.visible !== false)
-    .map(n => ({ id: n.id, name: n.name, page: p.name })));
-function protoSectionHtml(n) {
-    const frames = protoFrames().filter(f => f.id !== n.id), pages = new Set(frames.map(f => f.page)).size > 1;
-    const opts = [['', 'Nothing'], ['back', 'Go back to the previous screen'], ...frames.map(f => [f.id, `Open “${pages ? `${f.page} / ` : ''}${f.name}”`])];
-    const target = n.prototypeTarget || '';
-    const types = [['text', 'Text'], ['email', 'Email'], ['password', 'Password']];
-    return section('Interaction', `<div class="stack">
-<span class="small-label">When someone clicks this in Preview</span>
-<select class="full-width" data-proto="target" aria-label="When clicked">${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === target ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
-<label class="checkbox-row"><input type="checkbox" data-proto="input" ${n.inputField ? 'checked' : ''}>People can type here</label>
-${n.inputField ? `<select class="full-width" data-proto="inputType" aria-label="Kind of input">${types.map(([v, l]) => `<option value="${v}" ${v === n.inputField ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="small-label">Tip: pick the text layer inside the field (the placeholder), so its border and icons stay.</span>` : ''}
-</div>`);
-}
-document.addEventListener('change', e => {
-    const el = e.target.closest?.('[data-proto]');
-    const ns = el ? selected() : [];
-    if (!el || ns.length !== 1)
-        return;
-    const n = ns[0], kind = el.dataset.proto;
-    transaction('Change interaction', () => {
-        if (kind === 'target') {
-            if (el.value)
-                n.prototypeTarget = el.value;
-            else
-                delete n.prototypeTarget;
-        }
-        else if (kind === 'input') {
-            if (el.checked)
-                n.inputField = n.inputField || 'text';
-            else
-                delete n.inputField;
-        }
-        else if (kind === 'inputType')
-            n.inputField = el.value;
-        doc.touch(n);
-    });
-    renderInspector();
-});
-const solidFillOf = n => {
-    const f = Array.isArray(n.fills) ? n.fills.find(x => x?.type === 'solid' && x.visible !== false) : null;
-    return f?.color || (n.fill && n.fill !== 'none' && (n.fillOpacity ?? 1) > 0.5 ? n.fill : null);
-};
-const topFramesOfPage = () => doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
 async function present() {
     finishText();
-    state.previewFrames = topFramesOfPage();
+    state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
     if (!state.previewFrames.length) {
         toast('Create a frame to present your design.');
         return;
     }
     const active = activeNode(), ancestor = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
     state.previewIndex = Math.max(0, state.previewFrames.findIndex(n => n.id === ancestor?.id));
-    state.previewHistory = [];
-    state.previewValues = new Map();
-    state.previewPage0 = doc.data.pageId;
     $('#presentation').classList.remove('hidden');
     await showPreview();
-}
-// Open a frame (on any page) while previewing; `push` keeps the screen we came from for "Go back".
-async function previewGoto(frameId, push = true) {
-    const here = state.previewFrames[state.previewIndex];
-    const page = doc.data.pages.find(p => p.nodes.some(n => n.id === frameId));
-    if (!page)
-        return;
-    if (page.id !== doc.data.pageId) {
-        doc.data.pageId = page.id;
-        doc.refresh();
-        state.previewFrames = topFramesOfPage();
-    }
-    const index = state.previewFrames.findIndex(n => n.id === frameId);
-    if (index < 0)
-        return;
-    if (push && here)
-        state.previewHistory.push(here.id);
-    state.previewIndex = index;
-    await showPreview();
-}
-function previewInputs(frame, canvas) {
-    const stage = $('#presentation-stage');
-    stage.querySelectorAll('.pv-input').forEach(x => x.remove());
-    const fb = doc.world(frame.id).box, k = canvas.clientWidth / fb.w, cl = canvas.offsetLeft, ct = canvas.offsetTop;
-    for (const d of doc.descendants(frame.id)) {
-        if (!d.inputField || d.visible === false)
-            continue;
-        const wb = doc.world(d.id).box, parent = doc.get(d.parentId), isText = d.type === 'text';
-        const textNode = isText ? d : doc.descendants(d.id).find(x => x.type === 'text' && x.visible !== false);
-        let bg = null;
-        for (let a = isText ? parent : d; a && !bg; a = doc.get(a.parentId))
-            bg = solidFillOf(a);
-        const inset = isText ? 0 : (d.strokeWidth || 0) + 1;
-        const pb = isText && parent ? doc.world(parent.id).box : null;
-        const w = isText && pb ? Math.max(wb.w, pb.x + pb.w - wb.x - 2) : wb.w - inset * 2;
-        const input = document.createElement('input');
-        input.className = 'pv-input';
-        input.type = d.inputField;
-        input.autocomplete = 'off';
-        input.spellcheck = false;
-        input.placeholder = textNode?.text || '';
-        input.value = state.previewValues.get(d.id) ?? '';
-        input.setAttribute('aria-label', textNode?.text || d.name || 'Input');
-        Object.assign(input.style, {
-            left: `${cl + (wb.x - fb.x + (isText ? 0 : inset)) * k}px`, top: `${ct + (wb.y - fb.y + (isText ? 0 : inset)) * k}px`,
-            width: `${w * k}px`, height: `${(isText && pb ? Math.max(wb.h, pb.h * 0.5) : wb.h - inset * 2) * k}px`,
-            background: bg || '#fff', fontFamily: textNode?.fontFamily || 'inherit', fontSize: `${(textNode?.fontSize || 14) * k}px`,
-            fontWeight: String(textNode?.fontWeight || 400), padding: isText ? '0' : `0 ${12 * k}px`,
-        });
-        input.style.setProperty('--pv-placeholder', textNode?.fill && textNode.fill !== 'none' ? textNode.fill : '#98a2b3');
-        input.oninput = () => state.previewValues.set(d.id, input.value);
-        stage.appendChild(input);
-    }
 }
 async function showPreview() {
     const n = state.previewFrames[state.previewIndex];
@@ -18125,7 +18019,6 @@ async function showPreview() {
         const stage = $('#presentation-stage'), scale = Math.min((stage.clientWidth - 72) / canvas.width, (stage.clientHeight - 72) / canvas.height, 1);
         target.style.width = canvas.width * scale + 'px';
         target.style.height = canvas.height * scale + 'px';
-        previewInputs(n, target);
     }
     catch (e) {
         toast(e.message);
@@ -18137,18 +18030,7 @@ function stepPreview(delta) {
     state.previewIndex = (state.previewIndex + delta + state.previewFrames.length) % state.previewFrames.length;
     showPreview();
 }
-function closePreview() {
-    $('#presentation').classList.add('hidden');
-    $('#presentation-stage').querySelectorAll('.pv-input').forEach(x => x.remove());
-    // Opening a frame on another page switched the page behind the preview: put it back.
-    if (state.previewPage0 && doc.data.pageId !== state.previewPage0) {
-        doc.data.pageId = state.previewPage0;
-        doc.refresh();
-        refreshUI();
-    }
-    state.previewPage0 = null;
-    overlay.focus({ preventScroll: true });
-}
+function closePreview() { $('#presentation').classList.add('hidden'); overlay.focus({ preventScroll: true }); }
 // Event delegation keeps the chrome inexpensive even with a large scene tree.
 document.addEventListener('click', e => {
     const action = e.target.closest('[data-action]');
@@ -19728,27 +19610,18 @@ $('#text-editor').addEventListener('blur', () => setTimeout(() => {
 $('#close-presentation').onclick = closePreview;
 $('#prev-frame').onclick = () => stepPreview(-1);
 $('#next-frame').onclick = () => stepPreview(1);
-const previewTargetAt = e => {
-    const frame = state.previewFrames[state.previewIndex];
-    if (!frame)
-        return null;
-    const b = e.currentTarget.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
-    const hit = hitTest(w, { deep: true });
-    return hit ? [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget) || null : null;
-};
 $('#presentation-canvas').onclick = e => {
-    const target = previewTargetAt(e);
-    if (!target)
-        return;
-    if (target.prototypeTarget === 'back') {
-        const prev = state.previewHistory.pop();
-        if (prev)
-            previewGoto(prev, false);
+    const frame = state.previewFrames[state.previewIndex], b = e.target.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
+    const hit = hitTest(w, { deep: true });
+    const target = hit && [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget);
+    if (target) {
+        const index = state.previewFrames.findIndex(n => n.id === target.prototypeTarget);
+        if (index >= 0) {
+            state.previewIndex = index;
+            showPreview();
+        }
     }
-    else
-        previewGoto(target.prototypeTarget);
 };
-$('#presentation-canvas').onmousemove = e => { e.currentTarget.style.cursor = previewTargetAt(e) ? 'pointer' : 'default'; };
 document.addEventListener('keydown', e => {
     if (lib.open) {
         if (e.key === 'Escape' && !isInput(document.activeElement) && lib.index.some(m => m.id === lib.fileId && !m.trashed))
