@@ -22,6 +22,18 @@ export const userFileAccess = pgTable('user_file_access', {
     targetId: text('target_id').notNull(),
 }, t => [primaryKey({ columns: [t.userId, t.kind, t.targetId] })]);
 
+/** Token API pribadi (untuk MCP): hanya hash-nya yang disimpan; teks tokennya tampil sekali saat dibuat. */
+export const apiTokens = pgTable('api_tokens', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    /** Beberapa karakter awal, untuk dikenali di daftar. */
+    prefix: text('prefix').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+});
+
 export const sessions = pgTable('sessions', {
     id: text('id').primaryKey(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

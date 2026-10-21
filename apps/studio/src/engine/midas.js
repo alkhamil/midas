@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { choiceDialog, confirmDialog } from '../confirm.js';
-import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, assetsAsDataUrls } from '../storage.js';
+import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -4511,7 +4511,7 @@ function renderHome() {
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
         main = `${create}${head}${folderGrid}${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : subfolders.length ? '' : `<div class="home-empty">${q ? 'No files match your search.' : inAll && lib.folder ? 'This folder is empty. Drag files here, or use Move file in a file\'s right-click menu.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
-    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${lib.index.filter(m => !m.trashed && m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
+    home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws" data-home-account tabindex="0" role="button" title="Account"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${lib.index.filter(m => !m.trashed && m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
 }
 // ===== Users (administrators): who can sign in, what they may do and which files they can open =====
@@ -4601,6 +4601,14 @@ ${user ? `<label class="checkbox-row"><input type="checkbox" id="um-active" ${us
         }
     };
 }
+document.addEventListener('click', e => {
+    const box = e.target.closest?.('[data-home-account]');
+    const user = getSignedInUser();
+    if (!box || !user)
+        return;
+    const r = box.getBoundingClientRect();
+    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Change password', action: 'changePassword' }, { label: 'API access (MCP)', action: 'apiAccess' }, '-', { label: 'Sign out', action: 'signOut' }], r.left + 8, r.bottom + 6);
+});
 document.addEventListener('click', async e => {
     const el = e.target.closest?.('[data-user-add],[data-user-edit],[data-user-toggle],[data-user-delete]');
     if (!el)
@@ -4626,6 +4634,54 @@ document.addEventListener('click', async e => {
         toast(err?.message || String(err));
     }
 });
+// ===== API access: personal tokens so an AI assistant can read your designs through MCP =====
+async function apiAccessDialog(fresh = null) {
+    let tokens = [];
+    try {
+        tokens = await tokenApi.list();
+    }
+    catch (e) {
+        return toast(`Could not load API tokens: ${e?.message || e}`);
+    }
+    const url = `${location.origin}/mcp`, shown = fresh?.token || '<your-token>';
+    const claude = `claude mcp add --transport http midas ${url} --header "Authorization: Bearer ${shown}"`;
+    const json = JSON.stringify({ mcpServers: { midas: { type: 'http', url, headers: { Authorization: `Bearer ${shown}` } } } }, null, 2);
+    const ago = t => t ? timeAgo(t) : 'never';
+    modal(`${modalHeader('API access', 'Let an AI assistant (Claude, Cursor, …) read your designs through MCP.')}
+<div class="lp-form">
+<p class="small-label dk-intro">The assistant acts as you and only reads: it sees the files you can open and cannot change anything. Make one token per assistant and revoke it when you stop using it.</p>
+${fresh ? `<div class="lp-field"><span>Your new token — copy it now, it is not shown again</span><pre class="token-code lp-code" id="tk-new">${esc(fresh.token)}</pre><button type="button" class="wide-button" data-copy="tk-new">Copy token</button></div>` : ''}
+<form id="tk-form" class="lp-field"><span>New token</span><div class="lp-version"><input class="lp-input" id="tk-name" placeholder="Name, e.g. Claude on my laptop" maxlength="80" required><button class="wide-button primary" id="tk-make">Create</button></div></form>
+<div class="lp-field"><span>Connect</span><small>Server address</small><pre class="token-code lp-code" id="tk-url">${esc(url)}</pre>
+<small>Claude Code</small><pre class="token-code lp-code" id="tk-claude">${esc(claude)}</pre><button type="button" class="wide-button" data-copy="tk-claude">Copy command</button>
+<small>Other clients (JSON)</small><pre class="token-code lp-code" id="tk-json">${esc(json)}</pre><button type="button" class="wide-button" data-copy="tk-json">Copy JSON</button></div>
+<div class="lp-field"><span>Your tokens</span>${tokens.length ? tokens.map(t => `<div class="dk-row"><span><b>${esc(t.name)}</b> <small class="lp-mono">${esc(t.prefix)}…</small><small> · created ${ago(t.created)} · last used ${ago(t.lastUsed)}</small></span><button type="button" class="home-link danger" data-tk-revoke="${esc(t.id)}">Revoke</button></div>`).join('') : '<small>No tokens yet.</small>'}</div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button></div>
+</div>`);
+    const root = $('#modal');
+    root.onclick = async e => {
+        const copy = e.target.closest('[data-copy]'), rev = e.target.closest('[data-tk-revoke]');
+        if (copy) {
+            try { await navigator.clipboard.writeText($('#' + copy.dataset.copy).textContent); toast('Copied.'); }
+            catch { toast('Could not copy: select the text and copy it.'); }
+        }
+        else if (rev && await confirmDialog({ title: 'Revoke token?', message: 'Assistants using it lose access right away.', confirmLabel: 'Revoke', danger: true })) {
+            await tokenApi.revoke(rev.dataset.tkRevoke).catch(err => toast(err?.message || String(err)));
+            apiAccessDialog();
+        }
+    };
+    $('#tk-form').onsubmit = async e => {
+        e.preventDefault();
+        $('#tk-make').disabled = true;
+        try {
+            apiAccessDialog(await tokenApi.create($('#tk-name').value.trim()));
+        }
+        catch (err) {
+            toast(err?.message || String(err));
+            $('#tk-make').disabled = false;
+        }
+    };
+}
 function passwordDialog() {
     modal(`${modalHeader('Change password')}
 <form id="pw-form" class="lp-form" novalidate>
@@ -18122,7 +18178,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -18848,7 +18904,7 @@ $('#profile').onclick = async e => {
     if (!user)
         return location.reload();
     const r = btn.getBoundingClientRect();
-    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Settings', action: 'settings' }, { label: 'Change password', action: 'changePassword' }, '-', { label: 'Sign out', action: 'signOut' }], r.right - 210, r.bottom + 8);
+    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Settings', action: 'settings' }, { label: 'Change password', action: 'changePassword' }, { label: 'API access (MCP)', action: 'apiAccess' }, '-', { label: 'Sign out', action: 'signOut' }], r.right - 210, r.bottom + 8);
 };
 $('#canvas-status').onclick = () => toast('Saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.');
 $('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');
