@@ -21,6 +21,7 @@ export interface Interaction {
   action: {
     type: 'navigate' | 'open-dropdown' | 'open-overlay' | 'open-popover' | 'open-tooltip' | 'close-overlay';
     targetFrameId?: string;
+    targetComponentId?: string;
     position?: string;
     anchor?: string;
     backdrop?: boolean;
@@ -30,7 +31,7 @@ export interface Interaction {
 }
 export interface InputBehavior {
   label?: { exists?: boolean; reference?: { type: 'layer' | 'variable'; layerId?: string; variableId?: string; collectionId?: string } };
-  typeable?: { frameId?: string; placeholder?: StyleValue; valueCollectionId?: string; valueVariableId?: string };
+  typeable?: { frameId?: string; inputType?: 'text' | 'email' | 'password' | 'number'; showIconId?: string; hideIconId?: string; placeholder?: StyleValue; valueCollectionId?: string; valueVariableId?: string };
   error?: { stateName?: string; border?: StyleValue; hint?: StyleValue; hintText?: string; frameId?: string };
   validation?: { required?: boolean };
 }

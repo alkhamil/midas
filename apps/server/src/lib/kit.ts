@@ -123,7 +123,7 @@ function themeTs(t: Tokens): string {
 export type ThemeName = ${t.themes.map(q).join(' | ')};
 
 export interface ThemeTokens {
-${iface || '  // Belum ada Variables di library.'}
+${iface || '  // No Variables in the library yet.'}
 }
 
 export const themeNames: ThemeName[] = [${t.themes.map(q).join(', ')}];

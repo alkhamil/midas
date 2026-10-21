@@ -9,7 +9,7 @@
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
-import { normalizeInteractions, overridesFor } from '../engine/behavior.js';
+import { normalizeInteractions, overridesFor, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -133,9 +133,8 @@ const placed = (n, off) => {
 };
 
 // What a state falls back to when the component has no look for it (typing → focused → default, …).
-const FALLBACK = { typing: ['typing', 'focused', 'default'], filled: ['filled', 'default'], focused: ['focused', 'default'], error: ['error', 'default'], hover: ['hover', 'default'], pressed: ['pressed', 'hover', 'default'], disabled: ['disabled', 'default'] };
 const pick = (map, state) => {
-    for (const s of FALLBACK[state] || [state, 'default'])
+    for (const s of stateChain(state))
         if (map?.[s] !== undefined) return map[s];
     return undefined;
 };
@@ -149,8 +148,14 @@ export function openLivePreview(ctx, host) {
     const runtime = new Map();            // instance id -> { state, value, error }
     const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
+    // How the last focus arrived: a click on a field means "selected, ready to type"; Tab means "focused".
+    let byPointer = false, caretAtEnd = false;
+    root.addEventListener('pointerdown', () => { byPointer = true; }, true);
+    root.addEventListener('keydown', () => { byPointer = false; }, true);
 
     const stateOf = n => runtime.get(n.id)?.state || (n.disabled ? 'disabled' : 'default');
+    /** A layer that does something when clicked (a page to go to, or a click interaction) shows the pointer, not the text cursor. */
+    const clickableOf = n => !!target(n) || normalizeInteractions(ctx.interactionsFor?.(n)).some(it => it.trigger === 'onClick');
     const target = n => {
         for (let c = n; c; c = ctx.node(c.parentId))
             if (c.prototypeTarget && ctx.node(c.prototypeTarget)) return c.prototypeTarget;
@@ -238,9 +243,9 @@ export function openLivePreview(ctx, host) {
             const roles = o?.roles, err = !!o?.err, ib = o?.input;
             const forced = (err && roles?.showHint && n.propBind?.visible === roles.showHint) || (err && ib?.error?.frameId === n.id);
             if (n.visible === false && !forced) return;
-            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null;
+            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
-                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) ? fieldOf(n, ib2) : null, st = stateOf(n);
+                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = stateOf(n);
                 const src = pick(variants?.byState, st), swap = src && src !== variants.current;
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
                 inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {} };
@@ -248,6 +253,7 @@ export function openLivePreview(ctx, host) {
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
                 inner.target = { fill: ownFill ? null : visualTarget(n, 'fill'), stroke: ownStroke ? null : visualTarget(n, 'stroke') };
+                inner.form = field ? inner : o?.form;      // the typeable field this instance sits in, however deep
                 if (swap) {
                     const v = ctx.node(src);
                     base = { ...v, x: n.x, y: n.y, w: n.w, h: n.h, layoutSizingH: n.layoutSizingH, layoutSizingV: n.layoutSizingV, layoutPositioning: n.layoutPositioning, name: n.name };
@@ -255,9 +261,22 @@ export function openLivePreview(ctx, host) {
                 }
                 else if (inner.ov) base = ctx.resolved(n, n, inner.ov);
                 wire = { inst: n, variants, modes, field };
+                // The icon of a password field is an instance of one of the two icon components picked in the Behavior tab:
+                // it is drawn as the one that matches whether the text is shown, and clicking it flips that.
+                const form = o?.form, tg = form?.input?.typeable, ids = tg ? ctx.componentIdsOf(n) : [];
+                if (tg && ids.some(id => id === tg.showIconId || id === tg.hideIconId)) {
+                    toggle = form;
+                    const want = runtime.get(form.inst.id)?.reveal ? tg.hideIconId : tg.showIconId;
+                    const to = want && !ids.includes(want) ? ctx.componentTarget(want, ctx.node(ids[0])) : null;
+                    if (to) {
+                        base = { ...to, x: n.x, y: n.y, w: n.w, h: n.h, layoutSizingH: n.layoutSizingH, layoutSizingV: n.layoutSizingV, layoutPositioning: n.layoutPositioning, name: n.name };
+                        kidsOf = to.id;
+                    }
+                }
             }
             else if (n.prototypeTarget) wire = { inst: n };
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
+            if (toggle) c._toggle = toggle;
             if (c.vars) c.vars = { ...c.vars };
             // State mapping: nilai state (hover / pressed / error …) dari variable collection.
             if (n.isInstance && inner?.mapping) {
@@ -289,7 +308,13 @@ export function openLivePreview(ctx, host) {
             if (!kidsOf.has(c.parentId)) kidsOf.set(c.parentId, []);
             kidsOf.get(c.parentId).push(c);
         }
+        const toggleIn = k => k._toggle || (kidsOf.get(k.id) || []).map(toggleIn).find(Boolean);
         const draw = (c, parent, off) => {
+            const e = drawNode(c, parent, off);
+            if (e && c._toggle) wireToggle(e, c._toggle.inst);
+            return e;
+        };
+        const drawNode = (c, parent, off) => {
             if (c.type === 'text') return c._field ? renderField(c, parent, off) : textBox(c, parent, off);
             if (c.type === 'path') return svgOfPath(c, parent, { ...placed(c, off), opacity: c.opacity ?? 1 });
             if (c.type === 'line') return el('div', { ...placed(c, off), height: px(c.strokeWidth || 1), background: rgba(c.stroke, c.strokeOpacity ?? 1) }, parent);
@@ -302,7 +327,12 @@ export function openLivePreview(ctx, host) {
             const maskOf = new Map();
             let active = null;
             for (const k of c.layoutFlip ? [...stored].reverse() : stored) {
-                if (k.isMask) active = k;
+                if (k.isMask) {
+                    active = k;
+                    // An icon drawn as a mask (or inside one) has no element of its own: the mask's parent takes the click.
+                    const t = toggleIn(k);
+                    if (t) wireToggle(d, t.inst);
+                }
                 else maskOf.set(k.id, active);
             }
             const wrappers = new Map();
@@ -324,6 +354,16 @@ export function openLivePreview(ctx, host) {
         return draw(nodes[0], container, null);
     }
 
+    /**
+     * Clicking the icon flips the field between hidden and shown text without taking focus away from it. It listens to the
+     * pointer-up: the press redraws the icon, so a plain click would be lost with the old element.
+     */
+    function wireToggle(e, inst) {
+        e.style.cursor = 'pointer';
+        e.addEventListener('mousedown', ev => ev.preventDefault());
+        e.addEventListener('pointerup', () => update(inst, { reveal: !runtime.get(inst.id)?.reveal }));
+    }
+
     function textBox(c, parent, off) {
         const t = el('div', { ...placed(c, off), ...textStyle(ctx, c), display: 'flex', flexDirection: 'column', whiteSpace: c.autoW ? 'pre' : 'pre-wrap', justifyContent: { middle: 'center', bottom: 'flex-end' }[c.textAlignV] || 'flex-start' }, parent);
         t.textContent = c.text ?? '';
@@ -339,12 +379,24 @@ export function openLivePreview(ctx, host) {
         input.placeholder = o.input?.typeable?.placeholder?.value ?? c.text ?? '';
         input.value = cur.value || '';
         input.disabled = !!inst.disabled;
-        input.type = /password/i.test(`${inst.name} ${input.placeholder}`) ? 'password' : 'text';
+        // The type is the designer's choice (Behavior tab). Only a password hides its text, until its eye layer is clicked.
+        const kind = o.input?.typeable?.inputType || 'text';
+        input.type = kind === 'password' && !cur.reveal ? 'password' : 'text';
+        if (kind === 'email') { input.inputMode = 'email'; input.autocomplete = 'email'; }
+        if (kind === 'number') input.inputMode = 'decimal';
+        if (clickableOf(inst)) input.style.cursor = 'pointer';
         const ph = `.live-preview [data-field="${inst.id}"]::placeholder{color:${rgba(fillsOf(c)[0]?.color || c.fill, .6)}}`;
         if (!css.textContent.includes(ph)) css.textContent += ph;
         const required = requiredOf(inst, o.input);
-        input.addEventListener('focus', () => { if (!rendering && !runtime.get(inst.id)?.state?.match(/^(focused|typing)$/)) update(inst, { state: input.value ? 'typing' : 'focused', error: false }); });
+        input.addEventListener('focus', () => {
+            if (rendering || runtime.get(inst.id)?.state?.match(/^(focused|selected|typing)$/)) return;
+            // Coming back to a field that has text: typing resumes after the last character.
+            if (input.value) caretAtEnd = true;
+            update(inst, { state: input.value ? 'typing' : byPointer ? 'selected' : 'focused', error: false });
+        });
         input.addEventListener('input', () => {
+            // A number field takes digits, a sign and one decimal point.
+            if (kind === 'number') input.value = input.value.replace(/[^0-9.\-]/g, '').replace(/(\..*?)\./g, '$1');
             const was = runtime.get(inst.id) || {};
             runtime.set(inst.id, { ...was, value: input.value, error: false });
             if (was.state !== 'typing') update(inst, { state: 'typing' });
@@ -382,7 +434,8 @@ export function openLivePreview(ctx, host) {
 
     /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
     function openLayer(action, anchor, rect) {
-        const frame = ctx.node(action.targetFrameId);
+        // A component picked in the Behavior tab, else a frame chosen before components were offered.
+        const frame = action.targetComponentId ? ctx.componentTarget(action.targetComponentId) : ctx.node(action.targetFrameId);
         if (!frame) return;
         const kind = action.type === 'open-dropdown' ? 'dropdown' : action.type === 'open-overlay' ? 'overlay' : 'popover';
         const holder = el('div', { position: 'absolute', zIndex: 70 }, root);
@@ -424,9 +477,10 @@ export function openLivePreview(ctx, host) {
     function attach({ inst: n, variants, modes, field }, d) {
         if (n.disabled) { d.style.cursor = 'not-allowed'; return; }
         const go = target(n), has = s => !!(variants?.byState[s] || modes?.byState[s]);
+        const clickable = clickableOf(n);
         const mapping = ctx.mappingFor?.(n);
         const hasState = s => has(s) || !!mapping?.[s];
-        if (go) d.style.cursor = 'pointer';
+        if (clickable) d.style.cursor = 'pointer';
         if (field) return;
         d.addEventListener('pointerenter', () => {
             const rect = d.getBoundingClientRect();
@@ -460,7 +514,7 @@ export function openLivePreview(ctx, host) {
 
     function update(n, patch) {
         const cur = runtime.get(n.id) || {}, next = { ...cur, ...patch };
-        if (['state', 'error', 'value'].every(k => next[k] === cur[k])) return;
+        if (['state', 'error', 'value', 'reveal'].every(k => next[k] === cur[k])) return;
         runtime.set(n.id, next);
         draw();
     }
@@ -468,7 +522,8 @@ export function openLivePreview(ctx, host) {
     function draw() {
         const f = ctx.node(frameId);
         if (!f) return;
-        const a = document.activeElement, keep = a?.dataset?.field, caret = a?.selectionStart;
+        const a = document.activeElement, keep = a?.dataset?.field, toEnd = caretAtEnd, caret = a?.selectionStart;
+        caretAtEnd = false;
         rendering = true;
         stage.replaceChildren();
         const nodes = buildScene(f), rootNode = nodes[0];
@@ -476,7 +531,11 @@ export function openLivePreview(ctx, host) {
         Object.assign(stage.style, { width: px(rootNode.w), height: px(rootNode.h), transform: `scale(${sc})` });
         renderScene(nodes).style.position = 'relative';
         const again = keep && stage.querySelector(`[data-field="${keep}"]`);
-        if (again && !again.disabled) { again.focus({ preventScroll: true }); try { again.setSelectionRange(caret, caret); } catch { /* caret is not available on every input type */ } }
+        if (again && !again.disabled) {
+            again.focus({ preventScroll: true });
+            const at = toEnd ? again.value.length : caret;
+            try { again.setSelectionRange(at, at); } catch { /* caret is not available on every input type */ }
+        }
         rendering = false;
         pick_.value = frameId;
     }

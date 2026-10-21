@@ -8,10 +8,23 @@
 // Preview menghasilkan gaya yang sama.
 
 /** Urutan state yang selalu ditanyakan (error hanya untuk input). */
-export const STATE_ORDER = ['default', 'hover', 'pressed', 'focused', 'disabled', 'error'];
+export const STATE_ORDER = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'disabled', 'error'];
+
+/** What makes the preview enter a state. Only a hint for the Behavior tab: the look of each state is the designer's choice. */
+export const STATE_HINT = {
+    default: 'At rest',
+    hover: 'Pointer over it',
+    pressed: 'Pointer button held down',
+    focused: 'Reached with the keyboard (Tab)',
+    selected: 'Clicked, ready to type',
+    typing: 'Text is being typed',
+    filled: 'Left with text in it',
+    disabled: 'Cannot be used',
+    error: 'Failed validation',
+};
 
 export const STATE_LABEL = {
-    default: 'Default', hover: 'Hover', pressed: 'Pressed', focused: 'Focused',
+    default: 'Default', hover: 'Hover', pressed: 'Pressed', focused: 'Focused', selected: 'Selected',
     disabled: 'Disabled', error: 'Error', typing: 'Typing', filled: 'Filled',
 };
 
@@ -90,12 +103,37 @@ export function componentTypeOf(name) {
     return 'generic';
 }
 
-/** Nama mode yang berarti state (dipakai engine & preview: sama persis). */
+/**
+ * Mode names that suggest a state, most specific first. Only a starting point: a state can be pointed at any mode of
+ * the collection (see `stateModes`), so designers who name their modes differently are not tied to these.
+ */
 export const STATE_MODE_NAMES = {
     default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed', 'active'],
-    focused: ['focused', 'focus', 'selected'], typing: ['typing', 'focused'], filled: ['filled', 'default'],
+    focused: ['focused', 'focus'], selected: ['selected'], typing: ['typing'], filled: ['filled'],
     error: ['error-filled', 'error-empty', 'error'], disabled: ['disabled'],
 };
+
+/**
+ * The mode a state reads in a collection: the one the designer picked (`explicit`, a mode id), else the first mode
+ * whose name suggests the state (names tried in priority order, not in the collection's order). null = none.
+ */
+export function modeForState(coll, state, explicit) {
+    const modes = coll?.modes || [];
+    if (explicit) {
+        const m = modes.find(x => x.id === explicit);
+        if (m) return m;
+    }
+    for (const name of STATE_MODE_NAMES[state] || [state]) {
+        const m = modes.find(x => String(x.name || '').trim().toLowerCase() === name);
+        if (m) return m;
+    }
+    return null;
+}
+
+/** The mode id a node's `stateModes` picked for a state in a collection (undefined = automatic). */
+export function pickedModeId(stateModes, collId, state) {
+    return stateModes?.[collId]?.[state] || undefined;
+}
 
 /** State dari nama sebuah mode; null kalau mode itu bukan state. */
 export function stateOfMode(modeName) {
@@ -110,7 +148,7 @@ export function stateOfMode(modeName) {
  * Nilai variable dalam mode tertentu (alias ikut diselesaikan). `items` dipakai untuk mencari
  * target alias.
  */
-export function variableValueInMode(item, coll, modeId, items = []) {
+export function variableValueInMode(item, coll, modeId, items = [], collections = []) {
     if (!item || !coll || !coll.modes?.length) return undefined;
     const mode = modeId && coll.modes.some(m => m.id === modeId) ? modeId : coll.modes[0].id;
     let v = item.values?.[mode];
@@ -118,7 +156,9 @@ export function variableValueInMode(item, coll, modeId, items = []) {
     if (v === undefined) v = coll.modes.map(m => item.values?.[m.id]).find(x => x !== undefined);
     if (v && typeof v === 'object' && v.alias) {
         const target = items.find(i => i.id === v.alias);
-        return target ? variableValueInMode(target, coll, mode, items) : undefined;
+        // An alias may point into another collection (e.g. primitives): read it with that collection's own modes.
+        const targetColl = collections.find(c => c.id === target?.collectionId) || coll;
+        return target ? variableValueInMode(target, targetColl, mode, items, collections) : undefined;
     }
     return v;
 }
@@ -151,12 +191,14 @@ export const TYPE_LABEL = { button: 'Button', input: 'Input field', dropdown: 'D
 
 /** State apa saja yang boleh ditanyakan untuk sebuah tipe komponen. */
 export function statesFor(type) {
-    return STATE_ORDER.filter(s => s !== 'error' || type === 'input');
+    const INPUT_ONLY = ['selected', 'typing', 'filled', 'error'];
+    return STATE_ORDER.filter(s => type === 'input' || !INPUT_ONLY.includes(s));
 }
 
 /** Rantai fallback state: error → default, pressed → hover → default, … */
 const FALLBACK = {
-    typing: ['typing', 'focused', 'default'], filled: ['filled', 'default'], focused: ['focused', 'default'],
+    typing: ['typing', 'selected', 'focused', 'default'], filled: ['filled', 'default'],
+    selected: ['selected', 'focused', 'default'], focused: ['focused', 'selected', 'default'],
     error: ['error', 'default'], hover: ['hover', 'default'], pressed: ['pressed', 'hover', 'default'],
     disabled: ['disabled', 'default'],
 };
@@ -192,20 +234,39 @@ export function normalizeStateMapping(mapping) {
 }
 
 export function normalizeInteractions(list) {
-    return (Array.isArray(list) ? list : []).map((it, i) => ({
+    return (Array.isArray(list) ? list : []).map((it, i) => {
+        const type = ACTION_MAP[it?.action?.type] ? it.action.type : 'navigate';
+        // A dropdown / overlay / popover opens a component. A frame picked before components were offered keeps working
+        // until a component replaces it.
+        const component = /^open-/.test(type) && it?.action?.targetComponentId ? String(it.action.targetComponentId) : undefined;
+        return normalizeInteraction(it, i, type, component);
+    });
+}
+
+function normalizeInteraction(it, i, type, component) {
+    return ({
         id: it?.id || `i${i + 1}`,
         trigger: TRIGGERS.some(t => t.id === it?.trigger) ? it.trigger : 'onClick',
         action: {
-            type: ACTION_MAP[it?.action?.type] ? it.action.type : 'navigate',
-            ...(it?.action?.targetFrameId ? { targetFrameId: String(it.action.targetFrameId) } : {}),
+            type,
+            ...(component ? { targetComponentId: component } : {}),
+            ...(it?.action?.targetFrameId && !component ? { targetFrameId: String(it.action.targetFrameId) } : {}),
             ...(it?.action?.position ? { position: String(it.action.position) } : {}),
             ...(it?.action?.anchor ? { anchor: String(it.action.anchor) } : {}),
             ...(it?.action?.backdrop !== undefined ? { backdrop: !!it.action.backdrop } : {}),
             ...(it?.action?.closeOnBackdrop !== undefined ? { closeOnBackdrop: !!it.action.closeOnBackdrop } : {}),
             ...(it?.action?.close ? { close: String(it.action.close) } : {}),
         },
-    }));
+    });
 }
+
+export const INPUT_TYPES = [
+    { id: 'text', label: 'Text' },
+    { id: 'email', label: 'Email' },
+    { id: 'password', label: 'Password' },
+    { id: 'number', label: 'Number' },
+];
+export const INPUT_TYPE_MAP = Object.fromEntries(INPUT_TYPES.map(t => [t.id, t]));
 
 export function normalizeInputBehavior(b) {
     if (!b || typeof b !== 'object') return null;
@@ -227,6 +288,12 @@ export function normalizeInputBehavior(b) {
         },
         typeable: {
             frameId: typeable.frameId ? String(typeable.frameId) : undefined,
+            // What the field accepts. Text unless the designer says otherwise: nothing is guessed from layer names.
+            inputType: INPUT_TYPE_MAP[typeable.inputType] ? typeable.inputType : undefined,
+            // Password only: the two icon components that stand for hidden text (an eye) and shown text (a crossed eye).
+            // The icon in the field is swapped between them when it is clicked.
+            showIconId: typeable.showIconId ? String(typeable.showIconId) : undefined,
+            hideIconId: typeable.hideIconId ? String(typeable.hideIconId) : undefined,
             placeholder: styleValue(typeable.placeholder),
             valueCollectionId: typeable.valueCollectionId ? String(typeable.valueCollectionId) : undefined,
             valueVariableId: typeable.valueVariableId ? String(typeable.valueVariableId) : undefined,

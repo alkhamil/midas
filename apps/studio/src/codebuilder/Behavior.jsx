@@ -82,8 +82,8 @@ function StateRows({ cfg, setCfg, vars, collections, byId, nodeId, type }) {
     if (!connected.length)
         return (
             <p className="small-label">
-                State dibaca dari <b>variable collection</b>. Belum ada collection state yang disambungkan ke layer ini —
-                sambungkan lewat tab Design → Appearance → Variable collections (collection dengan mode Default / Hover / Pressed).
+                States are read from a <b>variable collection</b>. No state collection is connected to this layer yet —
+                connect one in the Design tab → Appearance → Variable collections (a collection with modes Default / Hover / Pressed).
             </p>
         );
     return connected.map(sc => (
@@ -93,7 +93,7 @@ function StateRows({ cfg, setCfg, vars, collections, byId, nodeId, type }) {
                 const values = Object.entries(doc?.vars || {})
                     .map(([prop, id]) => ({ prop, item: vars.get(id) }))
                     .filter(x => x.item && x.item.collectionId === sc.coll.id)
-                    .map(x => ({ ...x, value: variableValueInMode(x.item, sc.coll, st.mode.id, items) }));
+                    .map(x => ({ ...x, value: variableValueInMode(x.item, sc.coll, st.mode.id, items, collections) }));
                 const overrides = mapping[st.state] || {};
                 const used = Object.keys(overrides);
                 const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
@@ -108,7 +108,7 @@ function StateRows({ cfg, setCfg, vars, collections, byId, nodeId, type }) {
                                     <span className="small-label">{v.item.name}</span>
                                 </div>
                             ))
-                            : <p className="small-label">Tidak ada variable dari collection ini yang terikat ke layer ini.</p>}
+                            : <p className="small-label">No variable from this collection is bound to this layer.</p>}
                         {used.map(prop => (
                             <div key={prop} className="cb-bh-override">
                                 <Select aria-label="Property" value={prop} onChange={e => rename(st.state, prop, e.target.value)}>
@@ -269,7 +269,7 @@ export function BehaviorPanel({ node, cfg, setCfg, vars, collections, byId, scre
                 <p className="small-label"><b>{node.exportName}</b> · {TYPE_LABEL[type] || type}</p>
             </Section>
             <Section title="State mapping">
-                <p className="small-label">Nilai state dibaca dari variable collection yang disambungkan ke layer ini. Override dipakai kalau sebuah state perlu nilai lain.</p>
+                <p className="small-label">State values are read from the variable collection connected to this layer. Use an override when a state needs a different value.</p>
                 <StateRows cfg={cfg} setCfg={setCfg} vars={vars} collections={collections} byId={byId} nodeId={node.nodeId} type={type} />
             </Section>
             {type === 'input' && <InputBehaviorRows cfg={cfg} setCfg={setCfg} layers={layers} />}

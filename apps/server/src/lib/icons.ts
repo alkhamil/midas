@@ -64,7 +64,7 @@ function addIcon(icons: IconSource[], used: Map<string, string>, warnings: strin
     if (used.has(exportName))
         exportName = iconExportName(`${category}-${name}`);
     if (used.has(exportName)) {
-        warnings.push(`Ikon ${label} bentrok dengan ${used.get(exportName)} — dilewati`);
+        warnings.push(`Icon ${label} conflicts with ${used.get(exportName)} — skipped`);
         return;
     }
     used.set(exportName, label);
@@ -85,7 +85,7 @@ export function collectIcons(snapshot: LibrarySnapshot): { icons: IconSource[]; 
                 if (norm)
                     styles[style] = norm;
                 else
-                    warnings.push(`Ikon ${i.name} (${style}) bukan SVG yang valid — dilewati`);
+                    warnings.push(`Icon ${i.name} (${style}) is not a valid SVG — skipped`);
             }
             if (Object.keys(styles).length)
                 addIcon(icons, used, warnings, `${i.category}/${i.name}`, i.name, i.category, styles);
@@ -115,7 +115,7 @@ export function collectIcons(snapshot: LibrarySnapshot): { icons: IconSource[]; 
             if (norm)
                 styles[style] = norm;
             else
-                warnings.push(`Ikon ${c.name} (${style}) tidak berisi SVG — dilewati`);
+                warnings.push(`Icon ${c.name} (${style}) contains no SVG — skipped`);
         }
         if (!name || !Object.keys(styles).length)
             continue;

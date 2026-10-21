@@ -133,7 +133,7 @@ function RelationPicker({ field, modules, onChange }) {
                 </Row>
             )}
             {!targets.length && <p className="cb-error">No other module has entity fields yet.</p>}
-            {rel && <p className="small-label">Nilai tersimpan: id baris {rel.module.label}. Opsi diambil dari <code>use{rel.module.name.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}List</code>.</p>}
+            {rel && <p className="small-label">Stored value: row id of {rel.module.label}. Options come from <code>use{rel.module.name.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}List</code>.</p>}
         </>
     );
 }

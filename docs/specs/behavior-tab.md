@@ -51,6 +51,27 @@ Kalau belum ada collection state, tab Behavior mengarahkan: buat di jendela Vari
 collection yang sudah ada. **Override** dipakai kalau satu state perlu nilai lain (collection + variable
 lain, atau nilai manual) — nilainya menimpa nilai dari collection.
 
+### Pilih mode untuk tiap state
+
+Setiap state punya dropdown **mode**. Designer yang menentukan state mana memakai mode mana, jadi nama mode
+bebas. Pilihan **Automatic** hanya menebak dari nama mode (urutan prioritas nama, bukan urutan di collection),
+dan disimpan di `stateModes` (`{ [collectionId]: { [state]: modeId } }`).
+
+State yang dikenal Preview:
+
+| State | Kapan masuk |
+|---|---|
+| Default | diam |
+| Hover / Pressed | pointer di atas / ditekan |
+| Focused | fokus lewat keyboard (Tab) |
+| Selected | field diklik, siap mengetik |
+| Typing | sedang mengetik |
+| Filled | keluar dari field dengan isi (teks tajam, bukan placeholder) |
+| Error / Disabled | gagal validasi / dinonaktifkan |
+
+Kalau sebuah state belum dipetakan, Preview memakai rantai fallback (mis. Selected → Focused → Default).
+Daftar nilai variable di tiap state hanya tampilan baca (dilipat).
+
 Collection dianggap "collection state" kalau namanya menyebut state (`/state/i`) atau punya beberapa mode
 yang berarti state (hover / pressed / focused / …). Collection tema (Light/Dark) bukan state.
 
@@ -76,27 +97,34 @@ boleh berbeda.
 | On focus / On blur | fokus masuk / keluar |
 | On change / On submit | nilai berubah / form disubmit |
 
-| Action | Isi | Peran frame target |
+| Action | Isi | Target |
 | --- | --- | --- |
-| Navigate | `Go to page` | `page` |
-| Open dropdown | frame + posisi (top/bottom/left/right + kiri/kanan) | `dropdown` |
-| Open overlay | frame + posisi + **backdrop** + tutup saat backdrop diklik | `overlay` |
-| Open popover / tooltip | frame + jangkar + posisi | `popover`, `tooltip` |
+| Navigate | `Go to page` | frame berperan `page` |
+| Open dropdown | **component** + posisi (top/bottom/left/right + kiri/kanan) | component |
+| Open overlay | **component** + posisi + **backdrop** + tutup saat backdrop diklik | component |
+| Open popover / tooltip | **component** + jangkar + posisi | component |
 | Close overlay | `Current overlay` / `All overlays` | — |
 
 Beberapa interaction boleh per komponen (mis. `onClick → Navigate` **dan** `onHover → Open tooltip`).
-Target frame hanya menampilkan frame dengan peran yang cocok — peran frame diset di tab Behavior ketika
-frame itu dipilih (`page`, `dropdown`, `overlay`, `popover`, `tooltip`).
+Dropdown, overlay, dan popover membuka sebuah **component** (`targetComponentId`), bukan frame: daftar memuat
+component dan component set (ikon tidak ikut, dan ada kotak cari). Component set dibuka sebagai variant
+pertamanya. Interaction lama yang menunjuk frame (`targetFrameId`) tetap jalan sampai diganti component.
 
 ## Bagian 3 — Input field
 
 Untuk komponen input (`TextField`, `SelectField`, …) tab Behavior menambahkan:
 
-- **Label** — apakah label ada; label menunjuk ke sebuah text layer atau ke variable.
 - **Typeable area** — layer mana yang menerima ketikan (label & teks lain tetap read-only), placeholder
-  (manual atau variable), dan variable tempat nilainya disimpan (opsional).
-- **Error handling** — state yang dipakai saat error, frame error, dan teks bantuan (manual atau variable),
-  plus **Required**.
+  (manual atau variable). **Input type** (Text / Email / Password / Number) dipilih designer, tidak ditebak
+  dari nama layer; default Text. Untuk Password, designer memilih dua **component** ikon: **Icon while hidden**
+  (mis. mata tertutup) dan **Icon while shown** (mis. mata terbuka). Ikon di field yang merupakan instance salah
+  satunya di-swap antara keduanya saat diklik di Preview, dan teks ditampilkan / disembunyikan.
+  Mengklik field yang sudah berisi memulai Typing dengan caret di akhir teks.
+
+Layer yang punya interaction **On click** (atau target halaman) memakai kursor pointer di Preview, dan field yang
+punya interaction seperti itu tidak dianggap bisa diketik kecuali layer typeable-nya dipilih eksplisit.
+- **Error handling** — frame error dan teks bantuan (manual atau variable). Tampilan state error (border dan
+  lainnya) datang dari State mapping, bukan dari kontrol di sini. **Required** ada di Typeable area.
 
 Di preview, mengetik hanya bisa dilakukan pada layer typeable; mengosongkan field yang wajib pada blur
 memicu state `error`: frame error ditampilkan, pesannya diisi dari variable / teks manual, dan gaya

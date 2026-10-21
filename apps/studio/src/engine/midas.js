@@ -5,7 +5,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, isStateCollection, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, POSITIONS, setPath, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, stateOfMode, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, normalizeInputBehavior, normalizeInteractions, modeForState, normalizeStateMapping, pickedModeId, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
 
 
 // ===== document.js =====
@@ -8072,7 +8072,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'interactions', 'inputBehavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -12299,7 +12299,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'interactions', 'inputBehavior'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -17969,8 +17969,8 @@ let livePreview = null;
 const cssName = s => String(s || 'var').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
 const FIELD_NAME = /input|field|textbox/i;
 const looksLikeField = n => FIELD_NAME.test(n.name + " " + (parentSetOf(chainComponent(n) || n)?.name || ""));
-/** Variable-collection mode names that stand for each state the preview can show. */
-const LIVE_MODE_NAMES = { default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed', 'active'], focused: ['focused', 'focus', 'selected'], typing: ['typing', 'focused'], filled: ['filled', 'default'], error: ['error-filled', 'error-empty', 'error'], disabled: ['disabled'] };
+/** The states the preview can show for an instance. */
+const LIVE_STATE_IDS = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'error', 'disabled'];
 /** The text a person types into: the visible text inside the field's content row (its placeholder), and the room it has. */
 function liveField(inst, kids) {
     const walk = (id, path) => kids(id).flatMap(k => k.visible === false ? [] : k.type === 'text' ? [{ t: k, path }] : walk(k.id, [...path, k]));
@@ -17980,7 +17980,7 @@ function liveField(inst, kids) {
     const row = pick.path.find(p => /^(content|text input)$/i.test(p.name)) || pick.path.at(-1);
     return { id: pick.t.id, name: pick.t.name, width: row ? Math.max(pick.t.w, row.w - pick.t.x) : pick.t.w };
 }
-const LIVE_STATES = ['default', 'hover', 'hovered', 'pressed', 'active', 'focused', 'focus', 'disabled', 'error'];
+const LIVE_STATES = ['default', 'hover', 'hovered', 'pressed', 'active', 'focused', 'focus', 'selected', 'typing', 'filled', 'disabled', 'error'];
 /** The variant property that holds the states: one named State / Status, or any whose values are state names. */
 function liveStateKey(set, src) {
     const keys = Object.keys(src.variant || {});
@@ -18047,15 +18047,20 @@ function liveContext() {
         /** The instance's states held in a variable collection (Button states, Input states…): state → { collection id: mode id }. */
         modes(inst) {
             const byState = {};
-            for (const [cid, mid] of Object.entries(inst.varModes || {})) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            // Collections connected on the instance, else on its component set / main component.
+            const connected = { ...src?.varModes, ...set?.varModes, ...inst.varModes };
+            const picks = inst.stateModes || set?.stateModes || src?.stateModes;
+            for (const cid of Object.keys(connected)) {
                 const c = store.collections.find(x => x.id === cid);
                 // Collection state: namanya menyebut state, atau punya beberapa mode yang berarti state.
                 if (!c || !isStateCollection(c))
                     continue;
-                for (const [state, names] of Object.entries(LIVE_MODE_NAMES)) {
-                    const m = c.modes.find(x => names.includes(x.name.toLowerCase()));
+                // The mode each state reads: the one picked in the Behavior tab, else the one its name suggests.
+                for (const state of LIVE_STATE_IDS) {
+                    const m = modeForState(c, state, pickedModeId(picks, cid, state));
                     if (m)
-                        byState[state] = { [cid]: m.id };
+                        byState[state] = { ...byState[state], [cid]: m.id };
                 }
             }
             return Object.keys(byState).length ? { byState } : null;
@@ -18078,6 +18083,19 @@ function liveContext() {
             }
             c.resolvedInMode = true;
             return c;
+        },
+        /** The ids that stand for an instance's component: its main component and its component set. */
+        componentIdsOf(inst) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return [src?.id, set?.id].filter(Boolean);
+        },
+        /** The component to draw for a picked id: a set stands for its variant that matches `like`, else its first. */
+        componentTarget(id, like) {
+            const n = _nodeMap.get(id);
+            if (!n || n.softDeleted) return null;
+            if (!n.componentSet) return n.component ? n : null;
+            const vs = setVariants(n), want = like?.variant;
+            return (want && vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x))) || vs[0] || null;
         },
         /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
         variants(inst) {
@@ -18183,6 +18201,36 @@ function bhTypeOf(n) {
     }
     return 'generic';
 }
+/**
+ * Components a behavior can point at: standalone components and component sets (a set stands for its variants).
+ * `kind` 'icon' lists only icons (the show / hide icon pickers); 'other' leaves them out (a design system has thousands).
+ */
+function bhComponents(kind = 'other') {
+    const multi = doc.data.pages.length > 1, out = [];
+    for (const p of doc.data.pages) {
+        for (const n of p.nodes) {
+            const standalone = n.component && !parentSetOf(n);
+            if (!n.componentSet && !standalone) continue;
+            if (n.softDeleted) continue;
+            const icon = looksLikeIcon(n.name, p.name);
+            if (icon !== (kind === 'icon')) continue;
+            out.push({ id: n.id, label: multi ? `${p.name} / ${n.name}` : n.name });
+        }
+    }
+    return out.sort((a, b) => a.label.localeCompare(b.label));
+}
+function bhComponentSelect(path, value, label, list) {
+    const known = list.some(c => c.id === value);
+    // A long list (icons) gets a search box that narrows the options.
+    const search = list.length > 30 ? `<input class="full-width" data-bh-filter placeholder="Search ${list.length} components…" aria-label="Search components">` : '';
+    return `<label class="field"><span>${esc(label)}</span>${search}<select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${value && !known ? `<option value="${esc(value)}" selected>(missing component)</option>` : ''}${list.map(c => `<option value="${c.id}" ${c.id === value ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>`;
+}
+$('#inspector').addEventListener('input', e => {
+    const box = e.target.closest?.('[data-bh-filter]');
+    if (!box) return;
+    const q = box.value.trim().toLowerCase(), select = box.closest('label').querySelector('select');
+    for (const o of select.options) o.hidden = !!q && o.value !== '' && !o.selected && !o.text.toLowerCase().includes(q);
+});
 function bhFrameSelect(path, value, frames, action, label) {
     const roles = TARGET_ROLES[action] || ['page'];
     const list = frames.filter(f => roles.includes(f.role || 'page'));
@@ -18192,13 +18240,17 @@ function bhFrameSelect(path, value, frames, action, label) {
 function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
+    const comps = bhComponents();
+    // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
+    const openPick = (i, a, label) => bhComponentSelect(`interactions.${i}.action.targetComponentId`, a.targetComponentId, label, comps)
+        + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
     return list.map((it, i) => {
         const a = it.action;
         let extra = '';
         if (a.type === 'navigate') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
-        if (a.type === 'open-dropdown') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-dropdown', 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'bottom-left', POSITIONS);
-        if (a.type === 'open-overlay') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-overlay', 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
-        if (a.type === 'open-popover') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-popover', 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'top', POSITIONS);
+        if (a.type === 'open-dropdown') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'bottom-left', POSITIONS);
+        if (a.type === 'open-overlay') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
+        if (a.type === 'open-popover') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'top', POSITIONS);
         if (a.type === 'close-overlay') extra = bhSelect(`interactions.${i}.action.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
         return `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
             <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
@@ -18210,31 +18262,24 @@ function bhInteractionRows(n, frames) {
 function bhInputHtml(n, layers) {
     const ib = normalizeInputBehavior(n.inputBehavior) || { label: { exists: true }, typeable: {}, error: {}, validation: {} };
     const texts = layers.filter(l => l.type === 'text');
-    const ref = ib.label.reference || {};
-    const labelType = ref.type || 'layer';
     const opt = (list, value) => `<option value="">— none —</option>${list.map(l => `<option value="${l.id}" ${l.id === value ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}`;
-    // Label
-    const labelParts = [];
-    labelParts.push(`<p class="small-label">An input is often a group: label text, input box, hint text. Say which part is which.</p>`);
-    labelParts.push(`<label class="field"><span>Does a label exist?</span>${bhSelect('input.label.exists', 'bool', ib.label.exists === false ? 'false' : 'true', [['true', 'Yes'], ['false', 'No']])}</label>`);
-    if (ib.label.exists !== false) {
-        labelParts.push(`<label class="field"><span>Refers to</span>${bhSelect('input.label.reference.type', 'plain', labelType, [['layer', 'A text layer'], ['variable', 'A variable']])}</label>`);
-        if (labelType === 'variable') labelParts.push(bhStyleValue('input.label.reference', { collectionId: ref.collectionId, variableId: ref.variableId }, 'Variable'));
-        else labelParts.push(`<label class="field"><span>Text layer</span><select class="full-width" data-bh-path="input.label.reference.layerId" data-bh-kind="plain">${opt(texts, ref.layerId)}</select></label>`);
-    }
-    let html = section('Label', labelParts.join(''));
+    let html = '';
     // Typeable area
     const typeParts = [];
     typeParts.push(`<p class="small-label">Which layer receives the typing? The rest of the component stays read-only.</p>`);
     typeParts.push(`<label class="field"><span>Typeable layer</span><select class="full-width" data-bh-path="input.typeable.frameId" data-bh-kind="plain">${opt(texts, ib.typeable.frameId)}</select></label>`);
+    typeParts.push(`<label class="field"><span>Input type</span>${bhSelect('input.typeable.inputType', 'plain', ib.typeable.inputType || 'text', INPUT_TYPES.map(t => [t.id, t.label]))}</label>`);
+    if (ib.typeable.inputType === 'password') {
+        const icons = bhComponents('icon');
+        typeParts.push(`<p class="small-label">Clicking the icon in the field swaps it between these two components.</p>`);
+        typeParts.push(bhComponentSelect('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden', icons));
+        typeParts.push(bhComponentSelect('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown', icons));
+    }
     typeParts.push(bhStyleValue('input.typeable.placeholder', ib.typeable.placeholder, 'Placeholder'));
-    typeParts.push(bhStyleValue('input.typeable', { collectionId: ib.typeable.valueCollectionId, variableId: ib.typeable.valueVariableId }, 'Value binds to (optional)', { collection: 'valueCollectionId', variable: 'valueVariableId' }, true));
     typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
     html += section('Typeable area', typeParts.join(''));
     // Error handling
     const errParts = [];
-    errParts.push(`<label class="field"><span>State shown on error</span>${bhSelect('input.error.stateName', 'plain', ib.error.stateName || 'error', [['', '— none —'], ...statesFor('input').map(s => [s, STATE_LABEL[s] || s])])}</label>`);
-    errParts.push(bhStyleValue('input.error.border', ib.error.border, 'Border color'));
     errParts.push(bhStyleValue('input.error.hint', ib.error.hint, 'Hint text'));
     errParts.push(`<label class="field"><span>Hint text (manual)</span><input data-bh-path="input.error.hintText" data-bh-kind="plain" placeholder="This field is required" value="${esc(ib.error.hintText || '')}"></label>`);
     errParts.push(`<label class="field"><span>Error frame</span><select class="full-width" data-bh-path="input.error.frameId" data-bh-kind="plain">${opt(layers, ib.error.frameId)}</select></label>`);
@@ -18251,14 +18296,25 @@ function bhOverrideRow(state, prop, value) {
 }
 /** Nilai variable dalam sebuah mode (alias ikut diselesaikan). */
 function bhVarValue(item, modeId) {
-    return variableValueInMode(item, varColl(item?.collectionId), modeId, varStore().items || []);
+    const store = varStore();
+    return variableValueInMode(item, varColl(item?.collectionId), modeId, store.items || [], store.collections || []);
 }
 /** Nilai yang terbaca untuk sebuah state: property yang terikat ke variable di collection itu. */
 function bhStateValues(n, coll, mode) {
-    return Object.entries(n.vars || {})
-        .map(([prop, id]) => ({ prop, item: varItem(id) }))
-        .filter(x => x.item && x.item.collectionId === coll.id)
-        .map(x => ({ prop: x.prop, item: x.item, value: bhVarValue(x.item, mode.id) }));
+    // The layer itself plus everything inside it (an instance falls back to its main component's layers).
+    const src = n.isInstance ? chainComponent(n) : null;
+    const nodes = subtreeInOrder(n.id);
+    if (nodes.length === 1 && src) nodes.push(...subtreeInOrder(src.id));
+    const seen = new Set(), out = [];
+    for (const l of nodes) {
+        for (const [prop, id] of Object.entries(l.vars || {})) {
+            const item = varItem(id), key = `${l.id === n.id ? '' : l.name}\u0000${prop}\u0000${id}`;
+            if (!item || item.collectionId !== coll.id || seen.has(key)) continue;
+            seen.add(key);
+            out.push({ prop, layer: l.id === n.id || l.id === src?.id ? '' : l.name, item, value: bhVarValue(item, mode.id) });
+        }
+    }
+    return out;
 }
 /** Label properti yang enak dibaca (fill → Fill, strokeWidth → Stroke width). */
 const bhPropLabel = p => String(p || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
@@ -18268,14 +18324,12 @@ const bhPropLabel = p => String(p || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').
     const color = item?.type === 'color' && /^#[0-9a-f]{3,8}$/i.test(text);
     return `<span class="bh-chip">${color ? `<i style="background:${esc(text)}"></i>` : ''}${esc(text)}</span>`;
 }
-/** Collection state yang disambungkan ke node (state → mode). */
+/** State collections connected to the node. */
 function bhStateCollections(n) {
     const out = [];
-    for (const [collId, modeId] of Object.entries(n.varModes || {})) {
+    for (const collId of Object.keys(n.varModes || {})) {
         const coll = varColl(collId);
-        if (!isStateCollection(coll)) continue;
-        const states = (coll.modes || []).map(m => ({ state: stateOfMode(m.name), mode: m })).filter(x => x.state);
-        out.push({ coll, states, currentMode: modeId });
+        if (isStateCollection(coll)) out.push({ coll });
     }
     return out;
 }
@@ -18289,27 +18343,32 @@ function bhStateSection(n) {
     const mapping = normalizeStateMapping(n.stateMapping);
     const connect = stateColls.length
         ? `<label class="field"><span>Collection</span><select class="full-width" data-bh-act="connect-collection" aria-label="Connect a state collection"><option value="">— connect a collection —</option>${stateColls.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>`
-        : '<p class="small-label">Belum ada variable collection dengan mode state. Buat di jendela Variables (mis. <b>Button states</b> dengan mode Default / Hover / Pressed).</p>';
+        : '<p class="small-label">No variable collection with state modes yet. Create one in the Variables window (e.g. <b>Button states</b> with modes Default / Hover / Pressed).</p>';
     if (!colls.length)
-        return section('State mapping', `<p class="small-label">State dibaca dari <b>variable collection</b>: sambungkan collection dengan mode state, lalu nilai variable yang terikat ikut berubah saat state berganti.</p>${connect}`);
+        return section('State mapping', `<p class="small-label">States are read from a <b>variable collection</b>: connect a collection with state modes, and the bound variables change value as the state changes.</p>${connect}`);
+    const states = statesFor(bhTypeOf(n));
     const bodies = colls.map(sc => {
-        const rows = sc.states.map(st => {
-            const values = bhStateValues(n, sc.coll, st.mode);
-            const overrides = mapping[st.state] || {};
+        const rows = states.map(state => {
+            const picked = pickedModeId(n.stateModes, sc.coll.id, state);
+            const auto = modeForState(sc.coll, state), mode = modeForState(sc.coll, state, picked);
+            const values = mode ? bhStateValues(n, sc.coll, mode) : [];
+            const overrides = mapping[state] || {};
             const used = Object.keys(overrides);
             const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
+            const options = [`<option value="">${esc(auto ? `Automatic · ${auto.name}` : 'Not set · uses the fallback state')}</option>`, ...sc.coll.modes.map(m => `<option value="${esc(m.id)}" ${m.id === picked ? 'selected' : ''}>${esc(m.name)}</option>`)].join('');
             return `<div class="bh-state">
-                <div class="bh-card-head"><b>${esc(STATE_LABEL[st.state] || st.state)}</b><span class="small-label">mode ${esc(st.mode.name)}</span></div>
+                <div class="bh-card-head"><b>${esc(STATE_LABEL[state] || state)}</b><span class="small-label">${esc(STATE_HINT[state] || '')}</span></div>
+                <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(STATE_LABEL[state] || state)}">${options}</select>
                 ${values.length
-                    ? values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')
-                    : '<p class="small-label">Tidak ada variable dari collection ini yang terikat ke layer ini.</p>'}
-                ${used.map(prop => bhOverrideRow(st.state, prop, overrides[prop])).join('')}
-                ${free.length ? bhSelect(`state.${st.state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
+                    ? `<details class="bh-values"><summary class="small-label">${values.length} bound value${values.length === 1 ? '' : 's'} in mode ${esc(mode.name)}</summary>${values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(v.layer ? `${v.layer} · ${bhPropLabel(v.prop)}` : bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')}</details>`
+                    : (mode ? '<p class="small-label">No variable from this collection is bound to this layer.</p>' : '')}
+                ${used.map(prop => bhOverrideRow(state, prop, overrides[prop])).join('')}
+                ${free.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
             </div>`;
         }).join('');
         return `<div class="bh-card"><div class="bh-card-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
     }).join('');
-    return section('State mapping', `<p class="small-label">Nilai state dibaca dari variable collection yang disambungkan ke layer ini. Override dipakai kalau sebuah state perlu nilai lain.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
+    return section('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
 }
 function prototypeHtml() {
     const n = activeNode();
@@ -18431,6 +18490,18 @@ function bhAction(n, t) {
         n.stateMapping = map;
         return;
     }
+    if (act === 'state-mode') {
+        const collId = t.dataset.bhColl, state = t.dataset.bhState;
+        if (!collId || !state) return;
+        const all = { ...(n.stateModes || {}) }, row = { ...(all[collId] || {}) };
+        if (t.value) row[state] = t.value;
+        else delete row[state];
+        if (Object.keys(row).length) all[collId] = row;
+        else delete all[collId];
+        if (Object.keys(all).length) n.stateModes = all;
+        else delete n.stateModes;
+        return;
+    }
     if (act === 'connect-collection') {
         const coll = varColl(t.value);
         if (!coll) return;
@@ -18447,6 +18518,12 @@ function bhAction(n, t) {
         delete modes[collId];
         if (Object.keys(modes).length) n.varModes = modes;
         else delete n.varModes;
+        if (n.stateModes?.[collId]) {
+            const picks = { ...n.stateModes };
+            delete picks[collId];
+            if (Object.keys(picks).length) n.stateModes = picks;
+            else delete n.stateModes;
+        }
         return;
     }
 }

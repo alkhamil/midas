@@ -140,7 +140,7 @@ export function CodeBuilderPanel({ bridge, canvasHost }) {
         return out;
     }, [project, ctx, pages, screens, trees, mapped]);
 
-    if (error) return <div className="cb-panel"><p className="cb-error">{error}</p><button className="wide-button" onClick={load}>Coba lagi</button></div>;
+    if (error) return <div className="cb-panel"><p className="cb-error">{error}</p><button className="wide-button" onClick={load}>Try again</button></div>;
     if (!projects) return <div className="cb-panel"><p className="small-label">Loading projects…</p></div>;
 
     const selectProject = async id => {

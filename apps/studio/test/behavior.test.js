@@ -1,7 +1,7 @@
 // Model perilaku (tab Behavior): tipe komponen, state mapping ke variable, interaction, input behavior.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { componentTypeOf, getPath, isStateCollection, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateOfMode, statesFor } from '../src/engine/behavior.js';
+import { componentTypeOf, getPath, isStateCollection, modeForState, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, statesFor } from '../src/engine/behavior.js';
 
 test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('Button Primary'), 'button');
@@ -26,6 +26,58 @@ test('a state collection is named after states or has several state modes', () =
     assert.ok(isStateCollection({ name: 'Tokens', modes: modes(['Default', 'Hover', 'Pressed']) }));
     assert.ok(!isStateCollection({ name: 'Color', modes: modes(['Light', 'Dark']) }));
     assert.ok(!isStateCollection({ name: 'Color', modes: modes(['Default']) }));
+});
+
+test('a state reads the mode its name suggests, by name priority and not by collection order', () => {
+    const coll = { id: 'c', modes: ['Default', 'Selected', 'Typing', 'Filled', 'Disabled', 'Error-empty', 'Error-filled', 'Focused'].map((name, i) => ({ id: `m${i}`, name })) };
+    const name = state => modeForState(coll, state)?.name;
+    assert.equal(name('filled'), 'Filled');      // not "Default", which comes first in the collection
+    assert.equal(name('selected'), 'Selected');
+    assert.equal(name('focused'), 'Focused');    // Tab focus is not the clicked "Selected" look
+    assert.equal(name('typing'), 'Typing');
+    assert.equal(name('error'), 'Error-filled');
+    assert.equal(modeForState({ id: 'c', modes: [{ id: 'a', name: 'Default' }] }, 'hover'), null);
+});
+
+test('a state can be pointed at any mode, whatever it is called', () => {
+    const coll = { id: 'c', modes: [{ id: 'a', name: 'Rest' }, { id: 'b', name: 'Active input' }] };
+    assert.equal(modeForState(coll, 'typing', 'b').name, 'Active input');
+    assert.equal(modeForState(coll, 'typing', 'gone'), null, 'a stale pick falls back to the name guess');
+});
+
+test('selected, typing and filled are input states with their own fallbacks', () => {
+    for (const s of ['selected', 'typing', 'filled']) {
+        assert.ok(statesFor('input').includes(s));
+        assert.ok(!statesFor('button').includes(s));
+    }
+    assert.deepEqual(stateChain('filled'), ['filled', 'default']);
+    assert.deepEqual(stateChain('selected').slice(0, 2), ['selected', 'focused']);
+});
+
+test('an input field has an explicit type, text unless chosen', () => {
+    assert.equal(normalizeInputBehavior({ typeable: {} }).typeable.inputType, undefined);
+    const pw = normalizeInputBehavior({ typeable: { inputType: 'password', showIconId: 'eye', hideIconId: 'eye-off' } }).typeable;
+    assert.equal(pw.inputType, 'password');
+    assert.equal(pw.showIconId, 'eye', 'the icon shown while the text is hidden is a component');
+    assert.equal(pw.hideIconId, 'eye-off');
+    assert.equal(normalizeInputBehavior({ typeable: { inputType: 'nonsense' } }).typeable.inputType, undefined);
+});
+
+test('a dropdown, overlay or popover opens a component; a frame picked earlier keeps working until replaced', () => {
+    const [dropdown, overlay, navigate, legacy, both] = normalizeInteractions([
+        { action: { type: 'open-dropdown', targetComponentId: 'menu' } },
+        { action: { type: 'open-overlay', targetComponentId: 'dialog', targetFrameId: 'old' } },
+        { action: { type: 'navigate', targetFrameId: 'page', targetComponentId: 'ignored' } },
+        { action: { type: 'open-popover', targetFrameId: 'frame' } },
+        { action: { type: 'open-dropdown', targetComponentId: 'menu', targetFrameId: 'frame' } },
+    ]);
+    assert.equal(dropdown.action.targetComponentId, 'menu');
+    assert.equal(overlay.action.targetComponentId, 'dialog');
+    assert.equal(overlay.action.targetFrameId, undefined, 'a component replaces the frame');
+    assert.equal(navigate.action.targetFrameId, 'page', 'navigating still goes to a page frame');
+    assert.equal(navigate.action.targetComponentId, undefined);
+    assert.equal(legacy.action.targetFrameId, 'frame');
+    assert.equal(both.action.targetFrameId, undefined);
 });
 
 test('the error state is only asked for input fields', () => {
