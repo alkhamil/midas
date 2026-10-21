@@ -5,6 +5,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, POSITIONS, setPath, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL } from './behavior.js';
 
 
 // ===== document.js =====
@@ -8071,7 +8072,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'interactions', 'inputBehavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -8603,6 +8604,15 @@ function section(title, body, action = '', extra = '') { return `<section class=
 function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
 function renderInspector() {
+    // Tab Behavior hanya ada kalau yang dipilih memang komponen, instance, atau frame.
+    const sel = activeNode();
+    const relevant = !!sel && (sel.isInstance || sel.component || sel.componentSet || (sel.type === 'frame' && !sel.parentId && !sel.component && !sel.componentSet && !sel.isInstance));
+    const tabBtn = document.getElementById('inspector-tab-behavior');
+    if (tabBtn) tabBtn.style.display = relevant ? '' : 'none';
+    if (!relevant && state.inspectorTab === 'prototype') {
+        state.inspectorTab = 'design';
+        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el.dataset.inspectorTab === 'design'));
+    }
     if (state.inspectorTab === 'prototype' && !state.editing) {
         $('#inspector').innerHTML = prototypeHtml();
         return;
@@ -12289,7 +12299,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'interactions', 'inputBehavior'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -18014,6 +18024,23 @@ function liveContext() {
         }).filter(v => v.value !== 'undefined' && v.value !== 'undefinedpx'),
         // Only a variable with one mode and a name of its own can be a plain CSS variable; the rest are read per mode when drawn.
         varName: id => { const i = items.get(id), c = i && store.collections.find(x => x.id === i.collectionId); return i && c?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1 ? cssName(i.name) : null; },
+        /** Nilai variable sebagai teks (mode pertama) — dipakai state mapping dan pesan error. */
+        varValueOf: id => { const i = items.get(id); if (!i) return undefined; const v = varValue(doc, i, null); return v === undefined || v === null ? undefined : v; },
+        /** State mapping sebuah instance: miliknya dulu, lalu milik component set / komponen. */
+        mappingFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.stateMapping || set?.stateMapping || src?.stateMapping || null;
+        },
+        /** Interaction sebuah instance (tab Behavior). */
+        interactionsFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.interactions || set?.interactions || src?.interactions || [];
+        },
+        /** Perilaku input sebuah instance (label, area typeable, error). */
+        inputFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.inputBehavior || set?.inputBehavior || src?.inputBehavior || null;
+        },
         typeable: n => !!n.isInstance && (n.typeable ?? looksLikeField(n)) && !!fieldOf(n),
         field: fieldOf,
         roles: rolesOf,
@@ -18087,38 +18114,304 @@ function stopLivePreview() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && livePreview && !isInput(document.activeElement))
     stopLivePreview(); });
-// ===== Prototype tab: what a layer does in Preview =====
+// ===== Behavior tab: what a layer does in Preview =====
+// Isi tab kontekstual: mengikuti tipe komponen yang dipilih. Tombol → state mapping + interaction,
+// input → label + area typeable + error + interaction. State tidak pernah memakai nilai hardcoded dari
+// kit ui-standard: setiap state membaca nilainya dari variable collection, atau dari nilai manual.
+const bhSlug = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const bhCollections = () => varStore().collections || [];
+const bhItemsOf = id => (varStore().items || []).filter(i => i.collectionId === id);
+function bhOpts(list, value) {
+    return list.map(o => {
+        const [v, l] = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o.id, o.label ?? o.id] : [o, o]);
+        return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`;
+    }).join('');
+}
+function bhSelect(path, kind, value, options, attrs = '') {
+    return `<select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="${kind}" ${attrs}>${bhOpts(options, value)}</select>`;
+}
+function bhCheck(path, checked, label) {
+    return `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(path)}" data-bh-kind="bool" ${checked ? 'checked' : ''}> ${esc(label)}</label>`;
+}
+/** Pemilih nilai gaya: variable (collection + variable) atau nilai manual. */
+function bhStyleValue(path, value, label = '', names = {}, variableOnly = false) {
+    const key = { collection: 'collectionId', variable: 'variableId', manual: 'value', ...names };
+    const collId = value?.[key.collection] || '', varId = value?.[key.variable] || '', manual = value?.[key.manual] ?? '';
+    const cols = bhCollections(), items = collId ? bhItemsOf(collId) : [];
+    const second = variableOnly
+        ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— none —'], ...items.map(i => [i.id, i.name])])
+        : collId
+            ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— choose a variable —'], ...items.map(i => [i.id, i.name])])
+            : `<input class="full-width" data-bh-path="${esc(path)}.${key.manual}" data-bh-kind="manual" placeholder="#4338CA or 12" value="${esc(manual)}">`;
+    return `<div class="bh-value">${label ? `<div class="small-label">${esc(label)}</div>` : ''}<div class="bh-value-row">
+        ${bhSelect(`${path}.${key.collection}`, 'collection', collId, [['', 'Manual value'], ...cols.map(c => [c.id, c.name])])}
+        ${second}
+    </div></div>`;
+}
+/** Lapisan di dalam sebuah komponen/instance yang bisa dipilih (label, typeable frame, error frame). */
+function bhLayers(n) {
+    const out = [];
+    const walk = id => {
+        for (const c of doc.children(id)) {
+            if (c.visible === false) continue;
+            out.push({ id: c.id, name: c.name || c.type, type: c.type });
+            walk(c.id);
+        }
+    };
+    walk(n.id);
+    return out;
+}
+/** Frame yang bisa jadi target sebuah action, beserta perannya. */
+function bhFrames() {
+    const out = [];
+    for (const p of doc.data.pages) {
+        for (const f of p.nodes) {
+            if (f.type !== 'frame' || f.parentId || f.component || f.componentSet || f.isInstance || f.isSection) continue;
+            out.push({ id: f.id, label: doc.data.pages.length > 1 ? `${p.name} / ${f.name}` : f.name, role: f.frameRole || 'page' });
+        }
+    }
+    return out;
+}
+/** Tipe komponen dari namanya (Midas tidak menyimpan tipe komponen terpisah). */
+function bhTypeOf(n) {
+    const src = n.isInstance ? chainComponent(n) : n;
+    const set = src && parentSetOf(src);
+    for (const nm of [src?.name, set?.name, n.name]) {
+        const t = componentTypeOf(nm);
+        if (t !== 'generic') return t;
+    }
+    return 'generic';
+}
+function bhFrameSelect(path, value, frames, action, label) {
+    const roles = TARGET_ROLES[action] || ['page'];
+    const list = frames.filter(f => roles.includes(f.role || 'page'));
+    return `<label class="field"><span>${esc(label)}</span><select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${list.map(f => `<option value="${f.id}" ${f.id === value ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>`;
+}
+/** Baris state mapping: state → properti → (collection + variable | nilai manual). */
+function bhStateRows(n, type) {
+    const mapping = normalizeStateMapping(n.stateMapping);
+    const fixed = statesFor(type);
+    const custom = Object.keys(mapping).filter(s => !fixed.includes(s));
+    return [...fixed, ...custom].map(state => {
+        const props = Object.keys(mapping[state] || {});
+        const rows = (props.length ? props : ['']).map(prop => {
+            const value = prop ? mapping[state][prop] : null;
+            const path = `state.${state}.${prop || 'fill'}`;
+            return `<div class="bh-row">
+                ${bhSelect(path, 'prop', prop || 'fill', [['', '— property —'], ...STATE_PROPS.map(p => [p.id, p.label])], `data-bh-prop="${esc(prop)}"`)}
+                ${bhStyleValue(path, value)}
+                <button type="button" class="icon-button small" data-bh-act="remove-prop" data-bh-state="${esc(state)}" data-bh-prop="${esc(prop)}" title="Remove this property">×</button>
+            </div>`;
+        }).join('');
+        const unused = STATE_PROPS.map(p => p.id).filter(p => !props.includes(p));
+        return `<div class="bh-card"><div class="bh-card-head"><b>${esc(STATE_LABEL[state] || state)}</b>${fixed.includes(state) ? '' : `<button type="button" class="icon-button small" data-bh-act="del-state" data-bh-state="${esc(state)}" title="Remove state">×</button>`}</div>
+            ${rows}
+            ${unused.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Add property'], ...unused.map(p => [p.id, STATE_PROP_MAP[p].label])]) : ''}
+        </div>`;
+    }).join('');
+}
+/** Daftar interaction: trigger + action + kolom kontekstual sesuai jenis action. */
+function bhInteractionRows(n, frames) {
+    const list = normalizeInteractions(n.interactions);
+    if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
+    return list.map((it, i) => {
+        const a = it.action;
+        let extra = '';
+        if (a.type === 'navigate') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
+        if (a.type === 'open-dropdown') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-dropdown', 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'bottom-left', POSITIONS);
+        if (a.type === 'open-overlay') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-overlay', 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
+        if (a.type === 'open-popover') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'open-popover', 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'top', POSITIONS);
+        if (a.type === 'close-overlay') extra = bhSelect(`interactions.${i}.action.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
+        return `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
+            <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
+            <label class="field"><span>Do</span>${bhSelect(`interactions.${i}.action.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>
+            ${extra}</div>`;
+    }).join('');
+}
+/** Bagian khusus input field: label, area typeable, error. */
+function bhInputHtml(n, layers) {
+    const ib = normalizeInputBehavior(n.inputBehavior) || { label: { exists: true }, typeable: {}, error: {}, validation: {} };
+    const texts = layers.filter(l => l.type === 'text');
+    const ref = ib.label.reference || {};
+    const labelType = ref.type || 'layer';
+    const opt = (list, value) => `<option value="">— none —</option>${list.map(l => `<option value="${l.id}" ${l.id === value ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}`;
+    // Label
+    const labelParts = [];
+    labelParts.push(`<p class="small-label">An input is often a group: label text, input box, hint text. Say which part is which.</p>`);
+    labelParts.push(`<label class="field"><span>Does a label exist?</span>${bhSelect('input.label.exists', 'bool', ib.label.exists === false ? 'false' : 'true', [['true', 'Yes'], ['false', 'No']])}</label>`);
+    if (ib.label.exists !== false) {
+        labelParts.push(`<label class="field"><span>Refers to</span>${bhSelect('input.label.reference.type', 'plain', labelType, [['layer', 'A text layer'], ['variable', 'A variable']])}</label>`);
+        if (labelType === 'variable') labelParts.push(bhStyleValue('input.label.reference', { collectionId: ref.collectionId, variableId: ref.variableId }, 'Variable'));
+        else labelParts.push(`<label class="field"><span>Text layer</span><select class="full-width" data-bh-path="input.label.reference.layerId" data-bh-kind="plain">${opt(texts, ref.layerId)}</select></label>`);
+    }
+    let html = section('Label', labelParts.join(''));
+    // Typeable area
+    const typeParts = [];
+    typeParts.push(`<p class="small-label">Which layer receives the typing? The rest of the component stays read-only.</p>`);
+    typeParts.push(`<label class="field"><span>Typeable layer</span><select class="full-width" data-bh-path="input.typeable.frameId" data-bh-kind="plain">${opt(texts, ib.typeable.frameId)}</select></label>`);
+    typeParts.push(bhStyleValue('input.typeable.placeholder', ib.typeable.placeholder, 'Placeholder'));
+    typeParts.push(bhStyleValue('input.typeable', { collectionId: ib.typeable.valueCollectionId, variableId: ib.typeable.valueVariableId }, 'Value binds to (optional)', { collection: 'valueCollectionId', variable: 'valueVariableId' }, true));
+    typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
+    html += section('Typeable area', typeParts.join(''));
+    // Error handling
+    const errParts = [];
+    errParts.push(`<label class="field"><span>State shown on error</span>${bhSelect('input.error.stateName', 'plain', ib.error.stateName || 'error', [['', '— none —'], ...statesFor('input').map(s => [s, STATE_LABEL[s] || s])])}</label>`);
+    errParts.push(bhStyleValue('input.error.border', ib.error.border, 'Border color'));
+    errParts.push(bhStyleValue('input.error.hint', ib.error.hint, 'Hint text'));
+    errParts.push(`<label class="field"><span>Hint text (manual)</span><input data-bh-path="input.error.hintText" data-bh-kind="plain" placeholder="This field is required" value="${esc(ib.error.hintText || '')}"></label>`);
+    errParts.push(`<label class="field"><span>Error frame</span><select class="full-width" data-bh-path="input.error.frameId" data-bh-kind="plain">${opt(layers, ib.error.frameId)}</select></label>`);
+    html += section('Error handling', errParts.join(''));
+    return html;
+}
 function prototypeHtml() {
     const n = activeNode();
-    if (!n || !(n.isInstance || n.component))
-        return section('Behavior', '<p class="small-label">Behavior is set on components. Select a component or an instance of one.</p>');
-    const ctx = liveContext(), src = chainComponent(n), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
-    const name = id => cps.find(p => p.id === id)?.name, roles = ctx.roles(n), field = ctx.typeable(n) ? ctx.field(n) : null;
-    const stateKey = set && liveStateKey(set, src), modes = ctx.modes(n);
-    const li = (k, v) => `<div class="small-label"><b>${k}</b>: ${v}</div>`;
-    const understood = li('States from', [stateKey && `variant property “${esc(stateKey)}”`, modes && `variable collection “${esc(Object.keys(n.varModes || {}).map(id => varColl(id)).filter(c => c && /state/i.test(c.name)).map(c => c.name).join(', '))}” (${Object.keys(modes.byState).join(', ')})`].filter(Boolean).join(' and ') || 'none found — add a variant property or a variable collection with state names (hover, pressed, focused, error, disabled)')
-        + li('Field text', field ? `layer “${esc(ctx.node(field.id)?.name || '')}”` : 'not a field')
-        + li('Hint', roles.showHint ? `shown by “${esc(name(roles.showHint))}”, text in “${esc(name(roles.hintText) || '—')}”` : 'none found');
-    let html = section('How Preview reads this component', understood);
-    if (!n.isInstance)
-        return html;
-    const frames = doc.data.pages.flatMap(p => p.nodes.filter(f => f.type === 'frame' && !f.parentId && !f.component && !f.componentSet && !f.isInstance && !f.isSection));
-    const typeable = n.typeable ?? looksLikeField(n);
-    html += section('When clicked', `<select id="proto-target" class="wide-select" aria-label="Go to page"><option value="">Nothing</option>${frames.map(f => `<option value="${f.id}" ${n.prototypeTarget === f.id ? 'selected' : ''}>Go to page: ${esc(f.name)}</option>`).join('')}</select>`);
-    html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label>${typeable ? `<label class="checkbox-row"><input type="checkbox" data-proto="required" ${n.required ? 'checked' : ''}> Required</label><label class="small-label">Error message</label><input type="text" class="wide-input" data-proto="errorMessage" placeholder="This field is required" value="${esc(n.errorMessage || '')}">` : ''}<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+    if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
+    const isFrame = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
+    if (!n.isInstance && !n.component && !n.componentSet && !isFrame)
+        return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
+    if (isFrame)
+        return section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
+            <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
+    const type = bhTypeOf(n);
+    const src = n.isInstance ? chainComponent(n) : n;
+    const set = src && parentSetOf(src);
+    const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
+    const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
+    let html = section('This component', `<div class="small-label"><b>Component</b>: ${esc(compName)}</div><div class="small-label"><b>Type</b>: ${esc(TYPE_LABEL[type] || type)}</div><div class="small-label"><b>Kind</b>: ${esc(kind)}</div>`);
+    html += section('State mapping', `<p class="small-label">Where do the states get their values? Every state reads from a variable collection, or from a manual value.</p>
+        <div class="bh-list">${bhStateRows(n, type)}</div>
+        <div class="bh-add"><input class="full-width" data-bh-act="new-state" placeholder="Custom state name" aria-label="Custom state name"><button type="button" class="icon-button" data-bh-act="add-state" title="Add state">＋</button></div>`);
+    if (type === 'input') html += bhInputHtml(n, bhLayers(n));
+    if (n.isInstance) {
+        html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div>
+            <select class="wide-button" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`);
+        const typeable = n.typeable ?? looksLikeField(n);
+        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label>${type === 'input' ? '' : `<label class="checkbox-row"><input type="checkbox" data-proto="required" ${n.required ? 'checked' : ''}> Required</label><label class="small-label">Error message</label><input type="text" class="wide-input" data-proto="errorMessage" placeholder="This field is required" value="${esc(n.errorMessage || '')}">`}<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+    }
+    else html += section('Interaction', '<p class="small-label">Interactions belong to an instance. Select an instance of this component to add them.</p>');
     return html;
+}
+/** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
+function bhWrite(n, path, value) {
+    if (path.startsWith('frame.')) {
+        n.frameRole = value || 'page';
+        return;
+    }
+    const cfg = { state: n.stateMapping || {}, interactions: n.interactions || [], input: n.inputBehavior || {} };
+    setPath(cfg, path, value);
+    if (path.startsWith('state.') || n.stateMapping) n.stateMapping = normalizeStateMapping(cfg.state);
+    if (path.startsWith('interactions.') || n.interactions) n.interactions = normalizeInteractions(cfg.interactions);
+    if (path.startsWith('input.') || n.inputBehavior) n.inputBehavior = normalizeInputBehavior(cfg.input);
+}
+function bhSet(n, t) {
+    const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
+    const value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
+    if (kind === 'prop') {
+        // Ganti properti yang dipetakan (nama kuncinya berubah, nilainya ikut).
+        const state = path.split('.')[1], oldProp = t.dataset.bhProp || '', newProp = value;
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[state] || {};
+        const val = oldProp ? row[oldProp] : undefined;
+        if (oldProp) delete row[oldProp];
+        if (newProp) row[newProp] = val || {};
+        map[state] = row;
+        n.stateMapping = map;
+        return;
+    }
+    const parent = path.split('.').slice(0, -1).join('.');
+    if (kind === 'collection') {
+        bhWrite(n, path, value || undefined);
+        if (value) { bhWrite(n, `${parent}.variableId`, undefined); bhWrite(n, `${parent}.value`, undefined); }
+        return;
+    }
+    if (kind === 'variable') {
+        bhWrite(n, path, value || undefined);
+        if (value) bhWrite(n, `${parent}.value`, undefined);
+        return;
+    }
+    if (kind === 'manual') {
+        bhWrite(n, path, value === '' ? undefined : value);
+        bhWrite(n, `${parent}.collectionId`, undefined);
+        bhWrite(n, `${parent}.variableId`, undefined);
+        return;
+    }
+    bhWrite(n, path, value === '' ? undefined : value);
+}
+function bhAction(n, t) {
+    const act = t.dataset.bhAct;
+    if (act === 'add-interaction') {
+        if (!t.value) return;
+        const list = normalizeInteractions(n.interactions);
+        list.push({ id: `i${Date.now().toString(36)}`, trigger: 'onClick', action: { type: t.value } });
+        n.interactions = list;
+        return;
+    }
+    if (act === 'del-interaction') {
+        const i = Number(t.dataset.bhIndex);
+        n.interactions = normalizeInteractions(n.interactions).filter((_, k) => k !== i);
+        return;
+    }
+    if (act === 'add-state') {
+        const input = $('#inspector [data-bh-act="new-state"]');
+        const name = bhSlug(input?.value || '');
+        if (!name) return;
+        const map = normalizeStateMapping(n.stateMapping);
+        map[name] = map[name] || {};
+        n.stateMapping = map;
+        if (input) input.value = '';
+        return;
+    }
+    if (act === 'del-state') {
+        const map = normalizeStateMapping(n.stateMapping);
+        delete map[t.dataset.bhState];
+        n.stateMapping = map;
+        return;
+    }
+    if (act === 'remove-prop') {
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[t.dataset.bhState];
+        if (row) {
+            delete row[t.dataset.bhProp];
+            if (!Object.keys(row).length) delete map[t.dataset.bhState];
+        }
+        n.stateMapping = map;
+        return;
+    }
+    if (act === 'add-prop') {
+        if (!t.value) return;
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[t.dataset.bhState] || (map[t.dataset.bhState] = {});
+        row[t.value] = row[t.value] || {};
+        n.stateMapping = map;
+        return;
+    }
 }
 $('#inspector').addEventListener('change', e => {
     const n = activeNode(), t = e.target;
-    if (!n || !(t.id === 'proto-target' || t.dataset.proto))
-        return;
-    transaction('Prototype', () => {
+    if (!n) return;
+    const isBh = t.dataset.bhPath || (t.dataset.bhAct && t.tagName === 'SELECT');
+    if (!(t.id === 'proto-target' || t.dataset.proto || isBh)) return;
+    transaction('Behavior', () => {
         if (t.id === 'proto-target')
             n.prototypeTarget = t.value || undefined;
-        else
+        else if (t.dataset.proto)
             n[t.dataset.proto] = t.type === 'checkbox' ? t.checked : t.value;
+        else if (t.dataset.bhAct)
+            bhAction(n, t);
+        else if (t.dataset.bhPath)
+            bhSet(n, t);
         doc.touch(n);
     });
+    renderInspector();
+});
+document.addEventListener('click', e => {
+    const t = e.target.closest?.('[data-bh-act]');
+    if (!t || t.tagName !== 'BUTTON') return;
+    const n = activeNode();
+    if (!n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    transaction('Behavior', () => { bhAction(n, t); doc.touch(n); });
     renderInspector();
 });
 

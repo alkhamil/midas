@@ -1,9 +1,15 @@
-// Live preview: a design frame as real DOM, so inputs can be typed in, buttons react to the pointer and "Go to page" works.
+// Live preview: a design frame as real DOM, so inputs can be typed in, buttons react to the pointer and the
+// interactions of the Behavior tab work ("Go to page", dropdown, overlay, popover/tooltip).
 // Positions come from the editor's own auto layout engine (ctx.layout), run on a copy of the frame with the current state
 // applied (a hint that appears, a variant that swaps), so the preview lays out exactly like the canvas: order, flip, hug,
 // fill, wrap, strokes. The DOM only draws what the layout produced.
 // The editor supplies everything it knows through `ctx` (see liveContext in midas.js):
 //   node kids descendants layout variants modes resolved typeable field roles varName vars frames start
+//   mappingFor interactionsFor inputFor varValueOf
+//
+// State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
+// state hardcoded dari kit ui-standard.
+import { normalizeInteractions, overridesFor } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -141,6 +147,7 @@ export function openLivePreview(ctx, host) {
     const css = el('style', null, root);
     css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit}`;
     const runtime = new Map();            // instance id -> { state, value, error }
+    const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
 
     const stateOf = n => runtime.get(n.id)?.state || (n.disabled ? 'disabled' : 'default');
@@ -150,21 +157,97 @@ export function openLivePreview(ctx, host) {
         return null;
     };
 
+    /** Nilai gaya dari state mapping: variable → var(--name) bila bisa, selain itu nilainya sendiri. */
+    const styleValue = sv => {
+        if (!sv) return null;
+        if (sv.variableId) {
+            const raw = ctx.varValueOf?.(sv.variableId);
+            const fallback = raw === undefined || raw === null ? '' : String(raw);
+            const name = ctx.varName(sv.variableId);
+            return { text: name ? `var(--${name}, ${fallback})` : fallback, raw: fallback, variableId: sv.variableId };
+        }
+        if (sv.value === undefined || sv.value === null || sv.value === '') return null;
+        return { text: String(sv.value), raw: String(sv.value) };
+    };
+    /** Isi fill pada sebuah salinan layer (array fills ikut di-copy, jangan mengubah dokumen). */
+    const setFill = (c, value) => {
+        if (Array.isArray(c.fills)) c.fills = c.fills.map((f, i) => (i === 0 ? { ...f, type: 'solid', color: value } : f));
+        c.fill = value;
+    };
+    /** State mapping (variable driven) pada salinan layer: isi, garis, radius, opasitas, warna teks. */
+    function applyMapping(c, mapping, st, props) {
+        if (!mapping) return c;
+        const over = overridesFor(mapping, st);
+        const vars = { ...(c.vars || {}) };
+        let touched = false;
+        for (const [prop, sv] of Object.entries(over)) {
+            if (props && !props.includes(prop)) continue;
+            const v = styleValue(sv);
+            if (!v) continue;
+            touched = true;
+            if (prop === 'fill') { setFill(c, v.text); delete vars.fill; }
+            else if (prop === 'stroke') { c.stroke = v.text; delete vars.stroke; }
+            else if (prop === 'radius') {
+                if (v.variableId) { vars.radius = v.variableId; c.radius = Number(v.raw) || c.radius; }
+                else { c.radius = Number(v.raw) || 0; delete vars.radius; }
+            }
+            else if (prop === 'opacity') c.opacity = Number(v.raw);
+        }
+        if (touched) c.vars = vars;
+        return c;
+    }
+    /**
+     * Lapisan yang membawa tampilan sebuah komponen: kalau instance-nya sendiri tidak punya isi / garis,
+     * warna state dipakai pada lapisan pertama di dalamnya yang punya (mis. kotak input pada TextField).
+     */
+    const visualTarget = (inst, kind) => {
+        for (const d of ctx.descendants(inst.id)) {
+            if (d.visible === false) continue;
+            if (kind === 'fill' && d.type !== 'text' && d.fill && d.fill !== 'none') return d.id;
+            if (kind === 'stroke' && d.strokeWidth > 0 && d.stroke && d.stroke !== 'none') return d.id;
+        }
+        return null;
+    };
+    /** Layer yang menerima ketikan: dari input behavior, atau tebakan lama. */
+    const fieldOf = (inst, ib) => {
+        const id = ib?.typeable?.frameId;
+        if (id) {
+            const layer = ctx.node(id);
+            if (layer) return { id, name: layer.name, width: layer.w };
+        }
+        return ctx.field(inst);
+    };
+    /** Pesan error: dari variable, dari teks manual, atau dari pesan bawaan instance. */
+    const errorTextOf = (ib, inst) => {
+        if (ib?.error?.hint?.variableId) {
+            const v = ctx.varValueOf?.(ib.error.hint.variableId);
+            if (v !== undefined && v !== null && v !== '') return String(v);
+        }
+        if (ib?.error?.hint?.value) return String(ib.error.hint.value);
+        if (ib?.error?.hintText) return String(ib.error.hintText);
+        return inst?.errorMessage || 'This field is required';
+    };
+    const requiredOf = (inst, ib) => !!(ib?.validation?.required || inst?.required);
+
     /** A copy of the frame with the current state applied, laid out by the editor's engine. */
     function buildScene(frame) {
         const nodes = [];
         let seq = 0;
         // o: the instance being copied, with the variant to borrow looks from, the variable modes to read in and the texts to carry over.
         const emit = (n, parentId, o) => {
-            const roles = o?.roles, err = !!o?.err;
-            const forced = err && roles?.showHint && n.propBind?.visible === roles.showHint;
+            const roles = o?.roles, err = !!o?.err, ib = o?.input;
+            const forced = (err && roles?.showHint && n.propBind?.visible === roles.showHint) || (err && ib?.error?.frameId === n.id);
             if (n.visible === false && !forced) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null;
             if (n.isInstance) {
-                const variants = ctx.variants(n), modes = ctx.modes(n), field = ctx.typeable(n) ? ctx.field(n) : null, st = stateOf(n);
+                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) ? fieldOf(n, ib2) : null, st = stateOf(n);
                 const src = pick(variants?.byState, st), swap = src && src !== variants.current;
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error };
+                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {} };
+                // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
+                const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
+                const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
+                inner.target = { fill: ownFill ? null : visualTarget(n, 'fill'), stroke: ownStroke ? null : visualTarget(n, 'stroke') };
                 if (swap) {
                     const v = ctx.node(src);
                     base = { ...v, x: n.x, y: n.y, w: n.w, h: n.h, layoutSizingH: n.layoutSizingH, layoutSizingV: n.layoutSizingV, layoutPositioning: n.layoutPositioning, name: n.name };
@@ -175,19 +258,32 @@ export function openLivePreview(ctx, host) {
             }
             else if (n.prototypeTarget) wire = { inst: n };
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
+            if (c.vars) c.vars = { ...c.vars };
+            // State mapping: nilai state (hover / pressed / error …) dari variable collection.
+            if (n.isInstance && inner?.mapping) {
+                const own = ['fill', 'stroke', 'radius', 'opacity'].filter(p => !inner.target?.[p]);
+                applyMapping(c, inner.mapping, inner.state || 'default', own);
+            }
+            if (inner?.mapping) {
+                for (const p of ['fill', 'stroke']) if (inner.target?.[p] === n.id) applyMapping(c, inner.mapping, inner.state || 'default', [p]);
+                if (n.type === 'text') applyMapping(c, inner.mapping, inner.state || 'default', ['text']);
+            }
             if (n.type === 'text') {
                 if (o?.field && (n.id === o.field.id || (o.swapped && n.name === o.field.name))) c._field = o;
-                c.text = err && roles?.hintText && n.propBind?.text === roles.hintText ? o.inst.errorMessage || 'This field is required' : o?.texts?.get(n.id) ?? n.text ?? '';
+                const errText = err && (ib?.error?.frameId === n.id || o?.errFrame) ? errorTextOf(ib, o?.inst) : null;
+                c.text = errText ?? (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.texts?.get(n.id) ?? n.text ?? '');
             }
             nodes.push(c);
-            for (const k of ctx.kids(kidsOf)) emit(k, c.id, inner);
+            // Lapisan di dalam error frame ikut membawa pesan error (mis. teks bantuan di bawah input).
+            const childInner = (ib?.error?.frameId === n.id) ? { ...inner, errFrame: true } : inner;
+            for (const k of ctx.kids(kidsOf)) emit(k, c.id, childInner);
         };
         emit({ ...frame, x: 0, y: 0 }, null, null);
         ctx.layout(nodes);
         return nodes;
     }
 
-    function renderScene(nodes) {
+    function renderScene(nodes, container = stage) {
         const kidsOf = new Map();
         for (const c of nodes) {
             if (!kidsOf.has(c.parentId)) kidsOf.set(c.parentId, []);
@@ -225,7 +321,7 @@ export function openLivePreview(ctx, host) {
             strokeOverlay(ctx, c, d);
             return d;
         };
-        return draw(nodes[0], stage, null);
+        return draw(nodes[0], container, null);
     }
 
     function textBox(c, parent, off) {
@@ -240,12 +336,13 @@ export function openLivePreview(ctx, host) {
         const input = el('input', { ...placed(c, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), border: '0', outline: '0', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
-        input.placeholder = c.text ?? '';
+        input.placeholder = o.input?.typeable?.placeholder?.value ?? c.text ?? '';
         input.value = cur.value || '';
         input.disabled = !!inst.disabled;
         input.type = /password/i.test(`${inst.name} ${input.placeholder}`) ? 'password' : 'text';
         const ph = `.live-preview [data-field="${inst.id}"]::placeholder{color:${rgba(fillsOf(c)[0]?.color || c.fill, .6)}}`;
         if (!css.textContent.includes(ph)) css.textContent += ph;
+        const required = requiredOf(inst, o.input);
         input.addEventListener('focus', () => { if (!rendering && !runtime.get(inst.id)?.state?.match(/^(focused|typing)$/)) update(inst, { state: input.value ? 'typing' : 'focused', error: false }); });
         input.addEventListener('input', () => {
             const was = runtime.get(inst.id) || {};
@@ -254,25 +351,99 @@ export function openLivePreview(ctx, host) {
         });
         input.addEventListener('blur', () => {
             if (rendering) return;
-            const bad = !!inst.required && !input.value.trim();
+            const bad = required && !input.value.trim();
             update(inst, { state: bad ? 'error' : input.value ? 'filled' : 'default', error: bad, value: input.value });
+            runTriggers(inst, 'onBlur', input);
         });
+        input.addEventListener('change', () => runTriggers(inst, 'onChange', input));
         return input;
+    }
+
+    /** Jalankan action dari tab Behavior untuk sebuah instance. */
+    function runTriggers(inst, trigger, anchor, rect) {
+        const list = normalizeInteractions(ctx.interactionsFor?.(inst));
+        for (const it of list) {
+            if (it.trigger !== trigger) continue;
+            runAction(it.action, inst, anchor, rect);
+        }
+    }
+    function runAction(action, inst, anchor, rect) {
+        if (!action) return;
+        if (action.type === 'navigate') {
+            if (action.targetFrameId && ctx.node(action.targetFrameId)) show(action.targetFrameId);
+            return;
+        }
+        if (action.type === 'close-overlay') {
+            closeLayers(action.close === 'all' ? 'all' : 'current');
+            return;
+        }
+        if (action.type === 'open-dropdown' || action.type === 'open-overlay' || action.type === 'open-popover') openLayer(action, anchor, rect);
+    }
+
+    /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
+    function openLayer(action, anchor, rect) {
+        const frame = ctx.node(action.targetFrameId);
+        if (!frame) return;
+        const kind = action.type === 'open-dropdown' ? 'dropdown' : action.type === 'open-overlay' ? 'overlay' : 'popover';
+        const holder = el('div', { position: 'absolute', zIndex: 70 }, root);
+        let backdrop = null;
+        const content = renderScene(buildScene(frame), holder);
+        content.style.position = 'relative';
+        content.style.left = '0';
+        content.style.top = '0';
+        const w = content.offsetWidth, h = content.offsetHeight;
+        const r = root.getBoundingClientRect();
+        // Posisi jangkar diambil sebelum scene digambar ulang (elemen lama sudah lepas dari DOM).
+        const a = rect || anchor?.getBoundingClientRect?.();
+        const pos = action.position || (kind === 'overlay' ? 'center' : kind === 'dropdown' ? 'bottom-left' : 'top');
+        const place = (left, top) => { holder.style.left = px(Math.max(4, left)); holder.style.top = px(Math.max(4, top)); };
+        if (kind === 'overlay' || pos === 'center') {
+            if (action.backdrop !== false) {
+                backdrop = el('div', { position: 'absolute', inset: '0', zIndex: 69, background: 'rgba(15,23,42,.45)' }, root);
+                if (action.closeOnBackdrop) backdrop.addEventListener('click', () => closeLayers('all'));
+            }
+            place((r.width - w) / 2, (r.height - h) / 2);
+        }
+        else if (a) {
+            const x = a.left - r.left, y = a.top - r.top;
+            if (pos === 'top' || pos === 'top-left' || pos === 'top-right') place(pos === 'top' ? x + (a.width - w) / 2 : pos === 'top-left' ? x : x + a.width - w, y - h);
+            else if (pos === 'bottom' || pos === 'bottom-left' || pos === 'bottom-right') place(pos === 'bottom' ? x + (a.width - w) / 2 : pos === 'bottom-left' ? x : x + a.width - w, y + a.height);
+            else if (pos === 'left') place(x - w, y + (a.height - h) / 2);
+            else if (pos === 'right') place(x + a.width, y + (a.height - h) / 2);
+            else place(x, y + a.height);
+        }
+        layers.push({ holder, backdrop, kind });
+    }
+    function closeLayers(scope) {
+        const kill = layer => { layer.holder.remove(); layer.backdrop?.remove(); };
+        if (scope === 'all') { layers.splice(0).forEach(kill); return; }
+        if (scope === 'current') { const last = layers.pop(); if (last) kill(last); return; }
+        for (let i = layers.length - 1; i >= 0; i--) if (layers[i].kind === scope) { kill(layers[i]); layers.splice(i, 1); }
     }
 
     function attach({ inst: n, variants, modes, field }, d) {
         if (n.disabled) { d.style.cursor = 'not-allowed'; return; }
         const go = target(n), has = s => !!(variants?.byState[s] || modes?.byState[s]);
+        const mapping = ctx.mappingFor?.(n);
+        const hasState = s => has(s) || !!mapping?.[s];
         if (go) d.style.cursor = 'pointer';
         if (field) return;
-        d.addEventListener('pointerenter', () => has('hover') && update(n, { state: 'hover' }));
+        d.addEventListener('pointerenter', () => {
+            const rect = d.getBoundingClientRect();
+            hasState('hover') && update(n, { state: 'hover' });
+            runTriggers(n, 'onHover', d, rect);
+            runTriggers(n, 'onMouseEnter', d, rect);
+        });
         d.addEventListener('pointerleave', () => update(n, { state: 'default' }));
-        d.addEventListener('pointerdown', () => has('pressed') && update(n, { state: 'pressed' }));
+        d.addEventListener('pointerdown', () => hasState('pressed') && update(n, { state: 'pressed' }));
         // The press redraws the button, so the click is taken from the pointer-up on the redrawn one.
         d.addEventListener('pointerup', () => {
+            // Jangkar posisi diambil sebelum gambar ulang: elemen yang lama sudah lepas dari DOM.
+            const rect = d.getBoundingClientRect();
             const pressed = stateOf(n) === 'pressed';
-            update(n, { state: has('hover') ? 'hover' : 'default' });
-            if (go && (pressed || !has('pressed'))) show(go);
+            update(n, { state: hasState('hover') ? 'hover' : 'default' });
+            if (go && (pressed || !hasState('pressed'))) show(go);
+            runTriggers(n, 'onClick', d, rect);
         });
     }
 
@@ -299,15 +470,17 @@ export function openLivePreview(ctx, host) {
         pick_.value = frameId;
     }
 
-    function show(id) { frameId = id; runtime.clear(); draw(); }
+    function show(id) { frameId = id; runtime.clear(); closeLayers('all'); draw(); }
 
     const bar = el('div', { position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 10px', borderRadius: '10px', background: 'rgba(30,30,30,.9)', color: '#fff', font: '12px Inter, sans-serif' }, root);
     el('span', null, bar).textContent = 'Preview';
     const pick_ = el('select', { background: '#222', color: 'inherit', border: '1px solid rgba(255,255,255,.25)', borderRadius: '6px', font: 'inherit', padding: '2px 4px' }, bar);
     for (const f of ctx.frames) el('option', null, pick_).textContent = f.label, pick_.lastChild.value = f.id;
     pick_.onchange = () => show(pick_.value);
+    const onKey = e => { if (e.key === 'Escape' && layers.length) { closeLayers('current'); e.stopPropagation(); } };
     const resize = () => draw();
+    document.addEventListener('keydown', onKey);
     window.addEventListener('resize', resize);
     draw();
-    return { close() { window.removeEventListener('resize', resize); root.remove(); } };
+    return { close() { document.removeEventListener('keydown', onKey); window.removeEventListener('resize', resize); root.remove(); } };
 }
