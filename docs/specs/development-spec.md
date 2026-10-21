@@ -1,5 +1,8 @@
 # Development Specification: Midas Code Builder & Design System Library
 
+> **Catatan:** dokumen ini adalah spesifikasi awal. Bagian publish library sebagai paket frontend, Code Builder, dan CLI sudah dihapus dari Midas; lihat [docs/workflow.md](../workflow.md) untuk kondisi saat ini.
+
+
 Dokumen ini mendefinisikan spesifikasi teknis fitur **Code Builder** dan **Design System Library** di Midas, serta pakem **Base Code** yang dihasilkan.
 
 Alur pemakaian setelah spec ini diimplementasikan: [workflow.md](./workflow.md).

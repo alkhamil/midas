@@ -8,7 +8,6 @@ Midas di-deploy sebagai **satu service**: server Fastify juga menyajikan hasil b
 | Server + Studio | **Render** (Docker, plan Free) | Tidur setelah ±15 menit idle; request pertama 30–60 dtk. |
 | Postgres | **Neon** | 0,5 GB. |
 | Object storage | **Cloudflare R2** | 10 GB, tanpa biaya egress. |
-| Registry paket (Verdaccio) | tidak dipakai | "Download project" di Studio tidak butuh registry. |
 
 Alternatif service: Koyeb atau Fly.io (juga membaca `Dockerfile`). Variabel lingkungannya sama.
 
@@ -34,18 +33,11 @@ Alternatif service: Koyeb atau Fly.io (juga membaca `Dockerfile`). Variabel ling
 | `S3_REGION` | `auto` |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | dari token R2 |
 | `S3_BUCKET` | `midas` |
-| `MIDAS_PUBLIC_URL` | `https://<nama-service>.onrender.com` |
 | `ALLOW_REGISTER` | `true` dulu; ubah ke `false` setelah akun Anda dibuat |
 | `BODY_LIMIT_MB` | `100` (instance gratis hanya 512 MB RAM) |
 
    `COOKIE_SECURE=true`, `HOST=0.0.0.0` dan `AUTO_MIGRATE=true` sudah diatur di Dockerfile.
 3. Deploy. Buka `https://<nama-service>.onrender.com`, buat akun (akun pertama selalu boleh), lalu set `ALLOW_REGISTER=false`.
-
-## 4. CLI & library
-Arahkan CLI ke server publik: `midas login --server https://<nama-service>.onrender.com`.
-`midas bundle` mengunggah bundle dan tarball ke server itu, jadi **Download project** di Studio langsung berjalan.
-Mem-publish `@midas/ui-cms` ke registry npm tetap opsional (`REGISTRY_URL`); tanpa registry sendiri, pakai tarball dari
-Download project.
 
 ## Menjalankan image secara lokal
 ```bash
@@ -59,4 +51,4 @@ docker run --rm -p 4000:4000 \
 ## Catatan
 - Server hanya berisi proses Node; data ada di Neon dan R2, jadi service boleh tidur atau di-redeploy kapan saja.
 - Plan gratis Render tidur saat idle. Untuk menjaganya tetap hangat, buat monitor (mis. UptimeRobot) ke `/api/health`.
-- Variabel lingkungan lain (`TOKEN_DAYS`, `LOG_LEVEL`, `STUDIO_DIST`) ada di `apps/server/.env.example`.
+- Variabel lingkungan lain (`LOG_LEVEL`, `STUDIO_DIST`) ada di `apps/server/.env.example`.

@@ -1,5 +1,8 @@
 # Workflow End-to-End Midas
 
+> **Catatan:** dokumen ini adalah spesifikasi awal. Bagian publish library sebagai paket frontend, Code Builder, dan CLI sudah dihapus dari Midas; lihat [docs/workflow.md](../workflow.md) untuk kondisi saat ini.
+
+
 Dokumen ini menjelaskan cara Midas dipakai setelah [development-spec.md](./development-spec.md) selesai diimplementasikan: dari membuat design system sampai project hasil generate berjalan.
 
 ---

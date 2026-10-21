@@ -36,6 +36,13 @@
       "when": 1792345965427,
       "tag": "0004_home_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792566448887,
+      "tag": "0005_drop_code_publishing",
+      "breakpoints": true
     }
   ]
 }

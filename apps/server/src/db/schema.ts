@@ -105,51 +105,24 @@ export const libraries = pgTable('libraries', {
     id: text('id').primaryKey().references(() => designFiles.id, { onDelete: 'cascade' }),
     workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    /** Nama paket frontend, mis. `@midas/ui-cms`. Unik dan tidak bisa diubah setelah publish pertama. */
-    packageName: text('package_name').notNull().unique(),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * Satu versi library (immutable). `seq` naik 1 setiap publish dan dipakai Studio untuk mendeteksi
- * update; `version` = semver yang sama dengan versi paket kode.
- */
+/** Satu versi library (immutable). `seq` naik 1 setiap publish dan dipakai Studio untuk mendeteksi update. */
 export const libraryVersions = pgTable('library_versions', {
     id: uuid('id').primaryKey().defaultRandom(),
     libraryId: text('library_id').notNull().references(() => libraries.id, { onDelete: 'cascade' }),
     seq: integer('seq').notNull(),
-    version: text('version').notNull(),
     releaseNotes: text('release_notes'),
     snapshotKey: text('snapshot_key').notNull(),
     componentsCount: integer('components_count').notNull().default(0),
     variablesCount: integer('variables_count').notNull().default(0),
-    /** Library Kit (theme, tipe props, manifest) — diisi oleh generator Library Kit. */
-    manifest: jsonb('manifest'),
     /** published | deprecated */
     designStatus: text('design_status').notNull().default('published'),
-    /** pending | ready | partial — dari laporan CI paket kode. */
-    codeStatus: text('code_status').notNull().default('pending'),
-    bundleUrl: text('bundle_url'),
-    codeReportedAt: timestamp('code_reported_at', { withTimezone: true }),
     publishedBy: uuid('published_by').references(() => users.id, { onDelete: 'set null' }),
     publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
-}, t => [uniqueIndex('library_versions_seq_idx').on(t.libraryId, t.seq), uniqueIndex('library_versions_version_idx').on(t.libraryId, t.version)]);
-
-/** Pemetaan komponen desain → export kode untuk satu versi library. */
-export const componentMappings = pgTable('component_mappings', {
-    libraryVersionId: uuid('library_version_id').notNull().references(() => libraryVersions.id, { onDelete: 'cascade' }),
-    /** id root komponen (component set / main component) di file sumber. */
-    componentKey: text('component_key').notNull(),
-    componentName: text('component_name').notNull(),
-    exportName: text('export_name').notNull(),
-    /** { props: [{ source, key, label, name, type, values? }] } */
-    propsMap: jsonb('props_map').notNull(),
-    /** ready | not_implemented | mismatch */
-    codeStatus: text('code_status').notNull().default('not_implemented'),
-    /** Keterangan dari `midas report`, mis. "props tidak sesuai desain: size". */
-    codeDetail: text('code_detail'),
-}, t => [primaryKey({ columns: [t.libraryVersionId, t.componentKey] })]);
+}, t => [uniqueIndex('library_versions_seq_idx').on(t.libraryId, t.seq)]);
 
 /** Library yang dipakai sebuah file desain, beserta `seq` versi yang sedang dipakai. */
 export const fileLibraries = pgTable('file_libraries', {
@@ -158,22 +131,3 @@ export const fileLibraries = pgTable('file_libraries', {
     seq: integer('seq').notNull(),
     addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [primaryKey({ columns: [t.fileId, t.libraryId] })]);
-
-/**
- * Code Builder project (spec §4): satu aplikasi hasil generate. Screen-nya adalah frame di file desain `fileId`,
- * komponennya dari library `libraryId` versi `libraryVersion` (semver). `config` = { modules: [...] } — module,
- * entity, dan screen terdaftar (lihat lib/builder.ts). `version` naik setiap simpan (deteksi konflik).
- */
-export const builderProjects = pgTable('builder_projects', {
-    id: uuid('id').primaryKey().defaultRandom(),
-    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    fileId: text('file_id').notNull().references(() => designFiles.id, { onDelete: 'cascade' }),
-    libraryId: text('library_id').references(() => libraries.id, { onDelete: 'set null' }),
-    libraryVersion: text('library_version'),
-    config: jsonb('config').notNull(),
-    version: integer('version').notNull().default(1),
-    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, t => [index('builder_projects_workspace_idx').on(t.workspaceId), index('builder_projects_file_idx').on(t.fileId)]);

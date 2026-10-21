@@ -3,7 +3,7 @@
 # Coolify setup:
 #   1. New resource -> Docker Compose -> this repository -> docker-compose.coolify.yml
 #   2. Open "Environment Variables" and set the values used below (at minimum
-#      POSTGRES_PASSWORD, S3_SECRET_KEY, MIDAS_PUBLIC_URL and COOKIE_SECURE).
+#      POSTGRES_PASSWORD, S3_SECRET_KEY and COOKIE_SECURE).
 #   3. Set the domain for the `app` service to container port 4000.
 #
 # Every value is read from the environment, with a safe local fallback in
@@ -28,7 +28,6 @@ services:
       PORT: "4000"
       AUTO_MIGRATE: "true"
       STUDIO_DIST: /app/apps/studio/dist
-      TEMPLATES_DIR: /app/templates
 
       # Internal Postgres by default. Set DATABASE_URL to use a managed database
       # (Neon, Supabase, ...) without changing the rest of the stack.
@@ -41,15 +40,9 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-midas-secret}
       S3_BUCKET: ${S3_BUCKET:-midas}
 
-      # Public URL of the app, written into generated library scaffolds.
-      MIDAS_PUBLIC_URL: ${MIDAS_PUBLIC_URL:-http://localhost:4000}
-      # No Verdaccio in production; generated .npmrc files point at npmjs.
-      REGISTRY_URL: ${REGISTRY_URL:-https://registry.npmjs.org/}
-
       ALLOW_REGISTER: ${ALLOW_REGISTER:-true}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       BODY_LIMIT_MB: ${BODY_LIMIT_MB:-100}
-      TOKEN_DAYS: ${TOKEN_DAYS:-365}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:

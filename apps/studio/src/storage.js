@@ -382,7 +382,7 @@ export const projectStorage = {
 
 /**
  * Design system library di workspace (spec §3). Bentuk data mengikuti engine:
- * `version` = nomor urut publish (dipakai untuk deteksi update), `semver` = versi paket kode.
+ * `version` = nomor urut publish (dipakai untuk deteksi update).
  */
 /** Folders on the Home page. */
 export const folderApi = {
@@ -392,18 +392,7 @@ export const folderApi = {
     remove: id => api('DELETE', `/api/folders/${enc(id)}`),
 };
 
-export const templateApi = {
-    /** Base project template as { path: text }. */
-    get: name => api('GET', `/api/templates/${enc(name)}`).then(r => r.files),
-};
-
 export const libraryApi = {
-    /** The built npm package (.tgz) of a library version, or null when it was not uploaded (`midas bundle`). */
-    package: async (id, version) => {
-        const res = await fetch(`/api/libraries/${enc(id)}/versions/${enc(version)}/package`, { credentials: 'same-origin' });
-        if (!res.ok) return null;
-        return { name: res.headers.get('x-package-file') || `${id}-${version}.tgz`, bytes: new Uint8Array(await res.arrayBuffer()) };
-    },
     list: () => api('GET', '/api/libraries').then(r => r.libraries),
     /** Unpublish: removes the library and its versions; the file itself stays. */
     unpublish: id => api('DELETE', `/api/libraries/${enc(id)}`),
@@ -416,15 +405,7 @@ export const libraryApi = {
         }
     },
     history: id => api('GET', `/api/libraries/${enc(id)}`),
-    /** Status kode per komponen untuk satu versi (dari `midas report`). */
-    codeStatus: (id, version) => api('GET', `/api/libraries/${enc(id)}/versions/${enc(version)}/code`),
-    /** Build (or rebuild) the code package of a version from Midas' standard components. */
-    buildCode: (id, version) => api('POST', `/api/libraries/${enc(id)}/versions/${enc(version)}/build`),
-    /** Bahan form publish: mapping default, saran versi & nama paket, breaking change. */
-    draft: (id, name, snapshot, iconKeys = []) => api('POST', `/api/libraries/${enc(id)}/draft`, { name, snapshot, iconKeys }),
-    standardKit: () => api('GET', '/api/libraries/standard-kit'),
-    packageAvailable: (name, library) => api('GET', `/api/libraries/package-available?name=${enc(name)}${library ? `&library=${enc(library)}` : ''}`),
-    publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => ({ ...r.library, code: r.code, codeError: r.codeError })),
+    publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => r.library),
     fileUses: async fileId => {
         try {
             return (await api('GET', `${fileUrl(fileId)}/libraries`)).libraries;
@@ -436,18 +417,6 @@ export const libraryApi = {
     setFileUses: (fileId, uses) => api('PUT', `${fileUrl(fileId)}/libraries`, { libraries: uses.map(u => ({ id: u.id, version: u.version })) }).catch(e => {
         if (e.status !== 404) throw e; // file belum pernah disimpan ke server
     })
-};
-
-/** Code Builder project (spec §4): module & screen dari file desain, library + versi yang dipakai. */
-export const builderApi = {
-    list: fileId => api('GET', `/api/builder-projects${fileId ? `?fileId=${enc(fileId)}` : ''}`).then(r => r.projects),
-    get: id => api('GET', `/api/builder-projects/${enc(id)}`).then(r => r.project),
-    create: body => api('POST', '/api/builder-projects', body).then(r => r.project),
-    /** `body.version` = versi terakhir yang dibaca; konflik → ApiError 409 dengan `data.project` versi server. */
-    save: (id, body) => api('PUT', `/api/builder-projects/${enc(id)}`, body).then(r => r.project),
-    remove: id => api('DELETE', `/api/builder-projects/${enc(id)}`),
-    mappings: (libraryId, version) => api('GET', `/api/libraries/${enc(libraryId)}/versions/${enc(version)}/mappings`).then(r => r.mappings),
-    versions: libraryId => api('GET', `/api/libraries/${enc(libraryId)}`),
 };
 
 const LEGACY_LIBS_DONE = 'midas-legacy-libraries-migrated';
