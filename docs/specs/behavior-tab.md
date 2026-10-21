@@ -22,18 +22,37 @@ Tab Behavior hanya tampil kalau yang dipilih memang salah satu dari:
 
 ## Bagian 1 — State mapping
 
-> *Where do the states get their values?*
+> *Nilai state dibaca dari variable collection yang disambungkan ke layer ini.*
 
-Setiap state punya baris: properti yang dipetakan (`Fill`, `Border`, `Radius`, `Text color`, `Opacity`)
-lalu sumber nilainya:
+State **tidak** ditulis manual per komponen. Yang terjadi:
 
-| Sumber | Bentuk | Contoh |
-| --- | --- | --- |
-| Variable | Collection + Variable | `Color` → `color/muted` → `var(--color-muted)` |
-| Manual | Nilai langsung | `#4338CA`, `12` |
+1. Designer membuat **variable collection** dengan nama state (mis. **Button states**) dan mode
+   `Default / Hover / Pressed / Focused / Disabled / Error`. Mode = state.
+2. Di tab Behavior, collection itu **disambungkan** ke instance/komponen (dropdown *connect a collection*;
+   sama dengan tombol collection di tab Design → Appearance).
+3. Variable yang terikat ke layer (mis. `button/fill` di collection **Button states**) otomatis punya
+   nilai per state. Tab Behavior menampilkannya apa adanya:
 
-State yang selalu ditanyakan: `default`, `hover`, `pressed`, `focused`, `disabled` (dan `error` untuk
-input field). Designer bisa menambah state sendiri lewat **Custom state name**.
+```
+Button states                                    ×
+  Default            mode Default
+  Fill   ▣ #4338CA   button/fill
+  + Override a property
+  Hover              mode Hover
+  Fill   ▣ #F1F5F9    button/fill
+  + Override a property
+  Pressed            mode Pressed
+  Fill   ▣ #1E293B    button/fill
+```
+
+Jadi **state = mode**, dan **nilai = variable**. Tidak ada warna hardcoded dari kit `ui-standard`.
+
+Kalau belum ada collection state, tab Behavior mengarahkan: buat di jendela Variables, atau sambungkan
+collection yang sudah ada. **Override** dipakai kalau satu state perlu nilai lain (collection + variable
+lain, atau nilai manual) — nilainya menimpa nilai dari collection.
+
+Collection dianggap "collection state" kalau namanya menyebut state (`/state/i`) atau punya beberapa mode
+yang berarti state (hover / pressed / focused / …). Collection tema (Light/Dark) bukan state.
 
 Nilai untuk sebuah properti dicari di rantai fallback, masing-masing untuk propertinya sendiri:
 `error → default`, `pressed → hover → default`, `focused → default`, `typing → focused → default`.
@@ -85,15 +104,15 @@ border/isi diambil dari state mapping.
 
 ## Data model
 
-Disimpan pada node dokumen (`stateMapping`, `interactions`, `inputBehavior`):
+Disimpan pada node dokumen (`stateMapping` = override, `interactions`, `inputBehavior`, plus
+`varModes` untuk collection yang disambungkan):
 
 ```json
 {
+  "varModes": { "button-states": "mode-default" },
+  "vars": { "fill": "button-fill" },
   "stateMapping": {
-    "default": { "fill": { "collectionId": "colors", "variableId": "primary" } },
-    "hover": { "fill": { "collectionId": "colors", "variableId": "primary-hover" } },
-    "focused": { "border": { "collectionId": "borders", "variableId": "focused" } },
-    "error": { "border": { "collectionId": "borders", "variableId": "error" } }
+    "hover": { "fill": { "collectionId": "colors", "variableId": "primary-hover" } }
   },
   "interactions": [
     { "id": "i1", "trigger": "onClick", "action": { "type": "navigate", "targetFrameId": "dashboard" } },
@@ -108,7 +127,9 @@ Disimpan pada node dokumen (`stateMapping`, `interactions`, `inputBehavior`):
 }
 ```
 
-Instance memakai miliknya sendiri; kalau kosong, nilainya diambil dari component set / main component.
+`stateMapping` hanya berisi **override**; nilai utama state dibaca dari variable collection
+(`vars` + `varModes`). Instance memakai miliknya sendiri; kalau kosong, nilainya diambil dari
+component set / main component.
 
 ## Preview runtime
 

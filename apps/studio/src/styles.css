@@ -3516,3 +3516,13 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 /* Dialog yang dibuka interaction (preview app) */
 .cb-preview-modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:rgba(15,23,42,.45)}
 .cb-preview-modal-card{max-width:min(92vw,640px);max-height:86vh;overflow:auto;border-radius:12px;background:var(--canvas);box-shadow:0 24px 64px rgba(0,0,0,.4)}
+.bh-state{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:8px;background:var(--canvas)}
+.bh-value-line{display:flex;align-items:center;gap:6px}
+.bh-value-line .small-label:first-child{min-width:52px}
+.bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:10px;color:var(--text)}
+.bh-chip i{width:10px;height:10px;border-radius:3px;border:1px solid rgba(0,0,0,.18)}
+.bh-chip.muted{color:var(--muted)}
+.cb-bh-value-line{display:flex;align-items:center;gap:6px}
+.cb-bh-value-line .small-label:first-child{min-width:52px}
+.cb-bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:11px}
+.cb-bh-override{display:flex;align-items:center;gap:6px;flex-wrap:wrap}

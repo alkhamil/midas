@@ -3,7 +3,7 @@
 // (@midas/builder-core), supaya Design, Preview, dan kode hasil generate memakai satu bahasa.
 import { useState } from 'react';
 import { Select } from './Select.jsx';
-import { normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, STATE_LABEL, STATE_PROPS, statesFor, TYPE_LABEL, componentTypeOf } from '@midas/builder-core';
+import { isStateCollection, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, STATE_LABEL, STATE_PROPS, stateCollectionsOf, stateOfMode, statesFor, TYPE_LABEL, componentTypeOf, variableValueInMode } from '@midas/builder-core';
 
 /** Tipe komponen dari namanya (Code Builder memakai nama export komponen). */
 function typeOf(node) {
@@ -52,11 +52,15 @@ function StyleValue({ label, value, collections, items, onChange }) {
     );
 }
 
-/** Baris state mapping: state → properti → (collection + variable | nilai manual). */
-function StateRows({ cfg, setCfg, vars, collections, type }) {
+/**
+ * Baris state: state = mode dari variable collection yang disambungkan ke layer.
+ * Nilai diambil dari variable yang terikat (otomatis), override dipakai kalau perlu nilai lain.
+ */
+function StateRows({ cfg, setCfg, vars, collections, byId, nodeId, type }) {
     const mapping = normalizeStateMapping(cfg.stateMapping);
     const items = [...vars.values()];
-    const states = statesFor(type);
+    const doc = byId?.get(nodeId);
+    const connected = stateCollectionsOf(doc, collections);
     const setRow = (state, prop, next) => setCfg(c => {
         const m = normalizeStateMapping(c.stateMapping);
         const row = { ...(m[state] || {}) };
@@ -75,38 +79,61 @@ function StateRows({ cfg, setCfg, vars, collections, type }) {
         m[state] = row;
         return { ...c, stateMapping: m };
     });
-    return states.map(state => {
-        const props = Object.keys(mapping[state] || {});
-        const prop = props[0] || 'fill';
-        const value = mapping[state]?.[prop] || null;
-        const unused = STATE_PROPS.map(p => p.id).filter(p => p !== prop);
+    if (!connected.length)
         return (
-            <div key={state} className="cb-bh-state">
-                <div className="cb-bh-state-head"><b>{STATE_LABEL[state] || state}</b>
-                    {props.length > 0 && <button type="button" className="cb-link" onClick={() => setRow(state, prop, null)}>Remove</button>}
-                </div>
-                <Row label="Property">
-                    <Select aria-label="Property" value={prop} onChange={e => rename(state, prop, e.target.value)}>
-                        {STATE_PROPS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                    </Select>
-                </Row>
-                <StyleValue
-                    collections={collections}
-                    items={items}
-                    value={value}
-                    onChange={next => setRow(state, prop, next)}
-                />
-                {unused.length > 0 && (
-                    <Row label="Add property">
-                        <Select aria-label="Add property" value="" onChange={e => e.target.value && rename(state, prop, e.target.value)}>
-                            <option value="">—</option>
-                            {unused.map(p => <option key={p} value={p}>{STATE_PROPS.find(x => x.id === p).label}</option>)}
-                        </Select>
-                    </Row>
-                )}
-            </div>
+            <p className="small-label">
+                State dibaca dari <b>variable collection</b>. Belum ada collection state yang disambungkan ke layer ini —
+                sambungkan lewat tab Design → Appearance → Variable collections (collection dengan mode Default / Hover / Pressed).
+            </p>
         );
-    });
+    return connected.map(sc => (
+        <div key={sc.coll.id} className="cb-bh-state">
+            <div className="cb-bh-state-head"><b>{sc.coll.name}</b></div>
+            {sc.states.map(st => {
+                const values = Object.entries(doc?.vars || {})
+                    .map(([prop, id]) => ({ prop, item: vars.get(id) }))
+                    .filter(x => x.item && x.item.collectionId === sc.coll.id)
+                    .map(x => ({ ...x, value: variableValueInMode(x.item, sc.coll, st.mode.id, items) }));
+                const overrides = mapping[st.state] || {};
+                const used = Object.keys(overrides);
+                const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
+                return (
+                    <div key={st.state} className="cb-bh-state">
+                        <div className="cb-bh-state-head"><b>{STATE_LABEL[st.state] || st.state}</b><span className="small-label">mode {st.mode.name}</span></div>
+                        {values.length
+                            ? values.map(v => (
+                                <div key={v.prop} className="cb-bh-value-line">
+                                    <span className="small-label">{v.prop}</span>
+                                    <span className="cb-bh-chip">{v.value === undefined || v.value === null || v.value === '' ? '—' : String(v.value)}</span>
+                                    <span className="small-label">{v.item.name}</span>
+                                </div>
+                            ))
+                            : <p className="small-label">Tidak ada variable dari collection ini yang terikat ke layer ini.</p>}
+                        {used.map(prop => (
+                            <div key={prop} className="cb-bh-override">
+                                <Select aria-label="Property" value={prop} onChange={e => rename(st.state, prop, e.target.value)}>
+                                    {STATE_PROPS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </Select>
+                                <StyleValue
+                                    collections={[...collections.values()]}
+                                    items={items}
+                                    value={overrides[prop]}
+                                    onChange={next => setRow(st.state, prop, next)}
+                                />
+                                <button type="button" className="cb-link" onClick={() => setRow(st.state, prop, null)}>Remove</button>
+                            </div>
+                        ))}
+                        {free.length > 0 && (
+                            <Select aria-label="Override a property" value="" onChange={e => e.target.value && setRow(st.state, e.target.value, {})}>
+                                <option value="">＋ Override a property</option>
+                                {free.map(p => <option key={p} value={p}>{STATE_PROPS.find(x => x.id === p).label}</option>)}
+                            </Select>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    ));
 }
 
 /** Interaction: trigger + action + target layar. */
@@ -232,7 +259,7 @@ function InputBehaviorRows({ cfg, setCfg, layers }) {
 }
 
 /** Tab Behavior Code Builder untuk sebuah node yang dipilih. */
-export function BehaviorPanel({ node, cfg, setCfg, vars, collections, screens, extra }) {
+export function BehaviorPanel({ node, cfg, setCfg, vars, collections, byId, screens, extra }) {
     if (!node || node.kind !== 'component') return null;
     const type = typeOf(node);
     const layers = node.children || [];
@@ -242,8 +269,8 @@ export function BehaviorPanel({ node, cfg, setCfg, vars, collections, screens, e
                 <p className="small-label"><b>{node.exportName}</b> · {TYPE_LABEL[type] || type}</p>
             </Section>
             <Section title="State mapping">
-                <p className="small-label">Where do the states get their values? Every state reads from a variable collection, or from a manual value.</p>
-                <StateRows cfg={cfg} setCfg={setCfg} vars={vars} collections={collections} type={type} />
+                <p className="small-label">Nilai state dibaca dari variable collection yang disambungkan ke layer ini. Override dipakai kalau sebuah state perlu nilai lain.</p>
+                <StateRows cfg={cfg} setCfg={setCfg} vars={vars} collections={collections} byId={byId} nodeId={node.nodeId} type={type} />
             </Section>
             {type === 'input' && <InputBehaviorRows cfg={cfg} setCfg={setCfg} layers={layers} />}
             <Section title="Interaction">

@@ -439,7 +439,7 @@ export function EntityEditor({ module: m, modules = [], onChange }) {
 
 // ------------------------------------------------------------------ Inspector
 
-export function Inspector({ selected, tree, node, screen, module, screens, entity, layout, lib, modules, title, crumbs = [], actions, vars, collections }) {
+export function Inspector({ selected, tree, node, screen, module, screens, entity, layout, lib, modules, title, crumbs = [], actions, vars, collections, byId }) {
     const cfg = node?.cfg || {};
     const setCfg = fn => actions.setNode(selected, fn);
     if (selected === '__sidebar') return <div className="cb-insp"><Header kind="Layout" name="Sidebar" /><SidebarInspector layout={layout} lib={lib} modules={modules} setLayout={actions.setLayout} /></div>;
@@ -464,7 +464,7 @@ export function Inspector({ selected, tree, node, screen, module, screens, entit
         </Section>
     )]);
     if (node.kind === 'box' || node.kind === 'unsupported') tabs.push(['Properties', node.kind === 'unsupported' ? <Section key="u" title="Unsupported"><p className="cb-error">{node.reason}</p></Section> : <Section key="b" title="Frame"><p className="small-label">{node.children?.length || 0} elements inside this frame. Select an element in the preview or the Layers list to edit its properties.</p></Section>]);
-    if (node.kind === 'component') tabs.push(['Behavior', <BehaviorPanel key="bh" node={node} cfg={cfg} setCfg={setCfg} vars={vars} collections={collections} screens={screens} extra={behavior === 'action' ? <ActionEditor node={node} cfg={cfg} setCfg={setCfg} screen={screen} module={module} screens={screens} /> : null} />]);
+    if (node.kind === 'component') tabs.push(['Behavior', <BehaviorPanel key="bh" node={node} cfg={cfg} setCfg={setCfg} vars={vars} collections={collections} byId={byId} screens={screens} extra={behavior === 'action' ? <ActionEditor node={node} cfg={cfg} setCfg={setCfg} screen={screen} module={module} screens={screens} /> : null} />]);
     if (behavior === 'table') {
         tabs.unshift(['Properties', <TableProps key="tp" cfg={cfg} setCfg={setCfg} entity={entity} />]);
         tabs.push(['Actions', <TableData key="td" cfg={cfg} setCfg={setCfg} entity={entity} module={module} actions={actions} />]);

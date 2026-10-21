@@ -5,7 +5,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, POSITIONS, setPath, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL } from './behavior.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, isStateCollection, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, POSITIONS, setPath, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, stateOfMode, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
 
 
 // ===== document.js =====
@@ -18049,7 +18049,8 @@ function liveContext() {
             const byState = {};
             for (const [cid, mid] of Object.entries(inst.varModes || {})) {
                 const c = store.collections.find(x => x.id === cid);
-                if (!c || !/state/i.test(c.name))
+                // Collection state: namanya menyebut state, atau punya beberapa mode yang berarti state.
+                if (!c || !isStateCollection(c))
                     continue;
                 for (const [state, names] of Object.entries(LIVE_MODE_NAMES)) {
                     const m = c.modes.find(x => names.includes(x.name.toLowerCase()));
@@ -18187,29 +18188,6 @@ function bhFrameSelect(path, value, frames, action, label) {
     const list = frames.filter(f => roles.includes(f.role || 'page'));
     return `<label class="field"><span>${esc(label)}</span><select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${list.map(f => `<option value="${f.id}" ${f.id === value ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>`;
 }
-/** Baris state mapping: state → properti → (collection + variable | nilai manual). */
-function bhStateRows(n, type) {
-    const mapping = normalizeStateMapping(n.stateMapping);
-    const fixed = statesFor(type);
-    const custom = Object.keys(mapping).filter(s => !fixed.includes(s));
-    return [...fixed, ...custom].map(state => {
-        const props = Object.keys(mapping[state] || {});
-        const rows = (props.length ? props : ['']).map(prop => {
-            const value = prop ? mapping[state][prop] : null;
-            const path = `state.${state}.${prop || 'fill'}`;
-            return `<div class="bh-row">
-                ${bhSelect(path, 'prop', prop || 'fill', [['', '— property —'], ...STATE_PROPS.map(p => [p.id, p.label])], `data-bh-prop="${esc(prop)}"`)}
-                ${bhStyleValue(path, value)}
-                <button type="button" class="icon-button small" data-bh-act="remove-prop" data-bh-state="${esc(state)}" data-bh-prop="${esc(prop)}" title="Remove this property">×</button>
-            </div>`;
-        }).join('');
-        const unused = STATE_PROPS.map(p => p.id).filter(p => !props.includes(p));
-        return `<div class="bh-card"><div class="bh-card-head"><b>${esc(STATE_LABEL[state] || state)}</b>${fixed.includes(state) ? '' : `<button type="button" class="icon-button small" data-bh-act="del-state" data-bh-state="${esc(state)}" title="Remove state">×</button>`}</div>
-            ${rows}
-            ${unused.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Add property'], ...unused.map(p => [p.id, STATE_PROP_MAP[p].label])]) : ''}
-        </div>`;
-    }).join('');
-}
 /** Daftar interaction: trigger + action + kolom kontekstual sesuai jenis action. */
 function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
@@ -18263,6 +18241,76 @@ function bhInputHtml(n, layers) {
     html += section('Error handling', errParts.join(''));
     return html;
 }
+/** Baris override state: nilai lain per state (di atas nilai dari variable collection). */
+function bhOverrideRow(state, prop, value) {
+    return `<div class="bh-row">
+        ${bhSelect(`state.${state}.${prop}`, 'prop', prop, [['', '— property —'], ...STATE_PROPS.map(p => [p.id, p.label])], `data-bh-prop="${esc(prop)}"`)}
+        ${bhStyleValue(`state.${state}.${prop}`, value)}
+        <button type="button" class="icon-button small" data-bh-act="remove-prop" data-bh-state="${esc(state)}" data-bh-prop="${esc(prop)}" title="Remove this property">×</button>
+    </div>`;
+}
+/** Nilai variable dalam sebuah mode (alias ikut diselesaikan). */
+function bhVarValue(item, modeId) {
+    return variableValueInMode(item, varColl(item?.collectionId), modeId, varStore().items || []);
+}
+/** Nilai yang terbaca untuk sebuah state: property yang terikat ke variable di collection itu. */
+function bhStateValues(n, coll, mode) {
+    return Object.entries(n.vars || {})
+        .map(([prop, id]) => ({ prop, item: varItem(id) }))
+        .filter(x => x.item && x.item.collectionId === coll.id)
+        .map(x => ({ prop: x.prop, item: x.item, value: bhVarValue(x.item, mode.id) }));
+}
+/** Label properti yang enak dibaca (fill → Fill, strokeWidth → Stroke width). */
+const bhPropLabel = p => String(p || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+/** Nilai sebuah variable (swart + teks). */function bhValueChip(item, value) {
+    if (value === undefined || value === null || value === '') return '<span class="bh-chip muted">—</span>';
+    const text = String(value);
+    const color = item?.type === 'color' && /^#[0-9a-f]{3,8}$/i.test(text);
+    return `<span class="bh-chip">${color ? `<i style="background:${esc(text)}"></i>` : ''}${esc(text)}</span>`;
+}
+/** Collection state yang disambungkan ke node (state → mode). */
+function bhStateCollections(n) {
+    const out = [];
+    for (const [collId, modeId] of Object.entries(n.varModes || {})) {
+        const coll = varColl(collId);
+        if (!isStateCollection(coll)) continue;
+        const states = (coll.modes || []).map(m => ({ state: stateOfMode(m.name), mode: m })).filter(x => x.state);
+        out.push({ coll, states, currentMode: modeId });
+    }
+    return out;
+}
+/**
+ * Section State mapping: state dibaca dari variable collection yang disambungkan ke layer
+ * (terisi otomatis), plus override per state kalau sebuah state perlu nilai lain.
+ */
+function bhStateSection(n) {
+    const colls = bhStateCollections(n);
+    const stateColls = bhCollections().filter(isStateCollection);
+    const mapping = normalizeStateMapping(n.stateMapping);
+    const connect = stateColls.length
+        ? `<label class="field"><span>Collection</span><select class="full-width" data-bh-act="connect-collection" aria-label="Connect a state collection"><option value="">— connect a collection —</option>${stateColls.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>`
+        : '<p class="small-label">Belum ada variable collection dengan mode state. Buat di jendela Variables (mis. <b>Button states</b> dengan mode Default / Hover / Pressed).</p>';
+    if (!colls.length)
+        return section('State mapping', `<p class="small-label">State dibaca dari <b>variable collection</b>: sambungkan collection dengan mode state, lalu nilai variable yang terikat ikut berubah saat state berganti.</p>${connect}`);
+    const bodies = colls.map(sc => {
+        const rows = sc.states.map(st => {
+            const values = bhStateValues(n, sc.coll, st.mode);
+            const overrides = mapping[st.state] || {};
+            const used = Object.keys(overrides);
+            const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
+            return `<div class="bh-state">
+                <div class="bh-card-head"><b>${esc(STATE_LABEL[st.state] || st.state)}</b><span class="small-label">mode ${esc(st.mode.name)}</span></div>
+                ${values.length
+                    ? values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')
+                    : '<p class="small-label">Tidak ada variable dari collection ini yang terikat ke layer ini.</p>'}
+                ${used.map(prop => bhOverrideRow(st.state, prop, overrides[prop])).join('')}
+                ${free.length ? bhSelect(`state.${st.state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
+            </div>`;
+        }).join('');
+        return `<div class="bh-card"><div class="bh-card-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
+    }).join('');
+    return section('State mapping', `<p class="small-label">Nilai state dibaca dari variable collection yang disambungkan ke layer ini. Override dipakai kalau sebuah state perlu nilai lain.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
+}
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
@@ -18278,9 +18326,7 @@ function prototypeHtml() {
     const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
     const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
     let html = section('This component', `<div class="small-label"><b>Component</b>: ${esc(compName)}</div><div class="small-label"><b>Type</b>: ${esc(TYPE_LABEL[type] || type)}</div><div class="small-label"><b>Kind</b>: ${esc(kind)}</div>`);
-    html += section('State mapping', `<p class="small-label">Where do the states get their values? Every state reads from a variable collection, or from a manual value.</p>
-        <div class="bh-list">${bhStateRows(n, type)}</div>
-        <div class="bh-add"><input class="full-width" data-bh-act="new-state" placeholder="Custom state name" aria-label="Custom state name"><button type="button" class="icon-button" data-bh-act="add-state" title="Add state">＋</button></div>`);
+    html += bhStateSection(n);
     if (type === 'input') html += bhInputHtml(n, bhLayers(n));
     if (n.isInstance) {
         html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div>
@@ -18383,6 +18429,24 @@ function bhAction(n, t) {
         const row = map[t.dataset.bhState] || (map[t.dataset.bhState] = {});
         row[t.value] = row[t.value] || {};
         n.stateMapping = map;
+        return;
+    }
+    if (act === 'connect-collection') {
+        const coll = varColl(t.value);
+        if (!coll) return;
+        // Sambungkan collection state: mode awal = mode "default" kalau ada.
+        const mode = coll.modes.find(m => /default/i.test(m.name)) || coll.modes[0];
+        if (!mode) return;
+        n.varModes = { ...(n.varModes || {}), [coll.id]: mode.id };
+        return;
+    }
+    if (act === 'disconnect-collection') {
+        const collId = t.dataset.bhColl;
+        if (!collId || !n.varModes) return;
+        const modes = { ...n.varModes };
+        delete modes[collId];
+        if (Object.keys(modes).length) n.varModes = modes;
+        else delete n.varModes;
         return;
     }
 }

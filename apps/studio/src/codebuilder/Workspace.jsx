@@ -119,7 +119,7 @@ export function Workspace({ screen, tree, ctx, library, entity, layout, title, m
                         : tree.tree ? <LiveFrame tree={tree.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} selectedId={selected} onPick={setSelected} onError={onError} entity={entity} modules={modules} shell={screen.role === 'dialog' ? null : shell} zoom={zoom} vars={ctx.vars} />
                             : <div className="cb-empty cb-grow"><p className="small-label">{tree.issues[0]?.message}</p></div>}
                 <aside className="cb-right">
-                    <Inspector selected={selected} tree={tree.tree} node={node} screen={screen} module={module} screens={screens} entity={entity} layout={layout} lib={lib} modules={modules} title={pageTitleText} crumbs={crumbs} actions={inspectorActions} vars={ctx.vars} collections={ctx.collections} />
+                    <Inspector selected={selected} tree={tree.tree} node={node} screen={screen} module={module} screens={screens} entity={entity} layout={layout} lib={lib} modules={modules} title={pageTitleText} crumbs={crumbs} actions={inspectorActions} vars={ctx.vars} collections={ctx.collections} byId={ctx.byId} />
                 </aside>
             </div>
         </div>

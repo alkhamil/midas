@@ -90,6 +90,63 @@ export function componentTypeOf(name) {
     return 'generic';
 }
 
+/** Nama mode yang berarti state (dipakai engine & preview: sama persis). */
+export const STATE_MODE_NAMES = {
+    default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed', 'active'],
+    focused: ['focused', 'focus', 'selected'], typing: ['typing', 'focused'], filled: ['filled', 'default'],
+    error: ['error-filled', 'error-empty', 'error'], disabled: ['disabled'],
+};
+
+/** State dari nama sebuah mode; null kalau mode itu bukan state. */
+export function stateOfMode(modeName) {
+    const name = String(modeName || '').trim().toLowerCase();
+    for (const [state, names] of Object.entries(STATE_MODE_NAMES)) {
+        if (names.includes(name)) return state;
+    }
+    return null;
+}
+
+/**
+ * Nilai variable dalam mode tertentu (alias ikut diselesaikan). `items` dipakai untuk mencari
+ * target alias.
+ */
+export function variableValueInMode(item, coll, modeId, items = []) {
+    if (!item || !coll || !coll.modes?.length) return undefined;
+    const mode = modeId && coll.modes.some(m => m.id === modeId) ? modeId : coll.modes[0].id;
+    let v = item.values?.[mode];
+    if (v === undefined) v = item.values?.[coll.modes[0].id];
+    if (v === undefined) v = coll.modes.map(m => item.values?.[m.id]).find(x => x !== undefined);
+    if (v && typeof v === 'object' && v.alias) {
+        const target = items.find(i => i.id === v.alias);
+        return target ? variableValueInMode(target, coll, mode, items) : undefined;
+    }
+    return v;
+}
+
+/** Collection state yang disambungkan ke sebuah node (state → mode). */
+export function stateCollectionsOf(node, collections = []) {
+    const list = Array.isArray(collections) ? collections : [...(collections.values?.() || [])];
+    const out = [];
+    for (const [collId, modeId] of Object.entries(node?.varModes || {})) {
+        const coll = list.find(c => c.id === collId);
+        if (!isStateCollection(coll)) continue;
+        const states = (coll.modes || []).map(m => ({ state: stateOfMode(m.name), mode: m })).filter(x => x.state);
+        out.push({ coll, states, currentMode: modeId });
+    }
+    return out;
+}
+
+/**
+ * Sebuah collection bisa jadi "collection state" kalau namanya menyebut state, atau punya beberapa
+ * mode yang berarti state (hover / pressed / focused / …). Collection tema (Light/Dark) bukan state.
+ */
+export function isStateCollection(coll) {
+    if (!coll) return false;
+    if (/state/i.test(String(coll.name || ''))) return true;
+    const states = (coll.modes || []).map(m => stateOfMode(m.name)).filter(s => s && s !== 'default');
+    return new Set(states).size >= 2;
+}
+
 export const TYPE_LABEL = { button: 'Button', input: 'Input field', dropdown: 'Dropdown', generic: 'Component' };
 
 /** State apa saja yang boleh ditanyakan untuk sebuah tipe komponen. */

@@ -1,7 +1,7 @@
 // Model perilaku (tab Behavior): tipe komponen, state mapping ke variable, interaction, input behavior.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { componentTypeOf, getPath, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, statesFor } from '../src/engine/behavior.js';
+import { componentTypeOf, getPath, isStateCollection, normalizeInputBehavior, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateOfMode, statesFor } from '../src/engine/behavior.js';
 
 test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('Button Primary'), 'button');
@@ -10,6 +10,22 @@ test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('SelectField'), 'input');
     assert.equal(componentTypeOf('Dropdown'), 'dropdown');
     assert.equal(componentTypeOf('Sidebar'), 'generic');
+});
+
+test('a mode name means a state', () => {
+    assert.equal(stateOfMode('Default'), 'default');
+    assert.equal(stateOfMode('hover'), 'hover');
+    assert.equal(stateOfMode('Pressed'), 'pressed');
+    assert.equal(stateOfMode('Error-filled'), 'error');
+    assert.equal(stateOfMode('Light'), null);
+});
+
+test('a state collection is named after states or has several state modes', () => {
+    const modes = names => names.map((name, i) => ({ id: `m${i}`, name }));
+    assert.ok(isStateCollection({ name: 'Button states', modes: modes(['Default']) }));
+    assert.ok(isStateCollection({ name: 'Tokens', modes: modes(['Default', 'Hover', 'Pressed']) }));
+    assert.ok(!isStateCollection({ name: 'Color', modes: modes(['Light', 'Dark']) }));
+    assert.ok(!isStateCollection({ name: 'Color', modes: modes(['Default']) }));
 });
 
 test('the error state is only asked for input fields', () => {
