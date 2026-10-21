@@ -2,7 +2,6 @@
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
-import { generateComponent, usageSnippet, previewHtml, tokenVar, pascalCase, camelCase, kebabCase } from './codegen.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
@@ -403,6 +402,9 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
         }
     }
     Object.assign(f, { layout: dir, gap, padding: pad.l, padL: pad.l, padT: pad.t, padR: pad.r, padB: pad.b, primaryAlign: 'start', counterAlign: 'start', gapAuto: false, layoutWrap: false, gridCols: f.gridCols || 2, layoutSizingH: kids.length ? 'hug' : 'fixed', layoutSizingV: kids.length ? 'hug' : 'fixed' });
+    // The children were just put in visual order, so the flip an imported (Figma) frame carries would show them backwards.
+    delete f.layoutFlip;
+    delete f.layoutReverseZ;
     doc.refresh();
     doc.touch(f);
 }
@@ -2607,10 +2609,10 @@ function inlineRename(el, value, commit) {
 // ===== sidebar rail =====
 function syncRail() {
     for (const b of document.querySelectorAll('[data-rail]'))
-        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : ['assets', 'plugins', 'code-builder'].includes(state.leftTab) ? state.leftTab : 'design'));
+        b.classList.toggle('active', b.dataset.rail === (vw.open ? 'variables' : ['assets', 'plugins'].includes(state.leftTab) ? state.leftTab : 'design'));
 }
 function setLeftTab(k) {
-    state.leftTab = ['assets', 'plugins', 'code-builder'].includes(k) ? k : 'layers';
+    state.leftTab = ['assets', 'plugins'].includes(k) ? k : 'layers';
     state.varCollMenu = false;
     $$('[data-left-tab]').forEach(el => el.classList.toggle('active', el.dataset.leftTab === state.leftTab));
     syncRail();
@@ -8069,7 +8071,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -8403,7 +8405,7 @@ function renderPages() {
                 continue;
             }
             const folder = pageIsFolder(p), open = state.expandedPages.has(p.id), active = p.id === doc.page.id;
-            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span>${p.codeBuilder ? `<span class="page-cb" title="Available as a Code Builder module source">${icon('code', 12)}</span>` : ''}</div>`);
+            out.push(`<div class="page-row ${active ? 'active' : ''} ${folder ? 'folder' : ''} ${state.pageSel?.has(p.id) ? 'multi' : ''}" role="button" tabindex="0" data-page="${p.id}" draggable="true" style="--depth:${depth}"><button class="page-expand" data-page-expand="${p.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${folder ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button>${folder ? `<span class="page-folder">${icon('folder', 13)}</span>` : ''}<span class="page-name">${esc(p.name)}</span></div>`);
             if (folder && open)
                 walk(p.id, depth + 1);
         }
@@ -8503,18 +8505,14 @@ function vectorThumb(n) {
     return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 function renderLayers() {
-    // Plugins dan Code Builder memakai seluruh panel kiri (tanpa pages/layers).
-    const pluginsMode = state.leftTab === 'plugins', builderMode = state.leftTab === 'code-builder';
+    // Plugins memakai seluruh panel kiri (tanpa pages/layers).
+    const pluginsMode = state.leftTab === 'plugins';
     $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
-    $('#code-builder-panel').classList.toggle('hidden', !builderMode);
-    $('#layers-heading').classList.toggle('hidden', pluginsMode || builderMode);
-    if (pluginsMode || builderMode) {
+    $('#layers-heading').classList.toggle('hidden', pluginsMode);
+    if (pluginsMode) {
         for (const id of ['#pages-heading', '#page-list', '#pages-split', '#layer-tree', '#assets-panel', '#layer-search-box', '#search-results'])
             $(id).classList.add('hidden');
-        if (pluginsMode)
-            renderPlugins();
-        else
-            renderCodeBuilder();
+        renderPlugins();
         return;
     }
     const assetsMode = state.leftTab === 'assets';
@@ -8604,384 +8602,15 @@ function colorField(prop, value, opacityProp = null, opacity = 1) {
 function section(title, body, action = '', extra = '') { return `<section class="inspector-section ${extra}"><div class="section-heading"><span>${title}</span>${action}</div>${body}</section>`; }
 function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
-// ===== React Props tab: the code contract of a component (what the generated React code is made from) =====
-const REACT = { view: 'tsx', sel: {}, gens: new Map(), busy: new Set() };
-// The component whose code settings apply: the set (or standalone component) a selected layer belongs to.
-function reactHolderOf(n) {
-    if (!n)
-        return null;
-    if (n.componentSet)
-        return n;
-    if (n.component)
-        return parentSetOf(n) || n;
-    if (n.isInstance && !insideInstance(n)) {
-        const m = chainComponent(n);
-        return m ? (parentSetOf(m) || m) : null;
-    }
-    return null;
-}
-const reactEligible = n => !!reactHolderOf(n);
-// A standalone icon: no title / description, no clips of the frames it sat in, no empty layers; a single colour follows the text colour.
-function sanitizeSvg(s) {
-    const cols = new Set([...s.matchAll(/(?:fill|stroke)="(#[0-9a-fA-F]{3,8})"/g)].map(m => m[1].toLowerCase()));
-    if (cols.size === 1)
-        s = s.replace(/(fill|stroke)="#[0-9a-fA-F]{3,8}"/g, '$1="currentColor"');
-    s = s.replace(/<\?xml[^>]*>\s*/, '').replace(/<title>[\s\S]*?<\/title>/g, '').replace(/<desc>[\s\S]*?<\/desc>/g, '').replace(/<clipPath[\s\S]*?<\/clipPath>/g, '').replace(/\sclip-path="[^"]*"/g, '').replace(/<defs>\s*<\/defs>/g, '').replace(/\s+xmlns:xlink="[^"]*"/g, '').replace(/<rect\b[^>]*fill="none"[^>]*stroke="none"[^>]*\/>/g, '');
-    for (let i = 0; i < 4; i++)
-        s = s.replace(/<g\b[^>]*>\s*<\/g>/g, '');
-    return s;
-}
-// Exporting a layer to SVG needs its page to be the open one, and opening a page rebuilds the editor's indexes. So the code
-// generator asks for SVGs by placeholder, and they are all exported here afterwards: one page switch per page.
-const codegenSvgCache = new Map();
-const svgKey = n => n.id + ':' + (n.version || 0) + ':' + (n.w | 0) + 'x' + (n.h | 0);
-function exportSvgBatch(nodes) {
-    const byPage = new Map(), out = new Map(), prev = doc.data.pageId;
-    for (const n of nodes) {
-        const p = pageOfNode(n.id);
-        if (p)
-            (byPage.get(p) || byPage.set(p, []).get(p)).push(n);
-        else
-            out.set(n.id, null);
-    }
-    try {
-        for (const [page, list] of byPage) {
-            if (page.id !== doc.data.pageId) {
-                doc.data.pageId = page.id;
-                doc.refresh();
-            }
-            for (const n of list) {
-                try {
-                    out.set(n.id, sanitizeSvg(exportSVG(doc, [n.id])));
-                }
-                catch {
-                    out.set(n.id, null);
-                }
-            }
-        }
-    }
-    finally {
-        if (doc.data.pageId !== prev) {
-            doc.data.pageId = prev;
-            doc.refresh();
-        }
-    }
-    return out;
-}
-// The generated code of the components that `g` uses (and those they use), for the preview.
-function resolveDeps(g, depth = 0, out = new Map()) {
-    for (const [, h] of g.deps || []) {
-        if (out.has(h.id) || depth > 3)
-            continue;
-        const dg = generateResolved(h);
-        out.set(h.id, dg);
-        resolveDeps(dg, depth + 1, out);
-    }
-    return out;
-}
-// Generate the code of a component with its inline SVGs filled in.
-function generateResolved(holder) {
-    const ctx = codegenContext();
-    ctx.pending = new Map();
-    const g = generateComponent(ctx, holder);
-    if (ctx.pending.size) {
-        const nodes = [...ctx.pending.values()], svgs = exportSvgBatch(nodes);
-        const byToken = new Map();
-        for (const [token, n] of ctx.pending) {
-            const svg = svgs.get(n.id) || '';
-            byToken.set(token, svg);
-            if (svg)
-                codegenSvgCache.set(svgKey(n), svg);
-        }
-        const fill = text => { let t = text; for (const [token, svg] of byToken) t = t.split(token).join(svg); return t; };
-        const fillJson = text => { let t = text; for (const [token, svg] of byToken) t = t.split(token).join(JSON.stringify(svg).slice(1, -1)); return t; };
-        g.tsx = fillJson(g.tsx);
-        (function walk(ir) { if (ir.svg) ir.svg = fill(ir.svg); ir.children.forEach(walk); })(g.ir);
-    }
-    return g;
-}
-function codegenContext() {
-    ensureGlobalIndexes();
-    const ctx = {
-        kids: id => _kidsMap.get(id) || [],
-        variants: set => setVariants(set),
-        parentSet: n => parentSetOf(n),
-        chain: n => chainComponent(n),
-        isAuto: n => isAutoLayout(n),
-        sizing: (n, axis) => sizingOf(n, axis),
-        pads: n => {
-            const p = { ...lyPads(n) };
-            if (n.strokesIncluded && strokeIsOn(n) && n.strokeAlign !== 'outside') {
-                const s = strokeSideWidths(n), k = n.strokeAlign === 'inside' ? 1 : .5;
-                p.t += s.t * k; p.r += s.r * k; p.b += s.b * k; p.l += s.l * k;
-            }
-            return p;
-        },
-        fills: n => getFills(n),
-        effects: n => getEffects(n),
-        radii: n => cornerRadii(n),
-        sides: n => strokeSideWidths(n),
-        strokeOn: n => strokeIsOn(n),
-        token: (n, prop) => { const id = n.vars?.[prop], it = id && varItem(id); return it ? tokenVar(it.name, it.type) : null; },
-        svg: n => {
-            if (ctx.skipSvg)
-                return '';
-            const key = svgKey(n);
-            if (codegenSvgCache.has(key))
-                return codegenSvgCache.get(key);
-            if (!ctx.pending)
-                return null;
-            const token = `__MIDAS_SVG_${ctx.pending.size}__`;
-            ctx.pending.set(token, n);
-            return token;
-        },
-        exportName: holder => holder.code?.exportName || pascalCase(holder.name),
-        isIcon: holder => looksLikeIcon(holder.name, pageOfNode(holder.id)?.name),
-        gen: holder => {
-            if (REACT.gens.has(holder.id))
-                return REACT.gens.get(holder.id);
-            if (REACT.busy.has(holder.id))
-                return { props: [] };
-            REACT.busy.add(holder.id);
-            const skip = ctx.skipSvg;
-            ctx.skipSvg = true; // only the props of a nested component are needed here
-            try {
-                const g = generateComponent(ctx, holder);
-                REACT.gens.set(holder.id, g);
-                return g;
-            }
-            finally {
-                ctx.skipSvg = skip;
-                REACT.busy.delete(holder.id);
-            }
-        },
-        // The attributes an instance sets on its component in JSX: the variant it shows, text / boolean / instance-swap values.
-        codeProps: (holder, main, inst) => {
-            const g = ctx.gen(holder), out = [];
-            for (const p of g.props || []) {
-                if (p.source === 'variant') {
-                    const val = main.variant?.[p.vkey];
-                    if (p.type === 'boolean') {
-                        const on = String(val) === String(p.trueValue);
-                        if (on !== !!p.def)
-                            out.push(on ? p.name : `${p.name}={false}`);
-                    }
-                    else if (val !== undefined && p.values[val] !== p.def)
-                        out.push(`${p.name}=${JSON.stringify(p.values[val])}`);
-                }
-                else if (p.source === 'text') {
-                    const v = inst.propValues?.[p.cid];
-                    if (typeof v === 'string' && v !== p.def)
-                        out.push(`${p.name}=${JSON.stringify(v)}`);
-                }
-                else if (p.source === 'boolean') {
-                    const v = inst.propValues?.[p.cid];
-                    if (typeof v === 'boolean' && v !== (p.def ?? true))
-                        out.push(v ? p.name : `${p.name}={false}`);
-                }
-                else if (p.source === 'instance') {
-                    const v = inst.propValues?.[p.cid], t = v && (doc.get(v) || nodeIndex().get(v)), h = t && (parentSetOf(t) || t);
-                    if (h)
-                        out.push(`${p.name}={<${ctx.exportName(h)} />}`);
-                }
-            }
-            return out;
-        },
-    };
-    return ctx;
-}
-// The :root block of the file's variables (first mode of every collection), so a preview looks like the design.
-function codegenThemeCss() {
-    const store = varStore(), lines = [];
-    for (const it of store.items) {
-        if (it.type === 'effect')
-            continue;
-        const c = varColl(it.collectionId);
-        if (!c?.modes?.length)
-            continue;
-        let v = varValue(doc, it, null);
-        if (v && typeof v === 'object')
-            continue;
-        v = it.type === 'number' ? (v === 0 ? '0' : `${v}px`) : String(v);
-        lines.push(`  ${tokenVar(it.name, it.type)}: ${v};`);
-    }
-    return `:root {\n${lines.join('\n')}\n}\n`;
-}
-const REACT_ELEMENTS = ['div', 'button', 'a', 'span', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'ul', 'li', 'label', 'p', 'form', 'input'];
-const REACT_TAGS = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'a', 'label', 'ul', 'li', 'nav', 'section', 'header', 'footer'];
-const REACT_EVENTS = ['onClick', 'onChange', 'onFocus', 'onBlur', 'onKeyDown', 'onMouseEnter', 'onMouseLeave'];
-function reactPanelHtml(n) {
-    const holder = reactHolderOf(n), inst = n.isInstance ? n : null;
-    if (!holder)
-        return '';
-    const ctx = codegenContext();
-    if (ctx.isIcon(holder))
-        return section('React Props', '<p class="small-label">This is an icon: the Library Kit turns icons into React components on its own (style variants become icon styles). Nothing to set here.</p>');
-    REACT.gens.clear();
-    let g;
-    try {
-        g = generateResolved(holder);
-    }
-    catch (e) {
-        console.error(e);
-        return section('React Props', `<p class="small-label">The code of this component could not be generated: ${esc(e?.message || e)}</p>`);
-    }
-    REACT.gens.set(holder.id, g);
-    const code = holder.code || {}, ro = !!inst;
-    const optHtml = (list, cur) => list.map(v => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`).join('');
-    let html = '';
-    // instance: how it is used
-    if (inst) {
-        const snippet = usageSnippet(ctx, inst, h => ctx.exportName(h));
-        html += section('Usage', `<pre class="code-pre">${esc(snippet)}</pre><div class="code-row"><button class="cmp-btn" data-code-copytext="${esc(snippet)}">Copy</button><button class="cmp-btn" data-cmp="goto">Go to main component</button></div><p class="small-label">Edit the code settings in the main component; every instance follows.</p>`);
-    }
-    // identity
-    html += section('Component', `<div class="code-grid"><label>Export name<input class="lp-input lp-mono" data-code="exportName" value="${esc(g.exportName)}" spellcheck="false" ${ro ? 'disabled' : ''}></label><label>Root element<select class="lp-input" data-code="element" ${ro ? 'disabled' : ''}>${optHtml(REACT_ELEMENTS, code.element || 'div')}</select></label></div>`);
-    // props
-    const propRows = g.props.map(p => `<div class="code-prop"><span class="code-prop-src" title="${esc(p.source)}">${esc(p.label)}</span>${p.source === 'event' ? `<span class="lp-mono">${esc(p.name)}</span>` : `<input class="lp-input lp-mono" data-code-prop="${esc(p.key)}" value="${esc(p.name)}" spellcheck="false" ${ro ? 'disabled' : ''}>`}<span class="lp-type">${p.type === 'enum' ? esc(Object.values(p.values).join(' | ')) : esc(p.type)}</span></div>`).join('');
-    html += section('Props', propRows || '<p class="small-label">No variants or component properties. Add them to the component to get props.</p>');
-    // roles of the variant properties
-    if (g.holder.componentSet) {
-        const keys = [...new Set(g.variants.flatMap(v => Object.keys(v.variant || {})))];
-        if (keys.length)
-            html += section('Variant roles', keys.map(k => `<div class="code-prop"><span class="code-prop-src">${esc(k)}</span><select class="lp-input" data-code-role="${esc(k)}" ${ro ? 'disabled' : ''}>${[['prop', 'Prop'], ['state', 'State (CSS)'], ['boolean', 'Boolean']].map(([v, l]) => `<option value="${v}" ${g.roles?.[k] === v || (!g.roles && v === 'prop') ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('') + '<p class="small-label">A State (Hover, Pressed, Focus) becomes CSS; other states become a boolean prop.</p>');
-    }
-    // parts
-    const parts = [];
-    (function walk(ir, depth) { if (depth > 0 || ir.children.length || ir.kind !== 'box') parts.push([ir, depth]); if (parts.length < 120) ir.children.forEach(c => walk(c, depth + 1)); })(g.ir, 0);
-    const partRows = parts.filter(([ir]) => ir !== g.ir).map(([ir, d]) => `<div class="code-part" style="padding-left:${d * 10}px"><span class="code-part-name" title="${esc(ir.name)}">${esc(ir.name)}</span><input class="lp-input lp-mono" data-code-part="${ir.id}" value="${esc(code.parts?.[ir.id]?.part || '')}" placeholder="${esc(ir.part)}" spellcheck="false" ${ro ? 'disabled' : ''}><select class="lp-input" data-code-tag="${ir.id}" ${ro || ir.kind === 'svg' || ir.kind === 'instance' || ir.kind === 'img' ? 'disabled' : ''}>${optHtml(REACT_TAGS, code.parts?.[ir.id]?.tag || ir.tag)}</select></div>`).join('');
-    html += section('Parts', `<p class="small-label">Name a layer (becomes <span class="lp-mono">${esc(g.block)}__name</span>) and choose its HTML tag.</p>${partRows || '<p class="small-label">No layers.</p>'}`);
-    // events
-    const evRows = (code.events || []).map((e, i) => `<div class="code-prop"><span class="lp-mono">${esc(e.name)}</span><span class="small-label">on ${esc(e.part || 'root')}</span>${ro ? '' : `<button class="icon-button small" data-code-ev-del="${i}" title="Remove" aria-label="Remove event">${icon('minus', 12)}</button>`}</div>`).join('');
-    html += section('Events', `${evRows}${ro ? '' : `<div class="code-add"><select class="lp-input" id="code-ev-name">${optHtml(REACT_EVENTS, 'onClick')}</select><select class="lp-input" id="code-ev-part"><option value="">root</option>${parts.filter(([ir]) => ir !== g.ir && ir.part).map(([ir]) => `<option value="${esc(ir.part)}">${esc(ir.part)}</option>`).join('')}</select><button class="cmp-btn" data-code-ev-add>Add</button></div>`}`);
-    // warnings
-    if (g.warnings.length)
-        html += section('Notes', `<ul class="code-warn">${g.warnings.slice(0, 12).map(w => `<li>${esc(w)}</li>`).join('')}</ul>`);
-    // code
-    const tab = (v, l) => `<button class="${REACT.view === v ? 'on' : ''}" data-code-view="${v}">${l}</button>`;
-    let body;
-    if (REACT.view === 'css')
-        body = `<pre class="code-pre code-big">${esc(g.css)}</pre>`;
-    else if (REACT.view === 'preview') {
-        const deps = resolveDeps(g), keys = g.props.filter(p => p.source === 'variant' || p.source === 'state' || p.source === 'boolean'), sel = REACT.sel;
-        // What a nested instance shows: its variant, and the text / boolean values it sets.
-        const resolver = inst => {
-            const dg = deps.get(inst.holder.id);
-            if (!dg)
-                return null;
-            const select = {}, texts = {};
-            for (const p of dg.props) {
-                if (p.source === 'variant') {
-                    const val = inst.main.variant?.[p.vkey];
-                    if (p.type === 'boolean')
-                        select[p.key] = String(val) === String(p.trueValue);
-                    else if (val !== undefined)
-                        select[p.key] = p.values[val];
-                }
-                else if (p.source === 'text' && typeof inst.node.propValues?.[p.cid] === 'string')
-                    texts[p.key] = inst.node.propValues[p.cid];
-                else if (p.source === 'boolean' && typeof inst.node.propValues?.[p.cid] === 'boolean')
-                    select[p.key] = inst.node.propValues[p.cid];
-            }
-            return { gen: dg, select, texts };
-        };
-        const ctl = keys.map(p => p.type === 'enum' ? `<label>${esc(p.label)}<select class="lp-input" data-code-sel="${esc(p.key)}">${Object.values(p.values).map(v => `<option value="${esc(v)}" ${(sel[p.key] ?? p.def) === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>` : `<label class="code-check"><input type="checkbox" data-code-sel="${esc(p.key)}" ${(sel[p.key] ?? p.def) ? 'checked' : ''}>${esc(p.label)}</label>`).join('');
-        REACT.lastHtml = previewHtml(g, sel, codegenThemeCss(), resolver);
-        body = `<div class="code-ctl">${ctl}</div><div class="code-frame-wrap" data-code-wrap><iframe class="code-frame" sandbox title="Preview" srcdoc="${esc(REACT.lastHtml)}"></iframe></div><div class="code-row"><button class="cmp-btn" data-code-open>Open full size</button></div><p class="small-label">The generated code, drawn with its own CSS (nested components included).</p>`;
-    }
-    else
-        body = `<pre class="code-pre code-big">${esc(g.tsx)}</pre>`;
-    html += section('Code', `<div class="code-tabs">${tab('tsx', 'TSX')}${tab('css', 'CSS')}${tab('preview', 'Preview')}<span class="grow"></span>${REACT.view !== 'preview' ? `<button class="cmp-btn" data-code-copy="${REACT.view}">Copy</button>` : ''}</div>${body}`);
-    REACT.last = g;
-    return html;
-}
-// The preview is laid out at 900 px wide and scaled to the width of the panel.
-function reactFitPreview() {
-    const wrap = document.querySelector('#inspector [data-code-wrap]');
-    if (!wrap)
-        return;
-    const s = Math.min(1, wrap.clientWidth / 900);
-    wrap.firstElementChild.style.transform = `scale(${s})`;
-    wrap.style.height = Math.round(640 * s) + 'px';
-}
-// Edits go to the code settings of the component (the set); every change is one undo step.
-function codeEdit(holder, fn) {
-    transaction('Edit component code', () => {
-        holder.code = holder.code ? structuredClone(holder.code) : {};
-        fn(holder.code);
-        doc.touch(holder);
-    });
-    renderInspector();
-}
-document.addEventListener('change', e => {
-    const t = e.target;
-    if (!t.closest?.('#inspector') || state.inspectorTab !== 'react')
-        return;
-    const holder = reactHolderOf(activeNode());
-    if (!holder || activeNode()?.isInstance)
-        return;
-    if (t.matches('[data-code]'))
-        codeEdit(holder, c => { const v = t.value.trim(); if (v) c[t.dataset.code] = t.dataset.code === 'exportName' ? pascalCase(v) : v; else delete c[t.dataset.code]; });
-    else if (t.matches('[data-code-prop]'))
-        codeEdit(holder, c => { const v = t.value.trim(), k = t.dataset.codeProp; c.props = { ...(c.props || {}) }; if (v) c.props[k] = { ...(c.props[k] || {}), name: camelCase(v) }; else delete c.props[k]; });
-    else if (t.matches('[data-code-role]'))
-        codeEdit(holder, c => { c.variantRoles = { ...(c.variantRoles || {}), [t.dataset.codeRole]: t.value }; });
-    else if (t.matches('[data-code-part]'))
-        codeEdit(holder, c => { c.parts = { ...(c.parts || {}) }; const id = t.dataset.codePart, v = kebabCase(t.value.trim() || ''); const cur = { ...(c.parts[id] || {}) }; if (t.value.trim()) cur.part = v; else delete cur.part; if (Object.keys(cur).length) c.parts[id] = cur; else delete c.parts[id]; });
-    else if (t.matches('[data-code-tag]'))
-        codeEdit(holder, c => { c.parts = { ...(c.parts || {}) }; const id = t.dataset.codeTag, cur = { ...(c.parts[id] || {}), tag: t.value }; c.parts[id] = cur; });
-});
-document.addEventListener('change', e => {
-    const t = e.target;
-    if (!t.matches?.('[data-code-sel]') || !t.closest('#inspector'))
-        return;
-    REACT.sel = { ...REACT.sel, [t.dataset.codeSel]: t.type === 'checkbox' ? t.checked : t.value };
-    renderInspector();
-});
-document.addEventListener('click', e => {
-    const b = e.target.closest?.('#inspector [data-code-view], #inspector [data-code-copy], #inspector [data-code-copytext], #inspector [data-code-ev-add], #inspector [data-code-ev-del], #inspector [data-code-open]');
-    if (!b)
-        return;
-    if (b.dataset.codeOpen !== undefined) {
-        if (REACT.lastHtml)
-            window.open(URL.createObjectURL(new Blob([REACT.lastHtml], { type: 'text/html' })), '_blank');
-    }
-    else if (b.dataset.codeView) {
-        REACT.view = b.dataset.codeView;
-        renderInspector();
-    }
-    else if (b.dataset.codeCopy || b.dataset.codeCopytext !== undefined) {
-        const text = b.dataset.codeCopytext !== undefined ? b.dataset.codeCopytext : (b.dataset.codeCopy === 'css' ? REACT.last?.css : REACT.last?.tsx);
-        navigator.clipboard?.writeText(text || '').then(() => toast('Copied.'), () => toast('Could not copy.'));
-    }
-    else {
-        const holder = reactHolderOf(activeNode());
-        if (!holder || activeNode()?.isInstance)
-            return;
-        if (b.dataset.codeEvAdd !== undefined)
-            codeEdit(holder, c => { const name = $('#code-ev-name').value, part = $('#code-ev-part').value; c.events = [...(c.events || []).filter(x => !(x.name === name && (x.part || '') === part)), { name, part }]; });
-        else
-            codeEdit(holder, c => { c.events = (c.events || []).filter((_, i) => i !== +b.dataset.codeEvDel); });
-    }
-});
 function renderInspector() {
+    if (state.inspectorTab === 'prototype' && !state.editing) {
+        $('#inspector').innerHTML = prototypeHtml();
+        return;
+    }
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
     doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
-    // React Props: the code contract of a component (or of an instance of one)
-    const canReact = ns.length === 1 && reactEligible(n);
-    $('#react-tab')?.classList.toggle('hidden', !canReact);
-    if (!canReact && state.inspectorTab === 'react') {
-        state.inspectorTab = 'design';
-        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el.dataset.inspectorTab === 'design'));
-    }
-    if (canReact && state.inspectorTab === 'react') {
-        $('#inspector').innerHTML = reactPanelHtml(n);
-        reactFitPreview();
-        lastInspector = performance.now();
-        return;
-    }
     let html = '';
     if (!n && state.tool === 'frame') {
         html += framePresetPanel();
@@ -9340,7 +8969,8 @@ function copySelection() {
     navigator.clipboard?.writeText(JSON.stringify(state.clipboard)).catch(() => { });
     toast(`${roots.length} layer${roots.length > 1 ? 's' : ''} copied`);
 }
-async function pasteSelection(clipText) {
+/** Where pasted layers go: the canvas (default), into the selected frame, beside the selected layer, or in place of it. */
+async function pasteSelection(clipText, mode = 'canvas') {
     let payload = state.clipboard;
     try {
         const str = clipText ?? await navigator.clipboard.readText();
@@ -9367,6 +8997,25 @@ async function pasteSelection(clipText) {
         toast('Nothing copied yet. Copy a layer first.');
         return;
     }
+    const sel = selectedRoots(), anchor = sel[0];
+    const targets = [];
+    if (mode === 'canvas' || !anchor)
+        targets.push({ kind: 'canvas' });
+    else if (sel.some(n => insideInstance(n))) {
+        toast('Layers inside an instance can not be pasted into, beside or over.');
+        return;
+    }
+    else if (mode === 'into')
+        targets.push(sel.length === 1 && anchor.type === 'frame' && !anchor.isInstance ? { kind: 'into', parent: anchor } : { kind: 'sibling', anchor });
+    else if (mode === 'sibling')
+        targets.push({ kind: 'sibling', anchor });
+    else
+        for (const n of sel)
+            targets.push({ kind: 'replace', anchor: n });
+    if (mode === 'replace' && !anchor) {
+        toast('Select the layer to replace first.');
+        return;
+    }
     transaction('Paste layers', () => {
         const temp = { format: 'midas', version: 1, name: 'Clipboard', pageId: 'paste', pages: [{ id: 'paste', name: 'Paste', nodes: payload.nodes }], assets: payload.assets || {} };
         let data;
@@ -9377,41 +9026,81 @@ async function pasteSelection(clipText) {
             toast('Clipboard data is not valid.');
             return;
         }
-        const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
         Object.assign(doc.data.assets, data.assets);
-        const roots = [];
-        const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
-        // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
-        const instRootOf = id => { let cur = byId.get(id); while (cur) {
-            if (payload.rootIds.includes(cur.id))
-                return cur.component && !cur.componentSet && componentById(cur.id) ? cur.id : null;
-            cur = byId.get(cur.parentId);
-        } return null; };
-        for (const src of data.pages[0].nodes) {
-            const n = structuredClone(src);
-            n.id = map.get(src.id);
-            n.parentId = map.get(src.parentId) || null;
-            const instRoot = instRootOf(src.id);
-            if (instRoot) {
-                const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
-                n.sourceId = src.id;
-                n.component = false;
-                n.isInstance = isRoot;
-                n.overrides = {};
-                delete n.variant;
-                delete n.componentSet;
-                if (vset)
-                    n.name = vset.name;
-            }
-            if (payload.rootIds.includes(src.id)) {
+        const all = [];
+        for (const t of targets)
+            all.push(...pasteNodes(data, payload, t));
+        select(all);
+    });
+}
+/** One paste of the clipboard layers at `target` ({ kind: 'canvas' | 'into' | 'sibling' | 'replace' }); returns the new root ids. */
+function pasteNodes(data, payload, target) {
+    const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
+    const roots = [];
+    const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
+    const rootParent = target.kind === 'into' ? target.parent.id : target.kind === 'canvas' ? null : target.anchor.parentId || null;
+    const startLen = doc.nodes.length;
+    // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
+    const instRootOf = id => { let cur = byId.get(id); while (cur) {
+        if (payload.rootIds.includes(cur.id))
+            return cur.component && !cur.componentSet && componentById(cur.id) ? cur.id : null;
+        cur = byId.get(cur.parentId);
+    } return null; };
+    for (const src of data.pages[0].nodes) {
+        const n = structuredClone(src);
+        n.id = map.get(src.id);
+        n.parentId = map.get(src.parentId) || null;
+        const instRoot = instRootOf(src.id);
+        if (instRoot) {
+            const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
+            n.sourceId = src.id;
+            n.component = false;
+            n.isInstance = isRoot;
+            n.overrides = {};
+            delete n.variant;
+            delete n.componentSet;
+            if (vset)
+                n.name = vset.name;
+        }
+        if (payload.rootIds.includes(src.id)) {
+            n.parentId = rootParent;
+            if (target.kind === 'canvas') {
                 n.x = Math.round(n.x + 24);
                 n.y = Math.round(n.y + 24);
-                roots.push(n.id);
             }
-            doc.add(n);
+            roots.push(n.id);
         }
-        select(roots);
-    });
+        doc.add(n);
+    }
+    if (target.kind === 'canvas')
+        return roots;
+    // Keep the layers' arrangement among themselves and put the group where the target asks: centred in a frame, a step
+    // down-right of the layer it goes beside, or exactly where the replaced layer was (an auto layout parent places them itself).
+    const rs = roots.map(id => doc.get(id)), ux = Math.min(...rs.map(r => r.x)), uy = Math.min(...rs.map(r => r.y));
+    const uw = Math.max(...rs.map(r => r.x + r.w)) - ux, uh = Math.max(...rs.map(r => r.y + r.h)) - uy;
+    const [tx, ty] = target.kind === 'into' ? [Math.max(0, Math.round((target.parent.w - uw) / 2)), Math.max(0, Math.round((target.parent.h - uh) / 2))]
+        : target.kind === 'sibling' ? [target.anchor.x + 24, target.anchor.y + 24] : [target.anchor.x, target.anchor.y];
+    for (const r of rs) {
+        r.x = Math.round(r.x + tx - ux);
+        r.y = Math.round(r.y + ty - uy);
+        doc.touch(r);
+    }
+    // In an auto layout they come after what is there in the flow (below in a vertical one, to the right in a horizontal one); a frame
+    // imported from Figma stores its children back to front, so "after" is before in the list. Elsewhere: right above the layer.
+    const parent = target.kind === 'into' ? target.parent : doc.get(target.anchor.parentId), flipped = !!parent?.layoutFlip && isAutoLayout(parent);
+    const added = doc.nodes.splice(startLen);
+    let at;
+    if (target.kind === 'into') {
+        const first = flipped && doc.nodes.find(n => n.parentId === parent.id);
+        at = first ? doc.nodes.indexOf(first) : doc.nodes.length;
+    }
+    else
+        at = doc.nodes.indexOf(target.anchor) + (flipped ? 0 : 1);
+    doc.nodes.splice(at, 0, ...added);
+    doc.refresh();
+    if (target.kind === 'replace')
+        doc.remove([target.anchor.id]);
+    return roots;
 }
 function groupSelection(asFrame = false, autoLayout = false) {
     const roots = selectedRoots();
@@ -12600,7 +12289,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -13226,7 +12915,7 @@ function publishDialog(snapshot, draft, iconKeys, standard = []) {
         el.checked = idx.length > 0 && on === idx.length;
         el.indeterminate = on > 0 && on < idx.length;
     });
-    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables; developers get a frontend package with the same version.')}
+    modal(`${modalHeader(isNew ? 'Publish as library' : 'Publish library update', 'Files in your workspace can use its components, icons and variables.')}
 <form id="lp-form" class="lp-form" novalidate>
 <label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(draft.library?.name || doc.data.name)}" required maxlength="120"></label>
 <label class="lp-field"><span>Frontend package</span><input class="lp-input lp-mono" id="lp-pkg" value="${esc(draft.packageName)}" ${isNew ? '' : 'disabled'} spellcheck="false" autocomplete="off"><small id="lp-pkg-msg">${isNew ? 'Locked after the first publish. Format: @midas/name' : 'Locked — set on the first publish.'}</small></label>
@@ -13353,7 +13042,7 @@ ${draft.breaking.length ? `<div class="lp-warn"><b>Breaking changes — needs a 
             closeModal();
             LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
             LIBS.snaps.delete(lib.fileId);
-            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}. ${published.codeError ? `Code could not be built: ${published.codeError}` : published.code ? (published.code.codeStatus === 'ready' ? 'Code is ready.' : `Code built: ${published.code.ready} ready, ${published.code.notImplemented} not implemented${published.code.mismatch ? `, ${published.code.mismatch} mismatch` : ''}.`) : ''}`);
+            toast(`Published “${published.name}” ${published.semver} (${published.packageName}): ${published.components} component${published.components === 1 ? '' : 's'}, ${published.icons || 0} icon${published.icons === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
             renderAssets();
         }
         catch (err) {
@@ -13638,7 +13327,7 @@ async function libUpdate(libId) {
 function libPanelHtml() {
     const mine = LIBS.published.find(x => x.id === lib.fileId), others = LIBS.published.filter(x => x.id !== lib.fileId);
     const used = new Set(LIBS.use.map(u => u.id));
-    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<button class="wide-button lib-publish" data-lib-devkit>${icon('download', 13)} Code</button>` : ''}${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · <span class="code-status cs-${esc(mine.codeStatus || 'pending')}" title="Code status of the latest version: the standard components built with this library's tokens (open Code for the details)">code ${esc({ ready: 'ready', partial: 'partial', pending: 'not built' }[mine.codeStatus] || mine.codeStatus)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
+    let h = `<div class="lib-box"><div class="lib-head"><b>Library</b></div><button class="wide-button lib-publish" data-lib-publish>${icon('upload', 13)} ${mine ? `Publish changes (${esc(mine.semver)})` : 'Publish as library'}</button>${mine ? `<p class="small-label"><span class="lp-mono">${esc(mine.packageName)}</span> · published ${timeAgo(mine.updated)} · ${mine.components} component${mine.components === 1 ? '' : 's'}, ${mine.variables} variable${mine.variables === 1 ? '' : 's'}. Other files can add it from here.</p>` : '<p class="small-label">Publish this file so other files can use its components and variable collections.</p>'}`;
     h += `<div class="lib-head"><b>Libraries</b></div>`;
     h += others.length ? others.map(l => {
         const u = LIBS.use.find(x => x.id === l.id), stale = u && u.version < l.version;
@@ -14563,6 +14252,49 @@ function closePropPop() {
     propPop = null;
     renderInspector();
 }
+// Put a value of a variant property in another place of the list (Figma: drag a value in Edit variant property).
+function moveVariantValue(set, prop, from, to) {
+    const vals = variantValues(set, prop);
+    if (from === to || vals[from] === undefined || to < 0 || to >= vals.length)
+        return;
+    transaction('Reorder variant values', () => {
+        const [v] = vals.splice(from, 1);
+        vals.splice(to, 0, v);
+        (set.valueOrder ||= {})[prop] = vals;
+        doc.touch(set);
+    });
+}
+document.addEventListener('pointerdown', e => {
+    const grip = e.target.closest?.('[data-pp-grip]'), pp = grip && propPop;
+    if (!pp)
+        return;
+    e.preventDefault();
+    const from = +grip.dataset.ppGrip, rows = [...pp.el.querySelectorAll('[data-pp-row]')];
+    let over = from;
+    rows[from]?.classList.add('fr-drag');
+    const clear = () => rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after', 'fr-drag'));
+    const move = ev => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-pp-row]');
+        rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after'));
+        if (el && pp.el.contains(el)) {
+            over = +el.dataset.ppRow;
+            if (over !== from)
+                el.classList.add(over > from ? 'fr-over-after' : 'fr-over');
+        }
+    };
+    const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        clear();
+        const set = doc.get(pp.setId);
+        if (set && over !== from) {
+            moveVariantValue(set, pp.prop, from, over);
+            renderPropPop();
+        }
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+});
 function renderPropPop() {
     const pp = propPop, set = pp && doc.get(pp.setId);
     if (!set) {
@@ -14570,7 +14302,7 @@ function renderPropPop() {
         return;
     }
     const vals = variantValues(set, pp.prop);
-    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map(v => `<div class="pp-val"><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
+    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map((v, i) => `<div class="pp-val" data-pp-row="${i}"><span class="fr-grip" data-pp-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
 }
 function openPropPop(anchor, set, prop) {
     if (!set)
@@ -14734,7 +14466,14 @@ function variantProps(set) {
                 props.push(k);
     return props;
 }
-function variantValues(set, prop) { return [...new Set(setVariants(set).map(v => v.variant?.[prop]).filter(x => x !== undefined))]; }
+// Values in the order the set lists them (`valueOrder`, set on import to match Figma), else in the order the variants were made.
+function variantValues(set, prop) {
+    const vals = [...new Set(setVariants(set).map(v => v.variant?.[prop]).filter(x => x !== undefined))], order = set.valueOrder?.[prop];
+    if (!order)
+        return vals;
+    const rank = x => { const i = order.indexOf(x); return i < 0 ? order.length : i; };
+    return vals.map((x, i) => [x, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(a => a[0]);
+}
 function variantName(v) { return Object.entries(v.variant || {}).map(([k, x]) => `${k}=${x}`).join(', ') || 'Variant'; }
 function renameVariants(set) { for (const v of setVariants(set)) {
     v.name = variantName(v);
@@ -14878,6 +14617,18 @@ function propValueFor(n, pid, pmap, idx) {
         for (let s = a, i = 0; s && i < 64; s = s.sourceId ? idx.get(s.sourceId) : null, i++)
             if (s.propValues && Object.hasOwn(s.propValues, pid))
                 return { found: true, value: s.propValues[pid] };
+    }
+    // Nothing set on an instance: the property's own default, kept on the component set (or the component) that defines it.
+    // This is what a layer inside a main component shows, so a sync does not undo it.
+    const up = new Set();
+    for (let a = n; a && !up.has(a.id); a = pmap.get(a.parentId) || nodeIndex().get(a.parentId)) {
+        up.add(a.id);
+        for (let s = a, i = 0; s && i < 64; s = s.sourceId ? idx.get(s.sourceId) : null, i++) {
+            const holder = [s, pmap.get(s.parentId) || nodeIndex().get(s.parentId)].find(h => h?.cprops?.some(p => p.id === pid));
+            const p = holder?.cprops.find(x => x.id === pid);
+            if (p && p.def !== undefined && p.def !== null)
+                return { found: true, value: p.def };
+        }
     }
     return { found: false };
 }
@@ -15562,19 +15313,29 @@ function treeKeyed(rootId) {
     return out;
 }
 const SWAP_SKIP_OV = new Set(['w', 'h', 'x', 'y', 'rotation', 'sourceId', 'swapOf', 'isInstance', 'component', 'id', 'parentId', 'version', 'overrides']);
+// Variable bindings an instance has of its own: the ones its main component does not have. The rest come with the variant it shows,
+// so a swap must not carry them over (the gap bound to the vertical layout's variable stays on a horizontal one otherwise).
+function ownVars(n) {
+    const base = chainComponent(n)?.vars || {}, out = {};
+    for (const [k, v] of Object.entries(n.vars || {}))
+        if (base[k] !== v)
+            out[k] = v;
+    return Object.keys(out).length ? out : undefined;
+}
+const swapValue = (n, k) => k === 'vars' ? ownVars(n) : n[k];
 function keepRootAcrossSwap(inst, fn) {
     const saved = {};
     for (const k of SWAP_KEEP)
-        if (inst[k] !== undefined)
-            saved[k] = structuredClone(inst[k]);
+        if (swapValue(inst, k) !== undefined)
+            saved[k] = structuredClone(swapValue(inst, k));
     // Everything inside the instance that was customised: nested instances (their variant, modes, properties) and overridden layers.
     const snap = new Map();
     for (const [key, n] of treeKeyed(inst.id)) {
         const isInst = !!n.isInstance && !!n.sourceId, keep = {};
         if (isInst)
             for (const k of SWAP_KEEP)
-                if (n[k] !== undefined)
-                    keep[k] = structuredClone(n[k]);
+                if (swapValue(n, k) !== undefined)
+                    keep[k] = structuredClone(swapValue(n, k));
         const ov = n.overrides && Object.keys(n.overrides).length ? structuredClone(n.overrides) : null;
         if (isInst || ov)
             snap.set(key, { isInst, comp: isInst ? chainComponent(n)?.id : null, keep, ov });
@@ -15603,8 +15364,8 @@ function keepRootAcrossSwap(inst, fn) {
         if (!s0)
             continue;
         for (const [k, v] of Object.entries(s0.keep)) {
-            n[k] = structuredClone(v);
-            (n.overrides ||= {})[k] = structuredClone(v);
+            n[k] = k === 'vars' ? { ...n.vars, ...structuredClone(v) } : structuredClone(v);
+            (n.overrides ||= {})[k] = structuredClone(n[k]);
         }
         for (const [k, v] of Object.entries(s0.ov || {}))
             if (!SWAP_SKIP_OV.has(k) && !(k in s0.keep)) {
@@ -15615,8 +15376,8 @@ function keepRootAcrossSwap(inst, fn) {
     }
     const now = doc.get(inst.id) || inst;
     for (const k of Object.keys(saved)) {
-        now[k] = saved[k];
-        (now.overrides ||= {})[k] = structuredClone(saved[k]);
+        now[k] = k === 'vars' ? { ...now.vars, ...saved[k] } : saved[k];
+        (now.overrides ||= {})[k] = structuredClone(now[k]);
     }
     doc.touch(now);
 }
@@ -15861,6 +15622,9 @@ async function figToMidas(file, onProgress, abortSignal) {
     const blobs = (message.blobs || []).map(b => b.bytes || b);
     const rep = { pages: 0, layers: 0, notes: new Map(), skipped: new Map() };
     const note = (k) => rep.notes.set(k, (rep.notes.get(k) || 0) + 1);
+    // Figma lists a component's properties by their sortPosition, not in the order the file stores them.
+    const bySortPosition = defs => [...defs].sort((a, b) => { const x = String(a.sortPosition ?? ''), y = String(b.sortPosition ?? ''); return x < y ? -1 : x > y ? 1 : 0; });
+    const variantOrderBySet = new Map(), valueOrderBySet = new Map();
     const skip = (t) => rep.skipped.set(t, (rep.skipped.get(t) || 0) + 1);
     // Images not carried in the data (always the case for clipboard pastes) keep their fill with an asset id that has no bytes yet;
     // missingImages maps the Figma image hash to that id so the bytes can be fetched later (see fetchFigmaImages).
@@ -16796,11 +16560,14 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         // Property definitions live on the set, or on a component that is not part of one.
         if (f.componentPropDefs?.length && (f.isStateGroup || f.type === 'SYMBOL' && !fig.get(gkey(f.parentIndex?.guid))?.isStateGroup)) {
-            const props = [];
-            for (const d of f.componentPropDefs) {
+            const props = [], variantOrder = [];
+            for (const d of bySortPosition(f.componentPropDefs)) {
                 const info = d.name && defInfo.get(gkey(d.id));
-                if (!info)
+                if (!info) {
+                    if (d.type === 'VARIANT' && d.name)
+                        variantOrder.push(d.name);
                     continue;
+                }
                 const p = { id: info.pid, name: info.name, type: info.type, def: null };
                 if (info.type === 'text')
                     p.def = d.initialValue?.textValue?.characters ?? '';
@@ -16812,7 +16579,12 @@ async function figToMidas(file, onProgress, abortSignal) {
             }
             if (props.length)
                 n.cprops = props;
+            if (variantOrder.length)
+                variantOrderBySet.set(n.id, variantOrder);
         }
+        // The order Figma lists each variant property's values in (its dropdowns and the Edit variant property dialog).
+        if (f.isStateGroup && f.stateGroupPropertyValueOrders?.length)
+            valueOrderBySet.set(n.id, Object.fromEntries(f.stateGroupPropertyValueOrders.filter(o => o.property && o.values?.length).map(o => [o.property, [...o.values]])));
         for (const r of f.componentPropRefs || []) {
             let info = defInfo.get(gkey(r.defID));
             const field = PROP_FIELD[r.componentPropNodeField];
@@ -17051,18 +16823,32 @@ async function figToMidas(file, onProgress, abortSignal) {
                 const b = members.find(m => m.propBind?.visible === p.id);
                 if (b)
                     p.def = b.visible !== false;
+                // Every layer a property drives shows the property's default in the main components (Figma applies it to all variants).
+                for (const m of members)
+                    if (m.propBind?.visible === p.id && b)
+                        m.visible = p.def;
             }
             else if (p.type === 'text') {
                 const b = members.find(m => m.propBind?.text === p.id && typeof m.text === 'string');
                 if (b)
                     p.def = b.text;
+                for (const m of members)
+                    if (m.propBind?.text === p.id && typeof m.text === 'string' && b)
+                        m.text = p.def;
             }
         }
     }
     for (const n of allMidas.filter(x => x.componentSet)) {
         const vs = (byParent.get(n.id) || []).filter(x => x.component), parsed = vs.map(v => Object.fromEntries(v.name.split(',').map(s => s.trim().split('=')).filter(a => a.length === 2 && a[0].trim()).map(a => [a[0].trim(), a[1].trim()])));
-        if (vs.length && parsed.every(p => Object.keys(p).length))
-            vs.forEach((v, i) => { v.variant = parsed[i]; });
+        if (vs.length && parsed.every(p => Object.keys(p).length)) {
+            if (valueOrderBySet.has(n.id))
+                n.valueOrder = valueOrderBySet.get(n.id);
+            vs.forEach((v, i) => {
+                // Variant properties in the order Figma lists them (Type, Style, State…), not the order of the layer names.
+                const order = variantOrderBySet.get(n.id) || [];
+                v.variant = Object.fromEntries(Object.entries(parsed[i]).sort((a, b) => (order.indexOf(a[0]) + 1 || 1e9) - (order.indexOf(b[0]) + 1 || 1e9)));
+            });
+        }
         else {
             n.componentSet = false;
         }
@@ -18166,6 +17952,176 @@ const builderBridge = {
         return LIBS.published;
     },
 };
+// ===== Live preview (Design | Preview) =====
+// Draws the selected frame as real DOM (preview/live.js): inputs are typeable, buttons follow their component's
+// state variants (hover / pressed / focused / disabled / error) and "Go to page" moves to another frame.
+let livePreview = null;
+const cssName = s => String(s || 'var').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+const FIELD_NAME = /input|field|textbox/i;
+const looksLikeField = n => FIELD_NAME.test(n.name + " " + (parentSetOf(chainComponent(n) || n)?.name || ""));
+/** Variable-collection mode names that stand for each state the preview can show. */
+const LIVE_MODE_NAMES = { default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed', 'active'], focused: ['focused', 'focus', 'selected'], typing: ['typing', 'focused'], filled: ['filled', 'default'], error: ['error-filled', 'error-empty', 'error'], disabled: ['disabled'] };
+/** The text a person types into: the visible text inside the field's content row (its placeholder), and the room it has. */
+function liveField(inst, kids) {
+    const walk = (id, path) => kids(id).flatMap(k => k.visible === false ? [] : k.type === 'text' ? [{ t: k, path }] : walk(k.id, [...path, k]));
+    const texts = walk(inst.id, []), inRow = x => x.path.some(p => /^(content|text input|input|text wrap)$/i.test(p.name)), pick = texts.find(inRow) || texts[0];
+    if (!pick)
+        return null;
+    const row = pick.path.find(p => /^(content|text input)$/i.test(p.name)) || pick.path.at(-1);
+    return { id: pick.t.id, name: pick.t.name, width: row ? Math.max(pick.t.w, row.w - pick.t.x) : pick.t.w };
+}
+const LIVE_STATES = ['default', 'hover', 'hovered', 'pressed', 'active', 'focused', 'focus', 'disabled', 'error'];
+/** The variant property that holds the states: one named State / Status, or any whose values are state names. */
+function liveStateKey(set, src) {
+    const keys = Object.keys(src.variant || {});
+    return keys.find(k => /^(state|status)$/i.test(k)) || keys.find(k => variantValues(set, k).some(v => v && LIVE_STATES.includes(String(v).toLowerCase()) && String(v).toLowerCase() !== 'default'));
+}
+function liveContext() {
+    doc.scene();
+    ensureGlobalIndexes();
+    const store = varStore(), items = new Map(store.items.map(i => [i.id, i]));
+    const kids = id => (_kidsMap.get(id) || []).filter(n => !n.softDeleted);
+    const descendants = id => kids(id).flatMap(k => [k, ...descendants(k.id)]);
+    const multiPage = doc.data.pages.filter(p => !isPageDivider(p) && p.nodes.some(n => n.type === 'frame' && !n.parentId)).length > 1;
+    const frames = doc.data.pages.flatMap(p => p.nodes.filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false).map(n => ({ id: n.id, label: multiPage ? `${p.name} / ${n.name}` : n.name })));
+    const active = activeNode(), top = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
+    /** What the component's properties are for, by their names: whether the hint shows, the helper / error text, the placeholder. */
+    const rolesOf = inst => {
+        const src = chainComponent(inst), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
+        const find = (type, re) => cps.find(p => p.type === type && re.test(p.name))?.id;
+        return { showHint: find('boolean', /hint|helper|error/i), hintText: find('text', /helper|hint|error/i), fieldText: find('text', /placeholder|value/i) };
+    };
+    /** The text a person types into: the one bound to the placeholder property, else the first visible text of the field row. */
+    const fieldOf = inst => {
+        const rl = rolesOf(inst), base = liveField(inst, kids);
+        const hit = rl.fieldText && descendants(inst.id).find(x => x.type === 'text' && x.visible !== false && x.propBind?.text === rl.fieldText);
+        return hit ? { id: hit.id, name: hit.name, width: base?.width ?? hit.w } : base;
+    };
+    return {
+        node: id => _nodeMap.get(id) || null,
+        kids,
+        descendants,
+        /** Lays a copy of a frame out with the same auto layout engine the canvas uses. */
+        layout(nodes) {
+            const byId = new Map(nodes.map(n => [n.id, n]));
+            runLayout({ nodes, get: id => byId.get(id), touch() { } });
+        },
+        frames,
+        start: frames.find(f => f.id === top?.id)?.id || frames[0]?.id,
+        vars: store.items.filter(i => ['color', 'number', 'string'].includes(i.type) && store.collections.find(c => c.id === i.collectionId)?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1).map(i => {
+            const v = varValue(doc, i, null);
+            return { name: cssName(i.name), value: i.type === 'number' ? `${v}px` : String(v) };
+        }).filter(v => v.value !== 'undefined' && v.value !== 'undefinedpx'),
+        // Only a variable with one mode and a name of its own can be a plain CSS variable; the rest are read per mode when drawn.
+        varName: id => { const i = items.get(id), c = i && store.collections.find(x => x.id === i.collectionId); return i && c?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1 ? cssName(i.name) : null; },
+        typeable: n => !!n.isInstance && (n.typeable ?? looksLikeField(n)) && !!fieldOf(n),
+        field: fieldOf,
+        roles: rolesOf,
+        /** The instance's states held in a variable collection (Button states, Input states…): state → { collection id: mode id }. */
+        modes(inst) {
+            const byState = {};
+            for (const [cid, mid] of Object.entries(inst.varModes || {})) {
+                const c = store.collections.find(x => x.id === cid);
+                if (!c || !/state/i.test(c.name))
+                    continue;
+                for (const [state, names] of Object.entries(LIVE_MODE_NAMES)) {
+                    const m = c.modes.find(x => names.includes(x.name.toLowerCase()));
+                    if (m)
+                        byState[state] = { [cid]: m.id };
+                }
+            }
+            return Object.keys(byState).length ? { byState } : null;
+        },
+        /** A layer drawn with its variable bindings read in another mode (the hover mode of Button states, say). */
+        resolved(n, inst, ov) {
+            if (!n.vars)
+                return n;
+            const saved = inst.varModes, c = { ...n, fills: Array.isArray(n.fills) ? structuredClone(n.fills) : n.fills, radii: n.radii && [...n.radii] };
+            inst.varModes = { ...saved, ...ov };
+            try {
+                for (const [prop, id] of Object.entries(n.vars)) {
+                    const item = items.get(id), val = item && !prop.includes(':') && bindType(prop) ? varValue(doc, item, n) : undefined;
+                    if (val !== undefined && val !== null)
+                        writeBound(c, prop, val, item.type);
+                }
+            }
+            finally {
+                inst.varModes = saved;
+            }
+            c.resolvedInMode = true;
+            return c;
+        },
+        /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
+        variants(inst) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            const key = set && liveStateKey(set, src);
+            if (!key)
+                return null;
+            const byState = {};
+            for (const v of setVariants(set))
+                if (Object.entries(src.variant).every(([k, x]) => k === key || v.variant?.[k] === x))
+                    byState[String(v.variant[key]).toLowerCase()] = v.id;
+            return { byState, current: src.id };
+        },
+    };
+}
+async function startLivePreview() {
+    finishText();
+    const ctx = liveContext();
+    if (!ctx.frames.length) {
+        toast('Create a frame to preview your design.');
+        return false;
+    }
+    stopLivePreview();
+    const m = await import('../preview/live.js');
+    livePreview = m.openLivePreview(ctx, area);
+    $('#mode-design')?.classList.remove('active');
+    $('#mode-preview')?.classList.add('active');
+    return true;
+}
+function stopLivePreview() {
+    livePreview?.close();
+    livePreview = null;
+    $('#mode-preview')?.classList.remove('active');
+    $('#mode-design')?.classList.add('active');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && livePreview && !isInput(document.activeElement))
+    stopLivePreview(); });
+// ===== Prototype tab: what a layer does in Preview =====
+function prototypeHtml() {
+    const n = activeNode();
+    if (!n || !(n.isInstance || n.component))
+        return section('Behavior', '<p class="small-label">Behavior is set on components. Select a component or an instance of one.</p>');
+    const ctx = liveContext(), src = chainComponent(n), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
+    const name = id => cps.find(p => p.id === id)?.name, roles = ctx.roles(n), field = ctx.typeable(n) ? ctx.field(n) : null;
+    const stateKey = set && liveStateKey(set, src), modes = ctx.modes(n);
+    const li = (k, v) => `<div class="small-label"><b>${k}</b>: ${v}</div>`;
+    const understood = li('States from', [stateKey && `variant property “${esc(stateKey)}”`, modes && `variable collection “${esc(Object.keys(n.varModes || {}).map(id => varColl(id)).filter(c => c && /state/i.test(c.name)).map(c => c.name).join(', '))}” (${Object.keys(modes.byState).join(', ')})`].filter(Boolean).join(' and ') || 'none found — add a variant property or a variable collection with state names (hover, pressed, focused, error, disabled)')
+        + li('Field text', field ? `layer “${esc(ctx.node(field.id)?.name || '')}”` : 'not a field')
+        + li('Hint', roles.showHint ? `shown by “${esc(name(roles.showHint))}”, text in “${esc(name(roles.hintText) || '—')}”` : 'none found');
+    let html = section('How Preview reads this component', understood);
+    if (!n.isInstance)
+        return html;
+    const frames = doc.data.pages.flatMap(p => p.nodes.filter(f => f.type === 'frame' && !f.parentId && !f.component && !f.componentSet && !f.isInstance && !f.isSection));
+    const typeable = n.typeable ?? looksLikeField(n);
+    html += section('When clicked', `<select id="proto-target" class="wide-select" aria-label="Go to page"><option value="">Nothing</option>${frames.map(f => `<option value="${f.id}" ${n.prototypeTarget === f.id ? 'selected' : ''}>Go to page: ${esc(f.name)}</option>`).join('')}</select>`);
+    html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label>${typeable ? `<label class="checkbox-row"><input type="checkbox" data-proto="required" ${n.required ? 'checked' : ''}> Required</label><label class="small-label">Error message</label><input type="text" class="wide-input" data-proto="errorMessage" placeholder="This field is required" value="${esc(n.errorMessage || '')}">` : ''}<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+    return html;
+}
+$('#inspector').addEventListener('change', e => {
+    const n = activeNode(), t = e.target;
+    if (!n || !(t.id === 'proto-target' || t.dataset.proto))
+        return;
+    transaction('Prototype', () => {
+        if (t.id === 'proto-target')
+            n.prototypeTarget = t.value || undefined;
+        else
+            n[t.dataset.proto] = t.type === 'checkbox' ? t.checked : t.value;
+        doc.touch(n);
+    });
+    renderInspector();
+});
+
 let builderMounted = null;
 function renderCodeBuilder() {
     const host = $('#code-builder-panel');
@@ -18667,6 +18623,8 @@ function commandPalette() {
     render();
 }
 async function present() {
+    if (await startLivePreview())
+        return;
     finishText();
     state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
     if (!state.previewFrames.length) {
@@ -19125,7 +19083,7 @@ $('#page-list').addEventListener('contextmenu', e => {
     const p = doc.data.pages.find(x => x.id === row.dataset.page);
     if (!p)
         return;
-    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, { label: p.codeBuilder ? '✓ Use in Code Builder' : 'Use in Code Builder', action: 'page-codebuilder:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
+    showMenu([{ label: 'Rename page', action: 'page-rename:' + p.id, key: '' }, { label: 'Duplicate page', action: 'page-duplicate:' + p.id, key: '' }, '-', { label: p.nodes.length ? `Delete page (${p.nodes.length} layers)` : 'Delete page', action: 'page-delete:' + p.id, key: '' }], e.clientX, e.clientY);
 });
 $('#page-list').addEventListener('dblclick', e => {
     const row = e.target.closest('[data-page]');
@@ -19312,12 +19270,8 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-// Preview app: interactive live preview of the Code Builder project; falls back to the frame slideshow when the file has none.
-$('#present').onclick = async () => {
-    const m = await import('../codebuilder/preview.jsx');
-    if (!(await m.openAppPreview(builderBridge)))
-        present();
-};
+$('#mode-preview').onclick = () => startLivePreview();
+$('#mode-design').onclick = stopLivePreview;
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {
@@ -20154,7 +20108,9 @@ document.addEventListener('paste', e => {
         importImages(images);
         return;
     }
-    pasteSelection(cd?.getData('text/plain') ?? '');
+    const mode = state.pasteMode || 'canvas';
+    state.pasteMode = null;
+    pasteSelection(cd?.getData('text/plain') ?? '', mode);
 });
 $('#text-editor').addEventListener('paste', e => {
     e.preventDefault();
@@ -20406,7 +20362,15 @@ document.addEventListener('keydown', e => {
             return;
         }
         if (key === 'v') {
-            // Let the browser fire a paste event: it carries the full clipboard (Figma HTML, images), see onPaste.
+            // Plain Ctrl/⌘+V: let the browser fire a paste event, it carries the full clipboard (Figma HTML, images), see onPaste;
+            // it pastes into the selected frame. Shift: beside the selected layer. Shift + Alt: in place of it.
+            state.pasteMode = e.shiftKey && e.altKey ? 'replace' : e.shiftKey ? 'sibling' : 'into';
+            if (e.shiftKey) {
+                e.preventDefault();
+                pasteSelection(undefined, state.pasteMode);
+            }
+            else
+                setTimeout(() => { state.pasteMode = null; }, 1000);
             return;
         }
         if (key === 'x') {
@@ -20717,15 +20681,7 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
-window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate,
-    // The generated React code of a component (or of the component an instance comes from): { tsx, css, props, warnings, … }.
-    generateCode(id) {
-        const n = doc.get(id) || nodeIndex().get(id), h = reactHolderOf(n);
-        if (!h)
-            return null;
-        REACT.gens.clear();
-        return generateResolved(h);
-    }, ready: true, version: '0.1.0' };
+window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());

@@ -6,7 +6,7 @@ import { db } from '../db/index.js';
 import { componentMappings, designFiles, fileLibraries, libraries, libraryVersions } from '../db/schema.js';
 import { requireUser } from '../lib/auth.js';
 import {
-    breakingChanges, bumpSemver, compareSemver, deriveMappings, iconKeysOf, PACKAGE_NAME_RE, packageSlug, SEMVER_RE, validateMappings,
+    breakingChanges, bumpSemver, variablesJson, compareSemver, deriveMappings, iconKeysOf, PACKAGE_NAME_RE, packageSlug, SEMVER_RE, validateMappings,
     type ComponentMapping, type LibrarySnapshot,
 } from '../lib/library.js';
 import { config } from '../config.js';
@@ -241,6 +241,22 @@ export async function libraryRoutes(app: FastifyInstance) {
         if (!v)
             return reply.code(404).send({ error: 'not_found' });
         return reply.header('content-type', 'application/json').send(await getObject(v.snapshotKey));
+    });
+
+    // variables.json of a version (default: latest): the single source of truth for colours, radii and spacing. `?format=css` gives the `:root { --name: value }` block the live preview injects.
+    app.get<{ Params: { id: string }; Querystring: { seq?: string; format?: string } }>('/api/libraries/:id/variables.json', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        if (!l)
+            return reply.code(404).send({ error: 'not_found' });
+        const v = req.query.seq
+            ? (await db.select().from(libraryVersions).where(and(eq(libraryVersions.libraryId, l.id), eq(libraryVersions.seq, Number(req.query.seq)))).limit(1))[0]
+            : await latestVersion(l.id);
+        if (!v)
+            return reply.code(404).send({ error: 'not_found' });
+        const vars = variablesJson(JSON.parse(String(await getObject(v.snapshotKey))) as LibrarySnapshot);
+        if (req.query.format === 'css')
+            return reply.header('content-type', 'text/css').send(`:root { ${Object.entries(vars).map(([k, x]) => `--${k}: ${x};`).join(' ')} }`);
+        return vars;
     });
 
     app.get<{ Params: { id: string; version: string } }>('/api/libraries/:id/versions/:version/mappings', async (req, reply) => {
