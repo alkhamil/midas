@@ -5,8 +5,22 @@ export const users = pgTable('users', {
     email: text('email').notNull().unique(),
     name: text('name').notNull(),
     passwordHash: text('password_hash').notNull(),
+    /** admin | editor | viewer */
+    role: text('role').notNull().default('editor'),
+    /** Nonaktif = tidak bisa login. */
+    active: boolean('active').notNull().default(true),
+    /** all = semua file di workspace; selected = hanya yang dibuat sendiri dan yang diberikan di `user_file_access`. */
+    accessMode: text('access_mode').notNull().default('all'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Cakupan akses user bermode `selected`: folder (termasuk isinya) atau file tertentu. */
+export const userFileAccess = pgTable('user_file_access', {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** folder | file */
+    kind: text('kind').notNull(),
+    targetId: text('target_id').notNull(),
+}, t => [primaryKey({ columns: [t.userId, t.kind, t.targetId] })]);
 
 export const sessions = pgTable('sessions', {
     id: text('id').primaryKey(),

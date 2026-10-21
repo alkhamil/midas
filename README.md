@@ -33,7 +33,14 @@ npm run dev:server                   # API di http://127.0.0.1:4000
 npm run dev:studio                   # Studio di http://127.0.0.1:5173 (proxy /api → :4000)
 ```
 
-Buka Studio, lalu buat akun pertama di layar login (akun pertama selalu diizinkan; akun berikutnya mengikuti `ALLOW_REGISTER`).
+Buka Studio dan login dengan administrator dari seeder (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, default lokal `admin@midas.local` / `admin12345`). Tidak ada pendaftaran: akun lain dibuat administrator di **Home → Users**.
+
+## Pengguna dan akses
+
+- **Seeder**: administrator dibuat otomatis saat server start (dan `npm run db:seed`). Akun yang sudah ada tidak ditimpa passwordnya.
+- **Role**: *Administrator* (semua file, mengelola user), *Editor* (membuat dan mengubah file yang boleh dibuka), *Viewer* (hanya melihat).
+- **Cakupan akses**: *Semua file*, atau *terpilih*: folder (beserta isinya) dan file tertentu, ditambah file yang dibuatnya sendiri.
+- Akun bisa dimatikan tanpa dihapus; mematikan, mengganti password, atau mengubah role/akses langsung mengakhiri sesinya. Selalu ada minimal satu administrator aktif.
 
 Test (API butuh infra jalan):
 

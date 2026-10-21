@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { choiceDialog, confirmDialog } from '../confirm.js';
-import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, assetsAsDataUrls } from '../storage.js';
+import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -3935,7 +3935,7 @@ function timeAgo(ts) {
     const d = Math.round(h / 24);
     return d < 30 ? `${d} day${d > 1 ? 's' : ''} ago` : new Date(ts).toLocaleDateString();
 }
-const HOME_ICONS = { star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', library: '<path d="m12 4 8 4-8 4-8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/>' };
+const HOME_ICONS = { users: '<path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="9.5" cy="8" r="3.2"/><path d="M21 19v-1a4 4 0 0 0-3-3.9M15.5 4.3a3.2 3.2 0 0 1 0 5.4"/>', star: '<path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z"/>', folder: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>', recent: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>', all: '<path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', templates: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', library: '<path d="m12 4 8 4-8 4-8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/>' };
 // Libraries published from design files (Home → Library). A library lives as long as its file: trashing or deleting the file removes it.
 const HOME_LIBS = { list: [], loaded: false };
 // A file that is published as a library lives in Home → Library only: Recents and All files do not list it.
@@ -4008,6 +4008,8 @@ function ensureHome() {
             renderHome();
             if (lib.view === 'library')
                 homeLibsLoad();
+            if (lib.view === 'users')
+                usersLoad();
         }
         else if ((el = t.closest('[data-home-lib]')))
             libOpen(el.dataset.homeLib);
@@ -4485,8 +4487,12 @@ function renderHome() {
     const libFiles = libFileIds(), q = lib.search.trim().toLowerCase(), live = lib.index.filter(m => !m.trashed && !libFiles.has(m.id)), trash = lib.index.filter(m => m.trashed);
     const match = m => !q || (m.name || '').toLowerCase().includes(q);
     const nav = [['recent', 'Recents'], ['all', 'All files'], ['templates', 'Templates'], ['library', 'Library'], ['trash', 'Trash']];
+    if (getSignedInUser()?.role === 'admin')
+        nav.push(['users', 'Users']);
     let main = '';
-    if (lib.view === 'library') {
+    if (lib.view === 'users')
+        main = usersViewHtml();
+    else if (lib.view === 'library') {
         const list = HOME_LIBS.list.filter(l => !q || (l.name || '').toLowerCase().includes(q)).sort((a, b) => b.updated - a.updated);
         main = `<h2>Library</h2><p class="home-note">Design files published as a library. Open one from any file's Components panel to reuse its components and variables; they can only be edited here, in the library file.</p>${!HOME_LIBS.loaded ? '<div class="home-empty">Loading…</div>' : list.length ? `<div class="home-grid">${list.map(libraryCard).join('')}</div>` : `<div class="home-empty">${q ? 'No libraries match your search.' : 'No libraries yet. Open a design file, go to Components and choose Publish as library.'}</div>`}`;
     }
@@ -4507,6 +4513,144 @@ function renderHome() {
     }
     home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${lib.index.filter(m => !m.trashed && m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
+}
+// ===== Users (administrators): who can sign in, what they may do and which files they can open =====
+const HOME_USERS = { list: [], loaded: false };
+const ROLE_LABEL = { admin: 'Administrator', editor: 'Editor', viewer: 'Viewer' };
+async function usersLoad() {
+    try {
+        HOME_USERS.list = await userApi.list();
+        HOME_USERS.loaded = true;
+    }
+    catch (e) {
+        toast(`Could not load users: ${e?.message || e}`);
+    }
+    if (lib.view === 'users')
+        renderHome();
+}
+function usersViewHtml() {
+    const me = getSignedInUser()?.id, q = lib.search.trim().toLowerCase();
+    const rows = HOME_USERS.list.filter(u => !q || `${u.name} ${u.email}`.toLowerCase().includes(q)).map(u => `<tr class="${u.active ? '' : 'off'}">
+<td><b>${esc(u.name)}</b>${u.id === me ? ' <em>(you)</em>' : ''}<small>${esc(u.email)}</small></td>
+<td>${esc(ROLE_LABEL[u.role] || u.role)}</td>
+<td>${u.role === 'admin' || u.accessMode === 'all' ? 'All files' : `${u.access.length} folder${u.access.length === 1 ? '' : 's'} / file${u.access.length === 1 ? '' : 's'}, plus their own`}</td>
+<td><span class="um-pill ${u.active ? 'on' : ''}">${u.active ? 'Can sign in' : 'Turned off'}</span></td>
+<td class="um-actions"><button class="home-link" data-user-edit="${esc(u.id)}">Edit</button>${u.id === me ? '' : `<button class="home-link" data-user-toggle="${esc(u.id)}">${u.active ? 'Turn off' : 'Turn on'}</button><button class="home-link danger" data-user-delete="${esc(u.id)}">Delete</button>`}</td></tr>`).join('');
+    return `<div class="home-row"><h2>Users</h2><button class="home-link" data-user-add>Add user</button></div>
+<p class="home-note">People can only sign in with an account you create here. Administrators manage users and see every file; editors and viewers see what their access allows. Viewers cannot change anything.</p>
+${!HOME_USERS.loaded ? '<div class="home-empty">Loading…</div>' : `<table class="um-table"><thead><tr><th>User</th><th>Role</th><th>Can open</th><th>Status</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5">No users match.</td></tr>'}</tbody></table>`}`;
+}
+function userDialog(user = null) {
+    const picked = new Set((user?.access || []).map(a => `${a.kind}:${a.id}`));
+    const folders = lib.folders.slice(), live = lib.index.filter(m => !m.trashed);
+    const depth = f => { let d = 0; for (let c = f; c?.parent && d < 20; c = folders.find(x => x.id === c.parent)) d++; return d; };
+    const ordered = [];
+    const walk = parent => folders.filter(f => (f.parent || null) === parent).sort((a, b) => a.name.localeCompare(b.name)).forEach(f => { ordered.push(f); walk(f.id); });
+    walk(null);
+    const mode = user?.accessMode === 'selected' && user.role !== 'admin' ? 'selected' : 'all';
+    const row = (kind, id, label, pad, hint = '') => `<label class="um-pick" style="padding-left:${8 + pad * 16}px"><input type="checkbox" data-um-kind="${kind}" data-um-id="${esc(id)}" ${picked.has(`${kind}:${id}`) ? 'checked' : ''}><span>${esc(label)}</span>${hint ? `<small>${esc(hint)}</small>` : ''}</label>`;
+    modal(`${modalHeader(user ? 'Edit user' : 'Add user', user ? esc(user.email) : 'They sign in with this email and password.')}
+<form id="um-form" class="lp-form" novalidate>
+<label class="lp-field"><span>Name</span><input class="lp-input" id="um-name" value="${esc(user?.name || '')}" maxlength="120" required></label>
+<label class="lp-field"><span>Email</span><input class="lp-input" id="um-email" type="email" value="${esc(user?.email || '')}" ${user ? 'disabled' : ''} autocomplete="off" required></label>
+<label class="lp-field"><span>${user ? 'New password' : 'Password'}</span><input class="lp-input" id="um-pass" type="password" autocomplete="new-password" placeholder="${user ? 'Leave empty to keep the current one' : 'At least 8 characters'}"></label>
+<label class="lp-field"><span>Role</span><select class="lp-input" id="um-role">${Object.entries({ admin: 'Administrator: everything, and manages users', editor: 'Editor: creates and edits the files they can open', viewer: 'Viewer: can only look' }).map(([v, l]) => `<option value="${v}" ${(user?.role || 'editor') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+${user ? `<label class="checkbox-row"><input type="checkbox" id="um-active" ${user.active ? 'checked' : ''}>Can sign in</label>` : ''}
+<div class="lp-field" id="um-access"><span>Files they can open</span>
+<label class="checkbox-row"><input type="radio" name="um-mode" value="all" ${mode === 'all' ? 'checked' : ''}>Everything in the workspace</label>
+<label class="checkbox-row"><input type="radio" name="um-mode" value="selected" ${mode === 'selected' ? 'checked' : ''}>Only what I choose below, plus the files they create</label>
+<div class="um-scope ${mode === 'selected' ? '' : 'off'}" id="um-scope">${ordered.length ? `<b>Folders (everything inside)</b>${ordered.map(f => row('folder', f.id, f.name, depth(f))).join('')}` : ''}<b>Files</b>${live.length ? live.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => row('file', m.id, m.name || 'Untitled', 0, fileFolder(m) ? (folders.find(f => f.id === fileFolder(m))?.name || '') : '')).join('') : '<small>No files yet.</small>'}</div></div>
+<div id="um-errors" class="lp-errors hidden" role="alert"></div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="um-submit">${user ? 'Save' : 'Add user'}</button></div>
+</form>`);
+    const form = $('#um-form'), errors = $('#um-errors');
+    const sync = () => {
+        const role = $('#um-role').value, selected = form.querySelector('[name="um-mode"]:checked').value === 'selected';
+        $('#um-access').classList.toggle('hidden', role === 'admin');
+        $('#um-scope').classList.toggle('off', !selected);
+        $('#um-scope').querySelectorAll('input').forEach(i => { i.disabled = !selected; });
+    };
+    form.addEventListener('change', sync);
+    sync();
+    form.onsubmit = async e => {
+        e.preventDefault();
+        const body = { name: $('#um-name').value.trim(), role: $('#um-role').value, accessMode: form.querySelector('[name="um-mode"]:checked').value };
+        body.access = body.accessMode === 'selected' && body.role !== 'admin' ? [...$('#um-scope').querySelectorAll('input:checked')].map(i => ({ kind: i.dataset.umKind, id: i.dataset.umId })) : [];
+        if (body.role === 'admin')
+            body.accessMode = 'all';
+        const pass = $('#um-pass').value;
+        if (pass)
+            body.password = pass;
+        if (user)
+            body.active = $('#um-active').checked;
+        const submit = $('#um-submit');
+        submit.disabled = true;
+        try {
+            if (user)
+                await userApi.update(user.id, body);
+            else
+                await userApi.create({ ...body, email: $('#um-email').value.trim(), password: pass });
+            closeModal();
+            toast(user ? 'User saved.' : 'User added.');
+            usersLoad();
+        }
+        catch (err) {
+            errors.textContent = err?.message || String(err);
+            errors.classList.remove('hidden');
+            submit.disabled = false;
+        }
+    };
+}
+document.addEventListener('click', async e => {
+    const el = e.target.closest?.('[data-user-add],[data-user-edit],[data-user-toggle],[data-user-delete]');
+    if (!el)
+        return;
+    const u = HOME_USERS.list.find(x => x.id === (el.dataset.userEdit || el.dataset.userToggle || el.dataset.userDelete));
+    try {
+        if (el.hasAttribute('data-user-add'))
+            userDialog();
+        else if (u && el.dataset.userEdit)
+            userDialog(u);
+        else if (u && el.dataset.userToggle) {
+            await userApi.update(u.id, { active: !u.active });
+            toast(u.active ? `${u.name} can no longer sign in.` : `${u.name} can sign in again.`);
+            usersLoad();
+        }
+        else if (u && el.dataset.userDelete && await confirmDialog({ title: 'Delete user?', message: `${u.name} (${u.email}) will not be able to sign in any more. Files they created stay.`, confirmLabel: 'Delete', danger: true })) {
+            await userApi.remove(u.id);
+            toast('User deleted.');
+            usersLoad();
+        }
+    }
+    catch (err) {
+        toast(err?.message || String(err));
+    }
+});
+function passwordDialog() {
+    modal(`${modalHeader('Change password')}
+<form id="pw-form" class="lp-form" novalidate>
+<label class="lp-field"><span>Current password</span><input class="lp-input" id="pw-current" type="password" autocomplete="current-password" required></label>
+<label class="lp-field"><span>New password</span><input class="lp-input" id="pw-next" type="password" autocomplete="new-password" placeholder="At least 8 characters" required></label>
+<label class="lp-field"><span>New password again</span><input class="lp-input" id="pw-again" type="password" autocomplete="new-password" required></label>
+<div id="pw-errors" class="lp-errors hidden" role="alert"></div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" id="pw-submit">Change password</button></div>
+</form>`);
+    $('#pw-form').onsubmit = async e => {
+        e.preventDefault();
+        const errors = $('#pw-errors'), show = m => { errors.textContent = m; errors.classList.remove('hidden'); };
+        if ($('#pw-next').value !== $('#pw-again').value)
+            return show('The two new passwords are not the same.');
+        $('#pw-submit').disabled = true;
+        try {
+            await auth.changePassword($('#pw-current').value, $('#pw-next').value);
+            closeModal();
+            toast('Password changed. Your other sessions were signed out.');
+        }
+        catch (err) {
+            show(err?.message || String(err));
+            $('#pw-submit').disabled = false;
+        }
+    };
 }
 async function showHome({ thumb = true } = {}) {
     await homeLibsLoad(false); // which files are libraries decides what Recents and All files show
@@ -7890,6 +8034,7 @@ if (initial && deepLink?.used && deepLink.page && initial.pages?.some(p => p.id 
     initial.pageId = deepLink.page;
 await boot.step(80, 'Preparing document');
 const doc = new DocumentModel(initial), history = new History(doc);
+document.body.classList.toggle('view-only', getSignedInUser()?.role === 'viewer');
 const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
 let scheduled = false, lastInspector = 0, uiQueued = false;
@@ -7924,6 +8069,11 @@ async function save() {
     clearTimeout(retryTimer);
     if (!lib.fileId || conflictOpen)
         return;
+    // View-only accounts never write: the server would refuse, so edits stay on this screen only.
+    if (getSignedInUser()?.role === 'viewer') {
+        state.dirty = false;
+        return;
+    }
     if (savingInProgress) {
         saveQueued = true;
         return;
@@ -8227,7 +8377,23 @@ function normalizeSetChildren() {
         doc.refresh();
     return moved;
 }
+// View-only accounts can look around (select, pan, zoom, inspect) but nothing they do is kept: every edit is rolled back.
+const viewOnly = () => getSignedInUser()?.role === 'viewer';
+let viewOnlyToastAt = 0;
+function viewOnlyNotice() {
+    if (Date.now() - viewOnlyToastAt > 4000) {
+        viewOnlyToastAt = Date.now();
+        toast('View only: you can look around, but this account cannot change files.');
+    }
+}
 function changed({ ui = true, commit = false } = {}) {
+    if (commit && viewOnly()) {
+        history.cancel();
+        doc.refresh();
+        viewOnlyNotice();
+        refreshUI();
+        return;
+    }
     refreshBooleans();
     if (commit && normalizeSetChildren() && !state.selection.size)
         refreshUI();
@@ -8309,6 +8475,10 @@ function fit(ids = null) {
 }
 function zoomAt(factor, x = area.clientWidth / 2, y = area.clientHeight / 2) { const w = screenToWorld(x, y); state.camera.zoom = clamp(state.camera.zoom * factor, .02, 256); state.camera.x = x - w.x * state.camera.zoom; state.camera.y = y - w.y * state.camera.zoom; invalidate(); }
 function setTool(tool) {
+    if (viewOnly() && tool !== 'select' && tool !== 'hand') {
+        viewOnlyNotice();
+        return;
+    }
     finishText();
     if (state.pen.length)
         finishPen();
@@ -8638,8 +8808,6 @@ function renderInspector() {
         html += selectionColorsHtml();
         if (!multi && n.type === 'frame' && !n.isSection && !insideInstance(n))
             html += layoutGuideSectionHtml(n);
-        if (!multi && !n.component && !n.componentSet)
-            html += protoSectionHtml(n);
         html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
         html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
     }
@@ -10931,6 +11099,10 @@ function startPendingText(x, y, parentId, fill) {
 function startText(n, selectAll = false) {
     if (!n || n.type !== 'text')
         return;
+    if (viewOnly()) {
+        viewOnlyNotice();
+        return;
+    }
     finishText();
     history.begin('Edit text');
     state.editing = n.id;
@@ -17950,7 +18122,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -17993,121 +18165,17 @@ function commandPalette() {
     };
     render();
 }
-// ===== Prototype: what a layer does in Preview =====
-// `prototypeTarget` = the frame to open when the layer is clicked ("back" = the previous screen);
-// `inputField` = people can type in this layer in Preview ('text' | 'email' | 'password').
-const protoFrames = () => doc.data.pages.filter(p => !p.internal && !isPageDivider(p)).flatMap(p => p.nodes
-    .filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isSection && n.visible !== false)
-    .map(n => ({ id: n.id, name: n.name, page: p.name })));
-function protoSectionHtml(n) {
-    const frames = protoFrames().filter(f => f.id !== n.id), pages = new Set(frames.map(f => f.page)).size > 1;
-    const opts = [['', 'Nothing'], ['back', 'Go back to the previous screen'], ...frames.map(f => [f.id, `Open “${pages ? `${f.page} / ` : ''}${f.name}”`])];
-    const target = n.prototypeTarget || '';
-    const types = [['text', 'Text'], ['email', 'Email'], ['password', 'Password']];
-    return section('Interaction', `<div class="stack">
-<span class="small-label">When someone clicks this in Preview</span>
-<select class="full-width" data-proto="target" aria-label="When clicked">${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === target ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
-<label class="checkbox-row"><input type="checkbox" data-proto="input" ${n.inputField ? 'checked' : ''}>People can type here</label>
-${n.inputField ? `<select class="full-width" data-proto="inputType" aria-label="Kind of input">${types.map(([v, l]) => `<option value="${v}" ${v === n.inputField ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="small-label">Tip: pick the text layer inside the field (the placeholder), so its border and icons stay.</span>` : ''}
-</div>`);
-}
-document.addEventListener('change', e => {
-    const el = e.target.closest?.('[data-proto]');
-    const ns = el ? selected() : [];
-    if (!el || ns.length !== 1)
-        return;
-    const n = ns[0], kind = el.dataset.proto;
-    transaction('Change interaction', () => {
-        if (kind === 'target') {
-            if (el.value)
-                n.prototypeTarget = el.value;
-            else
-                delete n.prototypeTarget;
-        }
-        else if (kind === 'input') {
-            if (el.checked)
-                n.inputField = n.inputField || 'text';
-            else
-                delete n.inputField;
-        }
-        else if (kind === 'inputType')
-            n.inputField = el.value;
-        doc.touch(n);
-    });
-    renderInspector();
-});
-const solidFillOf = n => {
-    const f = Array.isArray(n.fills) ? n.fills.find(x => x?.type === 'solid' && x.visible !== false) : null;
-    return f?.color || (n.fill && n.fill !== 'none' && (n.fillOpacity ?? 1) > 0.5 ? n.fill : null);
-};
-const topFramesOfPage = () => doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
 async function present() {
     finishText();
-    state.previewFrames = topFramesOfPage();
+    state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
     if (!state.previewFrames.length) {
         toast('Create a frame to present your design.');
         return;
     }
     const active = activeNode(), ancestor = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
     state.previewIndex = Math.max(0, state.previewFrames.findIndex(n => n.id === ancestor?.id));
-    state.previewHistory = [];
-    state.previewValues = new Map();
-    state.previewPage0 = doc.data.pageId;
     $('#presentation').classList.remove('hidden');
     await showPreview();
-}
-// Open a frame (on any page) while previewing; `push` keeps the screen we came from for "Go back".
-async function previewGoto(frameId, push = true) {
-    const here = state.previewFrames[state.previewIndex];
-    const page = doc.data.pages.find(p => p.nodes.some(n => n.id === frameId));
-    if (!page)
-        return;
-    if (page.id !== doc.data.pageId) {
-        doc.data.pageId = page.id;
-        doc.refresh();
-        state.previewFrames = topFramesOfPage();
-    }
-    const index = state.previewFrames.findIndex(n => n.id === frameId);
-    if (index < 0)
-        return;
-    if (push && here)
-        state.previewHistory.push(here.id);
-    state.previewIndex = index;
-    await showPreview();
-}
-function previewInputs(frame, canvas) {
-    const stage = $('#presentation-stage');
-    stage.querySelectorAll('.pv-input').forEach(x => x.remove());
-    const fb = doc.world(frame.id).box, k = canvas.clientWidth / fb.w, cl = canvas.offsetLeft, ct = canvas.offsetTop;
-    for (const d of doc.descendants(frame.id)) {
-        if (!d.inputField || d.visible === false)
-            continue;
-        const wb = doc.world(d.id).box, parent = doc.get(d.parentId), isText = d.type === 'text';
-        const textNode = isText ? d : doc.descendants(d.id).find(x => x.type === 'text' && x.visible !== false);
-        let bg = null;
-        for (let a = isText ? parent : d; a && !bg; a = doc.get(a.parentId))
-            bg = solidFillOf(a);
-        const inset = isText ? 0 : (d.strokeWidth || 0) + 1;
-        const pb = isText && parent ? doc.world(parent.id).box : null;
-        const w = isText && pb ? Math.max(wb.w, pb.x + pb.w - wb.x - 2) : wb.w - inset * 2;
-        const input = document.createElement('input');
-        input.className = 'pv-input';
-        input.type = d.inputField;
-        input.autocomplete = 'off';
-        input.spellcheck = false;
-        input.placeholder = textNode?.text || '';
-        input.value = state.previewValues.get(d.id) ?? '';
-        input.setAttribute('aria-label', textNode?.text || d.name || 'Input');
-        Object.assign(input.style, {
-            left: `${cl + (wb.x - fb.x + (isText ? 0 : inset)) * k}px`, top: `${ct + (wb.y - fb.y + (isText ? 0 : inset)) * k}px`,
-            width: `${w * k}px`, height: `${(isText && pb ? Math.max(wb.h, pb.h * 0.5) : wb.h - inset * 2) * k}px`,
-            background: bg || '#fff', fontFamily: textNode?.fontFamily || 'inherit', fontSize: `${(textNode?.fontSize || 14) * k}px`,
-            fontWeight: String(textNode?.fontWeight || 400), padding: isText ? '0' : `0 ${12 * k}px`,
-        });
-        input.style.setProperty('--pv-placeholder', textNode?.fill && textNode.fill !== 'none' ? textNode.fill : '#98a2b3');
-        input.oninput = () => state.previewValues.set(d.id, input.value);
-        stage.appendChild(input);
-    }
 }
 async function showPreview() {
     const n = state.previewFrames[state.previewIndex];
@@ -18125,7 +18193,6 @@ async function showPreview() {
         const stage = $('#presentation-stage'), scale = Math.min((stage.clientWidth - 72) / canvas.width, (stage.clientHeight - 72) / canvas.height, 1);
         target.style.width = canvas.width * scale + 'px';
         target.style.height = canvas.height * scale + 'px';
-        previewInputs(n, target);
     }
     catch (e) {
         toast(e.message);
@@ -18137,18 +18204,7 @@ function stepPreview(delta) {
     state.previewIndex = (state.previewIndex + delta + state.previewFrames.length) % state.previewFrames.length;
     showPreview();
 }
-function closePreview() {
-    $('#presentation').classList.add('hidden');
-    $('#presentation-stage').querySelectorAll('.pv-input').forEach(x => x.remove());
-    // Opening a frame on another page switched the page behind the preview: put it back.
-    if (state.previewPage0 && doc.data.pageId !== state.previewPage0) {
-        doc.data.pageId = state.previewPage0;
-        doc.refresh();
-        refreshUI();
-    }
-    state.previewPage0 = null;
-    overlay.focus({ preventScroll: true });
-}
+function closePreview() { $('#presentation').classList.add('hidden'); overlay.focus({ preventScroll: true }); }
 // Event delegation keeps the chrome inexpensive even with a large scene tree.
 document.addEventListener('click', e => {
     const action = e.target.closest('[data-action]');
@@ -18792,7 +18848,7 @@ $('#profile').onclick = async e => {
     if (!user)
         return location.reload();
     const r = btn.getBoundingClientRect();
-    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Settings', action: 'settings' }, '-', { label: 'Sign out', action: 'signOut' }], r.right - 210, r.bottom + 8);
+    showMenu([{ header: `${user.name} · ${user.email}` }, { label: 'Settings', action: 'settings' }, { label: 'Change password', action: 'changePassword' }, '-', { label: 'Sign out', action: 'signOut' }], r.right - 210, r.bottom + 8);
 };
 $('#canvas-status').onclick = () => toast('Saved automatically to your workspace on the Midas server. Export a .midas copy for an offline backup.');
 $('#toggle-left').onclick = () => document.body.classList.toggle('left-hidden');
@@ -19728,27 +19784,18 @@ $('#text-editor').addEventListener('blur', () => setTimeout(() => {
 $('#close-presentation').onclick = closePreview;
 $('#prev-frame').onclick = () => stepPreview(-1);
 $('#next-frame').onclick = () => stepPreview(1);
-const previewTargetAt = e => {
-    const frame = state.previewFrames[state.previewIndex];
-    if (!frame)
-        return null;
-    const b = e.currentTarget.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
-    const hit = hitTest(w, { deep: true });
-    return hit ? [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget) || null : null;
-};
 $('#presentation-canvas').onclick = e => {
-    const target = previewTargetAt(e);
-    if (!target)
-        return;
-    if (target.prototypeTarget === 'back') {
-        const prev = state.previewHistory.pop();
-        if (prev)
-            previewGoto(prev, false);
+    const frame = state.previewFrames[state.previewIndex], b = e.target.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
+    const hit = hitTest(w, { deep: true });
+    const target = hit && [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget);
+    if (target) {
+        const index = state.previewFrames.findIndex(n => n.id === target.prototypeTarget);
+        if (index >= 0) {
+            state.previewIndex = index;
+            showPreview();
+        }
     }
-    else
-        previewGoto(target.prototypeTarget);
 };
-$('#presentation-canvas').onmousemove = e => { e.currentTarget.style.cursor = previewTargetAt(e) ? 'pointer' : 'default'; };
 document.addEventListener('keydown', e => {
     if (lib.open) {
         if (e.key === 'Escape' && !isInput(document.activeElement) && lib.index.some(m => m.id === lib.fileId && !m.trashed))

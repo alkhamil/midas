@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { sql } from '../src/db/index.js';
 import { ensureBucket } from '../src/lib/s3.js';
+import { createUser, dropUsers } from './helpers.js';
 
 let app: FastifyInstance;
 let cookie = '';
@@ -21,19 +22,19 @@ before(async () => {
     app = await buildApp();
 });
 after(async () => {
-    await sql`delete from workspaces where id in (select m.workspace_id from workspace_members m join users u on u.id = m.user_id where u.email = ${email})`;
-    await sql`delete from users where email = ${email}`;
+    await dropUsers([email]);
     await app.close();
     await sql.end();
 });
 
-test('register + me', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { email, name: 'Tester', password: 'rahasia123' } });
-    assert.equal(res.statusCode, 200);
-    cookie = String(res.headers['set-cookie']).split(';')[0];
+test('there is no sign-up; sign in and me', async () => {
+    const reg = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { email, name: 'Tester', password: 'rahasia123' } });
+    assert.equal(reg.statusCode, 404);
+    cookie = (await createUser(app, email)).cookie;
     const me = await call('GET', '/api/auth/me');
     assert.equal(me.status, 200);
     assert.equal(me.body.user.email, email);
+    assert.equal(me.body.user.role, 'admin');
 });
 
 test('unauthenticated requests are rejected', async () => {
