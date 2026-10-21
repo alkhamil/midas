@@ -436,6 +436,17 @@ export function openLivePreview(ctx, host) {
         });
         d.addEventListener('pointerleave', () => update(n, { state: 'default' }));
         d.addEventListener('pointerdown', () => hasState('pressed') && update(n, { state: 'pressed' }));
+        // Fokus: focusin / focusout membubarkan event, focus tidak.
+        d.addEventListener('focusin', () => {
+            const rect = d.getBoundingClientRect();
+            hasState('focused') && update(n, { state: 'focused' });
+            runTriggers(n, 'onFocus', d, rect);
+        });
+        d.addEventListener('focusout', () => {
+            const rect = d.getBoundingClientRect();
+            update(n, { state: stateOf(n) === 'focused' ? 'default' : stateOf(n) });
+            runTriggers(n, 'onBlur', d, rect);
+        });
         // The press redraws the button, so the click is taken from the pointer-up on the redrawn one.
         d.addEventListener('pointerup', () => {
             // Jangkar posisi diambil sebelum gambar ulang: elemen yang lama sudah lepas dari DOM.

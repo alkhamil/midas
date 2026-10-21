@@ -3,7 +3,7 @@
 // (lihat loader.js), jadi root React dibuat langsung di dokumen iframe.
 import { Component, createContext, createElement as h, Fragment, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { activeRules, detailField, fieldBinding, fieldLabelOf, formItemOf, pascalCase, previewDataProps, relationSampleOptions, tableModel, titleCase } from '@midas/builder-core';
+import { activeRules, cssVarOf, detailField, fieldBinding, fieldLabelOf, formItemOf, overridesFor, pascalCase, previewDataProps, relationSampleOptions, tableModel, titleCase } from '@midas/builder-core';
 
 class Boundary extends Component {
     state = { error: null };
@@ -20,6 +20,48 @@ class Boundary extends Component {
 }
 
 const FIELD_ATTRS = ['label', 'value', 'options', 'error', 'checked', 'name', 'onChange'];
+
+/** Gaya state dari state mapping: nilai variable (`var(--theme-…)`) atau nilai manual. */
+function behaviorStyle(overrides, vars) {
+    const s = {};
+    for (const [prop, v] of Object.entries(overrides || {})) {
+        if (!v) continue;
+        let text;
+        if (v.variableId) {
+            const item = vars?.get?.(v.variableId);
+            if (!item) continue;
+            text = `var(${cssVarOf(item)})`;
+        }
+        else if (v.value !== undefined && v.value !== null && v.value !== '') text = String(v.value);
+        if (text === undefined) continue;
+        if (prop === 'fill') s.background = text;
+        else if (prop === 'stroke') { s.borderColor = text; s.borderStyle = 'solid'; s.borderWidth = s.borderWidth || '1px'; }
+        else if (prop === 'radius') s.borderRadius = text;
+        else if (prop === 'text') s.color = text;
+        else if (prop === 'opacity') s.opacity = text;
+    }
+    return s;
+}
+
+/** State komponen (hover / pressed / focused) + gaya yang dibaca dari state mapping. */
+function useBehavior(node, rc) {
+    const map = node.cfg?.stateMapping;
+    const [state, setState] = useState('default');
+    const overrides = useMemo(() => overridesFor(map, state), [map, state]);
+    const style = useMemo(() => behaviorStyle(overrides, rc.vars), [overrides, rc.vars]);
+    const has = useMemo(() => s => !!map?.[s], [map]);
+    return useMemo(() => ({
+        state, style, has,
+        handlers: {
+            onMouseEnter: () => has('hover') && setState('hover'),
+            onMouseLeave: () => setState(s => (s === 'hover' || s === 'pressed' ? 'default' : s)),
+            onMouseDown: () => has('pressed') && setState('pressed'),
+            onMouseUp: () => setState(s => (s === 'pressed' ? (has('hover') ? 'hover' : 'default') : s)),
+            onFocus: () => has('focused') && setState('focused'),
+            onBlur: () => setState(s => (s === 'focused' ? 'default' : s)),
+        },
+    }), [state, style, has]);
+}
 
 /** Look-alike of the base project's FormItem (label above / beside the field, required asterisk, tooltip). Inline styles
  *  only: the iframe has just the library's compiled CSS, not the app's Tailwind classes. */
@@ -82,6 +124,8 @@ function RenderNode({ node, rc }) {
         const name = node.exportName;
         const isTable = name === 'Table';
         const t = isTable ? tableModel(entity, node.cfg) : null;
+        // State mapping: nilai state (hover / pressed / focused) dari variable collection.
+        const beh = useBehavior(node, rc);
         // Row actions follow the Table configuration (and soft delete: restore for deleted rows, delete otherwise).
         const renderAction = t?.rowActions.length && typeof lib.IconButton === 'function'
             ? row => h('div', { className: 'flex gap-1' }, t.rowActions
@@ -89,6 +133,8 @@ function RenderNode({ node, rc }) {
                 .map(a => h(lib.IconButton, { key: a, action: a, onClick: ix ? () => ix.rowAction(a, row) : undefined })))
             : undefined;
         let props = { ...preview[name], ...previewDataProps(node, entity, { renderAction }, modules), ...node.props };
+        // State mapping juga dibaca sebagai gaya inline komponen (kit komponen meneruskan `style`).
+        if (Object.keys(beh.style).length) props = { ...props, style: { ...(props.style || {}), ...beh.style } };
         // Interactive preview: buttons, search, filter, pagination and row actions really work.
         if (ix) {
             if (name === 'Button' || name === 'IconButton') props = { ...props, onClick: () => ix.press(node) };
@@ -98,7 +144,7 @@ function RenderNode({ node, rc }) {
                 props = { ...props, data: ix.pageRows, totalRecords: ix.total, page: ix.page, pageSize: ix.pageSize ?? t.pageSize, onPageChange: ix.setPage, onPageSizeChange: ix.setPageSize };
         }
         const body = h(Comp, props);
-        return h('div', { ...data, className: 'midas-component', style: node.box },
+        return h('div', { ...data, className: 'midas-component', style: { ...node.box, ...beh.style }, ...beh.handlers },
             h(Boundary, { nodeId: node.nodeId, name, onError: rc.onError }, body));
     }
     return h('div', { ...data, className: 'midas-unsupported', style: node.box, title: node.reason }, node.name || 'Unsupported');
@@ -137,9 +183,9 @@ function Shell({ shell, lib, height, children }) {
 const SlotCtx = createContext(null);
 const Slot = () => useContext(SlotCtx);
 
-function Screen({ tree, lib, entity, modules, ix, shell, shellHeight, onError }) {
+function Screen({ tree, lib, entity, modules, ix, shell, shellHeight, onError, vars }) {
     const { rt, i18n } = useRuntime(lib);
-    const content = h(Fragment, null, h(Shell, { shell, lib, height: shellHeight }, h(RenderNode, { node: tree, rc: { lib, preview: lib.midasPreview || {}, entity, modules, ix, onError } })), ix?.overlay);
+    const content = h(Fragment, null, h(Shell, { shell, lib, height: shellHeight }, h(RenderNode, { node: tree, rc: { lib, preview: lib.midasPreview || {}, entity, modules, ix, onError, vars } })), ix?.overlay);
     let el = content;
     // Data router (bukan MemoryRouter biasa) supaya hook seperti useMatches di AppShell bekerja.
     const router = useMemo(() => (rt.createMemoryRouter ? rt.createMemoryRouter([{ path: '*', element: h(Slot) }]) : null), [rt, lib]);
@@ -167,7 +213,7 @@ body.picking aside:hover,body.picking header:hover{outline:1px dashed #9747FF;ou
  * Iframe berisi screen. `tree` dari screenTree(), `lib` = modul bundle, `cssUrl` = CSS bundle.
  * Klik elemen → onPick(nodeId). Lebar frame diskalakan agar muat di area (`fit`).
  */
-export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, modules, shell, zoom = 'fit', interactive = null }) {
+export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, entity, modules, shell, zoom = 'fit', interactive = null, vars }) {
     const iframe = useRef(null), root = useRef(null), wrap = useRef(null);
     const [ready, setReady] = useState(false);
     const [scale, setScale] = useState(1);
@@ -197,8 +243,8 @@ export function LiveFrame({ tree, lib, cssUrl, selectedId, onPick, onError, enti
 
     useEffect(() => {
         if (!ready || !root.current || !tree) return;
-        root.current.render(h(Screen, { tree, lib, entity, modules, ix: interactive, shell: useShell ? shell : null, shellHeight, onError }));
-    }, [ready, tree, lib, onError, entity, modules, interactive, shell, useShell, shellHeight]);
+        root.current.render(h(Screen, { tree, lib, entity, modules, ix: interactive, shell: useShell ? shell : null, shellHeight, onError, vars }));
+    }, [ready, tree, lib, onError, entity, modules, interactive, shell, useShell, shellHeight, vars]);
 
     // Klik di iframe → node terdekat.
     useEffect(() => {

@@ -4,7 +4,7 @@
 // the generated app (same rules, messages, dialogs and unsaved-changes guard). Nothing here is persisted.
 import { createElement as h, Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { activeNavPath, autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
+import { activeNavPath, autoAction, breadcrumbsOf, dialogTexts, fieldLabelOf, filterFields, findTreeNode, makeContext, normalizeInteractions, pageTitle, relationOf, resolveLayout, sampleRows, screenPath, screenTree, tableModel, titleCase, validateField, validateValues } from '@midas/builder-core';
 import { builderApi } from '../storage.js';
 import { cssUrlOf, loadBundle } from './loader.js';
 import { LiveFrame } from './Renderer.jsx';
@@ -85,6 +85,7 @@ function AppPreview({ bridge, project, onClose }) {
     const [sizeChoice, setSizeChoice] = useState(null); // rows per page picked in the table footer (default: the table's page size, 10)
     const [toast, setToast] = useState('');
     const [dialog, setDialog] = useState(null); // { kind: 'delete' | 'restore' | 'discard' | 'filter', ... }
+    const [openDialog, setOpenDialog] = useState(null); // screen dialog yang dibuka oleh interaction
     const [form, setForm] = useState({ values: {}, initial: {}, errors: {}, submitted: false });
     const bypass = useRef(false);
     const library = project.library;
@@ -118,6 +119,13 @@ function AppPreview({ bridge, project, onClose }) {
     const mode = screen?.role === 'edit' ? 'edit' : 'create';
     const trees = useMemo(() => (ctx && screen ? screenTree(ctx, screen.frameId, screen.nodes) : null), [ctx, screen]);
     const dialogTrees = useMemo(() => new Map(ctx && module ? module.screens.filter(s => s.role === 'dialog').map(s => [s.id, screenTree(ctx, s.frameId, s.nodes)]) : []), [ctx, module]);
+    // Semua screen dialog (semua module): target interaction "open dialog".
+    const allDialogTrees = useMemo(() => {
+        const m = new Map();
+        if (!ctx) return m;
+        for (const mod of modules) for (const s of mod.screens.filter(x => x.role === 'dialog')) m.set(s.id, screenTree(ctx, s.frameId, s.nodes));
+        return m;
+    }, [ctx, modules]);
     const tableNode = useMemo(() => {
         const find = n => (n ? (n.kind === 'component' && n.exportName === 'Table' ? n : (n.children || []).map(find).find(Boolean)) : null);
         return find(trees?.tree);
@@ -217,6 +225,20 @@ function AppPreview({ bridge, project, onClose }) {
                 onBlur: undefined, error: form.errors[f.name],
             }),
             press: node => {
+                // Interaction dari tab Behavior lebih dulu; baru action bawaan (cfg.action / tebakan).
+                const list = normalizeInteractions(node.cfg?.interactions).filter(i => i.trigger === 'onClick');
+                if (list.length) {
+                    for (const it of list) {
+                        const a = it.action;
+                        if (a.type === 'navigate' && a.targetFrameId) go(a.targetFrameId);
+                        else if (a.type === 'submit') submit();
+                        else if (a.type === 'back') back();
+                        else if (a.type === 'open-dialog' && a.targetFrameId) setOpenDialog(a.targetFrameId);
+                        else if (a.type === 'close-dialog') setOpenDialog(null);
+                        else flash('This interaction has no target yet — set one in the Behavior tab');
+                    }
+                    return;
+                }
                 const label = node.props.children ?? node.props.label ?? node.props.actionLabel;
                 const a = node.cfg?.action || autoAction(module, screen, label);
                 if (a.type === 'back') back();
@@ -268,8 +290,15 @@ function AppPreview({ bridge, project, onClose }) {
             <div className="cb-preview-body">
                 {error ? <div className="cb-empty cb-grow"><b>Preview app</b><p className="small-label">{error}</p></div>
                     : !lib || !ctx ? <div className="cb-empty cb-grow"><p className="small-label">Loading library components…</p></div>
-                        : trees?.tree ? <LiveFrame tree={trees.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} interactive={ix} entity={entity} modules={modules} shell={shell} />
+                        : trees?.tree ? <LiveFrame tree={trees.tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} interactive={ix} entity={entity} modules={modules} shell={shell} vars={ctx.vars} />
                             : <div className="cb-empty cb-grow"><p className="small-label">{trees?.issues[0]?.message || 'This project has no screens yet.'}</p></div>}
+                {openDialog && allDialogTrees.get(openDialog)?.tree && (
+                    <div className="cb-preview-modal" onClick={() => setOpenDialog(null)}>
+                        <div className="cb-preview-modal-card" onClick={e => e.stopPropagation()}>
+                            <LiveFrame tree={allDialogTrees.get(openDialog).tree} lib={lib} cssUrl={cssUrlOf(library.bundleUrl)} interactive={ix} entity={entity} modules={modules} vars={ctx.vars} />
+                        </div>
+                    </div>
+                )}
                 {toast && <div className="cb-preview-toast">{toast}</div>}
             </div>
         </div>

@@ -1,6 +1,6 @@
 # Midas
 
-Design editor (clone Figma di sisi canvas) + Code Builder. Spesifikasi: [docs/specs/development-spec.md](docs/specs/development-spec.md), alur pemakaian: [docs/specs/workflow.md](docs/specs/workflow.md).
+Design editor (clone Figma di sisi canvas) + Code Builder. Spesifikasi: [docs/specs/development-spec.md](docs/specs/development-spec.md), alur pemakaian: [docs/specs/workflow.md](docs/specs/workflow.md). Tab Behavior (state mapping, interaction, input): [docs/specs/behavior-tab.md](docs/specs/behavior-tab.md).
 
 ## Struktur repo (npm workspaces)
 

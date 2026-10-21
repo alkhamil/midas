@@ -35,7 +35,8 @@ export function makeContext({ nodes, variables, mappings = [], libraryId = null,
     const kids = new Map();
     for (const n of nodes) if (n.parentId) (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
     const vars = new Map((variables?.items || []).map(i => [i.id, i]));
-    return { byId, kids, vars, mappings: new Map(mappings.map(m => [m.componentKey, m])), libraryId, fileId };
+    const collections = new Map((variables?.collections || []).map(c => [c.id, c]));
+    return { byId, kids, vars, collections, mappings: new Map(mappings.map(m => [m.componentKey, m])), libraryId, fileId };
 }
 
 const childrenOf = (ctx, id) => (ctx.kids.get(id) || []).filter(n => n.visible !== false);

@@ -7,6 +7,32 @@ export interface NodeConfig {
   field?: string;
   action?: { type: 'none' | 'navigate' | 'submit' | 'back'; screenId?: string };
   table?: { columns?: string[]; rowActions?: ('view' | 'edit' | 'delete')[]; pageSize?: number };
+  /** State mapping: setiap state → properti → nilai (variable collection + variable, atau nilai manual). */
+  stateMapping?: Record<string, Record<string, StyleValue>>;
+  /** Interaction: trigger + action (navigate, open dropdown/overlay/popover, close overlay). */
+  interactions?: Interaction[];
+  /** Perilaku input field: label, area typeable, error, validasi. */
+  inputBehavior?: InputBehavior;
+}
+export interface StyleValue { value?: string | number; variableId?: string; collectionId?: string }
+export interface Interaction {
+  id: string;
+  trigger: 'onClick' | 'onHover' | 'onMouseEnter' | 'onFocus' | 'onBlur' | 'onChange' | 'onSubmit';
+  action: {
+    type: 'navigate' | 'open-dropdown' | 'open-overlay' | 'open-popover' | 'open-tooltip' | 'close-overlay';
+    targetFrameId?: string;
+    position?: string;
+    anchor?: string;
+    backdrop?: boolean;
+    closeOnBackdrop?: boolean;
+    close?: string;
+  };
+}
+export interface InputBehavior {
+  label?: { exists?: boolean; reference?: { type: 'layer' | 'variable'; layerId?: string; variableId?: string; collectionId?: string } };
+  typeable?: { frameId?: string; placeholder?: StyleValue; valueCollectionId?: string; valueVariableId?: string };
+  error?: { stateName?: string; border?: StyleValue; hint?: StyleValue; hintText?: string; frameId?: string };
+  validation?: { required?: boolean };
 }
 export interface BuilderScreen { id: string; frameId: string; pageId: string; name: string; role: string; nodes?: Record<string, NodeConfig> }
 export interface BuilderModule { id: string; name: string; label: string; parentId: string | null; permissionKey?: string; pageId: string; entity?: { fields: BuilderField[] }; screens: BuilderScreen[] }
