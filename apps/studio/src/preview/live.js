@@ -588,7 +588,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     shut.title = 'Close menu';
     const frameList = el('div', { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }, drawer);
     for (const f of ctx.frames) {
-        const b = el('button', { ...chrome, display: 'block', width: '100%', padding: '7px 8px', border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }, frameList);
+        const b = el('button', { ...chrome, display: 'block', width: '100%', padding: '7px 8px', border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 0 auto', lineHeight: '18px' }, frameList);
         b.textContent = f.label;
         b.title = f.label;
         b.dataset.frame = f.id;
