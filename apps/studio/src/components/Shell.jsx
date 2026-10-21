@@ -33,7 +33,7 @@ export function Topbar({ user }) {
             </div>
             <div className="top-actions">
                 <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
-                <button className="icon-button" id="present" title="Preview app" aria-label="Preview app" data-icon="play"></button>
+                <button className="icon-button" id="present" title="Preview" aria-label="Preview" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>
@@ -153,6 +153,7 @@ export function RightPanel() {
         <aside className="right-panel" id="right-panel" aria-label="Properties inspector">
             <div className="inspector-tabs">
                 <button className="active" data-inspector-tab="design">Design</button>
+                <button data-inspector-tab="prototype" id="inspector-tab-behavior">Behavior</button>
                 <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>

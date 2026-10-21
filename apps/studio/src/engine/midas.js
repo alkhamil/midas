@@ -5,6 +5,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
 
 
 // ===== document.js =====
@@ -402,6 +403,9 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
         }
     }
     Object.assign(f, { layout: dir, gap, padding: pad.l, padL: pad.l, padT: pad.t, padR: pad.r, padB: pad.b, primaryAlign: 'start', counterAlign: 'start', gapAuto: false, layoutWrap: false, gridCols: f.gridCols || 2, layoutSizingH: kids.length ? 'hug' : 'fixed', layoutSizingV: kids.length ? 'hug' : 'fixed' });
+    // The children were just put in visual order, so the flip an imported (Figma) frame carries would show them backwards.
+    delete f.layoutFlip;
+    delete f.layoutReverseZ;
     doc.refresh();
     doc.touch(f);
 }
@@ -8274,7 +8278,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -8825,6 +8829,19 @@ function section(title, body, action = '', extra = '') { return `<section class=
 function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
 function renderInspector() {
+    // Tab Behavior hanya ada kalau yang dipilih memang komponen, instance, atau frame.
+    const sel = activeNode();
+    const relevant = !!sel && (sel.isInstance || sel.component || sel.componentSet || (sel.type === 'frame' && !sel.parentId && !sel.component && !sel.componentSet && !sel.isInstance));
+    const tabBtn = document.getElementById('inspector-tab-behavior');
+    if (tabBtn) tabBtn.style.display = relevant ? '' : 'none';
+    if (!relevant && state.inspectorTab === 'prototype') {
+        state.inspectorTab = 'design';
+        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el.dataset.inspectorTab === 'design'));
+    }
+    if (state.inspectorTab === 'prototype' && !state.editing) {
+        $('#inspector').innerHTML = prototypeHtml();
+        return;
+    }
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
     doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
@@ -9187,7 +9204,8 @@ function copySelection() {
     navigator.clipboard?.writeText(JSON.stringify(state.clipboard)).catch(() => { });
     toast(`${roots.length} layer${roots.length > 1 ? 's' : ''} copied`);
 }
-async function pasteSelection(clipText) {
+/** Where pasted layers go: the canvas (default), into the selected frame, beside the selected layer, or in place of it. */
+async function pasteSelection(clipText, mode = 'canvas') {
     let payload = state.clipboard;
     try {
         const str = clipText ?? await navigator.clipboard.readText();
@@ -9214,6 +9232,25 @@ async function pasteSelection(clipText) {
         toast('Nothing copied yet. Copy a layer first.');
         return;
     }
+    const sel = selectedRoots(), anchor = sel[0];
+    const targets = [];
+    if (mode === 'canvas' || !anchor)
+        targets.push({ kind: 'canvas' });
+    else if (sel.some(n => insideInstance(n))) {
+        toast('Layers inside an instance can not be pasted into, beside or over.');
+        return;
+    }
+    else if (mode === 'into')
+        targets.push(sel.length === 1 && anchor.type === 'frame' && !anchor.isInstance ? { kind: 'into', parent: anchor } : { kind: 'sibling', anchor });
+    else if (mode === 'sibling')
+        targets.push({ kind: 'sibling', anchor });
+    else
+        for (const n of sel)
+            targets.push({ kind: 'replace', anchor: n });
+    if (mode === 'replace' && !anchor) {
+        toast('Select the layer to replace first.');
+        return;
+    }
     transaction('Paste layers', () => {
         const temp = { format: 'midas', version: 1, name: 'Clipboard', pageId: 'paste', pages: [{ id: 'paste', name: 'Paste', nodes: payload.nodes }], assets: payload.assets || {} };
         let data;
@@ -9224,41 +9261,81 @@ async function pasteSelection(clipText) {
             toast('Clipboard data is not valid.');
             return;
         }
-        const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
         Object.assign(doc.data.assets, data.assets);
-        const roots = [];
-        const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
-        // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
-        const instRootOf = id => { let cur = byId.get(id); while (cur) {
-            if (payload.rootIds.includes(cur.id))
-                return cur.component && !cur.componentSet && componentById(cur.id) ? cur.id : null;
-            cur = byId.get(cur.parentId);
-        } return null; };
-        for (const src of data.pages[0].nodes) {
-            const n = structuredClone(src);
-            n.id = map.get(src.id);
-            n.parentId = map.get(src.parentId) || null;
-            const instRoot = instRootOf(src.id);
-            if (instRoot) {
-                const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
-                n.sourceId = src.id;
-                n.component = false;
-                n.isInstance = isRoot;
-                n.overrides = {};
-                delete n.variant;
-                delete n.componentSet;
-                if (vset)
-                    n.name = vset.name;
-            }
-            if (payload.rootIds.includes(src.id)) {
+        const all = [];
+        for (const t of targets)
+            all.push(...pasteNodes(data, payload, t));
+        select(all);
+    });
+}
+/** One paste of the clipboard layers at `target` ({ kind: 'canvas' | 'into' | 'sibling' | 'replace' }); returns the new root ids. */
+function pasteNodes(data, payload, target) {
+    const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
+    const roots = [];
+    const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
+    const rootParent = target.kind === 'into' ? target.parent.id : target.kind === 'canvas' ? null : target.anchor.parentId || null;
+    const startLen = doc.nodes.length;
+    // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
+    const instRootOf = id => { let cur = byId.get(id); while (cur) {
+        if (payload.rootIds.includes(cur.id))
+            return cur.component && !cur.componentSet && componentById(cur.id) ? cur.id : null;
+        cur = byId.get(cur.parentId);
+    } return null; };
+    for (const src of data.pages[0].nodes) {
+        const n = structuredClone(src);
+        n.id = map.get(src.id);
+        n.parentId = map.get(src.parentId) || null;
+        const instRoot = instRootOf(src.id);
+        if (instRoot) {
+            const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
+            n.sourceId = src.id;
+            n.component = false;
+            n.isInstance = isRoot;
+            n.overrides = {};
+            delete n.variant;
+            delete n.componentSet;
+            if (vset)
+                n.name = vset.name;
+        }
+        if (payload.rootIds.includes(src.id)) {
+            n.parentId = rootParent;
+            if (target.kind === 'canvas') {
                 n.x = Math.round(n.x + 24);
                 n.y = Math.round(n.y + 24);
-                roots.push(n.id);
             }
-            doc.add(n);
+            roots.push(n.id);
         }
-        select(roots);
-    });
+        doc.add(n);
+    }
+    if (target.kind === 'canvas')
+        return roots;
+    // Keep the layers' arrangement among themselves and put the group where the target asks: centred in a frame, a step
+    // down-right of the layer it goes beside, or exactly where the replaced layer was (an auto layout parent places them itself).
+    const rs = roots.map(id => doc.get(id)), ux = Math.min(...rs.map(r => r.x)), uy = Math.min(...rs.map(r => r.y));
+    const uw = Math.max(...rs.map(r => r.x + r.w)) - ux, uh = Math.max(...rs.map(r => r.y + r.h)) - uy;
+    const [tx, ty] = target.kind === 'into' ? [Math.max(0, Math.round((target.parent.w - uw) / 2)), Math.max(0, Math.round((target.parent.h - uh) / 2))]
+        : target.kind === 'sibling' ? [target.anchor.x + 24, target.anchor.y + 24] : [target.anchor.x, target.anchor.y];
+    for (const r of rs) {
+        r.x = Math.round(r.x + tx - ux);
+        r.y = Math.round(r.y + ty - uy);
+        doc.touch(r);
+    }
+    // In an auto layout they come after what is there in the flow (below in a vertical one, to the right in a horizontal one); a frame
+    // imported from Figma stores its children back to front, so "after" is before in the list. Elsewhere: right above the layer.
+    const parent = target.kind === 'into' ? target.parent : doc.get(target.anchor.parentId), flipped = !!parent?.layoutFlip && isAutoLayout(parent);
+    const added = doc.nodes.splice(startLen);
+    let at;
+    if (target.kind === 'into') {
+        const first = flipped && doc.nodes.find(n => n.parentId === parent.id);
+        at = first ? doc.nodes.indexOf(first) : doc.nodes.length;
+    }
+    else
+        at = doc.nodes.indexOf(target.anchor) + (flipped ? 0 : 1);
+    doc.nodes.splice(at, 0, ...added);
+    doc.refresh();
+    if (target.kind === 'replace')
+        doc.remove([target.anchor.id]);
+    return roots;
 }
 function groupSelection(asFrame = false, autoLayout = false) {
     const roots = selectedRoots();
@@ -12435,7 +12512,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -14168,6 +14245,49 @@ function closePropPop() {
     propPop = null;
     renderInspector();
 }
+// Put a value of a variant property in another place of the list (Figma: drag a value in Edit variant property).
+function moveVariantValue(set, prop, from, to) {
+    const vals = variantValues(set, prop);
+    if (from === to || vals[from] === undefined || to < 0 || to >= vals.length)
+        return;
+    transaction('Reorder variant values', () => {
+        const [v] = vals.splice(from, 1);
+        vals.splice(to, 0, v);
+        (set.valueOrder ||= {})[prop] = vals;
+        doc.touch(set);
+    });
+}
+document.addEventListener('pointerdown', e => {
+    const grip = e.target.closest?.('[data-pp-grip]'), pp = grip && propPop;
+    if (!pp)
+        return;
+    e.preventDefault();
+    const from = +grip.dataset.ppGrip, rows = [...pp.el.querySelectorAll('[data-pp-row]')];
+    let over = from;
+    rows[from]?.classList.add('fr-drag');
+    const clear = () => rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after', 'fr-drag'));
+    const move = ev => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-pp-row]');
+        rows.forEach(r => r.classList.remove('fr-over', 'fr-over-after'));
+        if (el && pp.el.contains(el)) {
+            over = +el.dataset.ppRow;
+            if (over !== from)
+                el.classList.add(over > from ? 'fr-over-after' : 'fr-over');
+        }
+    };
+    const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        clear();
+        const set = doc.get(pp.setId);
+        if (set && over !== from) {
+            moveVariantValue(set, pp.prop, from, over);
+            renderPropPop();
+        }
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+});
 function renderPropPop() {
     const pp = propPop, set = pp && doc.get(pp.setId);
     if (!set) {
@@ -14175,7 +14295,7 @@ function renderPropPop() {
         return;
     }
     const vals = variantValues(set, pp.prop);
-    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map(v => `<div class="pp-val"><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
+    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map((v, i) => `<div class="pp-val" data-pp-row="${i}"><span class="fr-grip" data-pp-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
 }
 function openPropPop(anchor, set, prop) {
     if (!set)
@@ -14339,7 +14459,14 @@ function variantProps(set) {
                 props.push(k);
     return props;
 }
-function variantValues(set, prop) { return [...new Set(setVariants(set).map(v => v.variant?.[prop]).filter(x => x !== undefined))]; }
+// Values in the order the set lists them (`valueOrder`, set on import to match Figma), else in the order the variants were made.
+function variantValues(set, prop) {
+    const vals = [...new Set(setVariants(set).map(v => v.variant?.[prop]).filter(x => x !== undefined))], order = set.valueOrder?.[prop];
+    if (!order)
+        return vals;
+    const rank = x => { const i = order.indexOf(x); return i < 0 ? order.length : i; };
+    return vals.map((x, i) => [x, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(a => a[0]);
+}
 function variantName(v) { return Object.entries(v.variant || {}).map(([k, x]) => `${k}=${x}`).join(', ') || 'Variant'; }
 function renameVariants(set) { for (const v of setVariants(set)) {
     v.name = variantName(v);
@@ -14484,6 +14611,18 @@ function propValueFor(n, pid, pmap, idx) {
             if (s.propValues && Object.hasOwn(s.propValues, pid))
                 return { found: true, value: s.propValues[pid] };
     }
+    // Nothing set on an instance: the property's own default, kept on the component set (or the component) that defines it.
+    // This is what a layer inside a main component shows, so a sync does not undo it.
+    const up = new Set();
+    for (let a = n; a && !up.has(a.id); a = pmap.get(a.parentId) || nodeIndex().get(a.parentId)) {
+        up.add(a.id);
+        for (let s = a, i = 0; s && i < 64; s = s.sourceId ? idx.get(s.sourceId) : null, i++) {
+            const holder = [s, pmap.get(s.parentId) || nodeIndex().get(s.parentId)].find(h => h?.cprops?.some(p => p.id === pid));
+            const p = holder?.cprops.find(x => x.id === pid);
+            if (p && p.def !== undefined && p.def !== null)
+                return { found: true, value: p.def };
+        }
+    }
     return { found: false };
 }
 // Fields of an instance layer currently driven by a text / boolean property value.
@@ -14616,7 +14755,7 @@ function swapEntries() {
                 leaf = parts.pop();
                 group = parts.join(' / ');
             }
-            out.push({ id: c.id, libId: c.libRef ? c.libRef.slice(0, c.libRef.indexOf(':')) : null, page: p.name.trim() || 'Page', group, leaf, ids: set ? new Set(p.nodes.filter(v => v.parentId === set.id && v.component).map(v => v.id)) : new Set([c.id]) });
+            out.push({ id: c.id, libId: c.libRef ? c.libRef.slice(0, c.libRef.indexOf(':')) : null, page: p.name.trim() || 'Page', group, path: group ? group.split(' / ') : [], leaf, ids: set ? new Set(p.nodes.filter(v => v.parentId === set.id && v.component).map(v => v.id)) : new Set([c.id]) });
         }
     return out;
 }
@@ -14629,7 +14768,7 @@ function swapLibEntries(have) {
             if (c.hidden || /^[_.]/.test(c.name) || have.has(`${snap.id}:${c.id}`))
                 continue;
             const parts = c.name.split('/').map(s => s.trim()), leaf = parts.pop();
-            out.push({ id: null, libId: snap.id, libComp: c.id, snap, c, page: 'Library · ' + snap.name, group: parts.join(' / '), leaf, ids: new Set() });
+            out.push({ id: null, libId: snap.id, libComp: c.id, snap, c, page: 'Library · ' + snap.name, group: parts.join(' / '), path: parts.slice(), leaf, ids: new Set() });
         }
     }
     return out;
@@ -14653,37 +14792,67 @@ function openSwapPicker(anchor, { current = null, onPick }) {
     // A component set is listed once (its first variant): the entry holding the current variant is the selected one.
     if (cur)
         limit = Math.max(limit, entries.indexOf(cur) + 20);
+    // The list is a tree: a page is a folder, and so is every "Folder / Sub" part of a component's name. Folders start closed,
+    // except the ones leading to the component that is chosen now; a search opens every folder that holds a match.
+    const open = new Set(), nodeKey = (e, depth) => [e.page, ...e.path.slice(0, depth)].join(' › ');
+    if (cur)
+        for (let d = 0; d <= cur.path.length; d++)
+            open.add(nodeKey(cur, d));
+    // Picking a page or library in the filter opens it.
+    const openFiltered = () => {
+        if (SWP.page)
+            for (const e of entries)
+                if (swapMatch(e))
+                    open.add(nodeKey(e, 0));
+    };
+    openFiltered();
     const list = () => {
         const ql = q.trim().toLowerCase();
-        let html = '', shown = 0, hidden = 0, lastPage = null, lastGroup = null;
+        let html = '', shown = 0, hidden = 0;
+        const roots = new Map();
         for (const e of entries) {
             if (!swapMatch(e))
                 continue;
             if (ql && !(e.group + ' ' + e.leaf).toLowerCase().includes(ql))
                 continue;
-            if (shown >= limit) {
-                hidden++;
-                continue;
+            let node = roots.get(e.page);
+            if (!node)
+                roots.set(e.page, node = { name: e.page, key: nodeKey(e, 0), kids: new Map(), items: [], count: 0, page: true });
+            node.count++;
+            for (let d = 1; d <= e.path.length; d++) {
+                let kid = node.kids.get(e.path[d - 1]);
+                if (!kid)
+                    node.kids.set(e.path[d - 1], kid = { name: e.path[d - 1], key: nodeKey(e, d), kids: new Map(), items: [], count: 0 });
+                kid.count++;
+                node = kid;
             }
-            shown++;
-            if (e.page !== lastPage) {
-                html += `<div class="vpk-coll">${esc(e.page)}</div>`;
-                lastPage = e.page;
-                lastGroup = null;
-            }
-            if (e.group && e.group !== lastGroup) {
-                html += `<div class="vpk-group">${esc(e.group)}</div>`;
-                lastGroup = e.group;
-            }
-            else if (!e.group)
-                lastGroup = null;
-            html += `<button class="vp-item vpk-item ${e.group ? 'in-group' : ''} ${e === cur ? 'on' : ''}" data-pick="${e.id || `lib:${e.libId}:${e.libComp}`}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" ${e.id ? `data-thumb="${e.id}"` : `data-lib-thumb="${e.libId}:${e.libComp}"`}>${e.id ? swapThumbHtml(e.id) : libThumbHtml(e.snap, e.c)}</span><span class="vp-name">${esc(e.leaf)}</span>${e === cur ? icon('check', 12) : ''}</button>`;
+            node.items.push(e);
         }
+        const render = (node, depth) => {
+            const isOpen = !!ql || open.has(node.key) || (node.page && roots.size === 1);
+            html += `<button class="vpk-node ${node.page ? 'is-page' : ''}" style="--d:${depth}" data-vpk-toggle="${esc(node.key)}" aria-expanded="${isOpen}"><i class="vpk-chev">${icon(isOpen ? 'chevronDown' : 'chevron', 10)}</i><span class="vp-name">${esc(node.name)}</span><span class="vpk-count">${node.count.toLocaleString()}</span></button>`;
+            if (!isOpen)
+                return;
+            for (const kid of node.kids.values())
+                render(kid, depth + 1);
+            for (const e of node.items) {
+                if (shown >= limit) {
+                    hidden++;
+                    continue;
+                }
+                shown++;
+                html += `<button class="vp-item vpk-item ${e === cur ? 'on' : ''}" style="--d:${depth + 1}" data-pick="${e.id || `lib:${e.libId}:${e.libComp}`}" title="${esc((e.group ? e.group + ' / ' : '') + e.leaf)}"><span class="swp-thumb" ${e.id ? `data-thumb="${e.id}"` : `data-lib-thumb="${e.libId}:${e.libComp}"`}>${e.id ? swapThumbHtml(e.id) : libThumbHtml(e.snap, e.c)}</span><span class="vp-name">${esc(e.leaf)}</span>${e === cur ? icon('check', 12) : ''}</button>`;
+            }
+        };
+        for (const node of roots.values())
+            render(node, 0);
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
-        pop.querySelector('.vp-list').innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        const lst = pop.querySelector('.vp-list'), top = lst.scrollTop;
+        lst.innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        lst.scrollTop = top;
         if (pop.isConnected)
-            watchSwapThumbs(pop.querySelector('.vp-list'));
+            watchSwapThumbs(lst);
     };
     pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Library or page"><option value="">All libraries</option><option value="@file" ${SWP.page === '@file' ? 'selected' : ''}>Created in this file</option>${libIds.map(id => `<option value="lib:${esc(id)}" ${SWP.page === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}<optgroup label="Pages">${pages.map(p => `<option value="page:${esc(p)}" ${SWP.page === 'page:' + p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</optgroup></select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
     list();
@@ -14712,12 +14881,20 @@ function openSwapPicker(anchor, { current = null, onPick }) {
         if (e.target.matches('[data-swp-page]')) {
             SWP.page = e.target.value;
             limit = 300;
+            openFiltered();
             list();
         }
     });
     pop.addEventListener('click', e => {
         if (e.target.closest('[data-vpk-more]')) {
             limit += 300;
+            list();
+            return;
+        }
+        const fold = e.target.closest('[data-vpk-toggle]');
+        if (fold) {
+            const k = fold.dataset.vpkToggle;
+            if (open.has(k)) open.delete(k); else open.add(k);
             list();
             return;
         }
@@ -15167,19 +15344,29 @@ function treeKeyed(rootId) {
     return out;
 }
 const SWAP_SKIP_OV = new Set(['w', 'h', 'x', 'y', 'rotation', 'sourceId', 'swapOf', 'isInstance', 'component', 'id', 'parentId', 'version', 'overrides']);
+// Variable bindings an instance has of its own: the ones its main component does not have. The rest come with the variant it shows,
+// so a swap must not carry them over (the gap bound to the vertical layout's variable stays on a horizontal one otherwise).
+function ownVars(n) {
+    const base = chainComponent(n)?.vars || {}, out = {};
+    for (const [k, v] of Object.entries(n.vars || {}))
+        if (base[k] !== v)
+            out[k] = v;
+    return Object.keys(out).length ? out : undefined;
+}
+const swapValue = (n, k) => k === 'vars' ? ownVars(n) : n[k];
 function keepRootAcrossSwap(inst, fn) {
     const saved = {};
     for (const k of SWAP_KEEP)
-        if (inst[k] !== undefined)
-            saved[k] = structuredClone(inst[k]);
+        if (swapValue(inst, k) !== undefined)
+            saved[k] = structuredClone(swapValue(inst, k));
     // Everything inside the instance that was customised: nested instances (their variant, modes, properties) and overridden layers.
     const snap = new Map();
     for (const [key, n] of treeKeyed(inst.id)) {
         const isInst = !!n.isInstance && !!n.sourceId, keep = {};
         if (isInst)
             for (const k of SWAP_KEEP)
-                if (n[k] !== undefined)
-                    keep[k] = structuredClone(n[k]);
+                if (swapValue(n, k) !== undefined)
+                    keep[k] = structuredClone(swapValue(n, k));
         const ov = n.overrides && Object.keys(n.overrides).length ? structuredClone(n.overrides) : null;
         if (isInst || ov)
             snap.set(key, { isInst, comp: isInst ? chainComponent(n)?.id : null, keep, ov });
@@ -15208,8 +15395,8 @@ function keepRootAcrossSwap(inst, fn) {
         if (!s0)
             continue;
         for (const [k, v] of Object.entries(s0.keep)) {
-            n[k] = structuredClone(v);
-            (n.overrides ||= {})[k] = structuredClone(v);
+            n[k] = k === 'vars' ? { ...n.vars, ...structuredClone(v) } : structuredClone(v);
+            (n.overrides ||= {})[k] = structuredClone(n[k]);
         }
         for (const [k, v] of Object.entries(s0.ov || {}))
             if (!SWAP_SKIP_OV.has(k) && !(k in s0.keep)) {
@@ -15220,8 +15407,8 @@ function keepRootAcrossSwap(inst, fn) {
     }
     const now = doc.get(inst.id) || inst;
     for (const k of Object.keys(saved)) {
-        now[k] = saved[k];
-        (now.overrides ||= {})[k] = structuredClone(saved[k]);
+        now[k] = k === 'vars' ? { ...now.vars, ...saved[k] } : saved[k];
+        (now.overrides ||= {})[k] = structuredClone(now[k]);
     }
     doc.touch(now);
 }
@@ -15466,6 +15653,9 @@ async function figToMidas(file, onProgress, abortSignal) {
     const blobs = (message.blobs || []).map(b => b.bytes || b);
     const rep = { pages: 0, layers: 0, notes: new Map(), skipped: new Map() };
     const note = (k) => rep.notes.set(k, (rep.notes.get(k) || 0) + 1);
+    // Figma lists a component's properties by their sortPosition, not in the order the file stores them.
+    const bySortPosition = defs => [...defs].sort((a, b) => { const x = String(a.sortPosition ?? ''), y = String(b.sortPosition ?? ''); return x < y ? -1 : x > y ? 1 : 0; });
+    const variantOrderBySet = new Map(), valueOrderBySet = new Map();
     const skip = (t) => rep.skipped.set(t, (rep.skipped.get(t) || 0) + 1);
     // Images not carried in the data (always the case for clipboard pastes) keep their fill with an asset id that has no bytes yet;
     // missingImages maps the Figma image hash to that id so the bytes can be fetched later (see fetchFigmaImages).
@@ -16401,11 +16591,14 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         // Property definitions live on the set, or on a component that is not part of one.
         if (f.componentPropDefs?.length && (f.isStateGroup || f.type === 'SYMBOL' && !fig.get(gkey(f.parentIndex?.guid))?.isStateGroup)) {
-            const props = [];
-            for (const d of f.componentPropDefs) {
+            const props = [], variantOrder = [];
+            for (const d of bySortPosition(f.componentPropDefs)) {
                 const info = d.name && defInfo.get(gkey(d.id));
-                if (!info)
+                if (!info) {
+                    if (d.type === 'VARIANT' && d.name)
+                        variantOrder.push(d.name);
                     continue;
+                }
                 const p = { id: info.pid, name: info.name, type: info.type, def: null };
                 if (info.type === 'text')
                     p.def = d.initialValue?.textValue?.characters ?? '';
@@ -16417,7 +16610,12 @@ async function figToMidas(file, onProgress, abortSignal) {
             }
             if (props.length)
                 n.cprops = props;
+            if (variantOrder.length)
+                variantOrderBySet.set(n.id, variantOrder);
         }
+        // The order Figma lists each variant property's values in (its dropdowns and the Edit variant property dialog).
+        if (f.isStateGroup && f.stateGroupPropertyValueOrders?.length)
+            valueOrderBySet.set(n.id, Object.fromEntries(f.stateGroupPropertyValueOrders.filter(o => o.property && o.values?.length).map(o => [o.property, [...o.values]])));
         for (const r of f.componentPropRefs || []) {
             let info = defInfo.get(gkey(r.defID));
             const field = PROP_FIELD[r.componentPropNodeField];
@@ -16656,18 +16854,32 @@ async function figToMidas(file, onProgress, abortSignal) {
                 const b = members.find(m => m.propBind?.visible === p.id);
                 if (b)
                     p.def = b.visible !== false;
+                // Every layer a property drives shows the property's default in the main components (Figma applies it to all variants).
+                for (const m of members)
+                    if (m.propBind?.visible === p.id && b)
+                        m.visible = p.def;
             }
             else if (p.type === 'text') {
                 const b = members.find(m => m.propBind?.text === p.id && typeof m.text === 'string');
                 if (b)
                     p.def = b.text;
+                for (const m of members)
+                    if (m.propBind?.text === p.id && typeof m.text === 'string' && b)
+                        m.text = p.def;
             }
         }
     }
     for (const n of allMidas.filter(x => x.componentSet)) {
         const vs = (byParent.get(n.id) || []).filter(x => x.component), parsed = vs.map(v => Object.fromEntries(v.name.split(',').map(s => s.trim().split('=')).filter(a => a.length === 2 && a[0].trim()).map(a => [a[0].trim(), a[1].trim()])));
-        if (vs.length && parsed.every(p => Object.keys(p).length))
-            vs.forEach((v, i) => { v.variant = parsed[i]; });
+        if (vs.length && parsed.every(p => Object.keys(p).length)) {
+            if (valueOrderBySet.has(n.id))
+                n.valueOrder = valueOrderBySet.get(n.id);
+            vs.forEach((v, i) => {
+                // Variant properties in the order Figma lists them (Type, Style, State…), not the order of the layer names.
+                const order = variantOrderBySet.get(n.id) || [];
+                v.variant = Object.fromEntries(Object.entries(parsed[i]).sort((a, b) => (order.indexOf(a[0]) + 1 || 1e9) - (order.indexOf(b[0]) + 1 || 1e9)));
+            });
+        }
         else {
             n.componentSet = false;
         }
@@ -17739,6 +17951,603 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
+// ===== Live preview (Design | Preview) =====
+// Draws the selected frame as real DOM (preview/live.js): inputs are typeable, buttons follow their component's
+// state variants (hover / pressed / focused / disabled / error) and "Go to page" moves to another frame.
+let livePreview = null;
+const cssName = s => String(s || 'var').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+const FIELD_NAME = /input|field|textbox/i;
+const looksLikeField = n => FIELD_NAME.test(n.name + " " + (parentSetOf(chainComponent(n) || n)?.name || ""));
+/** The states the preview can show for an instance. */
+const LIVE_STATE_IDS = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'error', 'disabled'];
+/** The text a person types into: the visible text inside the field's content row (its placeholder), and the room it has. */
+function liveField(inst, kids) {
+    const walk = (id, path) => kids(id).flatMap(k => k.visible === false ? [] : k.type === 'text' ? [{ t: k, path }] : walk(k.id, [...path, k]));
+    const texts = walk(inst.id, []), inRow = x => x.path.some(p => /^(content|text input|input|text wrap)$/i.test(p.name)), pick = texts.find(inRow) || texts[0];
+    if (!pick)
+        return null;
+    const row = pick.path.find(p => /^(content|text input)$/i.test(p.name)) || pick.path.at(-1);
+    return { id: pick.t.id, name: pick.t.name, width: row ? Math.max(pick.t.w, row.w - pick.t.x) : pick.t.w };
+}
+const LIVE_STATES = ['default', 'hover', 'hovered', 'pressed', 'active', 'focused', 'focus', 'selected', 'typing', 'filled', 'disabled', 'error'];
+/** The variant property that holds the states: one named State / Status, or any whose values are state names. */
+function liveStateKey(set, src) {
+    const keys = Object.keys(src.variant || {});
+    return keys.find(k => /^(state|status)$/i.test(k)) || keys.find(k => variantValues(set, k).some(v => v && LIVE_STATES.includes(String(v).toLowerCase()) && String(v).toLowerCase() !== 'default'));
+}
+function liveContext() {
+    doc.scene();
+    ensureGlobalIndexes();
+    const store = varStore(), items = new Map(store.items.map(i => [i.id, i]));
+    const kids = id => (_kidsMap.get(id) || []).filter(n => !n.softDeleted);
+    const descendants = id => kids(id).flatMap(k => [k, ...descendants(k.id)]);
+    const multiPage = doc.data.pages.filter(p => !isPageDivider(p) && p.nodes.some(n => n.type === 'frame' && !n.parentId)).length > 1;
+    const frames = doc.data.pages.flatMap(p => p.nodes.filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false).map(n => ({ id: n.id, label: multiPage ? `${p.name} / ${n.name}` : n.name })));
+    const active = activeNode(), top = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
+    /** What the component's properties are for, by their names: whether the hint shows, the helper / error text, the placeholder. */
+    const rolesOf = inst => {
+        const src = chainComponent(inst), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
+        const find = (type, re) => cps.find(p => p.type === type && re.test(p.name))?.id;
+        return { showHint: find('boolean', /hint|helper|error/i), hintText: find('text', /helper|hint|error/i), fieldText: find('text', /placeholder|value/i) };
+    };
+    /** The text a person types into: the one bound to the placeholder property, else the first visible text of the field row. */
+    const fieldOf = inst => {
+        const rl = rolesOf(inst), base = liveField(inst, kids);
+        const hit = rl.fieldText && descendants(inst.id).find(x => x.type === 'text' && x.visible !== false && x.propBind?.text === rl.fieldText);
+        return hit ? { id: hit.id, name: hit.name, width: base?.width ?? hit.w } : base;
+    };
+    return {
+        node: id => _nodeMap.get(id) || null,
+        kids,
+        descendants,
+        /** Lays a copy of a frame out with the same auto layout engine the canvas uses. */
+        layout(nodes) {
+            const byId = new Map(nodes.map(n => [n.id, n]));
+            runLayout({ nodes, get: id => byId.get(id), touch() { } });
+        },
+        frames,
+        start: frames.find(f => f.id === top?.id)?.id || frames[0]?.id,
+        vars: store.items.filter(i => ['color', 'number', 'string'].includes(i.type) && store.collections.find(c => c.id === i.collectionId)?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1).map(i => {
+            const v = varValue(doc, i, null);
+            return { name: cssName(i.name), value: i.type === 'number' ? `${v}px` : String(v) };
+        }).filter(v => v.value !== 'undefined' && v.value !== 'undefinedpx'),
+        // Only a variable with one mode and a name of its own can be a plain CSS variable; the rest are read per mode when drawn.
+        varName: id => { const i = items.get(id), c = i && store.collections.find(x => x.id === i.collectionId); return i && c?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1 ? cssName(i.name) : null; },
+        /** Nilai variable sebagai teks (mode pertama) — dipakai state mapping dan pesan error. */
+        varValueOf: id => { const i = items.get(id); if (!i) return undefined; const v = varValue(doc, i, null); return v === undefined || v === null ? undefined : v; },
+        /** State mapping sebuah instance: miliknya dulu, lalu milik component set / komponen. */
+        mappingFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.stateMapping || set?.stateMapping || src?.stateMapping || null;
+        },
+        /** Interaction sebuah instance (tab Behavior). */
+        interactionsFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.interactions || set?.interactions || src?.interactions || [];
+        },
+        /** Perilaku input sebuah instance (label, area typeable, error). */
+        inputFor: inst => {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return inst?.inputBehavior || set?.inputBehavior || src?.inputBehavior || null;
+        },
+        typeable: n => !!n.isInstance && (n.typeable ?? looksLikeField(n)) && !!fieldOf(n),
+        field: fieldOf,
+        roles: rolesOf,
+        /** The instance's states held in a variable collection (Button states, Input states…): state → { collection id: mode id }. */
+        modes(inst) {
+            const byState = {};
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            // Collections connected on the instance, else on its component set / main component.
+            const connected = { ...src?.varModes, ...set?.varModes, ...inst.varModes };
+            const picks = inst.stateModes || set?.stateModes || src?.stateModes;
+            for (const cid of Object.keys(connected)) {
+                const c = store.collections.find(x => x.id === cid);
+                // Collection state: namanya menyebut state, atau punya beberapa mode yang berarti state.
+                if (!c || !isStateCollection(c))
+                    continue;
+                // The mode each state reads: the one picked in the Behavior tab, else the one its name suggests.
+                for (const state of LIVE_STATE_IDS) {
+                    const m = modeForState(c, state, pickedModeId(picks, cid, state));
+                    if (m)
+                        byState[state] = { ...byState[state], [cid]: m.id };
+                }
+            }
+            return Object.keys(byState).length ? { byState } : null;
+        },
+        /** A layer drawn with its variable bindings read in another mode (the hover mode of Button states, say). */
+        resolved(n, inst, ov) {
+            if (!n.vars)
+                return n;
+            const saved = inst.varModes, c = { ...n, fills: Array.isArray(n.fills) ? structuredClone(n.fills) : n.fills, radii: n.radii && [...n.radii] };
+            inst.varModes = { ...saved, ...ov };
+            try {
+                for (const [prop, id] of Object.entries(n.vars)) {
+                    const item = items.get(id), val = item && !prop.includes(':') && bindType(prop) ? varValue(doc, item, n) : undefined;
+                    if (val !== undefined && val !== null)
+                        writeBound(c, prop, val, item.type);
+                }
+            }
+            finally {
+                inst.varModes = saved;
+            }
+            c.resolvedInMode = true;
+            return c;
+        },
+        /** The ids that stand for an instance's component: its main component and its component set. */
+        componentIdsOf(inst) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            return [src?.id, set?.id].filter(Boolean);
+        },
+        /** The component to draw for a picked id: a set stands for its variant that matches `like`, else its first. */
+        componentTarget(id, like) {
+            const n = _nodeMap.get(id);
+            if (!n || n.softDeleted) return null;
+            if (!n.componentSet) return n.component ? n : null;
+            const vs = setVariants(n), want = like?.variant;
+            return (want && vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x))) || vs[0] || null;
+        },
+        /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
+        variants(inst) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            const key = set && liveStateKey(set, src);
+            if (!key)
+                return null;
+            const byState = {};
+            for (const v of setVariants(set))
+                if (Object.entries(src.variant).every(([k, x]) => k === key || v.variant?.[k] === x))
+                    byState[String(v.variant[key]).toLowerCase()] = v.id;
+            return { byState, current: src.id };
+        },
+    };
+}
+async function startLivePreview() {
+    finishText();
+    const ctx = liveContext();
+    if (!ctx.frames.length) {
+        toast('Create a frame to preview your design.');
+        return false;
+    }
+    stopLivePreview();
+    const m = await import('../preview/live.js');
+    livePreview = m.openLivePreview(ctx, document.body, { onExit: stopLivePreview });
+    $('#present')?.classList.add('active');
+    return true;
+}
+function stopLivePreview() {
+    livePreview?.close();
+    livePreview = null;
+    $('#present')?.classList.remove('active');
+}
+// ===== Behavior tab: what a layer does in Preview =====
+// Isi tab kontekstual: mengikuti tipe komponen yang dipilih. Tombol → state mapping + interaction,
+// input → label + area typeable + error + interaction. State tidak pernah memakai nilai hardcoded dari
+// kit ui-standard: setiap state membaca nilainya dari variable collection, atau dari nilai manual.
+const bhSlug = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const bhCollections = () => varStore().collections || [];
+const bhItemsOf = id => (varStore().items || []).filter(i => i.collectionId === id);
+function bhOpts(list, value) {
+    return list.map(o => {
+        const [v, l] = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o.id, o.label ?? o.id] : [o, o]);
+        return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`;
+    }).join('');
+}
+function bhSelect(path, kind, value, options, attrs = '') {
+    return `<select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="${kind}" ${attrs}>${bhOpts(options, value)}</select>`;
+}
+function bhCheck(path, checked, label) {
+    return `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(path)}" data-bh-kind="bool" ${checked ? 'checked' : ''}> ${esc(label)}</label>`;
+}
+/** Pemilih nilai gaya: variable (collection + variable) atau nilai manual. */
+function bhStyleValue(path, value, label = '', names = {}, variableOnly = false) {
+    const key = { collection: 'collectionId', variable: 'variableId', manual: 'value', ...names };
+    const collId = value?.[key.collection] || '', varId = value?.[key.variable] || '', manual = value?.[key.manual] ?? '';
+    const cols = bhCollections(), items = collId ? bhItemsOf(collId) : [];
+    const second = variableOnly
+        ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— none —'], ...items.map(i => [i.id, i.name])])
+        : collId
+            ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— choose a variable —'], ...items.map(i => [i.id, i.name])])
+            : `<input class="full-width" data-bh-path="${esc(path)}.${key.manual}" data-bh-kind="manual" placeholder="#4338CA or 12" value="${esc(manual)}">`;
+    return `<div class="bh-value">${label ? `<div class="small-label">${esc(label)}</div>` : ''}<div class="bh-value-row">
+        ${bhSelect(`${path}.${key.collection}`, 'collection', collId, [['', 'Manual value'], ...cols.map(c => [c.id, c.name])])}
+        ${second}
+    </div></div>`;
+}
+/** Lapisan di dalam sebuah komponen/instance yang bisa dipilih (label, typeable frame, error frame). */
+function bhLayers(n) {
+    const out = [];
+    const walk = id => {
+        for (const c of doc.children(id)) {
+            if (c.visible === false) continue;
+            out.push({ id: c.id, name: c.name || c.type, type: c.type });
+            walk(c.id);
+        }
+    };
+    walk(n.id);
+    return out;
+}
+/** Frame yang bisa jadi target sebuah action, beserta perannya. */
+function bhFrames() {
+    const out = [];
+    for (const p of doc.data.pages) {
+        for (const f of p.nodes) {
+            if (f.type !== 'frame' || f.parentId || f.component || f.componentSet || f.isInstance || f.isSection) continue;
+            out.push({ id: f.id, label: doc.data.pages.length > 1 ? `${p.name} / ${f.name}` : f.name, role: f.frameRole || 'page' });
+        }
+    }
+    return out;
+}
+/** Tipe komponen dari namanya (Midas tidak menyimpan tipe komponen terpisah). */
+function bhTypeOf(n) {
+    const src = n.isInstance ? chainComponent(n) : n;
+    const set = src && parentSetOf(src);
+    for (const nm of [src?.name, set?.name, n.name]) {
+        const t = componentTypeOf(nm);
+        if (t !== 'generic') return t;
+    }
+    return 'generic';
+}
+/**
+ * A component a behavior points at (an icon, a dropdown's content…): a button that opens the same grouped, searchable picker as
+ * "Swap instance". A component set is stored by its own id, so any of its variants counts.
+ */
+function bhComponentButton(path, value, label) {
+    const c = value && allNodes().find(n => n.id === value);
+    const text = c ? c.name : value ? '(missing component)' : 'Choose component';
+    return `<div class="field bh-pickrow"><span>${esc(label)}</span><button type="button" class="swap-btn" data-bh-pick="${esc(path)}" data-bh-value="${esc(value || '')}" title="${esc(text)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(text)}</span>${CHEV_SVG}</button>${value ? `<button type="button" class="icon-button small" data-bh-pick-clear="${esc(path)}" title="Clear" aria-label="Clear ${esc(label)}">${icon('close', 12)}</button>` : ''}</div>`;
+}
+document.addEventListener('click', e => {
+    const clear = e.target.closest?.('[data-bh-pick-clear]'), pick = e.target.closest?.('[data-bh-pick]');
+    if (!clear && !pick) return;
+    const n = activeNode();
+    if (!n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
+    const write = id => { transaction('Behavior', () => { bhWrite(n, path, id || undefined); doc.touch(n); }); renderInspector(); };
+    if (clear) return write(null);
+    const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
+    openSwapPicker(pick, {
+        current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); write(set ? set.id : id); },
+    });
+});
+function bhFrameSelect(path, value, frames, action, label) {
+    const roles = TARGET_ROLES[action] || ['page'];
+    const list = frames.filter(f => roles.includes(f.role || 'page'));
+    return `<label class="field"><span>${esc(label)}</span><select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${list.map(f => `<option value="${f.id}" ${f.id === value ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>`;
+}
+/** Daftar interaction: trigger + action + kolom kontekstual sesuai jenis action. */
+function bhInteractionRows(n, frames) {
+    const list = normalizeInteractions(n.interactions);
+    if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
+    // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
+    // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
+    const placementRows = (i, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`interactions.${i}.action.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(p => [p, p]))}</label><label class="field"><span>Offset</span><input type="number" data-bh-path="interactions.${i}.action.offset" data-bh-kind="plain" value="${a.offset ?? ''}" placeholder="0" aria-label="Offset in px"><i class="unit">px</i></label>`;
+    const openPick = (i, a, label) => bhComponentButton(`interactions.${i}.action.targetComponentId`, a.targetComponentId, label)
+        + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
+    return list.map((it, i) => {
+        const a = it.action;
+        let extra = '';
+        if (a.type === 'navigate') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
+        if (a.type === 'open-dropdown') extra = openPick(i, a, 'Open') + placementRows(i, a, 'bottom-start');
+        if (a.type === 'open-overlay') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
+        if (a.type === 'open-popover') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(i, a, 'top');
+        if (a.type === 'close-overlay') extra = bhSelect(`interactions.${i}.action.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
+        return `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
+            <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
+            <label class="field"><span>Do</span>${bhSelect(`interactions.${i}.action.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>
+            ${extra}</div>`;
+    }).join('');
+}
+/** Bagian khusus input field: label, area typeable, error. */
+function bhInputHtml(n, layers) {
+    const ib = normalizeInputBehavior(n.inputBehavior) || { label: { exists: true }, typeable: {}, error: {}, validation: {} };
+    const texts = layers.filter(l => l.type === 'text');
+    const opt = (list, value) => `<option value="">— none —</option>${list.map(l => `<option value="${l.id}" ${l.id === value ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}`;
+    let html = '';
+    // Typeable area
+    const typeParts = [];
+    typeParts.push(`<p class="small-label">Which layer receives the typing? The rest of the component stays read-only.</p>`);
+    typeParts.push(`<label class="field"><span>Typeable layer</span><select class="full-width" data-bh-path="input.typeable.frameId" data-bh-kind="plain">${opt(texts, ib.typeable.frameId)}</select></label>`);
+    typeParts.push(`<label class="field"><span>Input type</span>${bhSelect('input.typeable.inputType', 'plain', ib.typeable.inputType || 'text', INPUT_TYPES.map(t => [t.id, t.label]))}</label>`);
+    if (ib.typeable.inputType === 'password') {
+        typeParts.push(`<p class="small-label">Clicking the icon in the field swaps it between these two components.</p>`);
+        typeParts.push(bhComponentButton('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden'));
+        typeParts.push(bhComponentButton('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown'));
+    }
+    typeParts.push(bhStyleValue('input.typeable.placeholder', ib.typeable.placeholder, 'Placeholder'));
+    typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
+    html += section('Typeable area', typeParts.join(''));
+    // Error handling
+    const errParts = [];
+    errParts.push(bhStyleValue('input.error.hint', ib.error.hint, 'Hint text'));
+    errParts.push(`<label class="field"><span>Hint text (manual)</span><input data-bh-path="input.error.hintText" data-bh-kind="plain" placeholder="This field is required" value="${esc(ib.error.hintText || '')}"></label>`);
+    errParts.push(`<label class="field"><span>Error frame</span><select class="full-width" data-bh-path="input.error.frameId" data-bh-kind="plain">${opt(layers, ib.error.frameId)}</select></label>`);
+    html += section('Error handling', errParts.join(''));
+    return html;
+}
+/** Baris override state: nilai lain per state (di atas nilai dari variable collection). */
+function bhOverrideRow(state, prop, value) {
+    return `<div class="bh-row">
+        ${bhSelect(`state.${state}.${prop}`, 'prop', prop, [['', '— property —'], ...STATE_PROPS.map(p => [p.id, p.label])], `data-bh-prop="${esc(prop)}"`)}
+        ${bhStyleValue(`state.${state}.${prop}`, value)}
+        <button type="button" class="icon-button small" data-bh-act="remove-prop" data-bh-state="${esc(state)}" data-bh-prop="${esc(prop)}" title="Remove this property">×</button>
+    </div>`;
+}
+/** Nilai variable dalam sebuah mode (alias ikut diselesaikan). */
+function bhVarValue(item, modeId) {
+    const store = varStore();
+    return variableValueInMode(item, varColl(item?.collectionId), modeId, store.items || [], store.collections || []);
+}
+/** Nilai yang terbaca untuk sebuah state: property yang terikat ke variable di collection itu. */
+function bhStateValues(n, coll, mode) {
+    // The layer itself plus everything inside it (an instance falls back to its main component's layers).
+    const src = n.isInstance ? chainComponent(n) : null;
+    const nodes = subtreeInOrder(n.id);
+    if (nodes.length === 1 && src) nodes.push(...subtreeInOrder(src.id));
+    const seen = new Set(), out = [];
+    for (const l of nodes) {
+        for (const [prop, id] of Object.entries(l.vars || {})) {
+            const item = varItem(id), key = `${l.id === n.id ? '' : l.name}\u0000${prop}\u0000${id}`;
+            if (!item || item.collectionId !== coll.id || seen.has(key)) continue;
+            seen.add(key);
+            out.push({ prop, layer: l.id === n.id || l.id === src?.id ? '' : l.name, item, value: bhVarValue(item, mode.id) });
+        }
+    }
+    return out;
+}
+/** Label properti yang enak dibaca (fill → Fill, strokeWidth → Stroke width). */
+const bhPropLabel = p => String(p || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+/** Nilai sebuah variable (swart + teks). */function bhValueChip(item, value) {
+    if (value === undefined || value === null || value === '') return '<span class="bh-chip muted">—</span>';
+    const text = String(value);
+    const color = item?.type === 'color' && /^#[0-9a-f]{3,8}$/i.test(text);
+    return `<span class="bh-chip">${color ? `<i style="background:${esc(text)}"></i>` : ''}${esc(text)}</span>`;
+}
+/** State collections connected to the node. */
+function bhStateCollections(n) {
+    const out = [];
+    for (const collId of Object.keys(n.varModes || {})) {
+        const coll = varColl(collId);
+        if (isStateCollection(coll)) out.push({ coll });
+    }
+    return out;
+}
+/**
+ * Section State mapping: state dibaca dari variable collection yang disambungkan ke layer
+ * (terisi otomatis), plus override per state kalau sebuah state perlu nilai lain.
+ */
+// Which state rows are open, kept across re-renders of the panel.
+const BH_OPEN = new Set();
+document.addEventListener('toggle', e => {
+    const key = e.target?.dataset?.bhOpen;
+    if (key === undefined) return;
+    if (e.target.open) BH_OPEN.add(key);
+    else BH_OPEN.delete(key);
+}, true);
+function bhStateSection(n) {
+    const colls = bhStateCollections(n);
+    const stateColls = bhCollections().filter(isStateCollection);
+    const mapping = normalizeStateMapping(n.stateMapping);
+    const connect = stateColls.length
+        ? `<label class="field"><span>Collection</span><select class="full-width" data-bh-act="connect-collection" aria-label="Connect a state collection"><option value="">— connect a collection —</option>${stateColls.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>`
+        : '<p class="small-label">No variable collection with state modes yet. Create one in the Variables window (e.g. <b>Button states</b> with modes Default / Hover / Pressed).</p>';
+    if (!colls.length)
+        return section('State mapping', `<p class="small-label">States are read from a <b>variable collection</b>: connect a collection with state modes, and the bound variables change value as the state changes.</p>${connect}`);
+    const states = statesFor(bhTypeOf(n));
+    const bodies = colls.map(sc => {
+        const rows = states.map(state => {
+            const picked = pickedModeId(n.stateModes, sc.coll.id, state);
+            const auto = modeForState(sc.coll, state), mode = modeForState(sc.coll, state, picked);
+            const values = mode ? bhStateValues(n, sc.coll, mode) : [];
+            const overrides = mapping[state] || {};
+            const used = Object.keys(overrides);
+            const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
+            const options = [`<option value="">${esc(auto ? `Automatic · ${auto.name}` : 'Not set · uses the fallback state')}</option>`, ...sc.coll.modes.map(m => `<option value="${esc(m.id)}" ${m.id === picked ? 'selected' : ''}>${esc(m.name)}</option>`)].join('');
+            const openKey = `${sc.coll.id}:${state}`;
+            return `<details class="bh-state" data-bh-open="${esc(openKey)}" ${BH_OPEN.has(openKey) ? 'open' : ''}>
+                <summary><b>${esc(STATE_LABEL[state] || state)}</b><span class="small-label">${esc(mode ? mode.name : 'Not set')}</span></summary>
+                <div class="bh-state-body">
+                <p class="small-label">${esc(STATE_HINT[state] || '')}</p>
+                <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(STATE_LABEL[state] || state)}">${options}</select>
+                ${values.length
+                    ? `<details class="bh-values"><summary class="small-label">${values.length} bound value${values.length === 1 ? '' : 's'} in mode ${esc(mode.name)}</summary>${values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(v.layer ? `${v.layer} · ${bhPropLabel(v.prop)}` : bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')}</details>`
+                    : (mode ? '<p class="small-label">No variable from this collection is bound to this layer.</p>' : '')}
+                ${used.map(prop => bhOverrideRow(state, prop, overrides[prop])).join('')}
+                ${free.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
+                </div>
+            </details>`;
+        }).join('');
+        return `<div class="bh-coll"><div class="bh-coll-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
+    }).join('');
+    return section('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
+}
+function prototypeHtml() {
+    const n = activeNode();
+    if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
+    const isFrame = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
+    if (!n.isInstance && !n.component && !n.componentSet && !isFrame)
+        return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
+    if (isFrame)
+        return section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
+            <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
+    const type = bhTypeOf(n);
+    const src = n.isInstance ? chainComponent(n) : n;
+    const set = src && parentSetOf(src);
+    const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
+    const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
+    let html = section('This component', `<div class="small-label"><b>Component</b>: ${esc(compName)}</div><div class="small-label"><b>Type</b>: ${esc(TYPE_LABEL[type] || type)}</div><div class="small-label"><b>Kind</b>: ${esc(kind)}</div>`);
+    html += bhStateSection(n);
+    if (type === 'input') html += bhInputHtml(n, bhLayers(n));
+    if (n.isInstance) {
+        html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div>
+            <select class="wide-button" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`);
+        const typeable = n.typeable ?? looksLikeField(n);
+        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label>${type === 'input' ? '' : `<label class="checkbox-row"><input type="checkbox" data-proto="required" ${n.required ? 'checked' : ''}> Required</label><label class="small-label">Error message</label><input type="text" class="wide-input" data-proto="errorMessage" placeholder="This field is required" value="${esc(n.errorMessage || '')}">`}<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+    }
+    else html += section('Interaction', '<p class="small-label">Interactions belong to an instance. Select an instance of this component to add them.</p>');
+    return html;
+}
+/** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
+function bhWrite(n, path, value) {
+    if (path.startsWith('frame.')) {
+        n.frameRole = value || 'page';
+        return;
+    }
+    const cfg = { state: n.stateMapping || {}, interactions: n.interactions || [], input: n.inputBehavior || {} };
+    setPath(cfg, path, value);
+    if (path.startsWith('state.') || n.stateMapping) n.stateMapping = normalizeStateMapping(cfg.state);
+    if (path.startsWith('interactions.') || n.interactions) n.interactions = normalizeInteractions(cfg.interactions);
+    if (path.startsWith('input.') || n.inputBehavior) n.inputBehavior = normalizeInputBehavior(cfg.input);
+}
+function bhSet(n, t) {
+    const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
+    const value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
+    if (kind === 'prop') {
+        // Ganti properti yang dipetakan (nama kuncinya berubah, nilainya ikut).
+        const state = path.split('.')[1], oldProp = t.dataset.bhProp || '', newProp = value;
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[state] || {};
+        const val = oldProp ? row[oldProp] : undefined;
+        if (oldProp) delete row[oldProp];
+        if (newProp) row[newProp] = val || {};
+        map[state] = row;
+        n.stateMapping = map;
+        return;
+    }
+    const parent = path.split('.').slice(0, -1).join('.');
+    if (kind === 'collection') {
+        bhWrite(n, path, value || undefined);
+        if (value) { bhWrite(n, `${parent}.variableId`, undefined); bhWrite(n, `${parent}.value`, undefined); }
+        return;
+    }
+    if (kind === 'variable') {
+        bhWrite(n, path, value || undefined);
+        if (value) bhWrite(n, `${parent}.value`, undefined);
+        return;
+    }
+    if (kind === 'manual') {
+        bhWrite(n, path, value === '' ? undefined : value);
+        bhWrite(n, `${parent}.collectionId`, undefined);
+        bhWrite(n, `${parent}.variableId`, undefined);
+        return;
+    }
+    bhWrite(n, path, value === '' ? undefined : value);
+}
+function bhAction(n, t) {
+    const act = t.dataset.bhAct;
+    if (act === 'add-interaction') {
+        if (!t.value) return;
+        const list = normalizeInteractions(n.interactions);
+        list.push({ id: `i${Date.now().toString(36)}`, trigger: 'onClick', action: { type: t.value } });
+        n.interactions = list;
+        return;
+    }
+    if (act === 'del-interaction') {
+        const i = Number(t.dataset.bhIndex);
+        n.interactions = normalizeInteractions(n.interactions).filter((_, k) => k !== i);
+        return;
+    }
+    if (act === 'add-state') {
+        const input = $('#inspector [data-bh-act="new-state"]');
+        const name = bhSlug(input?.value || '');
+        if (!name) return;
+        const map = normalizeStateMapping(n.stateMapping);
+        map[name] = map[name] || {};
+        n.stateMapping = map;
+        if (input) input.value = '';
+        return;
+    }
+    if (act === 'del-state') {
+        const map = normalizeStateMapping(n.stateMapping);
+        delete map[t.dataset.bhState];
+        n.stateMapping = map;
+        return;
+    }
+    if (act === 'remove-prop') {
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[t.dataset.bhState];
+        if (row) {
+            delete row[t.dataset.bhProp];
+            if (!Object.keys(row).length) delete map[t.dataset.bhState];
+        }
+        n.stateMapping = map;
+        return;
+    }
+    if (act === 'add-prop') {
+        if (!t.value) return;
+        const map = normalizeStateMapping(n.stateMapping);
+        const row = map[t.dataset.bhState] || (map[t.dataset.bhState] = {});
+        row[t.value] = row[t.value] || {};
+        n.stateMapping = map;
+        return;
+    }
+    if (act === 'state-mode') {
+        const collId = t.dataset.bhColl, state = t.dataset.bhState;
+        if (!collId || !state) return;
+        const all = { ...(n.stateModes || {}) }, row = { ...(all[collId] || {}) };
+        if (t.value) row[state] = t.value;
+        else delete row[state];
+        if (Object.keys(row).length) all[collId] = row;
+        else delete all[collId];
+        if (Object.keys(all).length) n.stateModes = all;
+        else delete n.stateModes;
+        return;
+    }
+    if (act === 'connect-collection') {
+        const coll = varColl(t.value);
+        if (!coll) return;
+        // Sambungkan collection state: mode awal = mode "default" kalau ada.
+        const mode = coll.modes.find(m => /default/i.test(m.name)) || coll.modes[0];
+        if (!mode) return;
+        n.varModes = { ...(n.varModes || {}), [coll.id]: mode.id };
+        return;
+    }
+    if (act === 'disconnect-collection') {
+        const collId = t.dataset.bhColl;
+        if (!collId || !n.varModes) return;
+        const modes = { ...n.varModes };
+        delete modes[collId];
+        if (Object.keys(modes).length) n.varModes = modes;
+        else delete n.varModes;
+        if (n.stateModes?.[collId]) {
+            const picks = { ...n.stateModes };
+            delete picks[collId];
+            if (Object.keys(picks).length) n.stateModes = picks;
+            else delete n.stateModes;
+        }
+        return;
+    }
+}
+$('#inspector').addEventListener('change', e => {
+    const n = activeNode(), t = e.target;
+    if (!n) return;
+    const isBh = t.dataset.bhPath || (t.dataset.bhAct && t.tagName === 'SELECT');
+    if (!(t.id === 'proto-target' || t.dataset.proto || isBh)) return;
+    transaction('Behavior', () => {
+        if (t.id === 'proto-target')
+            n.prototypeTarget = t.value || undefined;
+        else if (t.dataset.proto)
+            n[t.dataset.proto] = t.type === 'checkbox' ? t.checked : t.value;
+        else if (t.dataset.bhAct)
+            bhAction(n, t);
+        else if (t.dataset.bhPath)
+            bhSet(n, t);
+        doc.touch(n);
+    });
+    renderInspector();
+});
+document.addEventListener('click', e => {
+    const t = e.target.closest?.('[data-bh-act]');
+    if (!t || t.tagName !== 'BUTTON') return;
+    const n = activeNode();
+    if (!n) return;
+    e.preventDefault();
+    e.stopPropagation();
+    transaction('Behavior', () => { bhAction(n, t); doc.touch(n); });
+    renderInspector();
+});
+
 function renderPlugins() {
     const list = loadPlugins();
     $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
@@ -18222,6 +19031,8 @@ function commandPalette() {
     render();
 }
 async function present() {
+    if (await startLivePreview())
+        return;
     finishText();
     state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
     if (!state.previewFrames.length) {
@@ -18863,7 +19674,7 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-$('#present').onclick = () => present();
+$('#present').onclick = () => startLivePreview();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {
@@ -19700,7 +20511,9 @@ document.addEventListener('paste', e => {
         importImages(images);
         return;
     }
-    pasteSelection(cd?.getData('text/plain') ?? '');
+    const mode = state.pasteMode || 'canvas';
+    state.pasteMode = null;
+    pasteSelection(cd?.getData('text/plain') ?? '', mode);
 });
 $('#text-editor').addEventListener('paste', e => {
     e.preventDefault();
@@ -19952,7 +20765,15 @@ document.addEventListener('keydown', e => {
             return;
         }
         if (key === 'v') {
-            // Let the browser fire a paste event: it carries the full clipboard (Figma HTML, images), see onPaste.
+            // Plain Ctrl/⌘+V: let the browser fire a paste event, it carries the full clipboard (Figma HTML, images), see onPaste;
+            // it pastes into the selected frame. Shift: beside the selected layer. Shift + Alt: in place of it.
+            state.pasteMode = e.shiftKey && e.altKey ? 'replace' : e.shiftKey ? 'sibling' : 'into';
+            if (e.shiftKey) {
+                e.preventDefault();
+                pasteSelection(undefined, state.pasteMode);
+            }
+            else
+                setTimeout(() => { state.pasteMode = null; }, 1000);
             return;
         }
         if (key === 'x') {

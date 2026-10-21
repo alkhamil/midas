@@ -23,6 +23,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/studio/package.json ./apps/studio/package.json
+COPY packages/builder-core/package.json ./packages/builder-core/package.json
 RUN npm ci --no-audit --no-fund
 
 COPY . .
