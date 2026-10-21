@@ -21,7 +21,6 @@ export const config = {
         bucket: env('S3_BUCKET', 'midas'),
     },
     bodyLimit: Number(env('BODY_LIMIT_MB', '512')) * 1024 * 1024,
-    allowRegister: env('ALLOW_REGISTER', 'true') === 'true',
     cookieSecure: env('COOKIE_SECURE', 'false') === 'true',
     sessionDays: 30,
 };

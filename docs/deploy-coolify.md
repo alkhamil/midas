@@ -24,7 +24,7 @@ dibangun lewat multi-stage [`Dockerfile.coolify`](../Dockerfile.coolify) — tid
 | `S3_ACCESS_KEY` | tidak | Default `midas`. |
 | `S3_BUCKET` | tidak | Default `midas`. |
 | `COOKIE_SECURE` | ya | `true` untuk HTTPS (Coolify default). Set `false` hanya untuk HTTP lokal. |
-| `ALLOW_REGISTER` | tidak | `true` sampai akun pertama dibuat, lalu ubah ke `false`. |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | ya | Akun administrator pertama (seeder). Tidak ada pendaftaran; akun lain dibuat di menu **Users**. |
 | `BODY_LIMIT_MB` | tidak | Default `100`; naikkan bila mengimpor file desain besar. |
 | `DATABASE_URL` | tidak | Isi untuk memakai Postgres eksternal (Neon/Supabase); mengabaikan variabel `POSTGRES_*`. |
 | `S3_ENDPOINT` | tidak | Isi untuk memakai R2/S3 eksternal. |
@@ -48,8 +48,8 @@ port **4000**. Coolify menangani TLS; karena itu `COOKIE_SECURE=true`.
 
 ## 4. Setelah deploy
 
-1. Buka domain, buat akun pertama (akun pertama selalu diizinkan).
-2. Set `ALLOW_REGISTER=false` di Coolify, lalu redeploy.
+1. Buka domain dan login dengan akun administrator dari `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+2. Ganti password lewat menu avatar, lalu buat akun lain di **Users**.
 
 Data tersimpan di named volume Postgres dan S3 (prefix mengikuti nama project Coolify). Jangan hapus volume saat redeploy.
 

@@ -20,7 +20,9 @@ services:
         sync: false
       - key: S3_BUCKET
         value: midas
-      - key: ALLOW_REGISTER      # set to false after creating your account
-        value: "true"
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD   # first administrator; there is no sign-up
+        sync: false
       - key: BODY_LIMIT_MB       # free instances have 512 MB of RAM
         value: "100"

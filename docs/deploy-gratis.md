@@ -33,11 +33,11 @@ Alternatif service: Koyeb atau Fly.io (juga membaca `Dockerfile`). Variabel ling
 | `S3_REGION` | `auto` |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | dari token R2 |
 | `S3_BUCKET` | `midas` |
-| `ALLOW_REGISTER` | `true` dulu; ubah ke `false` setelah akun Anda dibuat |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | akun administrator pertama (seeder); tidak ada pendaftaran |
 | `BODY_LIMIT_MB` | `100` (instance gratis hanya 512 MB RAM) |
 
    `COOKIE_SECURE=true`, `HOST=0.0.0.0` dan `AUTO_MIGRATE=true` sudah diatur di Dockerfile.
-3. Deploy. Buka `https://<nama-service>.onrender.com`, buat akun (akun pertama selalu boleh), lalu set `ALLOW_REGISTER=false`.
+3. Deploy. Buka `https://<nama-service>.onrender.com` dan login dengan akun administrator tadi, lalu buat akun lain di menu **Users**.
 
 ## Menjalankan image secara lokal
 ```bash

@@ -57,9 +57,9 @@ npm run dev:studio
 
 Buka http://127.0.0.1:5173.
 
-## 5. Buat akun
+## 5. Login
 
-Database masih kosong, jadi belum ada akun. Di layar login Studio klik **New here? Create an account**, isi Name, Email dan Password (minimal 8 karakter), lalu **Create account**. Akun pertama selalu diizinkan; akun berikutnya mengikuti `ALLOW_REGISTER` di `apps/server/.env`.
+Tidak ada pendaftaran. Saat server start, **seeder** membuat akun administrator (`admin@midas.local` / `admin12345`, atur lewat `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` di `apps/server/.env`). Login dengan akun itu, lalu buat akun lain di **Home → Users**. Ganti password lewat menu avatar → Change password.
 
 ## 6. Menjalankan test
 

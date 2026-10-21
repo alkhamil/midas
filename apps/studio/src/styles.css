@@ -3181,3 +3181,27 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .splash { gap: 20px }
 .splash-pct { font-size: 12px; font-variant-numeric: tabular-nums; color: #8d8d8d; letter-spacing: .02em }
 
+
+/* Users (Home) */
+.um-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px }
+.um-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border) }
+.um-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle }
+.um-table td small { display: block; color: var(--muted); font-size: 11px }
+.um-table tr.off td { opacity: .55 }
+.um-table td em { color: var(--muted); font-style: normal; font-size: 11px }
+.um-actions { text-align: right; white-space: nowrap }
+.um-actions .home-link { margin-left: 10px }
+.um-actions .danger { color: #e5484d }
+.um-pill { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #8883; color: var(--muted) }
+.um-pill.on { background: #1fa86a26; color: #1fa86a }
+.um-scope { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; margin-top: 6px }
+.um-scope.off { opacity: .45 }
+.um-scope b { display: block; padding: 6px 10px 2px; font-size: 11px; color: var(--muted); font-weight: 500 }
+.um-pick { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 13px; cursor: pointer }
+.um-pick small { margin-left: auto; color: var(--muted); font-size: 11px }
+
+/* View-only accounts: inspect, but nothing to change. */
+body.view-only #inspector { pointer-events: none; opacity: .7 }
+body.view-only .tool:not([data-tool="select"]):not([data-tool="hand"]) { display: none }
+body.view-only #save-indicator { display: none }
+body.view-only #file-name::after { content: " · View only"; color: var(--muted); font-size: 11px; margin-left: 6px }

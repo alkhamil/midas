@@ -1,5 +1,5 @@
-// Layar sebelum editor: login/daftar akun dan import file lama dari IndexedDB.
-import { useEffect, useState } from 'react';
+// Layar sebelum editor: login (akun dibuat administrator, tidak ada pendaftaran) dan import file lama dari IndexedDB.
+import { useState } from 'react';
 import { auth, importLegacyDocument } from '../storage.js';
 import { listLegacyFiles, markLegacyImported, projectStorage as legacyProjects } from '../legacyStorage.js';
 
@@ -8,18 +8,9 @@ const Logo = () => (
 );
 
 export function AuthScreen({ onSignedIn, overlay = false }) {
-    const [mode, setMode] = useState('login');
-    const [canRegister, setCanRegister] = useState(false);
-    const [form, setForm] = useState({ name: '', email: '', password: '' });
+    const [form, setForm] = useState({ email: '', password: '' });
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-
-    useEffect(() => {
-        auth.status().then(s => {
-            setCanRegister(s.canRegister);
-            if (!s.hasUsers) setMode('register');
-        }).catch(() => { });
-    }, []);
 
     const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
     async function submit(e) {
@@ -27,10 +18,7 @@ export function AuthScreen({ onSignedIn, overlay = false }) {
         setBusy(true);
         setError('');
         try {
-            const user = mode === 'login'
-                ? await auth.login(form.email, form.password)
-                : await auth.register(form.name, form.email, form.password);
-            onSignedIn(user);
+            onSignedIn(await auth.login(form.email, form.password));
         } catch (err) {
             setError(err instanceof TypeError ? 'Cannot reach the Midas server.' : err.message);
         } finally {
@@ -42,20 +30,12 @@ export function AuthScreen({ onSignedIn, overlay = false }) {
         <div className={'gate' + (overlay ? ' gate-overlay' : '')}>
             <form className="gate-card" onSubmit={submit}>
                 <Logo />
-                <h1>{overlay ? 'Session expired' : mode === 'login' ? 'Sign in to Midas' : 'Create your Midas account'}</h1>
-                <p className="gate-sub">{overlay ? 'Sign in again to keep saving. Your open file stays as it is.' : 'Files are saved to your workspace on the Midas server.'}</p>
-                {mode === 'register' && (
-                    <label className="gate-field"><span>Name</span><input value={form.name} onChange={set('name')} autoComplete="name" required /></label>
-                )}
+                <h1>{overlay ? 'Session expired' : 'Sign in to Midas'}</h1>
+                <p className="gate-sub">{overlay ? 'Sign in again to keep saving. Your open file stays as it is.' : 'Ask an administrator if you do not have an account yet.'}</p>
                 <label className="gate-field"><span>Email</span><input type="email" value={form.email} onChange={set('email')} autoComplete="email" required autoFocus /></label>
-                <label className="gate-field"><span>Password</span><input type="password" value={form.password} onChange={set('password')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required /></label>
+                <label className="gate-field"><span>Password</span><input type="password" value={form.password} onChange={set('password')} autoComplete="current-password" required /></label>
                 {error && <p className="gate-error" role="alert">{error}</p>}
-                <button className="gate-primary" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
-                {canRegister && !overlay && (
-                    <button type="button" className="gate-link" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
-                        {mode === 'login' ? 'New here? Create an account' : 'Already have an account? Sign in'}
-                    </button>
-                )}
+                <button className="gate-primary" disabled={busy}>{busy ? 'Please wait…' : 'Sign in'}</button>
             </form>
         </div>
     );

@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { assets, designFilePages, designFiles, designFolders, libraries } from '../db/schema.js';
-import { requireUser } from '../lib/auth.js';
+import { canSeeFile, requireUser } from '../lib/auth.js';
 import { assetKey, deletePrefix, getObject, putObject } from '../lib/s3.js';
 
 type FileRow = typeof designFiles.$inferSelect;
@@ -32,7 +32,7 @@ async function findFile(req: FastifyRequest, id: string): Promise<FileRow | null
     const [f] = await db.select().from(designFiles)
         .where(and(eq(designFiles.id, id), eq(designFiles.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt)))
         .limit(1);
-    return f ?? null;
+    return f && canSeeFile(req.user!, f) ? f : null;
 }
 
 async function fileOr404(req: FastifyRequest, reply: FastifyReply, id: string): Promise<FileRow | null> {
@@ -87,7 +87,7 @@ export async function fileRoutes(app: FastifyInstance) {
     app.get('/api/files', async req => {
         const rows = await db.select().from(designFiles)
             .where(and(eq(designFiles.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt)));
-        return { files: rows.map(summary) };
+        return { files: rows.filter(f => canSeeFile(req.user!, f)).map(summary) };
     });
 
     app.get<{ Params: { id: string } }>('/api/files/:id', async (req, reply) => {
@@ -112,6 +112,8 @@ export async function fileRoutes(app: FastifyInstance) {
         const [any] = await db.select({ ws: designFiles.workspaceId, deletedAt: designFiles.deletedAt }).from(designFiles).where(eq(designFiles.id, id)).limit(1);
         if (any && any.ws !== req.user!.workspaceId)
             return reply.code(403).send({ error: 'forbidden' });
+        if (any && !(await findFile(req, id)) && !any.deletedAt)
+            return reply.code(403).send({ error: 'forbidden', message: 'You do not have access to this file' });
         if (!any) {
             const created = typeof meta.created === 'number' ? new Date(meta.created) : new Date();
             await db.insert(designFiles).values({ id, workspaceId: req.user!.workspaceId, name, meta, createdBy: req.user!.id, createdAt: created, openedAt: new Date() });
@@ -148,6 +150,10 @@ export async function fileRoutes(app: FastifyInstance) {
         if (!f)
             return;
         const b = body.data;
+        if (req.user!.role === 'viewer')
+            for (const k of Object.keys(b) as (keyof typeof b)[])
+                if (!['opened', 'starred', 'hiddenRecent'].includes(k))
+                    delete b[k];
         const set: Partial<typeof designFiles.$inferInsert> = {};
         if (b.name !== undefined) {
             set.name = b.name;
@@ -184,7 +190,8 @@ export async function fileRoutes(app: FastifyInstance) {
         .where(and(eq(designFolders.id, id), eq(designFolders.workspaceId, req.user!.workspaceId))).limit(1))[0] ?? null;
 
     app.get('/api/folders', async req => {
-        const rows = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
+        const all = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
+        const u = req.user!, rows = u.role === 'admin' || u.accessMode === 'all' ? all : all.filter(f => u.grants.folders.has(f.id));
         return { folders: rows.map(f => ({ id: f.id, name: f.name, parent: f.parentId ?? null, created: ms(f.createdAt) })) };
     });
 

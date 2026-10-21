@@ -471,6 +471,13 @@ let signedInUser = null;
 const remember = user => (signedInUser = user);
 
 /** User yang sedang login (diisi setelah auth.me/login/register). */
+/** User management (administrators). */
+export const userApi = {
+    list: () => api('GET', '/api/users').then(r => r.users),
+    create: body => api('POST', '/api/users', body).then(r => r.user),
+    update: (id, body) => api('PATCH', `/api/users/${enc(id)}`, body).then(r => r.user),
+    remove: id => api('DELETE', `/api/users/${enc(id)}`),
+};
 export const getSignedInUser = () => signedInUser;
 
 export const auth = {
@@ -484,7 +491,7 @@ export const auth = {
         }
     },
     login: (email, password) => api('POST', '/api/auth/login', { email, password }).then(r => remember(r.user)),
-    register: (name, email, password) => api('POST', '/api/auth/register', { name, email, password }).then(r => remember(r.user)),
+    changePassword: (current, next) => api('POST', '/api/auth/password', { current, next }),
     logout: () => api('POST', '/api/auth/logout').then(() => remember(null))
 };
 

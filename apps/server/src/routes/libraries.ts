@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { designFiles, fileLibraries, libraries, libraryVersions } from '../db/schema.js';
-import { requireUser } from '../lib/auth.js';
+import { canSeeFile, requireUser } from '../lib/auth.js';
 import type { LibrarySnapshot } from '../lib/library.js';
 import { deletePrefix, getObject, putObject } from '../lib/s3.js';
 
@@ -20,7 +20,7 @@ const snapshotShape = z.object({
 async function sourceFile(req: FastifyRequest, id: string) {
     const [f] = await db.select().from(designFiles)
         .where(and(eq(designFiles.id, id), eq(designFiles.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt))).limit(1);
-    return f ?? null;
+    return f && canSeeFile(req.user!, f) ? f : null;
 }
 
 async function libraryOf(req: FastifyRequest, id: string) {
@@ -82,7 +82,7 @@ export async function libraryRoutes(app: FastifyInstance) {
     // Unpublish: the library (all versions, snapshots) is removed; the design file stays as an ordinary file.
     app.delete<{ Params: { id: string } }>('/api/libraries/:id', async (req, reply) => {
         const l = await libraryOf(req, req.params.id);
-        if (!l)
+        if (!l || !(await sourceFile(req, l.id)))
             return reply.code(404).send({ error: 'not_found' });
         await db.delete(libraries).where(eq(libraries.id, l.id));
         await deletePrefix(`libraries/${l.id}/`).catch(() => { });

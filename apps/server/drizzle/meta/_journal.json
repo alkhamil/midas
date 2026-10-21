@@ -43,6 +43,13 @@
       "when": 1792566448887,
       "tag": "0005_drop_code_publishing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792585738940,
+      "tag": "0006_user_roles_and_scopes",
+      "breakpoints": true
     }
   ]
 }

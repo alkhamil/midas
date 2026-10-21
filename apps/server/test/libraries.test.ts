@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { sql } from '../src/db/index.js';
 import { ensureBucket } from '../src/lib/s3.js';
+import { createUser, dropUsers } from './helpers.js';
 
 let app: FastifyInstance;
 let cookie = '';
@@ -31,14 +32,12 @@ before(async () => {
     process.env.LOG_LEVEL = 'silent';
     await ensureBucket();
     app = await buildApp();
-    const res = await app.inject({ method: 'POST', url: '/api/auth/register', payload: { email, name: 'Lib Tester', password: 'rahasia123' } });
-    cookie = String(res.headers['set-cookie']).split(';')[0];
+    cookie = (await createUser(app, email, { name: 'Lib Tester' })).cookie;
     for (const id of [dsFile, appFile])
         await call('PUT', `/api/files/${id}`, { name: id, meta: { name: id, pageMeta: [] }, baseVersion: null });
 });
 after(async () => {
-    await sql`delete from workspaces where id in (select m.workspace_id from workspace_members m join users u on u.id = m.user_id where u.email = ${email})`;
-    await sql`delete from users where email = ${email}`;
+    await dropUsers([email]);
     await app.close();
     await sql.end();
 });
