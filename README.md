@@ -35,6 +35,10 @@ npm run dev:studio                   # Studio di http://127.0.0.1:5173 (proxy /a
 
 Buka Studio dan login dengan administrator dari seeder (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, default lokal `admin@midas.local` / `admin12345`). Tidak ada pendaftaran: akun lain dibuat administrator di **Home → Users**.
 
+## MCP (asisten AI membaca desain)
+
+Midas adalah server MCP read-only di `/mcp`, dengan token API pribadi per user. Lihat [docs/mcp.md](docs/mcp.md).
+
 ## Pengguna dan akses
 
 - **Seeder**: administrator dibuat otomatis saat server start (dan `npm run db:seed`). Akun yang sudah ada tidak ditimpa passwordnya.

@@ -1,9 +1,9 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, gt } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { config } from '../config.js';
 import { db } from '../db/index.js';
-import { designFolders, sessions, userFileAccess, users, workspaceMembers } from '../db/schema.js';
+import { apiTokens, designFolders, sessions, userFileAccess, users, workspaceMembers } from '../db/schema.js';
 
 export const SESSION_COOKIE = 'midas_session';
 
@@ -59,27 +59,50 @@ async function withDescendants(workspaceId: string, roots: string[]): Promise<Se
     return out;
 }
 
-/** Isi `req.user` dari cookie sesi; user nonaktif dianggap tidak login. Tidak menolak request. */
-export async function loadUser(req: FastifyRequest): Promise<void> {
-    const id = req.cookies[SESSION_COOKIE];
-    if (!id)
-        return;
-    const [row] = await db
-        .select({ id: users.id, email: users.email, name: users.name, role: users.role, accessMode: users.accessMode, workspaceId: workspaceMembers.workspaceId })
-        .from(sessions)
-        .innerJoin(users, eq(users.id, sessions.userId))
-        .innerJoin(workspaceMembers, eq(workspaceMembers.userId, users.id))
-        .where(and(eq(sessions.id, id), gt(sessions.expiresAt, new Date()), eq(users.active, true)))
-        .limit(1);
-    if (!row)
-        return;
+const userColumns = { id: users.id, email: users.email, name: users.name, role: users.role, accessMode: users.accessMode, workspaceId: workspaceMembers.workspaceId };
+
+async function toAuthUser(row: { id: string; email: string; name: string; role: string; accessMode: string; workspaceId: string }): Promise<AuthUser> {
     const grants = { folders: new Set<string>(), files: new Set<string>() };
     if (row.accessMode === 'selected' && row.role !== 'admin') {
         const rows = await db.select().from(userFileAccess).where(eq(userFileAccess.userId, row.id));
         grants.folders = await withDescendants(row.workspaceId, rows.filter(r => r.kind === 'folder').map(r => r.targetId));
         grants.files = new Set(rows.filter(r => r.kind === 'file').map(r => r.targetId));
     }
-    req.user = { ...row, role: row.role as Role, accessMode: row.accessMode as 'all' | 'selected', grants };
+    return { ...row, role: row.role as Role, accessMode: row.accessMode as 'all' | 'selected', grants };
+}
+
+/** Isi `req.user` dari cookie sesi; user nonaktif dianggap tidak login. Tidak menolak request. */
+export async function loadUser(req: FastifyRequest): Promise<void> {
+    const id = req.cookies[SESSION_COOKIE];
+    if (!id)
+        return;
+    const [row] = await db.select(userColumns).from(sessions)
+        .innerJoin(users, eq(users.id, sessions.userId))
+        .innerJoin(workspaceMembers, eq(workspaceMembers.userId, users.id))
+        .where(and(eq(sessions.id, id), gt(sessions.expiresAt, new Date()), eq(users.active, true)))
+        .limit(1);
+    if (row)
+        req.user = await toAuthUser(row);
+}
+
+export const TOKEN_PREFIX = 'mdt_';
+export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+/** User pemilik token API (`Authorization: Bearer mdt_…`), atau null bila token salah atau user nonaktif. */
+export async function userFromToken(header: string | undefined): Promise<AuthUser | null> {
+    const token = /^Bearer\s+(\S+)$/i.exec(header ?? '')?.[1];
+    if (!token || !token.startsWith(TOKEN_PREFIX))
+        return null;
+    const [row] = await db.select({ ...userColumns, tokenId: apiTokens.id }).from(apiTokens)
+        .innerJoin(users, eq(users.id, apiTokens.userId))
+        .innerJoin(workspaceMembers, eq(workspaceMembers.userId, users.id))
+        .where(and(eq(apiTokens.tokenHash, hashToken(token)), eq(users.active, true)))
+        .limit(1);
+    if (!row)
+        return null;
+    await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, row.tokenId));
+    const { tokenId: _t, ...rest } = row;
+    return toAuthUser(rest);
 }
 
 /** preHandler untuk route yang wajib login. */

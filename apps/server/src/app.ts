@@ -9,6 +9,8 @@ import { authRoutes } from './routes/auth.js';
 import { fileRoutes } from './routes/files.js';
 import { kvRoutes } from './routes/kv.js';
 import { libraryRoutes } from './routes/libraries.js';
+import { mcpRoutes } from './routes/mcp.js';
+import { tokenRoutes } from './routes/tokens.js';
 import { userRoutes } from './routes/users.js';
 
 export async function buildApp() {
@@ -21,7 +23,7 @@ export async function buildApp() {
         if (req.user?.role !== 'viewer' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method))
             return;
         const path = req.url.split('?')[0];
-        if (path === '/api/auth/logout' || path === '/api/auth/password' || path.startsWith('/api/kv') || (req.method === 'PATCH' && path.startsWith('/api/files/')))
+        if (path === '/mcp' || path === '/api/auth/logout' || path === '/api/auth/password' || path.startsWith('/api/kv') || (req.method === 'PATCH' && path.startsWith('/api/files/')))
             return;
         return reply.code(403).send({ error: 'view_only', message: 'Your account can view but not change files.' });
     });
@@ -31,6 +33,8 @@ export async function buildApp() {
     await app.register(kvRoutes);
     await app.register(libraryRoutes);
     await app.register(userRoutes);
+    await app.register(tokenRoutes);
+    await app.register(mcpRoutes);
     // Studio (static build) on the same origin as the API: one service to host, and the session cookie just works.
     const studio = config.studioDist || fileURLToPath(new URL('../../studio/dist', import.meta.url));
     if (existsSync(studio)) {

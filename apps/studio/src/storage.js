@@ -478,6 +478,12 @@ export const userApi = {
     update: (id, body) => api('PATCH', `/api/users/${enc(id)}`, body).then(r => r.user),
     remove: id => api('DELETE', `/api/users/${enc(id)}`),
 };
+/** Personal API tokens for MCP. */
+export const tokenApi = {
+    list: () => api('GET', '/api/tokens').then(r => r.tokens),
+    create: name => api('POST', '/api/tokens', { name }),
+    revoke: id => api('DELETE', `/api/tokens/${enc(id)}`),
+};
 export const getSignedInUser = () => signedInUser;
 
 export const auth = {

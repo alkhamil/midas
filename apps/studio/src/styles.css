@@ -3205,3 +3205,6 @@ body.view-only #inspector { pointer-events: none; opacity: .7 }
 body.view-only .tool:not([data-tool="select"]):not([data-tool="hand"]) { display: none }
 body.view-only #save-indicator { display: none }
 body.view-only #file-name::after { content: " · View only"; color: var(--muted); font-size: 11px; margin-left: 6px }
+
+.home-ws[data-home-account] { cursor: pointer }
+.home-ws[data-home-account]:hover { background: var(--hover, #8881) }
