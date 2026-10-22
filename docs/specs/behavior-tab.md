@@ -28,8 +28,8 @@ State **tidak** ditulis manual per komponen. Yang terjadi:
 
 1. Designer membuat **variable collection** dengan nama state (mis. **Button states**) dan mode
    `Default / Hover / Pressed / Focused / Disabled / Error`. Mode = state.
-2. Di tab Behavior, collection itu **disambungkan** ke instance/komponen (dropdown *connect a collection*;
-   sama dengan tombol collection di tab Design → Appearance).
+2. Di tab Behavior, collection itu **disambungkan** ke instance/komponen (tombol *Connect a collection*; membuka
+   jendela pemilih yang sama dengan pemilih variable di Design, lengkap dengan pencarian dan filter library).
 3. Variable yang terikat ke layer (mis. `button/fill` di collection **Button states**) otomatis punya
    nilai per state. Tab Behavior menampilkannya apa adanya:
 
@@ -120,14 +120,26 @@ Close overlay, Set variable, Navigate*. Beberapa interaction boleh per komponen.
 
 Dua action tambahan:
 
-- **Set variable** — pilih variable (dikelompokkan per collection) dan nilainya. Selama Preview terbuka, layer yang
-  terikat ke variable itu digambar dengan nilai baru.
-- **Set active / selected** — memberi layer ini keadaan *selected* (dicentang / terbuka / current): **Toggle**,
-  **Select**, atau **Select only this one** (yang lain dengan component sama di parent yang sama dikembalikan).
-  Tampilannya memakai mode `selected` (atau `current`, `checked`), `selected-hover`, `focused-selected`, `disabled-on`.
+- **Set variable** — pilih **variable collection**, lalu **mode**-nya. Pemilih collection memakai jendela yang sama
+  dengan pemilih variable di Design (pencarian, filter library, satu baris per collection); begitu collection dipilih,
+  mode pertamanya langsung dipakai. Selama Preview terbuka seluruh file membaca mode itu,
+  jadi semua layer yang terikat ke variable di collection tersebut ikut berubah sekaligus (mis. `Button states` →
+  `pressed`). Satu collection bisa punya beberapa mode; mode yang dipilih di sini menang atas mode dari state mapping.
+- **Set active / selected** — memberi layer ini keadaan *selected* (dicentang / terbuka / current): **Toggle**
+  (balik: nyala kalau tadi mati, mati kalau tadi nyala — checkbox), **Select** (nyalakan dan biarkan nyala — switch),
+  atau **Select only this one** (nyalakan, lalu matikan yang lain dengan component sama di parent yang sama — radio
+  group / tab row). Tampilannya memakai mode `selected` (atau `current`, `checked`), `selected-hover`,
+  `focused-selected`, `disabled-on`.
 
 Preview menjalankan interaction pada layer paling dalam yang punya interaction untuk trigger itu: klik pada instance
 bersarang tidak ikut menjalankan interaction milik induknya.
+
+**Component juga punya Interaction.** Interaction yang diatur pada main component (atau component set) otomatis
+dipakai semua instance-nya. Instance baru tidak menyalin interaction komponen; ia membacanya dari komponen, jadi
+perubahan berikutnya langsung terasa. Begitu sebuah instance punya interaction sendiri, instance itu berhenti
+mengikuti komponen dan memakai daftarnya sendiri (tombol **Edit them on this instance** menyalin daftar komponen
+sebagai titik awal). Daftar yang diwarisi tampil read-only di tab Behavior.
+
 Dropdown, overlay, dan popover membuka sebuah **component** (`targetComponentId`), bukan frame. Memilihnya
 memakai jendela yang sama dengan *Swap instance*: pohon yang bisa dicari, di mana setiap page adalah folder dan
 setiap bagian nama `Folder / Sub / Nama` juga folder di dalamnya. Folder tertutup, kecuali jalur menuju component
@@ -178,7 +190,7 @@ Disimpan pada node dokumen (`stateMapping` = override, `interactions`, `inputBeh
   "interactions": [
     { "id": "i1", "trigger": "onClick", "actions": [
       { "type": "close-overlay", "close": "current" },
-      { "type": "set-variable", "variableId": "checked", "value": true },
+      { "type": "set-variable", "collectionId": "button-states", "modeId": "mode-selected" },
       { "type": "navigate", "targetFrameId": "dashboard" }
     ] },
     { "id": "i2", "trigger": "onHover", "actions": [{ "type": "open-popover", "targetComponentId": "tooltip-login", "position": "top", "offset": 8 }] }
@@ -192,12 +204,18 @@ Disimpan pada node dokumen (`stateMapping` = override, `interactions`, `inputBeh
 
 `stateMapping` hanya berisi **override**; nilai utama state dibaca dari variable collection
 (`vars` + `varModes`). Instance memakai miliknya sendiri; kalau kosong, nilainya diambil dari
-component set / main component.
+component set / main component. Hal yang sama berlaku untuk `interactions`: daftar milik instance
+yang tidak kosong menang, selain itu preview dan tab Behavior memakai daftar component set /
+main component.
 
 ## Preview runtime
 
 `apps/studio/src/preview/live.js` menjalankan model yang sama:
 
+- Preview **mulai dari state yang sedang tampil di canvas**: mode variable collection yang dipilih di panel Variables
+  (`varModes`) menentukan state awal instance (mis. mode `Hover` → state `hover`, mode `Selected` → `selected`).
+  Preview tidak memaksakan state `default`; setelah sebuah interaksi mengubahnya, state kembali ke state canvas
+  (bukan `default`) saat pointer pergi / blur.
 - state (`hover`, `pressed`, `focused`, `typing`, `filled`, `error`, `disabled`) menentukan nilai yang
   dibaca dari state mapping;
 - interaction dijalankan saat trigger-nya cocok: navigasi mengganti frame, dropdown / overlay / popover

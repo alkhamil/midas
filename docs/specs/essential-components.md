@@ -26,7 +26,7 @@ Canonical model: `packages/builder-core/src/behavior.js`. How the tab works in d
 | Fallback chains (`pressed → hover → default`, `error-* → error → default`, `focused-selected → focused → selected → default`, `selected → focused → default`) | Done. |
 | Preview *enters* `selected`, `selected-hover`, `focused-selected`, `disabled-on` / `-off`, `error-empty` / `error-filled`, `indeterminate` (flag) | Done for the ones driven by pointer, focus, typing, validation, disabled and *Set active / selected*. |
 | States Preview does not enter by itself: `loading`, `success`, `today`, `filtered`, `uploading`, `uploaded`, `destructive`, `upcoming`, `completed`, `active`, `inactive`, `empty` | Mappable in the panel and used through the fallback chain; nothing in Preview switches to them yet. |
-| Action **Set variable** | Done. Layers bound to the variable are drawn with the value while Preview is open. |
+| Action **Set variable** | Done. Pilih collection + mode; semua layer yang terikat ke variable di collection itu dibaca dalam mode tersebut selama Preview terbuka. |
 | Action **Set active / selected** | Done: Toggle, Select, Select only this one. |
 | **Several actions per trigger**, run in order | Done. |
 | **Close on outside click / Escape** | Done for dropdown and popover (outside click) and for every layer (Escape, topmost first). An overlay closes on outside click only when *Close when the backdrop is clicked* is on. |
@@ -92,7 +92,7 @@ How the pieces are used:
   Pick the typing layer, the input type and *Validate* in Typeable area.
 - **Select** — `selected` and `filled` both mean "has a value". *On click → Open dropdown*.
 - **Checkbox / Radio / Toggle** — `selected` is checked / on. *On click → Set active / selected* (Toggle for a checkbox
-  or switch, Select only this one for a radio group). Add *Set variable* to record the value.
+  or switch, Select only this one for a radio group). A *Set variable* can also switch the collection's mode.
 - **Menu item** — *On click → Close overlay, Set variable, Navigate* (several actions).
 - **Tabs / Nav items / rows** — *On click → Set active / selected → Select only this one* switches the siblings of the same
   component off.
@@ -121,7 +121,7 @@ How the pieces are used:
   "interactions": [
     { "id": "i1", "trigger": "onClick", "actions": [
       { "type": "close-overlay", "close": "current" },
-      { "type": "set-variable", "variableId": "checked", "value": true },
+      { "type": "set-variable", "collectionId": "button-states", "modeId": "mode-selected" },
       { "type": "set-selected", "mode": "toggle" },
       { "type": "navigate", "targetFrameId": "dashboard" }
     ] }

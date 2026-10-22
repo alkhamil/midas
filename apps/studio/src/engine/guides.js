@@ -34,16 +34,23 @@ export function guideWorldValue(guide, hostBox) {
  * tidak jadi terikat: garisnya akan terpotong habis dan tidak terlihat.
  */
 export function applyGuideHost(guide, host, worldValue) {
-    guide.value = worldValue;
+    let v = worldValue;
     let bound = host || null;
     if (bound) {
         const origin = guide.axis === 'x' ? bound.box.x : bound.box.y;
         const span = guide.axis === 'x' ? bound.box.w : bound.box.h;
-        if (worldValue < origin || worldValue > origin + span)
+        // Snap values are rounded to 2 decimals. On a small frame a guide snapped exactly to an
+        // edge can therefore land a few thousandths outside its span; without this tolerance that
+        // guide silently lost its host and only the parent frame stayed usable.
+        const eps = 0.02;
+        if (v < origin - eps || v > origin + span + eps)
             bound = null;
-        else
-            guide.offset = Math.round((worldValue - origin) * 100) / 100;
+        else {
+            v = Math.min(Math.max(v, origin), origin + span);
+            guide.offset = Math.round((v - origin) * 100) / 100;
+        }
     }
+    guide.value = v;
     if (bound)
         guide.frameId = bound.id;
     else {

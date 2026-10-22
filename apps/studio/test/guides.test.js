@@ -37,6 +37,22 @@ test('dragging a bound guide out of the frame unbinds it back to page level', ()
     assert.equal(gd.value, 700);
 });
 
+test('a guide snapped to a rounded frame edge still binds to that frame', () => {
+    // Small child frames are common (a 41 x 32 cell in a calendar). snapGuide rounds to two
+    // decimals, so the snapped value can sit 0.003 outside the exact edge; it must still bind.
+    const tiny = { id: 'tiny', type: 'frame', box: { x: 255.14285714285717, y: 826, w: 41.14285714285717, h: 32 } };
+    const gd = { id: 'g-edge', axis: 'x', value: 255.14 };
+    applyGuideHost(gd, hostFrameAt([tiny], { x: 256, y: 840 }), 255.14);
+    assert.equal(gd.frameId, 'tiny');
+    assert.equal(gd.offset, 0);
+    assert.equal(gd.value, tiny.box.x);
+    // The other edge rounds up by the same amount (296.2857 -> 296.29) and must clamp too.
+    const right = { id: 'g-right', axis: 'x', value: 296.29 };
+    applyGuideHost(right, hostFrameAt([tiny], { x: 256, y: 840 }), 296.29);
+    assert.equal(right.frameId, 'tiny');
+    assert.equal(right.value, tiny.box.x + tiny.box.w);
+});
+
 test('a guide snapped outside the frame span does not bind', () => {
     const gd = { id: 'g1', axis: 'x', value: 505 };
     applyGuideHost(gd, frameA, 505);

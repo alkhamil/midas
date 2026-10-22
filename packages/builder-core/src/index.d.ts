@@ -25,7 +25,10 @@ export interface Action {
   backdrop?: boolean;
   closeOnBackdrop?: boolean;
   close?: string;
-  /** set-variable: the variable and the value it is given. */
+  /** set-variable: the variable collection and the mode it switches to (all its variables follow). */
+  collectionId?: string;
+  modeId?: string;
+  /** set-variable in older files: one variable and the value it is given. */
   variableId?: string;
   value?: string | number | boolean;
   /** set-selected: flip, switch on, or switch on and the others of its kind off. */
