@@ -2546,7 +2546,7 @@ select.vw-text { cursor: pointer }
 .pos-right { display: grid; gap: 8px; justify-items: end; min-width: 0 }
 .cn-select { display: flex; align-items: center; height: 30px; border-radius: 6px; background: var(--field); padding-left: 8px; gap: 6px; min-width: 0 }
 .cn-ico { color: var(--muted); font-size: 11px; width: 16px; text-align: center; flex: none }
-.cn-select select { flex: 1; min-width: 0; height: 100%; border: 0; border-radius: 0; background: var(--panel-3); color: var(--text); font-size: 12px; padding: 0 4px; cursor: pointer }
+.cn-select select { flex: 1; min-width: 0; height: 100%; line-height: 30px; border: 0; border-radius: 0; background: var(--panel-3); color: var(--text); font-size: 12px; padding: 0 4px; cursor: pointer }
 .pos-flips { display: flex; gap: 4px; justify-self: stretch }
 .pos-flips button { flex: 1; height: 30px; border: 0; border-radius: 6px; background: var(--field); color: var(--text-secondary); cursor: pointer; display: grid; place-items: center }
 .pos-flips button:hover { background: var(--hover); color: var(--text) }
@@ -3009,7 +3009,7 @@ select:not([multiple]):not([size]):focus-visible { outline: 1px solid var(--acce
 
 
 /* One dropdown look everywhere (the component-properties dropdown is the reference). */
-select:not([multiple]):not([size]):not(.vpk-lib select):not(.cn-select select) { height: 28px !important; border: 0 !important; border-radius: 6px !important; background-color: var(--field) !important; color: var(--text) !important; font-size: 12px !important; padding-left: 8px !important; cursor: pointer }
+select:not([multiple]):not([size]):not(.vpk-lib select):not(.cn-select select) { height: 28px !important; line-height: 28px !important; border: 0 !important; border-radius: 6px !important; background-color: var(--field) !important; color: var(--text) !important; font-size: 12px !important; padding-left: 8px !important; cursor: pointer }
 select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color: var(--hover, var(--field)) !important }
 
 .sz-lab.mm { display: inline-flex; align-items: center; gap: 2px; color: var(--accent) }
@@ -3089,6 +3089,8 @@ select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color
 .vpk-item:has(.swp-thumb) { height: 36px }
 /* A focused dropdown is outlined inside its own box (no offset ring). */
 select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 0 0 1px var(--accent) !important }
+/* A dropdown inside a field row: the row itself takes the focus border, as the number fields of the Design tab do. */
+.field select:focus, .field select:focus-visible { box-shadow: none !important }
 /* Selection colors: rows never grow past the panel. */
 .sc-list { grid-template-columns: minmax(0, 1fr) }
 .sc-row { min-width: 0 }
@@ -3253,15 +3255,14 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .cb-preview-modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:rgba(15,23,42,.45)}
 .cb-preview-modal-card{max-width:min(92vw,640px);max-height:86vh;overflow:auto;border-radius:12px;background:var(--canvas);box-shadow:0 24px 64px rgba(0,0,0,.4)}
 .bh-coll{display:flex;flex-direction:column}
+.bh-state{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid var(--border-soft)}
+.bh-state-label{font-size:11px;font-weight:600}
+.bh-section-body{padding-top:4px}
+.bh-action{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed var(--border-soft)}
+.bh-action-head{display:flex;align-items:center;gap:4px}
+.bh-action-head .field{flex:1;min-width:0}
 .bh-coll-head{display:flex;align-items:center;justify-content:space-between;padding:2px 0 6px;font-size:11px;font-weight:600}
 .bh-coll-head .icon-button{margin:-3px -3px -3px 0}
-.bh-state{border-top:1px solid var(--border-soft)}
-.bh-state>summary{display:flex;align-items:center;gap:8px;height:32px;list-style:none;font-size:12px;cursor:pointer}
-.bh-state>summary::-webkit-details-marker{display:none}
-.bh-state>summary::before{content:'';flex:none;width:5px;height:5px;margin:0 3px 0 2px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .12s}
-.bh-state[open]>summary::before{transform:rotate(45deg)}
-.bh-state>summary .small-label{margin-left:auto;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-state-body{display:flex;flex-direction:column;gap:8px;padding:0 0 10px 16px}
 .bh-value-line{display:flex;align-items:center;gap:6px}
 .bh-pickrow>span{cursor:default}
 .bh-pickrow .swap-btn{background:transparent;height:29px}
@@ -3277,3 +3278,28 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .cb-bh-value-line .small-label:first-child{min-width:52px}
 .cb-bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:11px}
 .cb-bh-override{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+/* ===== Behavior tab: hierarchy & spacing (Design/Behavior inspector) ===== */
+.inspector-section .small-label{display:block;margin:0}
+.inspector-section .small-label + .small-label{margin-top:5px}
+.inspector-section .small-label + .field,
+.inspector-section .field + .field,
+.inspector-section .field + .checkbox-row,
+.inspector-section .checkbox-row + .field,
+.inspector-section .field + select.full-width,
+.inspector-section select.full-width + .field{margin-top:8px}
+.inspector-section label.checkbox-row + label.checkbox-row{margin-top:8px}
+.inspector-section select.full-width{margin-top:8px}
+/* Selects inside a row sit beside a label or input: the standalone margin above
+   would push them (and only them) down, out of vertical alignment. */
+.inspector-section .field select.full-width,
+.inspector-section .bh-value-row select.full-width,
+.inspector-section .bh-row>select.full-width{margin-top:0}
+.inspector-section .bh-section-body{display:flex;flex-direction:column;gap:10px;padding-top:8px}
+.inspector-section .bh-coll{display:flex;flex-direction:column;gap:8px}
+.inspector-section .bh-coll + .bh-coll{margin-top:10px}
+.inspector-section .bh-state{gap:8px;padding:10px 0}
+.inspector-section .bh-state .full-width{margin-top:6px}
+.inspector-section .bh-list{gap:8px;margin-top:10px}
+.inspector-section .bh-add{margin-top:10px}
+.inspector-section .section-heading + .small-label{margin-top:0}

@@ -7,16 +7,27 @@
 // (collection + variable) atau dari nilai manual. Preview membaca sumber yang sama, jadi Design dan
 // Preview menghasilkan gaya yang sama.
 
-/** Urutan state yang selalu ditanyakan (error hanya untuk input). */
-export const STATE_ORDER = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'disabled', 'error'];
+/**
+ * Every state the Behavior tab knows, in the order they are listed. A state is a name a collection's mode can have; which
+ * ones a component uses is up to its collection (Checkbox states has selected / indeterminate / disabled-on …).
+ */
+export const STATE_ORDER = [
+    'default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'empty', 'indeterminate', 'read-only',
+    'disabled', 'disabled-off', 'disabled-on', 'focused-selected', 'focused-indeterminate', 'selected-hover',
+    'error', 'error-empty', 'error-filled',
+    'loading', 'success', 'today', 'filtered', 'uploading', 'uploaded', 'destructive', 'upcoming', 'completed', 'active', 'inactive',
+];
 
-/** What makes the preview enter a state. Only a hint for the Behavior tab: the look of each state is the designer's choice. */
+/** The states every component of a kind is asked about, even when its collection has no mode for them. */
+const CORE_STATES = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'disabled', 'error'];
+
+/** What makes the preview enter a state. Only a hint: the look of each state is the designer's choice. */
 export const STATE_HINT = {
     default: 'At rest',
     hover: 'Pointer over it',
     pressed: 'Pointer button held down',
     focused: 'Reached with the keyboard (Tab)',
-    selected: 'Clicked, ready to type',
+    selected: 'Clicked, ready to type; or checked / open / current',
     typing: 'Text is being typed',
     filled: 'Left with text in it',
     disabled: 'Cannot be used',
@@ -27,6 +38,13 @@ export const STATE_LABEL = {
     default: 'Default', hover: 'Hover', pressed: 'Pressed', focused: 'Focused', selected: 'Selected',
     disabled: 'Disabled', error: 'Error', typing: 'Typing', filled: 'Filled',
 };
+
+/** A state as the panel shows it: its label, else its id spelled out (disabled-on → Disabled on). */
+export function stateLabel(state) {
+    if (STATE_LABEL[state]) return STATE_LABEL[state];
+    const s = String(state || '').replace(/-/g, ' ');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /** Properti gaya yang boleh dipetakan ke variable / nilai manual. */
 export const STATE_PROPS = [
@@ -55,7 +73,17 @@ export const ACTIONS = [
     { id: 'open-overlay', label: 'Open overlay' },
     { id: 'open-popover', label: 'Open popover / tooltip' },
     { id: 'close-overlay', label: 'Close overlay' },
+    { id: 'set-variable', label: 'Set variable' },
+    { id: 'set-selected', label: 'Set active / selected' },
 ];
+
+/** How Set active / selected changes the layer: flip it, switch it on, or switch it on and the others of its kind off. */
+export const SELECT_MODES = [
+    { id: 'toggle', label: 'Toggle' },
+    { id: 'select', label: 'Select' },
+    { id: 'exclusive', label: 'Select only this one' },
+];
+export const SELECT_MODE_MAP = Object.fromEntries(SELECT_MODES.map(m => [m.id, m]));
 
 export const ACTION_MAP = Object.fromEntries(ACTIONS.map(a => [a.id, a]));
 
@@ -125,9 +153,16 @@ export function componentTypeOf(name) {
  * the collection (see `stateModes`), so designers who name their modes differently are not tied to these.
  */
 export const STATE_MODE_NAMES = {
-    default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed', 'active'],
-    focused: ['focused', 'focus'], selected: ['selected'], typing: ['typing'], filled: ['filled'],
-    error: ['error-filled', 'error-empty', 'error'], disabled: ['disabled'],
+    default: ['default'], hover: ['hover', 'hovered'], pressed: ['pressed'], focused: ['focused', 'focus'],
+    selected: ['selected', 'current', 'checked'], typing: ['typing'], filled: ['filled'], empty: ['empty'],
+    indeterminate: ['indeterminate'], 'read-only': ['read-only', 'readonly'], disabled: ['disabled'],
+    'disabled-off': ['disabled-off'], 'disabled-on': ['disabled-on'],
+    'focused-selected': ['focused-selected', 'current-focused', 'selected-focused'], 'focused-indeterminate': ['focused-indeterminate'],
+    'selected-hover': ['selected-hover', 'current-hover'],
+    error: ['error'], 'error-empty': ['error-empty'], 'error-filled': ['error-filled'],
+    loading: ['loading'], success: ['success'], today: ['today'], filtered: ['filtered'], uploading: ['uploading'],
+    uploaded: ['uploaded'], destructive: ['destructive'], upcoming: ['upcoming'], completed: ['completed'],
+    active: ['active'], inactive: ['inactive'],
 };
 
 /**
@@ -209,19 +244,54 @@ export const TYPE_LABEL = { button: 'Button', input: 'Input field', dropdown: 'D
 /** State apa saja yang boleh ditanyakan untuk sebuah tipe komponen. */
 export function statesFor(type) {
     const INPUT_ONLY = ['selected', 'typing', 'filled', 'error'];
-    return STATE_ORDER.filter(s => type === 'input' || !INPUT_ONLY.includes(s));
+    return CORE_STATES.filter(s => type === 'input' || !INPUT_ONLY.includes(s));
+}
+
+/** The states listed for one collection: the ones its type is asked about plus every state its modes are named after. */
+export function statesIn(coll, type) {
+    const have = new Set(statesFor(type));
+    for (const m of coll?.modes || []) {
+        const s = stateOfMode(m.name);
+        if (s) have.add(s);
+    }
+    return STATE_ORDER.filter(s => have.has(s));
 }
 
 /** Rantai fallback state: error → default, pressed → hover → default, … */
 const FALLBACK = {
-    typing: ['typing', 'selected', 'focused', 'default'], filled: ['filled', 'default'],
-    selected: ['selected', 'focused', 'default'], focused: ['focused', 'selected', 'default'],
-    error: ['error', 'default'], hover: ['hover', 'default'], pressed: ['pressed', 'hover', 'default'],
-    disabled: ['disabled', 'default'],
+    default: ['default', 'inactive', 'empty'],
+    hover: ['hover', 'default'], pressed: ['pressed', 'hover', 'default'],
+    focused: ['focused', 'selected', 'default'], selected: ['selected', 'focused', 'default'],
+    typing: ['typing', 'selected', 'focused', 'default'], filled: ['filled', 'default'], empty: ['empty', 'default'],
+    indeterminate: ['indeterminate', 'selected', 'default'], 'read-only': ['read-only', 'default'],
+    disabled: ['disabled', 'default'], 'disabled-off': ['disabled-off', 'disabled', 'default'],
+    'disabled-on': ['disabled-on', 'disabled', 'selected', 'default'],
+    'focused-selected': ['focused-selected', 'focused', 'selected', 'default'],
+    'focused-indeterminate': ['focused-indeterminate', 'focused', 'indeterminate', 'default'],
+    'selected-hover': ['selected-hover', 'selected', 'hover', 'default'],
+    error: ['error', 'default'], 'error-empty': ['error-empty', 'error', 'default'], 'error-filled': ['error-filled', 'error', 'default'],
+    active: ['active', 'selected', 'default'], inactive: ['inactive', 'default'],
 };
 
 export function stateChain(state) {
     return FALLBACK[state] || [state, 'default'];
+}
+
+/**
+ * The state to draw, from what the preview knows about a layer: its base state (default, hover, focused, error, disabled…)
+ * and the flags that stay with it (selected / checked, indeterminate, an empty value). A selected layer that is hovered
+ * is "selected-hover", a disabled one is "disabled-on" or "disabled-off", an error is "error-empty" or "error-filled".
+ */
+export function effectiveState(base, flags = {}) {
+    const { selected, indeterminate, empty } = flags;
+    switch (base) {
+        case 'default': return selected ? 'selected' : indeterminate ? 'indeterminate' : 'default';
+        case 'hover': return selected ? 'selected-hover' : 'hover';
+        case 'focused': return selected ? 'focused-selected' : indeterminate ? 'focused-indeterminate' : 'focused';
+        case 'disabled': return selected ? 'disabled-on' : 'disabled-off';
+        case 'error': return empty ? 'error-empty' : 'error-filled';
+        default: return base;
+    }
 }
 
 /** Nilai gaya: variable (collection + variable) atau nilai manual. */
@@ -252,30 +322,36 @@ export function normalizeStateMapping(mapping) {
 
 export function normalizeInteractions(list) {
     return (Array.isArray(list) ? list : []).map((it, i) => {
-        const type = ACTION_MAP[it?.action?.type] ? it.action.type : 'navigate';
-        // A dropdown / overlay / popover opens a component. A frame picked before components were offered keeps working
-        // until a component replaces it.
-        const component = /^open-/.test(type) && it?.action?.targetComponentId ? String(it.action.targetComponentId) : undefined;
-        return normalizeInteraction(it, i, type, component);
+        // One interaction runs its actions in order. The single `action` of earlier files is the first of them.
+        const raw = Array.isArray(it?.actions) && it.actions.length ? it.actions : it?.action ? [it.action] : [{}];
+        return {
+            id: it?.id || `i${i + 1}`,
+            trigger: TRIGGERS.some(t => t.id === it?.trigger) ? it.trigger : 'onClick',
+            actions: raw.map(normalizeAction),
+        };
     });
 }
 
-function normalizeInteraction(it, i, type, component) {
-    return ({
-        id: it?.id || `i${i + 1}`,
-        trigger: TRIGGERS.some(t => t.id === it?.trigger) ? it.trigger : 'onClick',
-        action: {
-            type,
-            ...(component ? { targetComponentId: component } : {}),
-            ...(it?.action?.targetFrameId && !component ? { targetFrameId: String(it.action.targetFrameId) } : {}),
-            ...(it?.action?.position ? { position: type === 'open-dropdown' || type === 'open-popover' ? normalizePlacement(String(it.action.position), type === 'open-dropdown' ? 'bottom-start' : 'top') : String(it.action.position) } : {}),
-            ...(/^open-(dropdown|popover)$/.test(type) && it?.action?.offset !== undefined && it.action.offset !== '' && Number.isFinite(Number(it.action.offset)) ? { offset: Number(it.action.offset) } : {}),
-            ...(it?.action?.anchor ? { anchor: String(it.action.anchor) } : {}),
-            ...(it?.action?.backdrop !== undefined ? { backdrop: !!it.action.backdrop } : {}),
-            ...(it?.action?.closeOnBackdrop !== undefined ? { closeOnBackdrop: !!it.action.closeOnBackdrop } : {}),
-            ...(it?.action?.close ? { close: String(it.action.close) } : {}),
-        },
-    });
+export function normalizeAction(a) {
+    const type = ACTION_MAP[a?.type] ? a.type : 'navigate';
+    // A dropdown / overlay / popover opens a component. A frame picked before components were offered keeps working
+    // until a component replaces it.
+    const component = /^open-/.test(type) && a?.targetComponentId ? String(a.targetComponentId) : undefined;
+    const out = { type };
+    if (component) out.targetComponentId = component;
+    if (a?.targetFrameId && !component) out.targetFrameId = String(a.targetFrameId);
+    if (a?.position) out.position = type === 'open-dropdown' || type === 'open-popover' ? normalizePlacement(String(a.position), type === 'open-dropdown' ? 'bottom-start' : 'top') : String(a.position);
+    if (/^open-(dropdown|popover)$/.test(type) && a?.offset !== undefined && a.offset !== '' && Number.isFinite(Number(a.offset))) out.offset = Number(a.offset);
+    if (a?.anchor) out.anchor = String(a.anchor);
+    if (a?.backdrop !== undefined) out.backdrop = !!a.backdrop;
+    if (a?.closeOnBackdrop !== undefined) out.closeOnBackdrop = !!a.closeOnBackdrop;
+    if (a?.close) out.close = String(a.close);
+    if (type === 'set-variable') {
+        if (a?.variableId) out.variableId = String(a.variableId);
+        if (a?.value !== undefined && a.value !== null && a.value !== '') out.value = a.value;
+    }
+    if (type === 'set-selected') out.mode = SELECT_MODE_MAP[a?.mode] ? a.mode : 'toggle';
+    return out;
 }
 
 export const INPUT_TYPES = [
@@ -286,24 +362,24 @@ export const INPUT_TYPES = [
 ];
 export const INPUT_TYPE_MAP = Object.fromEntries(INPUT_TYPES.map(t => [t.id, t]));
 
+/** When a field is checked: as the pointer leaves it, as it is typed in, or when Enter is pressed. */
+export const VALIDATION_TRIGGERS = [
+    { id: 'blur', label: 'On blur' },
+    { id: 'change', label: 'On change' },
+    { id: 'submit', label: 'On submit' },
+];
+export const VALIDATION_TRIGGER_MAP = Object.fromEntries(VALIDATION_TRIGGERS.map(t => [t.id, t]));
+
+/**
+ * What an input field needs beyond its look: the layer that takes the typing, what it accepts, and when it is checked.
+ * Label, placeholder and the typed value live in the Appearance tab, and how an error looks comes from State mapping
+ * (error-empty / error-filled), so none of them is kept here.
+ */
 export function normalizeInputBehavior(b) {
     if (!b || typeof b !== 'object') return null;
-    const label = b.label || {};
     const typeable = b.typeable || {};
-    const error = b.error || {};
     const validation = b.validation || {};
     return {
-        label: {
-            exists: label.exists !== false,
-            reference: label.reference && typeof label.reference === 'object'
-                ? {
-                    type: label.reference.type === 'variable' ? 'variable' : 'layer',
-                    ...(label.reference.layerId ? { layerId: String(label.reference.layerId) } : {}),
-                    ...(label.reference.variableId ? { variableId: String(label.reference.variableId) } : {}),
-                    ...(label.reference.collectionId ? { collectionId: String(label.reference.collectionId) } : {}),
-                }
-                : undefined,
-        },
         typeable: {
             frameId: typeable.frameId ? String(typeable.frameId) : undefined,
             // What the field accepts. Text unless the designer says otherwise: nothing is guessed from layer names.
@@ -312,19 +388,11 @@ export function normalizeInputBehavior(b) {
             // The icon in the field is swapped between them when it is clicked.
             showIconId: typeable.showIconId ? String(typeable.showIconId) : undefined,
             hideIconId: typeable.hideIconId ? String(typeable.hideIconId) : undefined,
-            placeholder: styleValue(typeable.placeholder),
-            valueCollectionId: typeable.valueCollectionId ? String(typeable.valueCollectionId) : undefined,
-            valueVariableId: typeable.valueVariableId ? String(typeable.valueVariableId) : undefined,
         },
-        error: {
-            stateName: error.stateName || 'error',
-            // Nama field mengikuti IR spesifikasi; nama pendek lama tetap diterima.
-            border: styleValue(error.border ?? error.borderVariable),
-            hint: styleValue(error.hint ?? error.hintVariable),
-            hintText: error.hintText ? String(error.hintText) : undefined,
-            frameId: (error.frameId ?? error.errorFrameId) ? String(error.frameId ?? error.errorFrameId) : undefined,
+        validation: {
+            required: !!validation.required,
+            trigger: VALIDATION_TRIGGER_MAP[validation.trigger] ? validation.trigger : undefined,
         },
-        validation: { required: !!validation.required },
     };
 }
 
