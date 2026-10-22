@@ -57,19 +57,26 @@ Setiap state punya dropdown **mode**. Designer yang menentukan state mana memaka
 bebas. Pilihan **Automatic** hanya menebak dari nama mode (urutan prioritas nama, bukan urutan di collection),
 dan disimpan di `stateModes` (`{ [collectionId]: { [state]: modeId } }`).
 
-State yang dikenal Preview:
+Daftar state di panel mengikuti collection: setiap mode yang namanya dikenal menjadi satu baris, ditambah state
+inti untuk jenis komponennya (Default, Hover, Pressed, Focused, Disabled; untuk input juga Selected, Typing, Filled,
+Error). State yang dikenal (nama mode, tanpa membedakan huruf besar/kecil):
 
-| State | Kapan masuk |
-|---|---|
-| Default | diam |
-| Hover / Pressed | pointer di atas / ditekan |
-| Focused | fokus lewat keyboard (Tab) |
-| Selected | field diklik, siap mengetik |
-| Typing | sedang mengetik |
-| Filled | keluar dari field dengan isi (teks tajam, bukan placeholder) |
-| Error / Disabled | gagal validasi / dinonaktifkan |
+| State | Nama mode | Kapan Preview memakainya |
+|---|---|---|
+| Default | `default` | diam |
+| Hover / Pressed | `hover`, `pressed` | pointer di atas / ditekan |
+| Focused | `focused`, `focus` | fokus lewat keyboard (Tab) |
+| Selected | `selected`, `current`, `checked` | field diklik (input); atau dicentang / terbuka / current lewat *Set active / selected* |
+| Typing / Filled | `typing`, `filled` | sedang mengetik / keluar dari field dengan isi |
+| Error | `error`, `error-empty`, `error-filled` | gagal validasi: `error-empty` kalau kosong, `error-filled` kalau berisi |
+| Disabled | `disabled`, `disabled-off`, `disabled-on` | dinonaktifkan; `-on` kalau sedang selected |
+| Gabungan | `selected-hover` (`current-hover`), `focused-selected` (`current-focused`), `focused-indeterminate`, `indeterminate` | selected + hover, selected + focus, dst. |
+| Lainnya | `read-only`, `empty`, `loading`, `success`, `today`, `filtered`, `uploading`, `uploaded`, `destructive`, `upcoming`, `completed`, `active`, `inactive` | bisa dipetakan; Preview belum memasukinya sendiri |
 
-Kalau sebuah state belum dipetakan, Preview memakai rantai fallback (mis. Selected → Focused → Default).
+Rantai fallback bila mode sebuah state tidak ada: `pressed → hover → default`, `error-empty / error-filled → error →
+default`, `focused-selected → focused → selected → default`, `selected → focused → default`, `disabled-on / -off →
+disabled → default`, `default → inactive → empty`.
+
 Setiap state adalah baris yang bisa dibuka-tutup (ringkasannya menampilkan mode yang dipakai); bagian dalamnya
 berisi dropdown mode, nilai variable (hanya tampilan baca, dilipat), dan override. Baris yang sedang terbuka tetap
 terbuka saat panel digambar ulang.
@@ -107,7 +114,20 @@ boleh berbeda.
 | Open popover / tooltip | **component** + jangkar + posisi | component |
 | Close overlay | `Current overlay` / `All overlays` | — |
 
-Beberapa interaction boleh per komponen (mis. `onClick → Navigate` **dan** `onHover → Open tooltip`).
+Satu interaction punya satu **trigger** dan satu atau lebih **action** yang dijalankan berurutan
+(`actions: []`; `action` tunggal dari file lama dibaca sebagai action pertama). Contoh menu item: *On click →
+Close overlay, Set variable, Navigate*. Beberapa interaction boleh per komponen.
+
+Dua action tambahan:
+
+- **Set variable** — pilih variable (dikelompokkan per collection) dan nilainya. Selama Preview terbuka, layer yang
+  terikat ke variable itu digambar dengan nilai baru.
+- **Set active / selected** — memberi layer ini keadaan *selected* (dicentang / terbuka / current): **Toggle**,
+  **Select**, atau **Select only this one** (yang lain dengan component sama di parent yang sama dikembalikan).
+  Tampilannya memakai mode `selected` (atau `current`, `checked`), `selected-hover`, `focused-selected`, `disabled-on`.
+
+Preview menjalankan interaction pada layer paling dalam yang punya interaction untuk trigger itu: klik pada instance
+bersarang tidak ikut menjalankan interaction milik induknya.
 Dropdown, overlay, dan popover membuka sebuah **component** (`targetComponentId`), bukan frame. Memilihnya
 memakai jendela yang sama dengan *Swap instance*: pohon yang bisa dicari, di mana setiap page adalah folder dan
 setiap bagian nama `Folder / Sub / Nama` juga folder di dalamnya. Folder tertutup, kecuali jalur menuju component
@@ -124,21 +144,23 @@ layer itu, dan tidak menumpuk saat pemicunya digambar ulang; layer yang dibuka l
 
 Untuk komponen input (`TextField`, `SelectField`, …) tab Behavior menambahkan:
 
-- **Typeable area** — layer mana yang menerima ketikan (label & teks lain tetap read-only), placeholder
-  (manual atau variable). **Input type** (Text / Email / Password / Number) dipilih designer, tidak ditebak
-  dari nama layer; default Text. Untuk Password, designer memilih dua **component** ikon: **Icon while hidden**
-  (mis. mata tertutup) dan **Icon while shown** (mis. mata terbuka). Ikon di field yang merupakan instance salah
-  satunya di-swap antara keduanya saat diklik di Preview, dan teks ditampilkan / disembunyikan.
-  Mengklik field yang sudah berisi memulai Typing dengan caret di akhir teks.
+- **Typeable area** — layer mana yang menerima ketikan (label & teks lain tetap read-only). **Input type**
+  (Text / Email / Password / Number) dipilih designer, tidak ditebak dari nama layer; default Text. Untuk Password,
+  designer memilih dua **component** ikon: **Icon while hidden** (mis. mata tertutup) dan **Icon while shown**
+  (mis. mata terbuka). Ikon di field yang merupakan instance salah satunya di-swap antara keduanya saat diklik di
+  Preview, dan teks ditampilkan / disembunyikan. Mengklik field yang sudah berisi memulai Typing dengan caret di
+  akhir teks. **Required** juga ada di sini.
+- **Validate** — kapan field diperiksa: **On blur** (default), **On change** (setiap ketikan), atau **On submit**
+  (saat Enter). Hasilnya selalu state: `error-empty` kalau wajib tapi kosong, `error-filled` kalau isinya tidak
+  cocok dengan tipe (email, angka). Tampilan error datang dari State mapping, bukan dari frame error manual.
+
+Label, placeholder, dan nilai yang diketik diatur di tab Appearance (lewat variable), bukan di Behavior.
 
 Layer yang punya interaction **On click** (atau target halaman) memakai kursor pointer di Preview, dan field yang
 punya interaction seperti itu tidak dianggap bisa diketik kecuali layer typeable-nya dipilih eksplisit.
-- **Error handling** — frame error dan teks bantuan (manual atau variable). Tampilan state error (border dan
-  lainnya) datang dari State mapping, bukan dari kontrol di sini. **Required** ada di Typeable area.
-
-Di preview, mengetik hanya bisa dilakukan pada layer typeable; mengosongkan field yang wajib pada blur
-memicu state `error`: frame error ditampilkan, pesannya diisi dari variable / teks manual, dan gaya
-border/isi diambil dari state mapping.
+Di preview, mengetik hanya bisa dilakukan pada layer typeable. Meninggalkan field wajib yang belum pernah diisi
+kembali ke `default`; mengosongkan field yang sempat berisi (atau isi yang tidak cocok dengan tipenya) memicu state
+`error-empty` / `error-filled` sesuai trigger **Validate**.
 
 ## Data model
 
@@ -149,18 +171,21 @@ Disimpan pada node dokumen (`stateMapping` = override, `interactions`, `inputBeh
 {
   "varModes": { "button-states": "mode-default" },
   "vars": { "fill": "button-fill" },
+  "stateModes": { "button-states": { "pressed": "mode-pressed" } },
   "stateMapping": {
     "hover": { "fill": { "collectionId": "colors", "variableId": "primary-hover" } }
   },
   "interactions": [
-    { "id": "i1", "trigger": "onClick", "action": { "type": "navigate", "targetFrameId": "dashboard" } },
-    { "id": "i2", "trigger": "onHover", "action": { "type": "open-tooltip", "targetFrameId": "tooltip-login" } }
+    { "id": "i1", "trigger": "onClick", "actions": [
+      { "type": "close-overlay", "close": "current" },
+      { "type": "set-variable", "variableId": "checked", "value": true },
+      { "type": "navigate", "targetFrameId": "dashboard" }
+    ] },
+    { "id": "i2", "trigger": "onHover", "actions": [{ "type": "open-popover", "targetComponentId": "tooltip-login", "position": "top", "offset": 8 }] }
   ],
   "inputBehavior": {
-    "label": { "exists": true, "reference": { "type": "layer", "layerId": "label-email" } },
-    "typeable": { "frameId": "input-box", "placeholder": { "variableId": "placeholder-email", "collectionId": "text" } },
-    "error": { "stateName": "error", "border": { "collectionId": "borders", "variableId": "error" }, "frameId": "hint-error" },
-    "validation": { "required": true }
+    "typeable": { "frameId": "input-box", "inputType": "email" },
+    "validation": { "required": true, "trigger": "blur" }
   }
 }
 ```

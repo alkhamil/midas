@@ -9,7 +9,7 @@
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
-import { normalizeInteractions, normalizePlacement, overridesFor, stateChain } from '../engine/behavior.js';
+import { effectiveState, normalizeInteractions, normalizePlacement, overridesFor, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -145,8 +145,9 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     root.className = 'live-preview';
     const stage = el('div', { position: 'relative', flex: 'none', transformOrigin: 'center center' }, root);
     const css = el('style', null, root);
-    css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit}`;
-    const runtime = new Map();            // instance id -> { state, value, error }
+    css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit;border:0;border-radius:0;box-shadow:none;outline:0;background:transparent;appearance:none;-webkit-appearance:none} .live-preview input:hover,.live-preview input:focus,.live-preview input:focus-visible{border:0;outline:0;box-shadow:none} .live-preview input:-webkit-autofill{box-shadow:0 0 0 1000px transparent inset;-webkit-text-fill-color:currentColor;transition:background-color 9999s}`;
+    const runtime = new Map();            // instance id -> { state, value, error, selected, indeterminate, reveal, touched }
+    const varOver = new Map();            // variable id -> the value Set variable gave it (kept while the preview is open)
     const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
     // How the last focus arrived: a click on a field means "selected, ready to type"; Tab means "focused".
@@ -155,6 +156,8 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     root.addEventListener('keydown', () => { byPointer = false; }, true);
 
     const stateOf = n => runtime.get(n.id)?.state || (n.disabled ? 'disabled' : 'default');
+    // What is drawn is the base state plus what stays with the layer: checked / current, indeterminate, an empty value.
+    const effStateOf = n => { const r = runtime.get(n.id) || {}; return effectiveState(stateOf(n), { selected: r.selected, indeterminate: r.indeterminate, empty: !r.value }); };
     /** A layer that does something when clicked (a page to go to, or a click interaction) shows the pointer, not the text cursor. */
     const clickableOf = n => !!target(n) || normalizeInteractions(ctx.interactionsFor?.(n)).some(it => it.trigger === 'onClick');
     const target = n => {
@@ -223,16 +226,6 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         }
         return ctx.field(inst);
     };
-    /** Pesan error: dari variable, dari teks manual, atau dari pesan bawaan instance. */
-    const errorTextOf = (ib, inst) => {
-        if (ib?.error?.hint?.variableId) {
-            const v = ctx.varValueOf?.(ib.error.hint.variableId);
-            if (v !== undefined && v !== null && v !== '') return String(v);
-        }
-        if (ib?.error?.hint?.value) return String(ib.error.hint.value);
-        if (ib?.error?.hintText) return String(ib.error.hintText);
-        return inst?.errorMessage || 'This field is required';
-    };
     const requiredOf = (inst, ib) => !!(ib?.validation?.required || inst?.required);
 
     /** A copy of the frame with the current state applied, laid out by the editor's engine. */
@@ -241,12 +234,12 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         let seq = 0;
         // o: the instance being copied, with the variant to borrow looks from, the variable modes to read in and the texts to carry over.
         const emit = (n, parentId, o) => {
-            const roles = o?.roles, err = !!o?.err, ib = o?.input;
-            const forced = (err && roles?.showHint && n.propBind?.visible === roles.showHint) || (err && ib?.error?.frameId === n.id);
+            const roles = o?.roles, err = !!o?.err;
+            const forced = err && roles?.showHint && n.propBind?.visible === roles.showHint;
             if (n.visible === false && !forced) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
-                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = stateOf(n);
+                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = effStateOf(n);
                 const src = pick(variants?.byState, st), swap = src && src !== variants.current;
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
                 inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {} };
@@ -276,6 +269,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
                 }
             }
             else if (n.prototypeTarget) wire = { inst: n };
+            if (varOver.size) base = ctx.overridden(base, varOver);
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
             if (toggle) c._toggle = toggle;
             if (c.vars) c.vars = { ...c.vars };
@@ -290,13 +284,10 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             }
             if (n.type === 'text') {
                 if (o?.field && (n.id === o.field.id || (o.swapped && n.name === o.field.name))) c._field = o;
-                const errText = err && (ib?.error?.frameId === n.id || o?.errFrame) ? errorTextOf(ib, o?.inst) : null;
-                c.text = errText ?? (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.texts?.get(n.id) ?? n.text ?? '');
+                c.text = (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.texts?.get(n.id) ?? n.text ?? '');
             }
             nodes.push(c);
-            // Lapisan di dalam error frame ikut membawa pesan error (mis. teks bantuan di bawah input).
-            const childInner = (ib?.error?.frameId === n.id) ? { ...inner, errFrame: true } : inner;
-            for (const k of ctx.kids(kidsOf)) emit(k, c.id, childInner);
+            for (const k of ctx.kids(kidsOf)) emit(k, c.id, inner);
         };
         emit({ ...frame, x: 0, y: 0 }, null, null);
         ctx.layout(nodes);
@@ -374,10 +365,10 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     /** The field's text is the placeholder: an input takes its place, wide enough for what is typed. */
     function renderField(c, parent, off) {
         const o = c._field, inst = o.inst, cur = runtime.get(inst.id) || {};
-        const input = el('input', { ...placed(c, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), border: '0', outline: '0', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
+        const input = el('input', { ...placed(c, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
-        input.placeholder = o.input?.typeable?.placeholder?.value ?? c.text ?? '';
+        input.placeholder = c.text ?? '';
         input.value = cur.value || '';
         input.disabled = !!inst.disabled;
         // The type is the designer's choice (Behavior tab). Only a password hides its text, until its eye layer is clicked.
@@ -388,7 +379,13 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         if (clickableOf(inst)) input.style.cursor = 'pointer';
         const ph = `.live-preview [data-field="${inst.id}"]::placeholder{color:${rgba(fillsOf(c)[0]?.color || c.fill, .6)}}`;
         if (!css.textContent.includes(ph)) css.textContent += ph;
-        const required = requiredOf(inst, o.input);
+        const required = requiredOf(inst, o.input), when = o.input?.validation?.trigger || 'blur';
+        // Wrong: required but emptied after it had text (or, strictly, empty at all), or text that does not fit the type.
+        const wrong = (v, strict) => {
+            const t = v.trim();
+            if (!t) return required && (strict || !!runtime.get(inst.id)?.touched);
+            return kind === 'email' ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) : kind === 'number' ? !Number.isFinite(Number(t)) : false;
+        };
         input.addEventListener('focus', () => {
             if (rendering || runtime.get(inst.id)?.state?.match(/^(focused|selected|typing)$/)) return;
             // Coming back to a field that has text: typing resumes after the last character.
@@ -399,15 +396,25 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             // A number field takes digits, a sign and one decimal point.
             if (kind === 'number') input.value = input.value.replace(/[^0-9.\-]/g, '').replace(/(\..*?)\./g, '$1');
             const was = runtime.get(inst.id) || {};
-            runtime.set(inst.id, { ...was, value: input.value, error: false, touched: was.touched || !!input.value });
-            if (was.state !== 'typing') update(inst, { state: 'typing' });
+            const bad = when === 'change' && wrong(input.value);
+            runtime.set(inst.id, { ...was, value: input.value, error: bad, touched: was.touched || !!input.value });
+            const state = bad ? 'error' : 'typing';
+            if (was.state !== state) update(inst, { state, error: bad });
+            else if (bad && !!was.value !== !!input.value) draw();      // still an error, but now empty (or no longer): the look changes
         });
         input.addEventListener('blur', () => {
             if (rendering) return;
             // Leaving a required field that was never filled is not an error: it goes back to default. Emptying one that had text is.
-            const bad = required && !input.value.trim() && !!runtime.get(inst.id)?.touched;
+            const bad = when === 'submit' ? !!runtime.get(inst.id)?.error && wrong(input.value, true) : wrong(input.value);
             update(inst, { state: bad ? 'error' : input.value ? 'filled' : 'default', error: bad, value: input.value });
             runTriggers(inst, 'onBlur', input);
+        });
+        // Enter submits: a field validated on submit is checked now, whatever else it has been through.
+        input.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            const bad = when === 'submit' && wrong(input.value, true);
+            update(inst, bad ? { state: 'error', error: true } : { error: false });
+            runTriggers(inst, 'onSubmit', input);
         });
         input.addEventListener('change', () => runTriggers(inst, 'onChange', input));
         return input;
@@ -415,11 +422,33 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
 
     /** Jalankan action dari tab Behavior untuk sebuah instance. */
     function runTriggers(inst, trigger, anchor, rect) {
-        const list = normalizeInteractions(ctx.interactionsFor?.(inst));
-        for (const it of list) {
-            if (it.trigger !== trigger) continue;
-            runAction(it.action, inst, anchor, rect, trigger);
+        for (const it of normalizeInteractions(ctx.interactionsFor?.(inst)))
+            if (it.trigger === trigger)
+                for (const action of it.actions)         // in the order they are listed
+                    runAction(action, inst, anchor, rect, trigger);
+    }
+    /** Set variable: the variables the layers are bound to take the value, and the layers are drawn again. */
+    function setVariable(action) {
+        if (!action.variableId) return;
+        const type = ctx.varType?.(action.variableId);
+        let value = action.value;
+        if (type === 'number') value = Number(value);
+        else if (type === 'boolean') value = value === true || value === 'true';
+        if (type === 'number' && !Number.isFinite(value)) return;
+        varOver.set(action.variableId, value);
+        draw();
+    }
+    /** Set active / selected: the layer is checked / current; "only this one" switches the others of its kind off. */
+    function setSelected(inst, mode) {
+        const has = r => !!runtime.get(r.id)?.selected;
+        runtime.set(inst.id, { ...(runtime.get(inst.id) || {}), selected: mode === 'toggle' ? !has(inst) : true });
+        if (mode === 'exclusive') {
+            const mine = new Set(ctx.componentIdsOf(inst));
+            for (const sib of ctx.kids(inst.parentId))
+                if (sib.id !== inst.id && sib.isInstance && ctx.componentIdsOf(sib).some(id => mine.has(id)))
+                    runtime.set(sib.id, { ...(runtime.get(sib.id) || {}), selected: false });
         }
+        draw();
     }
     function runAction(action, inst, anchor, rect, trigger) {
         if (!action) return;
@@ -431,6 +460,8 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             closeLayers(action.close === 'all' ? 'all' : 'current');
             return;
         }
+        if (action.type === 'set-variable') return setVariable(action);
+        if (action.type === 'set-selected') return setSelected(inst, action.mode);
         if (action.type === 'open-dropdown' || action.type === 'open-overlay' || action.type === 'open-popover') openLayer(action, anchor, rect, { inst, trigger });
     }
 
@@ -473,7 +504,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             if (side === 'top' || side === 'bottom') place(along(x, w, a.width), side === 'top' ? y - h - off : y + a.height + off);
             else place(side === 'left' ? x - w - off : x + a.width + off, along(y, h, a.height));
         }
-        const layer = { holder, backdrop, kind, key };
+        const layer = { holder, backdrop, kind, key, anchor: a };
         // A layer that opened on hover goes away when the pointer is no longer over what opened it or over the layer itself.
         if (/^(onHover|onMouseEnter)$/.test(from?.trigger) && a) {
             const near = (b, ev) => ev.clientX >= b.left - 4 && ev.clientX <= b.right + 4 && ev.clientY >= b.top - 4 && ev.clientY <= b.bottom + 4;
@@ -531,11 +562,15 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             runTriggers(n, 'onBlur', d, rect);
         });
         // The press redraws the button, so the click is taken from the pointer-up on the redrawn one.
-        d.addEventListener('pointerup', () => {
+        d.addEventListener('pointerup', ev => {
             // Jangkar posisi diambil sebelum gambar ulang: elemen yang lama sudah lepas dari DOM.
             const rect = d.getBoundingClientRect();
             const pressed = stateOf(n) === 'pressed';
             update(n, { state: hasState('hover') ? 'hover' : 'default' });
+            // The click belongs to the innermost layer that does something with it; the layers around it only get their state back.
+            if (ev.bhHandled) return;
+            const own = normalizeInteractions(ctx.interactionsFor?.(n)).some(it => it.trigger === 'onClick');
+            if (own || go) ev.bhHandled = true;
             if (go && (pressed || !hasState('pressed'))) show(go);
             runTriggers(n, 'onClick', d, rect);
         });
@@ -571,6 +606,15 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
 
     function show(id) { frameId = id; runtime.clear(); closeLayers('all'); draw(); }
 
+    // A dropdown or popover closes when the pointer goes down outside it (pressing what opened it does not count). An overlay
+    // closes that way only when it was set to close with its backdrop.
+    root.addEventListener('pointerdown', ev => {
+        if (!layers.length || layers.some(l => l.holder.contains(ev.target))) return;
+        const top = layers[layers.length - 1], a = top.anchor;
+        if (top.kind === 'overlay') return;
+        if (a && ev.clientX >= a.left && ev.clientX <= a.right && ev.clientY >= a.top && ev.clientY <= a.bottom) return;
+        closeLayer(top);
+    }, true);
     // Side menu, folded away until the menu button is clicked: the frames to move between, and the way out.
     const chrome = { font: '12px Inter, system-ui, sans-serif', color: '#fff' };
     const menuBtn = el('button', { ...chrome, position: 'absolute', top: '12px', left: '12px', zIndex: 60, width: '32px', height: '32px', display: 'grid', placeItems: 'center', border: '0', borderRadius: '8px', background: 'rgba(30,30,30,.82)', cursor: 'pointer', opacity: '.75' }, root);

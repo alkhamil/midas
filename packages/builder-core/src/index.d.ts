@@ -9,32 +9,37 @@ export interface NodeConfig {
   table?: { columns?: string[]; rowActions?: ('view' | 'edit' | 'delete')[]; pageSize?: number };
   /** State mapping: setiap state → properti → nilai (variable collection + variable, atau nilai manual). */
   stateMapping?: Record<string, Record<string, StyleValue>>;
-  /** Interaction: trigger + action (navigate, open dropdown/overlay/popover, close overlay). */
+  /** Interaction: trigger + actions (navigate, open dropdown/overlay/popover, close overlay, set variable, set selected). */
   interactions?: Interaction[];
-  /** Perilaku input field: label, area typeable, error, validasi. */
+  /** Perilaku input field: layer typeable, tipe input, validasi. */
   inputBehavior?: InputBehavior;
 }
 export interface StyleValue { value?: string | number; variableId?: string; collectionId?: string }
+export interface Action {
+  type: 'navigate' | 'open-dropdown' | 'open-overlay' | 'open-popover' | 'close-overlay' | 'set-variable' | 'set-selected';
+  targetFrameId?: string;
+  targetComponentId?: string;
+  position?: string;
+  offset?: number;
+  anchor?: string;
+  backdrop?: boolean;
+  closeOnBackdrop?: boolean;
+  close?: string;
+  /** set-variable: the variable and the value it is given. */
+  variableId?: string;
+  value?: string | number | boolean;
+  /** set-selected: flip, switch on, or switch on and the others of its kind off. */
+  mode?: 'toggle' | 'select' | 'exclusive';
+}
 export interface Interaction {
   id: string;
   trigger: 'onClick' | 'onHover' | 'onMouseEnter' | 'onFocus' | 'onBlur' | 'onChange' | 'onSubmit';
-  action: {
-    type: 'navigate' | 'open-dropdown' | 'open-overlay' | 'open-popover' | 'open-tooltip' | 'close-overlay';
-    targetFrameId?: string;
-    targetComponentId?: string;
-    position?: string;
-    offset?: number;
-    anchor?: string;
-    backdrop?: boolean;
-    closeOnBackdrop?: boolean;
-    close?: string;
-  };
+  /** Run in order when the trigger fires. */
+  actions: Action[];
 }
 export interface InputBehavior {
-  label?: { exists?: boolean; reference?: { type: 'layer' | 'variable'; layerId?: string; variableId?: string; collectionId?: string } };
-  typeable?: { frameId?: string; inputType?: 'text' | 'email' | 'password' | 'number'; showIconId?: string; hideIconId?: string; placeholder?: StyleValue; valueCollectionId?: string; valueVariableId?: string };
-  error?: { stateName?: string; border?: StyleValue; hint?: StyleValue; hintText?: string; frameId?: string };
-  validation?: { required?: boolean };
+  typeable?: { frameId?: string; inputType?: 'text' | 'email' | 'password' | 'number'; showIconId?: string; hideIconId?: string };
+  validation?: { required?: boolean; trigger?: 'blur' | 'change' | 'submit' };
 }
 export interface BuilderScreen { id: string; frameId: string; pageId: string; name: string; role: string; nodes?: Record<string, NodeConfig> }
 export interface BuilderModule { id: string; name: string; label: string; parentId: string | null; permissionKey?: string; pageId: string; entity?: { fields: BuilderField[] }; screens: BuilderScreen[] }

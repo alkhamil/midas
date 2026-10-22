@@ -113,6 +113,8 @@ const TOOLS = [
     ['text', 'Text (T)', 'Text', 'text'],
     null,
     ['hand', 'Hand (H)', 'Hand', 'hand'],
+    null,
+    ['scale', 'Scale (K)', 'Scale', 'scale'],
 ];
 
 export function CanvasArea() {

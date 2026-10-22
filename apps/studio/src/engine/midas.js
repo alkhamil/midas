@@ -3,9 +3,10 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
+import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode } from './behavior.js';
 
 
 // ===== document.js =====
@@ -394,7 +395,7 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
             gaps.push(horiz ? c.x - (p.x + p.w) : c.y - (p.y + p.h));
         }
         if (gaps.length && !opts.gapFromNudge)
-            gap = Math.max(0, Math.round(gaps.reduce((s, v) => s + v, 0) / gaps.length));
+            gap = Math.round(gaps.reduce((s, v) => s + v, 0) / gaps.length);
         const minX = Math.min(...kids.map(c => c.x)), minY = Math.min(...kids.map(c => c.y)), maxX = Math.max(...kids.map(c => c.x + c.w)), maxY = Math.max(...kids.map(c => c.y + c.h));
         if (opts.pad == null) {
             // Converting a frame: keep padding symmetric per axis, using the smaller side of each pair.
@@ -481,10 +482,10 @@ function autoLayoutControls(n) {
     const individual = state.padSides || P.l !== P.r || P.t !== P.b;
     const padFields = individual ? `<div class="property-grid">${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}${field('L', 'padL', P.l, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
     const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
-    const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { min: 0, title: 'Gap between items' }));
+    const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }));
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
     return `<div class="field-label"><span>Alignment &amp; gap</span><button class="icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
-<div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: 'Row gap' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { min: 0, title: wrap && !horiz ? 'Gap between columns' : 'Gap between rows' }) : ''}`}</div></div>
+<div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: 'Row gap (negative overlaps)' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: wrap && !horiz ? 'Gap between columns (negative overlaps)' : 'Gap between rows (negative overlaps)' }) : ''}`}</div></div>
 <div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding">▢</button></div>${padFields}`;
 }
 // ----- auto layout settings (strokes in layout, canvas stacking, text baseline, auto spacing) -----
@@ -5038,13 +5039,34 @@ document.addEventListener('change', e => {
 // ===== ruler guides =====
 const RULER = 17;
 function pageGuides() { return doc.page.guides ||= []; }
-function guideScreen(g) { return g.axis === 'x' ? worldToScreen(g.value, 0).x : worldToScreen(0, g.value).y; }
+// A guide is either page-level (absolute world value) or bound to a frame
+// (frameId + offset from the frame's top-left): bound guides move with the frame.
+function guideHostBox(gd) { return gd.frameId && doc.get(gd.frameId) ? doc.world(gd.frameId).box : null; }
+// Topmost frame under a world point: where a dropped guide becomes a child.
+function frameHostAt(w) {
+    return hostFrameAt(doc.scene().map(s => ({ id: s.node.id, type: s.node.type, isSection: !!s.node.isSection, box: s.box })), w);
+}
+function guideValue(gd) {
+    const b = guideHostBox(gd);
+    if (!b)
+        return gd.value;
+    const off = Number.isFinite(gd.offset) ? gd.offset : (gd.axis === 'x' ? gd.value - b.x : gd.value - b.y);
+    return (gd.axis === 'x' ? b.x : b.y) + off;
+}
+function guideScreen(g) { return g.axis === 'x' ? worldToScreen(guideValue(g), 0).x : worldToScreen(0, guideValue(g)).y; }
 function guideAt(p) {
     if (!options.rulers || p.x < RULER || p.y < RULER)
         return null;
-    for (const g of pageGuides())
-        if (Math.abs((g.axis === 'x' ? p.x : p.y) - guideScreen(g)) <= 4)
-            return g;
+    const w = screenToWorld(p.x, p.y), pad = 4 / state.camera.zoom;
+    for (const g of pageGuides()) {
+        if (Math.abs((g.axis === 'x' ? p.x : p.y) - guideScreen(g)) > 4)
+            continue;
+        const fb = guideHostBox(g);
+        // A frame-bound guide can only be grabbed along the part inside its frame.
+        if (fb && !pointInBox(fb, w.x, w.y, pad))
+            continue;
+        return g;
+    }
     return null;
 }
 function toolCursor() { return state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
@@ -5064,25 +5086,52 @@ function drawGuides(c) {
     c.fillStyle = '#e8528f';
     c.lineWidth = 1;
     for (const gd of pageGuides()) {
+        // A guide whose frame is hidden stays hidden with it.
+        if (gd.frameId && doc.world(gd.frameId).hidden)
+            continue;
+        const fb = guideHostBox(gd), v = guideValue(gd);
+        c.save();
+        if (fb) {
+            // Frame-bound guides only draw inside their frame, like Figma.
+            const tl = worldToScreen(fb.x, fb.y);
+            c.beginPath();
+            c.rect(tl.x, tl.y, Math.max(1, fb.w * state.camera.zoom), Math.max(1, fb.h * state.camera.zoom));
+            c.clip();
+        }
         c.beginPath();
         if (gd.axis === 'x') {
-            const x = Math.round(guideScreen(gd)) + .5;
-            c.moveTo(x, 0);
-            c.lineTo(x, area.clientHeight);
+            const x = Math.round(worldToScreen(v, 0).x) + .5;
+            if (fb) {
+                const top = worldToScreen(0, fb.y).y, bottom = worldToScreen(0, fb.y + fb.h).y;
+                c.moveTo(x, top);
+                c.lineTo(x, bottom);
+            }
+            else {
+                c.moveTo(x, 0);
+                c.lineTo(x, area.clientHeight);
+            }
         }
         else {
-            const y = Math.round(guideScreen(gd)) + .5;
-            c.moveTo(0, y);
-            c.lineTo(area.clientWidth, y);
+            const y = Math.round(worldToScreen(0, v).y) + .5;
+            if (fb) {
+                const left = worldToScreen(fb.x, 0).x, right = worldToScreen(fb.x + fb.w, 0).x;
+                c.moveTo(left, y);
+                c.lineTo(right, y);
+            }
+            else {
+                c.moveTo(0, y);
+                c.lineTo(area.clientWidth, y);
+            }
         }
         c.stroke();
+        c.restore();
     }
     const g = state.gesture;
     if (g?.kind === 'guide' && g.p) {
         const gd = pageGuides().find(x => x.id === g.id);
         if (gd) {
             c.font = '600 10px sans-serif';
-            const label = String(gd.value), w = c.measureText(label).width + 12;
+            const label = String(Math.round(guideValue(gd))), w = c.measureText(label).width + 12;
             c.fillRect(g.p.x + 12, g.p.y + 12, w, 18);
             c.fillStyle = '#fff';
             c.fillText(label, g.p.x + 18, g.p.y + 25);
@@ -6532,6 +6581,9 @@ class DocumentModel {
             for (const n of this.descendants(id))
                 all.add(n.id);
         this.page.nodes = this.nodes.filter(n => !all.has(n.id));
+        // Guides bound to a removed frame are its children: they go with it.
+        if (this.page.guides)
+            this.page.guides = pruneGuides(this.page.guides, all);
         this.refresh();
     }
     scene() {
@@ -7890,6 +7942,7 @@ const paths = {
 };
 paths.section = 'M3 4.5h8M3 4.5v15h18v-15h-4M3 9h18';
 paths.mask = 'M4 4h16v16H4ZM12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8';
+paths.scale = 'M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6';
 paths.chevronRight = 'M9 6l6 6-6 6';
 function icon(name, size = 18) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.rect}"/></svg>`; }
 function hydrateIcons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
@@ -8547,7 +8600,7 @@ function setTool(tool) {
     renderInspector();
     $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
     overlay.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(tool) ? 'crosshair' : 'default';
-    $('#canvas-hint').textContent = tool === 'pen' ? 'Click to add points · Drag for Bézier handles · Enter to finish · Click first point to close' : tool === 'text' ? 'Click to add text · Double-click existing text to edit' : 'Space to pan · ⌘/Ctrl scroll to zoom · ? for shortcuts';
+    $('#canvas-hint').textContent = tool === 'pen' ? 'Click to add points · Drag for Bézier handles · Enter to finish · Click first point to close' : tool === 'text' ? 'Click to add text · Double-click existing text to edit' : tool === 'scale' ? 'Drag a handle to scale · everything inside scales too' : 'Space to pan · ⌘/Ctrl scroll to zoom · ? for shortcuts';
     invalidate();
 }
 function getSelectionBounds() { return doc.bounds([...state.selection]); }
@@ -9024,8 +9077,11 @@ function setProperty(prop, value, { live = false } = {}) {
             v = clamp(+v, 0, 100);
         if (prop === 'arcRatio')
             v = clamp(+v, 0, 99);
-        if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'gap', 'gapCross', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
+        if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
             v = Math.max(0, +v);
+        // Auto layout gaps may be negative (overlapping items), like Figma.
+        if (['gap', 'gapCross'].includes(prop))
+            v = Number.isFinite(+v) ? +v : 0;
         if (prop === 'fontSize')
             v = clamp(+v, 1, 512);
         if (typeof v === 'number' && !Number.isFinite(v))
@@ -9160,6 +9216,9 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
             }
             doc.add(copy);
         }
+        // Frame-bound guides are children of the frame: copies get their own.
+        if (!asInstance)
+            pageGuides().push(...clonedGuides(pageGuides(), map, uid));
     }
     if (!asInstance)
         for (const r of results) {
@@ -9181,7 +9240,28 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
 function duplicate() {
     if (!state.selection.size)
         return;
-    transaction('Duplicate layers', () => { const copies = cloneNodes(selectedRoots()); select(copies.map(n => n.id)); });
+    transaction('Duplicate layers', () => {
+        const roots = selectedRoots();
+        // Top-level frames get placed to the right of the copied block (same Y, 48px gap),
+        // so the copy never lands on top of the frame it was copied from.
+        if (roots.length && roots.every(n => !n.parentId && n.type === 'frame')) {
+            const boxes = roots.map(n => doc.world(n.id).box).filter(Boolean);
+            const copies = cloneNodes(roots, 0);
+            if (boxes.length) {
+                const minX = Math.min(...boxes.map(b => b.x)), maxR = Math.max(...boxes.map(b => b.x + b.w));
+                const dx = Math.round((maxR - minX) + 48);
+                for (const c of copies) {
+                    c.x = Math.round(c.x + dx);
+                    doc.touch(c);
+                }
+            }
+            select(copies.map(n => n.id));
+        }
+        else {
+            const copies = cloneNodes(roots);
+            select(copies.map(n => n.id));
+        }
+    });
     toast('Selection duplicated');
 }
 function removeSelection() {
@@ -9393,6 +9473,7 @@ function ungroupSelection() {
             if (!['group', 'frame'].includes(g.type))
                 continue;
             const parent = g.parentId, pm = parent ? doc.world(parent).matrix : identity(), inv = inverse(pm), children = doc.children(g.id);
+            const gIndex = doc.nodes.indexOf(g);
             const transformed = children.map(c => [c, multiply(inv, doc.world(c.id).matrix)]);
             for (const [c, m] of transformed) {
                 c.parentId = parent;
@@ -9400,7 +9481,42 @@ function ungroupSelection() {
                 ids.push(c.id);
                 doc.touch(c);
             }
+            // Re-index first: the moved children are no longer descendants of the
+            // container, so removing it can no longer delete them as well.
+            doc.refresh();
             doc.remove([g.id]);
+            // Keep the children where the container was instead of dropping them at the end.
+            const moved = children.filter(c => doc.get(c.id));
+            for (const c of moved)
+                doc.nodes.splice(doc.nodes.indexOf(c), 1);
+            doc.nodes.splice(Math.min(Math.max(0, gIndex), doc.nodes.length), 0, ...moved);
+            doc.refresh();
+        }
+        select(ids);
+    });
+}
+function unframeSelection() {
+    transaction('Unframe', () => {
+        const ids = [];
+        for (const g of selectedRoots()) {
+            if (g.type !== 'frame')
+                continue;
+            const parent = g.parentId, pm = parent ? doc.world(parent).matrix : identity(), inv = inverse(pm), children = doc.children(g.id);
+            const gIndex = doc.nodes.indexOf(g);
+            const transformed = children.map(c => [c, multiply(inv, doc.world(c.id).matrix)]);
+            for (const [c, m] of transformed) {
+                c.parentId = parent;
+                setFromMatrix(c, m);
+                ids.push(c.id);
+                doc.touch(c);
+            }
+            doc.refresh();
+            doc.remove([g.id]);
+            const moved = children.filter(c => doc.get(c.id));
+            for (const c of moved)
+                doc.nodes.splice(doc.nodes.indexOf(c), 1);
+            doc.nodes.splice(Math.min(Math.max(0, gIndex), doc.nodes.length), 0, ...moved);
+            doc.refresh();
         }
         select(ids);
     });
@@ -10368,6 +10484,8 @@ function pointerDown(e) {
         if (axis || gd) {
             history.begin('Guide');
             if (!gd) {
+                // Starts page-level; pointerMove binds it to a frame when the drag
+                // enters one, and pointerUp settles where it was dropped.
                 gd = { id: uid(), axis, value: Math.round(axis === 'x' ? w.x : w.y) };
                 pageGuides().push(gd);
             }
@@ -10563,20 +10681,25 @@ function smartSnap(dx, dy, g, disabled) {
     const parentIds = new Set(g.roots.map(id => doc.get(id)?.parentId));
     if (options.rulers)
         for (const gd of pageGuides()) {
+            // Frame-bound guides only snap layers whose box overlaps the frame.
+            const fb = guideHostBox(gd);
+            if (fb && (gd.axis === 'x' ? box.y + box.h < fb.y || box.y > fb.y + fb.h : box.x + box.w < fb.x || box.x > fb.x + fb.w))
+                continue;
+            const gv = guideValue(gd);
             const edges = gd.axis === 'x' ? [box.x, box.x + box.w / 2, box.x + box.w] : [box.y, box.y + box.h / 2, box.y + box.h];
             for (const b of edges) {
-                const dist = Math.abs(gd.value - b);
+                const dist = Math.abs(gv - b);
                 if (gd.axis === 'x' && dist < bestX) {
                     bestX = dist;
-                    adjustX = gd.value - b;
+                    adjustX = gv - b;
                     state.guides = state.guides.filter(q => q.axis !== 'x');
-                    state.guides.push({ axis: 'x', value: gd.value });
+                    state.guides.push({ axis: 'x', value: gv });
                 }
                 else if (gd.axis === 'y' && dist < bestY) {
                     bestY = dist;
-                    adjustY = gd.value - b;
+                    adjustY = gv - b;
                     state.guides = state.guides.filter(q => q.axis !== 'y');
-                    state.guides.push({ axis: 'y', value: gd.value });
+                    state.guides.push({ axis: 'y', value: gv });
                 }
             }
         }
@@ -10634,7 +10757,7 @@ function pointerMove(e) {
             invalidate();
             return;
         }
-        if (state.tool === 'select') {
+        if (state.tool === 'select' || state.tool === 'scale') {
             if (!!e.altKey !== !!state.altDown) {
                 state.altDown = !!e.altKey;
                 invalidate();
@@ -10825,7 +10948,10 @@ function pointerMove(e) {
     if (g.kind === 'guide') {
         const gd = pageGuides().find(x => x.id === g.id);
         if (gd) {
-            gd.value = snapGuide(gd.axis, gd.axis === 'x' ? w.x : w.y);
+            const raw = snapGuide(gd.axis, gd.axis === 'x' ? w.x : w.y);
+            // Live rebind: inside a frame the guide becomes that frame's child
+            // (drawn only in there, following it); outside it is page-level again.
+            applyGuideHost(gd, frameHostAt(w), raw);
             g.p = p;
         }
         changed({ ui: false });
@@ -10986,7 +11112,13 @@ function pointerMove(e) {
             Object.assign(n, xyForTopLeft(n, tl));
             n.x = Math.round(n.x);
             n.y = Math.round(n.y);
-            if ((e.ctrlKey || e.metaKey) && ['frame', 'group'].includes(n.type) && !isAutoLayout(n)) {
+            if (state.tool === 'scale') {
+                // Scale tool (K): the frame and everything inside it scales together, like Figma.
+                constrainChildren(n, orig.w, orig.h, true);
+                if (n.type === 'text' && orig.w > 0 && orig.h > 0)
+                    n.fontSize = Math.max(1, orig.fontSize * Math.min(rnw / orig.w, rnh / orig.h));
+            }
+            else if ((e.ctrlKey || e.metaKey) && ['frame', 'group'].includes(n.type) && !isAutoLayout(n)) {
                 // Ctrl / Cmd: only the frame changes; its content stays exactly where it is on the canvas, constraints ignored.
                 for (const c of doc.children(n.id)) {
                     const o = g.descOrig?.get(c.id);
@@ -11062,6 +11194,9 @@ function pointerUp(e) {
         const gd = pageGuides().find(x => x.id === g.id), q = eventPoint(e);
         if (gd && (gd.axis === 'x' ? q.x < RULER : q.y < RULER))
             doc.page.guides = pageGuides().filter(x => x.id !== g.id);
+        else if (gd)
+            // Dropped inside a frame: the guide stays bound to it as its child.
+            applyGuideHost(gd, frameHostAt(screenToWorld(q.x, q.y)), guideValue(gd));
         changed({ commit: true });
         overlay.style.cursor = toolCursor();
         return;
@@ -11698,7 +11833,7 @@ function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = act
 } if (state.selection.size === 1 && an?.isInstance) {
     showMenu(instanceMenuItems(an), x, y);
     return;
-} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
+} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Unframe', action: 'unframe', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Remove auto layout', action: 'removeAutoLayout', key: '⌥⇧A' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
 function modal(content) { closeMenu(); $('#modal').innerHTML = content; modalFixHeader(); $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
 // The header stays in place; everything below it scrolls.
 function modalFixHeader() {
@@ -11918,7 +12053,7 @@ function inspectCSS() {
     modal(`${modalHeader('Inspect CSS', esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>Geometry and visual styles. Vector paths and text shaping remain renderer-specific.</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">Copy CSS</button></div>`);
     $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast('CSS copied')).catch(() => toast('Clipboard blocked. Select the code to copy it.'));
 }
-function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Midas field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup', '⇧⌘G'], ['Commands', '⌘K'], ['Rename layer', '⌘R / double-click'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], [`Nudge ${options.nudge}px`, 'Arrow keys'], [`Nudge ${options.bigNudge}px`, 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
+function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Midas field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Scale', 'K'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup / unframe', '⇧⌘G'], ['Frame', '⌥⌘G'], ['Add auto layout', '⇧A'], ['Remove auto layout', '⌥⇧A'], ['Commands', '⌘K'], ['Rename layer', '⌘R / double-click'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], [`Nudge ${options.nudge}px`, 'Arrow keys'], [`Nudge ${options.bigNudge}px`, 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
 function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Nudge</h3><div class="property-grid"><label class="field" title="Arrow keys"><span>Nudge</span><input type="number" min="0.01" step="any" data-option-num="nudge" value="${options.nudge}" aria-label="Nudge amount"><i class="unit">px</i></label><label class="field" title="Shift + arrow keys"><span>Big</span><input type="number" min="0.01" step="any" data-option-num="bigNudge" value="${options.bigNudge}" aria-label="Big nudge amount"><i class="unit">px</i></label></div><h3>Figma</h3><p class="small-label">Personal access token used to fetch images when you paste from Figma. Stored only in this browser and sent only to api.figma.com.</p><div class="figma-token-row"><label class="field"><span>${icon('lock', 12)}</span><input type="password" id="settings-figma-token" placeholder="${figmaToken() ? 'Saved — type to replace' : 'figd_…'}" autocomplete="off" spellcheck="false" aria-label="Figma personal access token"></label>${figmaToken() ? '<button class="wide-button" id="settings-figma-clear">Remove</button>' : ''}</div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Midas draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
 function toggleTheme() { options.theme = options.theme === 'dark' ? 'light' : 'dark'; delete options.canvasColor; $('#canvas-world').style.backgroundColor = ''; document.documentElement.dataset.theme = options.theme; saveOptions(); refreshUI(); invalidate(); }
 function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .midas document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Midas file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Midas files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
@@ -13451,11 +13586,11 @@ function libComponentsHtml() {
 }
 function renderAssets() {
     const nodes = allNodes(), entries = [];
-    for (const c of nodes.filter(n => n.component))
+    for (const c of nodes.filter(n => n.component && !isSoftDeletedComp(n)))
         if (!parentSetOf(c))
             entries.push({ comp: c, name: c.name, variants: 0, instances: instancesOf(c.id).length, target: c.id });
-    for (const set of nodes.filter(n => n.componentSet)) {
-        const vs = setVariants(set);
+    for (const set of nodes.filter(n => n.componentSet && !n.softDeleted)) {
+        const vs = setVariants(set).filter(v => !isSoftDeletedComp(v));
         if (vs.length)
             entries.push({ comp: vs[0], name: set.name, variants: vs.length, instances: vs.reduce((t, v) => t + instancesOf(v.id).length, 0), target: set.id });
     }
@@ -17959,7 +18094,7 @@ const cssName = s => String(s || 'var').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').
 const FIELD_NAME = /input|field|textbox/i;
 const looksLikeField = n => FIELD_NAME.test(n.name + " " + (parentSetOf(chainComponent(n) || n)?.name || ""));
 /** The states the preview can show for an instance. */
-const LIVE_STATE_IDS = ['default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'error', 'disabled'];
+const LIVE_STATE_IDS = STATE_ORDER;
 /** The text a person types into: the visible text inside the field's content row (its placeholder), and the room it has. */
 function liveField(inst, kids) {
     const walk = (id, path) => kids(id).flatMap(k => k.visible === false ? [] : k.type === 'text' ? [{ t: k, path }] : walk(k.id, [...path, k]));
@@ -18072,6 +18207,22 @@ function liveContext() {
             }
             c.resolvedInMode = true;
             return c;
+        },
+        /** The type of a variable ('color', 'number', 'string', 'boolean'). */
+        varType: id => items.get(id)?.type,
+        /** A layer drawn with the variables the preview has set: Set variable changes what the layers bound to them show. */
+        overridden(n, over) {
+            if (!n.vars || !over.size)
+                return n;
+            let c = null;
+            for (const [prop, id] of Object.entries(n.vars)) {
+                const item = over.has(id) && items.get(id);
+                if (!item || prop.includes(':') || !bindType(prop))
+                    continue;
+                c ||= { ...n, fills: Array.isArray(n.fills) ? structuredClone(n.fills) : n.fills, radii: n.radii && [...n.radii] };
+                writeBound(c, prop, over.get(id), item.type);
+            }
+            return c || n;
         },
         /** The ids that stand for an instance's component: its main component and its component set. */
         componentIdsOf(inst) {
@@ -18216,32 +18367,48 @@ function bhFrameSelect(path, value, frames, action, label) {
     const list = frames.filter(f => roles.includes(f.role || 'page'));
     return `<label class="field"><span>${esc(label)}</span><select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${list.map(f => `<option value="${f.id}" ${f.id === value ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>`;
 }
-/** Daftar interaction: trigger + action + kolom kontekstual sesuai jenis action. */
+/** Daftar interaction: a trigger and the actions it runs in order, each with the fields its kind needs. */
 function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
-    // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
+    const store = varStore(), vars = store.items || [];
     // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
-    const placementRows = (i, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`interactions.${i}.action.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(p => [p, p]))}</label><label class="field"><span>Offset</span><input type="number" data-bh-path="interactions.${i}.action.offset" data-bh-kind="plain" value="${a.offset ?? ''}" placeholder="0" aria-label="Offset in px"><i class="unit">px</i></label>`;
-    const openPick = (i, a, label) => bhComponentButton(`interactions.${i}.action.targetComponentId`, a.targetComponentId, label)
+    const placementRows = (p, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(x => [x, x]))}</label><label class="field"><span>Offset</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="plain" value="${a.offset ?? ''}" placeholder="0" aria-label="Offset in px"><i class="unit">px</i></label>`;
+    // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
+    const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
         + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
-    return list.map((it, i) => {
-        const a = it.action;
-        let extra = '';
-        if (a.type === 'navigate') extra = bhFrameSelect(`interactions.${i}.action.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
-        if (a.type === 'open-dropdown') extra = openPick(i, a, 'Open') + placementRows(i, a, 'bottom-start');
-        if (a.type === 'open-overlay') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`interactions.${i}.action.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`interactions.${i}.action.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
-        if (a.type === 'open-popover') extra = openPick(i, a, 'Open') + bhSelect(`interactions.${i}.action.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(i, a, 'top');
-        if (a.type === 'close-overlay') extra = bhSelect(`interactions.${i}.action.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
-        return `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
-            <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
-            <label class="field"><span>Do</span>${bhSelect(`interactions.${i}.action.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>
-            ${extra}</div>`;
-    }).join('');
+    // Set variable: any variable of the file, grouped by its collection, and the value it is given.
+    const variableRows = (p, a) => {
+        const groups = (store.collections || []).map(c => ({ c, items: vars.filter(v => v.collectionId === c.id) })).filter(g => g.items.length);
+        const item = vars.find(v => v.id === a.variableId);
+        const pick = `<label class="field"><span>Variable</span><select class="full-width" data-bh-path="${p}.variableId" data-bh-kind="plain"><option value="">— choose a variable —</option>${groups.map(g => `<optgroup label="${esc(g.c.name)}">${g.items.map(v => `<option value="${esc(v.id)}" ${v.id === a.variableId ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+        if (!item) return pick;
+        const value = item.type === 'boolean'
+            ? `<label class="field"><span>Value</span>${bhSelect(`${p}.value`, 'bool', String(a.value === true), [['true', 'True'], ['false', 'False']])}</label>`
+            : `<label class="field"><span>Value</span><input data-bh-path="${p}.value" data-bh-kind="plain" placeholder="${item.type === 'color' ? '#4338CA' : item.type === 'number' ? '12' : 'text'}" value="${esc(a.value ?? '')}" aria-label="Value"></label>`;
+        return pick + value;
+    };
+    const fields = (p, a) => {
+        if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page');
+        if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start');
+        if (a.type === 'open-overlay') return openPick(p, a, 'Open') + bhSelect(`${p}.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked');
+        if (a.type === 'open-popover') return openPick(p, a, 'Open') + bhSelect(`${p}.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(p, a, 'top');
+        if (a.type === 'close-overlay') return bhSelect(`${p}.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]);
+        if (a.type === 'set-variable') return variableRows(p, a);
+        if (a.type === 'set-selected') return `<label class="field"><span>Selection</span>${bhSelect(`${p}.mode`, 'plain', a.mode || 'toggle', SELECT_MODES.map(m => [m.id, m.label]))}</label>`;
+        return '';
+    };
+    return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
+        <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
+        ${it.actions.map((a, j) => {
+            const p = `interactions.${i}.actions.${j}`;
+            return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>Do</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${it.actions.length > 1 ? `<button type="button" class="icon-button small" data-bh-act="del-action" data-bh-index="${i}" data-bh-action="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a)}</div>`;
+        }).join('')}
+        <select class="wide-button" data-bh-act="add-action" data-bh-index="${i}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select></div>`).join('');
 }
-/** Bagian khusus input field: label, area typeable, error. */
+/** Bagian khusus input field: the typing layer, what it accepts, and when it is checked. */
 function bhInputHtml(n, layers) {
-    const ib = normalizeInputBehavior(n.inputBehavior) || { label: { exists: true }, typeable: {}, error: {}, validation: {} };
+    const ib = normalizeInputBehavior(n.inputBehavior) || { typeable: {}, validation: {} };
     const texts = layers.filter(l => l.type === 'text');
     const opt = (list, value) => `<option value="">— none —</option>${list.map(l => `<option value="${l.id}" ${l.id === value ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}`;
     let html = '';
@@ -18255,15 +18422,9 @@ function bhInputHtml(n, layers) {
         typeParts.push(bhComponentButton('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden'));
         typeParts.push(bhComponentButton('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown'));
     }
-    typeParts.push(bhStyleValue('input.typeable.placeholder', ib.typeable.placeholder, 'Placeholder'));
     typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
+    typeParts.push(`<label class="field"><span>Validate</span>${bhSelect('input.validation.trigger', 'plain', ib.validation.trigger || 'blur', VALIDATION_TRIGGERS.map(t => [t.id, t.label]))}</label>`);
     html += section('Typeable area', typeParts.join(''));
-    // Error handling
-    const errParts = [];
-    errParts.push(bhStyleValue('input.error.hint', ib.error.hint, 'Hint text'));
-    errParts.push(`<label class="field"><span>Hint text (manual)</span><input data-bh-path="input.error.hintText" data-bh-kind="plain" placeholder="This field is required" value="${esc(ib.error.hintText || '')}"></label>`);
-    errParts.push(`<label class="field"><span>Error frame</span><select class="full-width" data-bh-path="input.error.frameId" data-bh-kind="plain">${opt(layers, ib.error.frameId)}</select></label>`);
-    html += section('Error handling', errParts.join(''));
     return html;
 }
 /** Baris override state: nilai lain per state (di atas nilai dari variable collection). */
@@ -18317,15 +18478,23 @@ function bhStateCollections(n) {
  * Section State mapping: state dibaca dari variable collection yang disambungkan ke layer
  * (terisi otomatis), plus override per state kalau sebuah state perlu nilai lain.
  */
-// Which state rows are open, kept across re-renders of the panel.
-const BH_OPEN = new Set();
-document.addEventListener('toggle', e => {
-    const key = e.target?.dataset?.bhOpen;
-    if (key === undefined) return;
-    if (e.target.open) BH_OPEN.add(key);
-    else BH_OPEN.delete(key);
-}, true);
+// Collapsible sections of the Behavior tab that are open (State mapping starts closed, like Selection colors).
+const BH_SECTIONS = new Set();
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-bh-section]');
+    if (!b) return;
+    const k = b.dataset.bhSection;
+    if (BH_SECTIONS.has(k)) BH_SECTIONS.delete(k);
+    else BH_SECTIONS.add(k);
+    renderInspector();
+});
+const bhPlain = (_title, body) => body;
 function bhStateSection(n) {
+    const open = BH_SECTIONS.has('state');
+    const head = `<div class="section-heading"><button class="sc-toggle" data-bh-section="state" aria-expanded="${open}" aria-label="Toggle state mapping">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>State mapping</span></button></div>`;
+    return `<section class="inspector-section sc-section">${head}${open ? `<div class="bh-section-body">${bhStateBody(n)}</div>` : ''}</section>`;
+}
+function bhStateBody(n) {
     const colls = bhStateCollections(n);
     const stateColls = bhCollections().filter(isStateCollection);
     const mapping = normalizeStateMapping(n.stateMapping);
@@ -18333,9 +18502,10 @@ function bhStateSection(n) {
         ? `<label class="field"><span>Collection</span><select class="full-width" data-bh-act="connect-collection" aria-label="Connect a state collection"><option value="">— connect a collection —</option>${stateColls.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>`
         : '<p class="small-label">No variable collection with state modes yet. Create one in the Variables window (e.g. <b>Button states</b> with modes Default / Hover / Pressed).</p>';
     if (!colls.length)
-        return section('State mapping', `<p class="small-label">States are read from a <b>variable collection</b>: connect a collection with state modes, and the bound variables change value as the state changes.</p>${connect}`);
-    const states = statesFor(bhTypeOf(n));
+        return bhPlain('State mapping', `<p class="small-label">States are read from a <b>variable collection</b>: connect a collection with state modes, and the bound variables change value as the state changes.</p>${connect}`);
+    const type = bhTypeOf(n);
     const bodies = colls.map(sc => {
+        const states = statesIn(sc.coll, type);
         const rows = states.map(state => {
             const picked = pickedModeId(n.stateModes, sc.coll.id, state);
             const auto = modeForState(sc.coll, state), mode = modeForState(sc.coll, state, picked);
@@ -18344,23 +18514,19 @@ function bhStateSection(n) {
             const used = Object.keys(overrides);
             const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
             const options = [`<option value="">${esc(auto ? `Automatic · ${auto.name}` : 'Not set · uses the fallback state')}</option>`, ...sc.coll.modes.map(m => `<option value="${esc(m.id)}" ${m.id === picked ? 'selected' : ''}>${esc(m.name)}</option>`)].join('');
-            const openKey = `${sc.coll.id}:${state}`;
-            return `<details class="bh-state" data-bh-open="${esc(openKey)}" ${BH_OPEN.has(openKey) ? 'open' : ''}>
-                <summary><b>${esc(STATE_LABEL[state] || state)}</b><span class="small-label">${esc(mode ? mode.name : 'Not set')}</span></summary>
-                <div class="bh-state-body">
-                <p class="small-label">${esc(STATE_HINT[state] || '')}</p>
-                <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(STATE_LABEL[state] || state)}">${options}</select>
+            return `<div class="bh-state">
+                <b class="bh-state-label">${esc(stateLabel(state))}</b>
+                <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(stateLabel(state))}">${options}</select>
                 ${values.length
                     ? `<details class="bh-values"><summary class="small-label">${values.length} bound value${values.length === 1 ? '' : 's'} in mode ${esc(mode.name)}</summary>${values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(v.layer ? `${v.layer} · ${bhPropLabel(v.prop)}` : bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')}</details>`
                     : (mode ? '<p class="small-label">No variable from this collection is bound to this layer.</p>' : '')}
                 ${used.map(prop => bhOverrideRow(state, prop, overrides[prop])).join('')}
                 ${free.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
-                </div>
-            </details>`;
+            </div>`;
         }).join('');
         return `<div class="bh-coll"><div class="bh-coll-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
     }).join('');
-    return section('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
+    return bhPlain('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
 }
 function prototypeHtml() {
     const n = activeNode();
@@ -18377,13 +18543,16 @@ function prototypeHtml() {
     const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
     const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
     let html = section('This component', `<div class="small-label"><b>Component</b>: ${esc(compName)}</div><div class="small-label"><b>Type</b>: ${esc(TYPE_LABEL[type] || type)}</div><div class="small-label"><b>Kind</b>: ${esc(kind)}</div>`);
+    const typeable = n.isInstance ? (n.typeable ?? looksLikeField(n)) : type === 'input';
+    if (n.isInstance)
+        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label><label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+    // The typing settings appear once the layer is marked as a field.
+    if (typeable) html += bhInputHtml(n, bhLayers(n));
     html += bhStateSection(n);
-    if (type === 'input') html += bhInputHtml(n, bhLayers(n));
     if (n.isInstance) {
         html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div>
             <select class="wide-button" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`);
-        const typeable = n.typeable ?? looksLikeField(n);
-        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label>${type === 'input' ? '' : `<label class="checkbox-row"><input type="checkbox" data-proto="required" ${n.required ? 'checked' : ''}> Required</label><label class="small-label">Error message</label><input type="text" class="wide-input" data-proto="errorMessage" placeholder="This field is required" value="${esc(n.errorMessage || '')}">`}<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+
     }
     else html += section('Interaction', '<p class="small-label">Interactions belong to an instance. Select an instance of this component to add them.</p>');
     return html;
@@ -18439,7 +18608,22 @@ function bhAction(n, t) {
     if (act === 'add-interaction') {
         if (!t.value) return;
         const list = normalizeInteractions(n.interactions);
-        list.push({ id: `i${Date.now().toString(36)}`, trigger: 'onClick', action: { type: t.value } });
+        list.push({ id: `i${Date.now().toString(36)}`, trigger: 'onClick', actions: [{ type: t.value }] });
+        n.interactions = list;
+        return;
+    }
+    if (act === 'add-action') {
+        if (!t.value) return;
+        const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
+        if (!it) return;
+        it.actions.push({ type: t.value });
+        n.interactions = normalizeInteractions(list);
+        return;
+    }
+    if (act === 'del-action') {
+        const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
+        if (!it || it.actions.length < 2) return;
+        it.actions.splice(Number(t.dataset.bhAction), 1);
         n.interactions = list;
         return;
     }
@@ -18987,7 +19171,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, removeAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, unframe: unframeSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -19008,7 +19192,7 @@ const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: (
         else
             addAutoLayout();
     }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
-const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Preview app', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['Remove auto layout (Alt+Shift+A)', 'removeAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Unframe selection', 'unframe'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Preview app', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
 function commandPalette() {
     modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
     let selectedIndex = 0, filtered = [];
@@ -20741,6 +20925,11 @@ document.addEventListener('keydown', e => {
         return;
     }
     if (!cmd && e.altKey && e.shiftKey) {
+        if (e.code === 'KeyA') {
+            e.preventDefault();
+            removeAutoLayout();
+            return;
+        }
         const op = { KeyU: 'booleanUnion', KeyS: 'booleanSubtract', KeyI: 'booleanIntersect', KeyE: 'booleanExclude', KeyF: 'flatten' }[e.code];
         if (op) {
             e.preventDefault();
@@ -20964,7 +21153,7 @@ document.addEventListener('keydown', e => {
         return;
     }
     if (!cmd && !e.altKey) {
-        const tools = { v: 'select', f: 'frame', r: 'rect', o: 'ellipse', l: 'line', p: 'pen', t: 'text', h: 'hand' };
+        const tools = { v: 'select', f: 'frame', r: 'rect', o: 'ellipse', l: 'line', p: 'pen', t: 'text', h: 'hand', k: 'scale' };
         if (e.shiftKey && key === 's') {
             e.preventDefault();
             setTool('section');
