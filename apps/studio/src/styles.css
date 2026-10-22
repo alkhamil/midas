@@ -2593,6 +2593,7 @@ select.vw-text { cursor: pointer }
 /* ===== shared variable list (Figma-style picker) ===== */
 .var-picker { display: flex; flex-direction: column; width: 280px; max-height: min(520px, calc(100vh - 16px)); overflow: hidden }
 .var-picker .vp-list { display: block; gap: 0 }
+.var-picker .vp-item>svg { flex: none; color: var(--muted) }
 .vpk-item { height: 28px }
 .var-picker .vp-list, .pk-libs { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 8px }
 .pk-libwrap { display: flex; flex-direction: column; max-height: 420px; min-height: 0 }
@@ -3238,6 +3239,7 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .bh-row>button{grid-column:2;grid-row:1}
 .bh-value{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .bh-value-row{display:flex;gap:5px;min-width:0}
+.bh-value-row>.bh-pickrow{flex:1;min-width:0}
 .bh-value-row>select,.bh-value-row>input{flex:1;min-width:0}
 .bh-value-row>input{height:28px;border-radius:6px;background:var(--canvas);color:var(--text);padding:0 8px;font-size:12px;border:1px solid var(--border-soft)}
 .bh-add{display:flex;align-items:center;gap:6px;margin-top:8px}
@@ -3263,6 +3265,15 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .bh-action-head .field{flex:1;min-width:0}
 .bh-coll-head{display:flex;align-items:center;justify-content:space-between;padding:2px 0 6px;font-size:11px;font-weight:600}
 .bh-coll-head .icon-button{margin:-3px -3px -3px 0}
+.bh-target{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
+.bh-thumb{flex:0 0 96px;width:96px;max-height:120px;overflow:hidden;border-radius:6px;background:var(--canvas);border:1px solid var(--border-soft)}
+.bh-thumb svg{display:block;width:100%;height:auto}
+.bh-target-meta{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.bh-target-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-target-meta small{font-size:11px;opacity:.65}
+.target-panel{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-soft);max-height:42%;overflow-y:auto}
+.target-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:600}
+.target-note{font-size:11px;opacity:.65}
 .bh-value-line{display:flex;align-items:center;gap:6px}
 .bh-pickrow>span{cursor:default}
 .bh-pickrow .swap-btn{background:transparent;height:29px}
@@ -3279,27 +3290,36 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .cb-bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:11px}
 .cb-bh-override{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
-/* ===== Behavior tab: hierarchy & spacing (Design/Behavior inspector) ===== */
-.inspector-section .small-label{display:block;margin:0}
-.inspector-section .small-label + .small-label{margin-top:5px}
-.inspector-section .small-label + .field,
-.inspector-section .field + .field,
-.inspector-section .field + .checkbox-row,
-.inspector-section .checkbox-row + .field,
-.inspector-section .field + select.full-width,
-.inspector-section select.full-width + .field{margin-top:8px}
-.inspector-section label.checkbox-row + label.checkbox-row{margin-top:8px}
-.inspector-section select.full-width{margin-top:8px}
+/* ===== Behavior tab: hierarchy & spacing =====
+   Scoped to the Behavior tab (#inspector.bh-tab). These generic descendant rules used to hit
+   every section, adding margin-top to the second field of Position's/Appearance's grids and
+   pushing Y, H and the radius field down by 4-8px. */
+#inspector.bh-tab .inspector-section .small-label{display:block;margin:0}
+#inspector.bh-tab .inspector-section .small-label + .small-label{margin-top:5px}
+#inspector.bh-tab .inspector-section .small-label + .field,
+#inspector.bh-tab .inspector-section .field + .field,
+#inspector.bh-tab .inspector-section .field + .checkbox-row,
+#inspector.bh-tab .inspector-section .checkbox-row + .field,
+#inspector.bh-tab .inspector-section .field + select.full-width,
+#inspector.bh-tab .inspector-section select.full-width + .field{margin-top:8px}
+#inspector.bh-tab .inspector-section label.checkbox-row + label.checkbox-row{margin-top:8px}
+#inspector.bh-tab .inspector-section select.full-width{margin-top:8px}
 /* Selects inside a row sit beside a label or input: the standalone margin above
    would push them (and only them) down, out of vertical alignment. */
-.inspector-section .field select.full-width,
-.inspector-section .bh-value-row select.full-width,
-.inspector-section .bh-row>select.full-width{margin-top:0}
-.inspector-section .bh-section-body{display:flex;flex-direction:column;gap:10px;padding-top:8px}
-.inspector-section .bh-coll{display:flex;flex-direction:column;gap:8px}
-.inspector-section .bh-coll + .bh-coll{margin-top:10px}
-.inspector-section .bh-state{gap:8px;padding:10px 0}
-.inspector-section .bh-state .full-width{margin-top:6px}
-.inspector-section .bh-list{gap:8px;margin-top:10px}
-.inspector-section .bh-add{margin-top:10px}
-.inspector-section .section-heading + .small-label{margin-top:0}
+#inspector.bh-tab .inspector-section .field select.full-width,
+#inspector.bh-tab .inspector-section .bh-value-row select.full-width,
+#inspector.bh-tab .inspector-section .bh-row>select.full-width{margin-top:0}
+#inspector.bh-tab .inspector-section .bh-section-body{display:flex;flex-direction:column;gap:10px;padding-top:8px}
+#inspector.bh-tab .inspector-section .bh-coll{display:flex;flex-direction:column;gap:8px}
+#inspector.bh-tab .inspector-section .bh-coll + .bh-coll{margin-top:10px}
+#inspector.bh-tab .inspector-section .bh-state{gap:8px;padding:10px 0}
+#inspector.bh-tab .inspector-section .bh-state .full-width{margin-top:6px}
+#inspector.bh-tab .inspector-section .bh-list{gap:8px;margin-top:10px}
+#inspector.bh-tab .inspector-section .bh-add{margin-top:10px}
+#inspector.bh-tab .inspector-section .section-heading + .small-label{margin-top:0}
+
+/* Behavior tab: interactions inherited from the main component (read-only on the instance) */
+.bh-inherited-note{margin:0 0 8px}
+.bh-card.is-inherited{border-style:dashed;opacity:.9}
+.bh-inherited-action{margin:0}
+.bh-card.is-inherited .bh-card-head{margin-bottom:4px}

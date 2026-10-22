@@ -1,7 +1,7 @@
 // Model perilaku (tab Behavior): tipe komponen, state mapping ke variable, interaction, input behavior.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { componentTypeOf, getPath, isStateCollection, modeForState, normalizeInputBehavior, normalizePlacement, PLACEMENTS, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, statesFor, effectiveState, normalizeAction, SELECT_MODES, stateLabel, statesIn } from '../src/engine/behavior.js';
+import { componentTypeOf, getPath, interactionsForNode, isStateCollection, modeForState, normalizeInputBehavior, normalizePlacement, PLACEMENTS, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, stateOfModeId, statesFor, effectiveState, normalizeAction, SELECT_MODES, stateLabel, statesIn } from '../src/engine/behavior.js';
 
 test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('Button Primary'), 'button');
@@ -42,6 +42,16 @@ test('a state reads the mode its name suggests, by name priority and not by coll
     assert.equal(name('error-empty'), 'Error-empty');
     assert.equal(name('error'), undefined, 'a collection with only error-empty / error-filled has no plain error mode');
     assert.equal(modeForState({ id: 'c', modes: [{ id: 'a', name: 'Default' }] }, 'hover'), null);
+});
+
+test('open actions remember the picked variant', () => {
+    const a = normalizeAction({ type: 'open-overlay', targetComponentId: 'set1', targetVariantId: 'v9' });
+    assert.equal(a.targetComponentId, 'set1');
+    assert.equal(a.targetVariantId, 'v9');
+    const plain = normalizeAction({ type: 'open-overlay', targetComponentId: 'set1' });
+    assert.equal(plain.targetVariantId, undefined);
+    const nav = normalizeAction({ type: 'navigate', targetFrameId: 'f1', targetVariantId: 'v9' });
+    assert.equal(nav.targetVariantId, undefined, 'only open actions carry a variant');
 });
 
 test('a state can be pointed at any mode, whatever it is called', () => {
@@ -154,12 +164,16 @@ test('an interaction runs several actions in order; the single action of earlier
 });
 
 test('Set variable and Set active / selected keep what they need', () => {
+    assert.deepEqual(normalizeAction({ type: 'set-variable', collectionId: 'states', modeId: 'pressed' }), { type: 'set-variable', collectionId: 'states', modeId: 'pressed' });
+    assert.deepEqual(normalizeAction({ type: 'set-variable', modeId: 'pressed' }), { type: 'set-variable', modeId: 'pressed' });
+    // Older files set one variable to one value; they keep working until the action is edited.
     assert.deepEqual(normalizeAction({ type: 'set-variable', variableId: 'v', value: '#fff' }), { type: 'set-variable', variableId: 'v', value: '#fff' });
     assert.deepEqual(normalizeAction({ type: 'set-variable', value: '' }), { type: 'set-variable' });
     assert.equal(normalizeAction({ type: 'set-selected' }).mode, 'toggle');
     assert.equal(normalizeAction({ type: 'set-selected', mode: 'exclusive' }).mode, 'exclusive');
     assert.equal(normalizeAction({ type: 'set-selected', mode: 'nonsense' }).mode, 'toggle');
     assert.deepEqual(SELECT_MODES.map(m => m.id), ['toggle', 'select', 'exclusive']);
+    assert.ok(SELECT_MODES.every(m => m.hint), 'each selection mode explains what it does');
     assert.equal(normalizeAction({ type: 'navigate', variableId: 'ignored', mode: 'x' }).variableId, undefined);
 });
 
@@ -232,4 +246,26 @@ test('values are written and read with a dotted path', () => {
     assert.equal(getPath(root, 'state.hover.fill.variableId'), 'primary');
     assert.deepEqual(getPath(root, 'state.hover.fill'), { variableId: 'primary' });
     assert.equal(getPath(root, 'state.hover.radius'), undefined);
+});
+
+test('an instance inherits the component interactions until it sets its own', () => {
+    const source = { interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate', targetFrameId: 'home' }] }] };
+    const set = { interactions: [{ trigger: 'onHover', actions: [{ type: 'open-popover', targetComponentId: 'tip' }] }] };
+    const inherits = interactionsForNode({ isInstance: true, interactions: [] }, source, set);
+    assert.equal(inherits.inherited, true);
+    assert.equal(inherits.list.length, 1);
+    assert.equal(inherits.list[0].trigger, 'onHover');            // set first, then main component
+    const own = interactionsForNode({ isInstance: true, interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate', targetFrameId: 'own' }] }] }, source, set);
+    assert.equal(own.inherited, false);
+    assert.equal(own.list[0].actions[0].targetFrameId, 'own');    // own settings win
+    const empty = interactionsForNode({ isInstance: true }, source, null);
+    assert.equal(empty.list[0].actions[0].targetFrameId, 'home');
+});
+
+test('a mode id maps back to the state its name stands for', () => {
+    const coll = { modes: [{ id: 'm-default', name: 'Default' }, { id: 'm-hover', name: 'Hover' }, { id: 'm-light', name: 'Light' }] };
+    assert.equal(stateOfModeId(coll, 'm-hover'), 'hover');
+    assert.equal(stateOfModeId(coll, 'm-default'), 'default');
+    assert.equal(stateOfModeId(coll, 'm-light'), null);
+    assert.equal(stateOfModeId(coll, 'missing'), null);
 });

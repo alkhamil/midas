@@ -9,7 +9,7 @@
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
-import { effectiveState, normalizeInteractions, normalizePlacement, overridesFor, stateChain } from '../engine/behavior.js';
+import { effectiveState, normalizeInteractions, normalizePlacement, overridesFor, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -73,14 +73,63 @@ function strokeOverlay(ctx, n, d) {
     o.dataset.stroke = '1';
 }
 
-function pathData(points, closed) {
+/** Slot ikon yang isinya ditukar tidak boleh ikut mengecil/membesar: sumbu yang hug dipatok fixed. */
+export function pinBox(base) {
+    const out = { ...base };
+    if (out.layoutSizingH === 'hug') out.layoutSizingH = 'fixed';
+    if (out.layoutSizingV === 'hug') out.layoutSizingV = 'fixed';
+    return out;
+}
+
+/** State mapping yang menunjuk ke lapisan dalam ikon lama diarahkan ke lapisan senama di ikon baru. */
+export function retargetIconLayers(ctx, inner, to) {
+    for (const p of ['fill', 'stroke']) {
+        const t = inner.target?.[p], src = t && ctx.node(t);
+        const dst = src && ctx.descendants(to.id).find(d => d.name === src.name);
+        if (dst) inner.target[p] = dst.id;
+    }
+}
+
+export function pathData(points, closed, contours) {
     if (!points?.length) return '';
     const f = v => Math.round(v * 1000) / 1000;
     let s = `M${f(points[0].x)} ${f(points[0].y)}`;
-    const seg = (a, b) => ` C${f((a.out || a).x)} ${f((a.out || a).y)} ${f((b.in || b).x)} ${f((b.in || b).y)} ${f(b.x)} ${f(b.y)}`;
+    const seg = (a, b) => (a.out || b.in) ? ` C${f(a.out?.x ?? a.x)} ${f(a.out?.y ?? a.y)} ${f(b.in?.x ?? b.x)} ${f(b.in?.y ?? b.y)} ${f(b.x)} ${f(b.y)}` : ` L${f(b.x)} ${f(b.y)}`;
     for (let i = 1; i < points.length; i++) s += seg(points[i - 1], points[i]);
     if (closed) s += seg(points.at(-1), points[0]) + 'Z';
+    for (const c of contours || []) {
+        const cp = c.points || [];
+        if (!cp.length) continue;
+        s += `M${f(cp[0].x)} ${f(cp[0].y)}`;
+        for (let i = 1; i < cp.length; i++) s += seg(cp[i - 1], cp[i]);
+        if (c.closed !== false) s += seg(cp.at(-1), cp[0]) + 'Z';
+    }
     return s;
+}
+
+/** Dash array kanvas untuk sebuah node: pola `dash` / titik `dot`, selain itu garis utuh. */
+const dashOf = n => n.strokeStyle === 'dash' ? [n.strokeDash ?? 10, n.strokeGap ?? 10] : n.strokeStyle === 'dot' ? [.01, Math.max(2, (n.strokeWidth || 1) * 2)] : null;
+
+/** Garis (bisa diagonal, (0,0)-(w,h)) sebagai SVG seperti yang dilukis kanvas. */
+function lineOfPath(n, parent, off) {
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${Math.max(.001, n.w || 0)} ${Math.max(.001, n.h || 0)}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    Object.assign(svg.style, { ...placed(n, off), overflow: 'visible', opacity: n.opacity ?? 1 });
+    const p = document.createElementNS(SVG, 'path');
+    p.setAttribute('d', `M0 0L${Math.round((n.w || 0) * 1000) / 1000} ${Math.round((n.h || 0) * 1000) / 1000}`);
+    p.setAttribute('fill', 'none');
+    if (n.strokeWidth && n.strokeVisible !== false) {
+        p.setAttribute('stroke', rgba(n.stroke, n.strokeOpacity ?? 1));
+        p.setAttribute('stroke-width', n.strokeWidth);
+        p.setAttribute('vector-effect', 'non-scaling-stroke');
+        p.setAttribute('stroke-linecap', n.strokeCap || 'round');
+        const dash = dashOf(n);
+        if (dash) p.setAttribute('stroke-dasharray', dash.join(' '));
+    }
+    svg.appendChild(p);
+    parent.appendChild(svg);
+    return svg;
 }
 
 function svgOfPath(n, parent, style) {
@@ -89,11 +138,12 @@ function svgOfPath(n, parent, style) {
     svg.setAttribute('preserveAspectRatio', 'none');
     Object.assign(svg.style, style, { overflow: 'visible' });
     const p = document.createElementNS(SVG, 'path');
-    p.setAttribute('d', pathData(n.points, n.closed));
+    p.setAttribute('d', pathData(n.points, n.closed, n.contours));
     const f = fillsOf(n).find(x => x.type === 'solid');
     p.setAttribute('fill', f ? rgba(f.color, f.opacity ?? 1) : 'none');
     if (n.fillRule) p.setAttribute('fill-rule', n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
-    if (n.strokeWidth) {
+    strokeExtras(p, n);
+    if (n.strokeWidth && n.strokeVisible !== false) {
         p.setAttribute('stroke', rgba(n.stroke, n.strokeOpacity ?? 1));
         p.setAttribute('stroke-width', n.strokeWidth);
         p.setAttribute('vector-effect', 'non-scaling-stroke');
@@ -107,13 +157,22 @@ function svgOfPath(n, parent, style) {
 function maskSvg(kidsOf, m) {
     const shape = n => {
         const at = `translate(${n.x} ${n.y})`;
-        if (n.type === 'path') return `<path transform="${at} scale(${(n.w || 1) / (n.pathW || n.w || 1)} ${(n.h || 1) / (n.pathH || n.h || 1)})" d="${pathData(n.points, n.closed)}" fill="#000" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}"/>`;
+        if (n.type === 'path') return `<path transform="${at} scale(${(n.w || 1) / (n.pathW || n.w || 1)} ${(n.h || 1) / (n.pathH || n.h || 1)})" d="${pathData(n.points, n.closed, n.contours)}" fill="#000" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}"/>`;
         if (n.type === 'ellipse') return `<ellipse transform="${at}" cx="${n.w / 2}" cy="${n.h / 2}" rx="${n.w / 2}" ry="${n.h / 2}" fill="#000"/>`;
         if (n.type === 'rect') return `<rect transform="${at}" width="${n.w}" height="${n.h}" rx="${n.radius || 0}" fill="#000"/>`;
         return `<g transform="${at}">${(kidsOf.get(n.id) || []).map(shape).join('')}</g>`;
     };
     const body = m.type === 'frame' ? (kidsOf.get(m.id) || []).map(shape).join('') : shape({ ...m, x: 0, y: 0 });
     return `<svg xmlns="${SVG}" viewBox="0 0 ${m.w} ${m.h}" width="${m.w}" height="${m.h}">${body}</svg>`;
+}
+
+/** Ujung, sambungan, dan pola garis kanvas pada sebuah path SVG. */
+function strokeExtras(p, n) {
+    if (!n.strokeWidth || n.strokeVisible === false) return;
+    p.setAttribute('stroke-linecap', n.strokeCap || 'round');
+    p.setAttribute('stroke-linejoin', n.strokeJoin || 'round');
+    const dash = dashOf(n);
+    if (dash) p.setAttribute('stroke-dasharray', dash.join(' '));
 }
 
 function textStyle(ctx, n) {
@@ -146,16 +205,21 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     const stage = el('div', { position: 'relative', flex: 'none', transformOrigin: 'center center' }, root);
     const css = el('style', null, root);
     css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit;border:0;border-radius:0;box-shadow:none;outline:0;background:transparent;appearance:none;-webkit-appearance:none} .live-preview input:hover,.live-preview input:focus,.live-preview input:focus-visible{border:0;outline:0;box-shadow:none} .live-preview input:-webkit-autofill{box-shadow:0 0 0 1000px transparent inset;-webkit-text-fill-color:currentColor;transition:background-color 9999s}`;
+    css.textContent += `@keyframes mvt-pop{from{opacity:0;transform:scale(.96) translateY(6px)}}@keyframes mvt-fade{from{opacity:0}}::view-transition-old(root),::view-transition-new(root){animation-duration:var(--mvt-dur,180ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}::view-transition-old(midas-stage),::view-transition-new(midas-stage){animation-duration:var(--mvt-dur,220ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}html[data-mvt='slide-left']::view-transition-old(midas-stage){animation-name:mvt-old-left}html[data-mvt='slide-left']::view-transition-new(midas-stage){animation-name:mvt-new-left}html[data-mvt='slide-right']::view-transition-old(midas-stage){animation-name:mvt-old-right}html[data-mvt='slide-right']::view-transition-new(midas-stage){animation-name:mvt-new-right}html[data-mvt='slide-up']::view-transition-old(midas-stage){animation-name:mvt-old-up}html[data-mvt='slide-up']::view-transition-new(midas-stage){animation-name:mvt-new-up}html[data-mvt='slide-down']::view-transition-old(midas-stage){animation-name:mvt-old-down}html[data-mvt='slide-down']::view-transition-new(midas-stage){animation-name:mvt-new-down}html[data-mvt='fade-scale']::view-transition-old(midas-stage){animation-name:mvt-old-scale}html[data-mvt='fade-scale']::view-transition-new(midas-stage){animation-name:mvt-new-scale}@keyframes mvt-old-left{to{transform:translateX(-60px);opacity:0}}@keyframes mvt-new-left{from{transform:translateX(60px);opacity:0}}@keyframes mvt-old-right{to{transform:translateX(60px);opacity:0}}@keyframes mvt-new-right{from{transform:translateX(-60px);opacity:0}}@keyframes mvt-old-up{to{transform:translateY(-60px);opacity:0}}@keyframes mvt-new-up{from{transform:translateY(60px);opacity:0}}@keyframes mvt-old-down{to{transform:translateY(60px);opacity:0}}@keyframes mvt-new-down{from{transform:translateY(-60px);opacity:0}}@keyframes mvt-old-scale{to{transform:scale(.98);opacity:0}}@keyframes mvt-new-scale{from{transform:scale(.96);opacity:0}}`;
     const runtime = new Map();            // instance id -> { state, value, error, selected, indeterminate, reveal, touched }
-    const varOver = new Map();            // variable id -> the value Set variable gave it (kept while the preview is open)
+    const varOver = new Map();            // variable id -> the value Set variable gave it (older files; kept while the preview is open)
+    const modeOver = new Map();           // collection id -> the mode Set variable switched it to (kept while the preview is open)
     const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
+    let lastFrame = null, navMotion = null;
     // How the last focus arrived: a click on a field means "selected, ready to type"; Tab means "focused".
     let byPointer = false, caretAtEnd = false;
     root.addEventListener('pointerdown', () => { byPointer = true; }, true);
     root.addEventListener('keydown', () => { byPointer = false; }, true);
 
-    const stateOf = n => runtime.get(n.id)?.state || (n.disabled ? 'disabled' : 'default');
+    // What the canvas shows for the layer: the state its variable mode points at (Design), else default.
+    const baseStateOf = n => ctx.canvasState?.(n) || (n.disabled ? 'disabled' : 'default');
+    const stateOf = n => runtime.get(n.id)?.state || baseStateOf(n);
     // What is drawn is the base state plus what stays with the layer: checked / current, indeterminate, an empty value.
     const effStateOf = n => { const r = runtime.get(n.id) || {}; return effectiveState(stateOf(n), { selected: r.selected, indeterminate: r.indeterminate, empty: !r.value }); };
     /** A layer that does something when clicked (a page to go to, or a click interaction) shows the pointer, not the text cursor. */
@@ -240,7 +304,13 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
                 const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = effStateOf(n);
-                const src = pick(variants?.byState, st), swap = src && src !== variants.current;
+                // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
+                // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
+                // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
+                const rt = runtime.get(n.id);
+                const freshSt = effectiveState(baseStateOf(n), { empty: true });
+                const src = !rt || st === freshSt ? null : pick(variants?.byState, st);
+                const swap = src && src !== variants.current;
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
                 inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {} };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
@@ -257,19 +327,22 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
                 wire = { inst: n, variants, modes, field };
                 // The icon of a password field is an instance of one of the two icon components picked in the Behavior tab:
                 // it is drawn as the one that matches whether the text is shown, and clicking it flips that.
+                // Hanya isi ikon yang ditukar: wrapper keeps its own box, colors and layout, lalu dipatok
+                // agar sumbu hug tidak ikut mengecil/membesar mengikuti isi baru.
                 const form = o?.form, tg = form?.input?.typeable, ids = tg ? ctx.componentIdsOf(n) : [];
                 if (tg && ids.some(id => id === tg.showIconId || id === tg.hideIconId)) {
                     toggle = form;
                     const want = runtime.get(form.inst.id)?.reveal ? tg.hideIconId : tg.showIconId;
                     const to = want && !ids.includes(want) ? ctx.componentTarget(want, ctx.node(ids[0])) : null;
                     if (to) {
-                        base = { ...to, x: n.x, y: n.y, w: n.w, h: n.h, layoutSizingH: n.layoutSizingH, layoutSizingV: n.layoutSizingV, layoutPositioning: n.layoutPositioning, name: n.name };
+                        base = pinBox(base);
+                        retargetIconLayers(ctx, inner, to);
                         kidsOf = to.id;
                     }
                 }
             }
             else if (n.prototypeTarget) wire = { inst: n };
-            if (varOver.size) base = ctx.overridden(base, varOver);
+            if (varOver.size || modeOver.size) base = ctx.overridden(base, varOver, modeOver);
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
             if (toggle) c._toggle = toggle;
             if (c.vars) c.vars = { ...c.vars };
@@ -309,7 +382,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         const drawNode = (c, parent, off) => {
             if (c.type === 'text') return c._field ? renderField(c, parent, off) : textBox(c, parent, off);
             if (c.type === 'path') return svgOfPath(c, parent, { ...placed(c, off), opacity: c.opacity ?? 1 });
-            if (c.type === 'line') return el('div', { ...placed(c, off), height: px(c.strokeWidth || 1), background: rgba(c.stroke, c.strokeOpacity ?? 1) }, parent);
+            if (c.type === 'line') return lineOfPath(c, parent, off);
             const d = el('div', { ...placed(c, off), ...(c.type === 'group' ? {} : paint(ctx, c)) }, parent);
             d.dataset.node = c._wire?.inst.id || c.id;
             if (c.type === 'frame' && c.clip) d.style.overflow = 'hidden';
@@ -427,8 +500,13 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
                 for (const action of it.actions)         // in the order they are listed
                     runAction(action, inst, anchor, rect, trigger);
     }
-    /** Set variable: the variables the layers are bound to take the value, and the layers are drawn again. */
+    /** Set variable: switch a collection to one of its modes (all its variables follow), or set one variable in older files. */
     function setVariable(action) {
+        if (action.collectionId && action.modeId) {
+            modeOver.set(action.collectionId, action.modeId);
+            draw();
+            return;
+        }
         if (!action.variableId) return;
         const type = ctx.varType?.(action.variableId);
         let value = action.value;
@@ -453,11 +531,11 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     function runAction(action, inst, anchor, rect, trigger) {
         if (!action) return;
         if (action.type === 'navigate') {
-            if (action.targetFrameId && ctx.node(action.targetFrameId)) show(action.targetFrameId);
+            if (action.targetFrameId && ctx.node(action.targetFrameId)) show(action.targetFrameId, resolveMotion(action, 'navigate'));
             return;
         }
         if (action.type === 'close-overlay') {
-            closeLayers(action.close === 'all' ? 'all' : 'current');
+            closeLayers(action.close === 'all' ? 'all' : 'current', resolveMotion(action, 'close-overlay'));
             return;
         }
         if (action.type === 'set-variable') return setVariable(action);
@@ -468,7 +546,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
     function openLayer(action, anchor, rect, from) {
         // A component picked in the Behavior tab, else a frame chosen before components were offered.
-        const frame = action.targetComponentId ? ctx.componentTarget(action.targetComponentId) : ctx.node(action.targetFrameId);
+        const frame = action.targetComponentId ? ctx.componentTarget(action.targetComponentId, action.targetVariantId && ctx.node(action.targetVariantId)) : ctx.node(action.targetFrameId);
         if (!frame) return;
         const kind = action.type === 'open-dropdown' ? 'dropdown' : action.type === 'open-overlay' ? 'overlay' : 'popover';
         // The same trigger on the same layer: a hover that redraws its anchor must not stack copies; a click toggles it.
@@ -504,7 +582,11 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             if (side === 'top' || side === 'bottom') place(along(x, w, a.width), side === 'top' ? y - h - off : y + a.height + off);
             else place(side === 'left' ? x - w - off : x + a.width + off, along(y, h, a.height));
         }
-        const layer = { holder, backdrop, kind, key, anchor: a };
+        const layer = { holder, backdrop, kind, key, anchor: a, motion: resolveMotion(action, action.type) };
+        if (layer.motion.transition !== 'instant' && layer.motion.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+            content.style.animation = `${layer.motion.transition === 'fade' ? 'mvt-fade' : 'mvt-pop'} ${layer.motion.duration}ms ${layer.motion.easingCss}`;
+            if (backdrop) backdrop.style.animation = `mvt-fade ${layer.motion.duration}ms ${layer.motion.easingCss}`;
+        }
         // A layer that opened on hover goes away when the pointer is no longer over what opened it or over the layer itself.
         if (/^(onHover|onMouseEnter)$/.test(from?.trigger) && a) {
             const near = (b, ev) => ev.clientX >= b.left - 4 && ev.clientX <= b.right + 4 && ev.clientY >= b.top - 4 && ev.clientY <= b.bottom + 4;
@@ -519,19 +601,25 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         }
         layers.push(layer);
     }
-    function closeLayer(layer) {
+    function closeLayer(layer, motion) {
         const i = layers.indexOf(layer);
         if (i < 0) return;
         layers.splice(i, 1);
         layer.off?.();
+        const m = motion === true ? null : (motion || layer.motion || resolveMotion(null, 'close-overlay'));
+        if (m && m.transition !== 'instant' && m.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+            for (const n of [layer.holder, layer.backdrop]) if (n) { n.style.transition = `opacity ${m.duration}ms ${m.easingCss}`; n.style.opacity = '0'; }
+            setTimeout(() => { layer.holder.remove(); layer.backdrop?.remove(); }, m.duration + 40);
+            return;
+        }
         layer.holder.remove();
         layer.backdrop?.remove();
     }
-    function closeLayers(scope) {
-        const kill = layer => { layer.off?.(); layer.holder.remove(); layer.backdrop?.remove(); };
-        if (scope === 'all') { layers.splice(0).forEach(kill); return; }
-        if (scope === 'current') { const last = layers.pop(); if (last) kill(last); return; }
-        for (let i = layers.length - 1; i >= 0; i--) if (layers[i].kind === scope) { kill(layers[i]); layers.splice(i, 1); }
+    function closeLayers(scope, motion) {
+        const kill = layer => closeLayer(layer, motion);
+        if (scope === 'all') { [...layers].forEach(kill); return; }
+        if (scope === 'current') { const last = layers[layers.length - 1]; if (last) kill(last); return; }
+        for (let i = layers.length - 1; i >= 0; i--) if (layers[i].kind === scope) kill(layers[i]);
     }
 
     function attach({ inst: n, variants, modes, field }, d) {
@@ -548,7 +636,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             runTriggers(n, 'onHover', d, rect);
             runTriggers(n, 'onMouseEnter', d, rect);
         });
-        d.addEventListener('pointerleave', () => update(n, { state: 'default' }));
+        d.addEventListener('pointerleave', () => update(n, { state: baseStateOf(n) }));
         d.addEventListener('pointerdown', () => hasState('pressed') && update(n, { state: 'pressed' }));
         // Fokus: focusin / focusout membubarkan event, focus tidak.
         d.addEventListener('focusin', () => {
@@ -558,7 +646,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         });
         d.addEventListener('focusout', () => {
             const rect = d.getBoundingClientRect();
-            update(n, { state: stateOf(n) === 'focused' ? 'default' : stateOf(n) });
+            update(n, { state: stateOf(n) === 'focused' ? baseStateOf(n) : stateOf(n) });
             runTriggers(n, 'onBlur', d, rect);
         });
         // The press redraws the button, so the click is taken from the pointer-up on the redrawn one.
@@ -566,7 +654,7 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             // Jangkar posisi diambil sebelum gambar ulang: elemen yang lama sudah lepas dari DOM.
             const rect = d.getBoundingClientRect();
             const pressed = stateOf(n) === 'pressed';
-            update(n, { state: hasState('hover') ? 'hover' : 'default' });
+            update(n, { state: hasState('hover') ? 'hover' : baseStateOf(n) });
             // The click belongs to the innermost layer that does something with it; the layers around it only get their state back.
             if (ev.bhHandled) return;
             const own = normalizeInteractions(ctx.interactionsFor?.(n)).some(it => it.trigger === 'onClick');
@@ -583,12 +671,31 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         draw();
     }
 
-    function draw() {
+    function draw(animate = true) {
         const f = ctx.node(frameId);
         if (!f) return;
         const a = document.activeElement, keep = a?.dataset?.field, toEnd = caretAtEnd, caret = a?.selectionStart;
         caretAtEnd = false;
         rendering = true;
+        const navigated = lastFrame !== frameId;
+        const motion = navigated ? (navMotion || resolveMotion(null, 'navigate')) : resolveMotion(null, 'state');
+        navMotion = null;
+        lastFrame = frameId;
+        const typingNow = !!document.activeElement?.dataset?.field;
+        // View Transitions hanya untuk navigasi (sekali per klik). State hover/pressed/selected digambar
+        // instant seperti semula: transisi di tiap gerakan mouse menumpuk dan bikin flicker + input terasa telat.
+        const useVT = animate && navigated && !typingNow && motion.duration > 0 && motion.transition !== 'instant' && typeof document.startViewTransition === 'function' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const docEl = document.documentElement;
+        if (useVT) {
+            docEl.dataset.mvt = motion.transition;
+            docEl.style.setProperty('--mvt-dur', `${motion.duration}ms`);
+            docEl.style.setProperty('--mvt-ease', motion.easingCss);
+            stage.style.viewTransitionName = navigated && motion.transition !== 'dissolve' && motion.transition !== 'fade' ? 'midas-stage' : '';
+        } else {
+            delete docEl.dataset.mvt;
+            stage.style.viewTransitionName = '';
+        }
+        const swap = () => {
         stage.replaceChildren();
         const nodes = buildScene(f), rootNode = nodes[0];
         const sc = Math.min(1, (root.clientWidth - 24) / rootNode.w, (root.clientHeight - 24) / rootNode.h);
@@ -600,11 +707,14 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
             const at = toEnd ? again.value.length : caret;
             try { again.setSelectionRange(at, at); } catch { /* caret is not available on every input type */ }
         }
+        }; // end swap
+        if (useVT) { try { document.startViewTransition(() => { swap(); }); } catch { swap(); } }
+        else swap();
         rendering = false;
         markCurrent();
     }
 
-    function show(id) { frameId = id; runtime.clear(); closeLayers('all'); draw(); }
+    function show(id, motion) { frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); draw(); }
 
     // A dropdown or popover closes when the pointer goes down outside it (pressing what opened it does not count). An overlay
     // closes that way only when it was set to close with its backdrop.
@@ -631,17 +741,61 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
     shut.textContent = '\u00d7';
     shut.title = 'Close menu';
     const frameList = el('div', { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }, drawer);
-    for (const f of ctx.frames) {
-        const b = el('button', { ...chrome, display: 'block', width: '100%', padding: '7px 8px', border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 0 auto', lineHeight: '18px' }, frameList);
-        b.textContent = f.label;
-        b.title = f.label;
+    const collapsed = new Set();
+    const frameBtns = new Map();
+    const groupKey = f => f.pageId || f.page || '__all__';
+    function frameButton(f, indent) {
+        const b = el('button', { ...chrome, display: 'block', width: '100%', padding: '7px 8px', paddingLeft: indent, border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 0 auto', lineHeight: '18px' }, frameList);
+        const fname = f.name || f.label;
+        b.textContent = fname;
+        b.title = f.page ? `${f.page} / ${fname}` : fname;
         b.dataset.frame = f.id;
+        frameBtns.set(f.id, b);
         b.onclick = () => show(f.id);
+    }
+    function renderFrameList() {
+        frameList.replaceChildren();
+        frameBtns.clear();
+        if (!ctx.frames.length) {
+            const empty = el('div', { ...chrome, padding: '8px', opacity: '.7' }, frameList);
+            empty.textContent = 'No frames to preview.';
+            return;
+        }
+        if (!ctx.frames.some(f => f.page || f.pageId)) {
+            for (const f of ctx.frames) frameButton(f, '8px');
+            return;
+        }
+        const order = [], byKey = new Map();
+        for (const f of ctx.frames) {
+            const k = groupKey(f);
+            if (!byKey.has(k)) { const g = { key: k, items: [] }; byKey.set(k, g); order.push(g); }
+            byKey.get(k).items.push(f);
+        }
+        const titleOf = g => g.items[0]?.page || 'Pages';
+        for (const g of order) {
+            const open = !collapsed.has(g.key);
+            const head = el('button', { ...chrome, display: 'flex', width: '100%', alignItems: 'center', gap: '6px', padding: '7px 8px', border: '0', borderRadius: '6px', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontWeight: 600, flex: '0 0 auto', lineHeight: '18px' }, frameList);
+            head.title = (open ? 'Collapse ' : 'Expand ') + titleOf(g);
+            const chev = el('span', { width: '12px', flex: '0 0 auto', opacity: '.8' }, head);
+            chev.textContent = open ? '▾' : '▸';
+            const nm = el('span', { flex: '1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, head);
+            nm.textContent = titleOf(g);
+            const count = el('span', { opacity: '.55', fontWeight: 400 }, head);
+            count.textContent = String(g.items.length);
+            head.onclick = () => { if (collapsed.has(g.key)) collapsed.delete(g.key); else collapsed.add(g.key); renderFrameList(); markCurrent(); };
+            if (!open) continue;
+            for (const f of g.items) frameButton(f, '28px');
+        }
+    }
+    { // initial grouped render (Page = folder, Frame = item)
+        renderFrameList();
     }
     const exit = el('button', { ...chrome, margin: '8px', padding: '8px 10px', border: '1px solid rgba(255,255,255,.22)', borderRadius: '8px', background: 'transparent', cursor: 'pointer' }, drawer);
     exit.textContent = 'Exit preview';
     function markCurrent() {
-        for (const b of frameList.children) b.style.background = b.dataset.frame === frameId ? 'rgba(255,255,255,.14)' : 'transparent';
+        const cur = ctx.frames.find(f => f.id === frameId);
+        if (cur && collapsed.has(groupKey(cur))) { collapsed.delete(groupKey(cur)); renderFrameList(); }
+        for (const entry of frameBtns) entry[1].style.background = entry[0] === frameId ? 'rgba(255,255,255,.14)' : 'transparent';
     }
     const setMenu = on => {
         drawer.style.visibility = 'visible';
@@ -663,9 +817,9 @@ export function openLivePreview(ctx, host, { onExit } = {}) {
         else if (document.activeElement?.dataset?.field) document.activeElement.blur();
         else onExit?.();
     };
-    const resize = () => draw();
+    const resize = () => draw(false);
     document.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', resize);
     draw();
-    return { close() { document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', resize); root.remove(); } };
+    return { close() { document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', resize); delete document.documentElement.dataset.mvt; document.documentElement.style.removeProperty('--mvt-dur'); document.documentElement.style.removeProperty('--mvt-ease'); root.remove(); } };
 }

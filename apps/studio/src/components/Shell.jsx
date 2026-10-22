@@ -92,6 +92,7 @@ export function LeftPanel() {
             <div id="layer-tree" className="layer-tree" role="tree" aria-label="Layers"></div>
             <div id="assets-panel" className="assets-panel hidden"></div>
             <div id="plugins-panel" className="assets-panel plugins-panel hidden"></div>
+            <div id="target-panel" className="target-panel hidden" aria-label="Interaction target layers"></div>
             <div className="left-footer">
                 <div className="engine-dot"></div>
                 <span id="engine-label">Starting renderer</span>

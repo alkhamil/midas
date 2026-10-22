@@ -79,11 +79,55 @@ export const ACTIONS = [
 
 /** How Set active / selected changes the layer: flip it, switch it on, or switch it on and the others of its kind off. */
 export const SELECT_MODES = [
-    { id: 'toggle', label: 'Toggle' },
-    { id: 'select', label: 'Select' },
-    { id: 'exclusive', label: 'Select only this one' },
+    { id: 'toggle', label: 'Toggle', hint: 'Flip it: on when it was off, off when it was on. Use it for a checkbox.' },
+    { id: 'select', label: 'Select', hint: 'Turn it on and leave it on. Use it for a switch or a menu that stays open.' },
+    { id: 'exclusive', label: 'Select only this one', hint: 'Turn it on and turn off the others built from the same component in the same parent. Use it for a radio group or a tab row.' },
 ];
 export const SELECT_MODE_MAP = Object.fromEntries(SELECT_MODES.map(m => [m.id, m]));
+
+/** Gerakan standar preview: jenis transisi yang boleh dipakai sebuah action. */
+export const TRANSITIONS = [
+    { id: 'dissolve', label: 'Dissolve' },
+    { id: 'fade', label: 'Fade' },
+    { id: 'fade-scale', label: 'Fade + scale' },
+    { id: 'slide-left', label: 'Slide left' },
+    { id: 'slide-right', label: 'Slide right' },
+    { id: 'slide-up', label: 'Slide up' },
+    { id: 'slide-down', label: 'Slide down' },
+    { id: 'instant', label: 'Instant (no motion)' },
+];
+export const TRANSITION_MAP = Object.fromEntries(TRANSITIONS.map(t => [t.id, t]));
+
+/** Easing standar preview beserta nilai CSS-nya. */
+export const MOTION_EASINGS = [
+    { id: 'standard', label: 'Standard', css: 'cubic-bezier(0.2, 0, 0, 1)' },
+    { id: 'ease-out', label: 'Ease out', css: 'cubic-bezier(0, 0, 0.2, 1)' },
+    { id: 'ease-in-out', label: 'Ease in-out', css: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+    { id: 'linear', label: 'Linear', css: 'linear' },
+    { id: 'spring', label: 'Spring', css: 'cubic-bezier(0.34, 1.4, 0.64, 1)' },
+];
+export const MOTION_EASING_MAP = Object.fromEntries(MOTION_EASINGS.map(e => [e.id, e]));
+
+/** Durasi default (ms) dan transisi standar tiap jenis gerakan. */
+export const MOTION_DEFAULTS = {
+    state: { transition: 'dissolve', duration: 150, easing: 'standard' },
+    navigate: { transition: 'dissolve', duration: 220, easing: 'standard' },
+    'open-dropdown': { transition: 'fade-scale', duration: 180, easing: 'standard' },
+    'open-overlay': { transition: 'fade-scale', duration: 200, easing: 'standard' },
+    'open-popover': { transition: 'fade-scale', duration: 160, easing: 'standard' },
+    'close-overlay': { transition: 'fade', duration: 140, easing: 'ease-out' },
+};
+
+/** Gerakan efektif sebuah action: nilai yang diisi dipakai, sisanya mengikuti standar. */
+export function resolveMotion(a, kind) {
+    const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
+    const transition = a && TRANSITION_MAP[a.transition] ? a.transition : d.transition;
+    let duration = a ? Number(a.duration) : NaN;
+    if (!Number.isFinite(duration)) duration = d.duration;
+    duration = Math.min(2000, Math.max(0, Math.round(duration)));
+    const easing = a && MOTION_EASING_MAP[a.easing] ? a.easing : d.easing;
+    return { transition, duration, easing, easingCss: MOTION_EASING_MAP[easing].css };
+}
 
 export const ACTION_MAP = Object.fromEntries(ACTIONS.map(a => [a.id, a]));
 
@@ -332,6 +376,24 @@ export function normalizeInteractions(list) {
     });
 }
 
+/**
+ * Interaction yang dijalankan sebuah layer: miliknya sendiri bila ada isinya, kalau tidak milik
+ * component set / main component-nya. Instance yang sudah punya interaction sendiri tidak ikut
+ * berubah ketika interaction komponennya diubah.
+ */
+export function interactionsForNode(inst, src, set) {
+    const own = normalizeInteractions(inst?.interactions);
+    if (own.length)
+        return { list: own, inherited: false };
+    return { list: normalizeInteractions(set?.interactions || src?.interactions || []), inherited: true };
+}
+
+/** State yang diwakili sebuah mode collection (dari namanya); null kalau mode itu bukan state. */
+export function stateOfModeId(coll, modeId) {
+    const mode = (coll?.modes || []).find(m => m.id === modeId);
+    return mode ? stateOfMode(mode.name) : null;
+}
+
 export function normalizeAction(a) {
     const type = ACTION_MAP[a?.type] ? a.type : 'navigate';
     // A dropdown / overlay / popover opens a component. A frame picked before components were offered keeps working
@@ -347,10 +409,20 @@ export function normalizeAction(a) {
     if (a?.closeOnBackdrop !== undefined) out.closeOnBackdrop = !!a.closeOnBackdrop;
     if (a?.close) out.close = String(a.close);
     if (type === 'set-variable') {
+        // Switch a whole variable collection to one of its modes: every variable in it reads that mode's value.
+        if (a?.collectionId) out.collectionId = String(a.collectionId);
+        if (a?.modeId) out.modeId = String(a.modeId);
+        // Older files set one variable to one value; kept so they keep working until the action is edited.
         if (a?.variableId) out.variableId = String(a.variableId);
         if (a?.value !== undefined && a.value !== null && a.value !== '') out.value = a.value;
     }
     if (type === 'set-selected') out.mode = SELECT_MODE_MAP[a?.mode] ? a.mode : 'toggle';
+    if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
+    if (type === 'navigate' || /^open-/.test(type) || type === 'close-overlay') {
+        if (a?.transition && TRANSITION_MAP[a.transition]) out.transition = a.transition;
+        if (a?.duration !== undefined && a.duration !== '' && Number.isFinite(Number(a.duration))) out.duration = Math.min(2000, Math.max(0, Math.round(Number(a.duration))));
+        if (a?.easing && MOTION_EASING_MAP[a.easing]) out.easing = a.easing;
+    }
     return out;
 }
 
