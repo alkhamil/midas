@@ -6,7 +6,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS } from './behavior.js';
+import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, overlayRootOf, canReparentOverlay } from './behavior.js';
 
 
 // ===== document.js =====
@@ -5243,23 +5243,33 @@ function findDropTarget(g, w) {
             exclude.add(d.id);
     }
     // Instances are closed: layers can only be dropped into frames marked as a slot property.
-    return closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w));
+    const t = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w));
+    const get = id => doc.get(id);
+    for (const id of g.roots) {
+        const s = doc.get(id);
+        if (s && !canReparentOverlay(s, t || null, get)) return null;
+    }
+    return t;
 }
 // Where a dragged layer will land. Children of an auto layout frame stay put (and just reorder) while the pointer is still inside it.
 function dropTargetFor(g, n) {
     const cur = doc.get(n.parentId) || null;
     if (cur && isAutoLayout(cur) && n.layoutPositioning !== 'absolute' && g.lastWorld && insideNodeBox(cur, g.lastWorld))
         return cur;
-    return g.dropTarget || null;
+    const t = g.dropTarget || null;
+    if (n && t && !canReparentOverlay(n, t, id => doc.get(id))) return doc.get(n.parentId) || null;
+    return t;
 }
 // A frame (or section) drawn around existing layers adopts every sibling whose bounds sit fully inside it.
 function nestNodesInside(frame) {
     const box = doc.world(frame.id) && doc.bounds([frame.id]);
     if (!box || box.w < 2 || box.h < 2)
         return;
+    const get = id => doc.get(id);
+    if (overlayRootOf(frame, get)) return;
     const eps = .5, skip = new Set([frame.id, ...doc.ancestors(frame).map(a => a.id)]);
     const kids = doc.children(frame.parentId || null).filter(c => {
-        if (skip.has(c.id) || c.locked || c.isSection && !frame.isSection)
+        if (skip.has(c.id) || c.locked || c.isSection && !frame.isSection || overlayRootOf(c, get))
             return false;
         const b = doc.bounds([c.id]);
         return b && b.x >= box.x - eps && b.y >= box.y - eps && b.x + b.w <= box.x + box.w + eps && b.y + b.h <= box.y + box.h + eps;
@@ -5276,6 +5286,7 @@ function nestNodesInside(frame) {
     select([frame.id]);
 }
 function reparentNode(n, target, worldMatrix) {
+    if (n && !canReparentOverlay(n, target || null, id => doc.get(id))) return false;
     const m = worldMatrix || doc.world(n.id).matrix, inv = target ? doc.world(target.id).inverse : identity();
     n.parentId = target ? target.id : null;
     setFromMatrix(n, multiply(inv, m));
@@ -8866,21 +8877,32 @@ function overlayRoleOf(n) {
     return r && r !== 'page' ? r : null;
 }
 let _ovIndex = null, _ovIndexRev = -1;
+let _ovByTrigger = new Map();
 /** id node → id frame overlay teratas yang menaunginya (null kalau bukan isi overlay). */
 function overlayIndex() {
     if (_ovIndex && _ovIndexRev === doc.revision) return _ovIndex;
     _ovIndex = new Map();
+    _ovByTrigger = new Map();
     const kids = new Map(), ids = new Set();
     for (const n of allNodes()) {
         ids.add(n.id);
         if (!kids.has(n.parentId || '')) kids.set(n.parentId || '', []);
         kids.get(n.parentId || '').push(n);
     }
-    const walk = (nid, root) => {
+    const walk = (nid, root, depth = 0, seen = new Set()) => {
+        if (depth > 500 || seen.has(nid)) return;
+        seen.add(nid);
         _ovIndex.set(nid, root);
-        for (const k of kids.get(nid) || []) walk(k.id, root);
+        for (const k of kids.get(nid) || []) walk(k.id, root, depth + 1, seen);
     };
-    for (const n of allNodes()) if (!n.parentId || !ids.has(n.parentId)) walk(n.id, overlayRoleOf(n) ? n.id : null);
+    for (const n of allNodes()) {
+        if (n.parentId && ids.has(n.parentId)) continue;
+        if (n.isOverlay && n.overlayTrigger) {
+            if (!_ovByTrigger.has(n.overlayTrigger)) _ovByTrigger.set(n.overlayTrigger, []);
+            _ovByTrigger.get(n.overlayTrigger).push(n.id);
+        }
+        walk(n.id, overlayRoleOf(n) || n.isOverlay ? n.id : null);
+    }
     _ovIndexRev = doc.revision;
     return _ovIndex;
 }
@@ -8890,6 +8912,7 @@ function overlayPeek() {
     for (const id of state.selection) {
         const root = overlayIndex().get(id);
         if (root) show.add(root);
+        for (const oid of _ovByTrigger.get(id) || []) show.add(oid);
         const n = nodeIndex().get(id);
         if (!n) continue;
         const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
@@ -8922,13 +8945,19 @@ function renderTargetPanel() {
     const el = document.getElementById('target-panel');
     if (!el) return;
     const searching = !document.getElementById('layer-search-box')?.classList.contains('hidden');
-    const { list, inherited, source } = state.leftTab === 'layers' && !searching ? bhOpenTargets() : { list: [] };
+    const activeSel = state.leftTab === 'layers' && !searching ? activeNode() : null;
+    let { list, inherited, source } = activeSel ? bhOpenTargets() : { list: [] };
+    if (activeSel) {
+        const r = overlayIndex().get(activeSel.id);
+        if (r && !list.some(e => e.action.targetFrameId === r)) list = [...list, { trigger: null, action: { type: `open-${overlayRoleOf(nodeIndex().get(r)) || 'overlay'}`, targetFrameId: r } }];
+    }
     const kids = new Map();
     for (const n of allNodes()) {
         if (!kids.has(n.parentId)) kids.set(n.parentId, []);
         kids.get(n.parentId).push(n);
     }
     const rowFor = (n, depth) => {
+        if (depth > 100) return '';
         const sub = (kids.get(n.id) || []).filter(k => k.visible !== false);
         const open = state.targetExpanded.has(n.id);
         let html = `<div class="layer-row${!n.visible ? ' dim' : ''}" data-tlayer="${n.id}" style="--depth:${depth}" role="treeitem"><button class="expand" data-texpand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${sub.length ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || icon(n.component || n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type === 'frame' ? 'frame' : n.type === 'text' ? 'text' : 'rect', 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span></div>`;
@@ -8937,17 +8966,71 @@ function renderTargetPanel() {
     };
     let html = '';
     for (const { trigger, action } of list) {
-        const master = action.targetComponentId && componentById(action.targetComponentId);
-        const variant = action.targetVariantId && allNodes().find(x => x.id === action.targetVariantId);
-        const node = variant || master || (action.targetFrameId && allNodes().find(x => x.id === action.targetFrameId));
+        const active = activeNode();
+        const placed = active && placedOverlayFor(active.id, action);
+        const master = !placed && action.targetComponentId && componentById(action.targetComponentId);
+        const variant = !placed && action.targetVariantId && allNodes().find(x => x.id === action.targetVariantId);
+        const node = placed || variant || master || (action.targetFrameId && allNodes().find(x => x.id === action.targetFrameId));
         if (!node) continue;
-        const contentsName = action.type === 'open-dropdown' ? 'Dropdown Menu Contents' : action.type === 'open-popover' ? 'Popover Contents' : 'Overlay Contents';
-        html += `<div class="target-head"><span>${contentsName} · ${esc(node.name)}</span><button type="button" class="swap-btn" data-tlocate="${node.id}">Show</button></div>`;
+        const contentsName = `${node.name} Contents`;
+        html += `<div class="target-head"><span>${esc(contentsName)}</span><button type="button" class="swap-btn" data-tlocate="${node.id}">Show</button></div>`;
         if (inherited && source) html += `<div class="target-note">Applied from ${esc(source)}.</div>`;
         html += rowFor(node, 0);
     }
     el.innerHTML = html;
     el.classList.toggle('hidden', !html);
+}
+/** Varian/komponen yang akan dibuka sebuah action open (tambahan frame lama tidak ikut). */
+function overlayTargetId(a) {
+    if (a.targetVariantId) return a.targetVariantId;
+    const c = a.targetComponentId && componentById(a.targetComponentId);
+    if (!c) return null;
+    return (c.componentSet ? defaultVariantOf(c)?.id : c.id) || c.id;
+}
+/** Instance overlay yang sudah ditaruh untuk trigger+target ini (scan cadangan bila id tersimpan hilang). */
+function placedOverlay(triggerId, a) {
+    const vid = overlayTargetId(a);
+    if (!vid) return null;
+    overlayIndex();
+    for (const oid of _ovByTrigger.get(triggerId) || []) {
+        const n = nodeIndex().get(oid);
+        if (n && !n.parentId && n.isOverlay && n.sourceId === vid) return n;
+    }
+    return null;
+}
+/** Instance overlay untuk sebuah action: id tersimpan dulu, lalu scan cadangan. */
+function placedOverlayFor(triggerId, a) {
+    if (!a || (!a.targetComponentId && !a.targetFrameId)) return null;
+    if (a.overlayInstanceId) {
+        const n = nodeIndex().get(a.overlayInstanceId);
+        if (n && !n.softDeleted) return n;
+    }
+    return placedOverlay(triggerId, a);
+}
+/** Pastikan ada instance overlay untuk trigger+target: pakai yang sudah ada, atau taruh baru lalu pilih. */
+function ensureOverlayPlaced(triggerId, a) {
+    const ex = placedOverlayFor(triggerId, a);
+    if (ex) {
+        select([ex.id]);
+        return ex.id;
+    }
+    return placeOverlayOnCanvas(triggerId, a);
+}
+/** Taruh isi overlay sebagai instance di kanvas, di posisi trigger-nya: bisa diklik dan diedit langsung. */
+function placeOverlayOnCanvas(triggerId, a) {
+    const trig = doc.get(triggerId);
+    if (!trig) return null;
+    const vid = overlayTargetId(a);
+    const master = vid && nodeIndex().get(vid);
+    if (!master) {
+        toast('Target component is missing.');
+        return null;
+    }
+    const box = doc.world(triggerId)?.box;
+    if (!box) return null;
+    const pos = placeOverlayPos(box, master.w, master.h, a.position, a.offset);
+    instantiate(master.id, { x: pos.x + master.w / 2, y: pos.y + master.h / 2 }, null, { isOverlay: true, overlayTrigger: triggerId });
+    return activeNode()?.id || null;
 }
 /** Tunjukkan sebuah layer di kanvas tanpa memindahkan seleksi editor. */
 function revealOnCanvas(id) {
@@ -9014,6 +9097,7 @@ function renderLayers() {
             return;
         visited.add(parent);
         for (const n of [...doc.children(parent)].reverse()) {
+            if (!n.parentId && n.isOverlay) continue; // overlay instances live in the target panel, not the main tree
             if (rowCount >= MAX_ROWS) {
                 html += '<div class="layer-group"><div class="layer-row dim" style="padding:6px 14px;font-size:11px;opacity:0.65;font-style:italic">…remaining layers hidden (use search to filter)</div></div>';
                 return;
@@ -9619,6 +9703,7 @@ function groupSelection(asFrame = false, autoLayout = false) {
         const gi = inverse(doc.world(g.id).matrix);
         for (const n of roots) {
             const m = multiply(gi, worldBefore.get(n.id));
+            if (!canReparentOverlay(n, g, id => doc.get(id))) continue;
             setFromMatrix(n, m);
             n.parentId = g.id;
             doc.touch(n);
@@ -9786,7 +9871,7 @@ function makeComponent() {
     transaction('Create component', () => { const n = activeNode(); n.component = true; n.isInstance = false; doc.touch(n); });
     toast('Main component created. Find it in Components.');
 }
-function instantiate(id, at = null, parent = null) {
+function instantiate(id, at = null, parent = null, opts = {}) {
     const sourcePage = doc.data.pages.find(p => p.nodes.some(n => n.id === id));
     let source = sourcePage?.nodes.find(n => n.id === id);
     if (!source)
@@ -9848,6 +9933,10 @@ function instantiate(id, at = null, parent = null) {
             root.parentId = null;
             root.x = Math.round(c.x - root.w / 2);
             root.y = Math.round(c.y - root.h / 2);
+        }
+        if (opts.isOverlay) {
+            root.isOverlay = true;
+            if (opts.overlayTrigger) root.overlayTrigger = opts.overlayTrigger;
         }
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
@@ -18632,7 +18721,7 @@ function bhTargetPreview(a) {
     const shown = variant || master, page = pageOfNode(shown.id);
     let thumb = '';
     try { thumb = componentThumbSVG(shown.id); } catch { thumb = ''; }
-    return `<div class="bh-target">${thumb ? `<div class="bh-thumb">${thumb}</div>` : ''}<div class="bh-target-meta"><span class="bh-target-name" title="${esc(shown.name)}">${esc(variant ? `${master.name} · ${variant.name}` : master.name)}</span><small>${esc(page?.name || '')} · ${Math.round(shown.w)}×${Math.round(shown.h)}</small><button type="button" class="swap-btn" data-bh-locate="${esc(shown.id)}">Show on canvas</button></div></div>`;
+    return `<div class="bh-target">${thumb ? `<div class="bh-thumb">${thumb}</div>` : ''}<div class="bh-target-meta"><span class="bh-target-name" title="${esc(shown.name)}">${esc(variant ? `${master.name} · ${variant.name}` : master.name)}</span><small>${esc(page?.name || '')} · ${Math.round(shown.w)}×${Math.round(shown.h)}</small><button type="button" class="swap-btn" data-bh-locate="${esc(shown.id)}">Show on canvas</button><button type="button" class="swap-btn" data-bh-edit-contents="${esc(shown.id)}">Edit contents</button><button type="button" class="swap-btn" data-bh-place-overlay="${esc(shown.id)}" data-bh-place-comp="${esc(a.targetComponentId || '')}" data-bh-place-var="${esc(a.targetVariantId || '')}" data-bh-place-pos="${esc(a.position || '')}" data-bh-place-off="${esc(a.offset ?? '')}">Place on canvas</button></div></div>`;
 }
 /** Frame yang bisa jadi target sebuah action, beserta perannya. */
 function bhFrames() {
@@ -18707,15 +18796,32 @@ document.addEventListener('click', e => {
     e.stopPropagation();
     const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
     const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
-    const write = id => { transaction('Behavior', () => { bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
+    const write = id => { transaction('Behavior', () => { bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
     if (clear) return write(null);
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const m = path.match(/interactions\.(\d+)\.actions\.(\d+)\.targetComponentId$/); const ac = m && n.interactions?.[+m[1]]?.actions?.[+m[2]]; if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); } },
     });
 });
 document.addEventListener('click', e => {
+    const pl = e.target.closest?.('[data-bh-place-overlay]');
+    if (pl) {
+        e.preventDefault();
+        e.stopPropagation();
+        const n = activeNode();
+        if (n) placeOverlayOnCanvas(n.id, { targetComponentId: pl.dataset.bhPlaceComp || undefined, targetVariantId: pl.dataset.bhPlaceVar || undefined, position: pl.dataset.bhPlacePos || undefined, offset: pl.dataset.bhPlaceOff });
+        return;
+    }
+    const eb = e.target.closest?.('[data-bh-edit-contents]');
+    if (eb) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.targetExpanded.add(eb.dataset.bhEditContents);
+        renderTargetPanel();
+        requestAnimationFrame(() => document.querySelector(`#target-panel [data-tlayer="${eb.dataset.bhEditContents}"]`)?.scrollIntoView({ block: 'nearest' }));
+        return;
+    }
     const btn = e.target.closest?.('[data-bh-locate]');
     if (!btn) return;
     const n = activeNode();
@@ -20224,6 +20330,8 @@ $('#layer-tree').addEventListener('drop', e => {
         const target = d.target, parentId = d.pos === 'inside' ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
         let anchor = target;
         for (const source of sources) {
+            const _np = d.pos === 'inside' ? d.target : (parentId ? doc.get(parentId) : null);
+            if (!canReparentOverlay(source, _np, id => doc.get(id))) continue;
             const world = doc.world(source.id).matrix;
             source.parentId = parentId;
             setFromMatrix(source, multiply(inverse(parentMatrix), world));

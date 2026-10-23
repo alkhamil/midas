@@ -98,6 +98,57 @@ export const TRANSITIONS = [
 ];
 export const TRANSITION_MAP = Object.fromEntries(TRANSITIONS.map(t => [t.id, t]));
 
+/** Posisi overlay di kanvas relatif ke anchor pemicunya (dipakai saat Place on canvas). */
+export function placeOverlayPos(anchor, w, h, position, offset = 0) {
+    const off = Number(offset) || 0;
+    const parts = String(position || '').split('-');
+    const side = PLACEMENTS.includes(position) ? parts[0] : null;
+    const align = PLACEMENTS.includes(position) ? (parts[1] || 'center') : null;
+    if (!side) return { x: anchor.x + (anchor.w - w) / 2, y: anchor.y + (anchor.h - h) / 2 };
+    const along = (start, sz, aSz) => align === 'start' ? start : align === 'end' ? start + aSz - sz : start + (aSz - sz) / 2;
+    if (side === 'top' || side === 'bottom') return { x: along(anchor.x, w, anchor.w), y: side === 'top' ? anchor.y - h - off : anchor.y + anchor.h + off };
+    return { x: side === 'left' ? anchor.x - w - off : anchor.x + anchor.w + off, y: along(anchor.y, h, anchor.h) };
+}
+
+/**
+ * Overlay portal: an overlay instance lives in its own container, detached from the main
+ * layer hierarchy like a Portal. Only the overlay root carries `isOverlay`; its children
+ * are ordinary nodes parented under that root. `get` resolves an id to a node shape
+ * `{ id, parentId, isOverlay }` (or a falsy value when missing).
+ */
+
+/** An overlay root never has a parent: it is the portal container itself. */
+export function isOverlayRoot(n) {
+    return !!n && !!n.isOverlay && !n.parentId;
+}
+
+/** The overlay root owning a node (itself when it is a root), else null. Walks at most 500 levels. */
+export function overlayRootOf(node, get) {
+    let cur = node || null;
+    let top = null;
+    for (let i = 0; i < 500 && cur; i++) {
+        top = cur;
+        const parent = cur.parentId ? get?.(cur.parentId) : null;
+        if (!parent) break;
+        cur = parent;
+    }
+    return top && isOverlayRoot(top) ? top : null;
+}
+
+/**
+ * Whether `source` may be reparented under `target` (null = canvas root) without mixing the
+ * overlay portal with the main hierarchy. Reordering inside one overlay stays allowed; an
+ * overlay root never takes a parent and nothing crosses the portal boundary in either direction.
+ */
+export function canReparentOverlay(source, target, get) {
+    if (!source) return false;
+    const sRoot = overlayRootOf(source, get);
+    const tRoot = target ? overlayRootOf(target, get) : null;
+    if (isOverlayRoot(source)) return !target;
+    if (sRoot) return !!target && !!tRoot && tRoot.id === sRoot.id;
+    return !tRoot;
+}
+
 /** Easing standar preview beserta nilai CSS-nya. */
 export const MOTION_EASINGS = [
     { id: 'standard', label: 'Standard', css: 'cubic-bezier(0.2, 0, 0, 1)' },
@@ -418,6 +469,7 @@ export function normalizeAction(a) {
     }
     if (type === 'set-selected') out.mode = SELECT_MODE_MAP[a?.mode] ? a.mode : 'toggle';
     if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
+    if (/^open-/.test(type) && a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
     if (type === 'navigate' || /^open-/.test(type) || type === 'close-overlay') {
         if (a?.transition && TRANSITION_MAP[a.transition]) out.transition = a.transition;
         if (a?.duration !== undefined && a.duration !== '' && Number.isFinite(Number(a.duration))) out.duration = Math.min(2000, Math.max(0, Math.round(Number(a.duration))));

@@ -1,7 +1,7 @@
 // Model perilaku (tab Behavior): tipe komponen, state mapping ke variable, interaction, input behavior.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { componentTypeOf, getPath, interactionsForNode, isStateCollection, modeForState, normalizeInputBehavior, normalizePlacement, PLACEMENTS, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, stateOfModeId, statesFor, effectiveState, normalizeAction, SELECT_MODES, stateLabel, statesIn } from '../src/engine/behavior.js';
+import { componentTypeOf, getPath, interactionsForNode, isStateCollection, modeForState, normalizeInputBehavior, normalizePlacement, PLACEMENTS, normalizeInteractions, normalizeStateMapping, overridesFor, setPath, stateChain, stateOfMode, stateOfModeId, statesFor, effectiveState, normalizeAction, placeOverlayPos, isOverlayRoot, overlayRootOf, canReparentOverlay, SELECT_MODES, stateLabel, statesIn } from '../src/engine/behavior.js';
 
 test('component type comes from the component name', () => {
     assert.equal(componentTypeOf('Button Primary'), 'button');
@@ -52,6 +52,16 @@ test('open actions remember the picked variant', () => {
     assert.equal(plain.targetVariantId, undefined);
     const nav = normalizeAction({ type: 'navigate', targetFrameId: 'f1', targetVariantId: 'v9' });
     assert.equal(nav.targetVariantId, undefined, 'only open actions carry a variant');
+    const placed = normalizeAction({ type: 'open-dropdown', targetComponentId: 'set1', targetVariantId: 'v9', overlayInstanceId: 'inst7' });
+    assert.equal(placed.overlayInstanceId, 'inst7', 'the placed overlay instance id survives');
+});
+
+test('overlay placement follows the anchor side and offset', () => {
+    const a = { x: 100, y: 100, w: 200, h: 40 };
+    assert.deepEqual(placeOverlayPos(a, 160, 120, 'bottom-start', 8), { x: 100, y: 148 });
+    assert.deepEqual(placeOverlayPos(a, 160, 120, 'top-end', 0), { x: 140, y: -20 });
+    assert.deepEqual(placeOverlayPos(a, 160, 120, 'right', 4), { x: 304, y: 60 });
+    assert.deepEqual(placeOverlayPos(a, 160, 120, 'center', 0), { x: 120, y: 60 });
 });
 
 test('a state can be pointed at any mode, whatever it is called', () => {
@@ -268,4 +278,49 @@ test('a mode id maps back to the state its name stands for', () => {
     assert.equal(stateOfModeId(coll, 'm-default'), 'default');
     assert.equal(stateOfModeId(coll, 'm-light'), null);
     assert.equal(stateOfModeId(coll, 'missing'), null);
+});
+
+test('an overlay root is a parentless node flagged as overlay', () => {
+    assert.equal(isOverlayRoot({ id: 'o', isOverlay: true, parentId: null }), true);
+    assert.equal(isOverlayRoot({ id: 'o', isOverlay: true, parentId: 'p' }), false);
+    assert.equal(isOverlayRoot({ id: 'm', parentId: null }), false);
+    assert.equal(isOverlayRoot(null), false);
+});
+
+test('overlay contents resolve to their portal root, main layers to null', () => {
+    const byId = new Map([
+        ['overlay', { id: 'overlay', isOverlay: true, parentId: null }],
+        ['menu', { id: 'menu', parentId: 'overlay' }],
+        ['item', { id: 'item', parentId: 'menu' }],
+        ['page-child', { id: 'page-child', parentId: null }],
+    ]);
+    const get = id => byId.get(id);
+    assert.equal(overlayRootOf(byId.get('overlay'), get)?.id, 'overlay');
+    assert.equal(overlayRootOf(byId.get('item'), get)?.id, 'overlay');
+    assert.equal(overlayRootOf(byId.get('page-child'), get), null);
+    assert.equal(overlayRootOf({ id: 'ghost', parentId: 'missing' }, get), null);
+});
+
+test('nothing crosses the overlay portal boundary when reparenting', () => {
+    const byId = new Map([
+        ['overlay', { id: 'overlay', isOverlay: true, parentId: null }],
+        ['menu', { id: 'menu', parentId: 'overlay' }],
+        ['other-menu', { id: 'other-menu', parentId: 'overlay' }],
+        ['overlay2', { id: 'overlay2', isOverlay: true, parentId: null }],
+        ['frame', { id: 'frame', parentId: null }],
+        ['frame-child', { id: 'frame-child', parentId: 'frame' }],
+    ]);
+    const get = id => byId.get(id);
+    const [overlay, menu, otherMenu, overlay2, frame, frameChild] = ['overlay', 'menu', 'other-menu', 'overlay2', 'frame', 'frame-child'].map(id => byId.get(id));
+    assert.equal(canReparentOverlay(overlay, null, get), true, 'an overlay root stays on the canvas root');
+    assert.equal(canReparentOverlay(overlay, frame, get), false, 'an overlay root never becomes a child');
+    assert.equal(canReparentOverlay(menu, otherMenu, get), true, 'reordering inside one overlay stays allowed');
+    assert.equal(canReparentOverlay(menu, null, get), false, 'overlay contents cannot leave the portal');
+    assert.equal(canReparentOverlay(menu, overlay2, get), false, 'overlay contents cannot jump to another overlay');
+    assert.equal(canReparentOverlay(menu, frame, get), false, 'overlay contents cannot move into a main frame');
+    assert.equal(canReparentOverlay(frame, menu, get), false, 'a main layer cannot move into the overlay');
+    assert.equal(canReparentOverlay(frameChild, overlay, get), false, 'a nested main layer cannot move into the overlay');
+    assert.equal(canReparentOverlay(frame, null, get), true, 'main layers still reorder on the canvas root');
+    assert.equal(canReparentOverlay(frameChild, frame, get), true, 'main layers still nest in main frames');
+    assert.equal(canReparentOverlay(null, frame, get), false);
 });
