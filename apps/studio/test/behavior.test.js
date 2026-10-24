@@ -121,7 +121,7 @@ test('a dropdown or popover sits on a side of its anchor, a number of pixels awa
     assert.equal(pop.actions[0].position, 'left-end');
     assert.equal(pop.actions[0].offset, undefined, 'an offset that is not a number is dropped');
     assert.equal(overlay.actions[0].position, 'center', 'an overlay is placed on the screen, not around an anchor');
-    assert.equal(overlay.actions[0].offset, undefined);
+    assert.equal(overlay.actions[0].offset, 4, 'overlays keep their offset too (spec)');
 });
 
 test('the states of a collection are the ones its modes are named after, plus the ones its kind is asked about', () => {

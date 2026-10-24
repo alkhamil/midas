@@ -99,15 +99,30 @@ export const TRANSITIONS = [
 export const TRANSITION_MAP = Object.fromEntries(TRANSITIONS.map(t => [t.id, t]));
 
 /** Posisi overlay di kanvas relatif ke anchor pemicunya (dipakai saat Place on canvas). */
+/**
+ * Offset overlay sebagai {x, y} (spesifikasi overlay): angka lama tetap dibaca sebagai
+ * jarak sisi agar file lama tidak bergeser.
+ */
+export function offsetXY(offset, position, kind) {
+    if (offset && typeof offset === 'object') return { x: Number(offset.x) || 0, y: Number(offset.y) || 0 };
+    const n = Number(offset) || 0;
+    if (!n) return { x: 0, y: 0 };
+    const side = PLACEMENTS.includes(position) ? String(position).split('-')[0] : null;
+    const dflt = kind === 'open-dropdown' ? 'bottom' : kind === 'open-popover' ? 'top' : '';
+    const s = side || dflt;
+    return (s === 'left' || s === 'right') ? { x: n, y: 0 } : (s === 'top' || s === 'bottom') ? { x: 0, y: n } : { x: 0, y: 0 };
+}
 export function placeOverlayPos(anchor, w, h, position, offset = 0) {
-    const off = Number(offset) || 0;
+    const gap = (offset && typeof offset === 'object') ? 0 : Number(offset) || 0;
+    const ox = (offset && typeof offset === 'object' ? Number(offset.x) : 0) || 0;
+    const oy = (offset && typeof offset === 'object' ? Number(offset.y) : 0) || 0;
     const parts = String(position || '').split('-');
     const side = PLACEMENTS.includes(position) ? parts[0] : null;
     const align = PLACEMENTS.includes(position) ? (parts[1] || 'center') : null;
-    if (!side) return { x: anchor.x + (anchor.w - w) / 2, y: anchor.y + (anchor.h - h) / 2 };
+    if (!side) return { x: anchor.x + (anchor.w - w) / 2 + ox, y: anchor.y + (anchor.h - h) / 2 + oy };
     const along = (start, sz, aSz) => align === 'start' ? start : align === 'end' ? start + aSz - sz : start + (aSz - sz) / 2;
-    if (side === 'top' || side === 'bottom') return { x: along(anchor.x, w, anchor.w), y: side === 'top' ? anchor.y - h - off : anchor.y + anchor.h + off };
-    return { x: side === 'left' ? anchor.x - w - off : anchor.x + anchor.w + off, y: along(anchor.y, h, anchor.h) };
+    if (side === 'top' || side === 'bottom') return { x: along(anchor.x, w, anchor.w) + ox, y: (side === 'top' ? anchor.y - h - gap : anchor.y + anchor.h + gap) + oy };
+    return { x: (side === 'left' ? anchor.x - w - gap : anchor.x + anchor.w + gap) + ox, y: along(anchor.y, h, anchor.h) + oy };
 }
 
 /**
@@ -147,6 +162,40 @@ export function canReparentOverlay(source, target, get) {
     if (isOverlayRoot(source)) return !target;
     if (sRoot) return !!target && !!tRoot && tRoot.id === sRoot.id;
     return !tRoot;
+}
+
+/**
+ * Overlay portal: split nodes into the main hierarchy and one detached subtree per overlay root.
+ * Each overlay root lays out in its own context and never affects the main auto layout (spec).
+ * Returns null when there is no overlay root.
+ */
+export function splitOverlayParts(nodes) {
+    const roots = (nodes || []).filter(isOverlayRoot);
+    if (!roots.length) return null;
+    const byId = new Map(nodes.map(n => [n.id, n]));
+    const byParent = new Map();
+    for (const n of nodes) {
+        const k = n.parentId || null;
+        if (!byParent.has(k)) byParent.set(k, []);
+        byParent.get(k).push(n);
+    }
+    const owned = new Set();
+    const take = rootId => {
+        const out = [], stack = [rootId];
+        while (stack.length) {
+            const id = stack.pop();
+            if (owned.has(id)) continue;
+            owned.add(id);
+            const n = byId.get(id);
+            if (n) out.push(n);
+            // Stack (LIFO): dorong anak dari belakang agar keluar sesuai urutan dokumen.
+            const ks = byParent.get(id) || [];
+            for (let i = ks.length - 1; i >= 0; i--) stack.push(ks[i].id);
+        }
+        return out;
+    };
+    const subs = roots.map(r => take(r.id));
+    return { main: nodes.filter(n => !owned.has(n.id)), subs };
 }
 
 /** Easing standar preview beserta nilai CSS-nya. */
@@ -201,6 +250,29 @@ export const TARGET_ROLES = {
     'open-popover': ['popover', 'tooltip'],
 };
 
+/**
+ * Scroll Behavior (tab Behavior): Overflow ada di setiap frame; Position untuk node yang child.
+ * Default tidak disimpan (no scrolling + scroll with parent) supaya file lama tetap bersih.
+ */
+export const SCROLL_OVERFLOWS = [
+    { id: 'none', label: 'No scrolling' },
+    { id: 'both', label: 'Both (scroll horizontal + vertical)' },
+    { id: 'horizontal', label: 'Horizontal scrolling' },
+    { id: 'vertical', label: 'Vertical scrolling' },
+];
+export const SCROLL_POSITIONS = [
+    { id: 'scroll', label: 'Scroll with parent' },
+    { id: 'fixed', label: 'Fixed (stay in place)' },
+    { id: 'sticky', label: 'Sticky (stop at top edge)' },
+];
+/** Nilai scroll sebuah node yang dinormalisasi: hanya non-default yang disimpan. */
+export function normalizeScroll(n) {
+    const o = {};
+    if (SCROLL_OVERFLOWS.some(x => x.id === n?.overflow) && n.overflow !== 'none') o.overflow = n.overflow;
+    if (SCROLL_POSITIONS.some(x => x.id === n?.scroll) && n.scroll !== 'scroll') o.scroll = n.scroll;
+    return o;
+}
+
 export const POSITIONS = [
     { id: 'center', label: 'Center' },
     { id: 'top', label: 'Top' },
@@ -224,10 +296,23 @@ export const PLACEMENTS = [
 
 const LEGACY_PLACEMENT = { 'top-left': 'top-start', 'top-right': 'top-end', 'bottom-left': 'bottom-start', 'bottom-right': 'bottom-end' };
 
+/** Ukuran lebar / tinggi dropdown: ikuti ukuran instance dropdown, atau ikuti ukuran parent (trigger). */
+export const DROPDOWN_SIZES = [
+    { id: 'self', label: 'Dropdown instance' },
+    { id: 'parent', label: 'Match parent' },
+];
+
 /** A placement id, also for the corner names used before (bottom-left → bottom-start); `fallback` when it is none of them. */
 export function normalizePlacement(pos, fallback = 'bottom-start') {
     const p = LEGACY_PLACEMENT[pos] || pos;
     return PLACEMENTS.includes(p) ? p : fallback;
+}
+
+/** Posisi kanonik untuk action open-* di kanvas & preview (default bottom-start untuk dropdown, top untuk popover, center untuk overlay). */
+export function actionPlacement(a) {
+    if (a?.type === 'open-dropdown') return normalizePlacement(a.position, 'bottom-start');
+    if (a?.type === 'open-popover') return normalizePlacement(a.position, 'top');
+    return a?.position || 'center';
 }
 
 const BUTTON_NAME = /button|btn|cta|action|link|iconbutton/i;
@@ -354,7 +439,7 @@ export function statesIn(coll, type) {
 
 /** Rantai fallback state: error → default, pressed → hover → default, … */
 const FALLBACK = {
-    default: ['default', 'inactive', 'empty'],
+    default: ['default'],
     hover: ['hover', 'default'], pressed: ['pressed', 'hover', 'default'],
     focused: ['focused', 'selected', 'default'], selected: ['selected', 'focused', 'default'],
     typing: ['typing', 'selected', 'focused', 'default'], filled: ['filled', 'default'], empty: ['empty', 'default'],
@@ -454,7 +539,13 @@ export function normalizeAction(a) {
     if (component) out.targetComponentId = component;
     if (a?.targetFrameId && !component) out.targetFrameId = String(a.targetFrameId);
     if (a?.position) out.position = type === 'open-dropdown' || type === 'open-popover' ? normalizePlacement(String(a.position), type === 'open-dropdown' ? 'bottom-start' : 'top') : String(a.position);
-    if (/^open-(dropdown|popover)$/.test(type) && a?.offset !== undefined && a.offset !== '' && Number.isFinite(Number(a.offset))) out.offset = Number(a.offset);
+    if (/^open-/.test(type) && a?.offset !== undefined && a.offset !== '' && a.offset !== null) {
+        if (a.offset && typeof a.offset === 'object') {
+            const ox = Number(a.offset.x) || 0, oy = Number(a.offset.y) || 0;
+            if (ox || oy) out.offset = { x: ox, y: oy };
+        }
+        else if (Number.isFinite(Number(a.offset))) out.offset = Number(a.offset);
+    }
     if (a?.anchor) out.anchor = String(a.anchor);
     if (a?.backdrop !== undefined) out.backdrop = !!a.backdrop;
     if (a?.closeOnBackdrop !== undefined) out.closeOnBackdrop = !!a.closeOnBackdrop;
@@ -470,6 +561,10 @@ export function normalizeAction(a) {
     if (type === 'set-selected') out.mode = SELECT_MODE_MAP[a?.mode] ? a.mode : 'toggle';
     if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
     if (/^open-/.test(type) && a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
+    if (type === 'open-dropdown') {
+        if (a?.width === 'parent') out.width = 'parent';
+        if (a?.height === 'parent') out.height = 'parent';
+    }
     if (type === 'navigate' || /^open-/.test(type) || type === 'close-overlay') {
         if (a?.transition && TRANSITION_MAP[a.transition]) out.transition = a.transition;
         if (a?.duration !== undefined && a.duration !== '' && Number.isFinite(Number(a.duration))) out.duration = Math.min(2000, Math.max(0, Math.round(Number(a.duration))));
@@ -559,4 +654,19 @@ export function getPath(root, path) {
         cur = cur[part];
     }
     return cur;
+}
+
+/**
+ * Klik kanvas memilih container terluar di atas layer (group / instance / komponen /
+ * frame auto layout), tapi tidak pernah menyeberang batas Slot: isi dalam slot milik
+ * instance pemakai dan dipilih langsung, jadi delete sesudahnya hanya menghapus
+ * bagian yang dipilih, bukan seluruh instance induk.
+ */
+export function clickPick(layer, ancestors, childCount = 0) {
+    const isContainer = p => p.type === 'group' || p.booleanOp || p.isInstance || p.component || (p.type === 'frame' && !!p.layout && p.layout !== 'none');
+    const chain = [layer, ...(ancestors || [])];
+    const slotAt = chain.findIndex(a => a?.propBind?.slot && a.sourceId);
+    if (slotAt === 0 && !childCount) return layer;
+    const below = slotAt > 0 ? ancestors.slice(0, slotAt - 1) : ancestors;
+    return (below || []).filter(isContainer).pop() || layer;
 }

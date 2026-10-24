@@ -6,7 +6,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, normalizeStateMapping, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, overlayRootOf, canReparentOverlay } from './behavior.js';
+import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
 
 
 // ===== document.js =====
@@ -37,7 +37,21 @@ function union(boxes) {
     return { x, y, w: r - x, h: b - y };
 }
 const intersects = (a, b) => a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+const _colorCache = new Map();
 function color(c, opacity = 1) {
+    if (!c || c === 'none')
+        return [0, 0, 0, 0];
+    // Parsing the hex string is the costly part and the same few colours repeat on every layer, every frame.
+    let b = _colorCache.get(c);
+    if (!b) {
+        b = parseColor(c, 1);
+        if (_colorCache.size > 4000)
+            _colorCache.clear();
+        _colorCache.set(c, b);
+    }
+    return [b[0], b[1], b[2], b[3] * opacity];
+}
+function parseColor(c, opacity = 1) {
     if (!c || c === 'none')
         return [0, 0, 0, 0];
     let hex = c.replace('#', '');
@@ -62,6 +76,16 @@ function sizingOf(n, axis) {
     return 'fixed';
 }
 function runLayout(d) {
+    // Overlay roots live outside the main hierarchy: each lays out in its own context (spec).
+    if (!d.isOverlayPart) {
+        const parts = splitOverlayParts(d.nodes);
+        if (parts) {
+            const self = d, get = self.get.bind(self), touch = (...a) => self.touch(...a);
+            for (const sub of parts.subs) runLayout({ nodes: sub, get, touch, isOverlayPart: true });
+            if (!parts.main.length) return;
+            d = { nodes: parts.main, get, touch };
+        }
+    }
     const nodes = d.nodes;
     if (!nodes.some(n => n.minW != null || n.maxW != null || n.minH != null || n.maxH != null || isAutoLayout(n) || n.layoutSizingH === 'fill' || n.layoutSizingV === 'fill' || (n.type === 'frame' && (n.layoutSizingH === 'hug' || n.layoutSizingV === 'hug'))))
         return;
@@ -480,13 +504,13 @@ function autoLayoutControls(n) {
             cells.push(`<button class="ly-cell ${on ? 'on' : ''}" data-ly-cell="${pi},${ci}" aria-label="Align ${aligns[pi]} / ${aligns[ci]}"><i></i></button>`);
         }
     const individual = state.padSides || P.l !== P.r || P.t !== P.b;
-    const padFields = individual ? `<div class="property-grid">${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}${field('L', 'padL', P.l, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
+    const padFields = individual ? `<div class="property-grid">${field('L', 'padL', P.l, { min: 0 })}${field('T', 'padT', P.t, { min: 0 })}${field('R', 'padR', P.r, { min: 0 })}${field('B', 'padB', P.b, { min: 0 })}</div>` : `<div class="property-grid">${field('↔', 'padH', P.l, { min: 0, title: 'Horizontal padding' })}${field('↕', 'padV', P.t, { min: 0, title: 'Vertical padding' })}</div>`;
     const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
     const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }));
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
     return `<div class="field-label"><span>Alignment &amp; gap</span><button class="icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
 <div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: 'Row gap (negative overlaps)' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: wrap && !horiz ? 'Gap between columns (negative overlaps)' : 'Gap between rows (negative overlaps)' }) : ''}`}</div></div>
-<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding">▢</button></div>${padFields}`;
+<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding" aria-label="Individual padding">${STROKE_ICON.sides}</button></div>${padFields}`;
 }
 // ----- auto layout settings (strokes in layout, canvas stacking, text baseline, auto spacing) -----
 let lyPop = null;
@@ -1509,7 +1533,7 @@ function strokeSectionHtml(n) {
     h += `<div class="st-row">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
     if (mode === 'custom') {
         const s = strokeSideWidths(n);
-        h += `<div class="property-grid st-custom">${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}</div>`;
+        h += `<div class="property-grid st-custom">${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}</div>`;
     }
     return section('Stroke', h, head);
 }
@@ -3587,12 +3611,15 @@ async function kvDel(key) {
 
 
 function libSaveIndex() { return kvPut('index', JSON.stringify(lib.index)); }
-// URL <-> editor state, like Figma: /file/<id>?page=<pageId>&node-id=<id>. A refresh reopens the same file, page and selection.
+// URL <-> editor state, like Figma: /file/<id>?page=<pageId>&node-id=<id>. A refresh reopens the same file, page and selection. Preview tab di route sendiri /preview/<id> supaya reload tetap di preview.
 const deepLink = (() => {
-    const m = /^\/file\/([^/]+)\/?$/.exec(location.pathname), q = new URLSearchParams(location.search);
-    return m ? { id: decodeURIComponent(m[1]), page: q.get('page'), nodes: (q.get('node-id') || '').split(',').filter(Boolean), used: false } : null;
+    const m = /^\/(?:file|preview)\/([^/]+)\/?$/.exec(location.pathname), q = new URLSearchParams(location.search);
+    return m ? { id: decodeURIComponent(m[1]), tab: location.pathname.startsWith('/preview/'), page: q.get('page'), nodes: (q.get('node-id') || '').split(',').filter(Boolean), preview: q.get('preview'), scale: q.get('scale'), used: false } : null;
 })();
+// Route /preview/: URL tidak boleh ditulis ulang dan boot tidak boleh membuka file lain.
+const isPreviewRoute = !!deepLink?.tab;
 function syncUrl() {
+    if (state.previewTab || isPreviewRoute) return;
     try {
         const inFile = !lib.open && lib.fileId && lib.index.some(m => m.id === lib.fileId && !m.trashed);
         let url = '/';
@@ -3676,7 +3703,7 @@ async function libBoot() {
         catch { }
         json = legacy;
     }
-    if (!json) {
+    if (!json && !isPreviewRoute) {
         // The remembered file is gone: reopen the most recent one that still has content, and drop index entries
         // that never got any, so reloading does not pile up empty files.
         const keep = [];
@@ -3695,7 +3722,7 @@ async function libBoot() {
     if (!json) {
         // Tidak ada file yang bisa dibuka: editor memakai dokumen kosong yang belum disimpan. Ia baru masuk Recents &
         // server saat pertama kali diedit (save() menambahkannya), jadi file yang sudah dihapus tidak "hidup lagi".
-        lib.fileId = uid();
+        lib.fileId = isPreviewRoute ? deepLink.id : uid();
     }
     // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
     // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
@@ -4844,7 +4871,7 @@ function materializeEffects(n) {
 }
 // A single plain drop shadow keeps using the GPU shape path; everything else is painted by the 2D painter.
 function hasComplexFx(n) {
-    if (n.type === 'group' || !Array.isArray(n.effects))
+    if (n.type === 'group' || !Array.isArray(n.effects) || !n.effects.length)
         return false;
     const e = n.effects.filter(x => x.visible !== false);
     if (n.type === 'text')
@@ -6178,10 +6205,10 @@ function lgStripes(g, length) {
     return out;
 }
 function drawLayoutGrids(c) {
-    const z = state.camera.zoom;
+    const z = state.camera.zoom, peek = overlayPeek();
     for (const s of doc.scene()) {
         const n = s.node;
-        if (!n.layoutGrids?.length || s.hidden || n.type !== 'frame')
+        if (!n.layoutGrids?.length || s.hidden || n.type !== 'frame' || !overlayShown(n.id, peek))
             continue;
         const p = worldToScreen(s.box.x, s.box.y);
         if (p.x > area.clientWidth || p.y > area.clientHeight || p.x + s.box.w * z < 0 || p.y + s.box.h * z < 0)
@@ -6683,6 +6710,7 @@ class DocumentModel {
                     const before = this.revision;
                     applyVariables(this);
                     applyConstraints(this);
+                    syncOverlaySizes(this);
                     runLayout(this);
                     if (this.revision === before)
                         break;
@@ -6705,7 +6733,9 @@ class DocumentModel {
                 return;
             // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
             // Auto layout "Canvas stacking: First on top" paints the children in reverse order (layer order is unchanged).
-            const kidsOf = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
+            const rawKids = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
+            // Root-level overlay portals walk after ordinary nodes so their trigger's world box is already computed.
+            const kidsOf = pid === null ? [...rawKids.filter(k => !isOverlayRoot(k)), ...rawKids.filter(k => isOverlayRoot(k))] : rawKids;
             // Mask entries, built once per parent: a visible mask clips every sibling stacked below it (Figma: the mask sits above what it masks).
             const maskFor = new Map();
             let active = null;
@@ -6723,6 +6753,23 @@ class DocumentModel {
                 if (visited.has(n.id))
                     continue;
                 visited.add(n.id);
+                if (pid === null && isOverlayRoot(n)) {
+                    const found = overlayActionOf(n.id);
+                    if (found) {
+                        const { trig, action } = found;
+                        const tbox = world.get(trig.id)?.box;
+                        if (tbox) {
+                            let anchorBox = tbox;
+                            if (action.type === 'open-overlay') {
+                                const topFrame = [trig, ...this.ancestors(trig)].reverse().find(a => a.type === 'frame' && !a.parentId && !a.isSection);
+                                anchorBox = (topFrame && world.get(topFrame.id)?.box) || tbox;
+                            }
+                            const pos = placeOverlayPos(anchorBox, n.w, n.h, actionPlacement(action), action.offset);
+                            n.x = Math.round(pos.x);
+                            n.y = Math.round(pos.y);
+                        }
+                    }
+                }
                 const clips = maskFor.get(n.id) ? [...parentClips, maskFor.get(n.id)] : parentClips;
                 const mat = multiply(m, localMatrix(n)), box = boxOf(mat, n.w, n.h), o = opacity * n.opacity, hide = hidden || !n.visible, lock = locked || n.locked;
                 const item = { node: n, matrix: mat, inverse: inverse(mat), box, opacity: o, clips, hidden: hide, locked: lock, boolChild: boolInside.has(pid) };
@@ -6755,7 +6802,7 @@ class DocumentModel {
             boolChild: false
         };
     }
-    bounds(ids) { return union((ids ? ids.map(id => this.world(id)) : this.scene().filter(s => !s.node.parentId)).filter(Boolean).map(s => s.box)); }
+    bounds(ids) { return union((ids ? ids.map(id => this.world(id)) : this.scene().filter(s => !s.node.parentId && !s.node.isOverlay)).filter(Boolean).map(s => s.box)); }
     snapshot() {
         const pageChunks = this.data.pages.map(p => {
             let s = this._pageSnapshots.get(p.id);
@@ -7658,18 +7705,32 @@ class Renderer {
         const start = performance.now();
         const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, w: this.width / camera.zoom, h: this.height / camera.zoom };
         const peek = overlayPeek();
-        const scene = deferFrameStrokes(this.doc.scene().filter(s => s.node.id !== this.skipId && overlayShown(s.node.id, peek) && s.node.type !== 'group' && !s.node.isMask && !s.boolChild && intersects({ ...s.box, x: s.box.x - 100, y: s.box.y - 100, w: s.box.w + 200, h: s.box.h + 200 }, viewport)));
+        // What does not depend on the camera (layer kind, masks, hidden overlays) is filtered once per scene, not every frame;
+        // a pan or zoom only repeats the cheap viewport test.
+        const raw = this.doc.scene(), peekKey = peek.size ? [...peek].join(',') : '';
+        let base = this._baseCache;
+        if (!base || base.raw !== raw || base.skip !== this.skipId || base.peek !== peekKey) {
+            base = { raw, skip: this.skipId, peek: peekKey, list: raw.filter(s => s.node.id !== this.skipId && overlayShown(s.node.id, peek) && s.node.type !== 'group' && !s.node.isMask && !s.boolChild) };
+            this._baseCache = base;
+        }
+        const vx0 = viewport.x - 100, vy0 = viewport.y - 100, vx1 = viewport.x + viewport.w + 100, vy1 = viewport.y + viewport.h + 100;
+        const scene = deferFrameStrokes(base.list.filter(s => { const b = s.box; return b.x <= vx1 && b.x + b.w >= vx0 && b.y <= vy1 && b.y + b.h >= vy0; }));
         this.visibleCount = scene.length;
         // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
         // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
         // Masks need the 2D painter (alpha masking); it is allowed on much larger scenes than other complex effects.
         // Vectors zoomed past what the raster atlas can hold would turn soft: the 2D painter draws them as true curves.
         const pxScale = camera.zoom * this.dpr, tooBig = s => (s.node.type === 'path' || s.node.type === 'line' || s.node.type === 'text') && (Math.max(s.node.w, s.node.h) * pxScale > this.atlas.size - 8 || s.node.type === 'text' && pxScale > 24);
-        const fxRoute = this.backend === 'WebGPU' && (scene.length <= 250 && scene.some(s => hasComplexFx(s.node)) || scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask)) || scene.length <= 2000 && scene.some(tooBig));
+        const fxFx = this.backend === 'WebGPU' && scene.length <= 250 && scene.some(s => hasComplexFx(s.node));
+        const fxMask = this.backend === 'WebGPU' && scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask));
+        const fxBig = this.backend === 'WebGPU' && scene.length <= 2000 && scene.some(tooBig);
+        const fxRoute = fxFx || fxMask || fxBig;
+        // Which painter drew this frame, shown next to the CPU time: WebGPU is the fast path, "2D" means one layer forced the slow one.
+        this.route = fxRoute ? `2D (${[fxFx && 'effects', fxMask && 'mask', fxBig && 'large text/vector'].filter(Boolean).join(', ')})` : this.backend;
         this.toggleFx(fxRoute);
         if (fxRoute) {
             try {
-                this.renderCanvas(scene, camera, this.fxCtx, this.fxCanvas.width, this.fxCanvas.height, this.dpr);
+                this.renderFx(scene, camera, base);
             }
             catch (e) {
                 console.error(e);
@@ -7704,6 +7765,48 @@ class Renderer {
         this.cpuMs = performance.now() - start;
     }
     // Effects the shape shader cannot express (inner shadow, blurs, glass) are drawn by the 2D painter on a layer above the GPU canvas.
+    /**
+     * The 2D painter route (effects / masks / large vectors). Repainting every layer on each frame of a pan is what makes it heavy,
+     * so while only the camera moves, the scene is painted once into a bitmap larger than the screen and the pan just slides it.
+     * Anything else (an edit, a zoom, a drag, the frame right after a pan stops) paints fresh, so nothing stale is left on screen.
+     */
+    renderFx(scene, camera, base) {
+        const ctx = this.fxCtx, fc = this.fxCanvas, dpr = this.dpr, last = this._fxLast;
+        this._fxLast = { x: camera.x, y: camera.y, zoom: camera.zoom, base };
+        const panned = last && last.base === base && last.zoom === camera.zoom && (last.x !== camera.x || last.y !== camera.y);
+        if (!panned) {
+            this._fxBig = null;
+            this.renderCanvas(scene, camera, ctx, fc.width, fc.height, dpr);
+            return;
+        }
+        let big = this._fxBig;
+        if (big && (big.base !== base || big.zoom !== camera.zoom || big.dpr !== dpr || big.W !== this.width || big.H !== this.height || Math.abs(camera.x - big.cx) > big.mx || Math.abs(camera.y - big.cy) > big.my))
+            big = null;
+        if (!big) {
+            const mx = this.width * .4, my = this.height * .4, wpx = Math.ceil((this.width + 2 * mx) * dpr), hpx = Math.ceil((this.height + 2 * my) * dpr);
+            if (wpx > 8192 || hpx > 8192) {
+                this._fxBig = null;
+                this.renderCanvas(scene, camera, ctx, fc.width, fc.height, dpr);
+                return;
+            }
+            const cam = { x: camera.x + mx, y: camera.y + my, zoom: camera.zoom };
+            const z = camera.zoom, vx0 = -cam.x / z - 100, vy0 = -cam.y / z - 100, vx1 = vx0 + (this.width + 2 * mx) / z + 200, vy1 = vy0 + (this.height + 2 * my) / z + 200;
+            const sceneBig = deferFrameStrokes(base.list.filter(s => { const b = s.box; return b.x <= vx1 && b.x + b.w >= vx0 && b.y <= vy1 && b.y + b.h >= vy0; }));
+            const canvas = big?.canvas || this._fxBigCanvas || (this._fxBigCanvas = document.createElement('canvas'));
+            canvas.width = wpx;
+            canvas.height = hpx;
+            this.renderCanvas(sceneBig, cam, canvas.getContext('2d'), wpx, hpx, dpr);
+            big = this._fxBig = { canvas, base, zoom: camera.zoom, dpr, W: this.width, H: this.height, cx: camera.x, cy: camera.y, mx, my };
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, fc.width, fc.height);
+        ctx.drawImage(big.canvas, Math.round((camera.x - big.cx - big.mx) * dpr), Math.round((camera.y - big.cy - big.my) * dpr));
+        this.instanceCount = scene.length;
+        this.drawCalls = 1;
+        // When the pan stops, one fresh exact paint replaces the slid bitmap (it can be half a pixel off).
+        clearTimeout(this._fxIdle);
+        this._fxIdle = setTimeout(() => this.invalidate(), 140);
+    }
     toggleFx(on) {
         if (on && !this.fxCanvas) {
             const c = document.createElement('canvas');
@@ -8268,6 +8371,8 @@ let saveQueued = false;
 async function save() {
     clearTimeout(saveTimer);
     clearTimeout(retryTimer);
+    if (state.previewTab)
+        return;
     if (!lib.fileId || conflictOpen)
         return;
     // View-only accounts never write: the server would refuse, so edits stay on this screen only.
@@ -8365,6 +8470,8 @@ async function resolveConflict() {
     }
 }
 function invalidate() {
+    if (state.previewTab)
+        return; // a preview tab has no editor canvas to redraw
     if (scheduled)
         return;
     scheduled = true;
@@ -8373,7 +8480,7 @@ function invalidate() {
         syncUrl();
         renderer.render(state.camera);
         drawOverlay();
-        $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
+        $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU · ${renderer.route || ''}`;
         $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
         $('#canvas-world').style.backgroundImage = 'none';
         drawDotGrid();
@@ -8906,20 +9013,28 @@ function overlayIndex() {
     _ovIndexRev = doc.revision;
     return _ovIndex;
 }
-/** Overlay yang boleh tampil di kanvas: trigger-nya / dirinya / anaknya sedang diselect. */
+/** Overlay yang boleh tampil di kanvas: trigger-nya (atau child di dalamnya) / dirinya / anaknya sedang diselect. */
 function overlayPeek() {
     const show = new Set();
     for (const id of state.selection) {
         const root = overlayIndex().get(id);
         if (root) show.add(root);
-        for (const oid of _ovByTrigger.get(id) || []) show.add(oid);
-        const n = nodeIndex().get(id);
-        if (!n) continue;
-        const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
-        for (const it of interactionsForNode(n, src, set).list) for (const a of it.actions || []) {
-            if (!/^open-/.test(a.type) || !a.targetFrameId) continue;
-            const r = overlayIndex().get(a.targetFrameId);
-            if (r) show.add(r);
+        const selNode = nodeIndex().get(id);
+        const chain = selNode ? [selNode, ...doc.ancestors(selNode)] : [];
+        for (const n of chain) {
+            for (const oid of _ovByTrigger.get(n.id) || []) show.add(oid);
+            const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
+            for (const it of interactionsForNode(n, src, set).list) for (const a of it.actions || []) {
+                if (!/^open-/.test(a.type)) continue;
+                if (a.overlayInstanceId) {
+                    const r = overlayIndex().get(a.overlayInstanceId);
+                    if (r) show.add(r);
+                }
+                if (a.targetFrameId) {
+                    const r = overlayIndex().get(a.targetFrameId);
+                    if (r) show.add(r);
+                }
+            }
         }
     }
     return show;
@@ -9007,17 +9122,30 @@ function placedOverlayFor(triggerId, a) {
     }
     return placedOverlay(triggerId, a);
 }
-/** Pastikan ada instance overlay untuk trigger+target: pakai yang sudah ada, atau taruh baru lalu pilih. */
-function ensureOverlayPlaced(triggerId, a) {
+/** Hapus instance overlay portal milik sebuah action bila ada di kanvas. */
+function removePlacedOverlay(triggerId, a) {
+    const ex = placedOverlayFor(triggerId, a);
+    if (ex && doc.get(ex.id)) doc.remove(ex.id);
+}
+/** Pastikan ada instance overlay untuk trigger+target: pakai yang sudah ada, atau taruh baru. */
+function ensureOverlayPlaced(triggerId, a, opts = {}) {
     const ex = placedOverlayFor(triggerId, a);
     if (ex) {
-        select([ex.id]);
+        if (!opts.keepSelection) select([ex.id]);
         return ex.id;
     }
-    return placeOverlayOnCanvas(triggerId, a);
+    return placeOverlayOnCanvas(triggerId, a, opts);
 }
 /** Taruh isi overlay sebagai instance di kanvas, di posisi trigger-nya: bisa diklik dan diedit langsung. */
-function placeOverlayOnCanvas(triggerId, a) {
+function bhParseOff(s) {
+    if (s === undefined || s === null || s === '') return undefined;
+    if (String(s).includes(',')) {
+        const [x, y] = String(s).split(',').map(Number);
+        return { x: x || 0, y: y || 0 };
+    }
+    return Number(s);
+}
+function placeOverlayOnCanvas(triggerId, a, opts = {}) {
     const trig = doc.get(triggerId);
     if (!trig) return null;
     const vid = overlayTargetId(a);
@@ -9028,9 +9156,12 @@ function placeOverlayOnCanvas(triggerId, a) {
     }
     const box = doc.world(triggerId)?.box;
     if (!box) return null;
-    const pos = placeOverlayPos(box, master.w, master.h, a.position, a.offset);
-    instantiate(master.id, { x: pos.x + master.w / 2, y: pos.y + master.h / 2 }, null, { isOverlay: true, overlayTrigger: triggerId });
-    return activeNode()?.id || null;
+    const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
+    const h = a.type === 'open-dropdown' && a.height === 'parent' ? Math.round(box.h) : master.h;
+    const pos = placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
+    let createdId = null;
+    instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
+    return createdId || activeNode()?.id || null;
 }
 /** Tunjukkan sebuah layer di kanvas tanpa memindahkan seleksi editor. */
 function revealOnCanvas(id) {
@@ -9206,6 +9337,9 @@ function renderInspector() {
     // In an auto layout the layout decides where a layer sits: X / Y can not be typed.
     if (ns.length >= 1 && ns.every(x => { const p = doc.get(x.parentId); return p?.type === 'frame' && isAutoLayout(p) && x.layoutPositioning !== 'absolute'; }))
         $('#inspector').querySelectorAll('input[data-prop="x"], input[data-prop="y"]').forEach(el => { el.disabled = true; el.closest('.field')?.classList.add('inst-locked'); });
+    // Overlay portal root: placement and size are controlled from its trigger's Interaction settings in the Behavior tab.
+    if (ns.some(isOverlayRoot))
+        $('#inspector').querySelectorAll('input[data-prop="x"], input[data-prop="y"], input[data-prop="w"], input[data-prop="h"], input[data-prop="rotation"], [data-align], [data-flip], [data-rotate90], [data-ly-mode], [data-ly-wrap]').forEach(el => { el.disabled = true; (el.closest('.field') || el).classList.add('inst-locked'); });
     // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
     if (ns.length === 1 && n.isInstance && !insideInstance(n))
         $('#inspector').querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
@@ -9940,7 +10074,9 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         }
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
-        select([root.id]);
+        opts.onCreated?.(root);
+        if (!opts.keepSelection)
+            select([root.id]);
     });
 }
 function createAtCenter(type, props = {}) { const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2); let n; transaction(`Insert ${type}`, () => { n = node(type, props); n.x = Math.round(c.x - n.w / 2); n.y = Math.round(c.y - n.h / 2); doc.add(n); select([n.id]); }); return n; }
@@ -10141,7 +10277,7 @@ function selectionGeometry() {
         return null;
     return { matrix: [1, 0, 0, 1, b.x, b.y], w: b.w, h: b.h, node: null };
 }
-function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
+function handlesFor(g) { if (selectedRoots().some(isOverlayRoot)) return []; if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
 function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
 // Components, variant sets, instances and everything inside them are selected in Figma's purple.
 const compPurple = () => '#9747FF'; // bounding box: same in light and dark
@@ -10220,10 +10356,10 @@ function drawSlots(c) {
     state.slotBadges = [];
     if (state.tool !== 'select' || state.gesture)
         return;
-    const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean);
+    const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean), peek = overlayPeek();
     for (const s of doc.scene()) {
         const n = s.node;
-        if (!n.propBind?.slot || !n.sourceId || n.visible === false)
+        if (!n.propBind?.slot || !n.sourceId || n.visible === false || !overlayShown(n.id, peek))
             continue;
         const empty = !doc.children(n.id).length;
         const active = state.selection.has(n.id) || state.hover === n.id || selNodes.some(x => doc.ancestors(x).some(a => a.id === n.id));
@@ -10340,8 +10476,9 @@ function drawOverlay() {
         c.restore();
     }
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    const peek = overlayPeek();
     for (const s of doc.scene()) {
-        if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
+        if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection || !overlayShown(s.node.id, peek))
             continue;
         const p = worldToScreen(s.box.x, s.box.y);
         c.font = `${s.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
@@ -10651,16 +10788,11 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
                 const anc = doc.ancestors(n), variantOf = [n, ...anc].find(a => a.component && doc.get(a.parentId)?.componentSet);
                 if (variantOf)
                     return variantOf;
-                // A click picks the outermost container above the layer: a group / instance / component, or an auto layout frame
-                // (so nothing inside an auto layout or an instance is picked directly); Ctrl/Cmd reaches the smallest node.
-                // An empty slot of an instance is the exception: it is picked directly (its "+" placeholder).
-                const container = p => p.type === 'group' || p.booleanOp || p.isInstance || p.component || p.type === 'frame' && isAutoLayout(p);
-                const slotAt = [n, ...anc].findIndex(a => a.propBind?.slot && a.sourceId);
-                if (slotAt === 0 && !doc.children(n.id).length)
-                    return n;
-                const outer = anc.filter(container).pop();
-                if (outer)
-                    return outer;
+                // A click picks the outermost container above the layer, but never across a slot boundary:
+                // what sits in a slot belongs to the instance and is picked directly, so deleting it
+                // removes only the selection. Ctrl/Cmd reaches the smallest node.
+                // An empty slot of an instance is picked directly (its "+" placeholder).
+                return clickPick(n, anc, doc.children(n.id).length);
             }
             return n;
         }
@@ -10714,8 +10846,9 @@ function saveOriginals(roots) {
 }
 function frameLabelHit(p) {
     octx.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    const peek = overlayPeek();
     for (const sc of doc.scene()) {
-        if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked)
+        if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked || !overlayShown(sc.node.id, peek))
             continue;
         octx.font = `${sc.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width + (labelKind(sc.node) ? LABEL_ICON_W : 0);
@@ -10922,8 +11055,9 @@ function pointerDown(e) {
             history.begin('Duplicate and move');
             select(altDuplicate(selectedRoots()).map(n => n.id));
         }
-        const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
-        state.gesture = { kind: 'move', pendingPick: pendingPick?.id || null, altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
+        const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked && !isOverlayRoot(n));
+        if (roots.length)
+            state.gesture = { kind: 'move', pendingPick: pendingPick?.id || null, altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
     }
     else if (keepTextId && state.tool === 'select' && !e.shiftKey) {
         // Clicking empty canvas while typing only exits edit mode; the text layer stays selected (like Figma).
@@ -11115,10 +11249,11 @@ function pointerMove(e) {
         // Figma-style: a frame the marquee fully encloses is selected as one; a frame it only overlaps is entered, so its
         // children can be picked whether the drag started inside or outside that frame. Other layers are picked on touch.
         const boxes = new Map(doc.scene().map(s => [s.node.id, s]));
+        const peek = overlayPeek();
         const visit = parent => {
             for (const n of doc.children(parent)) {
                 const s = boxes.get(n.id);
-                if (!s || s.locked || !n.visible)
+                if (!s || s.locked || !n.visible || !overlayShown(n.id, peek))
                     continue;
                 const hit = s.box.x < b.x + b.w && s.box.x + s.box.w > b.x && s.box.y < b.y + b.h && s.box.y + s.box.h > b.y;
                 if (!hit)
@@ -11519,7 +11654,7 @@ function pointerUp(e) {
                     delete m._drag;
             }
             if (g.moved) {
-                applyDrop(g);
+                applyDrop(g); commitOverlayDrag(g);
                 doc.touch();
                 doc.scene();
             }
@@ -11754,6 +11889,78 @@ function finishText(cancel = false) {
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
 let lastMenuAt = { x: 0, y: 0 };
+// Dragging a peeked overlay writes the move back into its trigger action's offset ({x, y}),
+// not into world x/y: the peek position stays derived from placeOverlayPos (spec).
+function overlayActionOf(instanceId) {
+    const ov = nodeIndex().get(instanceId);
+    if (ov?.overlayTrigger) {
+        const trig = nodeIndex().get(ov.overlayTrigger);
+        if (trig) {
+            const src = trig.isInstance ? chainComponent(trig) : null, set = src && parentSetOf(src);
+            for (const it of interactionsForNode(trig, src, set).list) {
+                for (const a of it.actions || []) {
+                    if (/^open-/.test(a.type) && (a.overlayInstanceId === instanceId || overlayTargetId(a) === ov.sourceId))
+                        return { trig, action: a };
+                }
+            }
+        }
+    }
+    for (const t of allNodes()) {
+        for (const it of t.interactions || []) {
+            for (const a of it.actions || []) {
+                if ((a.type === 'open-dropdown' || a.type === 'open-overlay' || a.type === 'open-popover') && a.overlayInstanceId === instanceId)
+                    return { trig: t, action: a };
+            }
+        }
+    }
+    return null;
+}
+function syncOverlaySizes(d) {
+    for (const ov of d.nodes) {
+        if (!isOverlayRoot(ov)) continue;
+        const found = overlayActionOf(ov.id);
+        if (!found) continue;
+        const { trig, action } = found;
+        const master = ov.sourceId ? (d.get(ov.sourceId) || componentById(ov.sourceId)) : null;
+        if (action.type === 'open-dropdown' && action.width === 'parent' && trig.w > 0) {
+            const tw = Math.round(trig.w);
+            if (ov.w !== tw || ov.layoutSizingH !== 'fixed' || !ov._matchParentW) {
+                ov.w = tw;
+                ov.layoutSizingH = 'fixed';
+                ov._matchParentW = true;
+                d.revision++;
+            }
+        }
+        else if (ov._matchParentW) {
+            delete ov._matchParentW;
+            if (master) {
+                ov.w = master.w;
+                ov.layoutSizingH = master.layoutSizingH || 'fixed';
+                d.revision++;
+            }
+        }
+        if (action.type === 'open-dropdown' && action.height === 'parent' && trig.h > 0) {
+            const th = Math.round(trig.h);
+            if (ov.h !== th || ov.layoutSizingV !== 'fixed' || !ov._matchParentH) {
+                ov.h = th;
+                ov.layoutSizingV = 'fixed';
+                ov._matchParentH = true;
+                d.revision++;
+            }
+        }
+        else if (ov._matchParentH) {
+            delete ov._matchParentH;
+            if (master) {
+                ov.h = master.h;
+                ov.layoutSizingV = master.layoutSizingV || 'fixed';
+                d.revision++;
+            }
+        }
+    }
+}
+function commitOverlayDrag(_g) {
+    // Overlay portal position is locked on canvas and driven strictly by the trigger's Interaction settings.
+}
 function showMenu(items, x, y) { lastMenuAt = { x, y }; const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
 // A layer inside an instance (not the instance's own root).
 function insideInstance(n) { return !!n && doc.ancestors(n).some(a => a.isInstance); }
@@ -18450,6 +18657,14 @@ function liveContext() {
     const multiPage = doc.data.pages.filter(p => !isPageDivider(p) && p.nodes.some(n => n.type === 'frame' && !n.parentId)).length > 1;
     const frames = doc.data.pages.filter(p => !isPageDivider(p) && !p.internal).flatMap(p => p.nodes.filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false).map(n => ({ id: n.id, name: n.name, page: p.name, pageId: p.id, label: multiPage ? `${p.name} / ${n.name}` : n.name })));
     const active = activeNode(), top = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
+    // Preview follows what is being edited: inside placed overlay contents (or a component),
+    // open the trigger's frame instead of falling back to the first frame.
+    const topFrame = n => n && n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false ? n : null;
+    let home = topFrame(top);
+    if (!home && top?.overlayTrigger) {
+        const trig = doc.get(top.overlayTrigger);
+        home = topFrame(trig && (trig.parentId ? doc.ancestors(trig).at(-1) : trig));
+    }
     /** What the component's properties are for, by their names: whether the hint shows, the helper / error text, the placeholder. */
     const rolesOf = inst => {
         const src = chainComponent(inst), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
@@ -18472,7 +18687,7 @@ function liveContext() {
             runLayout({ nodes, get: id => byId.get(id), touch() { } });
         },
         frames,
-        start: frames.find(f => f.id === top?.id)?.id || frames[0]?.id,
+        start: (deepLink?.preview && frames.some(f => f.id === deepLink.preview) && deepLink.preview) || (home && frames.some(f => f.id === home.id) && home.id) || frames.find(f => f.id === top?.id)?.id || frames[0]?.id,
         vars: store.items.filter(i => ['color', 'number', 'string'].includes(i.type) && store.collections.find(c => c.id === i.collectionId)?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1).map(i => {
             const v = varValue(doc, i, null);
             return { name: cssName(i.name), value: i.type === 'number' ? `${v}px` : String(v) };
@@ -18612,23 +18827,61 @@ function liveContext() {
         },
     };
 }
-async function startLivePreview() {
+/** Preview tab (new browser tab): read-only live preview. Refresh reloads the saved file,
+so canvas edits appear after autosave. No exit function: just close the tab. */
+/** Route /preview/ yang filenya tidak ketemu di server: jangan buka file lain, jangan tulis URL. */
+function showPreviewMissing() {
+    state.previewTab = true;
+    document.body.classList.add('preview-tab');
+    document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#fff;color:#666;font:14px Inter,system-ui,sans-serif">This preview could not load its file. Save it in the design tab, then refresh this tab.</div>');
+}
+async function startPreviewTab() {
+    state.previewTab = true;
+    document.body.classList.add('preview-tab');
+    const ctx = liveContext();
+    if (!ctx.frames.length) {
+        document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#fff;color:#666;font:14px Inter,system-ui,sans-serif">Create a frame to preview your design, then refresh this tab.</div>');
+        return;
+    }
+    const m = await import('../preview/live.js');
+    reloadPreviewContext.fontSig = JSON.stringify(Object.entries(doc.data.fonts || {}).map(([k, v]) => [k, typeof v === 'string' ? v.length : 0]));
+    livePreview = m.openLivePreview(ctx, document.body, { surface: 'tab', onRefresh: reloadPreviewContext, scale: ['fill', 'actual', 'fit'].includes(deepLink?.scale) ? deepLink.scale : 'fill' });
+}
+/** Restart in the preview tab: read the saved file again (what the design tab autosaved) and rebuild the live context from it. */
+async function reloadPreviewContext() {
+    if (!lib.fileId)
+        return null;
+    const data = await projectStorage.loadProject(lib.fileId);
+    if (!data)
+        return null;
+    const parsed = DocumentModel.parse(data);
+    parsed.variables = cleanVariables(parsed.variables);
+    doc.data = parsed;
+    doc.refresh();
+    syncComponents(true);
+    resetRasterCaches();
+    // Re-decoding embedded fonts is the slow part: only do it when the file's fonts actually changed.
+    const fontSig = JSON.stringify(Object.entries(parsed.fonts || {}).map(([k, v]) => [k, typeof v === 'string' ? v.length : 0]));
+    if (fontSig !== reloadPreviewContext.fontSig) {
+        reloadPreviewContext.fontSig = fontSig;
+        try {
+            await loadStoredFonts();
+        }
+        catch { }
+    }
+    return liveContext();
+}
+/** The Preview button opens a new tab instead of an overlay (Figma-style). */
+function openPreviewTab() {
     finishText();
     const ctx = liveContext();
     if (!ctx.frames.length) {
         toast('Create a frame to preview your design.');
-        return false;
+        return;
     }
-    stopLivePreview();
-    const m = await import('../preview/live.js');
-    livePreview = m.openLivePreview(ctx, document.body, { onExit: stopLivePreview });
-    $('#present')?.classList.add('active');
-    return true;
-}
-function stopLivePreview() {
-    livePreview?.close();
-    livePreview = null;
-    $('#present')?.classList.remove('active');
+    import('../preview/live.js').then(m => {
+        window.open(m.previewUrl(lib.fileId, doc.page?.id, ctx.start, 'fill'), '_blank');
+    });
 }
 // ===== Behavior tab: what a layer does in Preview =====
 // Isi tab kontekstual: mengikuti tipe komponen yang dipilih. Tombol → state mapping + interaction,
@@ -18721,7 +18974,7 @@ function bhTargetPreview(a) {
     const shown = variant || master, page = pageOfNode(shown.id);
     let thumb = '';
     try { thumb = componentThumbSVG(shown.id); } catch { thumb = ''; }
-    return `<div class="bh-target">${thumb ? `<div class="bh-thumb">${thumb}</div>` : ''}<div class="bh-target-meta"><span class="bh-target-name" title="${esc(shown.name)}">${esc(variant ? `${master.name} · ${variant.name}` : master.name)}</span><small>${esc(page?.name || '')} · ${Math.round(shown.w)}×${Math.round(shown.h)}</small><button type="button" class="swap-btn" data-bh-locate="${esc(shown.id)}">Show on canvas</button><button type="button" class="swap-btn" data-bh-edit-contents="${esc(shown.id)}">Edit contents</button><button type="button" class="swap-btn" data-bh-place-overlay="${esc(shown.id)}" data-bh-place-comp="${esc(a.targetComponentId || '')}" data-bh-place-var="${esc(a.targetVariantId || '')}" data-bh-place-pos="${esc(a.position || '')}" data-bh-place-off="${esc(a.offset ?? '')}">Place on canvas</button></div></div>`;
+    return `<div class="bh-target">${thumb ? `<div class="bh-thumb">${thumb}</div>` : ''}<div class="bh-target-meta"><span class="bh-target-name" title="${esc(shown.name)}">${esc(variant ? `${master.name} · ${variant.name}` : master.name)}</span><small>${esc(page?.name || '')} · ${Math.round(shown.w)}×${Math.round(shown.h)}</small><button type="button" class="swap-btn" data-bh-locate="${esc(shown.id)}">Show on canvas</button><button type="button" class="swap-btn" data-bh-edit-contents="${esc(shown.id)}">Edit contents</button><button type="button" class="swap-btn" data-bh-place-overlay="${esc(shown.id)}" data-bh-place-comp="${esc(a.targetComponentId || '')}" data-bh-place-var="${esc(a.targetVariantId || '')}" data-bh-place-pos="${esc(a.position || '')}" data-bh-place-off="${esc(offsetXY(a.offset, a.position, a.type).x + ',' + offsetXY(a.offset, a.position, a.type).y)}">Place on canvas</button></div></div>`;
 }
 /** Frame yang bisa jadi target sebuah action, beserta perannya. */
 function bhFrames() {
@@ -18796,12 +19049,13 @@ document.addEventListener('click', e => {
     e.stopPropagation();
     const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
     const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
-    const write = id => { transaction('Behavior', () => { bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
+    const actAt = p => { const m = p.match(/^interactions\.(\d+)\.actions\.(\d+)\.targetComponentId$/); return m ? n.interactions?.[+m[1]]?.actions?.[+m[2]] : null; };
+    const write = id => { transaction('Behavior', () => { const prev = actAt(path); if (prev) removePlacedOverlay(n.id, prev); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
     if (clear) return write(null);
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const m = path.match(/interactions\.(\d+)\.actions\.(\d+)\.targetComponentId$/); const ac = m && n.interactions?.[+m[1]]?.actions?.[+m[2]]; if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); } },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); if (prev) removePlacedOverlay(n.id, prev); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
     });
 });
 document.addEventListener('click', e => {
@@ -18810,7 +19064,7 @@ document.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
         const n = activeNode();
-        if (n) placeOverlayOnCanvas(n.id, { targetComponentId: pl.dataset.bhPlaceComp || undefined, targetVariantId: pl.dataset.bhPlaceVar || undefined, position: pl.dataset.bhPlacePos || undefined, offset: pl.dataset.bhPlaceOff });
+        if (n) placeOverlayOnCanvas(n.id, { targetComponentId: pl.dataset.bhPlaceComp || undefined, targetVariantId: pl.dataset.bhPlaceVar || undefined, position: pl.dataset.bhPlacePos || undefined, offset: bhParseOff(pl.dataset.bhPlaceOff) });
         return;
     }
     const eb = e.target.closest?.('[data-bh-edit-contents]');
@@ -18878,15 +19132,16 @@ function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
     // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
-    const placementRows = (p, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(x => [x, x]))}</label><label class="field"><span>Offset</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="plain" value="${a.offset ?? ''}" placeholder="0" aria-label="Offset in px"><i class="unit">px</i></label>`;
+    const placementRows = (p, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(x => [x, x]))}</label><label class="field"><span>Offset X</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`;
     // Gerakan standar preview: transisi, durasi (ms), dan easing. Kosong = mengikuti default standar.
     const motionRows = (p, a, kind) => {
         const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
         return `<label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', TRANSITIONS.some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...TRANSITIONS.map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label>`;
     };
     // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
-    const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label) + bhTargetPreview(a)
+    const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
         + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
+    const dropdownSizeRows = (p, a) => `<label class="field"><span>W</span>${bhSelect(`${p}.width`, 'plain', a.width === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label><label class="field"><span>H</span>${bhSelect(`${p}.height`, 'plain', a.height === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label>`;
     // Set variable: switch a variable collection to one of its modes. Every variable in the collection then reads
     // that mode's value, so one action changes a whole theme / state at once.
     const variableRows = (p, a) => {
@@ -18903,7 +19158,7 @@ function bhInteractionRows(n, frames) {
     };
     const fields = (p, a) => {
         if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page') + motionRows(p, a, 'navigate');
-        if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + motionRows(p, a, 'open-dropdown');
+        if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + dropdownSizeRows(p, a) + motionRows(p, a, 'open-dropdown');
         if (a.type === 'open-overlay') return openPick(p, a, 'Open') + bhSelect(`${p}.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked') + motionRows(p, a, 'open-overlay');
         if (a.type === 'open-popover') return openPick(p, a, 'Open') + bhSelect(`${p}.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(p, a, 'top') + motionRows(p, a, 'open-popover');
         if (a.type === 'close-overlay') return bhSelect(`${p}.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]) + motionRows(p, a, 'close-overlay');
@@ -19041,15 +19296,27 @@ function bhStateBody(n) {
     }).join('');
     return bhPlain('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
 }
+/** Section Scroll Behavior: Overflow di setiap frame; Position bila node adalah child. */
+function scrollBehaviorHtml(n) {
+    const s = normalizeScroll(n), rows = [];
+    if (n.type === 'frame') rows.push(`<label class="field"><span>Overflow</span>${bhSelect('scroll.overflow', 'plain', s.overflow || 'none', SCROLL_OVERFLOWS.map(o => [o.id, o.label]))}</label>`);
+    if (n.parentId) rows.push(`<label class="field"><span>Position</span>${bhSelect('scroll.position', 'plain', s.scroll || 'scroll', SCROLL_POSITIONS.map(o => [o.id, o.label]))}</label>`);
+    return rows.length ? section('Scroll Behavior', rows.join('')) : '';
+}
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
     const isFrame = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
-    if (!n.isInstance && !n.component && !n.componentSet && !isFrame)
+    const isChildFrame = n.type === 'frame' && n.parentId && !n.component && !n.componentSet && !n.isInstance;
+    if (!n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame)
         return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
-    if (isFrame)
-        return section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
+    if (isFrame || isChildFrame) {
+        let fhtml = '';
+        if (isFrame) fhtml += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
             <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
+        fhtml += scrollBehaviorHtml(n);
+        return fhtml;
+    }
     const type = bhTypeOf(n);
     const src = n.isInstance ? chainComponent(n) : n;
     const set = src && parentSetOf(src);
@@ -19080,12 +19347,19 @@ function prototypeHtml() {
         // Main components and component sets set the interactions every instance inherits.
         html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div><p class="small-label">Instances use these automatically until they set interactions of their own.</p>${addSelect}`);
     }
+    html += scrollBehaviorHtml(n);
     return html;
 }
 /** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
 function bhWrite(n, path, value) {
     if (path.startsWith('frame.')) {
         n.frameRole = value || 'page';
+        return;
+    }
+    if (path.startsWith('scroll.')) {
+        const s = normalizeScroll({ overflow: path === 'scroll.overflow' ? value : n.overflow, scroll: path === 'scroll.position' ? value : n.scroll });
+        if (s.overflow) n.overflow = s.overflow; else delete n.overflow;
+        if (s.scroll) n.scroll = s.scroll; else delete n.scroll;
         return;
     }
     const cfg = { state: n.stateMapping || {}, interactions: n.interactions || [], input: n.inputBehavior || {} };
@@ -19134,6 +19408,14 @@ function bhSet(n, t) {
         return;
     }
     const parent = path.split('.').slice(0, -1).join('.');
+    if (kind === 'offset') {
+        const am = path.match(/^interactions\.(\d+)\.actions\.(\d+)\.offset$/);
+        const act = am && n.interactions?.[+am[1]]?.actions?.[+am[2]];
+        const base = act ? offsetXY(act.offset, act.position, act.type) : { x: 0, y: 0 };
+        base[t.dataset.bhAxis === 'y' ? 'y' : 'x'] = value === '' ? 0 : Number(value) || 0;
+        bhWrite(n, path, !base.x && !base.y ? undefined : base);
+        return;
+    }
     if (kind === 'collection') {
         bhWriteCollection(n, path, value);
         return;
@@ -19183,13 +19465,16 @@ function bhAction(n, t) {
     if (act === 'del-action') {
         const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
         if (!it || it.actions.length < 2) return;
-        it.actions.splice(Number(t.dataset.bhAction), 1);
+        const [removed] = it.actions.splice(Number(t.dataset.bhAction), 1);
+        if (removed) removePlacedOverlay(n.id, removed);
         n.interactions = list;
         return;
     }
     if (act === 'del-interaction') {
         const i = Number(t.dataset.bhIndex);
-        n.interactions = normalizeInteractions(n.interactions).filter((_, k) => k !== i);
+        const list = normalizeInteractions(n.interactions);
+        for (const a of list[i]?.actions || []) removePlacedOverlay(n.id, a);
+        n.interactions = list.filter((_, k) => k !== i);
         return;
     }
     if (act === 'add-state') {
@@ -19769,20 +20054,7 @@ function commandPalette() {
     };
     render();
 }
-async function present() {
-    if (await startLivePreview())
-        return;
-    finishText();
-    state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
-    if (!state.previewFrames.length) {
-        toast('Create a frame to present your design.');
-        return;
-    }
-    const active = activeNode(), ancestor = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
-    state.previewIndex = Math.max(0, state.previewFrames.findIndex(n => n.id === ancestor?.id));
-    $('#presentation').classList.remove('hidden');
-    await showPreview();
-}
+async function present() { openPreviewTab(); }
 async function showPreview() {
     const n = state.previewFrames[state.previewIndex];
     if (!n)
@@ -20415,14 +20687,14 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-$('#present').onclick = () => startLivePreview();
+$('#present').onclick = () => openPreviewTab();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {
     assetPicker: openAssetPicker,
     commandPalette,
     togglePanels: () => document.body.classList.toggle('panels-hidden'),
-    selectAll: () => select(doc.nodes.filter(n => !n.parentId && n.visible && !n.locked).map(n => n.id)),
+    selectAll: () => select(doc.nodes.filter(n => !n.parentId && !n.isOverlay && n.visible && !n.locked).map(n => n.id)),
     // Paste where the menu was opened: the pasted layers end up centred on that point.
     pasteHere: async () => {
         const at = state.contextWorld;
@@ -21672,7 +21944,7 @@ document.addEventListener('keydown', e => {
             transaction('Nudge layers', () => {
                 const d = e.shiftKey ? options.bigNudge : options.nudge;
                 for (const n of selectedRoots()) {
-                    if (n.locked)
+                    if (n.locked || isOverlayRoot(n))
                         continue;
                     n.x += e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0;
                     n.y += e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
@@ -21752,7 +22024,7 @@ window.addEventListener('beforeunload', e => {
         e.returnValue = '';
     }
 });
-const resize = new ResizeObserver(() => { const width = area.clientWidth, height = area.clientHeight; renderer.resize(width, height); overlay.width = Math.round(width * renderer.dpr); overlay.height = Math.round(height * renderer.dpr); invalidate(); });
+const resize = new ResizeObserver(() => { if (state.previewTab) return; const width = area.clientWidth, height = area.clientHeight; renderer.resize(width, height); overlay.width = Math.round(width * renderer.dpr); overlay.height = Math.round(height * renderer.dpr); invalidate(); });
 resize.observe(area);
 // Optional user-supplied fonts. No font binaries are bundled or fetched by this application.
 const fontInput = document.createElement('input');
@@ -21805,6 +22077,14 @@ fontInput.onchange = async () => {
 };
 await boot.step(84, 'Loading fonts');
 await loadStoredFonts();
+const previewOnly = !!(deepLink?.tab && deepLink.used);
+if (previewOnly) {
+    // A preview tab never shows the editor: no renderer / GPU, no canvas fit, no panels. Only the document, its fonts and Preview.
+    state.previewTab = true;
+    await boot.step(95, 'Opening preview');
+    await startPreviewTab();
+}
+if (!previewOnly) {
 await boot.step(90, 'Starting renderer');
 await renderer.initialize();
 await boot.step(95, 'Drawing');
@@ -21827,6 +22107,7 @@ if (initial)
     markPagesSaved(); // everything on disk matches what was just loaded
 refreshUI();
 invalidate();
+}
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
@@ -21835,7 +22116,12 @@ window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, re
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
-if (deepLink?.used) {
+if (deepLink?.tab) {
+    if (deepLink.used) { /* the preview tab was already started before the editor's renderer */ }
+    else showPreviewMissing();
+}
+else if (deepLink?.used && deepLink.preview !== null) startPreviewTab();
+else if (deepLink?.used) {
     lib.open = false;
     const ids = deepLink.nodes.filter(id => doc.get(id));
     if (ids.length) {
@@ -21843,9 +22129,4 @@ if (deepLink?.used) {
         fit(ids);
     }
     syncUrl();
-}
-else
-    showHome({ thumb: false });
-setTimeout(() => ensureGlobalIndexes(), 50);
-// The engine owns the canvas and a GPU device; a hot-swapped second instance would reconfigure the same canvas with another device ("TextureView ... cannot be used with Device"). Reload fully instead.
-if (import.meta.hot) import.meta.hot.decline();
+}else    showHome({ thumb: false });setTimeout(() => ensureGlobalIndexes(), 50);// The engine owns the canvas and a GPU device; a hot-swapped second instance would reconfigure the same canvas with another device ("TextureView ... cannot be used with Device"). Reload fully instead.if (import.meta.hot) import.meta.hot.decline();
