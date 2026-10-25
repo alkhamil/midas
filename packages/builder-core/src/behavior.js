@@ -638,7 +638,7 @@ export function normalizeInputBehavior(b) {
             showIconId: typeable.showIconId ? String(typeable.showIconId) : undefined,
             hideIconId: typeable.hideIconId ? String(typeable.hideIconId) : undefined,
             // The State variable the typed text is kept in (a String or a Number state). Nothing is kept when it is not set.
-            bindTo: typeable.bindTo ? String(typeable.bindTo) : undefined,
+            ...(typeable.bindTo ? { bindTo: String(typeable.bindTo) } : {}),
         },
         validation: {
             required: !!validation.required,
