@@ -75,6 +75,7 @@ export const ACTIONS = [
     { id: 'close-overlay', label: 'Close overlay' },
     { id: 'set-variable', label: 'Set variable' },
     { id: 'set-selected', label: 'Set active / selected' },
+    { id: 'change-variant', label: 'Change variant' },
 ];
 
 /** How Set active / selected changes the layer: flip it, switch it on, or switch it on and the others of its kind off. */
@@ -96,7 +97,11 @@ export const TRANSITIONS = [
     { id: 'slide-down', label: 'Slide down' },
     { id: 'instant', label: 'Instant (no motion)' },
 ];
-export const TRANSITION_MAP = Object.fromEntries(TRANSITIONS.map(t => [t.id, t]));
+/** Only Change variant uses this one: layers with the same name in the old and the new variant move, resize and recolor into each other. */
+export const SMART_ANIMATE = { id: 'smart-animate', label: 'Smart animate' };
+/** The transitions a Change variant action offers. */
+export const VARIANT_TRANSITIONS = [SMART_ANIMATE, ...TRANSITIONS.filter(t => t.id === 'dissolve' || t.id === 'instant')];
+export const TRANSITION_MAP = Object.fromEntries([...TRANSITIONS, SMART_ANIMATE].map(t => [t.id, t]));
 
 /** Posisi overlay di kanvas relatif ke anchor pemicunya (dipakai saat Place on canvas). */
 /**
@@ -216,6 +221,7 @@ export const MOTION_DEFAULTS = {
     'open-overlay': { transition: 'fade-scale', duration: 200, easing: 'standard' },
     'open-popover': { transition: 'fade-scale', duration: 160, easing: 'standard' },
     'close-overlay': { transition: 'fade', duration: 140, easing: 'ease-out' },
+    'change-variant': { transition: 'smart-animate', duration: 250, easing: 'ease-in-out' },
 };
 
 /** Gerakan efektif sebuah action: nilai yang diisi dipakai, sisanya mengikuti standar. */
@@ -559,13 +565,20 @@ export function normalizeAction(a) {
         if (a?.value !== undefined && a.value !== null && a.value !== '') out.value = a.value;
     }
     if (type === 'set-selected') out.mode = SELECT_MODE_MAP[a?.mode] ? a.mode : 'toggle';
+    if (type === 'change-variant') {
+        // variant property → the value it changes to; properties left out keep the value the layer has.
+        const picks = {};
+        for (const [k, v] of Object.entries(a?.variants && typeof a.variants === 'object' ? a.variants : {}))
+            if (k && v !== undefined && v !== null && String(v) !== '') picks[String(k)] = String(v);
+        if (Object.keys(picks).length) out.variants = picks;
+    }
     if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
     if (/^open-/.test(type) && a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
     if (type === 'open-dropdown') {
         if (a?.width === 'parent') out.width = 'parent';
         if (a?.height === 'parent') out.height = 'parent';
     }
-    if (type === 'navigate' || /^open-/.test(type) || type === 'close-overlay') {
+    if (type === 'navigate' || /^open-/.test(type) || type === 'close-overlay' || type === 'change-variant') {
         if (a?.transition && TRANSITION_MAP[a.transition]) out.transition = a.transition;
         if (a?.duration !== undefined && a.duration !== '' && Number.isFinite(Number(a.duration))) out.duration = Math.min(2000, Math.max(0, Math.round(Number(a.duration))));
         if (a?.easing && MOTION_EASING_MAP[a.easing]) out.easing = a.easing;

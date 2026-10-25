@@ -6,7 +6,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
+import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
 
 
 // ===== document.js =====
@@ -773,7 +773,36 @@ document.addEventListener('change', e => {
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
-const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
+const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect'], ['array', 'List']];
+// List (array) is a table of rows: `schema` names the fields ({key, type}), each mode holds the rows. It binds to a frame's Repeat in the Behavior tab, not to a single property.
+const ARRAY_FIELD_TYPES = ['string', 'number', 'boolean', 'color'];
+const ARRAY_DEFAULT_SCHEMA = [{ key: 'label', type: 'string' }, { key: 'value', type: 'string' }];
+const ARRAY_DEFAULT_ROWS = () => [{ label: 'Item 1', value: 'one' }, { label: 'Item 2', value: 'two' }, { label: 'Item 3', value: 'three' }];
+const arraySchema = item => Array.isArray(item?.schema) && item.schema.length ? item.schema : ARRAY_DEFAULT_SCHEMA;
+const arrayFieldDefault = type => type === 'number' ? 0 : type === 'boolean' ? false : type === 'color' ? '#d9d9d9' : '';
+function parseArraySchema(text) {
+    const seen = new Set(), out = [];
+    for (const part of String(text || '').split(',')) {
+        const [k, t] = part.split(':').map(s => s.trim());
+        const key = String(k || '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push({ key, type: ARRAY_FIELD_TYPES.includes(t) ? t : 'string' });
+    }
+    return out;
+}
+function cleanArrayRows(rows, schema) {
+    if (!Array.isArray(rows)) return [];
+    return rows.filter(r => r && typeof r === 'object' && !Array.isArray(r)).map(r => {
+        const row = {};
+        for (const f of schema) row[f.key] = r[f.key] === undefined ? arrayFieldDefault(f.type) : r[f.key];
+        return row;
+    });
+}
+// Enum is a string variable that only takes one of its `options` (a union prop such as size: 'small' | 'middle' | 'large'): it is picked from a list in the Variables window and in Preview.
+const VAR_CREATE = [...VAR_TYPES.slice(0, 3), ['enum', 'Enum'], ...VAR_TYPES.slice(3)];
+const ENUM_DEFAULT_OPTIONS = ['option-1', 'option-2'];
+const varOptions = item => item?.type === 'string' && Array.isArray(item.options) && item.options.length ? item.options : null;
 function vpropType(name) {
     const n = varOwnerNode() || activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
     if (!set)
@@ -1033,10 +1062,10 @@ function cleanVariables(v) {
     const ids = new Set(out.collections.map(c => c.id));
     for (const i of v.items)
         if (typeof i?.id === 'string' && ids.has(i.collectionId) && types.has(i.type) && i.values && typeof i.values === 'object')
-            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
+            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, ...(i.type === 'array' ? { schema: Array.isArray(i.schema) && i.schema.length ? i.schema.filter(f => f && typeof f.key === 'string' && f.key).map(f => ({ key: f.key, type: ARRAY_FIELD_TYPES.includes(f.type) ? f.type : 'string' })) : ARRAY_DEFAULT_SCHEMA.map(f => ({ ...f })) } : {}), ...(i.type === 'string' && Array.isArray(i.options) && i.options.length ? { options: [...new Set(i.options.map(String))] } : {}), ...(i.type === 'number' && i.range && typeof i.range === 'object' && Number.isFinite(+i.range.min) && Number.isFinite(+i.range.max) ? { range: { min: +i.range.min, max: +i.range.max, step: +i.range.step > 0 ? +i.range.step : 1 } } : {}), scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
     return out.collections.every(c => c.modes.length) ? out : { collections: [], items: [] };
 }
-function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
+function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : type === 'array' ? [] : ''; }
 function varDisplayValue(item, node = null) { return varValue(doc, item, node); }
 // A single-fill layer without a fills list keeps its colour binding under "fill"; the Fill row reads it as "fills.0".
 // The combined horizontal / vertical padding fields read as bound when both sides carry the same variable (as imported).
@@ -1067,7 +1096,7 @@ const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" st
 function varBindButton(prop, owner = null) { return withVarOwner(owner, () => bindType(prop)) ? `<button class="var-btn" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
 function varChip(prop, v, owner = null) {
     const val = varDisplayValue(v, (owner && allNodes().find(n => n.id === owner)) || activeNode());
-    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
+    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${itemGlyph(v)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
     return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
@@ -1090,7 +1119,8 @@ function varRow(label, prop) {
     // A layer can be bound to a component property and to a variable at the same time: both chips show.
     return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
-function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
+function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : type === 'array' ? '☰' : '◐'; }
+const itemGlyph = item => varOptions(item) ? '≡' : varGlyph(item.type);
 function varOwnerOf(item) { return varColl(item.collectionId); }
 function aliasReaches(item, targetId, depth = 0) {
     if (depth > 20)
@@ -1154,7 +1184,7 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
                     row += `<button class="vpk-sw ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}" style="background:${esc(previewColor(val))}"></button>`;
                     continue;
                 }
-                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
+                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${itemGlyph(i)}</i>`;
                 const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : String(val ?? '');
                 row += `<button class="vp-item vpk-item ${g ? 'in-group' : ''} ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}">${sw}<span class="vp-name">${esc(leaf)}</span><span class="vp-val">${esc(shownVal)}</span>${i.id === current ? icon('check', 12) : ''}</button>`;
             }
@@ -2214,7 +2244,7 @@ function vwCell(item, coll, mode) {
     const alias = raw && typeof raw === 'object' && raw.alias ? varItem(raw.alias) : null;
     const aliasBtn = `<button class="vw-alias-btn" data-vw-alias="${key}" title="Apply variable alias" aria-label="Create alias">${VAR_ICON}</button>`;
     if (alias) {
-        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(item.type)}</i>`;
+        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${itemGlyph(item)}</i>`;
         // Clicking the chip opens the picker to swap the aliased variable without detaching first.
         const op = raw.opacity ?? 100, alpha = item.type === 'color' ? `<label class="vw-alpha ${op < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${op}" data-vw="${key}" data-vwt="alias-alpha" aria-label="Opacity"><span>%</span></label>` : '';
         return `<div class="vw-cell"><div class="vw-aliaschip"><button class="vw-alias-pick" data-vw-alias="${key}" title="Change variable">${sw}<span>${esc(alias.name)}</span></button><button data-vw-unalias="${key}" title="Detach alias" aria-label="Detach alias">${icon('close', 12)}</button></div>${alpha}</div>`;
@@ -2222,6 +2252,10 @@ function vwCell(item, coll, mode) {
     const v = raw === undefined ? varDefault(item.type) : raw;
     if (item.type === 'effect')
         return `<div class="vw-cell"><button class="vw-fx" data-vw-fx="${key}" title="Edit effect">${esc(fxSummary(v))}</button>${aliasBtn}</div>`;
+    if (item.type === 'array') {
+        const rows = Array.isArray(v) ? v.length : 0, fields = arraySchema(item).map(f => f.key).join(', ');
+        return `<div class="vw-cell"><button class="vw-fx vw-array" data-vw-detail="${item.id}" title="Edit rows and fields">${rows} ${rows === 1 ? 'row' : 'rows'} · ${esc(fields)}</button></div>`;
+    }
     if (item.type === 'color') {
         const { rgb, alpha } = vwSplitColor(v);
         return `<div class="vw-cell"><label class="vw-sw big" style="background:${vwJoinColor(rgb, alpha)}"><input type="color" value="${rgb}" data-vw="${key}" data-vwt="color" aria-label="Color"></label><input class="vw-text" type="text" value="${esc(rgb.slice(1).toUpperCase())}" data-vw="${key}" data-vwt="hex" spellcheck="false" aria-label="Hex"><label class="vw-alpha ${alpha < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${alpha}" data-vw="${key}" data-vwt="alpha" aria-label="Opacity"><span>%</span></label>${aliasBtn}</div>`;
@@ -2230,6 +2264,9 @@ function vwCell(item, coll, mode) {
         return `<div class="vw-cell"><input class="vw-text" type="number" step="any" value="${esc(v)}" data-vw="${key}" data-vwt="number" aria-label="Number">${aliasBtn}</div>`;
     if (item.type === 'boolean')
         return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="boolean" aria-label="Boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>${aliasBtn}</div>`;
+    const opts = varOptions(item);
+    if (opts)
+        return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="string" aria-label="Enum">${[...new Set([...opts, String(v)])].map(o => `<option value="${esc(o)}" ${o === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>${aliasBtn}</div>`;
     return `<div class="vw-cell"><input class="vw-text" type="text" value="${esc(v)}" data-vw="${key}" data-vwt="string" spellcheck="false" aria-label="String">${aliasBtn}</div>`;
 }
 function renderVarsWindow() {
@@ -2249,7 +2286,7 @@ function renderVarsWindow() {
         if (hidden)
             continue;
         for (const { item, leaf } of g.items)
-            body += `<div class="vw-row" style="${cols}"><div class="vw-name ${g.group ? 'indent' : ''}"><i class="vc-glyph t-${item.type}">${varGlyph(item.type)}</i><input class="vw-name-input" value="${esc(g.group ? leaf : item.name)}" data-full="${esc(item.name)}" data-short="${esc(g.group ? leaf : item.name)}" data-vw-name="${item.id}" spellcheck="false" aria-label="Variable name" title="${esc(leaf)}"></div>${coll.modes.map(m => vwCell(item, coll, m)).join('')}<div class="vw-rowact"><button class="vw-mini" data-vw-detail="${item.id}" title="Details and scope" aria-label="Variable details and scope">${icon('sliders', 12)}</button><button class="vw-mini" data-vw-dup="${item.id}" title="Duplicate" aria-label="Duplicate variable">${icon('copy', 12)}</button><button class="vw-mini" data-vw-del="${item.id}" title="Delete" aria-label="Delete variable">${icon('close', 12)}</button></div></div>`;
+            body += `<div class="vw-row" style="${cols}"><div class="vw-name ${g.group ? 'indent' : ''}"><i class="vc-glyph t-${item.type}">${itemGlyph(item)}</i><input class="vw-name-input" value="${esc(g.group ? leaf : item.name)}" data-full="${esc(item.name)}" data-short="${esc(g.group ? leaf : item.name)}" data-vw-name="${item.id}" spellcheck="false" aria-label="Variable name" title="${esc(leaf)}"></div>${coll.modes.map(m => vwCell(item, coll, m)).join('')}<div class="vw-rowact"><button class="vw-mini" data-vw-detail="${item.id}" title="Details and scope" aria-label="Variable details and scope">${icon('sliders', 12)}</button><button class="vw-mini" data-vw-dup="${item.id}" title="Duplicate" aria-label="Duplicate variable">${icon('copy', 12)}</button><button class="vw-mini" data-vw-del="${item.id}" title="Delete" aria-label="Delete variable">${icon('close', 12)}</button></div></div>`;
     }
     if (!body)
         body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
@@ -2260,7 +2297,7 @@ function renderVarsWindow() {
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
 <div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
-<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_CREATE.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${t === 'enum' ? '≡' : varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -2570,13 +2607,13 @@ function wireVarsWindow(win) {
             return;
         }
         if ((el = t.closest('[data-vw-create]'))) {
-            const type = el.dataset.vwCreate, coll = varColl(vw.coll);
+            const isEnum = el.dataset.vwCreate === 'enum', type = isEnum ? 'string' : el.dataset.vwCreate, coll = varColl(vw.coll);
             vw.menu = false;
             let newId;
             vwTx('Create variable', () => {
-                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + VAR_TYPES.find(x => x[0] === type)[1]), type, values: {} };
+                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + (isEnum ? 'Enum' : VAR_TYPES.find(x => x[0] === type)[1])), type, values: {}, ...(isEnum ? { options: [...ENUM_DEFAULT_OPTIONS] } : {}), ...(type === 'array' ? { schema: ARRAY_DEFAULT_SCHEMA.map(f => ({ ...f })) } : {}) };
                 for (const m of coll.modes)
-                    item.values[m.id] = varDefault(type);
+                    item.values[m.id] = isEnum ? ENUM_DEFAULT_OPTIONS[0] : type === 'array' ? ARRAY_DEFAULT_ROWS() : varDefault(type);
                 varStore().items.push(item);
                 newId = item.id;
             });
@@ -2798,7 +2835,8 @@ const SCOPE_DEF = {
     number: [['size', 'Width and height'], ['gap', 'Gap'], ['padding', 'Padding'], ['radius', 'Corner radius'], ['strokeWidth', 'Stroke width'], ['opacity', 'Opacity'], ['fontSize', 'Font size'], ['lineHeight', 'Line height'], ['letterSpacing', 'Letter spacing'], ['fontWeight', 'Font weight']],
     string: [['text', 'Text content'], ['fontFamily', 'Font family'], ['fontStyle', 'Font style']],
     boolean: [['visible', 'Visibility']],
-    effect: [['effects', 'Effects']]
+    effect: [['effects', 'Effects']],
+    array: []
 };
 function scopeKeys(type) { return (SCOPE_DEF[type] || []).map(x => x[0]); }
 function scopeKeyFor(prop, node) {
@@ -2836,7 +2874,7 @@ function scopeKeyFor(prop, node) {
 }
 // Every text a string variable can take (across its modes, following aliases).
 function varStringValues(item, depth = 0) {
-    const out = [];
+    const out = [...(item.options || [])];
     for (const v of Object.values(item.values || {})) {
         if (typeof v === 'string')
             out.push(v);
@@ -2863,6 +2901,20 @@ function varInScope(item, prop, node) {
 }
 let vd = null;
 function closeVarDetails() { vd?.el.remove(); vd = null; }
+/** Rows × fields editor of a List variable for one mode. */
+function vdArrayHtml(item, key, rows) {
+    const schema = arraySchema(item);
+    const cell = (f, r, ri) => {
+        const v = r?.[f.key], at = `data-vd-cell="${key}|${ri}|${esc(f.key)}" data-vwt="${f.type}"`;
+        if (f.type === 'boolean') return `<select ${at}><option value="false" ${!v ? 'selected' : ''}>false</option><option value="true" ${v ? 'selected' : ''}>true</option></select>`;
+        if (f.type === 'number') return `<input type="number" step="any" ${at} value="${esc(v ?? 0)}">`;
+        if (f.type === 'color') return `<input type="color" ${at} value="${safeColor(String(v ?? '#d9d9d9')).slice(0, 7)}">`;
+        return `<input type="text" ${at} value="${esc(v ?? '')}" spellcheck="false">`;
+    };
+    const head = schema.map(f => `<th title="${esc(f.type)}">${esc(f.key)}</th>`).join('');
+    const body = rows.map((r, ri) => `<tr><td class="vd-arr-n">${ri + 1}</td>${schema.map(f => `<td>${cell(f, r, ri)}</td>`).join('')}<td><button class="icon-button small" data-vd-arr-del="${key}|${ri}" title="Remove row" aria-label="Remove row ${ri + 1}">${icon('close', 12)}</button></td></tr>`).join('');
+    return `<div class="vd-arr"><table><thead><tr><th>#</th>${head}<th></th></tr></thead><tbody>${body || `<tr><td colspan="${schema.length + 2}" class="vd-arr-empty">No rows yet.</td></tr>`}</tbody></table><button class="wide-button" data-vd-arr-add="${key}">＋ Add row</button></div>`;
+}
 function vdHtml(item) {
     const coll = varColl(item.collectionId), all = scopeKeys(item.type), cur = Array.isArray(item.scope) ? item.scope : all;
     let h = `<div class="vd-tabs"><button class="${vd.tab === 'details' ? 'on' : ''}" data-vd-tab="details">Details</button><button class="${vd.tab === 'scope' ? 'on' : ''}" data-vd-tab="scope">Scope</button><button class="icon-button small vd-x" data-vd-close aria-label="Close">${icon('close', 14)}</button></div>`;
@@ -2877,19 +2929,29 @@ function vdHtml(item) {
                 ctl = `<label class="vw-sw big" style="background:${safeColor(String(v))}"><input type="color" value="${safeColor(String(v)).length === 7 ? safeColor(String(v)) : '#0058CA'}" data-vd-val="${key}" data-vwt="color"></label><input data-vd-val="${key}" data-vwt="hex" value="${esc(safeColor(String(v)).replace('#', '').toUpperCase())}" spellcheck="false">`;
             else if (item.type === 'effect')
                 ctl = `<button class="vw-fx" data-vw-fx="${key}">${esc(fxSummary(v))}</button>`;
+            else if (item.type === 'array')
+                ctl = vdArrayHtml(item, key, Array.isArray(v) ? v : []);
             else if (item.type === 'number')
                 ctl = `<input type="number" step="any" data-vd-val="${key}" data-vwt="number" value="${esc(v)}">`;
             else if (item.type === 'boolean')
                 ctl = `<select data-vd-val="${key}" data-vwt="boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>`;
+            else if (varOptions(item))
+                ctl = `<select data-vd-val="${key}" data-vwt="string">${[...new Set([...varOptions(item), String(v)])].map(o => `<option value="${esc(o)}" ${o === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
             else
                 ctl = `<input type="text" data-vd-val="${key}" data-vwt="string" value="${esc(v)}" spellcheck="false">`;
             h += `<div class="vd-row"><span>${esc(m.name)}</span><div class="vd-ctl">${ctl}</div></div>`;
         }
+        if (item.type === 'array')
+            h += `<div class="vd-sep"></div><label class="vd-row"><span>Fields</span><input data-vd-schema value="${esc(arraySchema(item).map(f => `${f.key}:${f.type}`).join(', '))}" placeholder="label:string, price:number, on:boolean, tint:color" spellcheck="false"></label><p class="vd-hint">Each row has these fields. Bind a frame to this list from the Behavior tab → Repeat.</p>`;
+        if (item.type === 'string')
+            h += `<div class="vd-sep"></div><label class="vd-row"><span>Options</span><input data-vd-options value="${esc((item.options || []).join(', '))}" placeholder="Empty = any text. Or: small, middle, large" spellcheck="false"></label>`;
+        else if (item.type === 'number')
+            h += `<div class="vd-sep"></div><div class="vd-row"><span>Range</span><div class="vd-ctl"><input type="number" step="any" data-vd-range="min" value="${esc(item.range?.min ?? '')}" placeholder="min"><input type="number" step="any" data-vd-range="max" value="${esc(item.range?.max ?? '')}" placeholder="max"><input type="number" step="any" data-vd-range="step" value="${esc(item.range?.step ?? '')}" placeholder="step"></div></div>`;
         h += `<div class="vd-sep"></div><label class="vd-check"><input type="checkbox" data-vd-hidden ${item.hidden ? 'checked' : ''}> Hide from publishing</label></div>`;
     }
     else {
         const chk = (key, label, indent = false, on = cur.includes(key)) => `<label class="vd-check ${indent ? 'indent' : ''}"><input type="checkbox" data-vd-scope="${key}" ${on ? 'checked' : ''}> ${label}</label>`;
-        const typeName = { color: 'Color', number: 'Number', string: 'String', boolean: 'Boolean', effect: 'Effect' }[item.type];
+        const typeName = { color: 'Color', number: 'Number', string: 'String', boolean: 'Boolean', effect: 'Effect', array: 'List' }[item.type];
         h += `<div class="vd-body"><div class="vd-title">${typeName} scope</div>${chk('*', 'Show in all supported properties', false, all.every(k => cur.includes(k)))}`;
         if (item.type === 'color') {
             h += chk('fill', 'Fill', false, ['fillFrame', 'fillShape', 'fillText'].every(k => cur.includes(k)));
@@ -2901,6 +2963,14 @@ function vdHtml(item) {
     }
     return h;
 }
+/** Replace the rows of a List variable in one mode (key = "<item id>|<mode id>"). */
+function vdArrayEdit(key, fn, rerender = true) {
+    const [itemId, modeId] = key.split('|'), item = varItem(itemId);
+    if (!item || item.libId) return;
+    const cur = Array.isArray(item.values[modeId]) ? item.values[modeId] : [];
+    vwSetValue(key, fn(cur), false);
+    if (rerender) refreshVarDetails();
+}
 function refreshVarDetails() {
     if (!vd)
         return;
@@ -2910,6 +2980,7 @@ function refreshVarDetails() {
         return;
     }
     vd.el.innerHTML = vdHtml(item);
+    vd.el.classList.toggle('vd-wide', item.type === 'array');
 }
 function openVarDetails(id, anchor) {
     const same = vd && vd.id === id;
@@ -2933,6 +3004,12 @@ function openVarDetails(id, anchor) {
         }
         else if (t.closest('[data-vd-close]'))
             closeVarDetails();
+        else if ((b = t.closest('[data-vd-arr-add]')))
+            vdArrayEdit(b.dataset.vdArrAdd, rows => [...rows, Object.fromEntries(arraySchema(varItem(vd.id)).map(f => [f.key, arrayFieldDefault(f.type)]))]);
+        else if ((b = t.closest('[data-vd-arr-del]'))) {
+            const [iid, mid, ri] = b.dataset.vdArrDel.split('|');
+            vdArrayEdit(`${iid}|${mid}`, rows => rows.filter((_, i) => i !== +ri));
+        }
     });
     el.addEventListener('input', e => {
         const t = e.target;
@@ -2952,6 +3029,39 @@ function openVarDetails(id, anchor) {
         }
         else if (t.matches('[data-vd-desc]'))
             vwTx('Variable description', () => { item.description = t.value; }, false);
+        else if (t.matches('[data-vd-options]'))
+            vwTx('Variable options', () => {
+                const list = [...new Set(t.value.split(',').map(x => x.trim()).filter(Boolean))];
+                if (list.length)
+                    item.options = list;
+                else
+                    delete item.options;
+            }, false);
+        else if (t.dataset.vdRange) {
+            vwTx('Variable range', () => {
+                const r = { ...(item.range || {}), [t.dataset.vdRange]: t.value === '' ? undefined : +t.value };
+                if (Number.isFinite(r.min) && Number.isFinite(r.max))
+                    item.range = { min: r.min, max: r.max, step: r.step > 0 ? r.step : 1 };
+                else
+                    delete item.range;
+            }, false);
+        }
+        else if (t.matches('[data-vd-schema]')) {
+            const schema = parseArraySchema(t.value);
+            if (schema.length)
+                vwTx('List fields', () => {
+                    item.schema = schema;
+                    for (const m of varColl(item.collectionId).modes)
+                        if (Array.isArray(item.values[m.id])) item.values[m.id] = cleanArrayRows(item.values[m.id], schema);
+                }, false);
+            refreshVarDetails();
+        }
+        else if (t.dataset.vdCell) {
+            const [iid, mid, ri, field] = t.dataset.vdCell.split('|'), key = `${iid}|${mid}`;
+            const f = arraySchema(item).find(x => x.key === field), k = t.dataset.vwt;
+            const val = k === 'number' ? (Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0) : k === 'boolean' ? t.value === 'true' : t.value;
+            if (f) vdArrayEdit(`${key}`, rows => rows.map((r, i) => i === +ri ? { ...r, [field]: val } : r), false);
+        }
         else if (t.matches('[data-vd-hidden]'))
             vwTx('Hide from publishing', () => { item.hidden = t.checked; }, false);
         else if (t.dataset.vdVal) {
@@ -8526,7 +8636,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -13137,7 +13247,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -18775,6 +18885,97 @@ function liveContext() {
         },
         /** The type of a variable ('color', 'number', 'string', 'boolean'). */
         varType: id => items.get(id)?.type,
+        /** The rows of a List variable as read at `node` (its modes), plus the repeat settings a frame carries (own, else its main component's). */
+        repeatOf(n) {
+            const cfg = n.repeat || (n.sourceId && componentById(n.sourceId)?.repeat);
+            const item = cfg?.variableId && items.get(cfg.variableId);
+            if (!item || item.type !== 'array') return null;
+            const schema = arraySchema(item), rows = cleanArrayRows(varValue(doc, item, n), schema);
+            return { rows, bind: cfg.bind || {}, schema };
+        },
+        /** What Preview has set for a variable: its own value, else the value in the mode its collection was switched to. */
+        overrideOf(item, over, modes) {
+            if (over.has(item.id))
+                return over.get(item.id);
+            if (modes?.size && modes.has(item.collectionId))
+                return variableValueInMode(item, store.collections.find(x => x.id === item.collectionId), modes.get(item.collectionId), store.items, store.collections);
+            return undefined;
+        },
+        /** The variant an instance should show once Preview changed the variables bound to its variant properties (else null). */
+        variantFor(inst, over, modes) {
+            if (!inst.vars || (!over.size && !modes?.size))
+                return null;
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            if (!set)
+                return null;
+            const want = { ...(src.variant || {}) };
+            let changed = false;
+            for (const [prop, id] of Object.entries(inst.vars)) {
+                const item = prop.startsWith('vprop:') && items.get(id);
+                if (!item)
+                    continue;
+                const val = this.overrideOf(item, over, modes);
+                if (val === undefined || val === null)
+                    continue;
+                const name = prop.slice(6), vals = variantValues(set, name);
+                let w;
+                if (item.type === 'boolean') {
+                    const bp = binaryPair(vals);
+                    if (!bp)
+                        continue;
+                    w = val ? bp.t : bp.f;
+                }
+                else
+                    w = vals.find(v => String(v).toLowerCase() === String(val).toLowerCase());
+                if (w === undefined || want[name] === w)
+                    continue;
+                want[name] = w;
+                changed = true;
+            }
+            return changed ? (setVariants(set).find(x => Object.entries(want).every(([k, v]) => x.variant?.[k] === v))?.id ?? null) : null;
+        },
+        /** The variant a Change variant action switched an instance to: its current variant with `picks` (property → value) applied, else null. */
+        variantByProps(inst, picks) {
+            const src = chainComponent(inst), set = src && parentSetOf(src);
+            if (!set || !picks) return null;
+            const want = { ...(src.variant || {}), ...picks };
+            return setVariants(set).find(x => Object.entries(want).every(([k, v]) => String(x.variant?.[k]) === String(v)))?.id ?? null;
+        },
+        /** Component property values (text / boolean) Preview changed through variables, as Map(property id → value), else null. */
+        cpropOverrides(inst, over, modes) {
+            if (!inst.vars || (!over.size && !modes?.size))
+                return null;
+            let out = null;
+            for (const [prop, id] of Object.entries(inst.vars)) {
+                const item = prop.startsWith('cprop:') && items.get(id);
+                if (!item)
+                    continue;
+                const val = this.overrideOf(item, over, modes);
+                if (val === undefined || val === null)
+                    continue;
+                (out ||= new Map()).set(prop.slice(6), item.type === 'boolean' ? !!val : String(val));
+            }
+            return out;
+        },
+        /** Variables the previewed frame uses, by collection, for the Preview variables panel (try a value, see the design follow). */
+        controls(frameId) {
+            const used = new Set(), scope = frameId && _nodeMap.get(frameId) ? [_nodeMap.get(frameId), ...descendants(frameId)] : allNodes();
+            for (const n of scope)
+                if (n.vars && !n.softDeleted)
+                    for (const id of Object.values(n.vars))
+                        used.add(id);
+            const out = [];
+            for (const c of store.collections) {
+                const all = store.items.filter(i => i.collectionId === c.id && !i.hidden);
+                // A collection the design uses shows all its variables (a prop with no visual yet is still worth trying); the rest are marked unused.
+                if (!all.some(i => used.has(i.id)))
+                    continue;
+                const list = all;
+                const multi = c.modes.length > 1;
+                out.push({ id: c.id, name: c.name, modes: multi ? c.modes.map(m => ({ id: m.id, name: m.name })) : [], items: multi ? [] : list.filter(i => ['color', 'number', 'string', 'boolean'].includes(i.type)).map(i => ({ id: i.id, name: i.name, type: i.type, value: varValue(doc, i, null), ...(used.has(i.id) ? {} : { unused: true }), ...(i.options ? { options: i.options } : {}), ...(i.range ? { range: i.range } : {}) })) });
+            }
+            return out.filter(c => c.items.length || c.modes.length);
+        },
         /** A layer drawn with what Preview changed: Set variable values, or a collection switched to another mode. */
         overridden(n, over, modes) {
             if (!n.vars || (!over.size && !modes?.size))
@@ -18814,8 +19015,8 @@ function liveContext() {
             return (want && vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x))) || defaultVariantOf(n) || vs[0] || null;
         },
         /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
-        variants(inst) {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
+        variants(inst, like) {
+            const src = (like && _nodeMap.get(like)) || chainComponent(inst), set = src && parentSetOf(src);
             const key = set && liveStateKey(set, src);
             if (!key)
                 return null;
@@ -19130,13 +19331,13 @@ function bhInheritedInteractions(list, source, frames) {
 /** Daftar interaction: a trigger and the actions it runs in order, each with the fields its kind needs. */
 function bhInteractionRows(n, frames) {
     const list = normalizeInteractions(n.interactions);
-    if (!list.length) return '<p class="small-label">No interaction yet. Add one so this component reacts.</p>';
+    if (!list.length) return '<div class="bh-empty"><b>No interaction yet</b><span>Pick a trigger below, then what it should do, so this component reacts in Preview.</span></div>';
     // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
     const placementRows = (p, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(x => [x, x]))}</label><label class="field"><span>Offset X</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`;
     // Gerakan standar preview: transisi, durasi (ms), dan easing. Kosong = mengikuti default standar.
     const motionRows = (p, a, kind) => {
         const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
-        return `<label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', TRANSITIONS.some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...TRANSITIONS.map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label>`;
+        return `<label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', (kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...(kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label>`;
     };
     // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
     const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
@@ -19156,7 +19357,20 @@ function bhInteractionRows(n, frames) {
         const mode = SELECT_MODES.find(m => m.id === (a.mode || 'toggle')) || SELECT_MODES[0];
         return `<label class="field"><span>Selection</span>${bhSelect(`${p}.mode`, 'plain', mode.id, SELECT_MODES.map(m => [m.id, m.label]))}</label><p class="small-label">${esc(mode.hint || '')}</p>`;
     };
-    const fields = (p, a) => {
+    // Change variant: like Figma's "Change to": pick, for each variant property of the component, the value it switches to.
+    const variantRows = (p, a, it) => {
+        const src = n.isInstance ? chainComponent(n) : n.componentSet ? setVariants(n)[0] : n;
+        const set = n.componentSet ? n : src && parentSetOf(src);
+        if (!set) return '<p class="small-label">This component has no variants. Put it in a component set with variant properties (State, Size…) to change between them.</p>';
+        const props = variantProps(set), picks = a.variants || {};
+        if (!props.length) return '<p class="small-label">The component set has no variant properties yet.</p>';
+        const rows = props.map(k => `<label class="field"><span title="${esc(k)}">${esc(k)}</span>${bhSelect(`${p}.variants`, 'variant', picks[k] || '', [['', 'Keep current'], ...variantValues(set, k).map(v => [String(v), String(v)])], `data-bh-vprop="${esc(k)}"`)}</label>`).join('');
+        const hint = Object.keys(picks).length ? '' : '<p class="small-label">Pick at least one value. Properties left on “Keep current” stay as they are.</p>';
+        const hover = /^(onHover|onMouseEnter|onFocus)$/.test(it.trigger) ? '<p class="small-label">It goes back when the pointer leaves (or focus is lost).</p>' : '';
+        return rows + hint + hover + motionRows(p, a, 'change-variant') + (a.transition === 'instant' ? '' : '<p class="small-label">Smart animate moves, resizes and recolors layers that share a name in both variants.</p>');
+    };
+    const fields = (p, a, it) => {
+        if (a.type === 'change-variant') return variantRows(p, a, it);
         if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page') + motionRows(p, a, 'navigate');
         if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + dropdownSizeRows(p, a) + motionRows(p, a, 'open-dropdown');
         if (a.type === 'open-overlay') return openPick(p, a, 'Open') + bhSelect(`${p}.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked') + motionRows(p, a, 'open-overlay');
@@ -19166,13 +19380,14 @@ function bhInteractionRows(n, frames) {
         if (a.type === 'set-selected') return selectRows(p, a);
         return '';
     };
-    return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><b>Interaction ${i + 1}</b><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction">×</button></div>
+    const summary = it => it.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ');
+    return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>
         <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
         ${it.actions.map((a, j) => {
             const p = `interactions.${i}.actions.${j}`;
-            return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>Do</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${it.actions.length > 1 ? `<button type="button" class="icon-button small" data-bh-act="del-action" data-bh-index="${i}" data-bh-action="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a)}</div>`;
+            return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${it.actions.length > 1 ? `Then ${j + 1}` : 'Do'}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${it.actions.length > 1 ? `<button type="button" class="icon-button small" data-bh-act="del-action" data-bh-index="${i}" data-bh-action="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
         }).join('')}
-        <select class="wide-button" data-bh-act="add-action" data-bh-index="${i}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select></div>`).join('');
+        <select class="wide-button bh-addsel" data-bh-act="add-action" data-bh-index="${i}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select></div>`).join('');
 }
 /** Bagian khusus input field: the typing layer, what it accepts, and when it is checked. */
 function bhInputHtml(n, layers) {
@@ -19303,6 +19518,36 @@ function scrollBehaviorHtml(n) {
     if (n.parentId) rows.push(`<label class="field"><span>Position</span>${bhSelect('scroll.position', 'plain', s.scroll || 'scroll', SCROLL_POSITIONS.map(o => [o.id, o.label]))}</label>`);
     return rows.length ? section('Scroll Behavior', rows.join('')) : '';
 }
+/**
+ * Section Repeat: bind a frame to a List variable. The frame's first child is the template, drawn once per row in Preview;
+ * each layer of the template can read a field of the row (text, fill or visibility).
+ */
+function repeatHtml(n) {
+    const lists = varStore().items.filter(i => i.type === 'array');
+    const cfg = n.repeat || {}, item = cfg.variableId && lists.find(i => i.id === cfg.variableId);
+    const collName = id => varColl(id)?.name || '';
+    const picker = `<label class="field"><span>List</span>${bhSelect('repeat.variableId', 'plain', cfg.variableId || '', [['', lists.length ? '— not repeated —' : 'No List variable yet'], ...lists.map(i => [i.id, `${collName(i.collectionId)} / ${i.name}`])])}</label>`;
+    let body = lists.length ? picker : '<div class="bh-empty"><b>No List variable yet</b><span>Create one in the Variables window (Create variable → List), then bind a frame to it here.</span></div>';
+    if (cfg.variableId && !item) body += '<p class="small-label">The List this frame used no longer exists.</p>';
+    if (item) {
+        const schema = arraySchema(item), kids = doc.children(n.id), tpl = kids[0];
+        if (!tpl) body += '<p class="small-label">Add a layer inside this frame: the first child becomes the row template.</p>';
+        else {
+            const rows = cleanArrayRows(varValue(doc, item, n), schema).length;
+            body += `<p class="small-label">Draws <b>${esc(tpl.name || tpl.type)}</b> once for each of the ${rows} ${rows === 1 ? 'row' : 'rows'}. Other children stay as they are.</p>`;
+            const layers = [], walk = l => { layers.push(l); for (const c of doc.children(l.id)) walk(c); };
+            walk(tpl);
+            const fieldsOf = types => [['', '—'], ...(types.includes('string') ? [['#', '# (row number)']] : []), ...schema.filter(f => types.includes(f.type)).map(f => [f.key, f.key])];
+            const rowsHtml = layers.map(l => {
+                const b = cfg.bind?.[l.id] || {}, sel = (prop, types, label) => { const opts = fieldsOf(types); return opts.length > 1 ? `<label class="bh-bind-cell"><small>${label}</small>${bhSelect(`repeat.bind.${l.id}.${prop}`, 'plain', b[prop] || '', opts)}</label>` : ''; };
+                const cells = (l.type === 'text' ? sel('text', ['string', 'number'], 'Text') : (l.type === 'frame' || l.type === 'ellipse' || l.type === 'rect' ? sel('fill', ['color'], 'Fill') : '')) + sel('visible', ['boolean'], 'Visible');
+                return cells ? `<div class="bh-bind"><div class="bh-bind-name" title="${esc(l.name)}">${esc(l.name || l.type)}</div><div class="bh-bind-cells">${cells}</div></div>` : '';
+            }).join('');
+            body += rowsHtml ? `<div class="bh-binds">${rowsHtml}</div>` : '<p class="small-label">Nothing in the template can read a field yet: add text, color or true/false fields to the List.</p>';
+        }
+    }
+    return section('Repeat', body);
+}
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
@@ -19314,6 +19559,7 @@ function prototypeHtml() {
         let fhtml = '';
         if (isFrame) fhtml += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
             <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
+        fhtml += repeatHtml(n);
         fhtml += scrollBehaviorHtml(n);
         return fhtml;
     }
@@ -19322,18 +19568,19 @@ function prototypeHtml() {
     const set = src && parentSetOf(src);
     const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
     const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
-    let html = section('This component', `<div class="small-label"><b>Component</b>: ${esc(compName)}</div><div class="small-label"><b>Type</b>: ${esc(TYPE_LABEL[type] || type)}</div><div class="small-label"><b>Kind</b>: ${esc(kind)}</div>`);
+    let html = `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div></section>`;
     const typeable = n.isInstance ? (n.typeable ?? looksLikeField(n)) : type === 'input';
     if (n.isInstance)
         html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label><label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
     // The typing settings appear once the layer is marked as a field.
     if (typeable) html += bhInputHtml(n, bhLayers(n));
     html += bhStateSection(n);
+    if (n.type === 'frame') html += repeatHtml(n);
     const own = normalizeInteractions(n.interactions);
     // An instance without interactions of its own follows the component; the list is shown read-only.
     const inherited = n.isInstance && !own.length ? interactionsForNode(n, src, set) : null;
     const inheritedOwner = normalizeInteractions(set?.interactions).length ? set?.name : src?.name;
-    const addSelect = `<select class="wide-button" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`;
+    const addSelect = `<select class="wide-button bh-addsel" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`;
     if (n.isInstance) {
         const rows = own.length
             ? bhInteractionRows(n, bhFrames())
@@ -19354,6 +19601,20 @@ function prototypeHtml() {
 function bhWrite(n, path, value) {
     if (path.startsWith('frame.')) {
         n.frameRole = value || 'page';
+        return;
+    }
+    if (path.startsWith('repeat.')) {
+        const cfg = { repeat: structuredClone(n.repeat || {}) };
+        setPath(cfg, path, value);
+        const r = cfg.repeat;
+        // Changing the List drops the old field bindings: another List has other fields.
+        if (path === 'repeat.variableId') r.bind = undefined;
+        for (const [lid, b] of Object.entries(r.bind || {})) {
+            for (const k of Object.keys(b)) if (!b[k]) delete b[k];
+            if (!Object.keys(b).length) delete r.bind[lid];
+        }
+        if (r.bind && !Object.keys(r.bind).length) delete r.bind;
+        if (!r.variableId) delete n.repeat; else n.repeat = { variableId: r.variableId, ...(r.bind ? { bind: r.bind } : {}) };
         return;
     }
     if (path.startsWith('scroll.')) {
@@ -19418,6 +19679,16 @@ function bhSet(n, t) {
     }
     if (kind === 'collection') {
         bhWriteCollection(n, path, value);
+        return;
+    }
+    if (kind === 'variant') {
+        // Change variant: one select per variant property; "Keep current" drops that property from the pick.
+        const am = path.match(/^interactions\.(\d+)\.actions\.(\d+)\.variants$/);
+        const act = am && n.interactions?.[+am[1]]?.actions?.[+am[2]], prop = t.dataset.bhVprop;
+        if (!act || !prop) return;
+        const picks = { ...(act.variants || {}) };
+        if (value) picks[prop] = value; else delete picks[prop];
+        bhWrite(n, path, Object.keys(picks).length ? picks : undefined);
         return;
     }
     if (kind === 'variable') {

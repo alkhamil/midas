@@ -227,6 +227,35 @@ Preview dibuka dengan tombol **play** di header dan memenuhi jendela (tanpa pane
 di pojok kiri atas membuka sidebar yang berisi daftar frame dan **Exit preview**; klik pada desain atau Escape
 menutupnya, dan Escape berikutnya keluar dari Preview.
 
+## Layout di preview
+
+Preview tidak punya mesin layout sendiri dan tidak lagi meminjam hasil `ctx.layout`: auto layout diterjemahkan ke CSS
+flexbox dan browser yang menghitungnya. Satu-satunya tempat pemetaan itu adalah `nodeToStyle(node, parent)` di
+`apps/studio/src/preview/flexStyle.js` (fungsi murni, dites di `apps/studio/test/flexStyle.test.js`). `parent` wajib
+ada karena Fill hanya bisa ditentukan dari arah parent.
+
+| Midas | CSS |
+|---|---|
+| `layout` `horizontal` / `vertical` (`layoutFlip`) | `display: flex`, `flex-direction: row` / `column` (`-reverse`) |
+| `gap`, `gapCross` | `gap` (atau `column-gap` / `row-gap` bila berbeda) |
+| `padding`, `padT/R/B/L` | `padding`, `box-sizing: border-box` |
+| `primaryAlign` start / center / end | `justify-content` flex-start / center / flex-end |
+| `gapAuto` + `gapMode` between / evenly / around | `justify-content` space-between / space-evenly / space-around |
+| `counterAlign` | `align-items` |
+| `layoutWrap` | `flex-wrap: wrap` |
+| Fixed | `width` / `height` px (`flex-shrink: 0` di sumbu utama) |
+| Hug | `auto`; teks yang hug lebarnya `white-space: nowrap` |
+| Fill di sumbu utama parent | `flex: 1 1 0` + `min-width: 0` (`min-height: 0` untuk kolom) |
+| Fill di sumbu silang | `align-self: stretch`, tanpa ukuran di sumbu itu |
+| `layoutPositioning: absolute` | `position: absolute` dengan `left` / `top` = x / y |
+| frame tanpa auto layout | `position: relative`, anaknya `position: absolute` di x / y |
+| `clip` | `overflow: hidden` |
+| `minW` `maxW` `minH` `maxH` | `min-width` dst. |
+
+Root mengikuti mode ukurannya sendiri (Fixed px, Hug `fit-content`, Fill `100%`). Hug hanya berarti pada teks dan frame
+auto layout; pada layer lain ia dibaca sebagai Fixed. Yang belum dipetakan: opsi *strokes included* di dalam alur, dan
+perataan baseline teks.
+
 ## Batasan
 
 - State mapping belum ikut dibangkitkan ke kode aplikasi (generator); sekarang baru berlaku di preview.

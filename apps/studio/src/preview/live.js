@@ -1,14 +1,15 @@
 // Live preview: a design frame as real DOM, so inputs can be typed in, buttons react to the pointer and the
 // interactions of the Behavior tab work ("Go to page", dropdown, overlay, popover/tooltip).
-// Positions come from the editor's own auto layout engine (ctx.layout), run on a copy of the frame with the current state
-// applied (a hint that appears, a variant that swaps), so the preview lays out exactly like the canvas: order, flip, hug,
-// fill, wrap, strokes. The DOM only draws what the layout produced.
+// Layout is CSS: nodeToStyle (flexStyle.js) maps auto layout to flexbox (direction, gap, padding, alignment, wrap, Hug / Fill / Fixed)
+// and the browser lays it out, on a copy of the frame with the current state applied (a hint that appears, a variant that swaps).
+// Only layers that are not in an auto layout flow are placed by x / y.
 // The editor supplies everything it knows through `ctx` (see liveContext in midas.js):
 //   node kids descendants layout variants modes resolved typeable field roles varName vars frames start
 //   mappingFor interactionsFor inputFor varValueOf
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
+import { nodeToStyle } from './flexStyle.js';
 import { effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -136,7 +137,7 @@ function lineOfPath(n, parent, off, extra) {
     const svg = document.createElementNS(SVG, 'svg');
     svg.setAttribute('viewBox', `0 0 ${Math.max(.001, n.w || 0)} ${Math.max(.001, n.h || 0)}`);
     svg.setAttribute('preserveAspectRatio', 'none');
-    Object.assign(svg.style, { ...placed(n, off), overflow: 'visible', opacity: n.opacity ?? 1, ...(extra || {}) });
+    Object.assign(svg.style, { ...nodeToStyle(n, n._pn, off), overflow: 'visible', opacity: n.opacity ?? 1, ...(extra || {}) });
     const p = document.createElementNS(SVG, 'path');
     p.setAttribute('d', `M0 0L${Math.round((n.w || 0) * 1000) / 1000} ${Math.round((n.h || 0) * 1000) / 1000}`);
     p.setAttribute('fill', 'none');
@@ -206,12 +207,6 @@ function textStyle(ctx, n) {
     };
 }
 
-const placed = (n, off) => {
-    const s = { position: 'absolute', left: px(n.x + (off?.x || 0)), top: px(n.y + (off?.y || 0)), width: px(n.w), height: px(n.h), boxSizing: 'border-box' };
-    if (n.rotation) s.transform = `rotate(${n.rotation}deg)`;
-    return s;
-};
-
 /**
  * Posisi kumulatif tiap node relatif ke root scene (untuk Fixed: koordinat viewport).
  * Emit depth-first: parent selalu sebelum child, jadi satu pass cukup.
@@ -229,12 +224,13 @@ export function sceneOrigins(nodes) {
  * selebihnya null (scroll with parent). `scaled` (mode fit/actual): fixed di dalam stage
  * bertransformasi berperilaku seperti absolute.
  */
-export function scrollPosStyle(c, origin, scaled) {
+export function scrollPosStyle(c, origin, scaled, inFlow = false) {
     if (c?.scroll === 'fixed') {
         if (scaled) return { position: 'fixed' };
         const p = origin || { x: c.x || 0, y: c.y || 0 };
         return { position: 'fixed', left: px(p.x), top: px(p.y) };
     }
+    if (c?.scroll === 'sticky' && inFlow) return { position: 'sticky', top: '0' };
     if (c?.scroll === 'sticky') return { position: 'sticky', top: '0', left: px(c.x || 0), marginTop: px(c.y || 0) };
     return null;
 }
@@ -344,12 +340,15 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit;border:0;border-radius:0;box-shadow:none;outline:0;background:transparent;appearance:none;-webkit-appearance:none} .live-preview input:hover,.live-preview input:focus,.live-preview input:focus-visible{border:0;outline:0;box-shadow:none} .live-preview input:-webkit-autofill{box-shadow:0 0 0 1000px transparent inset;-webkit-text-fill-color:currentColor;transition:background-color 9999s}`;
     css.textContent += `@keyframes mvt-pop{from{opacity:0;transform:scale(.96) translateY(6px)}}@keyframes mvt-fade{from{opacity:0}}::view-transition-old(root),::view-transition-new(root){animation-duration:var(--mvt-dur,180ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}::view-transition-old(midas-stage),::view-transition-new(midas-stage){animation-duration:var(--mvt-dur,220ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}html[data-mvt='slide-left']::view-transition-old(midas-stage){animation-name:mvt-old-left}html[data-mvt='slide-left']::view-transition-new(midas-stage){animation-name:mvt-new-left}html[data-mvt='slide-right']::view-transition-old(midas-stage){animation-name:mvt-old-right}html[data-mvt='slide-right']::view-transition-new(midas-stage){animation-name:mvt-new-right}html[data-mvt='slide-up']::view-transition-old(midas-stage){animation-name:mvt-old-up}html[data-mvt='slide-up']::view-transition-new(midas-stage){animation-name:mvt-new-up}html[data-mvt='slide-down']::view-transition-old(midas-stage){animation-name:mvt-old-down}html[data-mvt='slide-down']::view-transition-new(midas-stage){animation-name:mvt-new-down}html[data-mvt='fade-scale']::view-transition-old(midas-stage){animation-name:mvt-old-scale}html[data-mvt='fade-scale']::view-transition-new(midas-stage){animation-name:mvt-new-scale}@keyframes mvt-old-left{to{transform:translateX(-60px);opacity:0}}@keyframes mvt-new-left{from{transform:translateX(60px);opacity:0}}@keyframes mvt-old-right{to{transform:translateX(60px);opacity:0}}@keyframes mvt-new-right{from{transform:translateX(-60px);opacity:0}}@keyframes mvt-old-up{to{transform:translateY(-60px);opacity:0}}@keyframes mvt-new-up{from{transform:translateY(60px);opacity:0}}@keyframes mvt-old-down{to{transform:translateY(60px);opacity:0}}@keyframes mvt-new-down{from{transform:translateY(-60px);opacity:0}}@keyframes mvt-old-scale{to{transform:scale(.98);opacity:0}}@keyframes mvt-new-scale{from{transform:scale(.96);opacity:0}}`;
     const runtime = new Map();            // instance id -> { state, value, error, selected, indeterminate, reveal, touched }
+    let controlsReady = false;            // the variables panel exists (it is built after the menu)
     const varOver = new Map();            // variable id -> the value Set variable gave it (older files; kept while the preview is open)
     const modeOver = new Map();           // collection id -> the mode Set variable switched it to (kept while the preview is open)
     const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
     let scaleMode = scale;
     let lastFrame = null, navMotion = null;
+    // Set by a Change variant action just before it redraws: how the next drawing should animate from the one on screen.
+    let pendingSmart = null;
     // How the last focus arrived: a click on a field means "selected, ready to type"; Tab means "focused".
     let byPointer = false, caretAtEnd = false;
     // Pressing another field blurs the current one, which redraws the scene and replaces the pressed input before the browser
@@ -448,24 +447,31 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     function buildScene(frame, pinRoot, fillBox, matchBox) {
         const nodes = [];
         let seq = 0;
-        const copies = new Map();
+        const copies = new Map(), keyUse = new Map();
         // o: the instance being copied, with the variant to borrow looks from, the variable modes to read in and the texts to carry over.
         const emit = (n, parentId, o) => {
             const roles = o?.roles, err = !!o?.err;
             const forced = err && roles?.showHint && n.propBind?.visible === roles.showHint;
-            if (n.visible === false && !forced) return;
+            // A boolean property a variable changed in Preview shows or hides its layer.
+            // A layer bound to a List field (Behavior → Repeat) reads its value from the row being drawn.
+            const rb = o?.row && o.rowBind ? (o.rowBind[n.id] || (n.sourceId && o.rowBind[n.sourceId])) : null;
+            const shown = rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
+            if (shown === false || (shown === null && n.visible === false && !forced)) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
-                const variants = ctx.variants(n), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = effStateOf(n);
+                // The variant a Change variant action picked wins; else the one a variable Preview changed.
+                const picked = runtime.get(n.id)?.variant;
+                const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = effStateOf(n);
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
                 const rt = runtime.get(n.id);
                 const freshSt = effectiveState(baseStateOf(n), { empty: false });
-                const src = !rt || st === freshSt ? null : pick(variants?.byState, st);
-                const swap = src && src !== variants.current;
+                const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
+                const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {} };
+                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -500,6 +506,11 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             else if (n.prototypeTarget) wire = { inst: n };
             if (varOver.size || modeOver.size) base = ctx.overridden(base, varOver, modeOver);
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
+            // Smart animate matches layers across two drawings by their name path ("Button/Label"), repeated names by their order.
+            const up = copies.get(parentId)?._key || '', nm = `${up}/${n.name || n.type}`, used = keyUse.get(nm) || 0;
+            keyUse.set(nm, used + 1);
+            c._key = used ? `${nm}#${used}` : nm;
+            c._pn = copies.get(parentId) || null;       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -513,17 +524,24 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 for (const p of ['fill', 'stroke']) if (inner.target?.[p] === n.id) applyMapping(c, inner.mapping, inner.state || 'default', [p]);
                 if (n.type === 'text') applyMapping(c, inner.mapping, inner.state || 'default', ['text']);
             }
+            if (rb?.fill && typeof o.row[rb.fill] === 'string' && n.type !== 'text') { setFill(c, o.row[rb.fill]); if (c.vars) { delete c.vars.fill; delete c.vars['fills.0']; } }
             if (n.type === 'text') {
                 if (o?.field && (n.id === o.field.id || (o.swapped && n.name === o.field.name))) c._field = o;
-                c.text = (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.texts?.get(n.id) ?? n.text ?? '');
+                c.text = (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.cOver?.get(n.propBind?.text) ?? o?.texts?.get(n.id) ?? n.text ?? '');
             }
             if (o?.iconScale && parentId !== null) scaleIconChild(c, n, copies.get(parentId), o.iconScale);
+            if (rb?.text && n.type === 'text' && o.row[rb.text] !== undefined) c.text = String(o.row[rb.text]);
             nodes.push(c);
             copies.set(c.id, c);
-            for (const k of ctx.kids(kidsOf)) emit(k, c.id, inner);
+            // A frame bound to a List repeats its first child once per row; the other children are drawn once after them.
+            const rep = ctx.repeatOf?.(n), kids = ctx.kids(kidsOf);
+            if (rep && kids.length) {
+                rep.rows.forEach((row, i) => emit(kids[0], c.id, { ...(inner || {}), row: { ...row, '#': i + 1 }, rowBind: rep.bind }));
+                for (const k of kids.slice(1)) emit(k, c.id, inner);
+            }
+            else for (const k of kids) emit(k, c.id, inner);
         };
         emit(fillRootBox(overlayRootBase(frame, pinRoot, matchBox), fillBox), null, null);
-        ctx.layout(nodes);
         return nodes;
     }
 
@@ -534,17 +552,20 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             kidsOf.get(c.parentId).push(c);
         }
         const origins = sceneOrigins(nodes), scaled = !!stage.style.transform;
+        // A layer that sits in an auto layout flow is placed by the browser, not by x / y.
+        const inFlow = c => isAuto(c._pn) && c.layoutPositioning !== 'absolute';
         const toggleIn = k => k._toggle || (kidsOf.get(k.id) || []).map(toggleIn).find(Boolean);
         const draw = (c, parent, off) => {
             const e = drawNode(c, parent, off);
+            if (e && c._key) e.dataset.sk = c._key;
             if (e && c._toggle) wireToggle(e, c._toggle.inst);
             return e;
         };
         const drawNode = (c, parent, off) => {
-            if (c.type === 'text') return c._field ? renderField(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled)) : textBox(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled));
-            if (c.type === 'path') return svgOfPath(c, parent, { ...placed(c, off), opacity: c.opacity ?? 1, ...scrollPosStyle(c, origins.get(c.id), scaled) });
-            if (c.type === 'line') return lineOfPath(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled));
-            const d = el('div', { ...placed(c, off), ...(c.type === 'group' ? {} : paint(ctx, c)), ...scrollPosStyle(c, origins.get(c.id), scaled) }, parent);
+            if (c.type === 'text') return c._field ? renderField(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled, inFlow(c))) : textBox(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled, inFlow(c)));
+            if (c.type === 'path') return svgOfPath(c, parent, { ...nodeToStyle(c, c._pn, off), opacity: c.opacity ?? 1, ...scrollPosStyle(c, origins.get(c.id), scaled, inFlow(c)) });
+            if (c.type === 'line') return lineOfPath(c, parent, off, scrollPosStyle(c, origins.get(c.id), scaled, inFlow(c)));
+            const d = el('div', { ...nodeToStyle(c, c._pn, off), ...(c.type === 'group' ? {} : paint(ctx, c)), ...scrollPosStyle(c, origins.get(c.id), scaled, inFlow(c)) }, parent);
             d.dataset.node = c._wire?.inst.id || c.id;
             if (c.type === 'frame' && (c.clip || c.overflow === 'none')) d.style.overflow = 'hidden';
             if (c._wire) attach(c._wire, d);
@@ -591,7 +612,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     }
 
     function textBox(c, parent, off, extra) {
-        const t = el('div', { ...placed(c, off), ...textStyle(ctx, c), display: 'flex', flexDirection: 'column', ...(extra || {}), whiteSpace: c.autoW ? 'pre' : 'pre-wrap', justifyContent: { middle: 'center', bottom: 'flex-end' }[c.textAlignV] || 'flex-start' }, parent);
+        const t = el('div', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), display: 'flex', flexDirection: 'column', ...(extra || {}), justifyContent: { middle: 'center', bottom: 'flex-end' }[c.textAlignV] || 'flex-start' }, parent);
         t.textContent = c.text ?? '';
         return t;
     }
@@ -599,7 +620,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** The field's text is the placeholder: an input takes its place, wide enough for what is typed. */
     function renderField(c, parent, off, extra) {
         const o = c._field, inst = o.inst, cur = runtime.get(inst.id) || {};
-        const input = el('input', { ...placed(c, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
+        const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
         input.placeholder = c.text ?? '';
@@ -677,6 +698,31 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         varOver.set(action.variableId, value);
         draw();
     }
+    /**
+     * Change variant: the layer switches to the variant its picks name (Figma's "Change to"). What a hover or focus changed goes
+     * back when the pointer leaves or focus is lost; a click stays until something else changes it. Smart animate tweens the layers
+     * the two variants share.
+     */
+    function changeVariant(inst, action, trigger) {
+        if (!action.variants || !Object.keys(action.variants).length) return;
+        const cur = runtime.get(inst.id) || {};
+        const hold = /^(onHover|onMouseEnter|onFocus)$/.test(trigger) ? trigger : null;
+        const next = { ...(cur.variant || {}), ...action.variants };
+        // The redraw puts a new element under the pointer, which enters again: the same pick must not redraw forever.
+        if (Object.entries(next).every(([k, v]) => cur.variant?.[k] === v)) return;
+        runtime.set(inst.id, { ...cur, variant: next, variantBy: hold || null, variantMotion: resolveMotion(action, 'change-variant') });
+        pendingSmart = runtime.get(inst.id).variantMotion;
+        draw();
+    }
+    /** Undo what a hover (pointer leaves) or a focus (focus is lost) changed with Change variant. */
+    function revertVariant(inst, triggers) {
+        const cur = runtime.get(inst.id);
+        if (!cur?.variant || !triggers.includes(cur.variantBy)) return;
+        const { variant, variantBy, ...rest } = cur;
+        runtime.set(inst.id, rest);
+        pendingSmart = cur.variantMotion || null;
+        draw();
+    }
     /** Set active / selected: the layer is checked / current; "only this one" switches the others of its kind off. */
     function setSelected(inst, mode) {
         const has = r => !!runtime.get(r.id)?.selected;
@@ -701,6 +747,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         }
         if (action.type === 'set-variable') return setVariable(action);
         if (action.type === 'set-selected') return setSelected(inst, action.mode);
+        if (action.type === 'change-variant') return changeVariant(inst, action, trigger);
         if (action.type === 'open-dropdown' || action.type === 'open-overlay' || action.type === 'open-popover') openLayer(action, anchor, rect, { inst, trigger });
     }
 
@@ -802,7 +849,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             runTriggers(n, 'onHover', d, rect);
             runTriggers(n, 'onMouseEnter', d, rect);
         });
-        d.addEventListener('pointerleave', () => update(n, { state: baseStateOf(n) }));
+        d.addEventListener('pointerleave', () => { revertVariant(n, ['onHover', 'onMouseEnter']); update(n, { state: baseStateOf(n) }); });
         d.addEventListener('pointerdown', () => hasState('pressed') && update(n, { state: 'pressed' }));
         // Fokus: focusin / focusout membubarkan event, focus tidak.
         d.addEventListener('focusin', () => {
@@ -812,6 +859,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         });
         d.addEventListener('focusout', () => {
             const rect = d.getBoundingClientRect();
+            revertVariant(n, ['onFocus']);
             update(n, { state: stateOf(n) === 'focused' ? baseStateOf(n) : stateOf(n) });
             runTriggers(n, 'onBlur', d, rect);
         });
@@ -837,9 +885,36 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         draw();
     }
 
+    /** Where every layer is and how it looks, by its Smart animate key, so the next drawing can grow out of this one. */
+    const SMART_PROPS = ['backgroundColor', 'color', 'borderTopColor', 'borderRadius', 'opacity'];
+    function snapshotSmart() {
+        const snap = new Map();
+        for (const e of stage.querySelectorAll('[data-sk]')) {
+            const cs = getComputedStyle(e), look = {};
+            for (const p of SMART_PROPS) look[p] = cs[p];
+            snap.set(e.dataset.sk, { left: e.offsetLeft, top: e.offsetTop, width: e.offsetWidth, height: e.offsetHeight, look });
+        }
+        return snap;
+    }
+    /** Smart animate: layers present before and after tween from where they were; new ones fade in. */
+    function playSmart(snap, motion) {
+        for (const e of stage.querySelectorAll('[data-sk]')) {
+            const old = snap.get(e.dataset.sk);
+            if (!old) { e.animate([{ opacity: 0 }, {}], { duration: motion.duration, easing: motion.easingCss }); continue; }
+            const cs = getComputedStyle(e), from = {};
+            const now = { left: e.offsetLeft, top: e.offsetTop, width: e.offsetWidth, height: e.offsetHeight };
+            for (const k of Object.keys(now)) if (now[k] !== old[k]) from[k] = `${old[k]}px`;
+            for (const p of SMART_PROPS) if (cs[p] !== old.look[p]) from[p] = old.look[p];
+            if (Object.keys(from).length) e.animate([from, {}], { duration: motion.duration, easing: motion.easingCss });
+        }
+    }
+
     function draw(animate = true) {
         const f = ctx.node(frameId);
         if (!f) return;
+        const smart = pendingSmart;
+        pendingSmart = null;
+        const smartOn = smart && smart.transition === 'smart-animate' && smart.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
         const a = document.activeElement, keep = a?.dataset?.field, toEnd = caretAtEnd, caret = a?.selectionStart;
         caretAtEnd = false;
         rendering = true;
@@ -864,6 +939,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             stage.style.viewTransitionName = '';
         }
         const swap = () => {
+        const before = smartOn ? snapshotSmart() : null;
         stage.replaceChildren();
         const vw = root.clientWidth || 0, vh = root.clientHeight || 0;
         const fillBox = scaleMode === 'fill' && vw > 0 && vh > 0 ? { w: vw, h: vh } : null;
@@ -875,6 +951,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         
         
         renderScene(nodes).style.position = 'relative';
+        if (before && before.size) playSmart(before, smart);
         const again = keep && stage.querySelector(`[data-field="${keep}"]`);
         if (again && !again.disabled) {
             again.focus({ preventScroll: true });
@@ -893,7 +970,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         markCurrent();
     }
 
-    function show(id, motion) { frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); }
+    function show(id, motion) { frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); if (controlsReady) renderControls(); }
     /** Restart (R): reset semua state interaksi ke awal tanpa reload — langsung pakai pengaturan kanvas + behavior yang sudah ada. */
     async function restartPreview() {
         // A preview tab holds a copy of the file from when it loaded: restart first re-reads the saved file (no page reload),
@@ -915,6 +992,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         varOver.clear();
         navMotion = null;
         show(ctx.start);
+        renderControls();
     }
 
     // A dropdown or popover closes when the pointer goes down outside it (pressing what opened it does not count). An overlay
@@ -1037,6 +1115,99 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     }
     function syncTabFrame(id) { syncTabUrl('preview', id); }
     function syncTabScale() { syncTabUrl('scale', scaleMode); }
+    // Variables panel: every variable the design uses, with a control to change it while previewing (enum = list, boolean = switch, number = slider, color = picker).
+    const varsBtn = el('button', { ...chrome, position: 'absolute', top: '12px', left: '52px', zIndex: 60, width: '32px', height: '32px', display: 'none', placeItems: 'center', border: '0', borderRadius: '8px', background: 'rgba(30,30,30,.82)', cursor: 'pointer', opacity: '.75' }, root);
+    varsBtn.title = 'Variables';
+    varsBtn.setAttribute('aria-label', 'Preview variables');
+    varsBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>';
+    varsBtn.onmouseenter = () => { varsBtn.style.opacity = '1'; };
+    varsBtn.onmouseleave = () => { varsBtn.style.opacity = '.75'; };
+    const varsPanel = el('aside', { ...chrome, position: 'absolute', top: surface === 'tab' ? '56px' : '12px', right: '12px', bottom: '12px', width: '300px', zIndex: 66, display: 'none', flexDirection: 'column', borderRadius: '12px', background: 'rgba(24,24,24,.97)', boxShadow: '0 12px 36px rgba(0,0,0,.34)', overflow: 'hidden' }, root);
+    varsPanel.setAttribute('aria-label', 'Preview variables');
+    const vHead = el('div', { display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 12px 8px 14px', fontWeight: 600 }, varsPanel);
+    el('span', { flex: '1' }, vHead).textContent = 'Variables';
+    const vReset = el('button', { ...chrome, padding: '4px 8px', border: '1px solid rgba(255,255,255,.22)', borderRadius: '6px', background: 'transparent', cursor: 'pointer' }, vHead);
+    vReset.textContent = 'Reset';
+    const vShut = el('button', { ...chrome, width: '24px', height: '24px', border: '0', borderRadius: '6px', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1' }, vHead);
+    vShut.textContent = '\u00d7';
+    const vSearch = el('input', { ...chrome, margin: '0 12px 8px', padding: '6px 8px', border: '1px solid rgba(255,255,255,.18)', borderRadius: '6px', background: 'rgba(255,255,255,.06)', outline: '0' }, varsPanel);
+    vSearch.placeholder = 'Search variables';
+    const vBody = el('div', { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 12px 12px' }, varsPanel);
+    const fieldStyle = { ...chrome, boxSizing: 'border-box', padding: '4px 6px', border: '1px solid rgba(255,255,255,.18)', borderRadius: '6px', background: 'rgba(255,255,255,.06)', outline: '0', colorScheme: 'dark' };
+    function renderControls() {
+        const groups = ctx.controls?.(frameId) || [];
+        varsBtn.style.display = groups.length ? 'grid' : 'none';
+        if (!groups.length) varsPanel.style.display = 'none';
+        vBody.replaceChildren();
+        const q = vSearch.value.trim().toLowerCase();
+        for (const g of groups) {
+            const rows = g.items.filter(i => !q || i.name.toLowerCase().includes(q) || g.name.toLowerCase().includes(q));
+            if (!rows.length && !(g.modes.length && (!q || g.name.toLowerCase().includes(q)))) continue;
+            const title = el('div', { margin: '10px 0 4px', fontSize: '11px', letterSpacing: '.04em', textTransform: 'uppercase', opacity: '.6' }, vBody);
+            title.textContent = g.name;
+            if (g.modes.length) {
+                const row = el('label', { display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }, vBody);
+                el('span', { flex: '1', opacity: '.85' }, row).textContent = 'Mode';
+                const sel = el('select', { ...fieldStyle, width: '150px' }, row);
+                for (const m of g.modes) { const o = el('option', null, sel); o.value = m.id; o.textContent = m.name; }
+                sel.value = modeOver.get(g.id) || g.modes[0].id;
+                sel.onchange = () => { modeOver.set(g.id, sel.value); draw(); };
+            }
+            for (const it of rows) {
+                const cur = varOver.has(it.id) ? varOver.get(it.id) : it.value;
+                const row = el('label', { display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }, vBody);
+                const nm = el('span', { flex: '1', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: '.85' }, row);
+                nm.textContent = it.name;
+                nm.title = it.unused ? `${it.name} (no layer follows this variable yet)` : it.name;
+                if (it.unused) nm.style.opacity = '.45';
+                const set = value => setVariable({ variableId: it.id, value });
+                if (it.type === 'boolean') {
+                    const c = el('input', { width: '16px', height: '16px', margin: '0', accentColor: '#4f8cff' }, row);
+                    c.type = 'checkbox';
+                    c.checked = !!cur;
+                    c.onchange = () => set(c.checked);
+                } else if (it.type === 'color') {
+                    const hex = String(cur || '#000000');
+                    const c = el('input', { width: '36px', height: '24px', padding: '0', border: '0', background: 'transparent' }, row);
+                    c.type = 'color';
+                    c.value = /^#[0-9a-f]{6}/i.test(hex) ? hex.slice(0, 7) : '#000000';
+                    c.oninput = () => set(c.value + (/^#[0-9a-f]{8}$/i.test(hex) ? hex.slice(7) : ''));
+                } else if (it.type === 'number') {
+                    const wrap = el('span', { display: 'flex', alignItems: 'center', gap: '6px' }, row);
+                    const num = el('input', { ...fieldStyle, width: '64px' }, wrap);
+                    num.type = 'number';
+                    num.value = cur;
+                    let rng = null;
+                    num.oninput = () => { if (num.value !== '') { set(Number(num.value)); if (rng) rng.value = num.value; } };
+                    if (it.range) {
+                        rng = el('input', { width: '90px', accentColor: '#4f8cff' }, wrap);
+                        rng.type = 'range';
+                        rng.min = it.range.min; rng.max = it.range.max; rng.step = it.range.step || 1;
+                        rng.value = cur;
+                        rng.oninput = () => { num.value = rng.value; set(Number(rng.value)); };
+                    }
+                } else if (it.options) {
+                    const c = el('select', { ...fieldStyle, width: '150px' }, row);
+                    for (const v of it.options) { const o = el('option', null, c); o.value = v; o.textContent = v; }
+                    c.value = String(cur);
+                    c.onchange = () => set(c.value);
+                } else {
+                    const c = el('input', { ...fieldStyle, width: '150px' }, row);
+                    c.type = 'text';
+                    c.value = String(cur ?? '');
+                    c.oninput = () => set(c.value);
+                }
+            }
+        }
+        if (!vBody.children.length) el('div', { padding: '12px 0', opacity: '.6' }, vBody).textContent = q ? 'No variables match.' : 'No variables used in this design.';
+    }
+    const setVars = on => { varsPanel.style.display = on ? 'flex' : 'none'; varsPanel.dataset.open = on ? '1' : ''; if (on) renderControls(); };
+    varsBtn.onclick = () => setVars(!varsPanel.dataset.open);
+    vShut.onclick = () => setVars(false);
+    vReset.onclick = () => { varOver.clear(); modeOver.clear(); draw(); renderControls(); };
+    vSearch.oninput = () => renderControls();
+    controlsReady = true;
+    renderControls();
     // Clicking the design itself folds the menu away again.
     root.addEventListener('pointerdown', ev => { if (drawer.dataset.open && !drawer.contains(ev.target) && !menuBtn.contains(ev.target)) setMenu(false); }, true);
     // Escape closes the top layer, then the menu, then leaves the preview (a field being typed in just loses focus).
@@ -1055,6 +1226,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         e.stopPropagation();
         if (layers.length) closeLayers('current');
         else if (drawer.dataset.open) setMenu(false);
+        else if (varsPanel.dataset.open && !document.activeElement?.dataset?.field) setVars(false);
         else if (document.activeElement?.dataset?.field) document.activeElement.blur();
         else onExit?.();
     };
