@@ -447,6 +447,31 @@ pattern, message; `validateTrigger` change/blur) dipakai Input, Select, dan kond
 `rules`, `off`); `componentTypeOf` hanya jadi petunjuk preset; `stateMapping`/`stateModes` tetap perilaku state (bukan slot),
 nama state Convention hanya memperluas pencarian mode. Data lama tidak perlu migrasi.
 
+## Navigation families (Batch C)
+
+Each family is a capability in `capabilities.js` (group Action or Data), its pure rules in `navigation.js`, and a runtime in `live.js`.
+Its State is a plain State variable: the preset or the window's "Set up … State" button creates it, and conditions and texts can read it.
+Looks come from the `* states` modes. The state names a family uses are the Midas states that already exist.
+
+| Capability | State (config) | Slots | Behavior |
+| --- | --- | --- | --- |
+| Has tabs | active tab (`state`, option or string) | tab (container, required), label, panel (container, required) | A click on a tab makes it active; its panel shows and the tab is drawn Selected. A disabled tab ignores clicks. Warns and does nothing while unmapped. |
+| Has pager | page, pageSize, total (`vars`, numbers) | prev, next, pageLabel, pageItem, pageSize, total | Standalone, or bound to a table's own States. Prev/Next drawn Disabled at the edges; a page item per page with “…” for gaps (selected = current); the page size button goes 10 → 20 → 50 and back to page 1; the page clamps when the total shrinks. |
+| Has steps | current step (number, 0 = first), gate (boolean, optional) | step (container, required), prev, next | Steps before the current one are `completed`, the current one `active` (`error` while the gate is false), the rest `upcoming`. Next is refused while the gate is false. |
+| Has collapse | open section (string; `mode` accordion or multiple) | section (container, required), panel (container, required) | A click on a section header opens or closes it; accordion keeps one open. An open header is Selected; a closed section hides its panel. |
+| Has menu | selected item (string) | item (container, required) | A click selects an item (Selected look); a disabled item ignores clicks. Same runtime as Has tabs, without panels. |
+| Has carousel | current slide (number), loop (flag) | slide (container, required), dot, prev, next | One slide shows at a time. Prev/Next and the dots move it; Loop wraps round, else the ends are disabled. The dot of the current slide is Selected. |
+
+Deviations from the first design (kept on purpose, to keep to the existing State types and modes):
+- Steps: the step states are `upcoming`, `active`, `completed`, `error` (the names Midas already has), not wait/process/finish.
+- Collapse and Menu: the open section and the selected item are a string State (comma-separated for several open sections), not a List State.
+- Title, description, icon and connector of a step are not connected: a step shows its own layers. Icon of a collapse section is not connected.
+- Pager: the page size is a button that cycles 10 → 20 → 50, not a select; the jump input is not connected.
+- Carousel: autoplay is not in Preview yet.
+- Menu: sub-menus are not in this family.
+- Steps and Collapse: the gate is a boolean State (a condition such as “step form valid” is not connected yet).
+- onChange runs on every change; the checks did not include an interaction that reads it.
+
 ## Versi data behavior dan migrasi
 
 File punya `behaviorVersion` yang **terpisah** dari `version` (yang tetap `1`; loader menolak nilai lain). Tidak ada = `1`
