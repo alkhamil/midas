@@ -27,6 +27,10 @@ const add = (...n) => nodes.push(...n);
 add(frame('inputM', null, 'Input', { component: true, x: -900, y: -200, w: 240, h: 36, layout: 'horizontal', padding: 10, counterAlign: 'center', fill: '#ffffff', stroke: '#C9C9D1', strokeWidth: 1, radius: 8, layoutSizingH: 'fixed', layoutSizingV: 'hug', typeable: true, inputBehavior: { typeable: { frameId: 'inputMT', inputType: 'text' } } }));
 add(text('inputMT', 'inputM', 'Placeholder', 'Search users…', { fill: '#888888' }));
 
+// ---- a Button component (the row's Delete button is an instance of it) ----
+add(frame('btnM', null, 'Button', { component: true, x: -900, y: -300, layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug' }));
+add(text('btnMT', 'btnM', 'Label', 'Delete', { fill: '#B4232A', fontWeight: 600 }));
+
 // ---- the Table component (master) ----
 add(frame('tableM', null, 'Table', {
     component: true, x: -900, y: 0, w: 520, layout: 'vertical', gap: 8, padding: 12, fill: '#ffffff', stroke: '#E4E4EA', strokeWidth: 1, radius: 10,
@@ -37,6 +41,7 @@ add(frame('tableM', null, 'Table', {
         { id: 'bSearch', kind: 'can-search', enabled: true, slots: { search: 'srchM' }, config: {} },
         { id: 'bPage', kind: 'has-pagination', enabled: true, slots: { prev: 'prevM', next: 'nextM', pageLabel: 'lblM' }, config: {} },
         { id: 'bSel', kind: 'has-selection', enabled: true, slots: { selectRow: 'chkM', selectAll: 'chkAllM' }, config: {} },
+        { id: 'bActions', kind: 'has-row-actions', enabled: true, slots: { rowDelete: 'delM' }, config: {} },
         { id: 'bStates', kind: 'has-data-states', enabled: true, slots: { empty: 'emptyM', emptySearch: 'noResM', loading: 'loadM' }, config: {} },
     ]),
 }));
@@ -46,6 +51,11 @@ add(frame('hdrM', 'tableM', 'Header', { layout: 'horizontal', gap: 12, padding: 
 add(frame('chkAllM', 'hdrM', 'Select all', { w: 14, h: 14, fill: '#ffffff', stroke: '#9A9AA6', strokeWidth: 1, radius: 3 }));
 add(text('hName', 'hdrM', 'Name', 'Name', { fontWeight: 700 }), text('hEmail', 'hdrM', 'Email', 'Email', { fontWeight: 700 }), text('hRole', 'hdrM', 'Role', 'Role', { fontWeight: 700 }));
 add(frame('rowM', 'tableM', 'Row', { layout: 'horizontal', gap: 12, padding: 4, counterAlign: 'center', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));
+// Delete: its own interaction (composed from existing actions): a Popconfirm; its confirm removes THIS row (by id) and says so
+add(frame('delM', 'rowM', 'Delete', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug',
+    interactions: [{ id: 'ixDel', trigger: 'onClick', actions: [{ type: 'show-feedback', kind: 'popconfirm', level: 'warning', title: 'Delete this user?', message: '{row.name} will be removed from the list.', confirmLabel: 'Delete',
+        onConfirm: [{ type: 'list-delete', listId: 'users', where: { field: 'id', cmp: 'eq', value: { op: 'var', ref: '$row.id' } } }, { type: 'show-feedback', kind: 'message', level: 'success', message: 'Deleted {row.name}', duration: 2000 }] }] }] }));
+add(text('delT', 'delM', 'Label', 'Delete', { sourceId: 'btnMT', fill: '#B4232A', fontWeight: 600, overrides: { text: true } }));
 add(frame('chkM', 'rowM', 'Checkbox', { w: 14, h: 14, fill: '#ffffff', stroke: '#9A9AA6', strokeWidth: 1, radius: 3 }));
 add(text('cName', 'rowM', 'Name', 'name', { fill: '#111111' }), text('cEmail', 'rowM', 'Email', 'email', { fill: '#555555' }), text('cRole', 'rowM', 'Role', 'role', { fill: '#555555' }));
 add(frame('pagerM', 'tableM', 'Pager', { layout: 'horizontal', gap: 12, padding: 0, counterAlign: 'center', primaryAlign: 'end', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));

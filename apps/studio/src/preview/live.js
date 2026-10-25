@@ -936,7 +936,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         ev: rowCtx ? { ...evalCtx, interpolate: t => evalCtx.interpolate(t, rowCtx) } : evalCtx,
         env: () => evalCtx.env({ fieldValid: fieldValidity, row: rowCtx }),
         perform: a => runAction(a, inst, anchor, rect, trigger),
-        feedback: f => showFeedback(f, inst, anchor, rect, trigger),
+        feedback: f => showFeedback(f, inst, anchor, rect, trigger, rowCtx),
         validateField: id => checkField(id),
         request: a => simulateRequest(a, inst),
         changed: () => stateChanged(),
@@ -995,7 +995,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** The small "built-in" mark on feedback Preview drew itself because no component of the file is set for it. */
     const builtinBadge = parent => { const b = el('span', { position: 'absolute', top: '3px', right: '6px', fontSize: '9px', lineHeight: '1', padding: '2px 5px', borderRadius: '999px', background: '#eceef2', color: '#6b7280', letterSpacing: '.02em', pointerEvents: 'none' }, parent); b.textContent = 'built-in'; b.dataset.builtin = '1'; };
     /** Feedback drawn by the file's own component (Convention → Feedback components): its message / title layers get the text, its type comes from a variant or a mode. */
-    function showComponentFeedback(f, id, inst, anchor, rect, trigger) {
+    function showComponentFeedback(f, id, inst, anchor, rect, trigger, rowCtx) {
         const first = ctx.componentTarget?.(id);
         if (!first) { flash('The component for ' + f.kind + ' is gone: the built-in one is used.'); return null; }
         const b = (ctx.behaviorsFor?.(first) || []).find(x => x.kind === 'show-feedback' && x.enabled);
@@ -1008,7 +1008,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const texts = { [b.slots.message]: f.message };
         const hide = new Set();
         if (b.slots.title) { texts[b.slots.title] = f.title || ''; if (!f.title) hide.add(b.slots.title); }
-        const ctrl = { roles, texts, hide, close: () => closeFeedback(fb), confirm: () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message)); } };
+        const ctrl = { roles, texts, hide, close: () => closeFeedback(fb), confirm: () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger, rowCtx)).catch(e => flash(e.message)); } };
         // The type (success / error…) is a mode of a collection: read in that mode while this scene is built.
         const kept = new Map();
         for (const [cid, mid] of Object.entries(style.modes || {})) { kept.set(cid, modeOver.get(cid)); modeOver.set(cid, mid); }
@@ -1029,9 +1029,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (f.duration > 0) fb.timer = setTimeout(() => closeFeedback(fb), f.duration);
         return fb;
     }
-    function showFeedback(f, inst, anchor, rect, trigger) {
+    function showFeedback(f, inst, anchor, rect, trigger, rowCtx) {
         const own = ctx.feedbackComponent?.(f.kind, f.componentId);
-        if (own) { const done = showComponentFeedback(f, own, inst, anchor, rect, trigger); if (done) return done; }
+        if (own) { const done = showComponentFeedback(f, own, inst, anchor, rect, trigger, rowCtx); if (done) return done; }
         const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
         const mark = (parent, lv) => { const m = el('span', { display: 'inline-grid', placeItems: 'center', width: '18px', height: '18px', borderRadius: '50%', background: LEVEL_COLOR[lv] || LEVEL_COLOR.info, color: '#fff', fontSize: '11px', fontWeight: 700, flex: 'none' }, parent); m.textContent = LEVEL_MARK[lv] || 'i'; return m; };
         const body = (card, lv) => {
@@ -1042,7 +1042,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             return head;
         };
         const backdrop = (closable) => { const b = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: 'rgba(15,23,42,.45)', pointerEvents: 'auto' }, root); fb.nodes.push(b); if (closable) b.onclick = () => closeFeedback(fb); return b; };
-        const confirmRun = () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message)); };
+        const confirmRun = () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger, rowCtx)).catch(e => flash(e.message)); };
         if (f.kind === 'alert' || f.kind === 'message') {
             if (f.blocking) backdrop(false);
             const card = el('div', cardStyle(f.level), stackFor(f.position));
