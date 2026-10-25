@@ -7970,7 +7970,14 @@ class Renderer {
      */
     renderFx(scene, camera, base) {
         const ctx = this.fxCtx, fc = this.fxCanvas, dpr = this.dpr, last = this._fxLast;
-        this._fxLast = { x: camera.x, y: camera.y, zoom: camera.zoom, base };
+        // Same document, same camera, same size: the bitmap already on screen is still right. A hover or a selection redraw used to
+        // repaint every layer on the 2D path (tens of ms per frame on a big page); now it costs nothing.
+        if (last && last.base === base && last.zoom === camera.zoom && last.x === camera.x && last.y === camera.y && last.dpr === dpr && last.W === this.width && last.H === this.height) {
+            this.instanceCount = scene.length;
+            this.drawCalls = 1;
+            return;
+        }
+        this._fxLast = { x: camera.x, y: camera.y, zoom: camera.zoom, base, dpr, W: this.width, H: this.height };
         const panned = last && last.base === base && last.zoom === camera.zoom && (last.x !== camera.x || last.y !== camera.y);
         if (!panned) {
             this._fxBig = null;
@@ -8018,6 +8025,9 @@ class Renderer {
         if (!this.fxCanvas)
             return;
         if (on) {
+            // Resizing clears the bitmap: the next frame must paint it again.
+            if (this.fxCanvas.width !== this.canvas.width || this.fxCanvas.height !== this.canvas.height)
+                this._fxLast = null;
             if (this.fxCanvas.width !== this.canvas.width)
                 this.fxCanvas.width = this.canvas.width;
             if (this.fxCanvas.height !== this.canvas.height)
