@@ -16,5 +16,6 @@ export * from './convention.js';
 export * from './select.js';
 export * from './overlays.js';
 export * from './collection.js';
+export * from './navigation.js';
 export * from './columns.js';
 export * from './table.js';

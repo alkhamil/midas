@@ -45,6 +45,12 @@ export const SLOT_ROLES = {
     addButton: { label: 'Add button', kind: 'any', hint: 'Adds a new row' },
     bulkDelete: { label: 'Delete selected', kind: 'any', hint: 'Deletes every selected row' },
     reload: { label: 'Reload', kind: 'any', hint: 'Asks for the data again (a Simulated request)' },
+    // navigation: tabs and a pager that works without a table
+    tab: { label: 'Tab', kind: 'frame', hint: 'One tab (it repeats once per tab); clicking it makes it the active one' },
+    panel: { label: 'Panel', kind: 'frame', hint: 'The content of one tab (shown while that tab is active)' },
+    pageSize: { label: 'Page size', kind: 'any', hint: 'Picks how many rows a page has' },
+    jump: { label: 'Jump to page', kind: 'any', hint: 'A field where a page number is typed' },
+    total: { label: 'Total', kind: 'text', hint: 'Shows the number of items (or your own text with {total})' },
 };
 /** Slots named after a column of the table: cell.<field> (a layer of the row template) and head.<field> (a layer of the header row). */
 export const COLUMN_SLOT = /^(cell|head):[\w-]+$/;
@@ -69,6 +75,8 @@ export const CAPABILITIES = {
     'has-selection': { group: 'Data', label: 'Has selection', backing: 'behaviors', one: true, slots: [slot('selectRow', true), slot('selectAll')], events: ['onChange'], needs: ['has-rows'], blurb: 'Row checkboxes. The header checkbox selects the current page.' },
     'has-row-actions': { group: 'Data', label: 'Has row actions', backing: 'behaviors', one: true, slots: [slot('rowDelete'), slot('rowEdit'), slot('addButton'), slot('bulkDelete'), slot('reload')], events: [], needs: ['has-rows'], blurb: 'Delete, edit and add rows (with a confirmation and a form).' },
     'has-data-states': { group: 'Data', label: 'Has empty / loading', backing: 'behaviors', one: true, slots: [slot('empty'), slot('emptySearch'), slot('loading')], events: [], needs: ['has-rows'], blurb: 'What the table shows with no rows, no results, or while it loads.' },
+    'has-tabs': { group: 'Action', label: 'Has tabs', backing: 'behaviors', one: true, slots: [slot('tab', true), slot('label'), slot('panel')], events: ['onChange'], blurb: 'Tabs: clicking one makes it active and shows its panel (the active tab is a State).' },
+    'has-pager': { group: 'Data', label: 'Has pager', backing: 'behaviors', one: true, slots: [slot('prev'), slot('next'), slot('pageLabel'), slot('pageItem'), slot('pageSize'), slot('jump'), slot('total')], events: ['onChange'], blurb: 'A pager without a table: page, page size and total are States.' },
     'show-feedback': { group: 'Feedback', label: 'Show feedback', backing: 'behaviors', one: true, slots: [slot('message', true), slot('title'), slot('icon'), slot('close'), slot('confirm'), slot('cancel')], events: [], blurb: 'Is drawn when a “Show feedback” action runs.' },
 };
 export const CAPABILITY_IDS = Object.keys(CAPABILITIES);
@@ -100,6 +108,13 @@ export function normalizeConfig(kind, c = {}) {
             return { confirmDelete: c.confirmDelete !== false, form: { componentId: typeof f.componentId === 'string' ? f.componentId : '', fields } };
         }
         case 'has-loading': return { state: typeof c.state === 'string' && c.state.trim() ? c.state.trim() : 'loading' };
+        case 'has-tabs': return { state: typeof c.state === 'string' && c.state ? c.state : '' };
+        case 'has-pager': {
+            const vars = {};
+            for (const k of ['page', 'pageSize', 'total']) if (typeof c.vars?.[k] === 'string' && c.vars[k]) vars[k] = c.vars[k];
+            const size = Math.floor(Number(c.pageSize));
+            return { vars, pageSize: Number.isFinite(size) && size > 0 ? Math.min(200, size) : 10 };
+        }
         case 'show-feedback': {
             const types = {};
             for (const l of LEVELS) if (typeof c.types?.[l] === 'string' && c.types[l]) types[l] = c.types[l];
@@ -206,6 +221,8 @@ export function summaryOf(b, nameOf = id => id) {
         case 'has-row-actions': return ['rowDelete', 'rowEdit', 'addButton', 'bulkDelete', 'reload'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-data-states': return ['empty', 'emptySearch', 'loading'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-loading': return `Switches to “${c.state}” while a request runs`;
+        case 'has-tabs': return `${['tab', 'panel'].filter(k => b.slots[k]).length ? 'Tab and panel mapped' : 'Nothing mapped yet'}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}`;
+        case 'has-pager': return c.vars?.page ? `Page State “${nameOf(c.vars.page)}” · ${c.pageSize} per page` : 'Pick the page State';
         case 'show-feedback': return `${c.kind}${c.types ? ' · type from the ' + (Object.keys(c.types).length) + ' mapped levels' : ' · type from its modes'}`;
         default: return CAPABILITIES[b.kind]?.label || b.kind;
     }
