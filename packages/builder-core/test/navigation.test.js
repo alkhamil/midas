@@ -1,7 +1,7 @@
 // Tabs and Pagination: the pure rules (clicks, disabled tabs, page clamping, page size, ellipsis, edges).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES } from '../src/index.js';
+import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset } from '../src/index.js';
 
 test('a click makes its tab active; an unknown or disabled tab leaves the active one', () => {
     const tabs = ['a', 'b', 'c'];
@@ -52,4 +52,18 @@ test('the new capabilities and roles are known and summarised', () => {
 test('a standalone pager needs no table; Tabs need no table either', () => {
     assert.equal(applicability('has-tabs', { has: () => false }).ok, true);
     assert.equal(applicability('has-pager', { has: () => false }).ok, true);
+});
+
+test('Has tabs needs a tab bar, a panel and a State: each missing one is said', () => {
+    const b = { kind: 'has-tabs', slots: {}, config: { state: '' } };
+    const roles = slotIssues(b, () => true).map(i => i.role);
+    assert.deepEqual(roles, ['tab', 'panel', 'state']);
+    assert.deepEqual(slotIssues({ kind: 'has-tabs', slots: { tab: 'a', panel: 'b' }, config: { state: 's' } }, () => true), []);
+});
+
+test('Tabs and Segmented are separate presets: “tabs” finds Tabs, not Segmented', () => {
+    const tabs = PRESETS.filter(p => p.match.includes('tabs'));
+    assert.deepEqual(tabs.map(p => p.id), ['tabs']);
+    assert.equal(planPreset('tabs').behaviors[0].kind, 'has-tabs');
+    assert.equal(PRESET_MAP.segmented.match.includes('tabs'), false);
 });

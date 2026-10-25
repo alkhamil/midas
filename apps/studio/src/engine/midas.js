@@ -20282,6 +20282,22 @@ function bhTableSetup(n) {
     n.behaviors = normalizeBehaviors(n.behaviors.map((x, k) => (k === i ? { ...x, config: { ...x.config, source: list.id, vars: plan.ids } } : x)));
     return true;
 }
+/** Has tabs: a State that holds the active tab; its options are the names of the layers in the tab bar. */
+function bhTabsSetup(n) {
+    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-tabs');
+    if (i < 0) return false;
+    const names = [...new Set(doc.children(n.behaviors[i].slots?.tab).map(c => c.name.trim()).filter(Boolean))];
+    const st = stateStore();
+    let name = 'activeTab', k = 2;
+    while (st.variables.some(v => v.name === name)) name = 'activeTab' + k++;
+    const id = uid();
+    st.variables.push({ id, name, type: 'option', scope: 'page', options: names, initial: names[0] || '' });
+    const clean = cleanState(st);
+    st.variables = clean.variables;
+    st.derived = clean.derived;
+    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
+    return true;
+}
 /** After adding something: the window to open on it. */
 function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
     if (input) return { kind: 'cap', key: input };
@@ -20326,6 +20342,7 @@ function bhAction(n, t) {
     if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }
     if (act === 'remove-unused-overlays') { const ids = bhUnusedOverlays(n).map(o => o.id); for (const id of ids) state.selection.delete(id); if (ids.length) doc.remove(ids); return; }
     if (act === 'table-setup') { bhTableSetup(n); return; }
+    if (act === 'tabs-setup') { bhTabsSetup(n); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);

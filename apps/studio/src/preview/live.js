@@ -11,7 +11,7 @@
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { rowRuntimeKey } from '../engine/behavior.js';
-import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -485,12 +485,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const shown = stVis.length ? stVis.every(Boolean) : rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
             const vis = slotShown ?? shown;
             if (vis === false || (vis === null && n.visible === false && !forced)) return;
-            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
+            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o?.tabItem ? { ...o, tabItem: undefined } : o, wire = null, toggle = null;
             if (n.isInstance) {
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(rowRuntimeKey(n.id, n.__row))?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
@@ -499,7 +499,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -509,6 +509,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const bsl = ctx.behaviorsFor?.(n) || [], hb = bsl.find(b => b.kind === 'has-options' && b.enabled), lb = bsl.find(b => b.kind === 'has-loading' && b.enabled && b.slots.icon);
                 const tby = tableBehaviors(bsl);
                 if (tby) inner.tbl = tableInfo(n, tby);
+                const tabB = bsl.find(b => b.kind === 'has-tabs' && b.enabled);
+                if (tabB) inner.tabs = tabsInfo(n, tabB);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
                 if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(rowRuntimeKey(n.id, n.__row))?.state === 'loading'; }
                 if (swap) {
@@ -552,7 +554,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (selRole === 'remove' && o.row && sel) { const v = o.row.value; c._click = () => removePick(sel, v); }
             if (fbRole === 'close' || fbRole === 'cancel') c._click = () => fbx.close();
             if (fbRole === 'confirm') c._click = () => fbx.confirm();
-            if (tbRole && o.tbl.m.ok) tblWire(c, tbRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
+            if (tbRole && o.tbl.m.ok) tblWire(c, tbRole, o);
+            if (o?.tabItem && !o.tabItem.disabled) c._click = () => tabPick(o.tabItem);       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -613,6 +616,10 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     }
                     continue;
                 }
+                // Has tabs: a layer of the tab bar is a tab (keyed by its name); a panel shows only while its tab is the active one.
+                const tabRole = inner?.tabs?.roleOf(n);
+                if (tabRole === 'tabBar') { emit(k, c.id, { ...inner, tabItem: { key: k.name.trim(), tabs: inner.tabs, keys: kids.map(x => x.name.trim()), disabledKeys: kids.filter(isTabDisabled).map(x => x.name.trim()), disabled: isTabDisabled(k) } }); continue; }
+                if (tabRole === 'panelBox' && k.name.trim() !== inner.tabs.active) continue;
                 const kRole = inner?.pop?.roles?.[k.id], sRole = inner?.slotMap && (inner.slotMap[k.id] || (k.sourceId && inner.slotMap[k.sourceId]));
                 if (kRole === 'item') {
                     // The popup repeats its item once per option, each in the look of its state (default, hover, selected, disabled).
@@ -816,6 +823,28 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (role === 'selectRow') return o.rowCtx?.isSelected ? 'selected' : 'default';
         if (role === 'selectAll') return { all: 'selected', some: 'indeterminate', none: 'default' }[o.tbl.m.pageState];
         return null;
+    }
+    // ---- Tabs (Has tabs): a tab bar and the panels; the active tab is a State, and a click on a tab makes it the active one ----
+    /** The tabs of an instance: the layers mapped to Tab and Panel, and the State that holds the active tab. Null (and says why) while not set up. */
+    function tabsInfo(n, b) {
+        const why = slotIssues(b, id => !!ctx.node(id))[0];
+        if (why || !evalCtx.has(b.config.state)) { warnOnce('tabs:' + n.id, n.name + ': ' + (why ? why.why : 'The tab State is gone.') + ' The tabs do not run until it is set up.'); return null; }
+        const roles = new Map([[b.slots.tab, 'tabBar'], [b.slots.panel, 'panelBox']]);
+        return { inst: n, b, active: String(evalCtx.get(b.config.state) ?? ''), roleOf: node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null };
+    }
+    /** A tab is disabled when its layer is (the disabled flag, or a disabled look): it ignores clicks. */
+    const isTabDisabled = x => !!x.disabled || baseStateOf(x) === 'disabled';
+    /** The look of a tab: selected while it is the active one (its own look otherwise). */
+    const tabForced = o => (o?.tabItem && o.tabItem.key === o.tabItem.tabs.active ? 'selected' : null);
+    /** A click on a tab: it becomes the active one (not when it is disabled); On change runs when the tab changed. */
+    function tabPick(item) {
+        const T = item.tabs;
+        const next = activeAfterClick(item.keys, T.active, item.key, item.disabledKeys);
+        if (next === T.active) return;
+        const r = evalCtx.set(T.b.config.state, next);
+        if (!r.ok) { flash(T.inst.name + ': ' + r.error); return; }
+        stateChanged();
+        runTriggers(T.inst, 'onChange');
     }
     const tblRowState = (T, row, i) => (rowCtxOf(T.m, row, i).isSelected ? 'selected' : T.hover === i ? 'hover' : undefined);
     function tblApply(writes) {

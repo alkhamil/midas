@@ -75,7 +75,7 @@ export const CAPABILITIES = {
     'has-selection': { group: 'Data', label: 'Has selection', backing: 'behaviors', one: true, slots: [slot('selectRow', true), slot('selectAll')], events: ['onChange'], needs: ['has-rows'], blurb: 'Row checkboxes. The header checkbox selects the current page.' },
     'has-row-actions': { group: 'Data', label: 'Has row actions', backing: 'behaviors', one: true, slots: [slot('rowDelete'), slot('rowEdit'), slot('addButton'), slot('bulkDelete'), slot('reload')], events: [], needs: ['has-rows'], blurb: 'Delete, edit and add rows (with a confirmation and a form).' },
     'has-data-states': { group: 'Data', label: 'Has empty / loading', backing: 'behaviors', one: true, slots: [slot('empty'), slot('emptySearch'), slot('loading')], events: [], needs: ['has-rows'], blurb: 'What the table shows with no rows, no results, or while it loads.' },
-    'has-tabs': { group: 'Action', label: 'Has tabs', backing: 'behaviors', one: true, slots: [slot('tab', true), slot('label'), slot('panel')], events: ['onChange'], blurb: 'Tabs: clicking one makes it active and shows its panel (the active tab is a State).' },
+    'has-tabs': { group: 'Action', label: 'Has tabs', backing: 'behaviors', one: true, slots: [slot('tab', true), slot('label'), slot('panel', true)], events: ['onChange'], blurb: 'Tabs: clicking one makes it active and shows its panel (the active tab is a State).' },
     'has-pager': { group: 'Data', label: 'Has pager', backing: 'behaviors', one: true, slots: [slot('prev'), slot('next'), slot('pageLabel'), slot('pageItem'), slot('pageSize'), slot('jump'), slot('total')], events: ['onChange'], blurb: 'A pager without a table: page, page size and total are States.' },
     'show-feedback': { group: 'Feedback', label: 'Show feedback', backing: 'behaviors', one: true, slots: [slot('message', true), slot('title'), slot('icon'), slot('close'), slot('confirm'), slot('cancel')], events: [], blurb: 'Is drawn when a “Show feedback” action runs.' },
 };
@@ -182,6 +182,7 @@ export function slotIssues(behavior, exists = () => true) {
         if (required && !id) out.push({ role: def.role, why: `${SLOT_ROLES[def.role].label} is not set.` });
         else if (id && def.role !== 'popup' && !exists(id)) out.push({ role: def.role, why: `The layer for ${SLOT_ROLES[def.role].label} is gone.` });
     }
+    if (behavior.kind === 'has-tabs' && !behavior.config?.state) out.push({ role: 'state', why: 'The tab State is not set up: use “Set up tab State”.' });
     if (behavior.kind === 'has-rows' && !behavior.config?.source) out.push({ role: 'source', why: 'The List the rows come from is not set.' });
     if (behavior.kind === 'has-rows' && behavior.config?.source && !behavior.config?.vars?.visible) out.push({ role: 'vars', why: 'The table has no State yet: use “Set up table State”.' });
     return out;
@@ -262,7 +263,8 @@ export const PRESETS = [
     { id: 'radio', family: 'Choice', label: 'Radio', match: ['radio'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'exclusive' }] }], events: ['onChange'] },
     { id: 'checkbox', family: 'Choice', label: 'Checkbox', match: ['checkbox', 'check box'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
     { id: 'switch', family: 'Choice', label: 'Switch', match: ['switch', 'toggle'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
-    { id: 'segmented', family: 'Choice', label: 'Segmented', match: ['segmented', 'tabs', 'tab'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'exclusive' }] }], events: ['onChange'] },
+    { id: 'tabs', family: 'Navigation', label: 'Tabs', match: ['tabs', 'tab bar', 'tab'], caps: [{ kind: 'has-tabs', config: {} }], events: ['onChange'] },
+    { id: 'segmented', family: 'Choice', label: 'Segmented', match: ['segmented'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'exclusive' }] }], events: ['onChange'] },
     { id: 'table', family: 'Data', label: 'Table', match: ['table', 'data table', 'datagrid', 'data grid'], caps: [{ kind: 'has-rows', config: {} }, { kind: 'can-sort', config: {} }, { kind: 'can-search', config: {} }, { kind: 'has-pagination', config: {} }, { kind: 'has-selection', config: {} }, { kind: 'has-row-actions', config: {} }, { kind: 'has-data-states', config: {} }], events: ['onChange'] },
     { id: 'alert', family: 'Feedback', label: 'Alert', match: ['alert', 'banner'], caps: [{ kind: 'show-feedback', config: { kind: 'alert' } }] },
     { id: 'message', family: 'Feedback', label: 'Message', match: ['message', 'toast', 'snackbar'], caps: [{ kind: 'show-feedback', config: { kind: 'message' } }] },
@@ -271,7 +273,7 @@ export const PRESETS = [
     { id: 'drawer', family: 'Feedback', label: 'Drawer', match: ['drawer', 'sheet', 'side panel'], caps: [{ kind: 'show-feedback', config: { kind: 'drawer' } }] },
     { id: 'popconfirm', family: 'Feedback', label: 'Popconfirm', match: ['popconfirm', 'confirm'], caps: [{ kind: 'show-feedback', config: { kind: 'popconfirm' } }] },
 ];
-export const PRESET_FAMILIES = ['Trigger', 'Text entry', 'Choice', 'Data', 'Feedback'];
+export const PRESET_FAMILIES = ['Trigger', 'Text entry', 'Choice', 'Navigation', 'Data', 'Feedback'];
 export const PRESET_MAP = Object.fromEntries(PRESETS.map(p => [p.id, p]));
 
 /**

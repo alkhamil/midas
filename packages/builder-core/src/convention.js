@@ -22,6 +22,8 @@ export const DEFAULT_CONVENTION = {
         header: ['header', 'header row', 'table header', 'thead', 'columns'],
         loading: ['loading', 'skeleton', 'spinner'],
         emptySearch: ['no results', 'no match', 'nothing found', 'empty search'],
+        tab: ['tab', 'tabs', 'tab bar', 'tab list'],
+        panel: ['panel', 'tab panel', 'tab content', 'pane'],
         prev: ['prev', 'previous', 'back'],
         next: ['next', 'forward'],
         pageLabel: ['page label', 'page info', 'pagination label', 'page'],
