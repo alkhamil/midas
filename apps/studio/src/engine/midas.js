@@ -2359,6 +2359,10 @@ function vwCell(item, coll, mode) {
     const v = raw === undefined ? varDefault(item.type) : raw;
     if (item.type === 'effect')
         return `<div class="vw-cell"><button class="vw-fx" data-vw-fx="${key}" title="Edit effect">${esc(fxSummary(v))}</button>${aliasBtn}</div>`;
+    if (item.type === 'color') {
+        const { rgb, alpha } = vwSplitColor(v);
+        return `<div class="vw-cell"><label class="vw-sw big" style="background:${vwJoinColor(rgb, alpha)}"><input type="color" value="${rgb}" data-vw="${key}" data-vwt="color" aria-label="Color"></label><input class="vw-text" type="text" value="${esc(rgb.slice(1).toUpperCase())}" data-vw="${key}" data-vwt="hex" spellcheck="false" aria-label="Hex"><label class="vw-alpha ${alpha < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${alpha}" data-vw="${key}" data-vwt="alpha" aria-label="Opacity"><span>%</span></label>${aliasBtn}</div>`;
+    }
     if (item.type === 'number')
         return `<div class="vw-cell"><input class="vw-text" type="number" step="any" value="${esc(v)}" data-vw="${key}" data-vwt="number" aria-label="Number">${aliasBtn}</div>`;
     if (item.type === 'boolean')
