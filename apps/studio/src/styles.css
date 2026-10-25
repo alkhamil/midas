@@ -3494,3 +3494,8 @@ small.bh-warn{display:block;font-size:10px}
 .bh-suggest-row small{display:block;color:var(--muted)}
 .bh-conv-body{display:flex;flex-direction:column;gap:6px;padding-top:6px}
 .bh-conv-body input{height:26px;font-size:11px}
+
+/* ===== error boundary of floating windows ===== */
+.eb { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; flex: 1; min-width: 0; }
+.eb-title { font-weight: 600; color: var(--text, inherit); }
+.eb-msg { font-family: ui-monospace, monospace; font-size: 11px; color: #b4232a; overflow-wrap: anywhere; user-select: text; }

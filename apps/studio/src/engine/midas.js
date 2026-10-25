@@ -1,4 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
+import { errorBoundaryHtml, guarded } from './errorBoundary.js';
+import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
 import { behaviorsHtml, conventionHtml } from './capabilitiesUi.js';
@@ -778,7 +780,6 @@ document.addEventListener('change', e => {
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
-const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
     const n = varOwnerNode() || activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
     if (!set)
@@ -2261,10 +2262,17 @@ function vwCell(item, coll, mode) {
         return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="string" aria-label="Enum">${[...new Set([...opts, String(v)])].map(o => `<option value="${esc(o)}" ${o === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>${aliasBtn}</div>`;
     return `<div class="vw-cell"><input class="vw-text" type="text" value="${esc(v)}" data-vw="${key}" data-vwt="string" spellcheck="false" aria-label="String">${aliasBtn}</div>`;
 }
+// A render error shows its message and a Retry button (the title bar stays, so the window can still be closed) instead of a blank window.
 function renderVarsWindow() {
     const win = document.getElementById('vars-window');
     if (!win || !vw.open)
         return;
+    guarded(() => renderVarsWindowBody(win), err => {
+        win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div><div class="vw-body">${errorBoundaryHtml('Variables', err)}</div>`;
+        win.querySelector('[data-eb-retry]').onclick = () => renderVarsWindow();
+    });
+}
+function renderVarsWindowBody(win) {
     ensureVarCollection();
     const store = varStore(), coll = varColl(vw.coll), cols = 'grid-template-columns: ' + vwCols(coll);
     const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''} ${vw.selColls?.has(c.id) ? 'multi' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
