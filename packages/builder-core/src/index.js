@@ -19,3 +19,4 @@ export * from './collection.js';
 export * from './navigation.js';
 export * from './columns.js';
 export * from './table.js';
+export * from './form.js';
