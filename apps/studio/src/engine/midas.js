@@ -20286,6 +20286,8 @@ function bhTableSetup(n) {
 function bhTabsSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-tabs');
     if (i < 0) return false;
+    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
+    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
     const names = [...new Set(doc.children(n.behaviors[i].slots?.tab).map(c => c.name.trim()).filter(Boolean))];
     const st = stateStore();
     let name = 'activeTab', k = 2;
@@ -20302,6 +20304,8 @@ function bhTabsSetup(n) {
 function bhPagerSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-pager');
     if (i < 0) return false;
+    // Already set up: the three States exist, so a second click changes nothing (no duplicate States).
+    if (['page', 'pageSize', 'total'].every(k => n.behaviors[i].config?.vars?.[k] && stateStore().variables.some(v => v.id === n.behaviors[i].config.vars[k]))) return false;
     const st = stateStore(), size = n.behaviors[i].config?.pageSize || 10, vars = {};
     for (const [key, label, initial] of [['page', 'pagerPage', 1], ['pageSize', 'pagerPageSize', size], ['total', 'pagerTotal', 95]]) {
         let name = label, k = 2;
@@ -20319,6 +20323,8 @@ function bhPagerSetup(n) {
 function bhStepsSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-steps');
     if (i < 0) return false;
+    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
+    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
     const st = stateStore();
     let name = 'currentStep', k = 2;
     while (st.variables.some(v => v.name === name)) name = 'currentStep' + k++;
@@ -20334,6 +20340,8 @@ function bhStepsSetup(n) {
 function bhCollapseSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-collapse');
     if (i < 0) return false;
+    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
+    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
     const st = stateStore();
     let name = 'openSection', k = 2;
     while (st.variables.some(v => v.name === name)) name = 'openSection' + k++;
@@ -20349,6 +20357,8 @@ function bhCollapseSetup(n) {
 function bhMenuSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-menu');
     if (i < 0) return false;
+    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
+    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
     const st = stateStore();
     let name = 'selectedKey', k = 2;
     while (st.variables.some(v => v.name === name)) name = 'selectedKey' + k++;
@@ -20364,6 +20374,8 @@ function bhMenuSetup(n) {
 function bhCarouselSetup(n) {
     const i = (n.behaviors || []).findIndex(b => b.kind === 'has-carousel');
     if (i < 0) return false;
+    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
+    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
     const st = stateStore();
     let name = 'currentSlide', k = 2;
     while (st.variables.some(v => v.name === name)) name = 'currentSlide' + k++;
