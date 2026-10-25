@@ -163,6 +163,14 @@ function bodyCollapse(c, s) {
         + slotRow(c, `${p}.slots.panel`, 'panel', b.slots.panel, true)
         + '<p class="small-label">Each layer of the section row is one section, named like its panel. Clicking a section header opens it; an open section is drawn selected.</p>';
 }
+function bodyMenu(c, s) {
+    const { esc } = c, b = s.b, p = s.path, cf = b.config;
+    const texts = c.state.variables.filter(v => v.type === 'string' || v.type === 'option');
+    return field(esc, 'Selected item State', c.bhSelect(`${p}.config.state`, 'plain', cf.state || '', [['', '— not set up —'], ...texts.map(v => [v.id, `${v.name} (${v.type})`])]), 'The State that holds the selected item (its name)')
+        + `<button type="button" class="vw-btn" data-bh-act="menu-setup">Set up menu State</button>`
+        + slotRow(c, `${p}.slots.item`, 'item', b.slots.item, true)
+        + '<p class="small-label">Each layer of the item row is one item, named like the value it selects. A clicked item is drawn selected; a disabled item ignores clicks.</p>';
+}
 const bodySelection = (c, s) => plain(['selectRow', true], ['selectAll'])(c, s) + '<p class="small-label">The header checkbox selects the rows of the current page only. The picks are kept in selectedIds across pages.</p>';
 const bodyRowActions = (c, s) => plain(['rowDelete'], ['rowEdit'], ['addButton'], ['bulkDelete'], ['reload'])(c, s);
 const bodyDataStates = (c, s) => plain(['empty'], ['emptySearch'], ['loading'])(c, s) + '<p class="small-label">Empty shows when the List has no rows at all, No results when a search finds nothing (Empty is used for both when No results is not mapped).</p>';
@@ -171,7 +179,7 @@ function bodyClick(c, s) {
     return `<p class="small-label">${c.esc(s.clickSummary || 'Nothing happens on click yet.')}</p><p class="small-label">Edit what it does in <b>Interaction</b> below.</p>`;
 }
 
-const TITLES = { 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
+const TITLES = { 'has-menu': bodyMenu, 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
 
 // ---------------------------------------------------------------------------------------------------- the whole block
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */

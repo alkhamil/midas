@@ -509,8 +509,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const bsl = ctx.behaviorsFor?.(n) || [], hb = bsl.find(b => b.kind === 'has-options' && b.enabled), lb = bsl.find(b => b.kind === 'has-loading' && b.enabled && b.slots.icon);
                 const tby = tableBehaviors(bsl);
                 if (tby) inner.tbl = tableInfo(n, tby);
-                const tabB = bsl.find(b => b.kind === 'has-tabs' && b.enabled);
+                const tabB = bsl.find(b => b.kind === 'has-tabs' && b.enabled), menuB = bsl.find(b => b.kind === 'has-menu' && b.enabled);
                 if (tabB) inner.tabs = tabsInfo(n, tabB);
+                else if (menuB) inner.tabs = menuInfo(n, menuB);
                 const pagB = bsl.find(b => b.kind === 'has-pager' && b.enabled);
                 if (pagB) inner.pager = pagerInfo(n, pagB);
                 const stB = bsl.find(b => b.kind === 'has-steps' && b.enabled);
@@ -847,6 +848,14 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (role === 'selectRow') return o.rowCtx?.isSelected ? 'selected' : 'default';
         if (role === 'selectAll') return { all: 'selected', some: 'indeterminate', none: 'default' }[o.tbl.m.pageState];
         return null;
+    }
+    // ---- Menu (Has menu): the items of a menu; clicking one selects it (the same as a tab, without panels) ----
+    /** The items of a menu as the tab bar of an instance (the selected item is the State). Null while not set up. */
+    function menuInfo(n, b) {
+        const why = slotIssues(b, id => !!ctx.node(id))[0];
+        if (why || !evalCtx.has(b.config.state)) { warnOnce('menu:' + n.id, n.name + ': ' + (why ? why.why : 'The selected-item State is gone.') + ' The menu does not run until it is set up.'); return null; }
+        const roles = new Map([[b.slots.item, 'tabBar']]);
+        return { inst: n, b, active: String(evalCtx.get(b.config.state) ?? ''), roleOf: node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null };
     }
     // ---- Collapse (Has collapse): section headers that open and close their panels; the open ones are a State ----
     /** The sections of an instance: the header row, the panel row, and which sections are open (read from the State). Null while not set up. */

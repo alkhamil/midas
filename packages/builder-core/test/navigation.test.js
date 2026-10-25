@@ -119,3 +119,10 @@ test('Has collapse needs its open-section State; its config is kept clean', () =
     assert.equal(normalizeConfig('has-collapse', {}).mode, 'accordion');
     assert.deepEqual(PRESETS.filter(p => p.match.includes('accordion')).map(p => p.id), ['collapse']);
 });
+
+test('menu: needs its item layer and a selected-item State; “menu” alone is still the Dropdown menu, not this one', () => {
+    assert.deepEqual(slotIssues({ kind: 'has-menu', slots: {}, config: { state: '' } }, () => true).map(i => i.role), ['item', 'state']);
+    assert.deepEqual(slotIssues({ kind: 'has-menu', slots: { item: 'i' }, config: { state: 's' } }, () => true), []);
+    assert.deepEqual(PRESETS.filter(p => p.match.includes('sidebar')).map(p => p.id), ['menu']);
+    assert.equal(planPreset('menu').behaviors[0].kind, 'has-menu');
+});
