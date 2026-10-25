@@ -9,7 +9,7 @@
 //
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
-import { nodeToStyle } from './flexStyle.js';
+import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -628,11 +628,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             d.dataset.node = c._wire?.inst.id || c.id;
             if (c.type === 'frame' && (c.clip || c.overflow === 'none')) d.style.overflow = 'hidden';
             if (c._wire) attach(c._wire, d);
-            const stored = kidsOf.get(c.id) || [], paintOrder = c.layoutReverseZ && isAuto(c) ? [...stored].reverse() : stored;
+            // The DOM follows the flow (layoutOrder, same as the canvas); what covers what (paintOrder) is a z-index, so stacking never moves a child.
+            const stored = kidsOf.get(c.id) || [], flow = layoutOrder(c, stored), zOf = zIndexMap(c, stored);
             // A visible mask clips the siblings after it (in layout order); they are drawn inside one wrapper that carries the mask.
             const maskOf = new Map();
             let active = null;
-            for (const k of c.layoutFlip ? [...stored].reverse() : stored) {
+            for (const k of flow) {
                 if (k.isMask) {
                     active = k;
                     // An icon drawn as a mask (or inside one) has no element of its own: the mask's parent takes the click.
@@ -642,10 +643,10 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 else maskOf.set(k.id, active);
             }
             const wrappers = new Map();
-            for (const k of paintOrder) {
+            for (const k of flow) {
                 if (k.isMask) continue;
                 const m = maskOf.get(k.id);
-                if (!m) { draw(k, d, null); continue; }
+                if (!m) { const e = draw(k, d, null); if (zOf.has(k.id) && e?.style) e.style.zIndex = String(zOf.get(k.id)); continue; }
                 let w = wrappers.get(m.id);
                 if (!w) {
                     const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(maskSvg(kidsOf, m))}")`;
@@ -679,7 +680,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** The field's text is the placeholder: an input takes its place, wide enough for what is typed. */
     function renderField(c, parent, off, extra) {
         const o = c._field, inst = o.inst, cur = runtime.get(inst.id) || {};
-        const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0' }, parent);
+        const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0', flexShrink: '1' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
         input.placeholder = c.text ?? '';

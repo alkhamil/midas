@@ -1,5 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
+import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
@@ -104,9 +105,8 @@ function runLayout(d) {
         kids.get(k).push(n);
     }
     for (const [k, list] of kids) {
-        const p = k && d.get(k);
-        if (p?.layoutFlip && isAutoLayout(p))
-            list.reverse();
+        // the order of the flow comes from the same function Preview uses
+        kids.set(k, layoutOrder(k && d.get(k), list));
     }
     const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
     const parentOf = n => d.get(n.parentId);

@@ -2,7 +2,8 @@
 // no positions are computed here. Pure: (node, parent) in, a CSS style object out.
 //
 // Midas field names (Figma term in brackets):
-//   layout 'horizontal' | 'vertical' | 'grid' | 'none'   [layoutMode]      layoutFlip      [reverse order]
+//   layout 'horizontal' | 'vertical' | 'grid' | 'none'   [layoutMode]      layoutFlip      [children stored back to front: see layoutOrder]
+//   layoutReverseZ [canvas stacking: first on top: see paintOrder]
 //   gap [itemSpacing], gapCross [counterAxisSpacing], gapAuto + gapMode [space-between / evenly / around]
 //   padding, padT/padR/padB/padL                          primaryAlign, counterAlign (start | center | end)
 //   layoutWrap                                            layoutSizingH / layoutSizingV: 'fixed' | 'hug' | 'fill'
@@ -15,6 +16,28 @@ const ALIGN = { start: 'flex-start', center: 'center', end: 'flex-end' };
 const SPACE = { between: 'space-between', evenly: 'space-evenly', around: 'space-around' };
 
 export const isAutoFrame = n => !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none';
+
+/**
+ * The order the children of an auto layout frame follow in the flow. This is the single source of truth for the canvas and for
+ * Preview. A frame imported from Figma stores its children back to front (`layoutFlip`): they are laid out in reverse list order.
+ * `kids` = the children in list order. Children of other frames are returned as they are.
+ */
+export const layoutOrder = (parent, kids) => parent?.layoutFlip && isAutoFrame(parent) ? [...kids].reverse() : kids;
+
+/**
+ * The order the children are painted in, first = underneath. "Canvas stacking: First on top" (`layoutReverseZ`) paints the list
+ * in reverse. It only decides what covers what: it never changes where a child sits in the flow.
+ */
+export const paintOrder = (parent, kids) => parent?.layoutReverseZ && isAutoFrame(parent) ? [...kids].reverse() : kids;
+
+/**
+ * z-index per child id for Preview, which keeps the DOM in layoutOrder: only where paint order differs from flow order
+ * (otherwise the DOM order already stacks them right and nothing is set). First painted = 1.
+ */
+export function zIndexMap(parent, kids) {
+    const flow = layoutOrder(parent, kids), stacked = paintOrder(parent, kids);
+    return new Map(flow.every((k, i) => k === stacked[i]) ? [] : stacked.map((k, i) => [k.id, i + 1]));
+}
 
 /** 'fixed' | 'hug' | 'fill' for one axis ('h' | 'v'). Hug only means something on text and on auto layout frames. */
 export function sizingOf(n, axis, parentIsAuto = false) {
@@ -40,9 +63,10 @@ function containerStyle(n) {
         s.alignItems = ALIGN[n.counterAlign || n.layoutAlign || 'start'];
         return s;
     }
-    const horiz = n.layout === 'horizontal', flip = !!n.layoutFlip;
+    const horiz = n.layout === 'horizontal';
     s.display = 'flex';
-    s.flexDirection = (horiz ? 'row' : 'column') + (flip ? '-reverse' : '');
+    // Never `*-reverse`: it would also mirror start / end alignment. A flipped frame gets its children in layoutOrder instead.
+    s.flexDirection = horiz ? 'row' : 'column';
     const gap = n.gap ?? 16, cross = finite(n.gapCross) ? +n.gapCross : gap;
     if (n.gapAuto) {
         // Space between / evenly / around replace the gap along the main axis.

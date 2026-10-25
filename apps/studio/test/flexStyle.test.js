@@ -1,7 +1,7 @@
 // nodeToStyle: auto layout as CSS flexbox. The browser does the layout, so the tests read the style object only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nodeToStyle } from '../src/preview/flexStyle.js';
+import { nodeToStyle, layoutOrder, paintOrder, zIndexMap } from '../src/preview/flexStyle.js';
 
 const row = (extra = {}) => ({ type: 'frame', layout: 'horizontal', gap: 8, padding: 0, w: 300, h: 100, ...extra });
 const col = (extra = {}) => row({ layout: 'vertical', ...extra });
@@ -18,7 +18,7 @@ test('a frame with auto layout is a flex container', () => {
     assert.equal(s.justifyContent, 'center');
     assert.equal(s.alignItems, 'flex-end');
     assert.equal(nodeToStyle(col(), null).flexDirection, 'column');
-    assert.equal(nodeToStyle(col({ layoutFlip: true }), null).flexDirection, 'column-reverse');
+    assert.equal(nodeToStyle(col({ layoutFlip: true }), null).flexDirection, 'column');   // a flipped frame is reordered, never `-reverse`
 });
 
 test('space between replaces the gap on the main axis; wrap wraps', () => {
@@ -140,4 +140,59 @@ test('a Button: hug width with padding', () => {
 test('layers inside a mask wrapper use x / y plus the wrapper offset', () => {
     const s = nodeToStyle(box({ x: 30, y: 10 }), row(), { x: -10, y: -4 });
     assert.deepEqual([s.position, s.left, s.top], ['absolute', '20px', '6px']);
+});
+
+// ---- Preview must lay children out like the canvas (regression: every frame imported from Figma was mirrored) ----
+// A Figma import stores children back to front: layoutFlip (laid out in reverse list order) + layoutReverseZ (painted reversed).
+// The canvas rule, written out on its own: the flow visits the list reversed when the frame is flipped.
+const canvasFlow = (parent, kids) => parent.layoutFlip && parent.layout && parent.layout !== 'none' ? [...kids].reverse() : [...kids];
+// What the browser shows for Preview's output: the DOM follows layoutOrder, flex-direction may reverse it, justify-content packs it.
+function previewFlow(parent, kids) {
+    const st = nodeToStyle(parent, null), dom = layoutOrder(parent, kids);
+    return { order: st.flexDirection.endsWith('reverse') ? [...dom].reverse() : dom, axis: st.flexDirection.replace('-reverse', ''), justify: st.justifyContent, align: st.alignItems };
+}
+const flipped = (id, layout, extra = {}) => ({ id, type: 'frame', layout, gap: 8, padding: 0, w: 300, h: 100, layoutFlip: true, layoutReverseZ: true, ...extra });
+// login > field group > label row / input instance > placeholder + eye, every level flipped, children stored back to front
+const tree = (() => {
+    const L = (id, extra) => ({ id, type: 'text', text: id, ...extra });
+    const input = flipped('input', 'horizontal', { isInstance: true, gapAuto: true, gapMode: 'between', counterAlign: 'center', kids: [{ id: 'eye', type: 'frame' }, L('placeholder')] });          // visual: placeholder, eye
+    const label = flipped('label', 'horizontal', { kids: [L('star'), L('labelText')] });                                                                                              // visual: Email *
+    const group = flipped('group', 'vertical', { kids: [input, label] });                                                                                                             // visual: label, input
+    const forgot = flipped('forgot', 'horizontal', { primaryAlign: 'end', kids: [L('link')] });
+    return flipped('login', 'vertical', { counterAlign: 'start', kids: [{ id: 'cta', type: 'frame' }, forgot, group, L('title'), { id: 'logo', type: 'frame' }] });                    // visual: logo, title, group, forgot, cta
+})();
+const walk = (n, fn) => { if (n.kids) { fn(n); n.kids.forEach(k => walk(k, fn)); } };
+
+test('Preview child order, direction and alignment match the canvas at every nesting level', () => {
+    let levels = 0;
+    walk(tree, n => {
+        levels++;
+        const canvas = canvasFlow(n, n.kids), p = previewFlow(n, n.kids);
+        assert.deepEqual(p.order.map(k => k.id), canvas.map(k => k.id), n.id + ': children order');
+        assert.equal(p.axis, n.layout === 'horizontal' ? 'row' : 'column', n.id + ': direction');
+        assert.equal(p.justify, n.gapAuto ? 'space-between' : n.primaryAlign === 'end' ? 'flex-end' : 'flex-start', n.id + ': primary alignment is not mirrored');
+        assert.equal(p.align, n.counterAlign === 'center' ? 'center' : 'flex-start', n.id + ': counter alignment');
+    });
+    assert.equal(levels, 5);
+    const visual = n => canvasFlow(n, n.kids).map(k => k.id);
+    assert.deepEqual(visual(tree), ['logo', 'title', 'group', 'forgot', 'cta']);
+    const group = tree.kids[2], input = group.kids[0], label = group.kids[1];
+    assert.deepEqual(visual(group), ['label', 'input']);
+    assert.deepEqual(visual(label), ['labelText', 'star']);          // "Email *", not "* Email"
+    assert.deepEqual(visual(input), ['placeholder', 'eye']);         // placeholder left, eye right
+});
+
+test('"first on top" is a z-index; it never moves a child in the flow', () => {
+    const kids = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const both = flipped('f', 'vertical'), onlyZ = flipped('g', 'vertical', { layoutFlip: false }), onlyFlip = flipped('h', 'vertical', { layoutReverseZ: false });
+    assert.deepEqual(layoutOrder(both, kids).map(k => k.id), ['c', 'b', 'a']);
+    assert.deepEqual(paintOrder(both, kids).map(k => k.id), ['c', 'b', 'a']);
+    assert.equal(zIndexMap(both, kids).size, 0);                      // flow and paint agree: nothing to set
+    assert.deepEqual(layoutOrder(onlyZ, kids).map(k => k.id), ['a', 'b', 'c']);
+    assert.deepEqual([...zIndexMap(onlyZ, kids)], [['c', 1], ['b', 2], ['a', 3]]);   // a stays first in the flow but is on top
+    assert.deepEqual(layoutOrder(onlyFlip, kids).map(k => k.id), ['c', 'b', 'a']);
+    assert.deepEqual([...zIndexMap(onlyFlip, kids)], [['a', 1], ['b', 2], ['c', 3]]);   // c comes first in the flow, a is painted first
+    const free = { id: 'x', type: 'frame', layout: 'none', layoutFlip: true, layoutReverseZ: true };
+    assert.deepEqual(layoutOrder(free, kids), kids);                  // only auto layout frames reorder
+    assert.equal(zIndexMap(free, kids).size, 0);
 });
