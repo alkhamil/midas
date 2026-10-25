@@ -11,7 +11,7 @@
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { rowRuntimeKey } from '../engine/behavior.js';
-import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -485,12 +485,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const shown = stVis.length ? stVis.every(Boolean) : rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
             const vis = slotShown ?? shown;
             if (vis === false || (vis === null && n.visible === false && !forced)) return;
-            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o?.tabItem ? { ...o, tabItem: undefined } : o, wire = null, toggle = null;
+            let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o?.tabItem || o?.stepItem ? { ...o, tabItem: undefined, stepItem: undefined } : o, wire = null, toggle = null;
             if (n.isInstance) {
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(rowRuntimeKey(n.id, n.__row))?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? pagerEdgeForced(o, n) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? stepForced(o) ?? pagerEdgeForced(o, n) ?? stepEdgeForced(o, n) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
@@ -499,7 +499,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, pager: o?.pager, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, pager: o?.pager, steps: o?.steps, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -513,6 +513,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 if (tabB) inner.tabs = tabsInfo(n, tabB);
                 const pagB = bsl.find(b => b.kind === 'has-pager' && b.enabled);
                 if (pagB) inner.pager = pagerInfo(n, pagB);
+                const stB = bsl.find(b => b.kind === 'has-steps' && b.enabled);
+                if (stB) inner.steps = stepsInfo(n, stB);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
                 if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(rowRuntimeKey(n.id, n.__row))?.state === 'loading'; }
                 if (swap) {
@@ -559,7 +561,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (tbRole && o.tbl.m.ok) tblWire(c, tbRole, o);
             if (o?.tabItem && !o.tabItem.disabled) c._click = () => tabPick(o.tabItem);
             const pgRole = o?.pager?.roleOf(n) || null;
-            if (pgRole) pagerWire(c, pgRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
+            if (pgRole) pagerWire(c, pgRole, o);
+            const stRole = o?.steps?.roleOf(n) || null;
+            if (stRole) stepsWire(c, stRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -622,6 +626,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     }
                     continue;
                 }
+                // Has steps: each layer of the step row is one step; its look (wait, process, finish, error) follows the current step.
+                if (inner?.steps && inner.steps.roleOf(n) === 'stepBar') { emit(k, c.id, { ...inner, stepItem: { index: kids.indexOf(k), steps: inner.steps } }); continue; }
                 // Has pager: one page item per page (“…” for a gap), each drawn in its own state: selected for the current page.
                 if (inner?.pager?.roleOf(k) === 'pageItem') {
                     const P = inner.pager, txt = ctx.descendants(k.id).find(x => x.type === 'text');
@@ -835,6 +841,32 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (role === 'selectRow') return o.rowCtx?.isSelected ? 'selected' : 'default';
         if (role === 'selectAll') return { all: 'selected', some: 'indeterminate', none: 'default' }[o.tbl.m.pageState];
         return null;
+    }
+    // ---- Steps (Has steps): a row of steps; the current one is in progress, the ones before it finished; Next / Prev move through them ----
+    /** The steps of an instance: the step row, the current step (a State), and the gate (a State that must be true to leave a step). Null while not set up. */
+    function stepsInfo(n, b) {
+        const why = slotIssues(b, id => !!ctx.node(id))[0];
+        if (why || !evalCtx.has(b.config.state)) { warnOnce('steps:' + n.id, n.name + ': ' + (why ? why.why : 'The step State is gone.') + ' The steps do not run until it is set up.'); return null; }
+        const roles = new Map();
+        if (b.slots.step) roles.set(b.slots.step, 'stepBar');
+        for (const r of ['prev', 'next']) if (b.slots[r]) roles.set(b.slots[r], r);
+        const roleOf = node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null;
+        const bar = ctx.descendants(n.id).find(x => roleOf(x) === 'stepBar');
+        const count = bar ? ctx.kids(bar.id).length : 0;
+        const current = Math.min(Math.max(0, Math.floor(Number(evalCtx.get(b.config.state))) || 0), Math.max(0, count - 1));
+        const gateOpen = !b.config.gate || !evalCtx.has(b.config.gate) || truthy(evalCtx.get(b.config.gate));
+        return { inst: n, b, current, count, gateOpen, roleOf };
+    }
+    /** The look of a step: its status while the step is current, and the error look while its gate is closed. */
+    const stepForced = o => (o?.stepItem ? stepStatus(o.stepItem.index, o.stepItem.steps.current, !o.stepItem.steps.gateOpen) : null);
+    /** Prev on the first step, Next on the last step or while the gate is closed: drawn disabled. */
+    const stepEdgeForced = (o, n) => { const S = o?.steps, r = S?.roleOf(n); if (r === 'prev' && S.current <= 0) return 'disabled'; if (r === 'next' && (S.current >= S.count - 1 || !S.gateOpen)) return 'disabled'; return null; };
+    /** Next and Prev move the current step (Next is refused while the gate is closed). */
+    function stepsWire(c, role, o) {
+        const S = o.steps, v = S.b.config.state;
+        const move = delta => { const next = stepAfter(S.current, delta, S.count, S.gateOpen); if (next === S.current) return; const r = evalCtx.set(v, next); if (!r.ok) { flash(S.inst.name + ': ' + r.error); return; } stateChanged(); runTriggers(S.inst, 'onChange'); };
+        if (role === 'next' && S.current < S.count - 1 && S.gateOpen) c._click = () => move(1);
+        else if (role === 'prev' && S.current > 0) c._click = () => move(-1);
     }
     // ---- Pagination (Has pager): a pager that works without a table; its page, page size and total are States ----
     /** The pager of an instance: its roles and the page it shows (the page is clamped when the total shrinks). Null while its States are missing. */

@@ -41,6 +41,18 @@ export function nextPageSize(size, sizes = PAGE_SIZES) {
     return sizes[(i + 1) % sizes.length];
 }
 
+/** The state of step i (0-based) while `current` is the step in progress: before it completed, the current one active (or error), after it upcoming. These are the Midas states named like that. */
+export function stepStatus(i, current, failed = false) {
+    if (i < current) return 'completed';
+    if (i === current) return failed ? 'error' : 'active';
+    return 'upcoming';
+}
+/** The step after Next (+1) or Prev (-1): kept inside the steps. Next is refused while the step cannot be left (its gate is closed). */
+export function stepAfter(current, delta, count, canLeave = true) {
+    if (delta > 0 && !canLeave) return current;
+    return Math.min(Math.max(0, current + delta), Math.max(0, count - 1));
+}
+
 /** Prev / Next: whether each is disabled at the edges. */
 export function pagerEdges(page, pageCount) {
     return { prevDisabled: page <= 1, nextDisabled: page >= Math.max(1, pageCount) };

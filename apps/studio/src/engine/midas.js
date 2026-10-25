@@ -20315,6 +20315,21 @@ function bhPagerSetup(n) {
     n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, vars } } : x)));
     return true;
 }
+/** Has steps: a number State for the current step (0 = the first); its own, when the steps have none. */
+function bhStepsSetup(n) {
+    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-steps');
+    if (i < 0) return false;
+    const st = stateStore();
+    let name = 'currentStep', k = 2;
+    while (st.variables.some(v => v.name === name)) name = 'currentStep' + k++;
+    const id = uid();
+    st.variables.push({ id, name, type: 'number', scope: 'page', initial: 0 });
+    const clean = cleanState(st);
+    st.variables = clean.variables;
+    st.derived = clean.derived;
+    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
+    return true;
+}
 /** After adding something: the window to open on it. */
 function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
     if (input) return { kind: 'cap', key: input };
@@ -20361,6 +20376,7 @@ function bhAction(n, t) {
     if (act === 'table-setup') { bhTableSetup(n); return; }
     if (act === 'tabs-setup') { bhTabsSetup(n); return; }
     if (act === 'pager-setup') { bhPagerSetup(n); return; }
+    if (act === 'steps-setup') { bhStepsSetup(n); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);

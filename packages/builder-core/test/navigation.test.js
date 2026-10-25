@@ -1,7 +1,7 @@
 // Tabs and Pagination: the pure rules (clicks, disabled tabs, page clamping, page size, ellipsis, edges).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize } from '../src/index.js';
+import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize, stepStatus, stepAfter } from '../src/index.js';
 
 test('a click makes its tab active; an unknown or disabled tab leaves the active one', () => {
     const tabs = ['a', 'b', 'c'];
@@ -78,4 +78,24 @@ test('a page size goes to the next one in order, and wraps around', () => {
 test('a pager needs its three States (page, page size, total)', () => {
     assert.deepEqual(slotIssues({ kind: 'has-pager', slots: {}, config: { vars: { page: 'p' } } }, () => true).map(i => i.role), ['vars']);
     assert.deepEqual(slotIssues({ kind: 'has-pager', slots: {}, config: { vars: { page: 'p', pageSize: 's', total: 't' } } }, () => true), []);
+});
+
+test('steps: before the current one completed, the current one active (or error), the rest upcoming', () => {
+    assert.deepEqual([0, 1, 2].map(i => stepStatus(i, 1)), ['completed', 'active', 'upcoming']);
+    assert.equal(stepStatus(1, 1, true), 'error');
+});
+
+test('steps: Next and Prev stay inside the steps; Next is refused while the step cannot be left', () => {
+    assert.equal(stepAfter(0, -1, 3), 0);
+    assert.equal(stepAfter(2, 1, 3), 2);
+    assert.equal(stepAfter(0, 1, 3), 1);
+    assert.equal(stepAfter(0, 1, 3, false), 0);
+    assert.equal(stepAfter(1, -1, 3, false), 0);   // Prev is never refused
+});
+
+test('Has steps needs a step State; the step layer and the gate are optional', () => {
+    assert.deepEqual(slotIssues({ kind: 'has-steps', slots: { step: 's' }, config: { state: '' } }, () => true).map(i => i.role), ['state']);
+    assert.deepEqual(normalizeConfig('has-steps', { state: 'c', gate: 'g', junk: 1 }), { state: 'c', gate: 'g' });
+    assert.equal(planPreset('steps').behaviors[0].kind, 'has-steps');
+    assert.deepEqual(PRESETS.filter(p => p.match.includes('steps')).map(p => p.id), ['steps']);
 });

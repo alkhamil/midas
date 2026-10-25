@@ -45,6 +45,7 @@ export const SLOT_ROLES = {
     addButton: { label: 'Add button', kind: 'any', hint: 'Adds a new row' },
     bulkDelete: { label: 'Delete selected', kind: 'any', hint: 'Deletes every selected row' },
     reload: { label: 'Reload', kind: 'any', hint: 'Asks for the data again (a Simulated request)' },
+    step: { label: 'Step', kind: 'frame', hint: 'The row of steps (each step layer is one step, in order)' },
     // navigation: tabs and a pager that works without a table
     tab: { label: 'Tab', kind: 'frame', hint: 'One tab (it repeats once per tab); clicking it makes it the active one' },
     panel: { label: 'Panel', kind: 'frame', hint: 'The content of one tab (shown while that tab is active)' },
@@ -77,6 +78,7 @@ export const CAPABILITIES = {
     'has-data-states': { group: 'Data', label: 'Has empty / loading', backing: 'behaviors', one: true, slots: [slot('empty'), slot('emptySearch'), slot('loading')], events: [], needs: ['has-rows'], blurb: 'What the table shows with no rows, no results, or while it loads.' },
     'has-tabs': { group: 'Action', label: 'Has tabs', backing: 'behaviors', one: true, slots: [slot('tab', true), slot('label'), slot('panel', true)], events: ['onChange'], blurb: 'Tabs: clicking one makes it active and shows its panel (the active tab is a State).' },
     'has-pager': { group: 'Data', label: 'Has pager', backing: 'behaviors', one: true, slots: [slot('prev'), slot('next'), slot('pageLabel'), slot('pageItem'), slot('pageSize'), slot('jump'), slot('total')], events: ['onChange'], blurb: 'A pager without a table: page, page size and total are States.' },
+    'has-steps': { group: 'Action', label: 'Has steps', backing: 'behaviors', one: true, slots: [slot('step', true), slot('prev'), slot('next')], events: ['onChange'], blurb: 'A stepper: the steps before the current one are finished, the current one is in progress, the rest wait.' },
     'show-feedback': { group: 'Feedback', label: 'Show feedback', backing: 'behaviors', one: true, slots: [slot('message', true), slot('title'), slot('icon'), slot('close'), slot('confirm'), slot('cancel')], events: [], blurb: 'Is drawn when a “Show feedback” action runs.' },
 };
 export const CAPABILITY_IDS = Object.keys(CAPABILITIES);
@@ -109,6 +111,7 @@ export function normalizeConfig(kind, c = {}) {
         }
         case 'has-loading': return { state: typeof c.state === 'string' && c.state.trim() ? c.state.trim() : 'loading' };
         case 'has-tabs': return { state: typeof c.state === 'string' && c.state ? c.state : '' };
+        case 'has-steps': return { state: typeof c.state === 'string' ? c.state : '', gate: typeof c.gate === 'string' ? c.gate : '' };
         case 'has-pager': {
             const vars = {};
             for (const k of ['page', 'pageSize', 'total']) if (typeof c.vars?.[k] === 'string' && c.vars[k]) vars[k] = c.vars[k];
@@ -182,6 +185,7 @@ export function slotIssues(behavior, exists = () => true) {
         if (required && !id) out.push({ role: def.role, why: `${SLOT_ROLES[def.role].label} is not set.` });
         else if (id && def.role !== 'popup' && !exists(id)) out.push({ role: def.role, why: `The layer for ${SLOT_ROLES[def.role].label} is gone.` });
     }
+    if (behavior.kind === 'has-steps' && !behavior.config?.state) out.push({ role: 'state', why: 'The step State is not set up: use “Set up steps State”.' });
     if (behavior.kind === 'has-tabs' && !behavior.config?.state) out.push({ role: 'state', why: 'The tab State is not set up: use “Set up tab State”.' });
     if (behavior.kind === 'has-pager' && !['page', 'pageSize', 'total'].every(k => behavior.config?.vars?.[k])) out.push({ role: 'vars', why: 'The pager has no State yet: use “Set up pager State”.' });
     if (behavior.kind === 'has-rows' && !behavior.config?.source) out.push({ role: 'source', why: 'The List the rows come from is not set.' });
@@ -223,6 +227,7 @@ export function summaryOf(b, nameOf = id => id) {
         case 'has-row-actions': return ['rowDelete', 'rowEdit', 'addButton', 'bulkDelete', 'reload'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-data-states': return ['empty', 'emptySearch', 'loading'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-loading': return `Switches to “${c.state}” while a request runs`;
+        case 'has-steps': return `${b.slots.step ? 'Steps mapped' : 'No step layer yet'}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}${c.gate ? ' · gated by “' + nameOf(c.gate) + '”' : ''}`;
         case 'has-tabs': return `${['tab', 'panel'].filter(k => b.slots[k]).length ? 'Tab and panel mapped' : 'Nothing mapped yet'}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}`;
         case 'has-pager': return c.vars?.page ? `Page State “${nameOf(c.vars.page)}” · ${c.pageSize} per page` : 'Pick the page State';
         case 'show-feedback': return `${c.kind}${c.types ? ' · type from the ' + (Object.keys(c.types).length) + ' mapped levels' : ' · type from its modes'}`;
@@ -265,6 +270,7 @@ export const PRESETS = [
     { id: 'checkbox', family: 'Choice', label: 'Checkbox', match: ['checkbox', 'check box'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
     { id: 'switch', family: 'Choice', label: 'Switch', match: ['switch', 'toggle'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
     { id: 'tabs', family: 'Navigation', label: 'Tabs', match: ['tabs', 'tab bar', 'tab'], caps: [{ kind: 'has-tabs', config: {} }], events: ['onChange'] },
+    { id: 'steps', family: 'Navigation', label: 'Steps', match: ['steps', 'stepper'], caps: [{ kind: 'has-steps', config: {} }], events: ['onChange'] },
     { id: 'segmented', family: 'Choice', label: 'Segmented', match: ['segmented'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'exclusive' }] }], events: ['onChange'] },
     { id: 'table', family: 'Data', label: 'Table', match: ['table', 'data table', 'datagrid', 'data grid'], caps: [{ kind: 'has-rows', config: {} }, { kind: 'can-sort', config: {} }, { kind: 'can-search', config: {} }, { kind: 'has-pagination', config: {} }, { kind: 'has-selection', config: {} }, { kind: 'has-row-actions', config: {} }, { kind: 'has-data-states', config: {} }], events: ['onChange'] },
     { id: 'alert', family: 'Feedback', label: 'Alert', match: ['alert', 'banner'], caps: [{ kind: 'show-feedback', config: { kind: 'alert' } }] },

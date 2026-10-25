@@ -142,6 +142,17 @@ function bodyPager(c, s) {
         + slotRow(c, `${p}.slots.total`, 'total', b.slots.total, false)
         + '<p class="small-label">The page item repeats once per page (“…” for a gap). Prev and Next are drawn disabled at the edges. The page size button goes 10 → 20 → 50 and back to page 1. To pager a table, pick the table’s own States.</p>';
 }
+function bodySteps(c, s) {
+    const { esc } = c, b = s.b, p = s.path, cf = b.config;
+    const nums = c.state.variables.filter(v => v.type === 'number'), bools = c.state.variables.filter(v => v.type === 'boolean');
+    return field(esc, 'Current step State', c.bhSelect(`${p}.config.state`, 'plain', cf.state || '', [['', '— not set up —'], ...nums.map(v => [v.id, `${v.name} (${v.type})`])]), 'The number State with the current step (0 = the first)')
+        + `<button type="button" class="vw-btn" data-bh-act="steps-setup">Set up steps State</button>`
+        + field(esc, 'Can leave a step when', c.bhSelect(`${p}.config.gate`, 'plain', cf.gate || '', [['', '— always —'], ...bools.map(v => [v.id, `${v.name} (${v.type})`])]), 'A true/false State: while it is false, Next is refused and the current step shows its error look')
+        + slotRow(c, `${p}.slots.step`, 'step', b.slots.step, true)
+        + slotRow(c, `${p}.slots.prev`, 'prev', b.slots.prev, false)
+        + slotRow(c, `${p}.slots.next`, 'next', b.slots.next, false)
+        + '<p class="small-label">Each layer of the step row is one step, in order. Its look comes from the states named Upcoming, Active, Completed and Error. Title, description and icon are not connected yet: a step shows its own layers.</p>';
+}
 const bodySelection = (c, s) => plain(['selectRow', true], ['selectAll'])(c, s) + '<p class="small-label">The header checkbox selects the rows of the current page only. The picks are kept in selectedIds across pages.</p>';
 const bodyRowActions = (c, s) => plain(['rowDelete'], ['rowEdit'], ['addButton'], ['bulkDelete'], ['reload'])(c, s);
 const bodyDataStates = (c, s) => plain(['empty'], ['emptySearch'], ['loading'])(c, s) + '<p class="small-label">Empty shows when the List has no rows at all, No results when a search finds nothing (Empty is used for both when No results is not mapped).</p>';
@@ -150,7 +161,7 @@ function bodyClick(c, s) {
     return `<p class="small-label">${c.esc(s.clickSummary || 'Nothing happens on click yet.')}</p><p class="small-label">Edit what it does in <b>Interaction</b> below.</p>`;
 }
 
-const TITLES = { 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
+const TITLES = { 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
 
 // ---------------------------------------------------------------------------------------------------- the whole block
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */
