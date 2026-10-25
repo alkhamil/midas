@@ -28,7 +28,7 @@ add(frame('inputM', null, 'Input', { component: true, x: -900, y: -200, w: 240, 
 add(text('inputMT', 'inputM', 'Placeholder', 'Search users…', { fill: '#888888' }));
 
 // ---- a Button component (the row's Delete button is an instance of it) ----
-add(frame('btnM', null, 'Button', { component: true, x: -900, y: -300, layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug' }));
+add(frame('btnM', null, 'Button', { component: true, x: -900, y: -300, layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' } }));
 add(text('btnMT', 'btnM', 'Label', 'Delete', { fill: '#B4232A', fontWeight: 600 }));
 
 // ---- the Table component (master) ----
@@ -52,7 +52,7 @@ add(frame('chkAllM', 'hdrM', 'Select all', { w: 14, h: 14, fill: '#ffffff', stro
 add(text('hName', 'hdrM', 'Name', 'Name', { fontWeight: 700 }), text('hEmail', 'hdrM', 'Email', 'Email', { fontWeight: 700 }), text('hRole', 'hdrM', 'Role', 'Role', { fontWeight: 700 }));
 add(frame('rowM', 'tableM', 'Row', { layout: 'horizontal', gap: 12, padding: 4, counterAlign: 'center', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));
 // Delete: its own interaction (composed from existing actions): a Popconfirm; its confirm removes THIS row (by id) and says so
-add(frame('delM', 'rowM', 'Delete', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug',
+add(frame('delM', 'rowM', 'Delete', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
     interactions: [{ id: 'ixDel', trigger: 'onClick', actions: [{ type: 'show-feedback', kind: 'popconfirm', level: 'warning', title: 'Delete this user?', message: '{row.name} will be removed from the list.', confirmLabel: 'Delete',
         onConfirm: [{ type: 'list-delete', listId: 'users', where: { field: 'id', cmp: 'eq', value: { op: 'var', ref: '$row.id' } } }, { type: 'show-feedback', kind: 'message', level: 'success', message: 'Deleted {row.name}', duration: 2000 }] }] }] }));
 add(text('delT', 'delM', 'Label', 'Delete', { sourceId: 'btnMT', fill: '#B4232A', fontWeight: 600, overrides: { text: true } }));
@@ -90,7 +90,7 @@ inst.parentId = 'page';
 const doc = {
     format: 'midas', version: 1, behaviorVersion: 2, name: 'CRUD test', pageId: 'p1',
     pages: [{ id: 'p1', name: 'Page 1', nodes, parentId: null }], tokens: {}, guideStyles: [], created: Date.now(), assets: {},
-    state, variables: { collections: [], items: [] },
+    state, variables: { collections: [{ id: 'cBtn', name: 'Button states', modes: [{ id: 'mBtnDefault', name: 'Default' }, { id: 'mBtnHover', name: 'Hover' }], groups: [] }], items: [{ id: 'vBtnFill', collectionId: 'cBtn', name: 'button/fill', type: 'color', description: '', hidden: false, values: { mBtnDefault: '#FDE7E9', mBtnHover: '#F5A5AB' } }] },
 };
 fs.writeFileSync(process.argv[2] || 'crud-test.midas', JSON.stringify(doc));
 console.log('wrote', nodes.length, 'nodes; list rows', list.initial.length);

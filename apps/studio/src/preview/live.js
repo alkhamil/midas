@@ -990,7 +990,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     const stackFor = pos => stacks[pos] || (stacks[pos] = el('div', { position: 'absolute', zIndex: 82, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none', width: 'min(360px, calc(100% - 32px))', ...(POS[pos] || POS['top-right']) }, root));
     const cardStyle = lv => ({ ...chrome, position: 'relative', background: '#fff', color: '#16161a', borderRadius: '10px', boxShadow: '0 12px 36px rgba(0,0,0,.22)', borderLeft: `4px solid ${LEVEL_COLOR[lv] || LEVEL_COLOR.info}`, padding: '12px 14px', pointerEvents: 'auto', fontSize: '14px', lineHeight: '1.4' });
     const btnStyle = primary => ({ ...chrome, padding: '6px 14px', borderRadius: '8px', border: primary ? '0' : '1px solid #d5d5dc', background: primary ? '#16161a' : '#fff', color: primary ? '#fff' : '#16161a', cursor: 'pointer', fontSize: '13px' });
-    function closeFeedback(fb) { const i = feedbacks.indexOf(fb); if (i < 0) return; feedbacks.splice(i, 1); fb.nodes.forEach(n => n.remove()); clearTimeout(fb.timer); }
+    function closeFeedback(fb) { const i = feedbacks.indexOf(fb); if (i < 0) return; feedbacks.splice(i, 1); fb.nodes.forEach(n => n.remove()); clearTimeout(fb.timer); fb.cleanup?.(); }
     function clearFeedback() { [...feedbacks].forEach(closeFeedback); }
     /** The small "built-in" mark on feedback Preview drew itself because no component of the file is set for it. */
     const builtinBadge = parent => { const b = el('span', { position: 'absolute', top: '3px', right: '6px', fontSize: '9px', lineHeight: '1', padding: '2px 5px', borderRadius: '999px', background: '#eceef2', color: '#6b7280', letterSpacing: '.02em', pointerEvents: 'none' }, parent); b.textContent = 'built-in'; b.dataset.builtin = '1'; };
@@ -1070,6 +1070,14 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             body(card, f.level);
             const foot = el('div', { display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
             if (f.onConfirm?.length || f.kind === 'popconfirm') { const no = el('button', btnStyle(false), foot); no.textContent = 'Cancel'; no.onclick = () => closeFeedback(fb); }
+            // A Popconfirm is answered in place: Esc and a click outside it are Cancel (nothing runs, the row stays).
+            if (f.kind === 'popconfirm') {
+                const away = e => { if (!card.contains(e.target)) closeFeedback(fb); };
+                const esc = e => { if (e.key === 'Escape') closeFeedback(fb); };
+                // attached on the next turn, so the click that opened it is not the one that closes it
+                const t = setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
+                fb.cleanup = () => { clearTimeout(t); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); };
+            }
             const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
             card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true'); builtinBadge(card);
             fb.nodes.push(card);
