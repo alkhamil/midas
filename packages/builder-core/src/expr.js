@@ -26,6 +26,7 @@ export const COMPARATORS = [
     { id: 'contains', label: 'contains' },
     { id: 'startsWith', label: 'starts with' },
     { id: 'endsWith', label: 'ends with' },
+    { id: 'in', label: 'is one of' },
 ];
 const CMP_IDS = new Set(COMPARATORS.map(c => c.id));
 
@@ -64,6 +65,8 @@ function deepEqual(a, b) {
 export function compareValues(cmp, a, b) {
     if (!CMP_IDS.has(cmp)) fail(`Unknown comparison “${cmp}”.`);
     if (cmp === 'eq') return deepEqual(a, b) || (numeric(a) !== null && numeric(a) === numeric(b));
+    // is one of: the value is a list (e.g. the selected ids of a table) and the cell is one of its items
+    if (cmp === 'in') return Array.isArray(b) && b.some(x => compareValues('eq', a, x));
     if (cmp === 'ne') return !compareValues('eq', a, b);
     if (cmp === 'contains') {
         if (Array.isArray(a)) return a.some(x => deepEqual(x, b));

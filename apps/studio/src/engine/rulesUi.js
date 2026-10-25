@@ -43,7 +43,7 @@ export function stateActionFields(ctx, p, a, it) {
         if (!a.where) return `<button type="button" class="vw-btn ghost" data-bh-act="add-where" data-bh-path="${esc(p)}.where" data-bh-first="${esc(fieldsOfList[0]?.key ?? '')}">+ Only some rows…</button>`;
         const w = a.where;
         const fieldSel = objects ? bhSelect(`${p}.where.field`, 'plain', w.field || '', fieldsOfList.map(f => [f.key, f.key])) : '';
-        const cmp = bhSelect(`${p}.where.cmp`, 'plain', w.cmp || 'eq', [['eq', 'is'], ['ne', 'is not'], ['gt', 'is greater than'], ['gte', 'is at least'], ['lt', 'is less than'], ['lte', 'is at most'], ['contains', 'contains'], ['startsWith', 'starts with'], ['endsWith', 'ends with']]);
+        const cmp = bhSelect(`${p}.where.cmp`, 'plain', w.cmp || 'eq', [['eq', 'is'], ['ne', 'is not'], ['gt', 'is greater than'], ['gte', 'is at least'], ['lt', 'is less than'], ['lte', 'is at most'], ['contains', 'contains'], ['startsWith', 'starts with'], ['endsWith', 'ends with'], ['in', 'is one of']]);
         return `<div class="bh-cond"><div class="bh-cond-head"><b>Only rows where</b><button type="button" class="icon-button small" data-bh-act="del-where" data-bh-path="${esc(p)}.where" title="All rows" aria-label="Apply to all rows">×</button></div><div class="bh-inline">${fieldSel}${cmp}</div>${valueEditor(ctx, `${p}.where.value`, w.value)}</div>`;
     };
     const fieldValues = (key, title) => (!list ? '' : `<div class="bh-fields"><div class="small-label">${esc(title)}</div>${fieldsOfList.map(f => `<div class="bh-fieldrow"><small>${esc(f.key)}</small>${valueEditor(ctx, `${p}.${key}.${f.key}`, a[key]?.[f.key])}</div>`).join('')}</div>`);

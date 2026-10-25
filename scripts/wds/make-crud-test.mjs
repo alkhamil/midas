@@ -21,6 +21,7 @@ let k = 0;
 const plan = planTableState({ variables: [list], derived: [] }, list, () => `v${++k}`, { pageSize: 10 });
 const state = cleanState({ variables: [list, ...plan.variables], derived: plan.derived });
 
+const SEL = plan.ids.selected, SEL_COUNT = plan.ids.selectedCount;
 const nodes = [];
 const add = (...n) => nodes.push(...n);
 // ---- the Input component (the search box is an instance of it) ----
@@ -41,7 +42,7 @@ add(frame('tableM', null, 'Table', {
         { id: 'bSearch', kind: 'can-search', enabled: true, slots: { search: 'srchM' }, config: {} },
         { id: 'bPage', kind: 'has-pagination', enabled: true, slots: { prev: 'prevM', next: 'nextM', pageLabel: 'lblM' }, config: {} },
         { id: 'bSel', kind: 'has-selection', enabled: true, slots: { selectRow: 'chkM', selectAll: 'chkAllM' }, config: {} },
-        { id: 'bActions', kind: 'has-row-actions', enabled: true, slots: { rowDelete: 'delM' }, config: {} },
+        { id: 'bActions', kind: 'has-row-actions', enabled: true, slots: { rowDelete: 'delM', bulkDelete: 'bulkM' }, config: {} },
         { id: 'bStates', kind: 'has-data-states', enabled: true, slots: { empty: 'emptyM', emptySearch: 'noResM', loading: 'loadM' }, config: {} },
     ]),
 }));
@@ -58,6 +59,15 @@ add(frame('delM', 'rowM', 'Delete', { isInstance: true, sourceId: 'btnM', layout
 add(text('delT', 'delM', 'Label', 'Delete', { sourceId: 'btnMT', fill: '#B4232A', fontWeight: 600, overrides: { text: true } }));
 add(frame('chkM', 'rowM', 'Checkbox', { w: 14, h: 14, fill: '#ffffff', stroke: '#9A9AA6', strokeWidth: 1, radius: 3 }));
 add(text('cName', 'rowM', 'Name', 'name', { fill: '#111111' }), text('cEmail', 'rowM', 'Email', 'email', { fill: '#555555' }), text('cRole', 'rowM', 'Role', 'role', { fill: '#555555' }));
+// Bulk delete: shown only while rows are selected; its Popconfirm says how many, deletes the selected ids, clears the selection and confirms.
+add(frame('bulkM', 'tableM', 'Delete selected', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
+    stateBind: { self: { when: { op: 'compare', cmp: 'gt', a: { op: 'var', ref: SEL_COUNT }, b: { op: 'value', value: 0 } } } },
+    interactions: [{ id: 'ixBulk', trigger: 'onClick', actions: [{ type: 'show-feedback', kind: 'popconfirm', level: 'warning', title: 'Delete {selectedCount} rows?', message: 'The selected users will be removed from the list.', confirmLabel: 'Delete',
+        onConfirm: [
+            { type: 'list-delete', listId: 'users', where: { field: 'id', cmp: 'in', value: { op: 'var', ref: SEL } } },
+            { type: 'show-feedback', kind: 'message', level: 'success', message: 'Deleted {selectedCount} rows', duration: 2000 },
+            { type: 'set-state', variableId: SEL, op: 'reset' }] }] }] }));
+add(text('bulkT', 'bulkM', 'Label', 'Delete selected', { sourceId: 'btnMT', fill: '#B4232A', fontWeight: 600, overrides: { text: true } }));
 add(frame('pagerM', 'tableM', 'Pager', { layout: 'horizontal', gap: 12, padding: 0, counterAlign: 'center', primaryAlign: 'end', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));
 add(text('prevM', 'pagerM', 'Prev', '‹ Prev', { fill: '#0058CA' }), text('lblM', 'pagerM', 'Page label', 'Page 1 of 3', { fill: '#555555' }), text('nextM', 'pagerM', 'Next', 'Next ›', { fill: '#0058CA' }));
 add(text('emptyM', 'tableM', 'Empty', 'No data yet', { fill: '#999999' }), text('noResM', 'tableM', 'No results', 'No results for this search', { fill: '#999999' }), text('loadM', 'tableM', 'Loading', 'Loading…', { fill: '#0058CA' }));
