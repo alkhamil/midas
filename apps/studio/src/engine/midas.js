@@ -1,5 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
+import { overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf } from './behavior.js';
 import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
@@ -6691,7 +6692,7 @@ function xyForTopLeft(n, tl) {
 }
 
 class DocumentModel {
-    constructor(data) { this.data = migrateBehavior(data || makeStarter()); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data) { this.data = migrateBehavior(data || makeStarter()); dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6774,6 +6775,11 @@ class DocumentModel {
         for (const id of ids)
             for (const n of this.descendants(id))
                 all.add(n.id);
+        // The overlay layers Midas placed for a trigger that goes away go with it (and what is inside them).
+        for (const oid of overlaysOfTriggers(this.nodes, all)) {
+            all.add(oid);
+            for (const d of this.descendants(oid)) all.add(d.id);
+        }
         this.page.nodes = this.nodes.filter(n => !all.has(n.id));
         // Guides bound to a removed frame are its children: they go with it.
         if (this.page.guides)
@@ -8813,7 +8819,7 @@ function changed({ ui = true, commit = false } = {}) {
     }
     invalidate();
 }
-function transaction(label, fn) { finishText(); history.begin(label); fn(); changed({ commit: true }); }
+function transaction(label, fn) { finishText(); history.begin(label); fn(); if (label === 'Behavior' || label === 'Add interaction') pruneOverlays(); changed({ commit: true }); }
 function select(ids, { reveal = true } = {}) {
     if (BH_UI.pick && ids.length === 1 && bhPickLayer(ids[0])) return;
     varOwnerId = null;
@@ -9097,23 +9103,32 @@ function overlayIndex() {
     _ovIndexRev = doc.revision;
     return _ovIndex;
 }
+/** The small tag on an overlay layer: whose it is. */
+function overlayTag(n) {
+    if (!isOverlayLayer(n) || !n.overlayTrigger) return '';
+    const t = nodeIndex().get(n.overlayTrigger);
+    return t ? `Overlay of ${t.name}` : 'Unused overlay';
+}
+/** The overlays of the interaction whose window is open: they appear on the canvas only now, below their trigger. */
+function bhwOverlays() {
+    if (BHW.kind !== 'interaction' || !BHW.nodeId) return [];
+    const trig = nodeIndex().get(BHW.nodeId), it = trig && ovHelpers().interactionsOf(trig).find(i => i.id === BHW.key);
+    if (!it) return [];
+    const acts = overlayActionsOf([it]).map(x => x.action);
+    return doc.nodes.filter(o => isOverlayLayer(o) && o.overlayTrigger === trig.id && acts.some(x => x.overlayInstanceId === o.id || overlayTargetId(x) === o.sourceId)).map(o => o.id);
+}
 /** Overlay yang boleh tampil di kanvas: trigger-nya (atau child di dalamnya) / dirinya / anaknya sedang diselect. */
 function overlayPeek() {
-    const show = new Set();
+    const show = new Set(bhwOverlays());
     for (const id of state.selection) {
         const root = overlayIndex().get(id);
         if (root) show.add(root);
         const selNode = nodeIndex().get(id);
         const chain = selNode ? [selNode, ...doc.ancestors(selNode)] : [];
         for (const n of chain) {
-            for (const oid of _ovByTrigger.get(n.id) || []) show.add(oid);
             const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
             for (const it of interactionsForNode(n, src, set).list) for (const a of it.actions || []) {
                 if (!/^open-/.test(a.type)) continue;
-                if (a.overlayInstanceId) {
-                    const r = overlayIndex().get(a.overlayInstanceId);
-                    if (r) show.add(r);
-                }
                 if (a.targetFrameId) {
                     const r = overlayIndex().get(a.targetFrameId);
                     if (r) show.add(r);
@@ -9206,10 +9221,33 @@ function placedOverlayFor(triggerId, a) {
     }
     return placedOverlay(triggerId, a);
 }
-/** Hapus instance overlay portal milik sebuah action bila ada di kanvas. */
-function removePlacedOverlay(triggerId, a) {
-    const ex = placedOverlayFor(triggerId, a);
-    if (ex && doc.get(ex.id)) doc.remove(ex.id);
+/** How overlays find who asks for them: a trigger's interactions (an instance follows its main component) and the component an action opens. */
+function ovHelpers() {
+    return {
+        interactionsOf(n) {
+            if (!n.isInstance) return normalizeInteractions(n.interactions);
+            const src = chainComponent(n), set = src && parentSetOf(src);
+            return interactionsForNode(n, src, set).list;
+        },
+        targetOf: overlayTargetId,
+    };
+}
+/**
+ * After an edit of interactions: the overlay layers Midas made that no interaction asks for any more are removed, and one an
+ * interaction still asks for stays (its owner becomes the one that remains). Runs inside the edit's transaction: one undo step.
+ */
+function pruneOverlays() {
+    const nodes = doc.nodes, helpers = ovHelpers();
+    const gone = overlaysToPrune(nodes, helpers).filter(id => doc.get(id));
+    for (const r of reowned(nodes, helpers)) { const o = doc.get(r.id); if (o) { o.ownerId = r.ownerId; doc.touch(o); } }
+    if (!gone.length) return 0;
+    for (const id of gone) state.selection.delete(id);
+    doc.remove(gone);
+    return gone.length;
+}
+/** Overlay layers on this page nobody asks for that belong to `n` (or to a trigger that is gone): offered for cleanup, never removed silently. */
+function bhUnusedOverlays(n) {
+    return unusedOverlays(doc.nodes, ovHelpers()).filter(o => { const ov = doc.get(o.id); return ov && (ov.overlayTrigger === n.id || !doc.get(ov.overlayTrigger)); });
 }
 /** Pastikan ada instance overlay untuk trigger+target: pakai yang sudah ada, atau taruh baru. */
 function ensureOverlayPlaced(triggerId, a, opts = {}) {
@@ -9244,7 +9282,7 @@ function placeOverlayOnCanvas(triggerId, a, opts = {}) {
     const h = a.type === 'open-dropdown' && a.height === 'parent' ? Math.round(box.h) : master.h;
     const pos = placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
     let createdId = null;
-    instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
+    instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, autoCreated: true, ownerId: ownerOfAction(ovHelpers().interactionsOf(trig), a), overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
     return createdId || activeNode()?.id || null;
 }
 /** Tunjukkan sebuah layer di kanvas tanpa memindahkan seleksi editor. */
@@ -10157,6 +10195,8 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         if (opts.isOverlay) {
             root.isOverlay = true;
             if (opts.overlayTrigger) root.overlayTrigger = opts.overlayTrigger;
+            // Made by Midas for an interaction: it is removed again when the last interaction asking for it goes.
+            if (opts.autoCreated) { root.autoCreated = true; if (opts.ownerId) root.ownerId = opts.ownerId; }
         }
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
@@ -10574,7 +10614,7 @@ function drawOverlay() {
         c.fillStyle = kind ? purple : state.selection.has(s.node.id) ? (inComponentTree(s.node) ? purple : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
         // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
         const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0) - (kind ? LABEL_ICON_W : 0));
-        let label = s.node.name;
+        let label = overlayTag(s.node) || s.node.name;
         if (c.measureText(label).width > maxW) {
             while (label.length > 1 && c.measureText(label + '…').width > maxW)
                 label = label.slice(0, -1);
@@ -19243,12 +19283,12 @@ document.addEventListener('click', e => {
     const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
     const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
     const actAt = p => { const m = p.match(/^interactions\.(\d+)\.actions\.(\d+)\.targetComponentId$/); return m ? n.interactions?.[+m[1]]?.actions?.[+m[2]] : null; };
-    const write = id => { transaction('Behavior', () => { const prev = actAt(path); if (prev) removePlacedOverlay(n.id, prev); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
+    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
     if (clear) return write(null);
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); if (prev) removePlacedOverlay(n.id, prev); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
     });
 });
 document.addEventListener('click', e => {
@@ -19739,6 +19779,8 @@ function bhInteractionsSection(n, frames) {
         rows = inherited.list.map(it => itemRow({ esc, icon, ic: 'interaction', name: bhTriggerLabel(it), summary: bhInteractionLine(it, frames), on: true }));
         tail = `<p class="bh-item-note">From ${esc(owner || 'the main component')}. <button type="button" class="vw-btn ghost" data-bh-act="override-interactions">Edit on this instance</button></p>`;
     }
+    const unused = bhUnusedOverlays(n);
+    if (unused.length) tail += `<p class="bh-item-note bh-unused">⚠ ${unused.length} unused overlay ${unused.length === 1 ? 'layer' : 'layers'} (${esc(unused.map(o => o.name).slice(0, 2).join(', '))}) on this page: no interaction opens ${unused.length === 1 ? 'it' : 'them'}. <button type="button" class="vw-btn ghost" data-bh-act="remove-unused-overlays">Remove ${unused.length} unused overlay ${unused.length === 1 ? 'layer' : 'layers'}</button></p>`;
     return sectionBlock({ esc, icon, title: 'Interactions', add: 'new-interaction:', addTitle: 'Add interaction', rows, empty: 'No interaction yet. Add one so this reacts in Preview.' }).replace(/<\/section>$/, `${tail}</section>`);
 }
 function bhBehaviorSection(n) {
@@ -19821,7 +19863,9 @@ function bhwContent(n) {
     return null;
 }
 function bhwHide() {
+    const was = BHW.kind;
     BHW.kind = null; BHW.sub = '';
+    if (was) invalidate();
     $('#bh-window')?.classList.add('hidden');
 }
 /** Draw (or redraw) the window. Called whenever the inspector redraws, so edits show at once. A render error shows a message and Retry. */
@@ -19858,6 +19902,7 @@ function bhwOpen(kind, key = '', y = 0) {
     const n = activeNode();
     if (!n) return;
     Object.assign(BHW, { kind, key, sub: '', nodeId: n.id, y: y || BHW.y });
+    invalidate();
     renderInspector();
     renderBhWindow(true);
 }
@@ -20069,6 +20114,7 @@ function bhAction(n, t) {
         return;
     }
     if (act === 'reset-convention') { delete doc.data.convention; return; }
+    if (act === 'remove-unused-overlays') { const ids = bhUnusedOverlays(n).map(o => o.id); for (const id of ids) state.selection.delete(id); if (ids.length) doc.remove(ids); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
@@ -20078,8 +20124,7 @@ function bhAction(n, t) {
         return;
     }
     if (act === 'del-action-at') {
-        const list = listAt(t.dataset.bhList), [removed] = list.splice(Number(t.dataset.bhIndex), 1);
-        if (removed) removePlacedOverlay(n.id, removed);
+        const list = listAt(t.dataset.bhList); list.splice(Number(t.dataset.bhIndex), 1);
         bhWrite(n, t.dataset.bhList, list);
         return;
     }
@@ -20136,15 +20181,13 @@ function bhAction(n, t) {
     if (act === 'del-action') {
         const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
         if (!it || it.actions.length < 2) return;
-        const [removed] = it.actions.splice(Number(t.dataset.bhAction), 1);
-        if (removed) removePlacedOverlay(n.id, removed);
+        it.actions.splice(Number(t.dataset.bhAction), 1);
         n.interactions = list;
         return;
     }
     if (act === 'del-interaction') {
         const i = Number(t.dataset.bhIndex);
         const list = normalizeInteractions(n.interactions);
-        for (const a of list[i]?.actions || []) removePlacedOverlay(n.id, a);
         n.interactions = list.filter((_, k) => k !== i);
         return;
     }

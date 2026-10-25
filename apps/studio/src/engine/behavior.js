@@ -10,5 +10,6 @@ export {
     DEFAULT_CONVENTION, cleanConvention, matchScore, suggestSlots, suggestStates, suggestPreset,
     filterOptions, hasValue, itemStates, normalizeOptions, optionsText, parseOptions, pickOption, removeValue, selectedLabels, showsEmpty, toValue, valueText, emptyValue, validateSelection,
     matchLevel, levelsCovered, validateByRules, normalizeFieldRules, patternProblem, RULE_TYPES,
+    overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf,
     styleValue, TARGET_ROLES, TRIGGERS, TYPE_LABEL, overridesFor, stateChain, variableValueInMode, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll,
 } from '@midas/builder-core';
