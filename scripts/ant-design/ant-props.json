@@ -1,0 +1,3816 @@
+[
+ {
+  "name": "Button",
+  "category": "General",
+  "props": [
+   {
+    "name": "type",
+    "type": "'default' | 'primary' | 'dashed' | 'link' | 'text'",
+    "default": "'default'",
+    "desc": "Tipe visual tombol, menentukan hierarki"
+   },
+   {
+    "name": "variant",
+    "type": "'outlined' | 'dashed' | 'solid' | 'filled' | 'text' | 'link'",
+    "default": "'outlined'",
+    "desc": "Varian gaya v5, kombinasi dengan color"
+   },
+   {
+    "name": "color",
+    "type": "'default' | 'primary' | 'danger'",
+    "default": "'default'",
+    "desc": "Warna tema tombol"
+   },
+   {
+    "name": "shape",
+    "type": "'default' | 'circle' | 'round'",
+    "default": "'default'",
+    "desc": "Bentuk sudut tombol"
+   },
+   {
+    "name": "size",
+    "type": "'large' | 'middle' | 'small'",
+    "default": "'middle'",
+    "desc": "Ukuran tombol"
+   },
+   {
+    "name": "danger",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Aktifkan gaya bahaya merah"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan interaksi"
+   },
+   {
+    "name": "ghost",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Background transparan untuk dark bg"
+   },
+   {
+    "name": "block",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tombol lebar penuh parent"
+   },
+   {
+    "name": "loading",
+    "type": "boolean | { delay: number }",
+    "default": "false",
+    "desc": "Tampilkan indikator loading"
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon di dalam tombol"
+   },
+   {
+    "name": "iconPlacement",
+    "type": "'start' | 'end'",
+    "default": "'start'",
+    "desc": "Posisi ikon relatif terhadap teks"
+   },
+   {
+    "name": "htmlType",
+    "type": "'button' | 'submit' | 'reset'",
+    "default": "'button'",
+    "desc": "Atribut type elemen button HTML"
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "default": "-",
+    "desc": "Jika diisi, render sebagai anchor link"
+   },
+   {
+    "name": "target",
+    "type": "string",
+    "default": "-",
+    "desc": "Target link seperti _blank"
+   },
+   {
+    "name": "autoInsertSpace",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Sisipkan spasi otomatis untuk 2 karakter Cina"
+   }
+  ]
+ },
+ {
+  "name": "FloatButton",
+  "category": "General",
+  "props": [
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon utama tombol mengambang"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Deskripsi teks di bawah ikon (FloatButton v6)"
+   },
+   {
+    "name": "content",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten kustom (deprecated, gunakan description)"
+   },
+   {
+    "name": "tooltip",
+    "type": "ReactNode | TooltipProps",
+    "default": "-",
+    "desc": "Tooltip saat hover"
+   },
+   {
+    "name": "type",
+    "type": "'default' | 'primary'",
+    "default": "'default'",
+    "desc": "Tipe warna tombol"
+   },
+   {
+    "name": "shape",
+    "type": "'circle' | 'square'",
+    "default": "'circle'",
+    "desc": "Bentuk tombol"
+   },
+   {
+    "name": "badge",
+    "type": "BadgeProps",
+    "default": "-",
+    "desc": "Konfigurasi badge di sudut"
+   },
+   {
+    "name": "href",
+    "type": "string",
+    "default": "-",
+    "desc": "Jadikan link dengan href"
+   },
+   {
+    "name": "onClick",
+    "type": "(e: MouseEvent) => void",
+    "default": "-",
+    "desc": "Callback klik"
+   }
+  ]
+ },
+ {
+  "name": "Icon",
+  "category": "General",
+  "props": [
+   {
+    "name": "className",
+    "type": "string",
+    "default": "-",
+    "desc": "Kelas CSS tambahan"
+   },
+   {
+    "name": "rotate",
+    "type": "number",
+    "default": "-",
+    "desc": "Rotasi ikon (derajat)"
+   },
+   {
+    "name": "spin",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Aktifkan animasi putar"
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "default": "-",
+    "desc": "Style inline kustom"
+   },
+   {
+    "name": "twoToneColor",
+    "type": "string",
+    "default": "-",
+    "desc": "Warna untuk ikon two-tone"
+   },
+   {
+    "name": "component",
+    "type": "ComponentType | SVGComponent",
+    "default": "-",
+    "desc": "Komponen ikon kustom"
+   }
+  ]
+ },
+ {
+  "name": "Typography",
+  "category": "General",
+  "sub": "Text, Title, Paragraph",
+  "props": [
+   {
+    "name": "Text.code",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Gaya kode inline"
+   },
+   {
+    "name": "Text.copyable",
+    "type": "boolean | CopyableConfig",
+    "default": "false",
+    "desc": "Aktifkan fitur salin teks"
+   },
+   {
+    "name": "Text.delete",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Gaya coret teks"
+   },
+   {
+    "name": "Text.disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan, warna abu"
+   },
+   {
+    "name": "Text.editable",
+    "type": "boolean | EditableConfig",
+    "default": "false",
+    "desc": "Teks dapat diedit"
+   },
+   {
+    "name": "Text.ellipsis",
+    "type": "boolean | EllipsisConfig",
+    "default": "false",
+    "desc": "Potong teks dengan ellipsis"
+   },
+   {
+    "name": "Text.keyboard",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Gaya tombol keyboard"
+   },
+   {
+    "name": "Text.mark",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Highlight mark"
+   },
+   {
+    "name": "Text.strong",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tebal (bold)"
+   },
+   {
+    "name": "Text.italic",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Miring"
+   },
+   {
+    "name": "Text.type",
+    "type": "'secondary' | 'success' | 'warning' | 'danger'",
+    "default": "-",
+    "desc": "Warna status teks"
+   },
+   {
+    "name": "Text.underline",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Garis bawah"
+   },
+   {
+    "name": "Title.level",
+    "type": "1 | 2 | 3 | 4 | 5",
+    "default": "1",
+    "desc": "Level heading h1-h5"
+   },
+   {
+    "name": "Paragraph.code",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Paragraf gaya code block"
+   },
+   {
+    "name": "Paragraph.ellipsis",
+    "type": "EllipsisConfig",
+    "default": "-",
+    "desc": "Ellipsis multi-baris dengan expand"
+   }
+  ]
+ },
+ {
+  "name": "Divider",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten di tengah divider (teks)"
+   },
+   {
+    "name": "dashed",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Garis putus-putus"
+   },
+   {
+    "name": "variant",
+    "type": "'solid' | 'dashed' | 'dotted'",
+    "default": "'solid'",
+    "desc": "Varian garis v6"
+   },
+   {
+    "name": "orientation",
+    "type": "'left' | 'right' | 'center'",
+    "default": "'center'",
+    "desc": "Posisi teks"
+   },
+   {
+    "name": "orientationMargin",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Jarak margin orientasi"
+   },
+   {
+    "name": "plain",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Teks tanpa gaya heading"
+   },
+   {
+    "name": "size",
+    "type": "'small' | 'middle' | 'large'",
+    "default": "'middle'",
+    "desc": "Ukuran jarak divider"
+   },
+   {
+    "name": "titlePlacement",
+    "type": "'left' | 'right' | 'center'",
+    "default": "-",
+    "desc": "Alias orientation (v6)"
+   }
+  ]
+ },
+ {
+  "name": "Flex",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "vertical",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Arah vertikal (flex-direction: column)"
+   },
+   {
+    "name": "wrap",
+    "type": "FlexWrap",
+    "default": "nowrap",
+    "desc": "Pengaturan wrap"
+   },
+   {
+    "name": "justify",
+    "type": "FlexJustify",
+    "default": "normal",
+    "desc": "Justify-content"
+   },
+   {
+    "name": "align",
+    "type": "FlexAlign",
+    "default": "normal",
+    "desc": "Align-items"
+   },
+   {
+    "name": "flex",
+    "type": "FlexFlex",
+    "default": "-",
+    "desc": "Properti flex singkat"
+   },
+   {
+    "name": "gap",
+    "type": "FlexGap",
+    "default": "-",
+    "desc": "Jarak antar item, bisa small/middle/large atau number"
+   }
+  ]
+ },
+ {
+  "name": "Grid.Row",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "align",
+    "type": "'top' | 'middle' | 'bottom' | 'stretch'",
+    "default": "'top'",
+    "desc": "Vertical align"
+   },
+   {
+    "name": "gutter",
+    "type": "number | object | [number, number]",
+    "default": "0",
+    "desc": "Jarak antar Col, horizontal dan vertikal"
+   },
+   {
+    "name": "justify",
+    "type": "'start' | 'end' | 'center' | 'space-around' | 'space-between' | 'space-evenly'",
+    "default": "'start'",
+    "desc": "Horizontal align"
+   },
+   {
+    "name": "wrap",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Apakah baris wrap"
+   }
+  ]
+ },
+ {
+  "name": "Grid.Col",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "span",
+    "type": "number",
+    "default": "-",
+    "desc": "Jumlah kolom yang ditempati (0-24)"
+   },
+   {
+    "name": "offset",
+    "type": "number",
+    "default": "0",
+    "desc": "Jarak offset ke kiri"
+   },
+   {
+    "name": "order",
+    "type": "number",
+    "default": "0",
+    "desc": "Urutan flex order"
+   },
+   {
+    "name": "push",
+    "type": "number",
+    "default": "0",
+    "desc": "Geser ke kanan"
+   },
+   {
+    "name": "pull",
+    "type": "number",
+    "default": "0",
+    "desc": "Geser ke kiri"
+   },
+   {
+    "name": "flex",
+    "type": "string | number",
+    "default": "-",
+    "desc": "Flex layout, isi otomatis"
+   },
+   {
+    "name": "xs",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint <576px"
+   },
+   {
+    "name": "sm",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint ≥576px"
+   },
+   {
+    "name": "md",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint ≥768px"
+   },
+   {
+    "name": "lg",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint ≥992px"
+   },
+   {
+    "name": "xl",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint ≥1200px"
+   },
+   {
+    "name": "xxl",
+    "type": "number | object",
+    "default": "-",
+    "desc": "Breakpoint ≥1600px"
+   }
+  ]
+ },
+ {
+  "name": "Layout",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "hasSider",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Apakah memiliki Sider di dalamnya, untuk style"
+   },
+   {
+    "name": "className",
+    "type": "string",
+    "default": "-",
+    "desc": "Kelas tambahan"
+   },
+   {
+    "name": "style",
+    "type": "CSSProperties",
+    "default": "-",
+    "desc": "Style kustom"
+   }
+  ]
+ },
+ {
+  "name": "Layout.Sider",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "breakpoint",
+    "type": "'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'",
+    "default": "-",
+    "desc": "Breakpoint untuk trigger responsive"
+   },
+   {
+    "name": "collapsed",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Status collapsed terkontrol"
+   },
+   {
+    "name": "collapsedWidth",
+    "type": "number",
+    "default": "80",
+    "desc": "Lebar saat collapsed"
+   },
+   {
+    "name": "collapsible",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Apakah bisa collapsible"
+   },
+   {
+    "name": "theme",
+    "type": "'light' | 'dark'",
+    "default": "'dark'",
+    "desc": "Tema warna sider"
+   },
+   {
+    "name": "width",
+    "type": "number | string",
+    "default": "200",
+    "desc": "Lebar sider"
+   },
+   {
+    "name": "trigger",
+    "type": "ReactNode | null",
+    "default": "-",
+    "desc": "Trigger kustom untuk collapse"
+   },
+   {
+    "name": "onCollapse",
+    "type": "(collapsed, type) => void",
+    "default": "-",
+    "desc": "Callback saat collapse"
+   }
+  ]
+ },
+ {
+  "name": "Space",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "align",
+    "type": "'start' | 'end' | 'center' | 'baseline'",
+    "default": "-",
+    "desc": "Alignment item"
+   },
+   {
+    "name": "direction",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Arah space (alias orientation)"
+   },
+   {
+    "name": "orientation",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Arah layout (legacy)"
+   },
+   {
+    "name": "size",
+    "type": "'small' | 'middle' | 'large' | number | [number, number]",
+    "default": "'small'",
+    "desc": "Ukuran jarak"
+   },
+   {
+    "name": "separator",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Pemisah antar item"
+   },
+   {
+    "name": "wrap",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Wrap otomatis"
+   }
+  ]
+ },
+ {
+  "name": "Space.Compact",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "block",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Lebar penuh"
+   },
+   {
+    "name": "direction",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Arah compact"
+   },
+   {
+    "name": "orientation",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Alias direction"
+   },
+   {
+    "name": "size",
+    "type": "'small' | 'middle' | 'large'",
+    "default": "'middle'",
+    "desc": "Ukuran compact"
+   }
+  ]
+ },
+ {
+  "name": "Splitter",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "orientation",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Arah split"
+   },
+   {
+    "name": "lazy",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Render lazy saat drag"
+   },
+   {
+    "name": "onResize",
+    "type": "(sizes: number[]) => void",
+    "default": "-",
+    "desc": "Callback saat resize"
+   },
+   {
+    "name": "onResizeEnd",
+    "type": "(sizes: number[]) => void",
+    "default": "-",
+    "desc": "Callback selesai resize"
+   },
+   {
+    "name": "onCollapse",
+    "type": "(type: string, index: number) => void",
+    "default": "-",
+    "desc": "Callback saat panel collapse"
+   }
+  ]
+ },
+ {
+  "name": "Splitter.Panel",
+  "category": "Layout",
+  "props": [
+   {
+    "name": "size",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Ukuran panel terkontrol"
+   },
+   {
+    "name": "defaultSize",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Ukuran default tidak terkontrol"
+   },
+   {
+    "name": "min",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Ukuran minimum"
+   },
+   {
+    "name": "max",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Ukuran maksimum"
+   },
+   {
+    "name": "collapsible",
+    "type": "boolean | { start, end }",
+    "default": "false",
+    "desc": "Dapat di-collapse"
+   },
+   {
+    "name": "resizable",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Apakah bisa di-resize"
+   }
+  ]
+ },
+ {
+  "name": "Masonry",
+  "category": "Layout",
+  "isV6": true,
+  "props": [
+   {
+    "name": "columns",
+    "type": "number | Record<string, number>",
+    "default": "4",
+    "desc": "Jumlah kolom atau responsive object"
+   },
+   {
+    "name": "gap",
+    "type": "number | [number, number]",
+    "default": "16",
+    "desc": "Jarak antar item"
+   },
+   {
+    "name": "children",
+    "type": "ReactNode[]",
+    "default": "-",
+    "desc": "Item masonry"
+   }
+  ]
+ },
+ {
+  "name": "Anchor",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "affix",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Mode affix menempel"
+   },
+   {
+    "name": "bounds",
+    "type": "number",
+    "default": "5",
+    "desc": "Batas deteksi scroll"
+   },
+   {
+    "name": "getContainer",
+    "type": "() => HTMLElement",
+    "default": "() => window",
+    "desc": "Container scroll"
+   },
+   {
+    "name": "offsetTop",
+    "type": "number",
+    "default": "0",
+    "desc": "Offset dari atas"
+   },
+   {
+    "name": "items",
+    "type": "AnchorItem[]",
+    "default": "-",
+    "desc": "Daftar anchor items"
+   },
+   {
+    "name": "direction",
+    "type": "'vertical' | 'horizontal'",
+    "default": "'vertical'",
+    "desc": "Arah anchor"
+   },
+   {
+    "name": "onChange",
+    "type": "(currentActiveLink: string) => void",
+    "default": "-",
+    "desc": "Callback saat active link berubah"
+   },
+   {
+    "name": "onClick",
+    "type": "(e, link) => void",
+    "default": "-",
+    "desc": "Callback saat link diklik"
+   }
+  ]
+ },
+ {
+  "name": "Breadcrumb",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "items",
+    "type": "BreadcrumbItem[]",
+    "default": "-",
+    "desc": "Daftar breadcrumb"
+   },
+   {
+    "name": "separator",
+    "type": "ReactNode",
+    "default": "'/'",
+    "desc": "Pemisah"
+   },
+   {
+    "name": "itemRender",
+    "type": "(item, params, items, paths) => ReactNode",
+    "default": "-",
+    "desc": "Render kustom item"
+   },
+   {
+    "name": "params",
+    "type": "object",
+    "default": "-",
+    "desc": "Params untuk routing"
+   }
+  ]
+ },
+ {
+  "name": "Dropdown",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "arrow",
+    "type": "boolean | { pointAtCenter }",
+    "default": "false",
+    "desc": "Tampilkan panah"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan dropdown"
+   },
+   {
+    "name": "menu",
+    "type": "MenuProps",
+    "default": "-",
+    "desc": "Konfigurasi menu"
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "default": "'bottomLeft'",
+    "desc": "Posisi dropdown"
+   },
+   {
+    "name": "trigger",
+    "type": "('click' | 'hover' | 'contextMenu')[]",
+    "default": "['hover']",
+    "desc": "Trigger membuka dropdown"
+   },
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Status terbuka terkontrol"
+   },
+   {
+    "name": "onOpenChange",
+    "type": "(open: boolean, info) => void",
+    "default": "-",
+    "desc": "Callback open berubah"
+   }
+  ]
+ },
+ {
+  "name": "Menu",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "items",
+    "type": "MenuItem[]",
+    "default": "-",
+    "desc": "Daftar menu items"
+   },
+   {
+    "name": "mode",
+    "type": "'vertical' | 'horizontal' | 'inline'",
+    "default": "'vertical'",
+    "desc": "Tipe layout menu"
+   },
+   {
+    "name": "defaultOpenKeys",
+    "type": "string[]",
+    "default": "-",
+    "desc": "Keys submenu terbuka default"
+   },
+   {
+    "name": "defaultSelectedKeys",
+    "type": "string[]",
+    "default": "-",
+    "desc": "Keys terpilih default"
+   },
+   {
+    "name": "selectedKeys",
+    "type": "string[]",
+    "default": "-",
+    "desc": "Keys terpilih terkontrol"
+   },
+   {
+    "name": "theme",
+    "type": "'light' | 'dark'",
+    "default": "'light'",
+    "desc": "Tema menu"
+   },
+   {
+    "name": "inlineCollapsed",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Collapsed inline menu"
+   },
+   {
+    "name": "onClick",
+    "type": "MenuClickHandler",
+    "default": "-",
+    "desc": "Callback klik menu item"
+   }
+  ]
+ },
+ {
+  "name": "Pagination",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "current",
+    "type": "number",
+    "default": "-",
+    "desc": "Halaman saat ini terkontrol"
+   },
+   {
+    "name": "defaultCurrent",
+    "type": "number",
+    "default": "1",
+    "desc": "Halaman default"
+   },
+   {
+    "name": "total",
+    "type": "number",
+    "default": "0",
+    "desc": "Total data"
+   },
+   {
+    "name": "pageSize",
+    "type": "number",
+    "default": "10",
+    "desc": "Jumlah per halaman"
+   },
+   {
+    "name": "showSizeChanger",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan pilihan pageSize"
+   },
+   {
+    "name": "showQuickJumper",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Tampilkan quick jumper"
+   },
+   {
+    "name": "showTotal",
+    "type": "(total, range) => ReactNode",
+    "default": "-",
+    "desc": "Render info total"
+   },
+   {
+    "name": "onChange",
+    "type": "(page, pageSize) => void",
+    "default": "-",
+    "desc": "Callback perubahan halaman"
+   }
+  ]
+ },
+ {
+  "name": "Steps",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "current",
+    "type": "number",
+    "default": "0",
+    "desc": "Step aktif saat ini"
+   },
+   {
+    "name": "status",
+    "type": "'wait' | 'process' | 'finish' | 'error'",
+    "default": "'process'",
+    "desc": "Status step saat ini"
+   },
+   {
+    "name": "orientation",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Orientasi steps"
+   },
+   {
+    "name": "type",
+    "type": "'default' | 'navigation' | 'inline'",
+    "default": "'default'",
+    "desc": "Tipe steps"
+   },
+   {
+    "name": "size",
+    "type": "'default' | 'small'",
+    "default": "'default'",
+    "desc": "Ukuran"
+   },
+   {
+    "name": "items",
+    "type": "StepItem[]",
+    "default": "-",
+    "desc": "Daftar step"
+   },
+   {
+    "name": "onChange",
+    "type": "(current) => void",
+    "default": "-",
+    "desc": "Callback klik step"
+   }
+  ]
+ },
+ {
+  "name": "Tabs",
+  "category": "Navigation",
+  "props": [
+   {
+    "name": "activeKey",
+    "type": "string",
+    "default": "-",
+    "desc": "Key tab aktif terkontrol"
+   },
+   {
+    "name": "defaultActiveKey",
+    "type": "string",
+    "default": "-",
+    "desc": "Key default"
+   },
+   {
+    "name": "items",
+    "type": "TabItem[]",
+    "default": "-",
+    "desc": "Daftar tab"
+   },
+   {
+    "name": "type",
+    "type": "'line' | 'card' | 'editable-card'",
+    "default": "'line'",
+    "desc": "Gaya tab"
+   },
+   {
+    "name": "size",
+    "type": "'large' | 'middle' | 'small'",
+    "default": "'middle'",
+    "desc": "Ukuran tab"
+   },
+   {
+    "name": "centered",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tab di tengah"
+   },
+   {
+    "name": "onChange",
+    "type": "(activeKey) => void",
+    "default": "-",
+    "desc": "Callback perubahan tab"
+   },
+   {
+    "name": "tabBarExtraContent",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten ekstra di tab bar"
+   }
+  ]
+ },
+ {
+  "name": "AutoComplete",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "{ value, label }[]",
+    "default": "-",
+    "desc": "Daftar opsi autocomplete"
+   },
+   {
+    "name": "allowClear",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan tombol clear"
+   },
+   {
+    "name": "placeholder",
+    "type": "string",
+    "default": "-",
+    "desc": "Placeholder input"
+   },
+   {
+    "name": "value",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "onChange",
+    "type": "(value, option) => void",
+    "default": "-",
+    "desc": "Callback perubahan nilai"
+   },
+   {
+    "name": "onSearch",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback saat search"
+   },
+   {
+    "name": "onSelect",
+    "type": "(value, option) => void",
+    "default": "-",
+    "desc": "Callback saat opsi dipilih"
+   }
+  ]
+ },
+ {
+  "name": "Cascader",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "Option[]",
+    "default": "-",
+    "desc": "Data opsi cascader"
+   },
+   {
+    "name": "allowClear",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan clear"
+   },
+   {
+    "name": "displayRender",
+    "type": "(labels, options) => ReactNode",
+    "default": "-",
+    "desc": "Render label terpilih"
+   },
+   {
+    "name": "fieldNames",
+    "type": "object",
+    "default": "{ label: label, value: value, children: children }",
+    "desc": "Kustom field name"
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Mode multiple"
+   },
+   {
+    "name": "value",
+    "type": "string[] | number[]",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "onChange",
+    "type": "(value, selectedOptions) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Checkbox",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "checked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status checked terkontrol"
+   },
+   {
+    "name": "defaultChecked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Default checked"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan"
+   },
+   {
+    "name": "indeterminate",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status indeterminate"
+   },
+   {
+    "name": "onChange",
+    "type": "(e: CheckboxChangeEvent) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Checkbox.Group",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "string[] | Option[]",
+    "default": "-",
+    "desc": "Daftar opsi group"
+   },
+   {
+    "name": "value",
+    "type": "any[]",
+    "default": "-",
+    "desc": "Nilai terpilih"
+   },
+   {
+    "name": "defaultValue",
+    "type": "any[]",
+    "default": "[]",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "onChange",
+    "type": "(checkedValues) => void",
+    "default": "-",
+    "desc": "Callback perubahan group"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan semua"
+   }
+  ]
+ },
+ {
+  "name": "ColorPicker",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "Color | string",
+    "default": "-",
+    "desc": "Nilai warna terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "Color | string",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "format",
+    "type": "'rgb' | 'hex' | 'hsb'",
+    "default": "'hex'",
+    "desc": "Format warna"
+   },
+   {
+    "name": "allowClear",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Izinkan clear"
+   },
+   {
+    "name": "presets",
+    "type": "Preset[]",
+    "default": "-",
+    "desc": "Preset warna"
+   },
+   {
+    "name": "onChange",
+    "type": "(value, css) => void",
+    "default": "-",
+    "desc": "Callback perubahan warna"
+   },
+   {
+    "name": "showText",
+    "type": "boolean | (color) => ReactNode",
+    "default": "false",
+    "desc": "Tampilkan teks warna"
+   }
+  ]
+ },
+ {
+  "name": "DatePicker",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "Dayjs",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "Dayjs",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "format",
+    "type": "string | FormatConfig",
+    "default": "'YYYY-MM-DD'",
+    "desc": "Format tampilan tanggal"
+   },
+   {
+    "name": "disabledDate",
+    "type": "(date) => boolean",
+    "default": "-",
+    "desc": "Fungsi disable tanggal"
+   },
+   {
+    "name": "picker",
+    "type": "'date' | 'week' | 'month' | 'quarter' | 'year'",
+    "default": "'date'",
+    "desc": "Tipe picker"
+   },
+   {
+    "name": "showTime",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Tampilkan pilihan waktu"
+   },
+   {
+    "name": "placeholder",
+    "type": "string",
+    "default": "-",
+    "desc": "Placeholder"
+   },
+   {
+    "name": "onChange",
+    "type": "(date, dateString) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Form",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "form",
+    "type": "FormInstance",
+    "default": "-",
+    "desc": "Instance form dari useForm()"
+   },
+   {
+    "name": "initialValues",
+    "type": "object",
+    "default": "-",
+    "desc": "Nilai awal form"
+   },
+   {
+    "name": "layout",
+    "type": "'horizontal' | 'vertical' | 'inline'",
+    "default": "'horizontal'",
+    "desc": "Layout form"
+   },
+   {
+    "name": "labelCol",
+    "type": "object",
+    "default": "-",
+    "desc": "Konfigurasi kolom label"
+   },
+   {
+    "name": "wrapperCol",
+    "type": "object",
+    "default": "-",
+    "desc": "Konfigurasi kolom wrapper"
+   },
+   {
+    "name": "colon",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan colon setelah label"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan seluruh form"
+   },
+   {
+    "name": "onFinish",
+    "type": "(values) => void",
+    "default": "-",
+    "desc": "Callback sukses submit"
+   },
+   {
+    "name": "onFinishFailed",
+    "type": "(errorInfo) => void",
+    "default": "-",
+    "desc": "Callback gagal validasi"
+   }
+  ]
+ },
+ {
+  "name": "Form.Item",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "name",
+    "type": "string | number | (string | number)[]",
+    "default": "-",
+    "desc": "Path field di form"
+   },
+   {
+    "name": "label",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Label field"
+   },
+   {
+    "name": "rules",
+    "type": "Rule[]",
+    "default": "-",
+    "desc": "Aturan validasi"
+   },
+   {
+    "name": "required",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan tanda required"
+   },
+   {
+    "name": "tooltip",
+    "type": "ReactNode | TooltipProps",
+    "default": "-",
+    "desc": "Tooltip info untuk label"
+   },
+   {
+    "name": "help",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Pesan help kustom"
+   },
+   {
+    "name": "hasFeedback",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan feedback validasi"
+   }
+  ]
+ },
+ {
+  "name": "Input",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai input terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "placeholder",
+    "type": "string",
+    "default": "-",
+    "desc": "Placeholder"
+   },
+   {
+    "name": "allowClear",
+    "type": "boolean | { clearIcon }",
+    "default": "false",
+    "desc": "Tombol clear"
+   },
+   {
+    "name": "prefix",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Prefix icon"
+   },
+   {
+    "name": "suffix",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Suffix icon"
+   },
+   {
+    "name": "size",
+    "type": "'large' | 'middle' | 'small'",
+    "default": "-",
+    "desc": "Ukuran input"
+   },
+   {
+    "name": "status",
+    "type": "'error' | 'warning'",
+    "default": "-",
+    "desc": "Status validasi"
+   },
+   {
+    "name": "variant",
+    "type": "'outlined' | 'borderless' | 'filled'",
+    "default": "'outlined'",
+    "desc": "Varian gaya"
+   },
+   {
+    "name": "onChange",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Input.TextArea",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "autoSize",
+    "type": "boolean | { minRows, maxRows }",
+    "default": "false",
+    "desc": "Auto resize tinggi"
+   },
+   {
+    "name": "maxLength",
+    "type": "number",
+    "default": "-",
+    "desc": "Maksimal karakter"
+   },
+   {
+    "name": "showCount",
+    "type": "boolean | { formatter }",
+    "default": "false",
+    "desc": "Tampilkan counter karakter"
+   },
+   {
+    "name": "value",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "onChange",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "InputNumber",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "default": "-",
+    "desc": "Nilai minimum"
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "default": "-",
+    "desc": "Nilai maksimum"
+   },
+   {
+    "name": "step",
+    "type": "number | string",
+    "default": "1",
+    "desc": "Langkah increment"
+   },
+   {
+    "name": "precision",
+    "type": "number",
+    "default": "-",
+    "desc": "Presisi desimal"
+   },
+   {
+    "name": "formatter",
+    "type": "(value) => string",
+    "default": "-",
+    "desc": "Format tampilan nilai"
+   },
+   {
+    "name": "parser",
+    "type": "(displayValue) => number",
+    "default": "-",
+    "desc": "Parse nilai input"
+   },
+   {
+    "name": "controls",
+    "type": "boolean | { up, down }",
+    "default": "true",
+    "desc": "Tampilkan kontrol up/down"
+   },
+   {
+    "name": "addonBefore",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Addon sebelum input"
+   }
+  ]
+ },
+ {
+  "name": "Mentions",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "MentionsOption[]",
+    "default": "-",
+    "desc": "Daftar opsi mentions"
+   },
+   {
+    "name": "prefix",
+    "type": "string | string[]",
+    "default": "'@'",
+    "desc": "Karakter trigger"
+   },
+   {
+    "name": "value",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "placement",
+    "type": "'top' | 'bottom'",
+    "default": "'bottom'",
+    "desc": "Posisi dropdown"
+   },
+   {
+    "name": "onChange",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   },
+   {
+    "name": "onSearch",
+    "type": "(text, prefix) => void",
+    "default": "-",
+    "desc": "Callback search"
+   }
+  ]
+ },
+ {
+  "name": "Radio",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "checked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Checked terkontrol"
+   },
+   {
+    "name": "defaultChecked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Default checked"
+   },
+   {
+    "name": "value",
+    "type": "any",
+    "default": "-",
+    "desc": "Nilai radio"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan"
+   },
+   {
+    "name": "onChange",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Radio.Group",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "string[] | Option[]",
+    "default": "-",
+    "desc": "Opsi group"
+   },
+   {
+    "name": "value",
+    "type": "any",
+    "default": "-",
+    "desc": "Nilai terpilih"
+   },
+   {
+    "name": "defaultValue",
+    "type": "any",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "optionType",
+    "type": "'default' | 'button'",
+    "default": "'default'",
+    "desc": "Tipe render opsi"
+   },
+   {
+    "name": "buttonStyle",
+    "type": "'outline' | 'solid'",
+    "default": "'outline'",
+    "desc": "Gaya button"
+   },
+   {
+    "name": "onChange",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback perubahan group"
+   }
+  ]
+ },
+ {
+  "name": "Rate",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "number",
+    "default": "-",
+    "desc": "Nilai rating terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "number",
+    "default": "0",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "count",
+    "type": "number",
+    "default": "5",
+    "desc": "Jumlah bintang"
+   },
+   {
+    "name": "allowHalf",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Izinkan setengah"
+   },
+   {
+    "name": "character",
+    "type": "ReactNode",
+    "default": "<StarOutlined />",
+    "desc": "Karakter kustom"
+   },
+   {
+    "name": "disabled",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Nonaktifkan"
+   },
+   {
+    "name": "onChange",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Select",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "options",
+    "type": "Option[]",
+    "default": "-",
+    "desc": "Daftar opsi"
+   },
+   {
+    "name": "value",
+    "type": "any",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "mode",
+    "type": "'multiple' | 'tags'",
+    "default": "-",
+    "desc": "Mode multiple/tags"
+   },
+   {
+    "name": "allowClear",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tombol clear"
+   },
+   {
+    "name": "showSearch",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan search input"
+   },
+   {
+    "name": "filterOption",
+    "type": "boolean | function",
+    "default": "true",
+    "desc": "Filter opsi saat search"
+   },
+   {
+    "name": "placeholder",
+    "type": "string",
+    "default": "-",
+    "desc": "Placeholder"
+   },
+   {
+    "name": "onChange",
+    "type": "(value, option) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   },
+   {
+    "name": "onSearch",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback search"
+   }
+  ]
+ },
+ {
+  "name": "Slider",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "number | [number, number]",
+    "default": "-",
+    "desc": "Nilai slider terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "number | [number, number]",
+    "default": "0",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "min",
+    "type": "number",
+    "default": "0",
+    "desc": "Minimum"
+   },
+   {
+    "name": "max",
+    "type": "number",
+    "default": "100",
+    "desc": "Maksimum"
+   },
+   {
+    "name": "step",
+    "type": "number",
+    "default": "1",
+    "desc": "Langkah"
+   },
+   {
+    "name": "marks",
+    "type": "Marks",
+    "default": "-",
+    "desc": "Tanda mark"
+   },
+   {
+    "name": "range",
+    "type": "boolean | { draggableTrack }",
+    "default": "false",
+    "desc": "Mode range"
+   },
+   {
+    "name": "tooltip",
+    "type": "TooltipConfig",
+    "default": "-",
+    "desc": "Konfigurasi tooltip"
+   },
+   {
+    "name": "onChange",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Switch",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "checked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status checked terkontrol"
+   },
+   {
+    "name": "defaultChecked",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Default checked"
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status loading"
+   },
+   {
+    "name": "size",
+    "type": "'default' | 'small'",
+    "default": "'default'",
+    "desc": "Ukuran switch"
+   },
+   {
+    "name": "checkedChildren",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten saat checked"
+   },
+   {
+    "name": "unCheckedChildren",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten saat unchecked"
+   },
+   {
+    "name": "onChange",
+    "type": "(checked, event) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "TimePicker",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "value",
+    "type": "Dayjs",
+    "default": "-",
+    "desc": "Nilai waktu terkontrol"
+   },
+   {
+    "name": "format",
+    "type": "string",
+    "default": "'HH:mm:ss'",
+    "desc": "Format waktu"
+   },
+   {
+    "name": "hourStep",
+    "type": "number",
+    "default": "1",
+    "desc": "Langkah jam"
+   },
+   {
+    "name": "minuteStep",
+    "type": "number",
+    "default": "1",
+    "desc": "Langkah menit"
+   },
+   {
+    "name": "secondStep",
+    "type": "number",
+    "default": "1",
+    "desc": "Langkah detik"
+   },
+   {
+    "name": "disabledTime",
+    "type": "(now) => object",
+    "default": "-",
+    "desc": "Fungsi disable waktu"
+   },
+   {
+    "name": "onChange",
+    "type": "(time, timeString) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Transfer",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "dataSource",
+    "type": "RecordType[]",
+    "default": "[]",
+    "desc": "Sumber data"
+   },
+   {
+    "name": "targetKeys",
+    "type": "string[]",
+    "default": "[]",
+    "desc": "Keys yang di target list"
+   },
+   {
+    "name": "selectedKeys",
+    "type": "string[]",
+    "default": "[]",
+    "desc": "Keys terpilih"
+   },
+   {
+    "name": "render",
+    "type": "(item) => ReactNode",
+    "default": "-",
+    "desc": "Render kustom item"
+   },
+   {
+    "name": "showSearch",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan search box"
+   },
+   {
+    "name": "pagination",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Pagination"
+   },
+   {
+    "name": "onChange",
+    "type": "(targetKeys, direction, moveKeys) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "TreeSelect",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "treeData",
+    "type": "TreeNode[]",
+    "default": "-",
+    "desc": "Data tree"
+   },
+   {
+    "name": "value",
+    "type": "string | number | array",
+    "default": "-",
+    "desc": "Nilai terkontrol"
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Mode multiple"
+   },
+   {
+    "name": "treeCheckable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Checkable tree"
+   },
+   {
+    "name": "checkable",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Alias treeCheckable"
+   },
+   {
+    "name": "showSearch",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan search"
+   },
+   {
+    "name": "onChange",
+    "type": "(value, label, extra) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Upload",
+  "category": "Data Entry",
+  "props": [
+   {
+    "name": "action",
+    "type": "string | (file) => Promise",
+    "default": "-",
+    "desc": "URL upload"
+   },
+   {
+    "name": "accept",
+    "type": "string",
+    "default": "-",
+    "desc": "Tipe file yang diterima"
+   },
+   {
+    "name": "fileList",
+    "type": "UploadFile[]",
+    "default": "-",
+    "desc": "Daftar file terkontrol"
+   },
+   {
+    "name": "listType",
+    "type": "'text' | 'picture' | 'picture-card' | 'picture-circle'",
+    "default": "'text'",
+    "desc": "Tipe tampilan list"
+   },
+   {
+    "name": "multiple",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Multiple upload"
+   },
+   {
+    "name": "beforeUpload",
+    "type": "(file, fileList) => boolean | Promise",
+    "default": "-",
+    "desc": "Hook sebelum upload"
+   },
+   {
+    "name": "onChange",
+    "type": "(info) => void",
+    "default": "-",
+    "desc": "Callback perubahan file"
+   }
+  ]
+ },
+ {
+  "name": "Avatar",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "src",
+    "type": "string",
+    "default": "-",
+    "desc": "URL gambar avatar"
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon avatar"
+   },
+   {
+    "name": "shape",
+    "type": "'circle' | 'square'",
+    "default": "'circle'",
+    "desc": "Bentuk avatar"
+   },
+   {
+    "name": "size",
+    "type": "number | \"large\" | \"small\" | \"default\" | { xs, sm, md, lg, xl, xxl }",
+    "default": "'default'",
+    "desc": "Ukuran avatar"
+   },
+   {
+    "name": "alt",
+    "type": "string",
+    "default": "-",
+    "desc": "Alt text gambar"
+   },
+   {
+    "name": "gap",
+    "type": "number",
+    "default": "4",
+    "desc": "Gap untuk teks avatar"
+   },
+   {
+    "name": "draggable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Apakah draggable"
+   }
+  ]
+ },
+ {
+  "name": "Badge",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "count",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Jumlah badge"
+   },
+   {
+    "name": "dot",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan titik saja"
+   },
+   {
+    "name": "overflowCount",
+    "type": "number",
+    "default": "99",
+    "desc": "Batas maksimum count"
+   },
+   {
+    "name": "status",
+    "type": "'success' | 'processing' | 'default' | 'error' | 'warning'",
+    "default": "-",
+    "desc": "Status warna"
+   },
+   {
+    "name": "color",
+    "type": "string",
+    "default": "-",
+    "desc": "Warna kustom"
+   },
+   {
+    "name": "showZero",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan jika 0"
+   },
+   {
+    "name": "offset",
+    "type": "[number, number]",
+    "default": "-",
+    "desc": "Offset posisi badge"
+   }
+  ]
+ },
+ {
+  "name": "Calendar",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "value",
+    "type": "Dayjs",
+    "default": "-",
+    "desc": "Nilai tanggal terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "Dayjs",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "mode",
+    "type": "'month' | 'year'",
+    "default": "'month'",
+    "desc": "Mode tampilan"
+   },
+   {
+    "name": "fullscreen",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Mode fullscreen"
+   },
+   {
+    "name": "cellRender",
+    "type": "(date, info) => ReactNode",
+    "default": "-",
+    "desc": "Render kustom sel"
+   },
+   {
+    "name": "onChange",
+    "type": "(date) => void",
+    "default": "-",
+    "desc": "Callback perubahan tanggal"
+   },
+   {
+    "name": "onPanelChange",
+    "type": "(date, mode) => void",
+    "default": "-",
+    "desc": "Callback perubahan panel"
+   }
+  ]
+ },
+ {
+  "name": "Card",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul card"
+   },
+   {
+    "name": "extra",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten ekstra di kanan header"
+   },
+   {
+    "name": "cover",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Cover image card"
+   },
+   {
+    "name": "actions",
+    "type": "ReactNode[]",
+    "default": "-",
+    "desc": "Action di footer card"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan border"
+   },
+   {
+    "name": "hoverable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Efek hover"
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status loading skeleton"
+   },
+   {
+    "name": "size",
+    "type": "'default' | 'small'",
+    "default": "'default'",
+    "desc": "Ukuran card"
+   },
+   {
+    "name": "variant",
+    "type": "'outlined' | 'borderless'",
+    "default": "'outlined'",
+    "desc": "Varian border"
+   }
+  ]
+ },
+ {
+  "name": "Carousel",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "autoplay",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Autoplay carousel"
+   },
+   {
+    "name": "autoplaySpeed",
+    "type": "number",
+    "default": "3000",
+    "desc": "Kecepatan autoplay"
+   },
+   {
+    "name": "dots",
+    "type": "boolean | { className }",
+    "default": "true",
+    "desc": "Tampilkan dots"
+   },
+   {
+    "name": "dotPosition",
+    "type": "'top' | 'bottom' | 'left' | 'right'",
+    "default": "'bottom'",
+    "desc": "Posisi dots"
+   },
+   {
+    "name": "draggable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Draggable"
+   },
+   {
+    "name": "infinite",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Loop infinite"
+   },
+   {
+    "name": "effect",
+    "type": "'scrollx' | 'fade'",
+    "default": "'scrollx'",
+    "desc": "Efek transisi"
+   }
+  ]
+ },
+ {
+  "name": "Collapse",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "activeKey",
+    "type": "string | string[]",
+    "default": "-",
+    "desc": "Key aktif terkontrol"
+   },
+   {
+    "name": "defaultActiveKey",
+    "type": "string | string[]",
+    "default": "-",
+    "desc": "Default active key"
+   },
+   {
+    "name": "accordion",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Mode accordion hanya satu terbuka"
+   },
+   {
+    "name": "ghost",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Background transparan"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Border collapse"
+   },
+   {
+    "name": "items",
+    "type": "CollapseItem[]",
+    "default": "-",
+    "desc": "Daftar item collapse"
+   },
+   {
+    "name": "onChange",
+    "type": "(key) => void",
+    "default": "-",
+    "desc": "Callback perubahan active"
+   }
+  ]
+ },
+ {
+  "name": "Descriptions",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul descriptions"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan border"
+   },
+   {
+    "name": "column",
+    "type": "number | object",
+    "default": "3",
+    "desc": "Jumlah kolom"
+   },
+   {
+    "name": "layout",
+    "type": "'horizontal' | 'vertical'",
+    "default": "'horizontal'",
+    "desc": "Layout label"
+   },
+   {
+    "name": "size",
+    "type": "'default' | 'middle' | 'small'",
+    "default": "'default'",
+    "desc": "Ukuran"
+   },
+   {
+    "name": "items",
+    "type": "DescriptionItem[]",
+    "default": "-",
+    "desc": "Daftar item"
+   },
+   {
+    "name": "colon",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan colon"
+   }
+  ]
+ },
+ {
+  "name": "Empty",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "'No Data'",
+    "desc": "Deskripsi empty"
+   },
+   {
+    "name": "image",
+    "type": "ReactNode",
+    "default": "Empty.PRESENTED_IMAGE_DEFAULT",
+    "desc": "Gambar empty"
+   },
+   {
+    "name": "imageStyle",
+    "type": "CSSProperties",
+    "default": "-",
+    "desc": "Style gambar"
+   }
+  ]
+ },
+ {
+  "name": "Image",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "src",
+    "type": "string",
+    "default": "-",
+    "desc": "URL gambar"
+   },
+   {
+    "name": "width",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Lebar gambar"
+   },
+   {
+    "name": "height",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Tinggi gambar"
+   },
+   {
+    "name": "fallback",
+    "type": "string",
+    "default": "-",
+    "desc": "Fallback jika src gagal"
+   },
+   {
+    "name": "preview",
+    "type": "boolean | PreviewConfig",
+    "default": "true",
+    "desc": "Konfigurasi preview"
+   },
+   {
+    "name": "placeholder",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Placeholder saat loading"
+   }
+  ]
+ },
+ {
+  "name": "List",
+  "category": "Data Display",
+  "isV6": true,
+  "props": [
+   {
+    "name": "dataSource",
+    "type": "any[]",
+    "default": "-",
+    "desc": "Sumber data list"
+   },
+   {
+    "name": "renderItem",
+    "type": "(item) => ReactNode",
+    "default": "-",
+    "desc": "Render tiap item"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan border"
+   },
+   {
+    "name": "pagination",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Konfigurasi pagination"
+   },
+   {
+    "name": "grid",
+    "type": "object",
+    "default": "-",
+    "desc": "Konfigurasi grid layout"
+   },
+   {
+    "name": "loading",
+    "type": "boolean | SpinProps",
+    "default": "false",
+    "desc": "Status loading"
+   },
+   {
+    "name": "size",
+    "type": "'default' | 'large' | 'small'",
+    "default": "'default'",
+    "desc": "Ukuran list"
+   }
+  ]
+ },
+ {
+  "name": "Popover",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul popover"
+   },
+   {
+    "name": "content",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten popover"
+   },
+   {
+    "name": "trigger",
+    "type": "'hover' | 'click' | 'focus' | 'contextMenu'",
+    "default": "'hover'",
+    "desc": "Trigger popover"
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "default": "'top'",
+    "desc": "Posisi popover"
+   },
+   {
+    "name": "arrow",
+    "type": "boolean | { pointAtCenter }",
+    "default": "true",
+    "desc": "Tampilkan panah"
+   },
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Status terbuka terkontrol"
+   }
+  ]
+ },
+ {
+  "name": "QRCode",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "value",
+    "type": "string",
+    "default": "-",
+    "desc": "Nilai QR code"
+   },
+   {
+    "name": "type",
+    "type": "'canvas' | 'svg'",
+    "default": "'canvas'",
+    "desc": "Tipe render"
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "default": "160",
+    "desc": "Ukuran QR"
+   },
+   {
+    "name": "icon",
+    "type": "string",
+    "default": "-",
+    "desc": "Ikon di tengah QR"
+   },
+   {
+    "name": "iconSize",
+    "type": "number | { width, height }",
+    "default": "40",
+    "desc": "Ukuran ikon"
+   },
+   {
+    "name": "color",
+    "type": "string",
+    "default": "'#000'",
+    "desc": "Warna QR"
+   },
+   {
+    "name": "status",
+    "type": "'active' | 'expired' | 'loading' | 'scanned'",
+    "default": "'active'",
+    "desc": "Status QR"
+   },
+   {
+    "name": "errorLevel",
+    "type": "'L' | 'M' | 'Q' | 'H'",
+    "default": "'M'",
+    "desc": "Level koreksi error"
+   }
+  ]
+ },
+ {
+  "name": "Segmented",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "options",
+    "type": "string[] | number[] | Option[]",
+    "default": "[]",
+    "desc": "Daftar opsi"
+   },
+   {
+    "name": "value",
+    "type": "string | number",
+    "default": "-",
+    "desc": "Nilai terpilih terkontrol"
+   },
+   {
+    "name": "defaultValue",
+    "type": "string | number",
+    "default": "-",
+    "desc": "Nilai default"
+   },
+   {
+    "name": "block",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Lebar penuh"
+   },
+   {
+    "name": "size",
+    "type": "'large' | 'middle' | 'small'",
+    "default": "'middle'",
+    "desc": "Ukuran"
+   },
+   {
+    "name": "onChange",
+    "type": "(value) => void",
+    "default": "-",
+    "desc": "Callback perubahan"
+   }
+  ]
+ },
+ {
+  "name": "Statistic",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul statistik"
+   },
+   {
+    "name": "value",
+    "type": "number | string",
+    "default": "-",
+    "desc": "Nilai statistik"
+   },
+   {
+    "name": "prefix",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Prefix nilai"
+   },
+   {
+    "name": "suffix",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Suffix nilai"
+   },
+   {
+    "name": "precision",
+    "type": "number",
+    "default": "-",
+    "desc": "Presisi desimal"
+   },
+   {
+    "name": "formatter",
+    "type": "(value) => ReactNode",
+    "default": "-",
+    "desc": "Formatter kustom"
+   },
+   {
+    "name": "valueStyle",
+    "type": "CSSProperties",
+    "default": "-",
+    "desc": "Style nilai"
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status loading"
+   }
+  ]
+ },
+ {
+  "name": "Table",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "columns",
+    "type": "ColumnType[]",
+    "default": "-",
+    "desc": "Konfigurasi kolom"
+   },
+   {
+    "name": "dataSource",
+    "type": "object[]",
+    "default": "-",
+    "desc": "Data sumber tabel"
+   },
+   {
+    "name": "rowKey",
+    "type": "string | (record) => string",
+    "default": "'key'",
+    "desc": "Key unik tiap baris"
+   },
+   {
+    "name": "pagination",
+    "type": "object | false",
+    "default": "-",
+    "desc": "Konfigurasi pagination"
+   },
+   {
+    "name": "scroll",
+    "type": "{ x, y }",
+    "default": "-",
+    "desc": "Scroll tabel"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan border"
+   },
+   {
+    "name": "loading",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Status loading"
+   },
+   {
+    "name": "rowSelection",
+    "type": "object",
+    "default": "-",
+    "desc": "Konfigurasi seleksi baris"
+   },
+   {
+    "name": "expandable",
+    "type": "object",
+    "default": "-",
+    "desc": "Konfigurasi expandable row"
+   },
+   {
+    "name": "onChange",
+    "type": "(pagination, filters, sorter) => void",
+    "default": "-",
+    "desc": "Callback perubahan tabel"
+   }
+  ]
+ },
+ {
+  "name": "Tag",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "color",
+    "type": "string",
+    "default": "-",
+    "desc": "Warna tag, preset atau hex"
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon tag"
+   },
+   {
+    "name": "closable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan tombol close"
+   },
+   {
+    "name": "onClose",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback saat close"
+   },
+   {
+    "name": "bordered",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan border"
+   },
+   {
+    "name": "closeIcon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon close kustom"
+   }
+  ]
+ },
+ {
+  "name": "Timeline",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "items",
+    "type": "TimelineItem[]",
+    "default": "-",
+    "desc": "Daftar item timeline"
+   },
+   {
+    "name": "mode",
+    "type": "'left' | 'alternate' | 'right'",
+    "default": "-",
+    "desc": "Posisi timeline"
+   },
+   {
+    "name": "reverse",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Urutan terbalik"
+   },
+   {
+    "name": "pending",
+    "type": "boolean | ReactNode",
+    "default": "false",
+    "desc": "Item pending di akhir"
+   },
+   {
+    "name": "pendingDot",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Dot untuk pending"
+   }
+  ]
+ },
+ {
+  "name": "Tooltip",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode | () => ReactNode",
+    "default": "-",
+    "desc": "Teks tooltip"
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "default": "'top'",
+    "desc": "Posisi tooltip"
+   },
+   {
+    "name": "trigger",
+    "type": "'hover' | 'focus' | 'click' | 'contextMenu'",
+    "default": "'hover'",
+    "desc": "Trigger tooltip"
+   },
+   {
+    "name": "color",
+    "type": "string",
+    "default": "-",
+    "desc": "Warna background tooltip"
+   },
+   {
+    "name": "arrow",
+    "type": "boolean | { pointAtCenter }",
+    "default": "true",
+    "desc": "Tampilkan panah"
+   },
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Status terbuka terkontrol"
+   }
+  ]
+ },
+ {
+  "name": "Tour",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Status terbuka tour"
+   },
+   {
+    "name": "current",
+    "type": "number",
+    "default": "0",
+    "desc": "Step saat ini"
+   },
+   {
+    "name": "steps",
+    "type": "TourStep[]",
+    "default": "-",
+    "desc": "Daftar step tour"
+   },
+   {
+    "name": "placement",
+    "type": "Placement",
+    "default": "-",
+    "desc": "Posisi step"
+   },
+   {
+    "name": "mask",
+    "type": "boolean | { style, color }",
+    "default": "true",
+    "desc": "Tampilkan mask"
+   },
+   {
+    "name": "onChange",
+    "type": "(current) => void",
+    "default": "-",
+    "desc": "Callback perubahan step"
+   },
+   {
+    "name": "onClose",
+    "type": "() => void",
+    "default": "-",
+    "desc": "Callback close tour"
+   }
+  ]
+ },
+ {
+  "name": "Tree",
+  "category": "Data Display",
+  "props": [
+   {
+    "name": "treeData",
+    "type": "DataNode[]",
+    "default": "-",
+    "desc": "Data tree"
+   },
+   {
+    "name": "checkable",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan checkbox"
+   },
+   {
+    "name": "selectable",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Dapat dipilih"
+   },
+   {
+    "name": "expandedKeys",
+    "type": "Key[]",
+    "default": "-",
+    "desc": "Keys yang expanded terkontrol"
+   },
+   {
+    "name": "selectedKeys",
+    "type": "Key[]",
+    "default": "-",
+    "desc": "Keys terpilih terkontrol"
+   },
+   {
+    "name": "draggable",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Dapat di-drag"
+   },
+   {
+    "name": "onCheck",
+    "type": "(checkedKeys, info) => void",
+    "default": "-",
+    "desc": "Callback check"
+   },
+   {
+    "name": "onSelect",
+    "type": "(selectedKeys, info) => void",
+    "default": "-",
+    "desc": "Callback select"
+   }
+  ]
+ },
+ {
+  "name": "Alert",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "type",
+    "type": "'success' | 'info' | 'warning' | 'error'",
+    "default": "'info'",
+    "desc": "Tipe alert"
+   },
+   {
+    "name": "message",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul/pesan alert (title alias)"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Deskripsi detail"
+   },
+   {
+    "name": "showIcon",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan ikon"
+   },
+   {
+    "name": "closable",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Dapat ditutup"
+   },
+   {
+    "name": "banner",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Mode banner"
+   },
+   {
+    "name": "action",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Action kustom"
+   }
+  ]
+ },
+ {
+  "name": "Drawer",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status terbuka"
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul drawer"
+   },
+   {
+    "name": "placement",
+    "type": "'top' | 'right' | 'bottom' | 'left'",
+    "default": "'right'",
+    "desc": "Posisi drawer"
+   },
+   {
+    "name": "width",
+    "type": "number | string",
+    "default": "378",
+    "desc": "Lebar drawer"
+   },
+   {
+    "name": "height",
+    "type": "number | string",
+    "default": "378",
+    "desc": "Tinggi drawer (untuk top/bottom)"
+   },
+   {
+    "name": "closable",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan tombol close"
+   },
+   {
+    "name": "mask",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan mask overlay"
+   },
+   {
+    "name": "extra",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten ekstra di header"
+   },
+   {
+    "name": "footer",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Footer drawer"
+   },
+   {
+    "name": "onClose",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback saat close"
+   }
+  ]
+ },
+ {
+  "name": "Message",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "content",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten pesan"
+   },
+   {
+    "name": "duration",
+    "type": "number",
+    "default": "3",
+    "desc": "Durasi tampil (detik)"
+   },
+   {
+    "name": "type",
+    "type": "'info' | 'success' | 'error' | 'warning' | 'loading'",
+    "default": "'info'",
+    "desc": "Tipe via methods message.success etc"
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon kustom"
+   },
+   {
+    "name": "key",
+    "type": "string | number",
+    "default": "-",
+    "desc": "Key untuk update pesan"
+   },
+   {
+    "name": "onClose",
+    "type": "() => void",
+    "default": "-",
+    "desc": "Callback setelah close"
+   }
+  ]
+ },
+ {
+  "name": "Modal",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "open",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Status terbuka modal"
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul modal"
+   },
+   {
+    "name": "footer",
+    "type": "ReactNode | null",
+    "default": "-",
+    "desc": "Footer modal"
+   },
+   {
+    "name": "width",
+    "type": "number | string",
+    "default": "520",
+    "desc": "Lebar modal"
+   },
+   {
+    "name": "centered",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Vertikal centered"
+   },
+   {
+    "name": "closable",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan tombol close"
+   },
+   {
+    "name": "mask",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan mask"
+   },
+   {
+    "name": "maskClosable",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Close saat mask diklik"
+   },
+   {
+    "name": "confirmLoading",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Loading state tombol OK"
+   },
+   {
+    "name": "onOk",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback OK"
+   },
+   {
+    "name": "onCancel",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback Cancel/Close"
+   }
+  ]
+ },
+ {
+  "name": "Notification",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "message",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul notifikasi (title)"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Deskripsi notifikasi"
+   },
+   {
+    "name": "duration",
+    "type": "number",
+    "default": "4.5",
+    "desc": "Durasi auto close (detik), 0 tidak auto close"
+   },
+   {
+    "name": "placement",
+    "type": "'top' | 'topLeft' | 'topRight' | 'bottom' | 'bottomLeft' | 'bottomRight'",
+    "default": "'topRight'",
+    "desc": "Posisi notifikasi"
+   },
+   {
+    "name": "type",
+    "type": "'success' | 'info' | 'warning' | 'error'",
+    "default": "-",
+    "desc": "Tipe via notification[type]"
+   },
+   {
+    "name": "onClose",
+    "type": "() => void",
+    "default": "-",
+    "desc": "Callback setelah close"
+   }
+  ]
+ },
+ {
+  "name": "Popconfirm",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul konfirmasi"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Deskripsi konfirmasi"
+   },
+   {
+    "name": "okText",
+    "type": "string",
+    "default": "-",
+    "desc": "Teks tombol OK"
+   },
+   {
+    "name": "cancelText",
+    "type": "string",
+    "default": "-",
+    "desc": "Teks tombol Cancel"
+   },
+   {
+    "name": "okButtonProps",
+    "type": "ButtonProps",
+    "default": "-",
+    "desc": "Props tombol OK"
+   },
+   {
+    "name": "onConfirm",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback saat confirm"
+   },
+   {
+    "name": "onCancel",
+    "type": "(e) => void",
+    "default": "-",
+    "desc": "Callback saat cancel"
+   }
+  ]
+ },
+ {
+  "name": "Progress",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "percent",
+    "type": "number",
+    "default": "0",
+    "desc": "Persentase progress"
+   },
+   {
+    "name": "type",
+    "type": "'line' | 'circle' | 'dashboard'",
+    "default": "'line'",
+    "desc": "Tipe progress"
+   },
+   {
+    "name": "status",
+    "type": "'success' | 'exception' | 'active' | 'normal'",
+    "default": "-",
+    "desc": "Status progress"
+   },
+   {
+    "name": "strokeColor",
+    "type": "string | object | { from, to, direction }",
+    "default": "-",
+    "desc": "Warna stroke"
+   },
+   {
+    "name": "showInfo",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Tampilkan info persen"
+   },
+   {
+    "name": "size",
+    "type": "number | [number, number] | \"small\" | \"default\"",
+    "default": "'default'",
+    "desc": "Ukuran progress"
+   },
+   {
+    "name": "format",
+    "type": "(percent) => ReactNode",
+    "default": "-",
+    "desc": "Formatter teks info"
+   }
+  ]
+ },
+ {
+  "name": "Result",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "status",
+    "type": "'success' | 'error' | 'info' | 'warning' | '404' | '403' | '500'",
+    "default": "'info'",
+    "desc": "Status result"
+   },
+   {
+    "name": "title",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Judul result"
+   },
+   {
+    "name": "subTitle",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Sub judul"
+   },
+   {
+    "name": "extra",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten ekstra (action)"
+   },
+   {
+    "name": "icon",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Ikon kustom"
+   }
+  ]
+ },
+ {
+  "name": "Skeleton",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "active",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Tampilkan animasi aktif"
+   },
+   {
+    "name": "avatar",
+    "type": "boolean | object",
+    "default": "false",
+    "desc": "Tampilkan skeleton avatar"
+   },
+   {
+    "name": "paragraph",
+    "type": "boolean | object",
+    "default": "true",
+    "desc": "Konfigurasi paragraph skeleton"
+   },
+   {
+    "name": "title",
+    "type": "boolean | object",
+    "default": "true",
+    "desc": "Konfigurasi title skeleton"
+   },
+   {
+    "name": "loading",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Apakah dalam loading (jika false tampilkan children)"
+   },
+   {
+    "name": "round",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Rounded skeleton v6"
+   }
+  ]
+ },
+ {
+  "name": "Spin",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "spinning",
+    "type": "boolean",
+    "default": "true",
+    "desc": "Status spinning"
+   },
+   {
+    "name": "size",
+    "type": "'small' | 'default' | 'large'",
+    "default": "'default'",
+    "desc": "Ukuran spinner"
+   },
+   {
+    "name": "tip",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Teks tip saat spinning (description alias)"
+   },
+   {
+    "name": "description",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Deskripsi v6"
+   },
+   {
+    "name": "delay",
+    "type": "number",
+    "default": "-",
+    "desc": "Delay menampilkan spinner (ms)"
+   },
+   {
+    "name": "indicator",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Indikator kustom"
+   },
+   {
+    "name": "fullscreen",
+    "type": "boolean",
+    "default": "false",
+    "desc": "Fullscreen spin"
+   }
+  ]
+ },
+ {
+  "name": "Watermark",
+  "category": "Feedback",
+  "props": [
+   {
+    "name": "content",
+    "type": "string | string[]",
+    "default": "-",
+    "desc": "Teks watermark"
+   },
+   {
+    "name": "image",
+    "type": "string",
+    "default": "-",
+    "desc": "URL gambar watermark"
+   },
+   {
+    "name": "width",
+    "type": "number",
+    "default": "120",
+    "desc": "Lebar watermark"
+   },
+   {
+    "name": "height",
+    "type": "number",
+    "default": "64",
+    "desc": "Tinggi watermark"
+   },
+   {
+    "name": "rotate",
+    "type": "number",
+    "default": "-22",
+    "desc": "Rotasi watermark"
+   },
+   {
+    "name": "zIndex",
+    "type": "number",
+    "default": "9",
+    "desc": "Z-index watermark"
+   },
+   {
+    "name": "gap",
+    "type": "[number, number]",
+    "default": "[100, 100]",
+    "desc": "Gap antar watermark"
+   },
+   {
+    "name": "font",
+    "type": "{ color, fontSize, fontWeight, fontFamily }",
+    "default": "-",
+    "desc": "Konfigurasi font"
+   },
+   {
+    "name": "offset",
+    "type": "[number, number]",
+    "default": "-",
+    "desc": "Offset posisi"
+   }
+  ]
+ },
+ {
+  "name": "Affix",
+  "category": "Other",
+  "props": [
+   {
+    "name": "offsetTop",
+    "type": "number",
+    "default": "-",
+    "desc": "Offset dari atas saat affix"
+   },
+   {
+    "name": "offsetBottom",
+    "type": "number",
+    "default": "-",
+    "desc": "Offset dari bawah"
+   },
+   {
+    "name": "target",
+    "type": "() => HTMLElement | Window",
+    "default": "() => window",
+    "desc": "Target scroll container"
+   },
+   {
+    "name": "onChange",
+    "type": "(affixed) => void",
+    "default": "-",
+    "desc": "Callback perubahan status affix"
+   }
+  ]
+ },
+ {
+  "name": "App",
+  "category": "Other",
+  "props": [
+   {
+    "name": "message",
+    "type": "{ top, duration, maxCount }",
+    "default": "-",
+    "desc": "Konfigurasi global message"
+   },
+   {
+    "name": "notification",
+    "type": "{ placement, bottom, top }",
+    "default": "-",
+    "desc": "Konfigurasi global notification"
+   },
+   {
+    "name": "component",
+    "type": "boolean",
+    "default": "-",
+    "desc": "Aktifkan App wrapper untuk static methods"
+   }
+  ]
+ },
+ {
+  "name": "ConfigProvider",
+  "category": "Other",
+  "props": [
+   {
+    "name": "prefixCls",
+    "type": "string",
+    "default": "'ant'",
+    "desc": "Prefix kelas CSS"
+   },
+   {
+    "name": "locale",
+    "type": "Locale",
+    "default": "-",
+    "desc": "Konfigurasi bahasa"
+   },
+   {
+    "name": "theme",
+    "type": "ThemeConfig",
+    "default": "-",
+    "desc": "Konfigurasi tema (token, algorithm)"
+   },
+   {
+    "name": "direction",
+    "type": "'ltr' | 'rtl'",
+    "default": "'ltr'",
+    "desc": "Arah text"
+   },
+   {
+    "name": "componentSize",
+    "type": "'small' | 'middle' | 'large'",
+    "default": "-",
+    "desc": "Ukuran default komponen"
+   },
+   {
+    "name": "variant",
+    "type": "'outlined' | 'borderless' | 'filled'",
+    "default": "-",
+    "desc": "Varian default komponen"
+   },
+   {
+    "name": "form",
+    "type": "{ colon, requiredMark }",
+    "default": "-",
+    "desc": "Konfigurasi form global"
+   },
+   {
+    "name": "pagination",
+    "type": "{ showSizeChanger }",
+    "default": "-",
+    "desc": "Konfigurasi pagination global"
+   }
+  ]
+ },
+ {
+  "name": "BorderBeam",
+  "category": "Other",
+  "isV6": true,
+  "props": [
+   {
+    "name": "count",
+    "type": "number",
+    "default": "1",
+    "desc": "Jumlah beam"
+   },
+   {
+    "name": "duration",
+    "type": "number",
+    "default": "2",
+    "desc": "Durasi animasi (detik)"
+   },
+   {
+    "name": "size",
+    "type": "number",
+    "default": "200",
+    "desc": "Ukuran beam"
+   },
+   {
+    "name": "lineWidth",
+    "type": "number",
+    "default": "2",
+    "desc": "Ketebalan garis"
+   },
+   {
+    "name": "color",
+    "type": "string",
+    "default": "-",
+    "desc": "Warna beam"
+   },
+   {
+    "name": "children",
+    "type": "ReactNode",
+    "default": "-",
+    "desc": "Konten yang diberi border beam"
+   }
+  ]
+ }
+]
