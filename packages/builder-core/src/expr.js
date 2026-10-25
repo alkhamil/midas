@@ -11,7 +11,10 @@
 //   { op: 'equals', a, b }
 //   { op: 'compare', cmp, a, b }              eq ne gt gte lt lte contains startsWith endsWith
 //   { op: 'and' | 'or', args: [expr] }        { op: 'not', arg }
-import { truthy } from './state.js';
+//   { op: 'collection', part: 'rows' | 'total' | 'pages', list, search?, columns?, sort?, page?, pageSize? }
+//                                             a table's rows: the list searched, sorted and cut into a page (made by the Table preset)
+import { truthy, schemaOf } from './state.js';
+import { visibleRows } from './collection.js';
 
 export const COMPARATORS = [
     { id: 'eq', label: 'is' },
@@ -40,6 +43,7 @@ export const OPERATIONS = [
     { id: 'not', label: 'Not', kind: 'boolean' },
     { id: 'valid', label: 'Field is valid', kind: 'boolean' },
     { id: 'invalid', label: 'Field is invalid', kind: 'boolean' },
+    { id: 'collection', label: 'Rows of a table', kind: 'list', hidden: true },
     { id: 'var', label: 'A variable', kind: 'any' },
     { id: 'value', label: 'A fixed value', kind: 'any' },
 ];
@@ -87,6 +91,12 @@ function ev(e, env) {
         case 'count': return list(e.list).length;
         case 'sum': return list(e.list).reduce((s, row) => { const n = numeric(cellOf(row, e.field)); return n === null ? s : s + n; }, 0);
         case 'filter': { const want = ev(e.value, env); return list(e.list).filter(row => compareValues(e.cmp, cellOf(row, e.field), want)); }
+        case 'collection': {
+            const rows = list(e.list), schema = env.schemaOf?.(e.list?.op === 'var' ? e.list.ref : '') || [];
+            const opt = (x, d) => (isPlain(x) ? ev(x, env) : d);
+            const r = visibleRows(rows, schema, { search: opt(e.search, ''), searchColumns: Array.isArray(e.columns) ? e.columns : [], sort: opt(e.sort, ''), page: opt(e.page, 1), pageSize: opt(e.pageSize, 10) });
+            return e.part === 'total' ? r.total : e.part === 'pages' ? r.pages : r.rows;
+        }
         case 'length': { const v = ev(e.of, env); return Array.isArray(v) || typeof v === 'string' ? v.length : fail('A text or a list is expected here.'); }
         case 'isEmpty': { const v = ev(e.of, env); return v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && !v.length) || (isPlain(v) && !Object.keys(v).length); }
         case 'equals': return compareValues('eq', ev(e.a, env), ev(e.b, env));
@@ -117,7 +127,7 @@ export function evaluate(expr, env) {
 export function refsOf(expr, out = new Set()) {
     if (!isPlain(expr)) return out;
     if (expr.op === 'var' && expr.ref) out.add(expr.ref);
-    for (const k of ['list', 'of', 'a', 'b', 'arg', 'value'])
+    for (const k of ['list', 'of', 'a', 'b', 'arg', 'value', 'search', 'sort', 'page', 'pageSize'])
         if (isPlain(expr[k])) refsOf(expr[k], out);
     for (const a of Array.isArray(expr.args) ? expr.args : []) refsOf(a, out);
     return out;
@@ -149,7 +159,7 @@ export function evaluateState(state, values) {
             return { ok: false, error: msg };
         }
         stack.push(id);
-        const r = evaluate(derived.get(id).expr, { resolve });
+        const r = evaluate(derived.get(id).expr, { resolve, schemaOf: ref => schemaOf((state.variables || []).find(v => v.id === ref)) });
         stack.pop();
         if (out.errors.has(id)) return { ok: false, error: out.errors.get(id) };     // marked as part of a loop while evaluating
         if (r.ok) out.values.set(id, r.value); else out.errors.set(id, r.error);
@@ -168,7 +178,7 @@ export function validateExpr(expr, knownRefs) {
         if ((e.op === 'valid' || e.op === 'invalid') && !e.field) errors.push(path + ': choose a field');
         if (e.op === 'var' && !knownRefs.has(e.ref)) errors.push(`${path}: unknown variable`);
         if ((e.op === 'filter' || e.op === 'compare') && !CMP_IDS.has(e.cmp)) errors.push(`${path}: unknown comparison`);
-        const need = { count: ['list'], sum: ['list'], filter: ['list', 'value'], length: ['of'], isEmpty: ['of'], equals: ['a', 'b'], compare: ['a', 'b'], not: ['arg'] }[e.op] || [];
+        const need = { collection: ['list'], count: ['list'], sum: ['list'], filter: ['list', 'value'], length: ['of'], isEmpty: ['of'], equals: ['a', 'b'], compare: ['a', 'b'], not: ['arg'] }[e.op] || [];
         for (const k of need) walk(e[k], `${path}.${k}`);
         if (e.op === 'and' || e.op === 'or') (e.args || []).forEach((a, i) => walk(a, `${path}.args[${i}]`));
     };
@@ -222,6 +232,7 @@ export function describeExpr(e, nameOf = x => x, fieldName = x => x) {
         case 'var': return nameOf(e.ref) || '…';
         case 'value': return typeof e.value === 'string' ? (e.value === '' ? '“”' : `“${e.value}”`) : String(e.value);
         case 'count': return `rows in ${d(e.list)}`;
+        case 'collection': return `${e.part === 'total' ? 'number of matching rows' : e.part === 'pages' ? 'number of pages' : 'rows on the page'} of ${d(e.list)}`;
         case 'sum': return `total of ${e.field ? e.field + ' in ' : ''}${d(e.list)}`;
         case 'filter': return `${d(e.list)} where ${e.field || 'value'} ${cmp(e.cmp)} ${d(e.value)}`;
         case 'length': return `length of ${d(e.of)}`;

@@ -7,6 +7,8 @@ import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
 import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml } from './capabilitiesUi.js';
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
+import { dataWindowHtml } from './dataUi.js';
+import { castCell, editColumns, generateRows, importInto, nextId, rowsFromCSV, rowsFromJSON, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
@@ -2213,7 +2215,8 @@ const stateUi = { open: new Set(), menu: false };
 const stateApi = {
     state: () => stateStore(),
     esc: s => esc(s),
-    render: () => renderVarsWindow(),
+    render: () => { renderVarsWindow(); renderDataWindow(); },
+    openData: id => openDataWindow(id),
     tx(label, fn) {
         finishText();
         history.begin(label);
@@ -2228,6 +2231,106 @@ const stateApi = {
         renderInspector();
     },
 };
+// ----- Data window of a List State: a grid for its columns and its sample rows
+const DW = { id: null, import: null, generate: 25 };
+function openDataWindow(id) {
+    let win = document.getElementById('data-window');
+    if (!win) {
+        win = document.createElement('section');
+        win.id = 'data-window';
+        win.className = 'vars-window data-window hidden';
+        win.setAttribute('role', 'dialog');
+        document.body.appendChild(win);
+        win.style.left = Math.max(12, innerWidth / 2 - 420) + 'px';
+        win.style.top = '90px';
+        wireDataWindow(win);
+        wireWindowDrag(win, () => false);
+    }
+    Object.assign(DW, { id, import: null });
+    win.classList.remove('hidden');
+    renderDataWindow();
+}
+function closeDataWindow() { DW.id = null; document.getElementById('data-window')?.classList.add('hidden'); }
+function renderDataWindow() {
+    const win = document.getElementById('data-window');
+    if (!win || !DW.id) return;
+    const v = stateStore().variables.find(x => x.id === DW.id);
+    if (!v) { closeDataWindow(); return; }
+    const scroll = win.querySelector('.dw-body')?.scrollTop || 0;
+    guarded(() => {
+        win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Data · ${esc(v.name)}</span><span class="vw-title-actions"><button type="button" class="vw-mini" data-dw-act="close" title="Close" aria-label="Close data">${icon('close', 12)}</button></span></div><div class="dw-body">${dataWindowHtml({ esc }, v, DW)}</div>`;
+    }, err => { win.innerHTML = `<div class="vw-title" data-vw-drag><span>Data</span><span class="vw-title-actions"><button type="button" class="vw-mini" data-dw-act="close" aria-label="Close data">${icon('close', 12)}</button></span></div><div class="dw-body">${errorBoundaryHtml('Data', err)}</div>`; win.querySelector('[data-eb-retry]').onclick = renderDataWindow; });
+    const b = win.querySelector('.dw-body');
+    if (b) b.scrollTop = scroll;
+}
+function dwEdit(label, fn) {
+    stateApi.tx(label, st => {
+        const v = st.variables.find(x => x.id === DW.id);
+        if (!v) return;
+        const out = fn({ schema: schemaOf(v).map(f => ({ ...f })), rows: (v.initial || []).map(r => ({ ...r })) }, v);
+        if (out) { v.schema = out.schema; v.initial = out.rows; }
+    });
+    renderDataWindow();
+}
+function wireDataWindow(win) {
+    win.addEventListener('click', e => {
+        const b = e.target.closest('[data-dw-act]');
+        if (!b || !win.contains(b)) return;
+        const act = b.dataset.dwAct, key = b.dataset.dwKey, i = Number(b.dataset.dwI);
+        if (act === 'close') return closeDataWindow();
+        if (act === 'add-row') return dwEdit('Add row', d => ({ schema: d.schema, rows: [...d.rows, Object.fromEntries(d.schema.map(f => [f.key, castCell(f, undefined)]))] }));
+        if (act === 'del-row') return dwEdit('Remove row', d => ({ schema: d.schema, rows: d.rows.filter((_, k) => k !== i) }));
+        if (act === 'clear') return dwEdit('Clear rows', d => ({ schema: d.schema, rows: [] }));
+        if (act === 'add-col') return dwEdit('Add column', d => editColumns(d, { op: 'add' }));
+        if (act === 'del-col') return dwEdit('Remove column', d => editColumns(d, { op: 'del', key }));
+        if (act === 'move-left' || act === 'move-right') return dwEdit('Move column', d => editColumns(d, { op: 'move', key, value: act === 'move-left' ? -1 : 1 }));
+        if (act === 'generate') {
+            const n = Math.max(1, Math.min(500, Math.floor(Number(win.querySelector('[data-dw-n]')?.value)) || 25));
+            DW.generate = n;
+            return dwEdit('Generate rows', (d, v) => { const idCol = d.schema.find(f => /^id$/i.test(f.key)); return { schema: d.schema, rows: [...d.rows, ...generateRows(d.schema, n, { seed: Date.now() % 100000, startId: idCol ? Number(nextId(d.rows, idCol.key)) : 1 })] }; });
+        }
+        if (act === 'export') {
+            const v = stateStore().variables.find(x => x.id === DW.id);
+            if (!v) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([toCSV(schemaOf(v), v.initial || [])], { type: 'text/csv' }));
+            a.download = `${v.name.replace(/[^\w-]+/g, '-')}.csv`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            return;
+        }
+        if (act === 'import-open') { DW.import = { kind: 'csv', text: '', keep: false, append: false, note: '' }; return renderDataWindow(); }
+        if (act === 'import-close') { DW.import = null; return renderDataWindow(); }
+        if (act === 'import-kind') { DW.import.kind = b.dataset.dwKind; DW.import.note = ''; return renderDataWindow(); }
+        if (act === 'import-apply') {
+            const imp = DW.import, ta = win.querySelector('[data-dw-text]');
+            imp.text = ta ? ta.value : imp.text;
+            const parsed = imp.kind === 'csv' ? rowsFromCSV(imp.text) : rowsFromJSON(imp.text);
+            if (!parsed.rows.length) { imp.ok = false; imp.note = parsed.problems[0] || 'There are no rows in this text.'; return renderDataWindow(); }
+            dwEdit('Import data', d => importInto(d, parsed, { keepColumns: imp.keep, append: imp.append }));
+            DW.import = { ...imp, ok: true, note: `Imported ${parsed.rows.length} rows.${parsed.problems.length ? ' ' + parsed.problems.join(' ') : ''}`, text: '' };
+            return renderDataWindow();
+        }
+    });
+    win.addEventListener('change', async e => {
+        const t = e.target;
+        if (!win.contains(t)) return;
+        const d = t.dataset;
+        if (d.dwCell !== undefined) {
+            const [i, key] = d.dwCell.split('|');
+            return dwEdit('Edit cell', data => {
+                const f = data.schema.find(x => x.key === key);
+                const val = f?.type === 'boolean' ? t.checked : f?.type === 'number' ? (Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0) : t.value;
+                return { schema: data.schema, rows: data.rows.map((r, k) => (k === Number(i) ? { ...r, [key]: val } : r)) };
+            });
+        }
+        if (d.dwF) return dwEdit('Edit column', data => editColumns(data, { op: d.dwF, key: d.dwKey, value: t.value }));
+        if (d.dwOpt !== undefined && DW.import) { if (d.dwOpt === 'keep') DW.import.keep = t.value === '1'; else DW.import.append = t.checked; return; }
+        if (d.dwFile !== undefined && DW.import && t.files?.[0]) { DW.import.text = await t.files[0].text(); DW.import.note = ''; renderDataWindow(); }
+    });
+    win.addEventListener('input', e => { if (e.target.dataset?.dwText !== undefined && DW.import) DW.import.text = e.target.value; });
+    win.addEventListener('click', e => { const f = e.target.closest('label.dw-file'); if (f) f.querySelector('input')?.click(); });
+}
 function varsRows(coll) {
     const q = vw.search.trim().toLowerCase();
     const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!vw.type || i.type === vw.type) && (!q || i.name.toLowerCase().includes(q)));

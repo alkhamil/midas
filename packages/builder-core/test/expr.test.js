@@ -107,7 +107,7 @@ import { defaultExpr, getAt, setAt, OPERATIONS } from '../src/expr.js';
 
 test('every operation has a default that is valid and evaluates', () => {
     const e2 = { resolve: r => (r === 'xs' ? { found: true, value: [{ a: 1 }, { a: 2 }] } : { found: false }) };
-    for (const o of OPERATIONS.filter(x => !['valid', 'invalid'].includes(x.id))) {
+    for (const o of OPERATIONS.filter(x => !['valid', 'invalid'].includes(x.id) && !x.hidden)) {
         const e = defaultExpr(o.id, 'xs');
         assert.equal(e.op, o.id);
         assert.deepEqual(validateExpr(e, new Set(['xs'])), [], o.id);

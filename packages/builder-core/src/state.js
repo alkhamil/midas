@@ -2,6 +2,7 @@
 // (design variables with modes). Pure: nothing here touches the DOM or the editor.
 //
 // A state variable: { id, name, type, initial, scope, description?, options?, itemType?, schema? }
+//   a field of a schema: { key, type, label?, options? }  (options: only for type 'option'; label: the header of a column in a table)
 //   type    string | number | boolean | option | list | object | date | file
 //   scope   'page' (default) | 'app' (kept across pages)
 //   option  options: the fixed values ['draft', 'sent']; initial is one of them
@@ -21,7 +22,7 @@ export const STATE_TYPES = [
 ];
 export const STATE_TYPE_IDS = STATE_TYPES.map(t => t.id);
 /** What a field of an object or a list row may hold. */
-export const STATE_FIELD_TYPES = ['string', 'number', 'boolean', 'date', 'color'];
+export const STATE_FIELD_TYPES = ['string', 'number', 'boolean', 'option', 'date', 'color'];
 export const LIST_ITEM_TYPES = ['object', 'string', 'number', 'boolean', 'date'];
 export const STATE_SCOPES = [{ id: 'page', label: 'Page' }, { id: 'app', label: 'App (all pages)' }];
 export const DEFAULT_SCHEMA = [{ key: 'label', type: 'string' }, { key: 'value', type: 'string' }];
@@ -127,7 +128,10 @@ export function normalizeStateVariable(raw) {
         for (const f of Array.isArray(raw.schema) ? raw.schema : []) {
             if (!f || typeof f.key !== 'string' || !f.key || seen.has(f.key)) continue;
             seen.add(f.key);
-            schema.push({ key: f.key, type: STATE_FIELD_TYPES.includes(f.type) ? f.type : 'string' });
+            const type = STATE_FIELD_TYPES.includes(f.type) ? f.type : 'string', field = { key: f.key, type };
+            if (typeof f.label === 'string' && f.label.trim()) field.label = f.label.trim();
+            if (type === 'option') field.options = [...new Set((Array.isArray(f.options) ? f.options : []).map(String).filter(Boolean))];
+            schema.push(field);
         }
         v.schema = schema.length ? schema : DEFAULT_SCHEMA.map(f => ({ ...f }));
     }

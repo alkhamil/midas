@@ -30,7 +30,7 @@ export function stateTabHtml(api, ui) {
             case 'option': return `<select ${f} aria-label="Initial value">${opt((v.options || []).map(o => [o, o]), v.initial)}</select>`;
             case 'date': return `<input type="date" ${f} value="${esc(v.initial)}" aria-label="Initial value">`;
             case 'file': return '<span class="st-muted">No file · picked in Preview</span>';
-            case 'list': return `<button class="vw-fx" data-st-act="expand" data-st-id="${esc(v.id)}">${esc(valueText(v.initial))}${v.itemType === 'object' || !v.itemType ? ` · ${esc(schemaOf(v).map(x => x.key).join(', '))}` : ` of ${esc(v.itemType)}`}</button>`;
+            case 'list': return `${(v.itemType || 'object') === 'object' ? `<button class="vw-btn ghost st-data" data-st-act="data" data-st-id="${esc(v.id)}" title="Edit columns and rows in a grid, import CSV / JSON, generate sample rows">Data…</button>` : ''}<button class="vw-fx" data-st-act="expand" data-st-id="${esc(v.id)}">${esc(valueText(v.initial))}${v.itemType === 'object' || !v.itemType ? ` · ${esc(schemaOf(v).map(x => x.key).join(', '))}` : ` of ${esc(v.itemType)}`}</button>`;
             case 'object': return `<button class="vw-fx" data-st-act="expand" data-st-id="${esc(v.id)}">${esc(schemaOf(v).map(x => x.key).join(', '))}</button>`;
             default: return `<input type="text" ${f} value="${esc(v.initial)}" spellcheck="false" aria-label="Initial value">`;
         }
@@ -106,6 +106,7 @@ export function wireStateTab(win, api, ui) {
         if (!b || !win.contains(b)) return;
         const act = b.dataset.stAct, id = b.dataset.stId, i = Number(b.dataset.stI);
         if (act === 'menu') { ui.menu = !ui.menu; api.render(); return; }
+        if (act === 'data') { api.openData?.(id); return; }
         if (act === 'expand') { ui.open.has(id) ? ui.open.delete(id) : ui.open.add(id); api.render(); return; }
         ui.menu = false;
         if (act === 'add') {
@@ -148,7 +149,7 @@ export function wireStateTab(win, api, ui) {
                 else if (d.stF === 'description') v.description = t.value;
                 else if (d.stF === 'options') { v.options = [...new Set(t.value.split(',').map(x => x.trim()).filter(Boolean))]; if (!v.options.includes(v.initial)) v.initial = v.options[0] ?? ''; }
                 else if (d.stF === 'itemType') { v.itemType = t.value; v.initial = fitRows({ ...v, itemType: t.value }, v.initial); }
-                else if (d.stF === 'schema') { const sc = parseSchema(t.value); if (sc.length) { v.schema = sc; v.initial = v.type === 'list' ? fitRows(v, v.initial) : Object.fromEntries(sc.map(f => [f.key, v.initial?.[f.key] ?? fieldDefault(f.type)])); } }
+                else if (d.stF === 'schema') { const sc = parseSchema(t.value); if (sc.length) { const old = new Map(schemaOf(v).map(f => [f.key, f])); v.schema = sc.map(f => { const o = old.get(f.key); return o && o.type === f.type ? { ...o } : f; }); v.initial = v.type === 'list' ? fitRows(v, v.initial) : Object.fromEntries(sc.map(f => [f.key, v.initial?.[f.key] ?? fieldDefault(f.type)])); } }
             });
         }
         else if (d.stInit) api.tx('Initial value', st => { const v = st.variables.find(x => x.id === d.stInit); if (!v) return; setInitial(v, v.type === 'number' ? (Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0) : v.type === 'boolean' ? t.value === 'true' : t.value); });

@@ -1,6 +1,7 @@
 // The evaluation context Preview reads bindings from: the current State values plus the derived values computed from them.
 // Pure (no DOM). One per Preview; `reset()` is what happens when Preview opens and when its Reset button is pressed.
-import { checkValue, initialValues, interpolate } from './state.js';
+import { checkValue, initialValues, interpolate, schemaOf } from './state.js';
+import { resolveRowRef, resolveRowName } from './collection.js';
 import { evaluateState } from './expr.js';
 
 const clone = v => (v === undefined ? undefined : structuredClone(v));
@@ -45,23 +46,27 @@ export function createEvalCtx(state) {
         setExtra(key, value) { extras[key] = value; },
         extra: key => extras[key],
         /** { found, value } of a variable by its name (case does not matter), or of a $builtin. Used by {placeholders}. */
-        lookupName(name) {
-            const b = builtin(name);
+        lookupName(name, row) {
+            const b = builtin(name) || resolveRowName(name, row);
             if (b) return b;
             const n = String(name).toLowerCase();
             const v = st.variables.find(x => x.name.toLowerCase() === n) || (st.derived || []).find(x => x.name.toLowerCase() === n);
             return v && !api.error(v.id) ? { found: true, value: api.get(v.id) } : { found: false };
         },
         /** A text with {placeholders} filled in. */
-        interpolate: text => interpolate(text, api.lookupName),
+        interpolate: (text, row) => interpolate(text, name => api.lookupName(name, row)),
         /**
          * What expressions read: states, derived values and $builtins. `fieldValid(layerId)` → boolean | undefined is supplied by the
-         * host for conditions (derived values cannot depend on a field).
+         * host for conditions (derived values cannot depend on a field). `opts.row` = the row context inside a table row
+         * (rowContext() of collection.js): $row.<field>, $rowIndex and $isSelected are then readable.
          */
         env(opts = {}) {
             return {
                 fieldValid: opts.fieldValid,
+                schemaOf: ref => schemaOf(byId.get(ref)),
                 resolve: ref => {
+                    const rr = resolveRowRef(ref, opts.row);
+                    if (rr) return rr;
                     const b = builtin(ref);
                     if (b) return b;
                     if (!api.has(ref)) return { found: false };

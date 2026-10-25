@@ -29,7 +29,7 @@ const optionsHtml = (esc, items, cur, blank) => `${blank ? `<option value="">${e
 
 /** html of one expression (a node and everything inside it). */
 export function exprHtml(opts, owner, expr) {
-    const { esc, state } = opts, ops = OPERATIONS.filter(o => !opts.allow || opts.allow(o.id));
+    const { esc, state } = opts, ops = OPERATIONS.filter(o => !o.hidden && (!opts.allow || opts.allow(o.id)));
     const node = (e, path) => {
         const at = `${esc(owner)}|${path}`;
         const pick = `<select class="st-op" data-ex-op="${at}" aria-label="Operation">${ops.map(o => `<option value="${o.id}" ${o.id === e?.op ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
