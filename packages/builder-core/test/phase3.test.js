@@ -191,7 +191,7 @@ test('one-line summaries', () => {
 
 // ---------- presets ----------
 test('presets: every family, only known capabilities, Ant names, events', () => {
-    assert.deepEqual(PRESET_FAMILIES, ['Trigger', 'Text entry', 'Choice', 'Feedback']);
+    assert.deepEqual(PRESET_FAMILIES, ['Trigger', 'Text entry', 'Choice', 'Data', 'Feedback']);
     for (const p of PRESETS) {
         assert.ok(PRESET_FAMILIES.includes(p.family), p.id);
         for (const c of p.caps) assert.ok(CAPABILITIES[c.kind], `${p.id}: ${c.kind}`);

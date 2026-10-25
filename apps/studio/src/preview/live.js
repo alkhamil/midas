@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
-import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -459,6 +459,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** A copy of the frame with the current state applied, laid out by the editor's engine. */
     function buildScene(frame, pinRoot, fillBox, matchBox, extra) {
         const nodes = [];
+        tablesNow.clear();
         let seq = 0;
         const copies = new Map(), keyUse = new Map();
         // o: the instance being copied, with the variant to borrow looks from, the variable modes to read in and the texts to carry over.
@@ -471,9 +472,10 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             // State bindings: this layer's own "visible when", and the ones its container set for it.
             // Slots: the layers of a Select (value, placeholder, chip, remove…), of the popup it opens (item, empty, search) and of a feedback component.
             const sel = o?.sel, pop = o?.pop, fbx = o?.fb;
+            const tbRole = o?.tbl && (o.tbl.roles.get(n.id) || (n.sourceId && o.tbl.roles.get(n.sourceId)) || null);
             const selRole = o?.slotMap && (o.slotMap[n.id] || (n.sourceId && o.slotMap[n.sourceId]));
             const popRole = pop?.roles?.[n.id], fbRole = fbx?.roles?.[n.id];
-            const slotShown = selRole === 'value' ? hasValue(sel?.value) : selRole === 'placeholder' ? !hasValue(sel?.value) : selRole === 'spinner' ? !!o.loading : popRole === 'empty' ? pop.rows.length === 0 : (fbx?.hide?.has(n.id) ? false : null);
+            const slotShown = selRole === 'value' ? hasValue(sel?.value) : selRole === 'placeholder' ? !hasValue(sel?.value) : selRole === 'spinner' ? !!o.loading : popRole === 'empty' ? pop.rows.length === 0 : tbRole === 'empty' ? tblEmptyShown(o.tbl, false) : tbRole === 'emptySearch' ? tblEmptyShown(o.tbl, true) : tbRole === 'loading' ? !!o.tbl.m.loading : (fbx?.hide?.has(n.id) ? false : null);
             const sbOwn = ctx.stateBindFor?.(n)?.self, sbLayer = o?.stateLayers && (o.stateLayers[n.id] || (n.sourceId && o.stateLayers[n.sourceId]));
             const stVis = [sbOwn?.visible, sbLayer?.visible].filter(Boolean).map(id => truthy(evalCtx.get(id)))
                 .concat([sbOwn?.when, sbLayer?.when].filter(Boolean).map(w => { const r = testCondition(w, evalCtx.env({ fieldValid: fieldValidity })); return r.ok && r.value; }));
@@ -485,16 +487,16 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(n.id)?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n);
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
-                const rt = runtime.get(n.id);
+                const rt = runtime.get(n.id) || (forced ? {} : null);
                 const freshSt = effectiveState(baseStateOf(n), { empty: false });
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -502,6 +504,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 inner.form = field ? inner : o?.form;      // the typeable field this instance sits in, however deep
                 // Behaviors with slots: a Select hands its value to the layers mapped to it; Has loading shows its icon while it loads.
                 const bsl = ctx.behaviorsFor?.(n) || [], hb = bsl.find(b => b.kind === 'has-options' && b.enabled), lb = bsl.find(b => b.kind === 'has-loading' && b.enabled && b.slots.icon);
+                const tby = tableBehaviors(bsl);
+                if (tby) inner.tbl = tableInfo(n, tby);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
                 if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(n.id)?.state === 'loading'; }
                 if (swap) {
@@ -510,7 +514,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     kidsOf = src;
                 }
                 else if (inner.ov) base = ctx.resolved(n, n, inner.ov);
-                wire = o?.rowRoot === n.id ? null : { inst: n, variants, modes, field };        // a row of a popup is not an instance that reacts on its own
+                wire = o?.rowRoot === n.id ? null : { inst: n, variants, modes, field, rowCtx: o?.rowCtx };        // a row of a popup is not an instance that reacts on its own
                 // The icon of a password field is an instance of one of the two icon components picked in the Behavior tab:
                 // it is drawn as the one that matches whether the text is shown, and clicking it flips that.
                 // Hanya isi ikon yang ditukar: wrapper keeps its own box, colors and layout, lalu dipatok
@@ -540,10 +544,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             c._pn = copies.get(parentId) || null;
             c._src = n.id;
             if (o?.rowRoot === n.id && o.rowIndex !== undefined) c._row = o.rowIndex;
+            if (o?.rowRoot === n.id && o.rowKind === 'row' && o.tbl) c._rowHover = { t: o.tbl.inst.id, i: o.rowIndex };
             if (popRole === 'search') c._search = true;
             if (selRole === 'remove' && o.row && sel) { const v = o.row.value; c._click = () => removePick(sel, v); }
             if (fbRole === 'close' || fbRole === 'cancel') c._click = () => fbx.close();
-            if (fbRole === 'confirm') c._click = () => fbx.confirm();       // nodeToStyle needs the parent: Fill and positioning depend on it
+            if (fbRole === 'confirm') c._click = () => fbx.confirm();
+            if (tbRole && o.tbl.m.ok) tblWire(c, tbRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -567,6 +573,14 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             else if (n.type === 'text' && o?.row && !rb && o.rowBindNames?.[n.name] && o.row[o.rowBindNames[n.name]] !== undefined) c.text = String(o.row[o.rowBindNames[n.name]]);
             if ((selRole === 'value' || (selRole === 'both' && sel && hasValue(sel.value))) && n.type === 'text' && sel) c.text = valueText(sel.options, sel.value);
             if (n.type === 'text' && fbx?.texts && fbx.texts[n.id] !== undefined) c.text = fbx.texts[n.id];
+            // Inside a table: {total}, {row.name}, {rowIndex} in a text are filled in; the page label and the sorted header say so.
+            if (n.type === 'text' && o?.tbl) {
+                const m = o.tbl.m;
+                if (tbRole === 'pageLabel' && m.ok) c.text = c.text.includes('{') ? evalCtx.interpolate(c.text, o.rowCtx) : `Page ${m.page} of ${m.pages}`;
+                else if (c.text.includes('{')) c.text = evalCtx.interpolate(c.text, o.rowCtx);
+                const hk = tbRole && /^head(text)?:(.+)$/.exec(tbRole);
+                if (hk && m.ok && m.sort.startsWith(hk[2] + ':')) c.text += m.sort.endsWith(':desc') ? ' ↓' : ' ↑';
+            }
             // A text bound to State: the value itself, or (Text with {placeholders}) its own text with the names filled in.
             if (sbLayer?.text && n.type === 'text') {
                 if (sbLayer.text === 'template') c.text = evalCtx.interpolate(c.text);
@@ -583,6 +597,19 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 for (const k of kids.slice(1)) emit(k, c.id, inner);
             }
             else for (const k of kids) {
+                const tRole = inner?.tbl && (inner.tbl.roles.get(k.id) || (k.sourceId && inner.tbl.roles.get(k.sourceId)));
+                if (tRole === 'row' || tRole === 'pageItem') {
+                    const T = inner.tbl, m = T.m;
+                    if (!m.ok) continue;
+                    if (tRole === 'row') {
+                        if (m.loading) continue;                                    // the loading slot stands in for the rows
+                        m.rows.forEach((row, i) => emit(k, c.id, { ...inner, row: { ...row, '#': m.rowOffset + i + 1, __state: tblRowState(T, row, i) }, rowBind: T.binds, rowCtx: rowCtxOf(m, row, i), rowRoot: k.id, rowIndex: i, rowKind: 'row' }));
+                    }
+                    else if (m.flags.pagination) {
+                        for (let p = 1; p <= Math.min(m.pages, 9); p++) emit(k, c.id, { ...inner, row: { label: String(p), '#': p, __page: p, __state: p === m.page ? 'selected' : undefined }, rowBind: { [T.textOf(k.id)]: { text: 'label' } }, rowRoot: k.id, rowIndex: p - 1, rowKind: 'page' });
+                    }
+                    continue;
+                }
                 const kRole = inner?.pop?.roles?.[k.id], sRole = inner?.slotMap && (inner.slotMap[k.id] || (k.sourceId && inner.slotMap[k.sourceId]));
                 if (kRole === 'item') {
                     // The popup repeats its item once per option, each in the look of its state (default, hover, selected, disabled).
@@ -616,6 +643,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (e && c._key) e.dataset.sk = c._key;
             if (e && c._row !== undefined) e.dataset.row = c._row;
             if (e && c._search) e.dataset.search = '1';
+            if (e && c._rowHover) { const h = c._rowHover; e.addEventListener('pointerenter', () => { const r = tableRun.get(h.t) || {}; if (r.hover !== h.i) { tableRun.set(h.t, { ...r, hover: h.i }); stateChanged(); } }); e.addEventListener('pointerleave', () => { const r = tableRun.get(h.t); if (r && r.hover === h.i) { tableRun.set(h.t, { ...r, hover: -1 }); stateChanged(); } }); }
             if (e && c._click) { e.style.cursor = 'pointer'; e.addEventListener('pointerup', ev => { ev.stopPropagation(); c._click(); }); }
             if (e && c._toggle) wireToggle(e, c._toggle.inst);
             return e;
@@ -709,6 +737,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const was = runtime.get(inst.id) || {};
             const bad = when === 'change' && wrong(input.value);
             runtime.set(inst.id, { ...was, value: input.value, error: bad, touched: was.touched || !!input.value });
+            tblSearch(inst, input.value);
             const state = bad ? 'error' : 'typing';
             if (was.state !== state) update(inst, { state, error: bad });
             else if (bad && !!was.value !== !!input.value) draw();      // still an error, but now empty (or no longer): the look changes
@@ -735,20 +764,74 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     }
 
     /** Jalankan action dari tab Behavior untuk sebuah instance. */
-    function runTriggers(inst, trigger, anchor, rect) {
+    function runTriggers(inst, trigger, anchor, rect, rowCtx) {
         for (const it of normalizeInteractions(ctx.interactionsFor?.(inst)))
-            if (it.trigger === trigger) playInteraction(it, inst, anchor, rect, trigger);
+            if (it.trigger === trigger) playInteraction(it, inst, anchor, rect, trigger, rowCtx);
     }
     /**
      * One interaction. Interactions made of the actions that existed before (no condition, no rules, no State actions) run at once,
      * in order, exactly as they always did; the others go through the shared runner (if → actions → rules, request waits).
      */
-    function playInteraction(it, inst, anchor, rect, trigger) {
+    function playInteraction(it, inst, anchor, rect, trigger, rowCtx) {
         const plain = !it.if && !it.rules && it.actions.every(a => !STATE_ACTION_IDS.has(a.type));
         if (plain) { for (const action of it.actions) runAction(action, inst, anchor, rect, trigger); return; }
         // A request in progress blocks a second click on the same thing, like a button that is loading.
         if (evalCtx.extra('loading') && it.actions.some(a => a.type === 'request')) return;
-        runInteraction(it, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message || 'Something went wrong in this interaction.'));
+        runInteraction(it, hostFor(inst, anchor, rect, trigger, rowCtx)).catch(e => flash(e.message || 'Something went wrong in this interaction.'));
+    }
+    // ---- Tables (Has rows …): the rows of the page, headers that sort, page buttons, checkboxes, a search box ----
+    const tableRun = new Map();          // table instance id → { hover, forceEmpty }
+    const tablesNow = new Map();         // the tables of the scene being drawn: instance id → info
+    /** What a table shows right now, and which layer plays which role (also under the layer a slot was made from). */
+    function tableInfo(n, by) {
+        const run = tableRun.get(n.id) || {};
+        const m = tableView(by, evalCtx, { loading: !!evalCtx.extra('loading') && !!by['has-data-states']?.slots.loading, forceEmpty: !!run.forceEmpty });
+        if (!m.ok) m.issues.forEach(msg => warnOnce(`tbl:${n.id}:${msg}`, `${n.name}: ${msg}`));
+        const textOf = id => { const l = ctx.node(id); return !l || l.type === 'text' ? id : (ctx.descendants(id).find(x => x.type === 'text')?.id || id); };
+        const roles = new Map();
+        for (const [id, role] of tableRoles(by)) {
+            roles.set(id, role);
+            const src = ctx.node(id)?.sourceId;
+            if (src) roles.set(src, role);
+            if (role.startsWith('head:') && textOf(id) !== id) roles.set(textOf(id), 'headtext:' + role.slice(5));
+        }
+        const binds = {};
+        if (m.ok) for (const [id, b] of Object.entries(cellBinds(m, textOf))) { binds[id] = b; const src = ctx.node(id)?.sourceId; if (src) binds[src] = b; }
+        const T = { inst: n, m, by, roles, binds, textOf, hover: run.hover ?? -1 };
+        tablesNow.set(n.id, T);
+        return T;
+    }
+    /** Empty shows with no rows at all; No results with a search that finds nothing (Empty stands for both when No results is not mapped). */
+    const tblEmptyShown = (T, search) => T.m.ok && !T.m.loading && (search ? T.m.empty === 'search' : T.m.empty === 'data' || (T.m.empty === 'search' && !T.by['has-data-states']?.slots.emptySearch));
+    /** The state a checkbox or a page number is drawn in, whatever its own runtime says. */
+    function tblForced(role, o) {
+        if (!role || !o?.tbl?.m.ok) return null;
+        if (role === 'selectRow') return o.rowCtx?.isSelected ? 'selected' : 'default';
+        if (role === 'selectAll') return { all: 'selected', some: 'indeterminate', none: 'default' }[o.tbl.m.pageState];
+        return null;
+    }
+    const tblRowState = (T, row, i) => (rowCtxOf(T.m, row, i).isSelected ? 'selected' : T.hover === i ? 'hover' : undefined);
+    function tblApply(writes) {
+        for (const w of writes) { const r = evalCtx.set(w.id, w.value); if (!r.ok) flash(r.error); }
+        stateChanged();
+    }
+    function tblWire(c, role, o) {
+        const m = o.tbl.m;
+        if (/^head:/.test(role) && m.flags.sort) c._click = () => tblApply(sortWrites(m, role.slice(5)));
+        else if (role === 'prev') c._click = () => tblApply(pageWrites(m, -1));
+        else if (role === 'next') c._click = () => tblApply(pageWrites(m, 1));
+        else if (role === 'selectAll') c._click = () => tblApply(selectPageWrites(m));
+        else if (role === 'selectRow' && o.row) c._click = () => tblApply(toggleRowWrites(m, o.row));
+        else if (role === 'pageItem' && o.row?.__page) c._click = () => tblApply(pageWrites(m, o.row.__page, false));
+    }
+    /** Typing in the search box of a table: the text goes to its State, back to page 1. */
+    function tblSearch(inst, text) {
+        for (const T of tablesNow.values()) {
+            if (!T.m.ok || !T.m.flags.search) continue;
+            for (let a = inst; a; a = ctx.node(a.parentId)) {
+                if (T.roles.get(a.id) === 'search' || (a.sourceId && T.roles.get(a.sourceId) === 'search')) { tblApply(searchWrites(T.m, text)); return; }
+            }
+        }
     }
     // ---- Select (Has options + Opens popup): the value, the popup, picking, search, chips ----
     const selectInfo = (inst, hb) => ({ inst, b: hb, mode: hb.config.mode, options: hb.config.options, value: getSel(inst, hb) });
@@ -845,9 +928,10 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         });
         return true;
     }
-    const hostFor = (inst, anchor, rect, trigger) => ({
-        ev: evalCtx,
-        env: () => evalCtx.env({ fieldValid: fieldValidity }),
+    // Inside a table row, $row.<field>, $rowIndex and $isSelected can be read, and {row.name} is filled in feedback texts.
+    const hostFor = (inst, anchor, rect, trigger, rowCtx) => ({
+        ev: rowCtx ? { ...evalCtx, interpolate: t => evalCtx.interpolate(t, rowCtx) } : evalCtx,
+        env: () => evalCtx.env({ fieldValid: fieldValidity, row: rowCtx }),
         perform: a => runAction(a, inst, anchor, rect, trigger),
         feedback: f => showFeedback(f, inst, anchor, rect, trigger),
         validateField: id => checkField(id),
@@ -1178,7 +1262,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         for (let i = layers.length - 1; i >= 0; i--) if (layers[i].kind === scope) kill(layers[i]);
     }
 
-    function attach({ inst: n, variants, modes, field }, d) {
+    function attach({ inst: n, variants, modes, field, rowCtx: rc }, d) {
+        const runTriggersIn = (inst, trig, a, r) => runTriggers(inst, trig, a, r, rc);
         if (n.disabled) { d.style.cursor = 'not-allowed'; return; }
         const go = target(n), has = s => !!(variants?.byState[s] || modes?.byState[s]);
         const clickable = clickableOf(n);
@@ -1189,8 +1274,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         d.addEventListener('pointerenter', () => {
             const rect = d.getBoundingClientRect();
             hasState('hover') && update(n, { state: 'hover' });
-            runTriggers(n, 'onHover', d, rect);
-            runTriggers(n, 'onMouseEnter', d, rect);
+            runTriggersIn(n, 'onHover', d, rect);
+            runTriggersIn(n, 'onMouseEnter', d, rect);
         });
         d.addEventListener('pointerleave', () => { revertVariant(n, ['onHover', 'onMouseEnter']); update(n, { state: baseStateOf(n) }); });
         d.addEventListener('pointerdown', () => hasState('pressed') && update(n, { state: 'pressed' }));
@@ -1198,13 +1283,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         d.addEventListener('focusin', () => {
             const rect = d.getBoundingClientRect();
             hasState('focused') && update(n, { state: 'focused' });
-            runTriggers(n, 'onFocus', d, rect);
+            runTriggersIn(n, 'onFocus', d, rect);
         });
         d.addEventListener('focusout', () => {
             const rect = d.getBoundingClientRect();
             revertVariant(n, ['onFocus']);
             update(n, { state: stateOf(n) === 'focused' ? baseStateOf(n) : stateOf(n) });
-            runTriggers(n, 'onBlur', d, rect);
+            runTriggersIn(n, 'onBlur', d, rect);
         });
         // The press redraws the button, so the click is taken from the pointer-up on the redrawn one.
         d.addEventListener('pointerup', ev => {
@@ -1217,7 +1302,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const own = normalizeInteractions(ctx.interactionsFor?.(n)).some(it => it.trigger === 'onClick');
             if (own || go) ev.bhHandled = true;
             if (go && (pressed || !hasState('pressed'))) show(go);
-            runTriggers(n, 'onClick', d, rect);
+            runTriggersIn(n, 'onClick', d, rect);
             openSelect(n, d, rect);
         });
     }

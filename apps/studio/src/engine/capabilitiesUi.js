@@ -1,7 +1,7 @@
 // Behavior tab, Phase 3: "Add Behavior" (presets and capabilities), the collapsed section of each capability, the slot pickers,
 // the suggestions of the Convention and the Convention panel. Only draws: the rules (what a capability needs, what a preset is,
 // what is suggested) are in @midas/builder-core (capabilities.js, convention.js).
-import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules } from './behavior.js';
+import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules, schemaOf, columnLabel } from './behavior.js';
 
 const PLACEMENT_CHOICES = [['bottom-start', 'Below, aligned left'], ['bottom', 'Below, centered'], ['bottom-end', 'Below, aligned right'], ['top-start', 'Above, aligned left'], ['top', 'Above, centered'], ['top-end', 'Above, aligned right']];
 const layerOk = { text: l => l.type === 'text', frame: l => l.type === 'frame' || l.type === 'group' || !!l.isInstance, any: () => true };
@@ -85,11 +85,47 @@ function bodyFeedback(c, s) {
         + `<p class="small-label">Its type (success / error / warning / info) comes from the variant property or mode whose values are named like them. ${s.typeNote || ''}</p>`
         + c.advanced(b.id, LV.map(l => field(esc, `${l[0].toUpperCase()}${l.slice(1)} is`, `<input data-bh-path="${p}.config.types.${l}" data-bh-kind="plain" value="${esc(cf.types?.[l] || '')}" placeholder="auto" spellcheck="false">`, 'The exact name of the variant value or mode for this level')).join(''));
 }
+// ----- tables
+const colSlot = (c, path, label, current, layers, hint) => {
+    const { esc } = c, armed = c.pick === path;
+    return `<div class="bh-slot"><span class="bh-slot-name" title="${esc(hint)}">${esc(label)}</span>${c.bhSelect(path, 'plain', current || '', [['', '— not set —'], ...layers.map(l => [l.id, l.name || l.type]), ['__convention__', 'Edit convention…']])}<button type="button" class="icon-button small bh-pick ${armed ? 'on' : ''}" data-bh-act="pick-slot" data-bh-path="${esc(path)}" title="Pick the layer on the canvas" aria-label="Pick ${esc(label)} on the canvas" aria-pressed="${armed}">⌖</button></div>`;
+};
+function bodyRows(c, s) {
+    const { esc } = c, b = s.b, p = s.path, cf = b.config;
+    const lists = c.state.variables.filter(v => v.type === 'list' && (v.itemType || 'object') === 'object'), list = lists.find(v => v.id === cf.source), cols = list ? schemaOf(list) : [];
+    let h = field(esc, 'List', c.bhSelect(`${p}.config.source`, 'plain', cf.source || '', [['', lists.length ? '— choose a List —' : 'No List State yet'], ...lists.map(v => [v.id, v.name])]), 'The List State that holds the rows (its columns are the table’s columns)');
+    if (list) h += field(esc, 'ID column', c.bhSelect(`${p}.config.idField`, 'plain', cf.idField, cols.map(f => [f.key, columnLabel(f)])), 'Tells rows apart (selection, delete, edit)') + field(esc, 'Rows per page', `<input type="number" min="1" max="200" data-bh-path="${p}.config.pageSize" data-bh-kind="plain" value="${esc(cf.pageSize)}">`);
+    if (list && !cf.vars.visible) h += `<p class="small-label bh-warn">⚠ The table has no State yet.</p><button type="button" class="vw-btn" data-bh-act="table-setup">Set up table State</button><p class="small-label">Creates search, sort, page, pageSize, selectedIds and the derived visibleRows, total, pageCount, selectedCount. You can read them in conditions and texts.</p>`;
+    else if (list) h += `<p class="small-label">State: ${['search', 'sort', 'page', 'pageSize', 'selected', 'visible', 'total', 'pages', 'selectedCount'].filter(k => cf.vars[k]).map(k => esc(c.nameOf(cf.vars[k]))).join(', ')}</p>`;
+    h += slotRow(c, `${p}.slots.row`, 'row', b.slots.row, true) + slotRow(c, `${p}.slots.header`, 'header', b.slots.header, false);
+    if (list) {
+        const rowL = c.subLayers(b.slots.row), headL = c.subLayers(b.slots.header);
+        h += `<div class="bh-set-title">Columns</div><p class="small-label">Map a layer of the row template to each column (or write “{row.name}” in its text). The header cell is what a click sorts.</p>`
+            + cols.map(f => `<div class="bh-col"><b title="${esc(f.key)}">${esc(columnLabel(f))} <small>${esc(f.type)}</small></b>${colSlot(c, `${p}.slots.cell:${f.key}`, 'Cell', b.slots[`cell:${f.key}`], rowL, 'The layer of the row template that shows this column')}${colSlot(c, `${p}.slots.head:${f.key}`, 'Header', b.slots[`head:${f.key}`], headL, 'The layer of the header row for this column')}</div>`).join('');
+    }
+    return h;
+}
+function bodySort(c) {
+    const rows = c.behaviors.find(b => b.kind === 'has-rows'), heads = rows ? Object.keys(rows.slots).filter(k => k.startsWith('head:')).length : 0;
+    return `<p class="small-label">Clicking a mapped header cell cycles ascending → descending → none, by the type of the column (numbers as numbers, dates as dates, options in their order). ${heads ? `${heads} header cell${heads === 1 ? ' is' : 's are'} mapped in Has rows.` : ''}</p>${heads ? '' : '<p class="small-label bh-warn">⚠ No header cell is mapped yet: map them under Columns in Has rows.</p>'}`;
+}
+function bodySearch(c, s) {
+    const { esc } = c, b = s.b, p = s.path, rows = c.behaviors.find(x => x.kind === 'has-rows'), list = rows && c.state.variables.find(v => v.id === rows.config.source);
+    return slotRow(c, `${p}.slots.search`, 'search', b.slots.search, true)
+        + (rows ? field(esc, 'Search in', `<input data-bh-path="${esc(c.behaviors.indexOf(rows) >= 0 ? `behaviors.${c.behaviors.indexOf(rows)}` : '')}.config.searchColumns" data-bh-kind="searchcols" value="${esc((rows.config.searchColumns || []).join(', '))}" placeholder="all columns" spellcheck="false">`, `Column names separated by commas${list ? ` (${schemaOf(list).map(f => f.key).join(', ')})` : ''}; empty = every column`) : '')
+        + '<p class="small-label">Typing in the search box filters the rows (the text can be anywhere in the cell) and goes back to page 1. The box is an Input with Can type.</p>';
+}
+const plain = (...roles) => (c, s) => roles.map(([r, req]) => slotRow(c, `${s.path}.slots.${r}`, r, s.b.slots[r], !!req)).join('');
+const bodyPagination = (c, s) => plain(['prev'], ['next'], ['pageLabel'], ['pageItem'])(c, s) + '<p class="small-label">Page label shows “Page 2 of 5”, or your own text with {page} and {pageCount}. Page number repeats once per page.</p>';
+const bodySelection = (c, s) => plain(['selectRow', true], ['selectAll'])(c, s) + '<p class="small-label">The header checkbox selects the rows of the current page only. The picks are kept in selectedIds across pages.</p>';
+const bodyRowActions = (c, s) => plain(['rowDelete'], ['rowEdit'], ['addButton'], ['bulkDelete'], ['reload'])(c, s);
+const bodyDataStates = (c, s) => plain(['empty'], ['emptySearch'], ['loading'])(c, s) + '<p class="small-label">Empty shows when the List has no rows at all, No results when a search finds nothing (Empty is used for both when No results is not mapped).</p>';
+
 function bodyClick(c, s) {
     return `<p class="small-label">${c.esc(s.clickSummary || 'Nothing happens on click yet.')}</p><p class="small-label">Edit what it does in <b>Interaction</b> below.</p>`;
 }
 
-const TITLES = { 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
+const TITLES = { 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
 
 // ---------------------------------------------------------------------------------------------------- the whole block
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */
@@ -122,7 +158,7 @@ export function suggestionsHtml(c, only = '') {
     const { esc } = c;
     const list = c.suggestions.map((g, i) => ({ g, i })).filter(x => !only || x.g.section === only);
     if (!list.length) return '';
-    return `<div class="bh-suggest"><div class="bh-suggest-head"><b>Suggestions</b><small>from this file’s Convention</small><button type="button" class="vw-btn ghost" data-bh-act="accept-all" data-bh-only="${esc(only)}">Accept all</button></div>${list.map(({ g, i }) => `<div class="bh-suggest-row"><span><b>${esc(SLOT_ROLES[g.role].label)}</b> → “${esc(g.name)}”<small>${esc(g.section)}</small></span><button type="button" class="vw-btn ghost" data-bh-act="accept-slot" data-bh-index="${i}">Accept</button></div>`).join('')}</div>`;
+    return `<div class="bh-suggest"><div class="bh-suggest-head"><b>Suggestions</b><small>from this file’s Convention</small><button type="button" class="vw-btn ghost" data-bh-act="accept-all" data-bh-only="${esc(only)}">Accept all</button></div>${list.map(({ g, i }) => `<div class="bh-suggest-row"><span><b>${esc(g.label || SLOT_ROLES[g.role].label)}</b> → “${esc(g.name)}”<small>${esc(g.section)}</small></span><button type="button" class="vw-btn ghost" data-bh-act="accept-slot" data-bh-index="${i}">Accept</button></div>`).join('')}</div>`;
 }
 
 export function addPanelHtml(c) {

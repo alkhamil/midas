@@ -27,7 +27,28 @@ export const SLOT_ROLES = {
     close: { label: 'Close', kind: 'any', hint: 'The button that closes it' },
     confirm: { label: 'Confirm', kind: 'any', hint: 'The button that runs “When confirmed” (OK) and closes it' },
     cancel: { label: 'Cancel', kind: 'any', hint: 'The button that only closes it' },
+    // tables (Data): the row template, the header and what a table can show or do
+    cell: { label: 'Cell', kind: 'any', hint: 'The layer of the row template that shows one column' },
+    head: { label: 'Header cell', kind: 'any', hint: 'The layer of the header row for one column (click it to sort)' },
+    row: { label: 'Row template', kind: 'frame', hint: 'One row of the table (it repeats once per visible row)' },
+    header: { label: 'Header row', kind: 'frame', hint: 'The row of column headers' },
+    loading: { label: 'Loading', kind: 'any', hint: 'Shown while a request runs (a skeleton or a spinner)' },
+    emptySearch: { label: 'No results', kind: 'any', hint: 'Shown when a search finds nothing (the Empty slot is for no data at all)' },
+    prev: { label: 'Previous page', kind: 'any', hint: 'Goes to the previous page' },
+    next: { label: 'Next page', kind: 'any', hint: 'Goes to the next page' },
+    pageLabel: { label: 'Page label', kind: 'text', hint: 'Shows “Page 2 of 5” (or your own text with {page} and {pageCount})' },
+    pageItem: { label: 'Page number', kind: 'frame', hint: 'One page number (it repeats once per page); its text shows the number' },
+    selectAll: { label: 'Select all', kind: 'any', hint: 'The checkbox in the header: selects the rows of the current page' },
+    selectRow: { label: 'Row checkbox', kind: 'any', hint: 'The checkbox inside the row template' },
+    rowDelete: { label: 'Delete button', kind: 'any', hint: 'Inside the row template: deletes that row' },
+    rowEdit: { label: 'Edit button', kind: 'any', hint: 'Inside the row template: edits that row' },
+    addButton: { label: 'Add button', kind: 'any', hint: 'Adds a new row' },
+    bulkDelete: { label: 'Delete selected', kind: 'any', hint: 'Deletes every selected row' },
+    reload: { label: 'Reload', kind: 'any', hint: 'Asks for the data again (a Simulated request)' },
 };
+/** Slots named after a column of the table: cell.<field> (a layer of the row template) and head.<field> (a layer of the header row). */
+export const COLUMN_SLOT = /^(cell|head):[\w-]+$/;
+export const isSlotKey = (kind, k) => !!SLOT_ROLES[k] || (kind === 'has-rows' && COLUMN_SLOT.test(k));
 
 export const CAPABILITY_GROUPS = ['Input', 'Action', 'Data', 'Feedback'];
 const slot = (role, required = false) => ({ role, required });
@@ -41,6 +62,13 @@ export const CAPABILITIES = {
     'opens-popup': { group: 'Action', label: 'Opens popup', backing: 'behaviors', one: true, slots: [slot('popup', true)], events: ['onOpenChange'], blurb: 'Opens another component below it.' },
     'on-click': { group: 'Action', label: 'On click', backing: 'interactions', one: true, slots: [], events: ['onClick'], blurb: 'Does something when it is clicked.' },
     'has-loading': { group: 'Action', label: 'Has loading', backing: 'behaviors', one: true, slots: [slot('icon')], events: [], needs: ['on-click'], states: ['loading'], blurb: 'Switches to its loading state while a request runs.' },
+    'has-rows': { group: 'Data', label: 'Has rows', backing: 'behaviors', one: true, slots: [slot('row', true), slot('header')], events: [], blurb: 'Draws a List as rows: one row template, repeated for each visible row.' },
+    'can-sort': { group: 'Data', label: 'Can sort', backing: 'behaviors', one: true, slots: [], events: [], needs: ['has-rows'], blurb: 'Clicking a column header sorts: ascending, descending, none.' },
+    'can-search': { group: 'Data', label: 'Can search', backing: 'behaviors', one: true, slots: [slot('search', true)], events: ['onSearch', 'onChange'], needs: ['has-rows'], blurb: 'A search box that filters the rows (and goes back to page 1).' },
+    'has-pagination': { group: 'Data', label: 'Has pagination', backing: 'behaviors', one: true, slots: [slot('prev'), slot('next'), slot('pageLabel'), slot('pageItem')], events: ['onChange'], needs: ['has-rows'], blurb: 'Shows one page of rows at a time.' },
+    'has-selection': { group: 'Data', label: 'Has selection', backing: 'behaviors', one: true, slots: [slot('selectRow', true), slot('selectAll')], events: ['onChange'], needs: ['has-rows'], blurb: 'Row checkboxes. The header checkbox selects the current page.' },
+    'has-row-actions': { group: 'Data', label: 'Has row actions', backing: 'behaviors', one: true, slots: [slot('rowDelete'), slot('rowEdit'), slot('addButton'), slot('bulkDelete'), slot('reload')], events: [], needs: ['has-rows'], blurb: 'Delete, edit and add rows (with a confirmation and a form).' },
+    'has-data-states': { group: 'Data', label: 'Has empty / loading', backing: 'behaviors', one: true, slots: [slot('empty'), slot('emptySearch'), slot('loading')], events: [], needs: ['has-rows'], blurb: 'What the table shows with no rows, no results, or while it loads.' },
     'show-feedback': { group: 'Feedback', label: 'Show feedback', backing: 'behaviors', one: true, slots: [slot('message', true), slot('title'), slot('icon'), slot('close'), slot('confirm'), slot('cancel')], events: [], blurb: 'Is drawn when a “Show feedback” action runs.' },
 };
 export const CAPABILITY_IDS = Object.keys(CAPABILITIES);
@@ -59,6 +87,18 @@ export function normalizeConfig(kind, c = {}) {
         };
         case 'shows-items': return { options: normalizeOptions(c.options) };
         case 'opens-popup': return { placement: normalizePlacement(c.placement, 'bottom-start'), matchWidth: c.matchWidth !== false, trigger: c.trigger === 'hover' ? 'hover' : 'click' };
+        case 'has-rows': {
+            const vars = {};
+            for (const k of ['search', 'sort', 'page', 'pageSize', 'selected', 'visible', 'total', 'pages', 'selectedCount']) if (typeof c.vars?.[k] === 'string' && c.vars[k]) vars[k] = c.vars[k];
+            const size = Math.floor(Number(c.pageSize));
+            return { source: typeof c.source === 'string' ? c.source : '', idField: typeof c.idField === 'string' && c.idField ? c.idField : 'id', pageSize: Number.isFinite(size) && size > 0 ? Math.min(200, size) : 10, vars, searchColumns: Array.isArray(c.searchColumns) ? c.searchColumns.map(String).filter(Boolean) : [] };
+        }
+        case 'has-row-actions': {
+            const f = c.form && typeof c.form === 'object' ? c.form : {};
+            const fields = {};
+            for (const [k, v] of Object.entries(f.fields && typeof f.fields === 'object' ? f.fields : {})) if (k && typeof v === 'string' && v) fields[k] = v;
+            return { confirmDelete: c.confirmDelete !== false, form: { componentId: typeof f.componentId === 'string' ? f.componentId : '', fields } };
+        }
         case 'has-loading': return { state: typeof c.state === 'string' && c.state.trim() ? c.state.trim() : 'loading' };
         case 'show-feedback': {
             const types = {};
@@ -80,7 +120,7 @@ export function normalizeBehaviors(list) {
         while (ids.has(id)) id += '_';
         ids.add(id);
         const slots = {};
-        for (const def of CAPABILITIES[b.kind].slots) if (typeof b.slots?.[def.role] === 'string' && b.slots[def.role]) slots[def.role] = b.slots[def.role];
+        for (const [k, v] of Object.entries(b.slots && typeof b.slots === 'object' ? b.slots : {})) if (typeof v === 'string' && v && (CAPABILITIES[b.kind].slots.some(d => d.role === k) || (b.kind === 'has-rows' && COLUMN_SLOT.test(k)))) slots[k] = v;
         out.push({ id, kind: b.kind, enabled: b.enabled !== false, slots, config: normalizeConfig(b.kind, b.config), ...(b.preset ? { preset: String(b.preset) } : {}) });
     }
     return out;
@@ -92,7 +132,7 @@ export function normalizeOverrides(raw) {
     for (const [id, o] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
         const e = {};
         if (typeof o?.enabled === 'boolean') e.enabled = o.enabled;
-        if (o?.slots && typeof o.slots === 'object') { const s = {}; for (const [k, v] of Object.entries(o.slots)) if (SLOT_ROLES[k] && typeof v === 'string') s[k] = v; if (Object.keys(s).length) e.slots = s; }
+        if (o?.slots && typeof o.slots === 'object') { const s = {}; for (const [k, v] of Object.entries(o.slots)) if ((SLOT_ROLES[k] || COLUMN_SLOT.test(k)) && typeof v === 'string') s[k] = v; if (Object.keys(s).length) e.slots = s; }
         if (o?.config && typeof o.config === 'object' && !Array.isArray(o.config)) e.config = structuredClone(o.config);
         if (Object.keys(e).length) out[id] = e;
     }
@@ -127,6 +167,8 @@ export function slotIssues(behavior, exists = () => true) {
         if (required && !id) out.push({ role: def.role, why: `${SLOT_ROLES[def.role].label} is not set.` });
         else if (id && def.role !== 'popup' && !exists(id)) out.push({ role: def.role, why: `The layer for ${SLOT_ROLES[def.role].label} is gone.` });
     }
+    if (behavior.kind === 'has-rows' && !behavior.config?.source) out.push({ role: 'source', why: 'The List the rows come from is not set.' });
+    if (behavior.kind === 'has-rows' && behavior.config?.source && !behavior.config?.vars?.visible) out.push({ role: 'vars', why: 'The table has no State yet: use “Set up table State”.' });
     return out;
 }
 
@@ -141,6 +183,7 @@ export function applicability(kind, ctx) {
     if (def.one && ctx.has?.(kind)) return { ok: false, reason: 'Already added.' };
     const text = (ctx.layers || []).some(l => l.type === 'text');
     if ((kind === 'can-type' || kind === 'has-options' || kind === 'show-feedback') && !text) return { ok: false, reason: 'It needs a text layer inside.' };
+    if (kind === 'has-rows' && !ctx.hasList) return { ok: false, reason: 'It needs a List State with the rows (Variables → State → List).' };
     if (kind === 'shows-items' && !text) return { ok: false, reason: 'It needs a text layer for the label of an item.' };
     if (def.needs && !def.needs.some(k => ctx.has?.(k))) return { ok: false, reason: `It needs ${def.needs.map(k => CAPABILITIES[k].label).join(' or ')} first.` };
     if (def.states?.length && !def.states.every(s => ctx.hasState?.(s))) return { ok: false, reason: `It needs a “${def.states.join(', ')}” mode in a states collection.` };
@@ -155,6 +198,13 @@ export function summaryOf(b, nameOf = id => id) {
         case 'has-options': return `${c.mode === 'multiple' ? 'Multiple' : 'Single'} · ${c.options.length} option${c.options.length === 1 ? '' : 's'}${c.showSearch ? ' · search' : ''}${c.bindTo ? ' · bound to State' : ''}`;
         case 'shows-items': return c.options?.length ? `${c.options.length} own item${c.options.length === 1 ? '' : 's'}` : 'Items come from the Select';
         case 'opens-popup': return b.slots.popup ? `Opens “${nameOf(b.slots.popup)}” ${String(c.placement || 'bottom-start').split('-')[0]}${c.matchWidth ? ', same width' : ''}` : 'No popup component yet';
+        case 'has-rows': return c.source ? `Rows of “${nameOf(c.source)}” · ${c.pageSize} per page` : 'Pick the List the rows come from';
+        case 'can-sort': return 'Click a header to sort';
+        case 'can-search': return b.slots.search ? `Search box: “${nameOf(b.slots.search)}”` : 'Pick the search box';
+        case 'has-pagination': return ['prev', 'next', 'pageLabel', 'pageItem'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
+        case 'has-selection': return b.slots.selectAll ? 'Row checkboxes and select all (this page)' : 'Row checkboxes';
+        case 'has-row-actions': return ['rowDelete', 'rowEdit', 'addButton', 'bulkDelete', 'reload'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
+        case 'has-data-states': return ['empty', 'emptySearch', 'loading'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-loading': return `Switches to “${c.state}” while a request runs`;
         case 'show-feedback': return `${c.kind}${c.types ? ' · type from the ' + (Object.keys(c.types).length) + ' mapped levels' : ' · type from its modes'}`;
         default: return CAPABILITIES[b.kind]?.label || b.kind;
@@ -196,6 +246,7 @@ export const PRESETS = [
     { id: 'checkbox', family: 'Choice', label: 'Checkbox', match: ['checkbox', 'check box'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
     { id: 'switch', family: 'Choice', label: 'Switch', match: ['switch', 'toggle'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'toggle' }] }], events: ['onChange'] },
     { id: 'segmented', family: 'Choice', label: 'Segmented', match: ['segmented', 'tabs', 'tab'], caps: [{ kind: 'on-click' }], interactions: [{ trigger: 'onClick', actions: [{ type: 'set-selected', mode: 'exclusive' }] }], events: ['onChange'] },
+    { id: 'table', family: 'Data', label: 'Table', match: ['table', 'data table', 'datagrid', 'data grid'], caps: [{ kind: 'has-rows', config: {} }, { kind: 'can-sort', config: {} }, { kind: 'can-search', config: {} }, { kind: 'has-pagination', config: {} }, { kind: 'has-selection', config: {} }, { kind: 'has-row-actions', config: {} }, { kind: 'has-data-states', config: {} }], events: ['onChange'] },
     { id: 'alert', family: 'Feedback', label: 'Alert', match: ['alert', 'banner'], caps: [{ kind: 'show-feedback', config: { kind: 'alert' } }] },
     { id: 'message', family: 'Feedback', label: 'Message', match: ['message', 'toast', 'snackbar'], caps: [{ kind: 'show-feedback', config: { kind: 'message' } }] },
     { id: 'notification', family: 'Feedback', label: 'Notification', match: ['notification'], caps: [{ kind: 'show-feedback', config: { kind: 'notification' } }] },
@@ -203,7 +254,7 @@ export const PRESETS = [
     { id: 'drawer', family: 'Feedback', label: 'Drawer', match: ['drawer', 'sheet', 'side panel'], caps: [{ kind: 'show-feedback', config: { kind: 'drawer' } }] },
     { id: 'popconfirm', family: 'Feedback', label: 'Popconfirm', match: ['popconfirm', 'confirm'], caps: [{ kind: 'show-feedback', config: { kind: 'popconfirm' } }] },
 ];
-export const PRESET_FAMILIES = ['Trigger', 'Text entry', 'Choice', 'Feedback'];
+export const PRESET_FAMILIES = ['Trigger', 'Text entry', 'Choice', 'Data', 'Feedback'];
 export const PRESET_MAP = Object.fromEntries(PRESETS.map(p => [p.id, p]));
 
 /**

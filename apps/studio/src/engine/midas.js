@@ -8,7 +8,7 @@ import { stateBindHtml } from './behaviorUi.js';
 import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml } from './capabilitiesUi.js';
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
-import { castCell, editColumns, generateRows, importInto, nextId, rowsFromCSV, rowsFromJSON, toCSV } from './behavior.js';
+import { castCell, columnLabel, editColumns, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
@@ -19755,11 +19755,12 @@ function bhCapContext(n) {
     const c = {
         esc, bhSelect, node: n, isInstance, behaviors, layers, ib, typeable: typeable && (n.typeable !== undefined || ib?.typeable?.frameId || ib?.typeable?.inputType || isInstance), hasValidation, hasClick,
         clickSummary: clickIt ? clickIt.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ') : (hasClick ? 'Follows the main component' : ''),
-        nameOf: id => (layers.find(l => l.id === id)?.name || doc.get(id)?.name || componentById(id)?.name || id),
+        nameOf: id => (layers.find(l => l.id === id)?.name || doc.get(id)?.name || componentById(id)?.name || stateStore().variables.find(v => v.id === id)?.name || stateStore().derived.find(v => v.id === id)?.name || id),
+        subLayers: id => (id ? subtreeInOrder(id).filter(x => x.id !== id && !x.softDeleted).slice(0, 200).map(x => ({ id: x.id, name: x.name, type: x.type, isInstance: !!x.isInstance })) : layers),
         state: stateStore(), convention: conv, open: BH_SECTIONS, addOpen: BH_UI.addOpen, pick: BH_UI.pick?.nodeId === n.id ? BH_UI.pick.path : null,
         componentButton: bhComponentButton,
         guess: n.isInstance && n.typeable === undefined && looksLikeField(n) ? 'its name' : '',
-        applies: k => (isInstance && !inputKinds.has(k)) ? { ok: false, reason: 'Set on the main component.' } : applicability(k, { layers, has, hasState: s => s === 'loading' ? loadingMode : modes.some(m => suggestStates([m], conv)[s]) }),
+        applies: k => (isInstance && !inputKinds.has(k)) ? { ok: false, reason: 'Set on the main component.' } : applicability(k, { layers, has, hasList: stateStore().variables.some(v => v.type === 'list' && (v.itemType || 'object') === 'object'), hasState: s => s === 'loading' ? loadingMode : modes.some(m => suggestStates([m], conv)[s]) }),
         suggestedPreset: suggestPreset(isInstance ? (parentSetOf(chainComponent(n) || n)?.name || chainComponent(n)?.name || n.name) : n.name, PRESETS),
         feedbackNote: b => bhFeedbackNote(b, n),
     };
@@ -19802,6 +19803,19 @@ function bhSuggestions(n, c) {
     c.behaviors.forEach((b, i) => {
         const base = c.isInstance ? `behaviorOverrides.${b.id}` : `behaviors.${i}`;
         for (const g of suggestSlots(roles(b.kind), layers, conv, b.slots)) out.push({ section: CAPABILITIES[b.kind].label, role: g.role, layerId: g.layerId, name: g.name, path: `${base}.slots.${g.role}` });
+    });
+    // The layer of the row template / of the header row for each column, by the column's name.
+    c.behaviors.forEach((b, i) => {
+        if (b.kind !== 'has-rows' || c.isInstance) return;
+        const list = stateStore().variables.find(v => v.id === b.config.source);
+        if (!list) return;
+        const cols = schemaOf(list).map(f => ({ key: f.key, label: columnLabel(f) }));
+        for (const [prefix, root] of [['cell', b.slots.row], ['head', b.slots.header]]) {
+            if (!root) continue;
+            const taken = new Set(Object.entries(b.slots).filter(([k]) => k.startsWith(prefix + ':')).map(([, v]) => v));
+            const todo = cols.filter(col => !b.slots[prefix + ':' + col.key]);
+            for (const g of suggestColumnSlots(todo, c.subLayers(root), taken)) out.push({ section: CAPABILITIES[b.kind].label, role: prefix, label: (prefix === 'cell' ? 'Cell · ' : 'Header · ') + (cols.find(x => x.key === g.key)?.label || g.key), layerId: g.layerId, name: g.name, path: `behaviors.${i}.slots.${prefix}:${g.key}` });
+        }
     });
     return out;
 }
@@ -20160,6 +20174,14 @@ function bhSet(n, t) {
     let value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
     if (t.dataset.bhInvert) value = !value;
     if (kind === 'options') { bhWrite(n, path, parseOptions(value)); return; }
+    // Search in: the columns the search looks at. They live in the Has rows config and in the three derived values that use them.
+    if (kind === 'searchcols') {
+        const cols = String(value).split(',').map(x => x.trim()).filter(Boolean), base = path.replace(/\.config\.searchColumns$/, ''), b = getPath({ behaviors: n.behaviors || [] }, base);
+        bhWrite(n, path, cols);
+        const vars = b?.config?.vars || {}, st = stateStore();
+        for (const id of [vars.visible, vars.total, vars.pages]) { const d = st.derived.find(x => x.id === id); if (d?.expr?.op === 'collection') d.expr.columns = cols; }
+        return;
+    }
     if (kind === 'prop') {
         // Ganti properti yang dipetakan (nama kuncinya berubah, nilainya ikut).
         const state = path.split('.')[1], oldProp = t.dataset.bhProp || '', newProp = value;
@@ -20208,6 +20230,24 @@ function bhSet(n, t) {
     }
     bhWrite(n, path, value === '' ? undefined : value);
 }
+/**
+ * Creates the State a table works with (search, sort, page, pageSize, selectedIds, visibleRows, total, pageCount, selectedCount) for the
+ * Has rows behavior of `n` and keeps their ids in its config. The first List with columns is the source unless one is set.
+ */
+function bhTableSetup(n) {
+    const list = [...stateStore().variables].find(v => v.id === (n.behaviors || []).find(b => b.kind === 'has-rows')?.config?.source) || stateStore().variables.find(v => v.type === 'list' && (v.itemType || 'object') === 'object');
+    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-rows');
+    if (!list || i < 0) return false;
+    const b = n.behaviors[i], plan = planTableState(stateStore(), list, uid, { pageSize: b.config?.pageSize || 10, searchColumns: b.config?.searchColumns || [] });
+    const st = stateStore();
+    st.variables.push(...plan.variables);
+    st.derived.push(...plan.derived);
+    const clean = cleanState(st);
+    st.variables = clean.variables;
+    st.derived = clean.derived;
+    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k) => (k === i ? { ...x, config: { ...x.config, source: list.id, vars: plan.ids } } : x)));
+    return true;
+}
 /** After adding something: the window to open on it. */
 function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
     if (input) return { kind: 'cap', key: input };
@@ -20221,7 +20261,7 @@ function bhAction(n, t) {
     if (act === 'toggle-add') { BH_UI.addOpen = !BH_UI.addOpen; return; }
     if (act === 'pick-slot') { BH_UI.pick = BH_UI.pick?.path === t.dataset.bhPath ? null : { nodeId: n.id, path: t.dataset.bhPath }; return; }
     if (act === 'go-main') { const src = chainComponent(n); if (src) goToMainComponent((parentSetOf(src) || src).id, n.id); return; }
-    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { const before = new Set(behaviorsOf(n, true).map(b => b.id)), had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, plan); BHW.next = bhFirstNew(n, before, had, plan.input?.typeable ? 'can-type' : plan.input?.validation ? 'has-validation' : ''); } return; }
+    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { const before = new Set(behaviorsOf(n, true).map(b => b.id)), had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, plan); if (plan.behaviors.some(x => x.kind === 'has-rows') && !n.isInstance) bhTableSetup(n); BHW.next = bhFirstNew(n, before, had, plan.input?.typeable ? 'can-type' : plan.input?.validation ? 'has-validation' : ''); } return; }
     if (act === 'add-cap') {
         const kind = t.dataset.bhKind;
         if (kind === 'can-type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'can-type' }; }
@@ -20251,6 +20291,7 @@ function bhAction(n, t) {
     }
     if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }
     if (act === 'remove-unused-overlays') { const ids = bhUnusedOverlays(n).map(o => o.id); for (const id of ids) state.selection.delete(id); if (ids.length) doc.remove(ids); return; }
+    if (act === 'table-setup') { bhTableSetup(n); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);

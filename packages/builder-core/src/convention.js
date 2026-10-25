@@ -17,6 +17,22 @@ export const DEFAULT_CONVENTION = {
         empty: ['empty', 'no data', 'no results', 'not found'],
         icon: ['icon', 'prefix', 'suffix', 'arrow', 'spinner'],
         close: ['close', 'dismiss', 'x'],
+        // tables
+        row: ['row', 'table row', 'body row', 'data row', 'record'],
+        header: ['header', 'header row', 'table header', 'thead', 'columns'],
+        loading: ['loading', 'skeleton', 'spinner'],
+        emptySearch: ['no results', 'no match', 'nothing found', 'empty search'],
+        prev: ['prev', 'previous', 'back'],
+        next: ['next', 'forward'],
+        pageLabel: ['page label', 'page info', 'pagination label', 'page'],
+        pageItem: ['page item', 'page number', 'page button'],
+        selectAll: ['select all', 'header checkbox', 'check all'],
+        selectRow: ['select row', 'row checkbox', 'checkbox', 'check'],
+        rowDelete: ['delete', 'remove', 'trash'],
+        rowEdit: ['edit', 'pencil'],
+        addButton: ['add', 'new', 'create', 'add button'],
+        bulkDelete: ['delete selected', 'bulk delete', 'remove selected'],
+        reload: ['reload', 'refresh'],
     },
     states: {
         default: ['default', 'rest', 'normal', 'enabled', 'idle'],
@@ -123,4 +139,28 @@ export function suggestPreset(name, presets) {
         if (s && (!best || s > best.s)) best = { s, id: p.id };
     }
     return best?.id ?? null;
+}
+
+/**
+ * The layer of the row template (or of the header row) for each column of a table, by name: a layer named like the column's key or header
+ * text ("email", "E-mail", "Email cell"). One layer per column, best match first. `columns` = [{ key, label }]; `layers` = [{ id, name, type }].
+ * → [{ key, layerId, name, score }]
+ */
+export function suggestColumnSlots(columns, layers, taken = new Set()) {
+    const cands = [];
+    for (const c of columns) {
+        const names = [...new Set([normalizeName(c.key), normalizeName(c.label || c.key)].filter(Boolean))];
+        for (const l of layers) {
+            if (taken.has(l.id) || (l.type !== 'text' && l.type !== 'frame' && !l.isInstance)) continue;
+            const score = matchScore(l.name, names);
+            if (score) cands.push({ key: c.key, layerId: l.id, name: l.name, score: score + (l.type === 'text' ? 0.5 : 0) });
+        }
+    }
+    cands.sort((a, b) => b.score - a.score);
+    const out = [], gotKey = new Set(), gotLayer = new Set();
+    for (const c of cands) {
+        if (gotKey.has(c.key) || gotLayer.has(c.layerId)) continue;
+        gotKey.add(c.key); gotLayer.add(c.layerId); out.push(c);
+    }
+    return out;
 }

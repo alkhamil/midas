@@ -17,3 +17,4 @@ export * from './select.js';
 export * from './overlays.js';
 export * from './collection.js';
 export * from './columns.js';
+export * from './table.js';
