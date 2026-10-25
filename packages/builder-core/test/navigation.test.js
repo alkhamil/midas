@@ -1,7 +1,7 @@
 // Tabs and Pagination: the pure rules (clicks, disabled tabs, page clamping, page size, ellipsis, edges).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen } from '../src/index.js';
+import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex } from '../src/index.js';
 
 test('a click makes its tab active; an unknown or disabled tab leaves the active one', () => {
     const tabs = ['a', 'b', 'c'];
@@ -125,4 +125,19 @@ test('menu: needs its item layer and a selected-item State; “menu” alone is 
     assert.deepEqual(slotIssues({ kind: 'has-menu', slots: { item: 'i' }, config: { state: 's' } }, () => true), []);
     assert.deepEqual(PRESETS.filter(p => p.match.includes('sidebar')).map(p => p.id), ['menu']);
     assert.equal(planPreset('menu').behaviors[0].kind, 'has-menu');
+});
+
+test('carousel: Prev and Next clamp at the ends, or wrap round when looping', () => {
+    assert.equal(carouselIndex(0, -1, 3), 0);
+    assert.equal(carouselIndex(2, 1, 3), 2);
+    assert.equal(carouselIndex(2, 1, 3, true), 0);
+    assert.equal(carouselIndex(0, -1, 3, true), 2);
+    assert.equal(carouselIndex(5, 0, 3), 2);       // a State past the end is brought back
+    assert.equal(carouselIndex(0, 1, 0), 0);       // no slides: nothing to show
+});
+
+test('Has carousel needs its slide State and a slide row; the loop is a flag', () => {
+    assert.deepEqual(slotIssues({ kind: 'has-carousel', slots: {}, config: { state: '' } }, () => true).map(i => i.role), ['slide', 'state']);
+    assert.deepEqual(normalizeConfig('has-carousel', { state: 's', loop: true, junk: 1 }), { state: 's', loop: true });
+    assert.deepEqual(PRESETS.filter(p => p.match.includes('slideshow')).map(p => p.id), ['carousel']);
 });

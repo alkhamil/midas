@@ -66,6 +66,14 @@ export function toggleOpen(open, key, mode) {
     return on ? [] : [key];
 }
 
+/** The slide after a move (+1 or -1): wraps round when looping, else stops at the first and the last. */
+export function carouselIndex(index, delta, count, loop = false) {
+    if (count <= 0) return 0;
+    const next = index + delta;
+    if (loop) return ((next % count) + count) % count;
+    return Math.min(Math.max(0, next), count - 1);
+}
+
 /** Prev / Next: whether each is disabled at the edges. */
 export function pagerEdges(page, pageCount) {
     return { prevDisabled: page <= 1, nextDisabled: page >= Math.max(1, pageCount) };

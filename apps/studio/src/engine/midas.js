@@ -20360,6 +20360,21 @@ function bhMenuSetup(n) {
     n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
     return true;
 }
+/** Has carousel: a number State for the current slide (0 = the first); its own, when the carousel has none. */
+function bhCarouselSetup(n) {
+    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-carousel');
+    if (i < 0) return false;
+    const st = stateStore();
+    let name = 'currentSlide', k = 2;
+    while (st.variables.some(v => v.name === name)) name = 'currentSlide' + k++;
+    const id = uid();
+    st.variables.push({ id, name, type: 'number', scope: 'page', initial: 0 });
+    const clean = cleanState(st);
+    st.variables = clean.variables;
+    st.derived = clean.derived;
+    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
+    return true;
+}
 /** After adding something: the window to open on it. */
 function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
     if (input) return { kind: 'cap', key: input };
@@ -20409,6 +20424,7 @@ function bhAction(n, t) {
     if (act === 'steps-setup') { bhStepsSetup(n); return; }
     if (act === 'collapse-setup') { bhCollapseSetup(n); return; }
     if (act === 'menu-setup') { bhMenuSetup(n); return; }
+    if (act === 'carousel-setup') { bhCarouselSetup(n); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);

@@ -11,7 +11,7 @@
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { rowRuntimeKey } from '../engine/behavior.js';
-import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -490,7 +490,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(rowRuntimeKey(n.id, n.__row))?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? collapseForced(o) ?? stepForced(o) ?? pagerEdgeForced(o, n) ?? stepEdgeForced(o, n) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? collapseForced(o) ?? carouselEdgeForced(o, n) ?? stepForced(o) ?? pagerEdgeForced(o, n) ?? stepEdgeForced(o, n) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
@@ -499,7 +499,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, pager: o?.pager, steps: o?.steps, collapse: o?.collapse, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, pager: o?.pager, steps: o?.steps, collapse: o?.collapse, carousel: o?.carousel, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -518,6 +518,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 if (stB) inner.steps = stepsInfo(n, stB);
                 const clB = bsl.find(b => b.kind === 'has-collapse' && b.enabled);
                 if (clB) inner.collapse = collapseInfo(n, clB);
+                const crB = bsl.find(b => b.kind === 'has-carousel' && b.enabled);
+                if (crB) inner.carousel = carouselInfo(n, crB);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
                 if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(rowRuntimeKey(n.id, n.__row))?.state === 'loading'; }
                 if (swap) {
@@ -567,7 +569,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (pgRole) pagerWire(c, pgRole, o);
             const stRole = o?.steps?.roleOf(n) || null;
             if (stRole) stepsWire(c, stRole, o);
-            if (o?.collapseItem) c._click = () => collapseClick(o.collapseItem);       // nodeToStyle needs the parent: Fill and positioning depend on it
+            if (o?.collapseItem) c._click = () => collapseClick(o.collapseItem);
+            const crRole = o?.carousel?.roleOf(n) || null;
+            if (crRole) carouselWire(c, crRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -628,6 +632,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     else if (m.flags.pagination) {
                         for (let p = 1; p <= Math.min(m.pages, 9); p++) emit(k, c.id, { ...inner, row: { label: String(p), '#': p, __page: p, __state: p === m.page ? 'selected' : undefined }, rowBind: { [T.textOf(k.id)]: { text: 'label' } }, rowRoot: k.id, rowIndex: p - 1, rowKind: 'page' });
                     }
+                    continue;
+                }
+                // Has carousel: only the current slide is drawn; the dots repeat once per slide (the current one selected).
+                if (inner?.carousel && inner.carousel.roleOf(n) === 'slideBar' && kids.indexOf(k) !== inner.carousel.index) continue;
+                if (inner?.carousel && inner.carousel.roleOf(k) === 'dot') {
+                    const C = inner.carousel, txt = ctx.descendants(k.id).find(x => x.type === 'text');
+                    for (let i = 0; i < C.count; i++) emit(k, c.id, { ...inner, row: { label: String(i + 1), '#': i + 1, __dot: i, __state: i === C.index ? 'selected' : undefined }, rowBind: txt ? { [txt.id]: { text: 'label' } } : {}, rowRoot: k.id, rowIndex: i, rowKind: 'dot' });
                     continue;
                 }
                 // Has collapse: each layer of the section row is one section (open or closed); a closed section hides its panel.
@@ -856,6 +867,31 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (why || !evalCtx.has(b.config.state)) { warnOnce('menu:' + n.id, n.name + ': ' + (why ? why.why : 'The selected-item State is gone.') + ' The menu does not run until it is set up.'); return null; }
         const roles = new Map([[b.slots.item, 'tabBar']]);
         return { inst: n, b, active: String(evalCtx.get(b.config.state) ?? ''), roleOf: node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null };
+    }
+    // ---- Carousel (Has carousel): one slide shows at a time; Prev, Next and the dots move through them (loop, or stop at the ends) ----
+    /** The slides of an instance: the slide row, the dots, the current slide (a State, kept in range). Null while not set up. */
+    function carouselInfo(n, b) {
+        const why = slotIssues(b, id => !!ctx.node(id))[0];
+        if (why || !evalCtx.has(b.config.state)) { warnOnce('carousel:' + n.id, n.name + ': ' + (why ? why.why : 'The slide State is gone.') + ' The carousel does not run until it is set up.'); return null; }
+        const roles = new Map();
+        if (b.slots.slide) roles.set(b.slots.slide, 'slideBar');
+        if (b.slots.dot) roles.set(b.slots.dot, 'dot');
+        for (const r of ['prev', 'next']) if (b.slots[r]) roles.set(b.slots[r], r);
+        const roleOf = node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null;
+        const bar = ctx.descendants(n.id).find(x => roleOf(x) === 'slideBar');
+        const count = bar ? ctx.kids(bar.id).length : 0;
+        const index = carouselIndex(Math.floor(Number(evalCtx.get(b.config.state))) || 0, 0, count, !!b.config.loop);
+        return { inst: n, b, index, count, loop: !!b.config.loop, roleOf };
+    }
+    /** Prev on the first slide and Next on the last one are drawn disabled (unless the carousel loops). */
+    const carouselEdgeForced = (o, n) => { const C = o?.carousel, r = C?.roleOf(n); if (!C || C.loop) return null; if (r === 'prev' && C.index <= 0) return 'disabled'; if (r === 'next' && C.index >= C.count - 1) return 'disabled'; return null; };
+    /** Prev, Next and a dot move the slide; On change runs when it changed. */
+    function carouselWire(c, role, o) {
+        const C = o.carousel, v = C.b.config.state;
+        const go = index => { if (index === C.index) return; const r = evalCtx.set(v, index); if (!r.ok) { flash(C.inst.name + ': ' + r.error); return; } stateChanged(); runTriggers(C.inst, 'onChange'); };
+        if (role === 'prev' && (C.loop || C.index > 0)) c._click = () => go(carouselIndex(C.index, -1, C.count, C.loop));
+        else if (role === 'next' && (C.loop || C.index < C.count - 1)) c._click = () => go(carouselIndex(C.index, 1, C.count, C.loop));
+        else if (role === 'dot' && typeof o.row?.__dot === 'number') c._click = () => go(o.row.__dot);
     }
     // ---- Collapse (Has collapse): section headers that open and close their panels; the open ones are a State ----
     /** The sections of an instance: the header row, the panel row, and which sections are open (read from the State). Null while not set up. */

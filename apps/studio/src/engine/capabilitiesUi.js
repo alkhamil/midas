@@ -171,6 +171,18 @@ function bodyMenu(c, s) {
         + slotRow(c, `${p}.slots.item`, 'item', b.slots.item, true)
         + '<p class="small-label">Each layer of the item row is one item, named like the value it selects. A clicked item is drawn selected; a disabled item ignores clicks.</p>';
 }
+function bodyCarousel(c, s) {
+    const { esc } = c, b = s.b, p = s.path, cf = b.config;
+    const nums = c.state.variables.filter(v => v.type === 'number');
+    return field(esc, 'Current slide State', c.bhSelect(`${p}.config.state`, 'plain', cf.state || '', [['', '— not set up —'], ...nums.map(v => [v.id, `${v.name} (${v.type})`])]), 'The number State with the current slide (0 = the first)')
+        + `<button type="button" class="vw-btn" data-bh-act="carousel-setup">Set up carousel State</button>`
+        + check(esc, `${p}.config.loop`, cf.loop, 'Loop (wrap round at the ends)')
+        + slotRow(c, `${p}.slots.slide`, 'slide', b.slots.slide, true)
+        + slotRow(c, `${p}.slots.dot`, 'dot', b.slots.dot, false)
+        + slotRow(c, `${p}.slots.prev`, 'prev', b.slots.prev, false)
+        + slotRow(c, `${p}.slots.next`, 'next', b.slots.next, false)
+        + '<p class="small-label">Each layer of the slide row is one slide; only the current one is shown. The dot repeats once per slide. Autoplay is not in Preview yet.</p>';
+}
 const bodySelection = (c, s) => plain(['selectRow', true], ['selectAll'])(c, s) + '<p class="small-label">The header checkbox selects the rows of the current page only. The picks are kept in selectedIds across pages.</p>';
 const bodyRowActions = (c, s) => plain(['rowDelete'], ['rowEdit'], ['addButton'], ['bulkDelete'], ['reload'])(c, s);
 const bodyDataStates = (c, s) => plain(['empty'], ['emptySearch'], ['loading'])(c, s) + '<p class="small-label">Empty shows when the List has no rows at all, No results when a search finds nothing (Empty is used for both when No results is not mapped).</p>';
@@ -179,7 +191,7 @@ function bodyClick(c, s) {
     return `<p class="small-label">${c.esc(s.clickSummary || 'Nothing happens on click yet.')}</p><p class="small-label">Edit what it does in <b>Interaction</b> below.</p>`;
 }
 
-const TITLES = { 'has-menu': bodyMenu, 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
+const TITLES = { 'has-carousel': bodyCarousel, 'has-menu': bodyMenu, 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
 
 // ---------------------------------------------------------------------------------------------------- the whole block
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */
