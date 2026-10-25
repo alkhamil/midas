@@ -3499,3 +3499,53 @@ small.bh-warn{display:block;font-size:10px}
 .eb { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; flex: 1; min-width: 0; }
 .eb-title { font-weight: 600; color: var(--text, inherit); }
 .eb-msg { font-family: ui-monospace, monospace; font-size: 11px; color: #b4232a; overflow-wrap: anywhere; user-select: text; }
+
+/* Create state menu opens under its button (the Tokens one is right-aligned, this button sits on the left) */
+.st-tools .vw-create { position: relative }
+.st-tools .vw-menu { left: 0; right: auto; top: 34px }
+
+/* ===== Behavior tab: compact lists + the editing window ===== */
+.bh-sec-acts { display: flex; align-items: center; gap: 2px }
+.bh-items { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px }
+.bh-item { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 6px; border-radius: 6px; cursor: pointer; min-width: 0 }
+.bh-item:hover { background: var(--field) }
+.bh-item.active { background: var(--accent-bg) }
+.bh-item.static { cursor: default }
+.bh-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px }
+.bh-item-ic { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: var(--field); color: var(--muted) }
+.bh-item.active .bh-item-ic { background: transparent; color: var(--accent) }
+.bh-item-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px }
+.bh-item-txt b { font-size: 12px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.bh-item-txt small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.bh-item.off .bh-item-txt, .bh-item.off .bh-item-ic { opacity: .5 }
+.bh-item-warn { flex: none; color: #e5a000; font-size: 13px }
+.bh-item-acts { display: none; flex: none; align-items: center; gap: 2px }
+.bh-item:hover .bh-item-acts, .bh-item:focus-within .bh-item-acts { display: flex }
+.bh-item-acts input[type=checkbox] { margin: 0 4px }
+.bh-item-acts .icon-button { margin: 0 }
+.bh-item-note { margin: 6px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4 }
+.bh-sec-empty { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.45 }
+.bh-window { width: 320px; height: auto; min-width: 0; min-height: 0; max-height: min(660px, calc(100vh - 80px)); resize: none }
+.bh-win-title > span:first-child { min-width: 0; flex: 1 }
+.bh-win-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px }
+.bh-win-body { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1 }
+/* Labels get their own column (they used to be squeezed into a 28px box and overlapped) */
+.bh-window .field { height: auto; min-height: 30px; overflow: visible }
+.bh-window .field > span { min-width: 84px; max-width: 84px; padding: 0 8px; text-align: left; cursor: default; white-space: normal; line-height: 1.25; font-size: 11px }
+.bh-window .field select.full-width, .bh-window .field input { margin-top: 0; min-width: 0 }
+.bh-window .field input { height: 30px; font-size: 11px; padding-right: 8px }
+.bh-window .field.bh-wide { flex-direction: column; align-items: stretch; background: transparent; gap: 3px }
+.bh-window .field.bh-wide > span { min-width: 0; max-width: none; padding: 0 }
+.bh-window .field.bh-wide input, .bh-window .field.bh-wide select { background: var(--field); border-radius: 6px; padding: 0 8px; height: 30px }
+.bh-window .field:hover { border-color: var(--border) }
+.bh-window .bh-card.flat { border: 0; padding: 0; background: none }
+.bh-window .bh-rules-head { display: none }
+.bh-window .bh-rules { margin-top: 0 }
+.bh-window .bh-pickrow > span { min-width: 84px; max-width: 84px }
+.bh-drill { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--field); color: inherit; font: inherit; cursor: pointer; text-align: left }
+.bh-drill > span { display: flex; flex-direction: column; gap: 1px }
+.bh-drill b { font-size: 12px; font-weight: 600 }
+.bh-drill small { font-size: 11px; color: var(--muted) }
+.bh-win-del { align-self: flex-start; color: #e5484d }
+.bh-set-title { font-weight: 600; font-size: 12px; margin-top: 6px }
+.bh-window .bh-win-del, .bh-window .vw-btn.bh-win-del { color: #e5484d }

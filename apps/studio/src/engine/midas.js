@@ -4,7 +4,8 @@ import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
-import { behaviorsHtml, conventionHtml } from './capabilitiesUi.js';
+import { addPanelHtml, capabilityBodyHtml, capabilitySections, settingsHtml, suggestionsHtml } from './capabilitiesUi.js';
+import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -2702,9 +2703,13 @@ function wireVarsWindow(win) {
             renderVarsWindow();
         }
     });
+    wireWindowDrag(win, () => vw.full);
+}
+/** Dragging a floating window by its title bar (the Variables window and the Behavior window share it). */
+function wireWindowDrag(win, locked) {
     win.addEventListener('pointerdown', e => {
         const bar = e.target.closest('[data-vw-drag]');
-        if (!bar || e.target.closest('button') || vw.full)
+        if (!bar || e.target.closest('button') || locked())
             return;
         const r = win.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
         const move = ev => { win.style.left = clamp(ev.clientX - dx, 0, innerWidth - 120) + 'px'; win.style.top = clamp(ev.clientY - dy, 0, innerHeight - 40) + 'px'; };
@@ -9366,8 +9371,10 @@ function renderInspector() {
     }
     // Behavior-only spacing CSS is scoped to this class, so it can not shift the Design inspector.
     $('#inspector').classList.toggle('bh-tab', state.inspectorTab === 'prototype');
+    if (state.inspectorTab !== 'prototype' || !relevant) bhwHide();
     if (state.inspectorTab === 'prototype' && !state.editing) {
         $('#inspector').innerHTML = prototypeHtml();
+        renderBhWindow();
         return;
     }
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
@@ -19301,20 +19308,12 @@ function bhFrameSelect(path, value, frames, action, label) {
 }
 /** Ringkasan interaction milik komponen yang dipakai instance (tidak bisa diedit dari instance). */
 function bhInheritedInteractions(list, source, frames) {
-    const actionText = a => {
-        const label = ACTIONS.find(x => x.id === a.type)?.label || a.type;
-        const target = a.type === 'navigate'
-            ? frames.find(f => f.id === a.targetFrameId)?.label
-            : /^open-/.test(a.type)
-                ? (a.targetComponentId ? componentById(a.targetComponentId)?.name : frames.find(f => f.id === a.targetFrameId)?.label)
-                : '';
-        return target ? `${label} → ${target}` : label;
-    };
+    const actionText = a => bhActionText(a, frames);
     return `<p class="small-label bh-inherited-note">Applied from <b>${esc(source)}</b>. Add an interaction here to give this instance its own.</p>`
         + list.map((it, i) => `<div class="bh-card is-inherited"><div class="bh-card-head"><b>Interaction ${i + 1} · ${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b></div>${it.actions.map(a => `<div class="small-label bh-inherited-action">${esc(actionText(a))}</div>`).join('')}</div>`).join('');
 }
 /** Daftar interaction: a trigger and the actions it runs in order, each with the fields its kind needs. */
-function bhInteractionRows(n, frames) {
+function bhInteractionRows(n, frames, opts = {}) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<div class="bh-empty"><b>No interaction yet</b><span>Pick a trigger below, then what it should do, so this component reacts in Preview.</span></div>';
     // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
@@ -19377,12 +19376,20 @@ function bhInteractionRows(n, frames) {
         return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
     };
     const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton };
-    return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>
+    // In the window one interaction is shown on its own (opts.only = its id); its Rules open as a view of their own (opts.rulesOnly).
+    const rulesCount = it => (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
+    const drill = it => `<button type="button" class="bh-drill" data-bhw-sub="rules"><span><b>Rules</b><small>${rulesCount(it) ? `${rulesCount(it)} · first match wins` : 'none yet'}</small></span>${icon('chevronRight', 12)}</button>`;
+    const card = (it, i) => {
+        if (opts.rulesOnly) return rulesHtml(ctx2, it, i, new Set([...BH_SECTIONS, `rules:${it.id}`]));
+        const head = opts.flat ? '' : `<div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>`;
+        return `<div class="bh-card ${opts.flat ? 'flat' : ''}">${head}
         <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
         ${conditionHtml({ esc, state: stateNow, fields: fieldsList, owner: `interactions.${i}.if`, expr: it.if })}
         ${it.actions.map((a, j) => actionRow(`interactions.${i}.actions.${j}`, a, it, `interactions.${i}.actions`, j)).join('')}
         ${addActionAt(`interactions.${i}.actions`)}
-        ${rulesHtml(ctx2, it, i, BH_SECTIONS)}</div>`).join('');
+        ${opts.flat ? drill(it) : rulesHtml(ctx2, it, i, BH_SECTIONS)}</div>`;
+    };
+    return list.map((it, i) => opts.only !== undefined && it.id !== opts.only ? '' : card(it, i)).join('');
 }
 /** The input fields of the screen this layer is on: [[layer id, name]], for "Field is valid" and "Check field". */
 function bhFieldList(n) {
@@ -19481,11 +19488,6 @@ document.addEventListener('click', e => {
     renderInspector();
 });
 const bhPlain = (_title, body) => body;
-function bhStateSection(n) {
-    const open = BH_SECTIONS.has('state');
-    const head = `<div class="section-heading"><button class="sc-toggle" data-bh-section="state" aria-expanded="${open}" aria-label="Toggle state mapping">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<span>State mapping</span></button></div>`;
-    return `<section class="inspector-section sc-section">${head}${open ? `<div class="bh-section-body">${bhStateBody(n)}</div>` : ''}</section>`;
-}
 function bhStateBody(n) {
     const colls = bhStateCollections(n);
     const stateColls = bhCollections().filter(isStateCollection);
@@ -19531,7 +19533,7 @@ function scrollBehaviorHtml(n) {
  * Section Repeat: bind a frame to a List variable. The frame's first child is the template, drawn once per row in Preview;
  * each layer of the template can read a field of the row (text, fill or visibility).
  */
-function repeatHtml(n) {
+function repeatBody(n) {
     const lists = stateStore().variables.filter(v => v.type === 'list');
     const cfg = n.repeat || {}, item = cfg.variableId && lists.find(v => v.id === cfg.variableId);
     const picker = `<label class="field"><span>List</span>${bhSelect('repeat.variableId', 'plain', cfg.variableId || '', [['', lists.length ? '— not repeated —' : 'No List state yet'], ...lists.map(v => [v.id, `${v.name} (${v.scope})`])])}</label>`;
@@ -19554,13 +19556,13 @@ function repeatHtml(n) {
             body += rowsHtml ? `<div class="bh-binds">${rowsHtml}</div>` : '<p class="small-label">Nothing in the template can read a field yet: add text, color or true/false fields to the List.</p>';
         }
     }
-    return section('Repeat', body);
+    return body;
 }
 /** Section Bind to State: layers read a state variable (text, visible) and an Option variable can drive the state mode. */
-function stateBindSection(n) {
+function stateBindBody(n) {
     const state = stateStore(), layers = [], walk = l => { for (const c of doc.children(l.id)) { if (layers.length < 60) layers.push(c); walk(c); } };
     walk(n);
-    return section('Bind to State', stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) }));
+    return stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) });
 }
 // ===== Capabilities (Add Behavior): Can type, Has validation, Has options, Opens popup, On click, Has loading, Show feedback =====
 const BH_UI = { addOpen: false, pick: null };       // the Add Behavior panel is open / the slot waiting for a click on a layer ({ nodeId, path })
@@ -19618,7 +19620,6 @@ function bhCapContext(n) {
         feedbackNote: b => bhFeedbackNote(b, n),
     };
     c.suggestions = bhSuggestions(n, c);
-    c.conventionHtml = conventionHtml(c);
     return c;
 }
 function bhFeedbackNote(b, n) {
@@ -19660,7 +19661,6 @@ function bhSuggestions(n, c) {
     });
     return out;
 }
-function bhCapabilitiesBlock(n) { return behaviorsHtml(bhCapContext(n)); }
 /** Add what a preset (or one capability) brings to a component. Only adds: what is there is kept. */
 function bhApplyPlan(n, plan) {
     if (plan.input?.typeable) { n.typeable = true; const ib = { ...(n.inputBehavior || {}) }; ib.typeable = { ...(ib.typeable || {}), ...plan.input.typeable }; n.inputBehavior = normalizeInputBehavior(ib); }
@@ -19687,7 +19687,92 @@ function bhPickLayer(id) {
     select([n.id]);
     return true;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && BH_UI.pick) { BH_UI.pick = null; renderInspector(); } }, true);
+// Esc: first cancels picking a layer, then goes back from a drilled-in view, then closes the window.
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    // What Esc closes here must not also clear the selection.
+    const used = BH_UI.pick || BHW.kind;
+    if (BH_UI.pick) { BH_UI.pick = null; renderInspector(); }
+    else if (BHW.kind && BHW.sub) { BHW.sub = ''; renderBhWindow(); }
+    else if (BHW.kind) { bhwHide(); renderInspector(); }
+    if (used) e.stopImmediatePropagation();
+}, true);
+// ===== Behavior tab: compact lists in the panel, editing in one floating window =====
+// The panel only lists (a header with "+", one row per item). A row, or "+", opens the item in #bh-window (the Variables window's
+// shell, 320px wide, left of the inspector). Changes apply live; closing the window returns to the list.
+const BHW = { kind: null, key: '', sub: '', nodeId: null, y: 0, next: null };
+const bhwIs = (kind, key) => BHW.kind === kind && BHW.key === key;
+/** What an action does, in words ("Navigate → Home"). */
+function bhActionText(a, frames) {
+    const label = ACTIONS.find(x => x.id === a.type)?.label || a.type;
+    const target = a.type === 'navigate'
+        ? frames.find(f => f.id === a.targetFrameId)?.label
+        : /^open-/.test(a.type)
+            ? (a.targetComponentId ? componentById(a.targetComponentId)?.name : frames.find(f => f.id === a.targetFrameId)?.label)
+            : '';
+    return target ? `${label} → ${target}` : label;
+}
+const bhTriggerLabel = it => TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger;
+/** Why an interaction row has a warning: an action that needs a place to go and has none. */
+function bhInteractionWarn(it) {
+    const bad = it.actions.find(a => (a.type === 'navigate' && !a.targetFrameId) || (/^open-(dropdown|overlay|popover)$/.test(a.type) && !a.targetComponentId && !a.targetFrameId));
+    return bad ? `${ACTIONS.find(x => x.id === bad.type)?.label || bad.type} has no target yet: choose one in the window.` : '';
+}
+/** One line for an interaction row: "Navigate → Home · if … · 2 rules". */
+function bhInteractionLine(it, frames) {
+    const parts = [it.actions.map(a => bhActionText(a, frames)).join(', then ')];
+    if (it.if) parts.push('with a condition');
+    const rules = (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
+    if (rules) parts.push(`${rules} ${rules === 1 ? 'rule' : 'rules'}`);
+    return parts.filter(Boolean).join(' · ');
+}
+const bhRemoveBtn = (attrs, label) => `<button type="button" class="icon-button small" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${icon('close', 12)}</button>`;
+const bhRow = o => itemRow({ esc, icon, active: bhwIs(...Object.values(splitOpen(o.open))), ...o });
+function bhInteractionsSection(n, frames) {
+    const own = normalizeInteractions(n.interactions);
+    const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
+    const inherited = n.isInstance && !own.length ? interactionsForNode(n, src, set) : null;
+    const owner = inherited?.list.length ? (normalizeInteractions(set?.interactions).length ? set?.name : src?.name) : '';
+    let rows = own.map((it, i) => bhRow({ ic: 'interaction', name: bhTriggerLabel(it), summary: bhInteractionLine(it, frames), warn: bhInteractionWarn(it), open: `interaction:${it.id}`, remove: bhRemoveBtn(`data-bh-act="del-interaction" data-bh-index="${i}"`, 'Remove interaction') }));
+    let tail = '';
+    if (inherited?.list.length) {
+        rows = inherited.list.map(it => itemRow({ esc, icon, ic: 'interaction', name: bhTriggerLabel(it), summary: bhInteractionLine(it, frames), on: true }));
+        tail = `<p class="bh-item-note">From ${esc(owner || 'the main component')}. <button type="button" class="vw-btn ghost" data-bh-act="override-interactions">Edit on this instance</button></p>`;
+    }
+    return sectionBlock({ esc, icon, title: 'Interactions', add: 'new-interaction:', addTitle: 'Add interaction', rows, empty: 'No interaction yet. Add one so this reacts in Preview.' }).replace(/<\/section>$/, `${tail}</section>`);
+}
+function bhBehaviorSection(n) {
+    const c = bhCapContext(n), secs = capabilitySections(c).filter(s => s.kind !== 'on-click');
+    const rows = secs.map(s => {
+        const toggle = s.toggle ? (s.toggle.kind === 'proto' ? { proto: s.toggle.key } : { path: s.toggle.path, invert: true }) : (s.index !== undefined ? { path: `${s.path}.enabled` } : null);
+        const removable = s.index !== undefined ? !c.isInstance : (s.fixed && !s.noActions);
+        const remove = removable ? bhRemoveBtn(s.index !== undefined ? `data-bh-act="del-cap" data-bh-index="${s.index}"` : `data-bh-act="del-cap" data-bh-kind="${s.kind}"`, `Remove ${s.title}`) : '';
+        return bhRow({ ic: ROW_ICON[s.kind] || 'sliders', name: s.title, summary: s.summary || '—', warn: s.issues.map(i => i.why).join(' '), open: `cap:${s.id}`, on: s.enabled, toggle, remove });
+    });
+    const gear = `<button type="button" class="icon-button small" data-bhw-open="settings:" title="Behavior settings (convention, feedback components)" aria-label="Behavior settings">${icon('sliders', 14)}</button>`;
+    const note = c.isInstance && secs.some(s => s.index !== undefined) ? '<p class="bh-item-note">Set on the main component. Here you can turn each on or off and re-map its layers for this instance. <button type="button" class="vw-btn ghost" data-bh-act="go-main">Go to main component</button></p>' : '';
+    return sectionBlock({ esc, icon, title: 'Behavior', add: 'add:', addTitle: 'Add behavior', extra: gear, rows, empty: 'Nothing yet. Add a behavior, or start from a preset.' }).replace(/<\/section>$/, `${note}</section>`);
+}
+function bhStateRows(n) {
+    const type = bhTypeOf(n);
+    return bhStateCollections(n).map(sc => {
+        const states = statesIn(sc.coll, type);
+        const parts = states.map(st => ({ st, mode: modeForState(sc.coll, st, pickedModeId(n.stateModes, sc.coll.id, st)) }));
+        const missing = parts.filter(p => !p.mode).map(p => stateLabel(p.st).toLowerCase());
+        return bhRow({ ic: 'state', name: sc.coll.name, summary: parts.filter(p => p.mode).map(p => `${stateLabel(p.st).toLowerCase()} → ${p.mode.name}`).join(', ') || 'No mode set yet', warn: missing.length ? `No mode for: ${missing.join(', ')}. They use the fallback state.` : '', open: `state:${sc.coll.id}`, remove: bhRemoveBtn(`data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}"`, 'Disconnect this collection') });
+    });
+}
+function bhStateSection(n) { return sectionBlock({ esc, icon, title: 'State mapping', add: 'state:', addTitle: 'Map states', rows: bhStateRows(n), empty: 'No collection connected. States are read from a variable collection with state modes.' }); }
+function bhRepeatSection(n) {
+    const cfg = n.repeat || {}, item = cfg.variableId && stateStore().variables.find(v => v.id === cfg.variableId);
+    const rows = cfg.variableId ? [bhRow({ ic: 'repeat', name: 'Repeat', summary: item ? `List “${item.name}”, first child is the row template` : 'The List it used no longer exists', warn: item ? '' : 'The List this frame used no longer exists.', open: 'repeat:', remove: bhRemoveBtn('data-bh-act="clear-repeat"', 'Stop repeating') })] : [];
+    return sectionBlock({ esc, icon, title: 'Repeat', add: 'repeat:', addTitle: 'Repeat from a List', rows, empty: 'Draws its first child once for each row of a List.' });
+}
+function bhBindSection(n) {
+    const b = n.stateBind || {}, count = Object.keys(b.self || {}).length + Object.values(b.layers || {}).reduce((a, x) => a + Object.keys(x || {}).length, 0);
+    const rows = count ? [bhRow({ ic: 'bind', name: 'Bind to State', summary: `${count} ${count === 1 ? 'binding' : 'bindings'}`, open: 'bind:', remove: bhRemoveBtn('data-bh-act="clear-bind"', 'Remove all bindings') })] : [];
+    return sectionBlock({ esc, icon, title: 'Bind to State', add: 'bind:', addTitle: 'Bind to State', rows, empty: 'Layers show a State value, or appear only when a condition holds.' });
+}
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
@@ -19695,50 +19780,116 @@ function prototypeHtml() {
     const isChildFrame = n.type === 'frame' && n.parentId && !n.component && !n.componentSet && !n.isInstance;
     if (!n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame)
         return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
-    if (isFrame || isChildFrame) {
-        let fhtml = '';
-        if (isFrame) fhtml += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
-            <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
-        fhtml += repeatHtml(n);
-        fhtml += stateBindSection(n);
-        fhtml += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div><select class="wide-button bh-addsel" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`);
-        fhtml += scrollBehaviorHtml(n);
-        return fhtml;
+    const frames = bhFrames();
+    let html = '';
+    if (isFrame)
+        html += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p><label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
+    if (!isFrame && !isChildFrame) {
+        const type = bhTypeOf(n), src = n.isInstance ? chainComponent(n) : n, set = src && parentSetOf(src);
+        const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
+        const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
+        html += `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div>${n.isInstance ? `<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>` : ''}</section>`;
     }
-    const type = bhTypeOf(n);
-    const src = n.isInstance ? chainComponent(n) : n;
-    const set = src && parentSetOf(src);
-    const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
-    const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
-    let html = `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div></section>`;
-    const typeable = n.isInstance ? (n.typeable ?? looksLikeField(n)) : type === 'input';
-    if (n.isInstance)
-        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
-    // The typing settings appear once the layer is marked as a field.
-    html += bhCapabilitiesBlock(n);
-    html += bhStateSection(n);
-    if (n.type === 'frame') html += repeatHtml(n) + stateBindSection(n);
-    const own = normalizeInteractions(n.interactions);
-    // An instance without interactions of its own follows the component; the list is shown read-only.
-    const inherited = n.isInstance && !own.length ? interactionsForNode(n, src, set) : null;
-    const inheritedOwner = normalizeInteractions(set?.interactions).length ? set?.name : src?.name;
-    const addSelect = `<select class="wide-button bh-addsel" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`;
-    if (n.isInstance) {
-        const rows = own.length
-            ? bhInteractionRows(n, bhFrames())
-            : inherited?.list.length ? bhInheritedInteractions(inherited.list, inheritedOwner || compName, bhFrames()) : bhInteractionRows(n, bhFrames());
-        const note = own.length
-            ? '<p class="small-label">This instance has its own interactions, so changes on the component do not affect it. Remove them all to follow the component again.</p>'
-            : inherited?.list.length ? '<button type="button" class="wide-button" data-bh-act="override-interactions">Edit them on this instance</button>' : '';
-        html += section('Interaction', `<div class="bh-list">${rows}</div>${note}${addSelect}`);
-    }
-    else {
-        // Main components and component sets set the interactions every instance inherits.
-        html += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div><p class="small-label">Instances use these automatically until they set interactions of their own.</p>${addSelect}`);
-    }
-    html += scrollBehaviorHtml(n);
-    return html;
+    html += bhInteractionsSection(n, frames);
+    if (!isFrame && !isChildFrame) html += bhBehaviorSection(n) + bhStateSection(n);
+    if (n.type === 'frame') html += bhRepeatSection(n) + bhBindSection(n);
+    return html + scrollBehaviorHtml(n);
 }
+// ----- the window
+/** The window for BHW, or null when what it shows is gone (then it closes). → { title, body, back } */
+function bhwContent(n) {
+    const frames = bhFrames();
+    switch (BHW.kind) {
+        case 'interaction': {
+            const list = normalizeInteractions(n.interactions), i = list.findIndex(x => x.id === BHW.key);
+            if (i < 0) return null;
+            const it = list[i], name = bhTriggerLabel(it);
+            if (BHW.sub === 'rules') return { title: `${name} · Rules`, back: true, body: bhInteractionRows(n, frames, { only: it.id, rulesOnly: true }) };
+            return { title: name, body: bhInteractionRows(n, frames, { only: it.id, flat: true }) + `<button type="button" class="vw-btn ghost bh-win-del" data-bh-act="del-interaction" data-bh-index="${i}">Delete interaction</button>` };
+        }
+        case 'cap': {
+            const c = bhCapContext(n), s = capabilitySections(c).find(x => x.id === BHW.key);
+            if (!s) return null;
+            return { title: s.title, body: suggestionsHtml(c, s.title) + capabilityBodyHtml(c, s) };
+        }
+        case 'add': return { title: 'Add behavior', body: addPanelHtml(bhCapContext(n)) };
+        case 'settings': return { title: 'Behavior settings', body: settingsHtml(bhCapContext(n)) };
+        case 'state': return { title: 'State mapping', body: bhStateBody(n) };
+        case 'repeat': return { title: 'Repeat', body: repeatBody(n) };
+        case 'bind': return { title: 'Bind to State', body: stateBindBody(n) };
+    }
+    return null;
+}
+function bhwHide() {
+    BHW.kind = null; BHW.sub = '';
+    $('#bh-window')?.classList.add('hidden');
+}
+/** Draw (or redraw) the window. Called whenever the inspector redraws, so edits show at once. A render error shows a message and Retry. */
+function renderBhWindow(place) {
+    const n = activeNode();
+    let win = $('#bh-window');
+    if (!BHW.kind || !n || n.id !== BHW.nodeId || state.inspectorTab !== 'prototype') { if (BHW.kind && (!n || n.id !== BHW.nodeId)) BHW.kind = null; win?.classList.add('hidden'); return; }
+    if (!win) {
+        win = document.createElement('section');
+        win.id = 'bh-window';
+        win.className = 'vars-window bh-window hidden';
+        win.setAttribute('role', 'dialog');
+        document.body.appendChild(win);
+        win.addEventListener('change', bhOnChange);
+        wireWindowDrag(win, () => false);
+    }
+    const scroll = win.querySelector('.bh-win-body')?.scrollTop || 0;
+    let content = null;
+    const ok = guarded(() => { content = bhwContent(n); }, err => { content = { title: 'Behavior', body: errorBoundaryHtml('This', err) }; });
+    if (!content) { bhwHide(); return; }
+    win.setAttribute('aria-label', content.title);
+    win.innerHTML = windowHtml({ esc, icon, title: content.title, back: !!content.back, body: content.body });
+    win.querySelector('[data-eb-retry]')?.addEventListener('click', () => renderBhWindow());
+    win.classList.remove('hidden');
+    if (place || !win.style.left) {
+        const r = $('#inspector').getBoundingClientRect(), h = Math.min(win.offsetHeight || 360, innerHeight - 80);
+        win.style.left = Math.max(8, r.left - 328) + 'px';
+        win.style.top = clamp((BHW.y || r.top + 60) - 24, 56, Math.max(56, innerHeight - h - 16)) + 'px';
+    }
+    win.querySelector('.bh-win-body').scrollTop = scroll;
+    void ok;
+}
+function bhwOpen(kind, key = '', y = 0) {
+    const n = activeNode();
+    if (!n) return;
+    Object.assign(BHW, { kind, key, sub: '', nodeId: n.id, y: y || BHW.y });
+    renderInspector();
+    renderBhWindow(true);
+}
+document.addEventListener('click', e => {
+    const t = e.target.closest?.('[data-bhw-open],[data-bhw-close],[data-bhw-back],[data-bhw-sub]');
+    if (!t || e.target.closest('.bh-item-acts')) return;
+    e.preventDefault();
+    if (t.dataset.bhwClose !== undefined) { bhwHide(); renderInspector(); return; }
+    if (t.dataset.bhwBack !== undefined) { BHW.sub = ''; renderBhWindow(); return; }
+    if (t.dataset.bhwSub) { BHW.sub = t.dataset.bhwSub; renderBhWindow(); return; }
+    const { kind, key } = splitOpen(t.dataset.bhwOpen), n = activeNode();
+    if (!n) return;
+    // "+" on Interactions adds one (like Figma) and opens it.
+    if (kind === 'new-interaction') {
+        let id = '';
+        transaction('Add interaction', () => {
+            let list = normalizeInteractions(n.interactions);
+            if (!list.length && n.isInstance) { const src = chainComponent(n), set = src && parentSetOf(src); list = structuredClone(interactionsForNode(n, src, set).list); }
+            id = `i${Date.now().toString(36)}`;
+            list.push({ id, trigger: 'onClick', actions: [{ type: 'navigate' }] });
+            n.interactions = normalizeInteractions(list);
+            doc.touch(n);
+        });
+        bhwOpen('interaction', id, e.clientY);
+        return;
+    }
+    bhwOpen(kind, key, e.clientY);
+});
+document.addEventListener('keydown', e => {
+    const row = e.target.closest?.('.bh-item[data-bhw-open]');
+    if (row && (e.key === 'Enter' || e.key === ' ') && e.target === row) { e.preventDefault(); row.click(); }
+});
 /** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
 function bhWrite(n, path, value) {
     // The file's Convention is not a layer property.
@@ -19876,19 +20027,26 @@ function bhSet(n, t) {
     }
     bhWrite(n, path, value === '' ? undefined : value);
 }
+/** After adding something: the window to open on it. */
+function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
+    if (input) return { kind: 'cap', key: input };
+    const b = behaviorsOf(n, true).find(x => !beforeBehaviors.has(x.id));
+    if (b) return { kind: 'cap', key: b.id };
+    const it = normalizeInteractions(n.interactions).find(i => !beforeInteractions.includes(i.id));
+    return it ? { kind: 'interaction', key: it.id } : null;
+}
 function bhAction(n, t) {
     const act = t.dataset.bhAct;
     if (act === 'toggle-add') { BH_UI.addOpen = !BH_UI.addOpen; return; }
     if (act === 'pick-slot') { BH_UI.pick = BH_UI.pick?.path === t.dataset.bhPath ? null : { nodeId: n.id, path: t.dataset.bhPath }; return; }
     if (act === 'go-main') { const src = chainComponent(n); if (src) goToMainComponent((parentSetOf(src) || src).id, n.id); return; }
-    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { bhApplyPlan(n, plan); BH_UI.addOpen = false; for (const b of behaviorsOf(n)) BH_SECTIONS.add(`cap:${b.id}`); } return; }
+    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { const before = new Set(behaviorsOf(n, true).map(b => b.id)), had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, plan); BHW.next = bhFirstNew(n, before, had, plan.input?.typeable ? 'can-type' : plan.input?.validation ? 'has-validation' : ''); } return; }
     if (act === 'add-cap') {
         const kind = t.dataset.bhKind;
-        if (kind === 'can-type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BH_SECTIONS.add('cap:can-type'); }
-        else if (kind === 'has-validation') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BH_SECTIONS.add('cap:has-validation'); }
-        else if (kind === 'on-click') bhApplyPlan(n, { behaviors: [], input: null, interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate' }] }] });
-        else { bhApplyPlan(n, { behaviors: [{ kind, config: normalizeConfig(kind, {}) }], input: null, interactions: [] }); const b = behaviorsOf(n).find(x => x.kind === kind); if (b) BH_SECTIONS.add(`cap:${b.id}`); }
-        BH_UI.addOpen = false;
+        if (kind === 'can-type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'can-type' }; }
+        else if (kind === 'has-validation') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'has-validation' }; }
+        else if (kind === 'on-click') { const had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, { behaviors: [], input: null, interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate' }] }] }); BHW.next = bhFirstNew(n, new Set(behaviorsOf(n, true).map(b => b.id)), had, ''); }
+        else { bhApplyPlan(n, { behaviors: [{ kind, config: normalizeConfig(kind, {}) }], input: null, interactions: [] }); const b = behaviorsOf(n, true).find(x => x.kind === kind); if (b) BHW.next = { kind: 'cap', key: b.id }; }
         return;
     }
     if (act === 'del-cap') {
@@ -19906,11 +20064,13 @@ function bhAction(n, t) {
         return;
     }
     if (act === 'accept-slot' || act === 'accept-all') {
-        const all = bhCapContext(n).suggestions, pick = act === 'accept-all' ? all : [all[Number(t.dataset.bhIndex)]].filter(Boolean);
+        const all = bhCapContext(n).suggestions, only = t.dataset.bhOnly, pick = act === 'accept-all' ? all.filter(g => !only || g.section === only) : [all[Number(t.dataset.bhIndex)]].filter(Boolean);
         for (const g of pick) bhWrite(n, g.path, g.layerId);
         return;
     }
     if (act === 'reset-convention') { delete doc.data.convention; return; }
+    if (act === 'clear-repeat') { delete n.repeat; return; }
+    if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
     if (act === 'add-action-at') {
         if (!t.value) return;
@@ -20054,9 +20214,11 @@ function bhAction(n, t) {
         return;
     }
 }
-$('#inspector').addEventListener('change', e => {
+function bhOnChange(e) {
     const n = activeNode(), t = e.target;
     if (!n) return;
+    // "Edit convention…" at the end of a slot's list opens the file's Behavior settings instead of mapping a layer.
+    if (t.value === '__convention__') { bhwOpen('settings', '', BHW.y); return; }
     // A name of the file's Convention was edited ("slots.value" / "states.loading": comma separated words).
     if (t.dataset.conv) {
         const [group, key] = t.dataset.conv.split('.');
@@ -20081,10 +20243,11 @@ $('#inspector').addEventListener('change', e => {
         doc.touch(n);
     });
     renderInspector();
-});
+}
+$('#inspector').addEventListener('change', bhOnChange);
 document.addEventListener('click', e => {
     const b = e.target.closest?.('[data-ex-act]');
-    if (!b || !$('#inspector').contains(b)) return;
+    if (!b || !($('#inspector').contains(b) || $('#bh-window')?.contains(b))) return;
     const n = activeNode();
     if (!n) return;
     const at = b.dataset.exAt, i = at.indexOf('|'), owner = at.slice(0, i), path = at.slice(i + 1);
@@ -20101,7 +20264,9 @@ document.addEventListener('click', e => {
     if (!n) return;
     e.preventDefault();
     e.stopPropagation();
+    BHW.next = null;
     transaction('Behavior', () => { bhAction(n, t); doc.touch(n); });
+    if (BHW.next) { const nx = BHW.next; BHW.next = null; bhwOpen(nx.kind, nx.key, BHW.y); return; }
     renderInspector();
 });
 

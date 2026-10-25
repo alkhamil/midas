@@ -16,7 +16,7 @@ function slotRow(c, path, role, current, required) {
     const list = c.layers.filter(layerOk[def.kind] || layerOk.any);
     const armed = c.pick === path;
     return `<div class="bh-slot ${required && !current ? 'is-missing' : ''}"><span class="bh-slot-name" title="${esc(def.hint)}">${esc(def.label)}${required ? ' <i>required</i>' : ''}</span>
-        ${c.bhSelect(path, 'plain', current || '', [['', required ? '— choose a layer —' : '— not set —'], ...list.map(l => [l.id, l.name || l.type])])}
+        ${c.bhSelect(path, 'plain', current || '', [['', required ? '— choose a layer —' : '— not set —'], ...list.map(l => [l.id, l.name || l.type]), ['__convention__', 'Edit convention…']])}
         <button type="button" class="icon-button small bh-pick ${armed ? 'on' : ''}" data-bh-act="pick-slot" data-bh-path="${esc(path)}" title="${armed ? 'Click a layer on the canvas (Esc cancels)' : 'Pick the layer on the canvas'}" aria-label="Pick ${esc(def.label)} on the canvas" aria-pressed="${armed}">⌖</button>
         ${required && !current ? `<small class="bh-warn">Not set: this does not run until you pick a layer.</small>` : ''}</div>`;
 }
@@ -105,32 +105,27 @@ export function capabilitySections(c) {
     return out;
 }
 
-function sectionHtml(c, s) {
-    const { esc } = c, key = `cap:${s.id}`, open = c.open.has(key);
-    const mover = s.index !== undefined && !c.isInstance;
-    const toggle = s.toggle
-        ? (s.toggle.kind === 'proto' ? `<input type="checkbox" data-proto="${s.toggle.key}" ${s.enabled ? 'checked' : ''} aria-label="${esc(s.title)} on" title="Turn on or off">`
-            : `<input type="checkbox" data-bh-path="${esc(s.toggle.path)}" data-bh-kind="bool" data-bh-invert="1" ${s.enabled ? 'checked' : ''} aria-label="${esc(s.title)} on" title="Turn on or off">`)
-        : s.index !== undefined ? `<input type="checkbox" data-bh-path="${esc(s.path)}.enabled" data-bh-kind="bool" ${s.enabled ? 'checked' : ''} aria-label="${esc(s.title)} on" title="${c.isInstance ? 'Turn on or off for this instance' : 'Turn on or off'}">` : '<span></span>';
-    const acts = mover
-        ? `<button type="button" class="icon-button small" data-bh-act="move-cap" data-bh-index="${s.index}" data-bh-dir="-1" ${s.index === 0 ? 'disabled' : ''} title="Move up" aria-label="Move up">↑</button><button type="button" class="icon-button small" data-bh-act="move-cap" data-bh-index="${s.index}" data-bh-dir="1" ${s.index === s.count - 1 ? 'disabled' : ''} title="Move down" aria-label="Move down">↓</button><button type="button" class="icon-button small" data-bh-act="del-cap" data-bh-index="${s.index}" title="Delete" aria-label="Delete ${esc(s.title)}">×</button>`
-        : s.fixed && !s.noActions ? `<button type="button" class="icon-button small" data-bh-act="del-cap" data-bh-kind="${s.kind}" title="Delete" aria-label="Delete ${esc(s.title)}">×</button>` : '';
-    const warn = s.issues.length ? `<span class="bh-cap-warn" title="${esc(s.issues.map(i => i.why).join(' '))}">⚠</span>` : '';
-    let body = '';
-    if (open) {
-        const f = TITLES[s.kind];
-        body = `<div class="bh-cap-body">${s.issues.map(i => `<p class="small-label bh-warn">⚠ ${esc(i.why)}</p>`).join('')}${f ? f(c, s) : ''}</div>`;
-    }
-    return `<div class="bh-cap ${s.enabled ? '' : 'off'}"><div class="bh-cap-head">${toggle}<button type="button" class="bh-cap-title" data-bh-section="${esc(key)}" aria-expanded="${open}"><b>${esc(s.title)}</b><small>${esc(s.summary)}</small></button>${warn}<span class="bh-rule-acts">${acts}</span></div>${body}</div>`;
+/** What the window of a capability shows: why it does not run (when it does not), then its fields. */
+export function capabilityBodyHtml(c, s) {
+    const { esc } = c, f = TITLES[s.kind];
+    withAdvanced(c);
+    return `${s.issues.map(i => `<p class="small-label bh-warn">⚠ ${esc(i.why)}</p>`).join('')}${f ? f(c, s) : ''}`;
 }
-
-function suggestionsHtml(c) {
+/** "Advanced": rarely used fields stay folded away. */
+export function withAdvanced(c) {
     const { esc } = c;
-    if (!c.suggestions.length) return '';
-    return `<div class="bh-suggest"><div class="bh-suggest-head"><b>Suggestions</b><small>from this file’s Convention</small><button type="button" class="vw-btn ghost" data-bh-act="accept-all">Accept all</button></div>${c.suggestions.map((g, i) => `<div class="bh-suggest-row"><span><b>${esc(SLOT_ROLES[g.role].label)}</b> → “${esc(g.name)}”<small>${esc(g.section)}</small></span><button type="button" class="vw-btn ghost" data-bh-act="accept-slot" data-bh-index="${i}">Accept</button></div>`).join('')}</div>`;
+    c.advanced = (key, html) => { const k = `adv:${key}`, on = c.open.has(k); return `<div class="bh-adv"><button type="button" class="bh-adv-btn" data-bh-section="${esc(k)}" aria-expanded="${on}">${on ? '▾' : '▸'} Advanced</button>${on ? `<div class="bh-adv-body">${html}</div>` : ''}</div>`; };
 }
 
-function addPanelHtml(c) {
+/** `only` = the title of one section: just its suggestions (the indexes stay those of the whole list). */
+export function suggestionsHtml(c, only = '') {
+    const { esc } = c;
+    const list = c.suggestions.map((g, i) => ({ g, i })).filter(x => !only || x.g.section === only);
+    if (!list.length) return '';
+    return `<div class="bh-suggest"><div class="bh-suggest-head"><b>Suggestions</b><small>from this file’s Convention</small><button type="button" class="vw-btn ghost" data-bh-act="accept-all" data-bh-only="${esc(only)}">Accept all</button></div>${list.map(({ g, i }) => `<div class="bh-suggest-row"><span><b>${esc(SLOT_ROLES[g.role].label)}</b> → “${esc(g.name)}”<small>${esc(g.section)}</small></span><button type="button" class="vw-btn ghost" data-bh-act="accept-slot" data-bh-index="${i}">Accept</button></div>`).join('')}</div>`;
+}
+
+export function addPanelHtml(c) {
     const { esc } = c;
     const sug = c.suggestedPreset;
     const chips = PRESET_FAMILIES.map(f => `<div class="bh-preset-row"><small>${esc(f)}</small><div class="bh-chips">${PRESETS.filter(p => p.family === f).map(p => `<button type="button" class="bh-chip-btn ${p.id === sug ? 'suggested' : ''}" data-bh-act="add-preset" data-bh-preset="${p.id}" title="${esc(p.caps.map(x => CAPABILITIES[x.kind].label).join(' + '))}">${esc(p.label)}</button>`).join('')}</div></div>`).join('');
@@ -143,29 +138,15 @@ function addPanelHtml(c) {
     return `<div class="bh-add-panel"><div class="bh-add-title">Start from${sug ? ` <small>suggested for “${esc(c.node.name)}”</small>` : ''}</div>${chips}<div class="bh-add-title">Or add one capability</div>${groups || '<p class="small-label">Everything that fits is already added.</p>'}${hidden.length ? `<p class="small-label" title="${esc(hidden.map(i => `${CAPABILITIES[i.k].label}: ${i.a.reason}`).join('\n'))}">${hidden.length} more do not fit this component (hover to see why).</p>` : ''}</div>`;
 }
 
-/** The block at the top of the Behavior tab for a component or an instance. */
-export function behaviorsHtml(c) {
-    const { esc } = c, secs = capabilitySections(c);
-    // "Advanced": rarely used fields stay folded away.
-    c.advanced = (key, html) => { const k = `adv:${key}`, on = c.open.has(k); return `<div class="bh-adv"><button type="button" class="bh-adv-btn" data-bh-section="${esc(k)}" aria-expanded="${on}">${on ? '▾' : '▸'} Advanced</button>${on ? `<div class="bh-adv-body">${html}</div>` : ''}</div>`; };
-    const addBtn = `<button type="button" class="vw-btn bh-add-btn" data-bh-act="toggle-add" aria-expanded="${c.addOpen}">+ Add Behavior</button>`;
-    if (c.isInstance && !c.canAddHere) { /* instances add only what is kept on themselves */ }
-    if (!secs.length)
-        return `<div class="bh-empty-add"><p>This component does nothing yet.</p>${addBtn}</div>${c.addOpen ? addPanelHtml(c) : ''}${c.conventionHtml}`;
-    return `<div class="bh-caps"><div class="bh-caps-head"><b>Behavior</b>${addBtn}</div>${c.addOpen ? addPanelHtml(c) : ''}${c.isInstance && secs.some(s => s.index !== undefined) ? `<p class="small-label">Set on the main component. Here you can turn each on or off and re-map its layers for this instance. <button type="button" class="vw-btn ghost" data-bh-act="go-main">Go to main component</button></p>` : ''}${suggestionsHtml(c)}${secs.map(s => sectionHtml(c, s)).join('')}</div>${c.conventionHtml}`;
-}
-
-// ---------------------------------------------------------------------------------------------------- Convention panel
-/** Per file: the slot names, the state names and the component that draws each kind of feedback. */
-export function conventionHtml(c) {
-    const { esc } = c, conv = c.convention, open = c.open.has('convention');
-    const head = `<div class="bh-rules-head"><button type="button" class="sc-toggle" data-bh-section="convention" aria-expanded="${open}"><span class="bh-caret">${open ? '▾' : '▸'}</span><b>Convention</b></button><small>names this file treats as standard</small></div>`;
-    if (!open) return `<div class="bh-rules bh-conv">${head}</div>`;
+// ---------------------------------------------------------------------------------------------------- Behavior settings (file level)
+/** Per file: the slot names, the state names and the component that draws each kind of feedback. Not a property of a layer. */
+export function settingsHtml(c) {
+    const { esc } = c, conv = c.convention;
     const row = (group, key) => `<label class="field bh-wide"><span>${esc(key)}</span><input data-conv="${group}.${key}" value="${esc((conv[group][key] || []).join(', '))}" placeholder="${esc((DEFAULT_CONVENTION[group][key] || []).join(', '))}" spellcheck="false"></label>`;
-    return `<div class="bh-rules bh-conv">${head}<div class="bh-conv-body">
-        <p class="small-label">When a layer or a mode is named like one of these, Behavior suggests it for that role. Nothing is mapped until you accept.</p>
+    return `<p class="small-label">These settings belong to the whole file, not to the selected layer.</p>
+        <div class="bh-set-title">Feedback components</div><p class="small-label">What draws each kind of “Show feedback”. Empty = Preview’s built-in one, marked “built-in”.</p>${Object.keys(conv.feedback).map(k => c.componentButton(`convention.feedback.${k}`, conv.feedback[k], k[0].toUpperCase() + k.slice(1))).join('')}
+        <div class="bh-set-title">Convention</div><p class="small-label">When a layer or a mode is named like one of these, Behavior suggests it for that role. Nothing is mapped until you accept.</p>
         <div class="small-label"><b>Slots</b></div>${Object.keys(conv.slots).map(k => row('slots', k)).join('')}
         <div class="small-label"><b>States</b> <small>(modes of a * states collection)</small></div>${Object.keys(conv.states).map(k => row('states', k)).join('')}
-        <div class="small-label"><b>Feedback components</b> <small>what draws each kind of “Show feedback”</small></div>${Object.keys(conv.feedback).map(k => c.componentButton(`convention.feedback.${k}`, conv.feedback[k], k[0].toUpperCase() + k.slice(1))).join('')}
-        <button type="button" class="vw-btn ghost" data-bh-act="reset-convention">Reset to defaults</button></div></div>`;
+        <button type="button" class="vw-btn ghost" data-bh-act="reset-convention">Reset to defaults</button>`;
 }

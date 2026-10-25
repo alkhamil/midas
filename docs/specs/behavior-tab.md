@@ -371,9 +371,40 @@ Layer teks di *Bind to State* punya pilihan **Text with {placeholders}**: teks l
 
 ## Capabilities, slots, Convention (Phase 3)
 
-Tab Behavior kosong hanya menampilkan **Add Behavior**. Panelnya: baris *Start from* (preset bernama Ant Design) lalu capability
-per grup Input / Action / Data / Feedback; capability yang tidak cocok dengan layer disembunyikan ("N hidden"). Tiap capability
-tampil sebagai section yang bisa dilipat: ringkasan satu baris, toggle enable, urutan, hapus, dan lipatan **Advanced**.
+### Struktur panel (daftar di inspector, edit di window)
+
+Inspector hanya berisi **daftar ringkas**, seperti tab Design dan panel prototype Figma. Tiap section punya header dengan tombol **+**:
+*Interactions*, *Behavior* (ikon gear = Behavior settings), *State mapping*, *Repeat*, *Bind to State* (Repeat dan Bind hanya untuk frame).
+Satu item = satu baris: ikon, nama, ringkasan satu baris (*On click · Navigate → Home*, *Can type · Text*), tanda ⚠ bila ada slot wajib
+yang belum di-map atau target yang kosong (alasannya ada di window), dan di saat hover toggle enable + tombol hapus. Tidak ada form di
+panel; hanya Disabled (instance), Frame role dan Scroll Behavior yang tetap inline.
+
+**+** atau klik baris membuka item di **window mengambang** `#bh-window` (cangkang yang sama dengan window Variables: `.vars-window`,
+title bar yang bisa diseret, `wireWindowDrag`). Lebar 320px, di kiri inspector, satu window pada satu waktu, isi menggulung sendiri.
+Perubahan berlaku langsung; X atau Esc menutup (Esc tidak ikut membatalkan seleksi), ganti seleksi juga menutup. `BHW` di
+`midas.js` menyimpan `{ kind, key, sub }`; `renderInspector()` menggambar ulang window setelah daftar. Isi window per `kind`:
+
+| kind | key | isi |
+|---|---|---|
+| `interaction` | id interaction | When, If, action + parameter, baris **Rules ›**. Rules dibuka sebagai tampilan dalam window yang sama (`sub: 'rules'`, tombol panah kembali di title bar; Esc kembali dulu, baru menutup) |
+| `cap` | id capability | alasan peringatan, saran Convention untuk capability itu (Accept / Accept all), slot, aturan validasi, Advanced |
+| `add` | | Add behavior: *Start from* preset, lalu capability per grup. Memilih satu langsung membuka window konfigurasinya |
+| `settings` | | **Behavior settings** (level file): Feedback components dan Convention. Dibuka dari ikon gear di header Behavior dan dari *Edit convention…* di dropdown slot |
+| `state` | | State mapping (hubungkan collection, mode per state, override) |
+| `repeat` / `bind` | | isi section Repeat / Bind to State |
+
+"+" di Interactions langsung menambah interaction (On click → Navigate, seperti Figma) dan membukanya. Interaction tidak punya field
+`enabled`, jadi barisnya hanya punya tombol hapus (skema tidak diubah). Instance tanpa interaction sendiri menampilkan interaction
+dari main component sebagai baris baca-saja dengan tombol *Edit on this instance*. Kode: `behaviorPanelUi.js` (baris, header, cangkang
+window; murni, dites di `behaviorPanel.test.js`), `capabilitiesUi.js` (isi window capability, add, settings).
+
+Label di window punya kolom sendiri (84px); label lebar penuh (`.bh-wide`) ditumpuk di atas kontrolnya. Ini memperbaiki teks yang
+saling menimpa pada kartu "Can type" (label tadinya dijepit di kotak 28px).
+
+### Add Behavior
+
+Tab kosong hanya menampilkan baris kosong dan **+**. Window Add behavior: baris *Start from* (preset bernama Ant Design) lalu capability
+per grup Input / Action / Data / Feedback; capability yang tidak cocok dengan layer disembunyikan ("N more do not fit").
 
 | Capability | Slots (* = wajib) | Disimpan di |
 |---|---|---|
@@ -390,9 +421,9 @@ Mapping slot disimpan di **master**; instance hanya menyimpan override (`behavio
 `sourceId` → nama yang sama. Slot wajib yang belum di-map memberi peringatan terlihat di section dan behavior itu tidak jalan
 (Preview menampilkan alasannya, mis. *Select: Value is not set. The popup does not open until it is mapped.*).
 
-**Convention** (`doc.data.convention`, per file): nama slot, nama state, dan komponen untuk tiap jenis feedback. Hanya
-*menyarankan*: banner di tab menawarkan **Accept** per slot atau **Accept all**; tidak ada yang di-map sendiri. Panel kecil
-bisa diedit. Skor nama: sama persis > diawali/diakhiri > mengandung sebagai kata; satu layer hanya untuk satu role; value ↔
+**Convention** (`doc.data.convention`, per file): nama slot, nama state, dan komponen untuk tiap jenis feedback. Ini pengaturan
+file, bukan properti layer, jadi ada di window **Behavior settings**. Hanya *menyarankan*: window capability menawarkan **Accept**
+per slot atau **Accept all**; tidak ada yang di-map sendiri. Skor nama: sama persis > diawali/diakhiri > mengandung sebagai kata; satu layer hanya untuk satu role; value ↔
 placeholder boleh berbagi satu layer; satu-satunya layer teks dipakai untuk role teks wajib.
 
 **Preset** (`planPreset`): Trigger (Button, FloatButton), Text entry (Input, TextArea, Password, Search, InputNumber,
