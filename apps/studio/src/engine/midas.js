@@ -8,7 +8,8 @@ import { stateBindHtml } from './behaviorUi.js';
 import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml } from './capabilitiesUi.js';
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
-import { castCell, columnLabel, editColumns, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
+import { setRowRefs } from './rulesUi.js';
+import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
@@ -9508,7 +9509,7 @@ function selectField(prop, value, values) { return `<select class="full-width" d
 function renderInspector() {
     // Tab Behavior hanya ada kalau yang dipilih memang komponen, instance, atau frame.
     const sel = activeNode();
-    const relevant = !!sel && (sel.isInstance || sel.component || sel.componentSet || (sel.type === 'frame' && !sel.parentId && !sel.component && !sel.componentSet && !sel.isInstance));
+    const relevant = !!sel && (sel.isInstance || sel.component || sel.componentSet || ((sel.type === 'frame' && !sel.parentId && !sel.component && !sel.componentSet && !sel.isInstance) || (sel.type === 'frame' && !!sel.parentId && !sel.isInstance && inComponentTree(sel))));
     const tabBtn = document.getElementById('inspector-tab-behavior');
     if (tabBtn) tabBtn.style.display = relevant ? '' : 'none';
     if (!relevant && state.inspectorTab === 'prototype') {
@@ -19937,6 +19938,24 @@ function bhBindSection(n) {
     const rows = count ? [bhRow({ ic: 'bind', name: 'Bind to State', summary: `${count} ${count === 1 ? 'binding' : 'bindings'}`, open: 'bind:', remove: bhRemoveBtn('data-bh-act="clear-bind"', 'Remove all bindings') })] : [];
     return sectionBlock({ esc, icon, title: 'Bind to State', add: 'bind:', addTitle: 'Bind to State', rows, empty: 'Layers show a State value, or appear only when a condition holds.' });
 }
+/**
+ * The row references a layer can use: only inside the row template of a table (Has rows, row slot). Walks up from the layer: the first
+ * instance with an enabled Has rows whose row slot is one of the layers on the way up decides the List.
+ */
+function bhRowRefs(n) {
+    const chainIds = new Set();
+    for (let c = n; c; c = doc.get(c.parentId)) {
+        chainIds.add(c.id);
+        if (c.sourceId) chainIds.add(c.sourceId);
+        if (!c.isInstance && !c.component) continue;
+        const rows = behaviorsOf(c).find(b => b.kind === 'has-rows' && b.enabled);
+        if (rows && chainIds.has(rows.slots?.row) && rows.config?.source) {
+            const list = stateStore().variables.find(v => v.id === rows.config.source);
+            return list ? rowRefsOf(list) : [];
+        }
+    }
+    return [];
+}
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
@@ -19945,6 +19964,7 @@ function prototypeHtml() {
     if (!n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame)
         return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
     const frames = bhFrames();
+    setRowRefs(bhRowRefs(n));
     let html = '';
     if (isFrame)
         html += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p><label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);

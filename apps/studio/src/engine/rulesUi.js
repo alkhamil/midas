@@ -6,10 +6,16 @@ import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, SET_OPS,
 const lit = value => ({ op: 'value', value });
 
 /** What the condition builder offers to read: Preview's own values, then State and derived values. */
+// Row references ($row.<field>, $rowIndex, $isSelected) are offered only while the layer sits inside a table's row template.
+// The Behavior tab sets them for the layer it draws (setRowRefs) and clears them afterwards.
+let ROW_REFS = [];
+/** [[ref, label]] of the row references in scope (empty outside a row template). */
+export function setRowRefs(list) { ROW_REFS = Array.isArray(list) ? list : []; }
+export function rowRefs() { return ROW_REFS; }
 export function conditionRefs(state) {
-    return [...BUILTINS.map(b => [b.id, b.name]), ...state.variables.map(v => [v.id, v.name]), ...state.derived.map(d => [d.id, `${d.name} (derived)`])];
+    return [...BUILTINS.map(b => [b.id, b.name]), ...state.variables.map(v => [v.id, v.name]), ...state.derived.map(d => [d.id, `${d.name} (derived)`]), ...ROW_REFS];
 }
-const nameFinder = state => id => BUILTINS.find(b => b.id === id)?.name || state.variables.find(v => v.id === id)?.name || state.derived.find(d => d.id === id)?.name || '';
+const nameFinder = state => id => BUILTINS.find(b => b.id === id)?.name || state.variables.find(v => v.id === id)?.name || state.derived.find(d => d.id === id)?.name || ROW_REFS.find(r => r[0] === id)?.[1] || '';
 /** A condition in words, for one-line summaries. `fields` = [[layer id, name]]. */
 export const conditionWords = (state, fields, expr) => describeExpr(expr, nameFinder(state), id => fields.find(f => f[0] === id)?.[1] || '');
 
@@ -22,7 +28,7 @@ export function conditionHtml({ esc, state, fields, owner, expr, label = 'If', a
     return `<div class="bh-cond"><div class="bh-cond-head"><b>${esc(label)}</b><button type="button" class="icon-button small" data-bh-act="del-cond" data-bh-path="${esc(owner)}" title="Remove the condition" aria-label="Remove the condition">×</button></div>${exprHtml({ esc, state, refs: conditionRefs(state), layers: fields }, owner, expr)}</div>`;
 }
 
-const valueEditor = (ctx, owner, expr) => exprHtml({ esc: ctx.esc, state: ctx.state, refs: [...ctx.state.variables.map(v => [v.id, v.name]), ...ctx.state.derived.map(d => [d.id, `${d.name} (derived)`])], allow: id => id === 'value' || id === 'var' }, owner, expr || lit(''));
+const valueEditor = (ctx, owner, expr) => exprHtml({ esc: ctx.esc, state: ctx.state, refs: [...ctx.state.variables.map(v => [v.id, v.name]), ...ctx.state.derived.map(d => [d.id, `${d.name} (derived)`]), ...ROW_REFS], allow: id => id === 'value' || id === 'var' }, owner, expr || lit(''));
 
 /** Editors of the actions Phase 2 adds. ctx = { esc, state, fields, bhSelect, renderAction, addActionAt } */
 export function stateActionFields(ctx, p, a, it) {
