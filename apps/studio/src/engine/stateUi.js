@@ -1,31 +1,13 @@
 // The State tab of the Variables window: state variables (typed, with an initial value and a scope) and derived values built
 // from dropdown sentences. All rules live in @midas/builder-core (state.js, expr.js); this file only draws and wires them.
 //   api = { state(), tx(label, fn(state)), render(), esc }      ui = { open: Set(variable ids), menu: boolean }
-import { COMPARATORS, DEFAULT_SCHEMA, STATE_FIELD_TYPES, LIST_ITEM_TYPES, OPERATIONS, STATE_SCOPES, STATE_TYPES, createEvalCtx, defaultExpr, defaultValue, fieldDefault, fitRows, formatValue, getAt, parseSchema, schemaOf, schemaText, setAt, uniqueStateName } from './behavior.js';
+import { DEFAULT_SCHEMA, STATE_FIELD_TYPES, LIST_ITEM_TYPES, STATE_SCOPES, STATE_TYPES, SCENARIO_KINDS, DEFAULT_SCENARIOS, createEvalCtx, defaultExpr, fieldDefault, fitRows, formatValue, parseSchema, schemaOf, schemaText, uniqueStateName, scenariosOf } from './behavior.js';
+
+import { exprHtml, exprTarget, editExpr, editArgs } from './exprUi.js';
 
 const GLYPH = { string: 'T', number: '#', boolean: '◐', option: '≡', list: '☰', object: '{}', date: 'D', file: 'F' };
 const TYPE_LABEL = Object.fromEntries(STATE_TYPES.map(t => [t.id, t.label]));
 const uid = () => `st${Math.random().toString(36).slice(2, 10)}`;
-
-/** Text typed into a "fixed value" box as a value: true / false and numbers keep their type. */
-export function parseLiteral(text) {
-    const t = String(text).trim();
-    if (t === 'true') return true;
-    if (t === 'false') return false;
-    if (t !== '' && Number.isFinite(+t)) return +t;
-    return String(text);
-}
-
-/** The fields of the list an expression stands for (a state list, a derived list, or a filter of one); [] when unknown. */
-export function fieldsOfExpr(e, state, depth = 0) {
-    if (!e || depth > 8) return [];
-    if (e.op === 'filter') return fieldsOfExpr(e.list, state, depth + 1);
-    if (e.op !== 'var') return [];
-    const v = state.variables.find(x => x.id === e.ref);
-    if (v) return schemaOf(v);
-    const d = state.derived.find(x => x.id === e.ref);
-    return d ? fieldsOfExpr(d.expr, state, depth + 1) : [];
-}
 
 function valueText(v) {
     if (Array.isArray(v)) return `${v.length} ${v.length === 1 ? 'row' : 'rows'}`;
@@ -36,41 +18,8 @@ function valueText(v) {
 export function stateTabHtml(api, ui) {
     const { esc } = api, state = api.state();
     const ev = createEvalCtx(state);
-    const refs = state.variables.map(v => [v.id, v.name]);
+    const refs = [...state.variables.map(v => [v.id, v.name]), ...state.derived.map(d => [d.id, `${d.name} (derived)`])];
     const opt = (items, cur, blank) => `${blank ? `<option value="">${esc(blank)}</option>` : ''}${items.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(l)}</option>`).join('')}`;
-
-    // ---- one expression, as a sentence of dropdowns ----
-    const node = (did, e, path) => {
-        const at = `${esc(did)}|${path}`, self = state.derived.find(d => d.id === did);
-        const pick = `<select class="st-op" data-st-op="${at}" aria-label="Operation">${OPERATIONS.map(o => `<option value="${o.id}" ${o.id === e?.op ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
-        const cmp = key => `<select data-st-cmp="${at}" data-st-key="${key}" aria-label="Comparison">${COMPARATORS.map(c => `<option value="${c.id}" ${c.id === e[key] ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>`;
-        const child = key => `<div class="st-child">${node(did, e[key], path ? `${path}.${key}` : key)}</div>`;
-        const field = (key, listExpr) => {
-            const fs = fieldsOfExpr(listExpr, state);
-            return fs.length
-                ? `<select data-st-field="${at}" aria-label="Field">${opt(fs.map(f => [f.key, f.key]), e[key] || '', 'the value itself')}</select>`
-                : `<input data-st-field="${at}" value="${esc(e[key] || '')}" placeholder="field" spellcheck="false" aria-label="Field">`;
-        };
-        let body = '';
-        switch (e?.op) {
-            case 'var': {
-                const derivedRefs = state.derived.filter(d => d.id !== self?.id).map(d => [d.id, `${d.name} (derived)`]);
-                body = `<select data-st-ref="${at}" class="${e.ref ? '' : 'st-warn'}" aria-label="Variable">${opt([...refs, ...derivedRefs], e.ref, 'Choose a variable…')}</select>`;
-                break;
-            }
-            case 'value': body = `<input data-st-lit="${at}" value="${esc(e.value ?? '')}" placeholder="value" spellcheck="false" title="true, false and numbers keep their type" aria-label="Fixed value">`; break;
-            case 'count': body = child('list'); break;
-            case 'sum': body = `${field('field', e.list)}<span class="st-word">in</span>${child('list')}`; break;
-            case 'filter': body = `${child('list')}<span class="st-word">where</span>${field('field', e.list)}${cmp('cmp')}${child('value')}`; break;
-            case 'length': case 'isEmpty': body = child('of'); break;
-            case 'equals': body = `${child('a')}<span class="st-word">equals</span>${child('b')}`; break;
-            case 'compare': body = `${child('a')}${cmp('cmp')}${child('b')}`; break;
-            case 'and': case 'or': body = `${(e.args || []).map((_, i) => `<div class="st-child st-arg">${node(did, e.args[i], `${path ? path + '.' : ''}args.${i}`)}<button class="icon-button small" data-st-act="del-arg" data-st-at="${at}" data-st-i="${i}" title="Remove" aria-label="Remove item ${i + 1}">×</button></div>`).join('')}<button class="vw-btn ghost" data-st-act="add-arg" data-st-at="${at}">+ Add</button>`; break;
-            case 'not': body = child('arg'); break;
-            default: break;
-        }
-        return `<div class="st-node">${pick}${body}</div>`;
-    };
 
     // ---- state variables ----
     const initialEditor = v => {
@@ -130,15 +79,20 @@ export function stateTabHtml(api, ui) {
             <div class="st-initial ${err ? 'st-error' : ''}" title="Value from the initial state">${err ? esc(err) : `= ${esc(valueText(val))}`}</div>
             <span class="st-acts"><button class="vw-mini" data-st-act="del-derived" data-st-id="${esc(d.id)}" title="Delete" aria-label="Delete">×</button></span>
         </div>
-        <div class="st-expr">${node(d.id, d.expr, '')}</div></div>`;
+        <div class="st-expr">${exprHtml({ esc, state, refs, selfId: d.id, allow: id => id !== 'valid' && id !== 'invalid' }, `d:${d.id}`, d.expr)}</div></div>`;
     };
 
+    const scen = scenariosOf(state), custom = !!state.scenarios?.length;
+    const scenarios = `<div class="st-section">Scenarios <small>what a Simulated request can end with, picked from the Preview toolbar</small></div>
+        ${scen.map(sc => `<div class="st-row"><div class="st-scen"><input data-st-sc="name" data-st-id="${esc(sc.id)}" value="${esc(sc.name)}" spellcheck="false" aria-label="Scenario name"><select data-st-sc="kind" data-st-id="${esc(sc.id)}" aria-label="Kind">${SCENARIO_KINDS.map(k => `<option value="${k}" ${k === sc.kind ? 'selected' : ''}>${k}</option>`).join('')}</select><button class="vw-mini" data-st-act="del-scenario" data-st-id="${esc(sc.id)}" title="Delete" aria-label="Delete scenario">×</button></div></div>`).join('')}
+        <button class="vw-btn ghost" data-st-act="add-scenario">+ Add scenario</button>${custom ? '' : '<span class="st-note">Default outcomes. Change one to make your own.</span>'}`;
     const menu = ui.menu ? `<div class="vw-menu">${STATE_TYPES.map(t => `<button data-st-act="add" data-st-type="${t.id}"><i class="vc-glyph">${GLYPH[t.id]}</i>${esc(t.label)}</button>`).join('')}</div>` : '';
     return `<div class="st-wrap">
         <div class="st-tools"><div class="vw-create"><button class="vw-btn" data-st-act="menu">+ Create state ▾</button>${menu}</div><button class="vw-btn ghost" data-st-act="add-derived">+ Derived value</button>
             <span class="st-note">State is what changes while a page runs. Preview starts from these initial values.</span></div>
         <div class="st-table">
             ${state.variables.length ? state.variables.map(varRow).join('') : '<div class="vw-empty">No state yet. Create a String, Number, Option, List… and bind it to a layer from the Behavior tab.</div>'}
+            ${scenarios}
             ${state.derived.length ? `<div class="st-section">Derived values <small>read-only · computed from the state</small></div>${state.derived.map(derivedRow).join('')}` : ''}
         </div></div>`;
 }
@@ -168,17 +122,16 @@ export function wireStateTab(win, api, ui) {
         else if (act === 'del-derived') api.tx('Delete derived value', st => { st.derived = st.derived.filter(x => x.id !== id); });
         else if (act === 'add-row') api.tx('Add row', st => { const v = st.variables.find(x => x.id === id); if (!v) return; const kind = v.itemType || 'object'; v.initial = [...(v.initial || []), kind === 'object' ? Object.fromEntries(schemaOf(v).map(f => [f.key, fieldDefault(f.type)])) : fieldDefault(kind)]; });
         else if (act === 'del-row') api.tx('Remove row', st => { const v = st.variables.find(x => x.id === id); if (v) v.initial = v.initial.filter((_, k) => k !== i); });
-        else if (act === 'add-arg' || act === 'del-arg') {
-            const [did, path] = b.dataset.stAt.split('|');
-            api.tx(act === 'add-arg' ? 'Add condition' : 'Remove condition', st => {
-                const d = st.derived.find(x => x.id === did);
-                if (!d) return;
-                const list = [...(getAt(d.expr, path ? `${path}.args` : 'args') || [])];
-                if (act === 'add-arg') list.push(defaultExpr('compare', st.variables[0]?.id || ''));
-                else list.splice(i, 1);
-                d.expr = setAt(d.expr, path ? `${path}.args` : 'args', list);
-            });
-        }
+        else if (act === 'add-scenario') api.tx('Add scenario', st => { st.scenarios = [...scenariosOf(st).map(x => ({ ...x })), { id: uid(), name: `Outcome ${scenariosOf(st).length + 1}`, kind: 'error' }]; });
+        else if (act === 'del-scenario') api.tx('Delete scenario', st => { const list = scenariosOf(st).filter(x => x.id !== id); st.scenarios = list.length ? list.map(x => ({ ...x })) : undefined; if (!st.scenarios) delete st.scenarios; });
+        api.render();
+    });
+    win.addEventListener('click', e => {
+        const b = e.target.closest('[data-ex-act]');
+        if (!b || !win.contains(b)) return;
+        const at = b.dataset.exAt, i = at.indexOf('|'), owner = at.slice(0, i), path = at.slice(i + 1);
+        if (!owner.startsWith('d:')) return;
+        api.tx('Edit derived value', st => { const dv = st.derived.find(x => x.id === owner.slice(2)); if (dv) dv.expr = editArgs(dv.expr, path, b.dataset.exAct, Number(b.dataset.exI), st.variables[0]?.id || ''); });
         api.render();
     });
     win.addEventListener('change', e => {
@@ -209,22 +162,8 @@ export function wireStateTab(win, api, ui) {
                 else v.initial = v.initial.map((r, k) => (k === Number(at) ? ((v.itemType || 'object') === 'object' ? { ...r, [key]: val } : val) : r));
             });
         }
-        else if (d.stOp || d.stRef || d.stLit || d.stCmp || d.stField) {
-            const [did, path] = (d.stOp || d.stRef || d.stLit || d.stCmp || d.stField).split('|');
-            api.tx('Edit derived value', st => {
-                const dv = st.derived.find(x => x.id === did);
-                if (!dv) return;
-                const cur = getAt(dv.expr, path);
-                const first = st.variables[0]?.id || '';
-                let next = cur;
-                if (d.stOp) next = defaultExpr(t.value, cur?.op === 'var' && cur.ref ? cur.ref : first);
-                else if (d.stRef) next = { ...cur, ref: t.value };
-                else if (d.stLit) next = { ...cur, value: parseLiteral(t.value) };
-                else if (d.stCmp) next = { ...cur, [d.stKey || 'cmp']: t.value };
-                else if (d.stField) next = { ...cur, field: t.value };
-                dv.expr = setAt(dv.expr, path, next);
-            });
-        }
+        else if (d.stSc) api.tx('Edit scenario', st => { const list = scenariosOf(st).map(x => ({ ...x })); const sc = list.find(x => x.id === d.stId); if (sc) { sc[d.stSc] = d.stSc === 'name' ? (t.value.trim() || sc.name) : t.value; st.scenarios = list; } });
+        else { const tgt = exprTarget(d); if (tgt?.owner.startsWith('d:')) api.tx('Edit derived value', st => { const dv = st.derived.find(x => x.id === tgt.owner.slice(2)); if (dv) dv.expr = editExpr(dv.expr, tgt, t.value, st.variables[0]?.id || ''); }); }
         api.render();
     });
 }

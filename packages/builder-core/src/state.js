@@ -158,7 +158,8 @@ export function cleanState(raw) {
         const d = normalizeDerived(r);
         if (d && !seen.has(d.id)) { seen.add(d.id); derived.push(d); }
     }
-    return { variables, derived };
+    const scenarios = normalizeScenarios(raw?.scenarios);
+    return scenarios.length ? { variables, derived, scenarios } : { variables, derived };
 }
 
 /** Initial values of every state variable as a fresh Map(id → value). `scopes`: only these scopes (default both). */
@@ -195,3 +196,69 @@ export function uniqueStateName(state, name, exceptId) {
     while (taken.has(`${name} ${i}`.toLowerCase())) i++;
     return `${name} ${i}`;
 }
+
+// ---------- text templates: "Active: {activeCount}" ----------
+const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
+
+/** The names inside {…} of a text, trimmed, in order, without repeats. */
+export function placeholdersOf(template) {
+    const out = [];
+    for (const m of String(template ?? '').matchAll(PLACEHOLDER_RE)) { const n = m[1].trim(); if (n && !out.includes(n)) out.push(n); }
+    return out;
+}
+
+/**
+ * Fill the {name} placeholders of a text. `lookup(name)` → { found, value }. A name that is not found stays as it is, so a typo
+ * is visible in Preview instead of turning into an empty string.
+ */
+export function interpolate(template, lookup) {
+    return String(template ?? '').replace(PLACEHOLDER_RE, (whole, raw) => {
+        const r = lookup(raw.trim());
+        return r?.found ? formatValue(r.value) : whole;
+    });
+}
+
+// ---------- values written by actions ----------
+/** A value made to fit the variable's type, or `undefined` when it cannot (a text that is not a number into a Number…). */
+export function coerceTo(v, value) {
+    switch (v?.type) {
+        case 'number': { const n = typeof value === 'number' ? value : (typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN); return Number.isFinite(n) ? n : undefined; }
+        case 'boolean': return truthy(value);
+        case 'string': return value === undefined || value === null ? '' : typeof value === 'object' ? undefined : String(value);
+        case 'option': return (v.options || []).includes(String(value)) ? String(value) : undefined;
+        case 'date': return checkValue(v, value).ok ? value : undefined;
+        default: return checkValue(v, value).ok ? clone(value) : undefined;
+    }
+}
+export function coerceField(type, value) {
+    if (type === 'number') { const n = typeof value === 'number' ? value : (typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN); return Number.isFinite(n) ? n : fieldDefault(type); }
+    if (type === 'boolean') return truthy(value);
+    if (type === 'date') return isDate(value) ? value : '';
+    return value === undefined || value === null ? fieldDefault(type) : String(value);
+}
+
+// ---------- scenarios (Preview only): the outcomes a Simulated request can have ----------
+export const SCENARIO_KINDS = ['success', 'error', 'empty'];
+export const DEFAULT_SCENARIOS = [
+    { id: 'success', name: 'Success', kind: 'success' },
+    { id: 'error', name: 'Error', kind: 'error' },
+    { id: 'empty', name: 'Empty', kind: 'empty' },
+];
+export function normalizeScenarios(raw) {
+    const seen = new Set(), out = [];
+    for (const s of Array.isArray(raw) ? raw : []) {
+        if (!s || typeof s.id !== 'string' || !s.id || seen.has(s.id)) continue;
+        seen.add(s.id);
+        out.push({ id: s.id, name: String(s.name ?? 'Outcome').trim() || 'Outcome', kind: SCENARIO_KINDS.includes(s.kind) ? s.kind : 'error' });
+    }
+    return out;
+}
+/** The scenarios of a file: its own, else the three defaults. */
+export const scenariosOf = state => (state?.scenarios?.length ? state.scenarios : DEFAULT_SCENARIOS);
+
+/** Values Preview provides on its own (not State): usable in conditions and templates, read-only. */
+export const BUILTINS = [
+    { id: '$loading', name: 'Request in progress', type: 'boolean' },
+    { id: '$response', name: 'Last response', type: 'string' },
+    { id: '$responseKind', name: 'Last response type', type: 'string' },
+];

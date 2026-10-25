@@ -11,6 +11,9 @@
  * Every state the Behavior tab knows, in the order they are listed. A state is a name a collection's mode can have; which
  * ones a component uses is up to its collection (Checkbox states has selected / indeterminate / disabled-on …).
  */
+import { STATE_ACTIONS, STATE_ACTION_IDS, normalizeStateAction } from './actions.js';
+import { normalizeRules } from './rules.js';
+
 export const STATE_ORDER = [
     'default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'empty', 'indeterminate', 'read-only',
     'disabled', 'disabled-off', 'disabled-on', 'focused-selected', 'focused-indeterminate', 'selected-hover',
@@ -65,6 +68,9 @@ export const TRIGGERS = [
     { id: 'onBlur', label: 'On blur' },
     { id: 'onChange', label: 'On change' },
     { id: 'onSubmit', label: 'On submit' },
+    { id: 'onSearch', label: 'On search' },
+    { id: 'onOpenChange', label: 'On open / close' },
+    { id: 'onLoad', label: 'On page load' },
 ];
 
 export const ACTIONS = [
@@ -76,6 +82,7 @@ export const ACTIONS = [
     { id: 'set-variable', label: 'Set variable' },
     { id: 'set-selected', label: 'Set active / selected' },
     { id: 'change-variant', label: 'Change variant' },
+    ...STATE_ACTIONS,
 ];
 
 /** How Set active / selected changes the layer: flip it, switch it on, or switch it on and the others of its kind off. */
@@ -509,11 +516,13 @@ export function normalizeStateMapping(mapping) {
 export function normalizeInteractions(list) {
     return (Array.isArray(list) ? list : []).map((it, i) => {
         // One interaction runs its actions in order. The single `action` of earlier files is the first of them.
-        const raw = Array.isArray(it?.actions) && it.actions.length ? it.actions : it?.action ? [it.action] : [{}];
+        const raw = Array.isArray(it?.actions) && it.actions.length ? it.actions : it?.action ? [it.action] : it?.rules ? [] : [{}];
         return {
             id: it?.id || `i${i + 1}`,
             trigger: TRIGGERS.some(t => t.id === it?.trigger) ? it.trigger : 'onClick',
+            ...(it?.if && typeof it.if === 'object' && !Array.isArray(it.if) ? { if: structuredClone(it.if) } : {}),
             actions: raw.map(normalizeAction),
+            ...(it?.rules ? (() => { const r = normalizeRules(it.rules, normalizeActions); return r ? { rules: r } : {}; })() : {}),
         };
     });
 }
@@ -536,8 +545,12 @@ export function stateOfModeId(coll, modeId) {
     return mode ? stateOfMode(mode.name) : null;
 }
 
+export const normalizeActions = list => (Array.isArray(list) ? list : []).map(a => normalizeAction(a));
+
 export function normalizeAction(a) {
     const type = ACTION_MAP[a?.type] ? a.type : 'navigate';
+    // State, list, feedback, check-field and request actions are described in actions.js.
+    if (STATE_ACTION_IDS.has(type)) return { type, ...normalizeStateAction(type, a, normalizeActions) };
     // A dropdown / overlay / popover opens a component. A frame picked before components were offered keeps working
     // until a component replaces it.
     const component = /^open-/.test(type) && a?.targetComponentId ? String(a.targetComponentId) : undefined;
@@ -591,6 +604,7 @@ export const INPUT_TYPES = [
     { id: 'email', label: 'Email' },
     { id: 'password', label: 'Password' },
     { id: 'number', label: 'Number' },
+    { id: 'search', label: 'Search' },
 ];
 export const INPUT_TYPE_MAP = Object.fromEntries(INPUT_TYPES.map(t => [t.id, t]));
 

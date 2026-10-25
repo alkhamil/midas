@@ -65,3 +65,21 @@ export function validateValues(fields, values, mode = 'create') {
     }
     return errors;
 }
+
+/**
+ * One input of a screen, as Preview sees it: its type (text / email / number / password), whether it is required, its value.
+ * The same rules as the generated forms (validateField), so Preview and the app agree.
+ * `touched`: the field had text once; `strict`: an empty required field is wrong even if nobody touched it (a submit).
+ * → { valid: true } or { valid: false, reason: 'required' | 'email' | 'number' | 'rule', message }
+ */
+export function validateInput({ inputType = 'text', required = false, label = 'This field' } = {}, value, { touched = true, strict = false } = {}) {
+    const t = String(value ?? '').trim();
+    const field = { name: 'input', label, type: inputType === 'number' ? 'number' : 'string', required, rules: inputType === 'email' ? ['email'] : [] };
+    if (!t) {
+        if (required && (strict || touched)) return { valid: false, reason: 'required', message: validateField(field, '') };
+        return { valid: true };
+    }
+    if (inputType === 'number' && !Number.isFinite(Number(t))) return { valid: false, reason: 'number', message: `${label} must be a number.` };
+    const message = validateField(field, t);
+    return message ? { valid: false, reason: inputType === 'email' ? 'email' : 'rule', message } : { valid: true };
+}

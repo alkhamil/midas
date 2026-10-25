@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle } from './flexStyle.js';
-import { createEvalCtx, formatValue, truthy, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
+import { createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -339,6 +339,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     const css = el('style', null, root);
     css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit;border:0;border-radius:0;box-shadow:none;outline:0;background:transparent;appearance:none;-webkit-appearance:none} .live-preview input:hover,.live-preview input:focus,.live-preview input:focus-visible{border:0;outline:0;box-shadow:none} .live-preview input:-webkit-autofill{box-shadow:0 0 0 1000px transparent inset;-webkit-text-fill-color:currentColor;transition:background-color 9999s}`;
     css.textContent += `@keyframes mvt-pop{from{opacity:0;transform:scale(.96) translateY(6px)}}@keyframes mvt-fade{from{opacity:0}}::view-transition-old(root),::view-transition-new(root){animation-duration:var(--mvt-dur,180ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}::view-transition-old(midas-stage),::view-transition-new(midas-stage){animation-duration:var(--mvt-dur,220ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}html[data-mvt='slide-left']::view-transition-old(midas-stage){animation-name:mvt-old-left}html[data-mvt='slide-left']::view-transition-new(midas-stage){animation-name:mvt-new-left}html[data-mvt='slide-right']::view-transition-old(midas-stage){animation-name:mvt-old-right}html[data-mvt='slide-right']::view-transition-new(midas-stage){animation-name:mvt-new-right}html[data-mvt='slide-up']::view-transition-old(midas-stage){animation-name:mvt-old-up}html[data-mvt='slide-up']::view-transition-new(midas-stage){animation-name:mvt-new-up}html[data-mvt='slide-down']::view-transition-old(midas-stage){animation-name:mvt-old-down}html[data-mvt='slide-down']::view-transition-new(midas-stage){animation-name:mvt-new-down}html[data-mvt='fade-scale']::view-transition-old(midas-stage){animation-name:mvt-old-scale}html[data-mvt='fade-scale']::view-transition-new(midas-stage){animation-name:mvt-new-scale}@keyframes mvt-old-left{to{transform:translateX(-60px);opacity:0}}@keyframes mvt-new-left{from{transform:translateX(60px);opacity:0}}@keyframes mvt-old-right{to{transform:translateX(60px);opacity:0}}@keyframes mvt-new-right{from{transform:translateX(-60px);opacity:0}}@keyframes mvt-old-up{to{transform:translateY(-60px);opacity:0}}@keyframes mvt-new-up{from{transform:translateY(60px);opacity:0}}@keyframes mvt-old-down{to{transform:translateY(60px);opacity:0}}@keyframes mvt-new-down{from{transform:translateY(-60px);opacity:0}}@keyframes mvt-old-scale{to{transform:scale(.98);opacity:0}}@keyframes mvt-new-scale{from{transform:scale(.96);opacity:0}}`;
+    css.textContent += '@keyframes mvt-load{from{transform:translateX(-100%)}to{transform:translateX(250%)}}';
     const runtime = new Map();            // instance id -> { state, value, error, selected, indeterminate, reveal, touched }
     let stateReady = false;               // the State panel exists (built after the menu)
     let controlsReady = false;            // the variables panel exists (it is built after the menu)
@@ -369,7 +370,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     // An Option state bound to a layer's look (Behavior → Bind to State) decides its state; else what the canvas shows.
     const boundModeOf = n => { const id = ctx.stateBindFor?.(n)?.self?.mode, v = id && evalCtx.get(id); return typeof v === 'string' && v ? v.toLowerCase() : null; };
     const baseStateOf = n => boundModeOf(n) || ctx.canvasState?.(n) || (n.disabled ? 'disabled' : 'default');
-    const stateOf = n => runtime.get(n.id)?.state || baseStateOf(n);
+    // A look bound to an Option state wins over the plain "default" a pointer leaves behind, and a bound "disabled" ignores hover / press.
+    const stateOf = n => {
+        const rs = runtime.get(n.id)?.state, bound = boundModeOf(n);
+        if (bound && (!rs || rs === 'default' || bound === 'disabled')) return bound;
+        return rs || baseStateOf(n);
+    };
     // What is drawn is the base state plus what stays with the layer: checked / current, indeterminate, an empty value.
     const effStateOf = n => {
         const r = runtime.get(n.id) || {};
@@ -462,7 +468,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const rb = o?.row && o.rowBind ? (o.rowBind[n.id] || (n.sourceId && o.rowBind[n.sourceId])) : null;
             // State bindings: this layer's own "visible when", and the ones its container set for it.
             const sbOwn = ctx.stateBindFor?.(n)?.self, sbLayer = o?.stateLayers && (o.stateLayers[n.id] || (n.sourceId && o.stateLayers[n.sourceId]));
-            const stVis = [sbOwn?.visible, sbLayer?.visible].filter(Boolean).map(id => truthy(evalCtx.get(id)));
+            const stVis = [sbOwn?.visible, sbLayer?.visible].filter(Boolean).map(id => truthy(evalCtx.get(id)))
+                .concat([sbOwn?.when, sbLayer?.when].filter(Boolean).map(w => { const r = testCondition(w, evalCtx.env({ fieldValid: fieldValidity })); return r.ok && r.value; }));
             const shown = stVis.length ? stVis.every(Boolean) : rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
             if (shown === false || (shown === null && n.visible === false && !forced)) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
@@ -539,7 +546,11 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             }
             if (o?.iconScale && parentId !== null) scaleIconChild(c, n, copies.get(parentId), o.iconScale);
             if (rb?.text && n.type === 'text' && o.row[rb.text] !== undefined) c.text = String(o.row[rb.text]);
-            if (sbLayer?.text && n.type === 'text' && evalCtx.has(sbLayer.text)) c.text = formatValue(evalCtx.get(sbLayer.text));
+            // A text bound to State: the value itself, or (Text with {placeholders}) its own text with the names filled in.
+            if (sbLayer?.text && n.type === 'text') {
+                if (sbLayer.text === 'template') c.text = evalCtx.interpolate(c.text);
+                else if (evalCtx.has(sbLayer.text)) c.text = formatValue(evalCtx.get(sbLayer.text));
+            }
             nodes.push(c);
             copies.set(c.id, c);
             // A frame bound to a List repeats its first child once per row; the other children are drawn once after them.
@@ -647,11 +658,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (!css.textContent.includes(ph)) css.textContent += ph;
         const required = requiredOf(inst, o.input), when = o.input?.validation?.trigger || 'blur';
         // Wrong: required but emptied after it had text (or, strictly, empty at all), or text that does not fit the type.
-        const wrong = (v, strict) => {
-            const t = v.trim();
-            if (!t) return required && (strict || !!runtime.get(inst.id)?.touched);
-            return kind === 'email' ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) : kind === 'number' ? !Number.isFinite(Number(t)) : false;
-        };
+        const wrong = (v, strict) => !validateInput({ inputType: kind, required }, v, { touched: !!runtime.get(inst.id)?.touched, strict }).valid;
         input.addEventListener('focus', () => {
             if (rendering || runtime.get(inst.id)?.state?.match(/^(focused|selected|typing)$/)) return;
             // Coming back to a field that has text: typing resumes after the last character.
@@ -680,7 +687,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (e.key !== 'Enter') return;
             const bad = when === 'submit' && wrong(input.value, true);
             update(inst, bad ? { state: 'error', error: true } : { error: false });
-            runTriggers(inst, 'onSubmit', input);
+            // A search field searches on Enter; any other field submits.
+            runTriggers(inst, kind === 'search' ? 'onSearch' : 'onSubmit', input);
         });
         input.addEventListener('change', () => runTriggers(inst, 'onChange', input));
         return input;
@@ -689,9 +697,130 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** Jalankan action dari tab Behavior untuk sebuah instance. */
     function runTriggers(inst, trigger, anchor, rect) {
         for (const it of normalizeInteractions(ctx.interactionsFor?.(inst)))
-            if (it.trigger === trigger)
-                for (const action of it.actions)         // in the order they are listed
-                    runAction(action, inst, anchor, rect, trigger);
+            if (it.trigger === trigger) playInteraction(it, inst, anchor, rect, trigger);
+    }
+    /**
+     * One interaction. Interactions made of the actions that existed before (no condition, no rules, no State actions) run at once,
+     * in order, exactly as they always did; the others go through the shared runner (if → actions → rules, request waits).
+     */
+    function playInteraction(it, inst, anchor, rect, trigger) {
+        const plain = !it.if && !it.rules && it.actions.every(a => !STATE_ACTION_IDS.has(a.type));
+        if (plain) { for (const action of it.actions) runAction(action, inst, anchor, rect, trigger); return; }
+        // A request in progress blocks a second click on the same thing, like a button that is loading.
+        if (evalCtx.extra('loading') && it.actions.some(a => a.type === 'request')) return;
+        runInteraction(it, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message || 'Something went wrong in this interaction.'));
+    }
+    const hostFor = (inst, anchor, rect, trigger) => ({
+        ev: evalCtx,
+        env: () => evalCtx.env({ fieldValid: fieldValidity }),
+        perform: a => runAction(a, inst, anchor, rect, trigger),
+        feedback: f => showFeedback(f, inst, anchor, rect, trigger),
+        validateField: id => checkField(id),
+        request: a => simulateRequest(a),
+        changed: () => stateChanged(),
+        warn: m => flash(m),
+    });
+    /** State or a loading flag changed: draw again, keep the State panel and the loading shield in step. */
+    function stateChanged() { draw(); if (stateReady) { renderStateIfOpen(); } syncLoading(); }
+
+    // ---- fields: validity as a condition, and "Check field" ----
+    const typeableIn = () => [ctx.node(frameId), ...ctx.descendants(frameId)].filter(n => n && n.isInstance && ctx.typeable(n));
+    function fieldValidity(id) {
+        const n = id && ctx.node(id);
+        if (!n) return undefined;
+        const ib = ctx.inputFor?.(n), r = runtime.get(id) || {};
+        return validateInput({ inputType: ib?.typeable?.inputType || 'text', required: requiredOf(n, ib), label: n.name }, r.value ?? '', { touched: !!r.touched || !!r.value, strict: true }).valid;
+    }
+    /** Check one field (or every field of the screen) like a submit: an invalid one shows its error state. → all valid */
+    function checkField(id) {
+        let all = true;
+        for (const n of id ? [ctx.node(id)].filter(Boolean) : typeableIn()) {
+            const ok = fieldValidity(n.id), r = runtime.get(n.id) || {};
+            if (!ok) all = false;
+            update(n, ok ? { error: false, ...(r.state === 'error' ? { state: r.value ? 'filled' : 'default' } : {}) } : { state: 'error', error: true });
+        }
+        return all;
+    }
+
+    // ---- Simulated request: loading, then the active scenario ----
+    let activeScenario = null, slow = false;
+    function simulateRequest(a) {
+        const ms = requestDelay(a, slow);
+        return new Promise(resolve => setTimeout(() => resolve(resolveOutcome(ctx.state, activeScenario)), ms));
+    }
+    const shield = el('div', { position: 'absolute', inset: '0', zIndex: 75, display: 'none', pointerEvents: 'auto', cursor: 'progress' }, root);
+    const loadBar = el('div', { position: 'absolute', top: '0', left: '0', width: '40%', height: '3px', background: 'linear-gradient(90deg,#4f8cff,#8fb6ff)', zIndex: 76, display: 'none', animation: 'mvt-load 1s ease-in-out infinite' }, root);
+    function syncLoading() { const on = !!evalCtx.extra('loading'); shield.style.display = on ? 'block' : 'none'; loadBar.style.display = on ? 'block' : 'none'; }
+
+    // ---- Feedback: alert / message (toasts), modal, drawer, popconfirm ----
+    const LEVEL_COLOR = { success: '#30A46C', error: '#E5484D', warning: '#F5A524', info: '#0091FF' };
+    const LEVEL_MARK = { success: '\u2713', error: '\u00d7', warning: '!', info: 'i' };
+    const feedbacks = [], stacks = {};
+    const POS = { top: { top: '16px', left: '50%', transform: 'translateX(-50%)' }, 'top-right': { top: '16px', right: '16px' }, bottom: { bottom: '16px', left: '50%', transform: 'translateX(-50%)' }, center: { top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }, right: { top: '16px', right: '16px' } };
+    const stackFor = pos => stacks[pos] || (stacks[pos] = el('div', { position: 'absolute', zIndex: 82, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none', width: 'min(360px, calc(100% - 32px))', ...(POS[pos] || POS['top-right']) }, root));
+    const cardStyle = lv => ({ ...chrome, background: '#fff', color: '#16161a', borderRadius: '10px', boxShadow: '0 12px 36px rgba(0,0,0,.22)', borderLeft: `4px solid ${LEVEL_COLOR[lv] || LEVEL_COLOR.info}`, padding: '12px 14px', pointerEvents: 'auto', fontSize: '14px', lineHeight: '1.4' });
+    const btnStyle = primary => ({ ...chrome, padding: '6px 14px', borderRadius: '8px', border: primary ? '0' : '1px solid #d5d5dc', background: primary ? '#16161a' : '#fff', color: primary ? '#fff' : '#16161a', cursor: 'pointer', fontSize: '13px' });
+    function closeFeedback(fb) { const i = feedbacks.indexOf(fb); if (i < 0) return; feedbacks.splice(i, 1); fb.nodes.forEach(n => n.remove()); clearTimeout(fb.timer); }
+    function clearFeedback() { [...feedbacks].forEach(closeFeedback); }
+    function showFeedback(f, inst, anchor, rect, trigger) {
+        const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
+        const mark = (parent, lv) => { const m = el('span', { display: 'inline-grid', placeItems: 'center', width: '18px', height: '18px', borderRadius: '50%', background: LEVEL_COLOR[lv] || LEVEL_COLOR.info, color: '#fff', fontSize: '11px', fontWeight: 700, flex: 'none' }, parent); m.textContent = LEVEL_MARK[lv] || 'i'; return m; };
+        const body = (card, lv) => {
+            const head = el('div', { display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }, card);
+            mark(head, lv);
+            el('span', { flex: '1' }, head).textContent = f.title || (f.message && f.kind !== 'alert' && f.kind !== 'message' ? '' : f.message);
+            if (f.title || !(f.kind === 'alert' || f.kind === 'message')) { if (f.message) el('div', { marginTop: '6px', opacity: f.title ? 0.8 : 1 }, card).textContent = f.message; }
+            return head;
+        };
+        const backdrop = (closable) => { const b = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: 'rgba(15,23,42,.45)', pointerEvents: 'auto' }, root); fb.nodes.push(b); if (closable) b.onclick = () => closeFeedback(fb); return b; };
+        const confirmRun = () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message)); };
+        if (f.kind === 'alert' || f.kind === 'message') {
+            if (f.blocking) backdrop(false);
+            const card = el('div', cardStyle(f.level), stackFor(f.position));
+            if (f.kind === 'message') Object.assign(card.style, { borderLeft: '0', borderRadius: '999px', padding: '8px 16px' });
+            const head = body(card, f.level);
+            const x = el('button', { ...chrome, border: '0', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1', color: '#666' }, head);
+            x.textContent = '\u00d7'; x.setAttribute('aria-label', 'Close'); x.onclick = () => closeFeedback(fb);
+            card.setAttribute('role', 'alert');
+            fb.nodes.push(card);
+        }
+        else if (f.kind === 'drawer') {
+            backdrop(!f.blocking);
+            const card = el('div', { ...cardStyle(f.level), position: 'absolute', zIndex: 82, top: '0', right: '0', bottom: '0', width: 'min(380px, 90%)', borderRadius: '0', borderLeft: '0', display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }, root);
+            body(card, f.level);
+            const foot = el('div', { marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
+            const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'Close'; ok.onclick = () => closeFeedback(fb);
+            card.setAttribute('role', 'dialog'); fb.nodes.push(card);
+        }
+        else {
+            // modal and popconfirm: a card the person has to answer
+            backdrop(!f.blocking && f.kind === 'modal');
+            const card = el('div', { ...cardStyle(f.level), position: 'absolute', zIndex: 82, left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: f.kind === 'popconfirm' ? 'min(300px, 90%)' : 'min(420px, 90%)', borderLeft: '0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }, root);
+            if (f.kind === 'popconfirm' && rect) Object.assign(card.style, { left: px(Math.max(8, rect.left)), top: px(Math.max(8, rect.top - 120)), transform: 'none' });
+            body(card, f.level);
+            const foot = el('div', { display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
+            if (f.onConfirm?.length || f.kind === 'popconfirm') { const no = el('button', btnStyle(false), foot); no.textContent = 'Cancel'; no.onclick = () => closeFeedback(fb); }
+            const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
+            card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true');
+            fb.nodes.push(card);
+        }
+        feedbacks.push(fb);
+        if (f.duration > 0) fb.timer = setTimeout(() => closeFeedback(fb), f.duration);
+        return fb;
+    }
+    /** Something is misconfigured (a condition that cannot be read, a State action with no variable): say so, never skip silently. */
+    function flash(msg) {
+        const t = el('div', { ...chrome, position: 'absolute', zIndex: 90, left: '50%', bottom: '16px', transform: 'translateX(-50%)', background: 'rgba(24,24,24,.96)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', maxWidth: '80%', pointerEvents: 'none' }, root);
+        t.textContent = '\u26A0 ' + msg;
+        setTimeout(() => t.remove(), 4200);
+    }
+    /** On page load: the interactions of the screen (and of what is on it) that wait for it. */
+    function runLoadEvents(id) {
+        const top = ctx.node(id);
+        if (!top) return;
+        for (const n of [top, ...ctx.descendants(id)])
+            for (const it of normalizeInteractions(ctx.interactionsFor?.(n)))
+                if (it.trigger === 'onLoad') playInteraction(it, n, null, null, 'onLoad');
     }
     /** Set variable: switch a collection to one of its modes (all its variables follow), or set one variable in older files. */
     function setVariable(action) {
@@ -824,12 +953,16 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             layer.off = () => document.removeEventListener('pointermove', move);
         }
         layers.push(layer);
+        // On open / close: the layer that opened it hears about it.
+        layer.owner = from?.inst || null;
+        if (layer.owner) setTimeout(() => runTriggers(layer.owner, 'onOpenChange', anchor, rect), 0);
     }
     function closeLayer(layer, motion) {
         const i = layers.indexOf(layer);
         if (i < 0) return;
         layers.splice(i, 1);
         layer.off?.();
+        if (layer.owner && motion !== true) setTimeout(() => runTriggers(layer.owner, 'onOpenChange'), 0);
         const m = motion === true ? null : (motion || layer.motion || resolveMotion(null, 'close-overlay'));
         if (m && m.transition !== 'instant' && m.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
             for (const n of [layer.holder, layer.backdrop]) if (n) { n.style.transition = `opacity ${m.duration}ms ${m.easingCss}`; n.style.opacity = '0'; }
@@ -981,7 +1114,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         markCurrent();
     }
 
-    function show(id, motion) { if (id !== frameId) evalCtx.reset(['page']); frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); if (controlsReady) renderControls(); }
+    function show(id, motion) { if (id !== frameId) evalCtx.reset(['page']); frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); clearFeedback(); syncTabFrame(id); draw(); runLoadEvents(id); if (controlsReady) renderControls(); }
     /** Restart (R): reset semua state interaksi ke awal tanpa reload — langsung pakai pengaturan kanvas + behavior yang sudah ada. */
     async function restartPreview() {
         // A preview tab holds a copy of the file from when it loaded: restart first re-reads the saved file (no page reload),
@@ -1003,6 +1136,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         modeOver.clear();
         varOver.clear();
         evalCtx = createEvalCtx(ctx.state);
+        syncLoading();
         navMotion = null;
         show(ctx.start);
         renderControls();
@@ -1117,6 +1251,22 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         rb.title = 'Restart preview (R)';
         rb.onclick = () => restartPreview();
         paintBar();
+    }
+    if (ctx.hasRequests) {
+        const sc = el('div', { ...chrome, position: 'absolute', top: '12px', right: surface === 'tab' ? '300px' : '12px', zIndex: 60, display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', borderRadius: '10px', background: 'rgba(30,30,30,.82)' }, root);
+        sc.setAttribute('aria-label', 'Preview scenario');
+        el('span', { opacity: '.7', fontSize: '12px' }, sc).textContent = 'Scenario';
+        const pick = el('select', { ...chrome, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.2)', borderRadius: '6px', padding: '3px 6px', colorScheme: 'dark' }, sc);
+        pick.setAttribute('aria-label', 'Active scenario');
+        for (const o of scenariosOf(ctx.state)) { const op = el('option', null, pick); op.value = o.id; op.textContent = o.name; }
+        activeScenario = pick.value;
+        // Switching the outcome never resets State: the next request just ends differently.
+        pick.onchange = () => { activeScenario = pick.value; };
+        const slowBtn = el('button', { ...chrome, padding: '3px 10px', border: '1px solid rgba(255,255,255,.2)', borderRadius: '6px', background: 'transparent', cursor: 'pointer', fontSize: '12px' }, sc);
+        slowBtn.textContent = 'Slow';
+        slowBtn.title = 'Make requests take three times as long';
+        slowBtn.setAttribute('aria-pressed', 'false');
+        slowBtn.onclick = () => { slow = !slow; slowBtn.setAttribute('aria-pressed', String(slow)); slowBtn.style.background = slow ? 'rgba(255,255,255,.22)' : 'transparent'; };
     }
     function paintBar() {
         const bar = root.querySelector('[aria-label="Preview scale"]');
@@ -1297,6 +1447,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             renderDerived();
         }
     }
+    function renderStateIfOpen() { if (stPanel.dataset.open) renderState(); }
     const setStateOpen = on => { stPanel.style.display = on ? 'flex' : 'none'; stPanel.dataset.open = on ? '1' : ''; if (on) renderState(); };
     stBtn.onclick = () => setStateOpen(!stPanel.dataset.open);
     sShut.onclick = () => setStateOpen(false);
@@ -1319,7 +1470,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         }
         if (e.key !== 'Escape') return;
         e.stopPropagation();
-        if (layers.length) closeLayers('current');
+        if (feedbacks.length) { if (!feedbacks.at(-1).blocking) closeFeedback(feedbacks.at(-1)); }
+        else if (layers.length) closeLayers('current');
         else if (drawer.dataset.open) setMenu(false);
         else if (varsPanel.dataset.open && !document.activeElement?.dataset?.field) setVars(false);
         else if (stPanel.dataset.open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) setStateOpen(false);
@@ -1330,5 +1482,6 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     document.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', resize);
     draw();
+    runLoadEvents(frameId);
     return { close() { document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', resize); delete document.documentElement.dataset.mvt; document.documentElement.style.removeProperty('--mvt-dur'); document.documentElement.style.removeProperty('--mvt-ease'); root.remove(); portal.remove(); }, setScale(m) { scaleMode = m; draw(false); } };
 }

@@ -3405,3 +3405,31 @@ select.bh-addsel:hover{background:var(--hover)}
 
 .bh-warn{color:#e5484d}
 small.bh-warn{display:block;font-size:10px}
+
+/* ===== Phase 2: conditions, rules, actions, scenarios ===== */
+.bh-cond{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--canvas)}
+.bh-cond-head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600}
+.bh-cond-head .icon-button{margin:-3px -3px -3px 0}
+.bh-addcond{align-self:flex-start;height:26px;font-size:11px}
+.bh-inline{display:flex;gap:6px;flex-wrap:wrap}
+.bh-fields{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px dashed var(--border-soft);border-radius:8px}
+.bh-fieldrow{display:flex;flex-direction:column;gap:3px}
+.bh-fieldrow>small{font-size:10px;color:var(--muted)}
+.bh-rules{display:flex;flex-direction:column;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-soft)}
+.bh-rules-head{display:flex;align-items:center;gap:8px}
+.bh-rules-head small{font-size:11px;color:var(--muted)}
+.bh-caret{display:inline-block;width:12px}
+.bh-rules-body{display:flex;flex-direction:column;gap:6px}
+.bh-rule{border:1px solid var(--border-soft);border-radius:8px;background:var(--canvas)}
+.bh-rule.off{opacity:.55}
+.bh-rule-head{display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:center;padding:6px 8px}
+.bh-rule-title{display:flex;flex-direction:column;align-items:flex-start;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;text-align:left}
+.bh-rule-title b{font-size:12px;font-weight:600}
+.bh-rule-title small{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-rule-acts{display:inline-flex;gap:2px}
+.bh-rule-body{display:flex;flex-direction:column;gap:8px;padding:8px;border-top:1px solid var(--border-soft)}
+.bh-rules-add{display:flex;gap:6px;flex-wrap:wrap}
+.st-scen{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;padding:6px 8px}
+.bh-rule-title b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-rule-head{grid-template-columns:18px minmax(0,1fr) auto}
+.bh-rule-title{width:100%}

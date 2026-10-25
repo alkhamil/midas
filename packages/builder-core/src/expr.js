@@ -38,6 +38,8 @@ export const OPERATIONS = [
     { id: 'and', label: 'All of', kind: 'boolean' },
     { id: 'or', label: 'Any of', kind: 'boolean' },
     { id: 'not', label: 'Not', kind: 'boolean' },
+    { id: 'valid', label: 'Field is valid', kind: 'boolean' },
+    { id: 'invalid', label: 'Field is invalid', kind: 'boolean' },
     { id: 'var', label: 'A variable', kind: 'any' },
     { id: 'value', label: 'A fixed value', kind: 'any' },
 ];
@@ -92,6 +94,12 @@ function ev(e, env) {
         case 'and': return (e.args || []).every(a => truthy(ev(a, env)));
         case 'or': return (e.args || []).some(a => truthy(ev(a, env)));
         case 'not': return !truthy(ev(e.arg, env));
+        case 'valid': case 'invalid': {
+            if (typeof env.fieldValid !== 'function') fail('Field validity is only available in conditions.');
+            const r = env.fieldValid(e.field);
+            if (r === undefined || r === null) fail('Choose a field.');
+            return e.op === 'valid' ? !!r : !r;
+        }
         default: return fail(`Unknown operation “${e.op}”.`);
     }
 }
@@ -157,6 +165,7 @@ export function validateExpr(expr, knownRefs) {
     const walk = (e, path) => {
         if (!isPlain(e)) { errors.push(`${path}: missing`); return; }
         if (!OPERATIONS.some(o => o.id === e.op)) { errors.push(`${path}: unknown operation “${e.op}”`); return; }
+        if ((e.op === 'valid' || e.op === 'invalid') && !e.field) errors.push(path + ': choose a field');
         if (e.op === 'var' && !knownRefs.has(e.ref)) errors.push(`${path}: unknown variable`);
         if ((e.op === 'filter' || e.op === 'compare') && !CMP_IDS.has(e.cmp)) errors.push(`${path}: unknown comparison`);
         const need = { count: ['list'], sum: ['list'], filter: ['list', 'value'], length: ['of'], isEmpty: ['of'], equals: ['a', 'b'], compare: ['a', 'b'], not: ['arg'] }[e.op] || [];
@@ -180,6 +189,7 @@ export function defaultExpr(op, firstRef = '') {
         case 'compare': return { op, cmp: 'eq', a: V(firstRef), b: LIT('') };
         case 'and': case 'or': return { op, args: [{ op: 'compare', cmp: 'eq', a: V(firstRef), b: LIT('') }] };
         case 'not': return { op, arg: V(firstRef) };
+        case 'valid': case 'invalid': return { op, field: '' };
         case 'var': return V(firstRef);
         default: return LIT('');
     }
@@ -202,4 +212,27 @@ export function setAt(expr, path, node) {
     else if (node === undefined && Array.isArray(copy)) copy.splice(Number(k), 1);
     else copy[k] = node;
     return copy;
+}
+
+/** An expression in words ("attempts is at least 5"), for one-line summaries. */
+export function describeExpr(e, nameOf = x => x, fieldName = x => x) {
+    const d = x => describeExpr(x, nameOf, fieldName);
+    const cmp = id => COMPARATORS.find(c => c.id === id)?.label || id;
+    switch (e?.op) {
+        case 'var': return nameOf(e.ref) || '…';
+        case 'value': return typeof e.value === 'string' ? (e.value === '' ? '“”' : `“${e.value}”`) : String(e.value);
+        case 'count': return `rows in ${d(e.list)}`;
+        case 'sum': return `total of ${e.field ? e.field + ' in ' : ''}${d(e.list)}`;
+        case 'filter': return `${d(e.list)} where ${e.field || 'value'} ${cmp(e.cmp)} ${d(e.value)}`;
+        case 'length': return `length of ${d(e.of)}`;
+        case 'isEmpty': return `${d(e.of)} is empty`;
+        case 'equals': return `${d(e.a)} is ${d(e.b)}`;
+        case 'compare': return `${d(e.a)} ${cmp(e.cmp)} ${d(e.b)}`;
+        case 'and': return (e.args || []).map(d).join(' and ') || '…';
+        case 'or': return (e.args || []).map(d).join(' or ') || '…';
+        case 'not': return `not ${d(e.arg)}`;
+        case 'valid': return `${fieldName(e.field) || '…'} is valid`;
+        case 'invalid': return `${fieldName(e.field) || '…'} is invalid`;
+        default: return '…';
+    }
 }

@@ -294,6 +294,81 @@ ber-scope `page` kembali saat pindah halaman. Tombol **State** (ikon database) m
 dengan kontrol per tipe (nilai bisa diubah tangan) dan nilai derived; nilai yang tidak sah ditolak dan kolomnya diberi tanda.
 Panel ini untuk memeriksa binding; aksi yang mengubah State menyusul.
 
+## Events, kondisi, aksi, rules (Phase 2)
+
+Semua tetap deklaratif (JSON) dan logikanya fungsi murni di builder-core, jadi Preview dan generator kode nanti membaca data yang
+sama. Interaction lama **tidak berubah**: field baru semuanya opsional, jadi `behaviorVersion` tetap `2`.
+
+### Events (trigger)
+
+Selain On click, On hover, On mouse enter, On focus, On blur, On change, On submit:
+
+| Trigger | Kapan |
+|---|---|
+| On page load | frame ditampilkan (Preview dibuka, Restart, atau pindah ke frame itu). Dipasang pada frame atau layer di dalamnya; frame sekarang punya section **Interaction** juga |
+| On search | Enter pada field ber-**Input type = Search** (field lain: On submit) |
+| On open / close | layer yang dibuka interaction ini (dropdown / overlay / popover) terbuka atau tertutup |
+
+### Kondisi
+
+Kondisi memakai **ekspresi boolean yang sama dengan derived** (`expr.js`), tanpa evaluator kedua, dibangun dari dropdown:
+*If [Attempts] [is at least] [5]*. Sumber nilai:
+
+- State dan derived; list: `count`, `length`, `isEmpty`, `filter`;
+- **validitas field**: *Field is valid* / *Field is invalid* (operasi `valid` / `invalid`; dihitung seperti submit, field kosong yang wajib = tidak valid);
+- nilai milik Preview (`$`): **Request in progress** (`$loading`), **Last response** (`$response`, nama skenario), **Last response type**
+  (`$responseKind`: success / error / empty). Hanya tersedia di kondisi dan template, bukan di derived.
+
+Tempat kondisi: `if` opsional pada **setiap interaction** (di bawah *When*; tidak lolos = tidak ada yang jalan), pada **setiap rule**, dan
+**Show when** pada setiap layer di *Bind to State* (`stateBind.self.when`, `stateBind.layers.<id>.when`; melengkapi *Visible when* yang
+memakai satu variable). Kondisi yang rusak (variable terhapus, field belum dipilih) tidak diam: Preview menampilkan peringatan
+kecil di bawah layar dan kondisi itu dianggap tidak terpenuhi.
+
+### Aksi baru
+
+Aksi yang sudah ada (navigate, overlay, set variable/mode, set selected, change variant) tidak berubah.
+
+| Aksi | Isi |
+|---|---|
+| **Set State** | `set` (nilai tetap atau variable lain, disesuaikan dengan tipe), `increment` / `decrement` (Number), `toggle` (Boolean), `reset` ke nilai awal |
+| **Add / Update / Delete row, Clear** (List) | add: nilai per field (field yang tidak diisi memakai default tipenya); update dan delete: untuk **baris yang cocok** (*Only rows where field …*) atau semua baris |
+| **Show feedback** | `kind` alert / message / modal / drawer / popconfirm, `level` success / error / warning / info, title, message, posisi, *Hide after* (ms, 0 = tetap), **blocking**. Modal dan popconfirm punya *When confirmed* (aksi yang jalan saat OK) |
+| **Check field** | memeriksa satu field (atau semua field di layar) seperti submit; yang tidak valid masuk state error |
+| **Simulated request** | lihat bawah |
+
+Pesan memakai **template**: `{Nama State}` diganti nilainya, huruf besar-kecil tidak berpengaruh, nama yang tidak ditemukan **dibiarkan
+apa adanya** (typo kelihatan). Visual feedback bawaan Preview; alert tetap satu jenis dengan `level` sebagai mode-nya (komponen
+buatan sendiri untuk feedback datang bersama presets).
+
+### Rules
+
+Sebuah interaction boleh punya **Rules**: daftar berurutan yang masing-masing bernama (mis. *AC-3 Lockout*), punya kondisi dan aksi.
+Urutannya: `if` interaction, aksi biasa, lalu rules — **rule pertama yang aktif dan kondisinya terpenuhi menang, sisanya tidak
+dilihat**; bila tidak ada, **Otherwise** (opsional) yang jalan. Rule tanpa kondisi selalu cocok. Di tab Behavior: bagian *Rules*
+terlipat (jumlahnya di ringkasan), tiap rule satu baris (switch aktif, nama, ringkasan *If … → n actions*), bisa diurutkan, dihapus,
+dan dibuka untuk mengedit nama, kondisi, dan aksi. Data: `interaction.rules = { items: [{ id, name, enabled, if?, actions }], otherwise?: { actions } }`.
+
+### Simulated request dan skenario
+
+*Simulated request* menampilkan keadaan loading (garis kemajuan di atas, layar tidak bisa disentuh, `$loading` = true; klik kedua pada
+interaction yang sama diabaikan), menunggu `delay` ms, lalu berakhir dengan **skenario aktif**. Aksi setelahnya dan **rules** jalan
+sesudah itu, jadi rule bisa memilih berdasarkan **Last response**. Tidak ada panggilan jaringan.
+
+Skenario ditulis per file di tab **State → Scenarios** (`state.scenarios = [{ id, name, kind }]`; bawaan Success / Error / Empty,
+tambah mis. *Wrong credentials*, *Account disabled*); `kind` success / error / empty. Toolbar Preview (muncul bila ada Simulated
+request) punya **Scenario** (pilihan) dan **Slow** (menunggu 3× lebih lama). Mengganti skenario **tidak mereset State**.
+
+### Validasi
+
+Field di Preview divalidasi lewat satu fungsi, `validateInput` (`packages/builder-core/src/validate.js`, aturan sama dengan form hasil
+generate); duplikat di `live.js` sudah dihapus. Perilaku yang sudah ada tidak berubah (wajib kosong tidak salah sebelum disentuh;
+sesudah Enter / submit, salah).
+
+### Template teks
+
+Layer teks di *Bind to State* punya pilihan **Text with {placeholders}**: teks layer itu sendiri ditulis dengan nama dalam kurung kurawal
+(*Total: Rp {total}*) dan Preview mengisinya. Mengikat ke satu variable tetap mengganti seluruh teks.
+
 ## Versi data behavior dan migrasi
 
 File punya `behaviorVersion` yang **terpisah** dari `version` (yang tetap `1`; loader menolak nilai lain). Tidak ada = `1`

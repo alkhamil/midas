@@ -9,3 +9,5 @@ export * from './state.js';
 export * from './expr.js';
 export * from './migrate.js';
 export * from './evalctx.js';
+export * from './actions.js';
+export * from './rules.js';

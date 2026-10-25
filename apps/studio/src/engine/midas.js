@@ -1,6 +1,8 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
+import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
+import { exprTarget, editExpr, editArgs } from './exprUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
@@ -8,7 +10,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
+import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, STATE_ACTION_IDS, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
 
 
 // ===== document.js =====
@@ -18841,6 +18843,8 @@ function liveContext() {
         varType: id => items.get(id)?.type,
         /** What Preview reads State bindings from: the cleaned State of the file. */
         state: cleanState(stateStore()),
+        /** Does any layer run a Simulated request? Then Preview offers the scenario switcher. */
+        hasRequests: allNodes().some(x => x.interactions && JSON.stringify(x.interactions).includes('"type":"request"')),
         /** The State bindings of a layer: its own, else those of its main component. { self: { visible, mode }, layers: { [layer id]: { text, visible } } } */
         stateBindFor(n) { return n.stateBind || (n.sourceId ? chainComponent(n)?.stateBind : null) || null; },
         /** The rows of a State list, plus the repeat settings a frame carries (own, else its main component's). */
@@ -19330,6 +19334,7 @@ function bhInteractionRows(n, frames) {
         return rows + hint + hover + motionRows(p, a, 'change-variant') + (a.transition === 'instant' ? '' : '<p class="small-label">Smart animate moves, resizes and recolors layers that share a name in both variants.</p>');
     };
     const fields = (p, a, it) => {
+        if (STATE_ACTION_IDS.has(a.type)) return stateActionFields(ctx2, p, a, it);
         if (a.type === 'change-variant') return variantRows(p, a, it);
         if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page') + motionRows(p, a, 'navigate');
         if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + dropdownSizeRows(p, a) + motionRows(p, a, 'open-dropdown');
@@ -19341,14 +19346,37 @@ function bhInteractionRows(n, frames) {
         return '';
     };
     const summary = it => it.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ');
+    const stateNow = stateStore(), fieldsList = bhFieldList(n);
+    const addActionAt = listPath => `<select class="wide-button bh-addsel" data-bh-act="add-action-at" data-bh-list="${esc(listPath)}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select>`;
+    // One action, wherever it lives: the interaction itself, a rule, an "otherwise", or what a confirmation runs.
+    const actionRow = (p, a, it, listPath, j) => {
+        const main = /^interactions\.\d+\.actions$/.test(listPath);
+        const removable = main ? (it.actions.length > 1 || !!it.rules) : true;
+        const label = main && it.actions.length > 1 ? `Then ${j + 1}` : 'Do';
+        return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
+    };
+    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt };
     return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>
         <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
-        ${it.actions.map((a, j) => {
-            const p = `interactions.${i}.actions.${j}`;
-            return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${it.actions.length > 1 ? `Then ${j + 1}` : 'Do'}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${it.actions.length > 1 ? `<button type="button" class="icon-button small" data-bh-act="del-action" data-bh-index="${i}" data-bh-action="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
-        }).join('')}
-        <select class="wide-button bh-addsel" data-bh-act="add-action" data-bh-index="${i}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select></div>`).join('');
+        ${conditionHtml({ esc, state: stateNow, fields: fieldsList, owner: `interactions.${i}.if`, expr: it.if })}
+        ${it.actions.map((a, j) => actionRow(`interactions.${i}.actions.${j}`, a, it, `interactions.${i}.actions`, j)).join('')}
+        ${addActionAt(`interactions.${i}.actions`)}
+        ${rulesHtml(ctx2, it, i, BH_SECTIONS)}</div>`).join('');
 }
+/** The input fields of the screen this layer is on: [[layer id, name]], for "Field is valid" and "Check field". */
+function bhFieldList(n) {
+    let top = n;
+    for (let g = 0; top.parentId && doc.get(top.parentId) && g < 500; g++) top = doc.get(top.parentId);
+    return subtreeInOrder(top.id).filter(x => x.isInstance && !x.softDeleted && (x.typeable === true || looksLikeField(x) || x.inputBehavior?.typeable?.frameId)).map(x => [x.id, x.name]);
+}
+/** The behavior config a path like "interactions.0.if" or "stateBind.self.when" points into. */
+const bhCfg = n => ({ interactions: normalizeInteractions(n.interactions), stateBind: n.stateBind || {} });
+const bhFirstRef = () => stateStore().variables[0]?.id || '';
+function bhEditExpr(n, tgt, value) {
+    const root = getPath(bhCfg(n), tgt.owner) || { op: 'value', value: '' };
+    bhWrite(n, tgt.owner, editExpr(root, tgt, value, bhFirstRef()));
+}
+
 /** Bagian khusus input field: the typing layer, what it accepts, and when it is checked. */
 function bhInputHtml(n, layers) {
     const ib = normalizeInputBehavior(n.inputBehavior) || { typeable: {}, validation: {} };
@@ -19511,7 +19539,7 @@ function repeatHtml(n) {
 function stateBindSection(n) {
     const state = stateStore(), layers = [], walk = l => { for (const c of doc.children(l.id)) { if (layers.length < 60) layers.push(c); walk(c); } };
     walk(n);
-    return section('Bind to State', stateBindHtml({ n, state, layers, esc, bhSelect, canMode: !!(n.isInstance || n.component || n.componentSet) }));
+    return section('Bind to State', stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) }));
 }
 function prototypeHtml() {
     const n = activeNode();
@@ -19526,6 +19554,7 @@ function prototypeHtml() {
             <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
         fhtml += repeatHtml(n);
         fhtml += stateBindSection(n);
+        fhtml += section('Interaction', `<div class="bh-list">${bhInteractionRows(n, bhFrames())}</div><select class="wide-button bh-addsel" data-bh-act="add-interaction" aria-label="Add interaction"><option value="">＋ Add interaction…</option>${ACTIONS.map(a => `<option value="${a.id}">${esc(a.label)}</option>`).join('')}</select>`);
         fhtml += scrollBehaviorHtml(n);
         return fhtml;
     }
@@ -19682,6 +19711,41 @@ function bhSet(n, t) {
 }
 function bhAction(n, t) {
     const act = t.dataset.bhAct;
+    const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
+    if (act === 'add-action-at') {
+        if (!t.value) return;
+        bhWrite(n, t.dataset.bhList, [...listAt(t.dataset.bhList), { type: t.value }]);
+        return;
+    }
+    if (act === 'del-action-at') {
+        const list = listAt(t.dataset.bhList), [removed] = list.splice(Number(t.dataset.bhIndex), 1);
+        if (removed) removePlacedOverlay(n.id, removed);
+        bhWrite(n, t.dataset.bhList, list);
+        return;
+    }
+    if (act === 'add-cond') { bhWrite(n, t.dataset.bhPath, defaultExpr('compare', bhFirstRef())); return; }
+    if (act === 'add-where') { bhWrite(n, t.dataset.bhPath, { field: t.dataset.bhFirst || '', cmp: 'eq', value: { op: 'value', value: '' } }); return; }
+    if (act === 'del-cond' || act === 'del-where') { bhWrite(n, t.dataset.bhPath, undefined); return; }
+    if (act === 'add-rule' || act === 'del-rule' || act === 'move-rule' || act === 'add-otherwise' || act === 'del-otherwise') {
+        const i = Number(t.dataset.bhIndex), base = `interactions.${i}.rules`, it = bhCfg(n).interactions[i];
+        if (!it) return;
+        const rules = structuredClone(it.rules || { items: [] });
+        if (act === 'add-rule') {
+            const id = `r${Date.now().toString(36)}${rules.items.length}`;
+            rules.items.push({ id, name: `Rule ${rules.items.length + 1}`, enabled: true, actions: [{ type: 'show-feedback' }] });
+            BH_SECTIONS.add(`rules:${it.id}`); BH_SECTIONS.add(`rule:${it.id}:${id}`);
+        }
+        else if (act === 'del-rule') rules.items.splice(Number(t.dataset.bhRule), 1);
+        else if (act === 'move-rule') {
+            const from = Number(t.dataset.bhRule), to = from + Number(t.dataset.bhDir);
+            if (to < 0 || to >= rules.items.length) return;
+            [rules.items[from], rules.items[to]] = [rules.items[to], rules.items[from]];
+        }
+        else if (act === 'add-otherwise') { rules.otherwise = { actions: [{ type: 'show-feedback' }] }; BH_SECTIONS.add(`rules:${it.id}`); BH_SECTIONS.add(`rule:${it.id}:otherwise`); }
+        else delete rules.otherwise;
+        bhWrite(n, base, rules.items.length || rules.otherwise ? rules : undefined);
+        return;
+    }
     if (act === 'add-interaction') {
         if (!t.value) return;
         // An instance that only inherits starts from a copy, so adding one action keeps the component's.
@@ -19793,6 +19857,9 @@ function bhAction(n, t) {
 $('#inspector').addEventListener('change', e => {
     const n = activeNode(), t = e.target;
     if (!n) return;
+    // A condition (a sentence of dropdowns) was edited.
+    const tgt = exprTarget(t.dataset);
+    if (tgt) { transaction('Behavior', () => { bhEditExpr(n, tgt, t.value); doc.touch(n); }); renderInspector(); return; }
     const isBh = t.dataset.bhPath || (t.dataset.bhAct && t.tagName === 'SELECT');
     if (!(t.id === 'proto-target' || t.dataset.proto || isBh)) return;
     transaction('Behavior', () => {
@@ -19806,6 +19873,18 @@ $('#inspector').addEventListener('change', e => {
             bhSet(n, t);
         doc.touch(n);
     });
+    renderInspector();
+});
+document.addEventListener('click', e => {
+    const b = e.target.closest?.('[data-ex-act]');
+    if (!b || !$('#inspector').contains(b)) return;
+    const n = activeNode();
+    if (!n) return;
+    const at = b.dataset.exAt, i = at.indexOf('|'), owner = at.slice(0, i), path = at.slice(i + 1);
+    if (owner.startsWith('d:')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    transaction('Behavior', () => { bhWrite(n, owner, editArgs(getPath(bhCfg(n), owner), path, b.dataset.exAct, Number(b.dataset.exI), bhFirstRef())); doc.touch(n); });
     renderInspector();
 });
 document.addEventListener('click', e => {

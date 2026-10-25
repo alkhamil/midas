@@ -1,6 +1,6 @@
 // The evaluation context Preview reads bindings from: the current State values plus the derived values computed from them.
 // Pure (no DOM). One per Preview; `reset()` is what happens when Preview opens and when its Reset button is pressed.
-import { checkValue, initialValues } from './state.js';
+import { checkValue, initialValues, interpolate } from './state.js';
 import { evaluateState } from './expr.js';
 
 const clone = v => (v === undefined ? undefined : structuredClone(v));
@@ -10,8 +10,11 @@ export function createEvalCtx(state) {
     const byId = new Map(st.variables.map(v => [v.id, v]));
     let values = initialValues(st);
     let derived = evaluateState(st, values);
+    // What Preview itself knows (a request in progress, the last response): read-only for the design, set by the host.
+    const extras = { loading: false, response: '', responseKind: '' };
     const recompute = () => { derived = evaluateState(st, values); };
-    return {
+    const builtin = ref => ref === '$loading' ? { found: true, value: extras.loading } : ref === '$response' ? { found: true, value: extras.response } : ref === '$responseKind' ? { found: true, value: extras.responseKind } : null;
+    const api = {
         state: st,
         has: id => values.has(id) || (st.derived || []).some(d => d.id === id),
         /** The current value of a state variable or a derived variable (undefined when unknown or broken). */
@@ -28,6 +31,8 @@ export function createEvalCtx(state) {
             recompute();
             return { ok: true };
         },
+        /** The initial value of a state variable (a copy). */
+        initial: id => clone(byId.get(id)?.initial),
         /** Back to the initial values: every variable (Preview open, Reset) or only the ones of scope page (leaving a page). */
         reset(scopes = ['page', 'app']) {
             const fresh = initialValues(st);
@@ -36,5 +41,35 @@ export function createEvalCtx(state) {
         },
         /** The error of a derived variable (a loop, an unknown variable…), else null. */
         error: id => derived.errors.get(id) || null,
+        /** Values the host provides: { loading, response, responseKind }. Read in expressions as $loading, $response, $responseKind. */
+        setExtra(key, value) { extras[key] = value; },
+        extra: key => extras[key],
+        /** { found, value } of a variable by its name (case does not matter), or of a $builtin. Used by {placeholders}. */
+        lookupName(name) {
+            const b = builtin(name);
+            if (b) return b;
+            const n = String(name).toLowerCase();
+            const v = st.variables.find(x => x.name.toLowerCase() === n) || (st.derived || []).find(x => x.name.toLowerCase() === n);
+            return v && !api.error(v.id) ? { found: true, value: api.get(v.id) } : { found: false };
+        },
+        /** A text with {placeholders} filled in. */
+        interpolate: text => interpolate(text, api.lookupName),
+        /**
+         * What expressions read: states, derived values and $builtins. `fieldValid(layerId)` → boolean | undefined is supplied by the
+         * host for conditions (derived values cannot depend on a field).
+         */
+        env(opts = {}) {
+            return {
+                fieldValid: opts.fieldValid,
+                resolve: ref => {
+                    const b = builtin(ref);
+                    if (b) return b;
+                    if (!api.has(ref)) return { found: false };
+                    const err = api.error(ref);
+                    return err ? { found: true, error: err } : { found: true, value: api.get(ref) };
+                },
+            };
+        },
     };
+    return api;
 }
