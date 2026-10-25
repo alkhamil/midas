@@ -183,6 +183,13 @@ function bodyCarousel(c, s) {
         + slotRow(c, `${p}.slots.next`, 'next', b.slots.next, false)
         + '<p class="small-label">Each layer of the slide row is one slide; only the current one is shown. The dot repeats once per slide. Autoplay is not in Preview yet.</p>';
 }
+function bodyForm(c, s) {
+    const { esc } = c, b = s.b, p = s.path, cf = b.config;
+    const inputs = c.layers.filter(l => l.isInstance);
+    return field(esc, 'Left out', `<input data-bh-path="${p}.config.exclude" data-bh-kind="formexclude" value="${esc((cf.exclude || []).join(', '))}" placeholder="a name, another name" spellcheck="false">`, 'Inputs (by name) that are not checked on submit')
+        + (inputs.length ? `<p class="small-label">Fields: ${inputs.map(l => esc(l.name)).join(', ')}</p>` : '<p class="small-label bh-warn">⚠ No input inside this frame yet.</p>')
+        + '<p class="small-label">Submit: a button whose On click runs “Submit form”. On finish and On finish failed (on the frame’s interactions) run after the check. Reset form and Check field are in the rules too.</p>';
+}
 const bodySelection = (c, s) => plain(['selectRow', true], ['selectAll'])(c, s) + '<p class="small-label">The header checkbox selects the rows of the current page only. The picks are kept in selectedIds across pages.</p>';
 const bodyRowActions = (c, s) => plain(['rowDelete'], ['rowEdit'], ['addButton'], ['bulkDelete'], ['reload'])(c, s);
 const bodyDataStates = (c, s) => plain(['empty'], ['emptySearch'], ['loading'])(c, s) + '<p class="small-label">Empty shows when the List has no rows at all, No results when a search finds nothing (Empty is used for both when No results is not mapped).</p>';
@@ -191,7 +198,7 @@ function bodyClick(c, s) {
     return `<p class="small-label">${c.esc(s.clickSummary || 'Nothing happens on click yet.')}</p><p class="small-label">Edit what it does in <b>Interaction</b> below.</p>`;
 }
 
-const TITLES = { 'has-carousel': bodyCarousel, 'has-menu': bodyMenu, 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
+const TITLES = { 'has-form': bodyForm, 'has-carousel': bodyCarousel, 'has-menu': bodyMenu, 'has-collapse': bodyCollapse, 'has-steps': bodySteps, 'has-tabs': bodyTabs, 'has-pager': bodyPager, 'has-rows': bodyRows, 'can-sort': bodySort, 'can-search': bodySearch, 'has-pagination': bodyPagination, 'has-selection': bodySelection, 'has-row-actions': bodyRowActions, 'has-data-states': bodyDataStates, 'can-type': bodyCanType, 'has-validation': bodyValidation, 'has-options': bodyOptions, 'opens-popup': bodyPopup, 'shows-items': bodyItems, 'has-loading': bodyLoading, 'show-feedback': bodyFeedback, 'on-click': bodyClick };
 
 // ---------------------------------------------------------------------------------------------------- the whole block
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */

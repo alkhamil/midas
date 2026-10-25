@@ -69,6 +69,8 @@ export const TRIGGERS = [
     { id: 'onBlur', label: 'On blur' },
     { id: 'onChange', label: 'On change' },
     { id: 'onSubmit', label: 'On submit' },
+    { id: 'onFinish', label: 'On finish' },
+    { id: 'onFinishFailed', label: 'On finish failed' },
     { id: 'onSearch', label: 'On search' },
     { id: 'onOpenChange', label: 'On open / close' },
     { id: 'onLoad', label: 'On page load' },

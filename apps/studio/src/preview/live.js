@@ -11,6 +11,7 @@
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { rowRuntimeKey, hasOwnInteractions } from '../engine/behavior.js';
+import { submitForm as runFormCheck, outcomeOf } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -588,7 +589,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (rb?.fill && typeof o.row[rb.fill] === 'string' && n.type !== 'text') { setFill(c, o.row[rb.fill]); if (c.vars) { delete c.vars.fill; delete c.vars['fills.0']; } }
             if (n.type === 'text') {
                 if (o?.field && (n.id === o.field.id || (o.swapped && n.name === o.field.name))) c._field = o;
-                c.text = (err && roles?.hintText && n.propBind?.text === roles.hintText ? (o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.cOver?.get(n.propBind?.text) ?? o?.texts?.get(n.id) ?? n.text ?? '');
+                c.text = (err && roles?.hintText && n.propBind?.text === roles.hintText ? (runtime.get(rowRuntimeKey(o.inst.id, o.inst.__row))?.errorMessage || o?.inst?.errorMessage || 'This field is required') : null) ?? (o?.cOver?.get(n.propBind?.text) ?? o?.texts?.get(n.id) ?? n.text ?? '');
             }
             if (o?.iconScale && parentId !== null) scaleIconChild(c, n, copies.get(parentId), o.iconScale);
             if (rb?.text && n.type === 'text' && o.row[rb.text] !== undefined) c.text = String(o.row[rb.text]);
@@ -1115,6 +1116,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         perform: a => runAction(a, inst, anchor, rect, trigger),
         feedback: f => showFeedback(f, inst, anchor, rect, trigger, rowCtx),
         validateField: id => checkField(id),
+        submitForm: () => submitFormAt(inst),
+        resetForm: () => resetFormAt(inst),
         request: a => simulateRequest(a, inst),
         changed: () => stateChanged(),
         warn: m => flash(m),
@@ -1122,6 +1125,49 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** State or a loading flag changed: draw again, keep the State panel and the loading shield in step. */
     function stateChanged() { draw(); if (stateReady) { renderStateIfOpen(); } syncLoading(); }
 
+    // ---- Form (Has form): one validation pass over the inputs in a frame on submit; the outcome runs On finish / On finish failed ----
+    /** The form a layer is in: its nearest frame with a Has form behavior, and the names it leaves out. Null outside a form. */
+    function formOf(inst) {
+        for (let c = inst; c; c = ctx.node(c.parentId)) {
+            const b = (ctx.behaviorsFor?.(c) || []).find(x => x.kind === 'has-form' && x.enabled);
+            if (b) return { node: c, exclude: b.config?.exclude || [] };
+        }
+        return null;
+    }
+    const initialOf = id => evalCtx.state?.variables?.find(v => v.id === id)?.initial ?? '';
+    /** The fields of a form: its typeable inputs that are not left out, with their rules, value and State. */
+    function formFields(form) {
+        return ctx.descendants(form.node.id).filter(n => n.isInstance && !form.exclude.includes(n.name) && ctx.typeable(n)).map(n => {
+            const ib = ctx.inputFor?.(n), bind = ib?.typeable?.bindTo && evalCtx.has(ib.typeable.bindTo) ? ib.typeable.bindTo : '';
+            const rt = runtime.get(rowRuntimeKey(n.id, n.__row)) || {};
+            return { n, id: n.id, label: n.name, rules: { ...rulesOf(ib), ...(requiredOf(n, ib) ? { required: true } : {}) }, value: bind ? evalCtx.get(bind) : (rt.value ?? ''), bind, initial: bind ? initialOf(bind) : '' };
+        });
+    }
+    /** Submit: every field is checked in one pass; invalid ones get the error state and their message; the first one gets focus. */
+    function submitFormAt(inst) {
+        const form = formOf(inst) || { node: inst, exclude: [] };
+        const fields = formFields(form);
+        const r = runFormCheck(fields.map(f => ({ id: f.id, label: f.label, rules: f.rules, value: f.value })));
+        for (const f of fields) {
+            const msg = r.errors[f.id], cur = runtime.get(rowRuntimeKey(f.n.id, f.n.__row)) || {};
+            runtime.set(rowRuntimeKey(f.n.id, f.n.__row), msg ? { ...cur, state: 'error', error: true, errorMessage: msg } : { ...cur, error: false, errorMessage: undefined, ...(cur.state === 'error' ? { state: 'default' } : {}) });
+        }
+        evalCtx.setExtra('formValid', r.valid);
+        // isDirty is this form's: some field differs from its State's initial value (read by the rules of its outcome)
+        evalCtx.setExtra('isDirty', fields.some(f => f.bind && JSON.stringify(f.value ?? '') !== JSON.stringify(f.initial ?? '')));
+        stateChanged();
+        if (r.firstInvalid) { const box = stage.querySelector(`[data-node="${r.firstInvalid}"]`); (box && /^(INPUT|TEXTAREA)$/.test(box.tagName) ? box : box?.querySelector('input, textarea'))?.focus(); }
+        runTriggers(form.node, outcomeOf(r));
+    }
+    /** Reset form: every bound State goes back to its initial value; no error state is left. */
+    function resetFormAt(inst) {
+        const form = formOf(inst) || { node: inst, exclude: [] };
+        for (const f of formFields(form)) {
+            if (f.bind) evalCtx.set(f.bind, f.initial);
+            runtime.set(rowRuntimeKey(f.n.id, f.n.__row), { ...(runtime.get(rowRuntimeKey(f.n.id, f.n.__row)) || {}), value: f.initial, error: false, errorMessage: undefined, state: 'default' });
+        }
+        stateChanged();
+    }
     // ---- fields: validity as a condition, and "Check field" ----
     const typeableIn = () => [ctx.node(frameId), ...ctx.descendants(frameId)].filter(n => n && n.isInstance && (ctx.typeable(n) || selectBehaviors(n).hb));
     function fieldValidity(id) {
@@ -1587,7 +1633,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         markCurrent();
     }
 
-    function show(id, motion) { if (id !== frameId) evalCtx.reset(['page']); frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); clearFeedback(); syncTabFrame(id); draw(); runLoadEvents(id); if (controlsReady) renderControls(); }
+    // Feedback raised just before a navigation (an alert on success) stays on the new screen: only the layers close here.
+    function show(id, motion) { if (id !== frameId) evalCtx.reset(['page']); frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); runLoadEvents(id); if (controlsReady) renderControls(); }
     /** Restart (R): reset semua state interaksi ke awal tanpa reload — langsung pakai pengaturan kanvas + behavior yang sudah ada. */
     async function restartPreview() {
         // A preview tab holds a copy of the file from when it loaded: restart first re-reads the saved file (no page reload),

@@ -16,6 +16,8 @@ export const STATE_ACTIONS = [
     { id: 'list-clear', label: 'Clear list' },
     { id: 'show-feedback', label: 'Show feedback' },
     { id: 'validate-field', label: 'Check field' },
+    { id: 'submit-form', label: 'Submit form' },
+    { id: 'reset-form', label: 'Reset form' },
     { id: 'request', label: 'Simulated request' },
 ];
 export const STATE_ACTION_IDS = new Set(STATE_ACTIONS.map(a => a.id));
@@ -89,6 +91,8 @@ export function describeAction(a, nameOf = id => id) {
         case 'list-clear': return `Clear ${nameOf(a.listId) || '…'}`;
         case 'show-feedback': return `Show ${a.kind}${a.message ? `: ${a.message.slice(0, 24)}` : ''}`;
         case 'validate-field': return 'Check field';
+        case 'submit-form': return 'Submit form';
+        case 'reset-form': return 'Reset form';
         case 'request': return 'Simulated request';
         default: return a?.type || '';
     }
@@ -199,6 +203,8 @@ export async function runActions(actions, host) {
         }
         else if (a.type === 'show-feedback') host.feedback(resolveFeedback(a, host.ev));
         else if (a.type === 'validate-field') { host.validateField(a.fieldId); host.changed?.(); }
+        else if (a.type === 'submit-form') { host.submitForm(a); host.changed?.(); }
+        else if (a.type === 'reset-form') { host.resetForm(a); host.changed?.(); }
         else if (STATE_ACTION_IDS.has(a.type)) {
             const r = runStateAction(a, host.ev, host.env());
             if (!r.ok) host.warn?.(r.error);

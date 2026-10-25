@@ -265,4 +265,6 @@ export const BUILTINS = [
     { id: '$loading', name: 'Request in progress', type: 'boolean' },
     { id: '$response', name: 'Last response', type: 'string' },
     { id: '$responseKind', name: 'Last response type', type: 'string' },
+    { id: '$formValid', name: 'Form valid (last submit)', type: 'boolean' },
+    { id: '$isDirty', name: 'Form changed', type: 'boolean' },
 ];

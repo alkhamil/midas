@@ -85,6 +85,7 @@ export const CAPABILITIES = {
     'has-collapse': { group: 'Action', label: 'Has collapse', backing: 'behaviors', one: true, slots: [slot('section', true), slot('panel', true)], events: ['onChange'], blurb: 'Collapsible sections: a click on a header opens or closes its panel. One open at a time (accordion) or several (multiple).' },
     'has-menu': { group: 'Action', label: 'Has menu', backing: 'behaviors', one: true, slots: [slot('item', true)], events: ['onChange'], blurb: 'A navigation menu: clicking an item selects it (its look is Selected), the selected item is a State.' },
     'has-carousel': { group: 'Action', label: 'Has carousel', backing: 'behaviors', one: true, slots: [slot('slide', true), slot('dot'), slot('prev'), slot('next')], events: ['onChange'], blurb: 'Slides: one shows at a time; Prev and Next (and the dots) change it. Loop wraps round; otherwise it stops at the ends.' },
+    'has-form': { group: 'Action', label: 'Has form', backing: 'behaviors', one: true, slots: [], events: ['onFinish', 'onFinishFailed'], blurb: 'A form: the inputs inside it are its fields. Submit checks them in one pass; On finish or On finish failed runs after it.' },
     'show-feedback': { group: 'Feedback', label: 'Show feedback', backing: 'behaviors', one: true, slots: [slot('message', true), slot('title'), slot('icon'), slot('close'), slot('confirm'), slot('cancel')], events: [], blurb: 'Is drawn when a “Show feedback” action runs.' },
 };
 export const CAPABILITY_IDS = Object.keys(CAPABILITIES);
@@ -117,6 +118,7 @@ export function normalizeConfig(kind, c = {}) {
         }
         case 'has-loading': return { state: typeof c.state === 'string' && c.state.trim() ? c.state.trim() : 'loading' };
         case 'has-tabs': return { state: typeof c.state === 'string' && c.state ? c.state : '' };
+        case 'has-form': return { exclude: Array.isArray(c.exclude) ? c.exclude.map(String).filter(Boolean) : [] };
         case 'has-carousel': return { state: typeof c.state === 'string' ? c.state : '', loop: c.loop === true };
         case 'has-menu': return { state: typeof c.state === 'string' ? c.state : '' };
         case 'has-collapse': return { state: typeof c.state === 'string' ? c.state : '', mode: c.mode === 'multiple' ? 'multiple' : 'accordion' };
@@ -239,6 +241,7 @@ export function summaryOf(b, nameOf = id => id) {
         case 'has-row-actions': return ['rowDelete', 'rowEdit', 'addButton', 'bulkDelete', 'reload'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-data-states': return ['empty', 'emptySearch', 'loading'].filter(k => b.slots[k]).map(k => SLOT_ROLES[k].label.toLowerCase()).join(', ') || 'Nothing mapped yet';
         case 'has-loading': return `Switches to “${c.state}” while a request runs`;
+        case 'has-form': return `${c.exclude?.length ? c.exclude.length + ' left out' : 'Every input is a field'} · submit checks them in one pass`;
         case 'has-carousel': return `${b.slots.slide ? 'Slides mapped' : 'No slide row yet'}${c.loop ? ' · loops' : ''}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}`;
         case 'has-menu': return `${b.slots.item ? 'Items mapped' : 'No item layer yet'}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}`;
         case 'has-collapse': return `${c.mode === 'multiple' ? 'Several open' : 'One open at a time'}${c.state ? ' · State “' + nameOf(c.state) + '”' : ''}`;

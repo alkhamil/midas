@@ -20208,6 +20208,7 @@ function bhSet(n, t) {
     let value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
     if (t.dataset.bhInvert) value = !value;
     if (kind === 'options') { bhWrite(n, path, parseOptions(value)); return; }
+    if (kind === 'formexclude') { bhWrite(n, path, String(value).split(',').map(x => x.trim()).filter(Boolean)); return; }
     // Search in: the columns the search looks at. They live in the Has rows config and in the three derived values that use them.
     if (kind === 'searchcols') {
         const cols = String(value).split(',').map(x => x.trim()).filter(Boolean), base = path.replace(/\.config\.searchColumns$/, ''), b = getPath({ behaviors: n.behaviors || [] }, base);

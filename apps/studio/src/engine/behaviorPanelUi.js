@@ -4,7 +4,7 @@
 /** The icon of each kind of row (names of the editor's icon set). */
 export const ROW_ICON = {
     interaction: 'play', 'can-type': 'text', 'has-validation': 'checkSquare', 'has-options': 'layers', 'opens-popup': 'panel', 'shows-items': 'grid',
-    'has-rows': 'grid', 'has-tabs': 'layers', 'has-collapse': 'layers', 'has-menu': 'layers', 'has-carousel': 'layers', 'has-pager': 'arrowRight', 'can-sort': 'variant', 'can-search': 'search', 'has-pagination': 'arrowRight', 'has-selection': 'checkSquare', 'has-row-actions': 'trash', 'has-data-states': 'layers',
+    'has-rows': 'grid', 'has-tabs': 'layers', 'has-form': 'checkSquare', 'has-collapse': 'layers', 'has-menu': 'layers', 'has-carousel': 'layers', 'has-pager': 'arrowRight', 'can-sort': 'variant', 'can-search': 'search', 'has-pagination': 'arrowRight', 'has-selection': 'checkSquare', 'has-row-actions': 'trash', 'has-data-states': 'layers',
     'has-loading': 'rotate', 'show-feedback': 'sparkles', state: 'variant', repeat: 'grid', bind: 'link',
 };
 

@@ -14,7 +14,7 @@ export function createEvalCtx(state) {
     // What Preview itself knows (a request in progress, the last response): read-only for the design, set by the host.
     const extras = { loading: false, response: '', responseKind: '' };
     const recompute = () => { derived = evaluateState(st, values); };
-    const builtin = ref => ref === '$loading' ? { found: true, value: extras.loading } : ref === '$response' ? { found: true, value: extras.response } : ref === '$responseKind' ? { found: true, value: extras.responseKind } : null;
+    const builtin = ref => ref === '$loading' ? { found: true, value: extras.loading } : ref === '$response' ? { found: true, value: extras.response } : ref === '$formValid' ? { found: true, value: extras.formValid } : ref === '$isDirty' ? { found: true, value: !!extras.isDirty } : ref === '$responseKind' ? { found: true, value: extras.responseKind } : null;
     const api = {
         state: st,
         has: id => values.has(id) || (st.derived || []).some(d => d.id === id),

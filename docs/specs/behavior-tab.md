@@ -472,6 +472,21 @@ Deviations from the first design (kept on purpose, to keep to the existing State
 - Steps and Collapse: the gate is a boolean State (a condition such as “step form valid” is not connected yet).
 - onChange runs on every change; the checks did not include an interaction that reads it.
 
+## Form container (Phase 5, slice 1)
+
+A frame gets the Has form capability (Behavior, Action group). Its fields are the typeable instances inside it that are not left out.
+Submit is an action: `submit-form` (the nearest form around the button). It checks every field in one pass with the shared validator
+(`submitForm` in form.js), gives a failed field the error state and its message, focuses the first invalid field, sets `$formValid`
+and `$isDirty` for its rules, and runs the form's own interaction `On finish` or `On finish failed`.
+`Reset form` (`reset-form`) puts every bound State back to its initial value and clears the error states.
+
+- `$isDirty` is this form's: some field differs from its State's initial value. It is computed when the form is submitted.
+- `$formValid` is the result of the last submit.
+- Not yet: form-local variables (the login example uses an App-scope State), a visible Save state (Save is gated by a rule), and the
+  Enter key as its own trigger (use `On submit` on a field and run Submit form there).
+- Preview: feedback raised just before a navigation (an alert on success) stays on the new screen.
+- A plain frame's interactions are wired like an instance's (`hasOwnInteractions`): before this, an On click on a plain frame never ran.
+
 ## Versi data behavior dan migrasi
 
 File punya `behaviorVersion` yang **terpisah** dari `version` (yang tetap `1`; loader menolak nilai lain). Tidak ada = `1`
