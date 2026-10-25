@@ -24,6 +24,7 @@ const FORM = [
     { id: 'formEmail', name: 'formEmail', type: 'string', scope: 'page', initial: '' },
     { id: 'editingId', name: 'editingId', type: 'string', scope: 'page', initial: '' },
     { id: 'nextId', name: 'nextId', type: 'number', scope: 'page', initial: 100 },
+    { id: 'formTitle', name: 'formTitle', type: 'string', scope: 'page', initial: 'Add user' },
 ];
 const state = cleanState({ variables: [list, ...plan.variables, ...FORM.map(normalizeStateVariable)], derived: plan.derived });
 
@@ -44,8 +45,8 @@ const inputInDrawer = (id, label, bindTo, rules, y) => [
         inputBehavior: { typeable: { frameId: id + 'T', inputType: 'text', bindTo }, validation: { rules, trigger: 'blur' } } }),
     text(id + 'T', id, 'Placeholder', label, { sourceId: 'inputMT', fill: '#888888', overrides: { text: true } }),
 ];
-add(frame('drawerM', null, 'Drawer', { component: true, x: -1200, y: 0, w: 320, layout: 'vertical', gap: 12, padding: 16, fill: '#ffffff', stroke: '#E4E4EA', strokeWidth: 1, radius: 12, layoutSizingH: 'fixed', layoutSizingV: 'hug' }));
-add(text('drawerTitle', 'drawerM', 'Title', 'Edit user', { fontSize: 16, fontWeight: 700 }));
+add(frame('drawerM', null, 'Drawer', { component: true, x: -1200, y: 0, w: 320, layout: 'vertical', gap: 12, padding: 16, fill: '#ffffff', stroke: '#E4E4EA', strokeWidth: 1, radius: 12, layoutSizingH: 'fixed', layoutSizingV: 'hug', stateBind: { layers: { drawerTitle: { text: 'template' } } } }));
+add(text('drawerTitle', 'drawerM', 'Title', '{formTitle}', { fontSize: 16, fontWeight: 700 }));
 add(...inputInDrawer('fName', 'Name', 'formName', { required: true }, 0));
 add(...inputInDrawer('fEmail', 'Email', 'formEmail', { required: true, type: 'email' }, 0));
 add(frame('drawerBtns', 'drawerM', 'Buttons', { layout: 'horizontal', gap: 8, padding: 0, primaryAlign: 'end', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 288 }));
@@ -53,7 +54,7 @@ add(frame('cancelM', 'drawerBtns', 'Cancel', { isInstance: true, sourceId: 'btnM
     interactions: [{ id: 'ixCancel', trigger: 'onClick', actions: [{ type: 'close-overlay', close: 'current' }] }] }));
 add(text('cancelT', 'cancelM', 'Label', 'Cancel', { sourceId: 'btnMT', fill: '#333333', fontWeight: 600, overrides: { text: true } }));
 // Save: validate both fields, Simulated request, then the outcome rules (invalid / failed / add / update)
-add(frame('saveM', 'drawerBtns', 'Save', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 12, padR: 12, primaryAlign: 'center', counterAlign: 'center', fill: '#0058CA', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
+add(frame('saveM', 'drawerBtns', 'Save', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 12, padR: 12, primaryAlign: 'center', counterAlign: 'center', fill: '#0058CA', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vPrimaryFill' }, varModes: { cPrimary: 'mPrimary' },
     interactions: [{ id: 'ixSave', trigger: 'onClick', actions: [{ type: 'validate-field', fieldId: 'fName' }, { type: 'validate-field', fieldId: 'fEmail' }, { type: 'request', delay: 400 }],
         rules: { items: [
             { id: 'rInvalid', name: 'Invalid', if: { op: 'or', args: [{ op: 'invalid', field: 'fName' }, { op: 'invalid', field: 'fEmail' }] }, actions: [{ type: 'show-feedback', kind: 'alert', level: 'error', message: 'Please fix the highlighted fields.', duration: 3000 }] },
@@ -99,7 +100,7 @@ add(frame('reloadM', 'tableM', 'Reload', { isInstance: true, sourceId: 'btnM', l
         rules: { items: [
             { id: 'rReloadFail', name: 'Failed', if: { op: 'compare', cmp: 'eq', a: { op: 'var', ref: '$responseKind' }, b: { op: 'value', value: 'error' } }, actions: [{ type: 'show-feedback', kind: 'alert', level: 'error', message: 'Reload failed. The list is unchanged.', duration: 4000 }] },
             { id: 'rReloadEmpty', name: 'Empty', if: { op: 'compare', cmp: 'eq', a: { op: 'var', ref: '$responseKind' }, b: { op: 'value', value: 'empty' } }, actions: [{ type: 'list-clear', listId: 'users' }, { type: 'show-feedback', kind: 'message', level: 'info', message: 'The server returned no rows', duration: 2500 }] },
-        ], otherwise: { actions: [{ type: 'set-state', variableId: 'users', op: 'reset' }, { type: 'show-feedback', kind: 'message', level: 'success', message: 'Reloaded', duration: 2000 }] } } }] }));
+        ], otherwise: { actions: [{ type: 'set-state', variableId: 'users', op: 'reset' }, { type: 'set-state', variableId: 'nextId', op: 'reset' }, { type: 'show-feedback', kind: 'message', level: 'success', message: 'Reloaded', duration: 2000 }] } } }] }));
 add(text('reloadT', 'reloadM', 'Label', 'Reload', { sourceId: 'btnMT', fill: '#333333', fontWeight: 600, overrides: { text: true } }));
 // Edit: prefills the drawer from this row, then opens it. Add: empties the drawer and opens it.
 add(frame('editM', 'rowM', 'Edit', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#E6F0FF', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
@@ -107,12 +108,14 @@ add(frame('editM', 'rowM', 'Edit', { isInstance: true, sourceId: 'btnM', layout:
         { type: 'set-state', variableId: 'formName', op: 'set', value: { op: 'var', ref: '$row.name' } },
         { type: 'set-state', variableId: 'formEmail', op: 'set', value: { op: 'var', ref: '$row.email' } },
         { type: 'set-state', variableId: 'editingId', op: 'set', value: { op: 'var', ref: '$row.id' } },
+        { type: 'set-state', variableId: 'formTitle', op: 'set', value: { op: 'value', value: 'Edit user' } },
         { type: 'open-overlay', targetComponentId: 'drawerM', position: 'center', backdrop: true, closeOnBackdrop: true }] }] }));
 add(text('editT', 'editM', 'Label', 'Edit', { sourceId: 'btnMT', fill: '#0058CA', fontWeight: 600, overrides: { text: true } }));
-add(frame('addM', 'tableM', 'Add', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 6, padB: 6, padL: 12, padR: 12, primaryAlign: 'center', counterAlign: 'center', fill: '#0058CA', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
+add(frame('addM', 'tableM', 'Add', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 6, padB: 6, padL: 12, padR: 12, primaryAlign: 'center', counterAlign: 'center', fill: '#0058CA', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vPrimaryFill' }, varModes: { cPrimary: 'mPrimary' },
     interactions: [{ id: 'ixAdd', trigger: 'onClick', actions: [
         { type: 'set-state', variableId: 'formName', op: 'reset' },
         { type: 'set-state', variableId: 'formEmail', op: 'reset' },
+        { type: 'set-state', variableId: 'formTitle', op: 'set', value: { op: 'value', value: 'Add user' } },
         { type: 'set-state', variableId: 'editingId', op: 'set', value: { op: 'value', value: '' } },
         { type: 'open-overlay', targetComponentId: 'drawerM', position: 'center', backdrop: true, closeOnBackdrop: true }] }] }));
 add(text('addT', 'addM', 'Label', 'Add user', { sourceId: 'btnMT', fill: '#ffffff', fontWeight: 600, overrides: { text: true } }));
@@ -121,11 +124,13 @@ add(text('cName', 'rowM', 'Name', 'name', { fill: '#111111' }), text('cEmail', '
 // Bulk delete: shown only while rows are selected; its Popconfirm says how many, deletes the selected ids, clears the selection and confirms.
 add(frame('bulkM', 'tableM', 'Delete selected', { isInstance: true, sourceId: 'btnM', layout: 'horizontal', padT: 4, padB: 4, padL: 10, padR: 10, primaryAlign: 'center', counterAlign: 'center', fill: '#FDE7E9', radius: 6, layoutSizingH: 'hug', layoutSizingV: 'hug', vars: { fill: 'vBtnFill' }, varModes: { cBtn: 'mBtnDefault' },
     stateBind: { self: { when: { op: 'compare', cmp: 'gt', a: { op: 'var', ref: SEL_COUNT }, b: { op: 'value', value: 0 } } } },
-    interactions: [{ id: 'ixBulk', trigger: 'onClick', actions: [{ type: 'show-feedback', kind: 'popconfirm', level: 'warning', title: 'Delete {selectedCount} rows?', message: 'The selected users will be removed from the list.', confirmLabel: 'Delete',
-        onConfirm: [
-            { type: 'list-delete', listId: 'users', where: { field: 'id', cmp: 'in', value: { op: 'var', ref: SEL } } },
-            { type: 'show-feedback', kind: 'message', level: 'success', message: 'Deleted {selectedCount} rows', duration: 2000 },
-            { type: 'set-state', variableId: SEL, op: 'reset' }] }] }] }));
+    interactions: [{ id: 'ixBulk', trigger: 'onClick', actions: [{ type: 'request', delay: 300 }],
+        rules: { items: [{ id: 'rBulkFail', name: 'Failed', if: { op: 'compare', cmp: 'eq', a: { op: 'var', ref: '$responseKind' }, b: { op: 'value', value: 'error' } }, actions: [{ type: 'show-feedback', kind: 'alert', level: 'error', message: 'Could not delete. Your data is unchanged.', duration: 4000 }] }],
+            otherwise: { actions: [{ type: 'show-feedback', kind: 'popconfirm', level: 'warning', title: 'Delete {selectedCount} rows?', message: 'The selected users will be removed from the list.', confirmLabel: 'Delete',
+                onConfirm: [
+                    { type: 'list-delete', listId: 'users', where: { field: 'id', cmp: 'in', value: { op: 'var', ref: SEL } } },
+                    { type: 'show-feedback', kind: 'message', level: 'success', message: 'Deleted {selectedCount} rows', duration: 2000 },
+                    { type: 'set-state', variableId: SEL, op: 'reset' }] }] } } }] }));
 add(text('bulkT', 'bulkM', 'Label', 'Delete selected', { sourceId: 'btnMT', fill: '#B4232A', fontWeight: 600, overrides: { text: true } }));
 add(frame('pagerM', 'tableM', 'Pager', { layout: 'horizontal', gap: 12, padding: 0, counterAlign: 'center', primaryAlign: 'end', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));
 add(text('prevM', 'pagerM', 'Prev', '‹ Prev', { fill: '#0058CA' }), text('lblM', 'pagerM', 'Page label', 'Page 1 of 3', { fill: '#555555' }), text('nextM', 'pagerM', 'Next', 'Next ›', { fill: '#0058CA' }));
@@ -159,7 +164,7 @@ inst.parentId = 'page';
 const doc = {
     format: 'midas', version: 1, behaviorVersion: 2, name: 'CRUD test', pageId: 'p1',
     pages: [{ id: 'p1', name: 'Page 1', nodes, parentId: null }], tokens: {}, guideStyles: [], created: Date.now(), assets: {},
-    state, variables: { collections: [{ id: 'cBtn', name: 'Button states', modes: [{ id: 'mBtnDefault', name: 'Default' }, { id: 'mBtnHover', name: 'Hover' }], groups: [] }], items: [{ id: 'vBtnFill', collectionId: 'cBtn', name: 'button/fill', type: 'color', description: '', hidden: false, values: { mBtnDefault: '#FDE7E9', mBtnHover: '#F5A5AB' } }] },
+    state, variables: { collections: [{ id: 'cBtn', name: 'Button states', modes: [{ id: 'mBtnDefault', name: 'Default' }, { id: 'mBtnHover', name: 'Hover' }], groups: [] }, { id: 'cPrimary', name: 'Primary button', modes: [{ id: 'mPrimary', name: 'Default' }], groups: [] }], items: [{ id: 'vPrimaryFill', collectionId: 'cPrimary', name: 'primary/fill', type: 'color', description: '', hidden: false, values: { mPrimary: '#0058CA' } }, { id: 'vBtnFill', collectionId: 'cBtn', name: 'button/fill', type: 'color', description: '', hidden: false, values: { mBtnDefault: '#FDE7E9', mBtnHover: '#F5A5AB' } }] },
 };
 fs.writeFileSync(process.argv[2] || 'crud-test.midas', JSON.stringify(doc));
 console.log('wrote', nodes.length, 'nodes; list rows', list.initial.length);
