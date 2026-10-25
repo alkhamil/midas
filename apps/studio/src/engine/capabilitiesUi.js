@@ -27,6 +27,7 @@ function bodyCanType(c, s) {
     return slotRow(c, 'input.typeable.frameId', 'value', t.frameId, true)
         + field(esc, 'Input type', c.bhSelect('input.typeable.inputType', 'plain', t.inputType || 'text', INPUT_TYPES.map(x => [x.id, x.label])))
         + (t.inputType === 'password' ? `<p class="small-label">Clicking the icon in the field swaps it between these two components.</p>${c.componentButton('input.typeable.showIconId', t.showIconId, 'Icon while hidden')}${c.componentButton('input.typeable.hideIconId', t.hideIconId, 'Icon while shown')}` : '')
+        + field(esc, 'Keep in State', c.bhSelect('input.typeable.bindTo', 'plain', t.bindTo || '', [['', '— nowhere —'], ...(c.state?.variables || []).filter(v => v.type === 'string' || v.type === 'number').map(v => [v.id, `${v.name} (${v.type})`])]), 'The typed text is written to this State. Save and Edit read it from there.')
         + `<p class="small-label">${esc(t.inputType === 'search' ? 'Enter fires On search.' : 'Typing fires On change; Enter fires On submit.')} The text of the value layer is the placeholder.</p>`;
 }
 function bodyValidation(c, s) {

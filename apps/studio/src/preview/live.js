@@ -715,7 +715,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
         input.placeholder = c.text ?? '';
-        input.value = cur.value || '';
+        // A field bound to a State shows that State's value (an Edit prefills it that way); otherwise what was typed.
+        const boundTo = o.input?.typeable?.bindTo;
+        input.value = boundTo && evalCtx.has(boundTo) ? formatValue(evalCtx.get(boundTo)) : (cur.value || '');
         input.disabled = !!inst.disabled;
         // The type is the designer's choice (Behavior tab). Only a password hides its text, until its eye layer is clicked.
         const kind = o.input?.typeable?.inputType || 'text';
@@ -740,6 +742,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const was = runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {};
             const bad = when === 'change' && wrong(input.value);
             runtime.set(rowRuntimeKey(inst.id, inst.__row), { ...was, value: input.value, error: bad, touched: was.touched || !!input.value });
+            // What is typed goes to the bound State (a Number State takes a number).
+            if (boundTo && evalCtx.has(boundTo)) { const v = evalCtx.kind(boundTo) === 'state' ? evalCtx.state.variables.find(x => x.id === boundTo) : null; if (v) evalCtx.set(boundTo, v.type === 'number' ? (Number.isFinite(+input.value) && input.value !== '' ? +input.value : 0) : input.value); }
             tblSearch(inst, input.value);
             const state = bad ? 'error' : 'typing';
             if (was.state !== state) update(inst, { state, error: bad });

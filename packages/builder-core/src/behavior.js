@@ -637,6 +637,8 @@ export function normalizeInputBehavior(b) {
             // The icon in the field is swapped between them when it is clicked.
             showIconId: typeable.showIconId ? String(typeable.showIconId) : undefined,
             hideIconId: typeable.hideIconId ? String(typeable.hideIconId) : undefined,
+            // The State variable the typed text is kept in (a String or a Number state). Nothing is kept when it is not set.
+            bindTo: typeable.bindTo ? String(typeable.bindTo) : undefined,
         },
         validation: {
             required: !!validation.required,
