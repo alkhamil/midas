@@ -21,20 +21,27 @@ let k = 0;
 const plan = planTableState({ variables: [list], derived: [] }, list, () => `v${++k}`, { pageSize: 10 });
 const state = cleanState({ variables: [list, ...plan.variables], derived: plan.derived });
 
-// ---- the Table component (master) ----
 const nodes = [];
 const add = (...n) => nodes.push(...n);
+// ---- the Input component (the search box is an instance of it) ----
+add(frame('inputM', null, 'Input', { component: true, x: -900, y: -200, w: 240, h: 36, layout: 'horizontal', padding: 10, counterAlign: 'center', fill: '#ffffff', stroke: '#C9C9D1', strokeWidth: 1, radius: 8, layoutSizingH: 'fixed', layoutSizingV: 'hug', typeable: true, inputBehavior: { typeable: { frameId: 'inputMT', inputType: 'text' } } }));
+add(text('inputMT', 'inputM', 'Placeholder', 'Search users…', { fill: '#888888' }));
+
+// ---- the Table component (master) ----
 add(frame('tableM', null, 'Table', {
     component: true, x: -900, y: 0, w: 520, layout: 'vertical', gap: 8, padding: 12, fill: '#ffffff', stroke: '#E4E4EA', strokeWidth: 1, radius: 10,
     layoutSizingH: 'fixed', layoutSizingV: 'hug',
     behaviors: normalizeBehaviors([
         { id: 'bRows', kind: 'has-rows', enabled: true, slots: { ...(UNMAPPED ? {} : { row: 'rowM' }), header: 'hdrM', 'cell:name': 'cName', 'cell:email': 'cEmail', 'cell:role': 'cRole', 'head:name': 'hName', 'head:email': 'hEmail', 'head:role': 'hRole' }, config: { source: 'users', idField: 'id', pageSize: 10, vars: plan.ids } },
         { id: 'bSort', kind: 'can-sort', enabled: true, slots: {}, config: {} },
+        { id: 'bSearch', kind: 'can-search', enabled: true, slots: { search: 'srchM' }, config: {} },
         { id: 'bPage', kind: 'has-pagination', enabled: true, slots: { prev: 'prevM', next: 'nextM', pageLabel: 'lblM' }, config: {} },
         { id: 'bSel', kind: 'has-selection', enabled: true, slots: { selectRow: 'chkM', selectAll: 'chkAllM' }, config: {} },
         { id: 'bStates', kind: 'has-data-states', enabled: true, slots: { empty: 'emptyM', emptySearch: 'noResM', loading: 'loadM' }, config: {} },
     ]),
 }));
+add(frame('srchM', 'tableM', 'Search', { isInstance: true, sourceId: 'inputM', typeable: true, layout: 'horizontal', padding: 10, counterAlign: 'center', fill: '#ffffff', stroke: '#C9C9D1', strokeWidth: 1, radius: 8, layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496, overrides: { layoutSizingH: true } }));
+add(text('srchT', 'srchM', 'Placeholder', 'Search users…', { sourceId: 'inputMT', fill: '#888888', overrides: { text: true } }));
 add(frame('hdrM', 'tableM', 'Header', { layout: 'horizontal', gap: 12, padding: 0, counterAlign: 'center', layoutSizingH: 'fill', layoutSizingV: 'hug', w: 496 }));
 add(frame('chkAllM', 'hdrM', 'Select all', { w: 14, h: 14, fill: '#ffffff', stroke: '#9A9AA6', strokeWidth: 1, radius: 3 }));
 add(text('hName', 'hdrM', 'Name', 'Name', { fontWeight: 700 }), text('hEmail', 'hdrM', 'Email', 'Email', { fontWeight: 700 }), text('hRole', 'hdrM', 'Role', 'Role', { fontWeight: 700 }));
@@ -49,11 +56,13 @@ add(text('emptyM', 'tableM', 'Empty', 'No data yet', { fill: '#999999' }), text(
 const copyOf = (masterId, parentId) => {
     const m = nodes.find(n => n.id === masterId);
     const kids = nodes.filter(n => n.parentId === masterId);
-    add({ ...m, id: `i_${m.id}`, parentId, component: undefined, behaviors: undefined, isInstance: undefined, sourceId: m.id, name: m.name, overrides: { text: true, layoutSizingH: true } });
+    add({ ...m, id: `i_${m.id}`, parentId, component: undefined, behaviors: undefined, isInstance: m.isInstance ? true : undefined, sourceId: m.id, name: m.name, overrides: { text: true, layoutSizingH: true } });
     for (const c of kids) copyOf(c.id, `i_${m.id}`);
 };
 add(frame('tableI', 'page', 'Table', { isInstance: true, sourceId: 'tableM', x: 20, y: 20, w: 520, layout: 'vertical', gap: 8, padding: 12, fill: '#ffffff', stroke: '#E4E4EA', strokeWidth: 1, radius: 10, layoutSizingH: 'fixed', layoutSizingV: 'hug', overrides: { layoutSizingH: true } }));
 for (const c of nodes.filter(n => n.parentId === 'tableM')) copyOf(c.id, 'tableI');
+// the search box is a typeable field: its text layer (in this instance) is the one typed into
+const sb = nodes.find(n => n.id === 'i_srchM'); if (sb) sb.inputBehavior = { typeable: { frameId: 'i_srchT', inputType: 'text' } };
 // the copies are instances' children: drop the master-only flags that copies should not carry
 for (const n of nodes) if (n.id.startsWith('i_')) { delete n.component; }
 
