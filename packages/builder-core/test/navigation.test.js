@@ -1,7 +1,7 @@
 // Tabs and Pagination: the pure rules (clicks, disabled tabs, page clamping, page size, ellipsis, edges).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset } from '../src/index.js';
+import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize } from '../src/index.js';
 
 test('a click makes its tab active; an unknown or disabled tab leaves the active one', () => {
     const tabs = ['a', 'b', 'c'];
@@ -66,4 +66,16 @@ test('Tabs and Segmented are separate presets: “tabs” finds Tabs, not Segmen
     assert.deepEqual(tabs.map(p => p.id), ['tabs']);
     assert.equal(planPreset('tabs').behaviors[0].kind, 'has-tabs');
     assert.equal(PRESET_MAP.segmented.match.includes('tabs'), false);
+});
+
+test('a page size goes to the next one in order, and wraps around', () => {
+    assert.equal(nextPageSize(10), 20);
+    assert.equal(nextPageSize(20), 50);
+    assert.equal(nextPageSize(50), 10);
+    assert.equal(nextPageSize(7), 10);
+});
+
+test('a pager needs its three States (page, page size, total)', () => {
+    assert.deepEqual(slotIssues({ kind: 'has-pager', slots: {}, config: { vars: { page: 'p' } } }, () => true).map(i => i.role), ['vars']);
+    assert.deepEqual(slotIssues({ kind: 'has-pager', slots: {}, config: { vars: { page: 'p', pageSize: 's', total: 't' } } }, () => true), []);
 });

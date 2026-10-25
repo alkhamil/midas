@@ -183,6 +183,7 @@ export function slotIssues(behavior, exists = () => true) {
         else if (id && def.role !== 'popup' && !exists(id)) out.push({ role: def.role, why: `The layer for ${SLOT_ROLES[def.role].label} is gone.` });
     }
     if (behavior.kind === 'has-tabs' && !behavior.config?.state) out.push({ role: 'state', why: 'The tab State is not set up: use “Set up tab State”.' });
+    if (behavior.kind === 'has-pager' && !['page', 'pageSize', 'total'].every(k => behavior.config?.vars?.[k])) out.push({ role: 'vars', why: 'The pager has no State yet: use “Set up pager State”.' });
     if (behavior.kind === 'has-rows' && !behavior.config?.source) out.push({ role: 'source', why: 'The List the rows come from is not set.' });
     if (behavior.kind === 'has-rows' && behavior.config?.source && !behavior.config?.vars?.visible) out.push({ role: 'vars', why: 'The table has no State yet: use “Set up table State”.' });
     return out;

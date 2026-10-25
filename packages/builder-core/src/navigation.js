@@ -33,6 +33,14 @@ export function pageItems(current, pageCount, max = 7) {
     return items;
 }
 
+/** The page sizes a pager offers, in order. */
+export const PAGE_SIZES = [10, 20, 50];
+/** The next page size after `size` (wraps around; an unknown size starts again at the first). */
+export function nextPageSize(size, sizes = PAGE_SIZES) {
+    const i = sizes.indexOf(Number(size));
+    return sizes[(i + 1) % sizes.length];
+}
+
 /** Prev / Next: whether each is disabled at the edges. */
 export function pagerEdges(page, pageCount) {
     return { prevDisabled: page <= 1, nextDisabled: page >= Math.max(1, pageCount) };

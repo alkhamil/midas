@@ -11,7 +11,7 @@
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
 import { rowRuntimeKey } from '../engine/behavior.js';
-import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -490,7 +490,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(rowRuntimeKey(n.id, n.__row))?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tabForced(o) ?? pagerEdgeForced(o, n) ?? tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
@@ -499,7 +499,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, tabs: o?.tabs, pager: o?.pager, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -511,6 +511,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 if (tby) inner.tbl = tableInfo(n, tby);
                 const tabB = bsl.find(b => b.kind === 'has-tabs' && b.enabled);
                 if (tabB) inner.tabs = tabsInfo(n, tabB);
+                const pagB = bsl.find(b => b.kind === 'has-pager' && b.enabled);
+                if (pagB) inner.pager = pagerInfo(n, pagB);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
                 if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(rowRuntimeKey(n.id, n.__row))?.state === 'loading'; }
                 if (swap) {
@@ -555,7 +557,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (fbRole === 'close' || fbRole === 'cancel') c._click = () => fbx.close();
             if (fbRole === 'confirm') c._click = () => fbx.confirm();
             if (tbRole && o.tbl.m.ok) tblWire(c, tbRole, o);
-            if (o?.tabItem && !o.tabItem.disabled) c._click = () => tabPick(o.tabItem);       // nodeToStyle needs the parent: Fill and positioning depend on it
+            if (o?.tabItem && !o.tabItem.disabled) c._click = () => tabPick(o.tabItem);
+            const pgRole = o?.pager?.roleOf(n) || null;
+            if (pgRole) pagerWire(c, pgRole, o);       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -587,6 +591,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const hk = tbRole && /^head(text)?:(.+)$/.exec(tbRole);
                 if (hk && m.ok && m.sort.startsWith(hk[2] + ':')) c.text += m.sort.endsWith(':desc') ? ' ↓' : ' ↑';
             }
+            if (n.type === 'text' && pgRole === 'pageLabel') c.text = pagerText(o.pager, c.text, 'Page ' + o.pager.page + ' of ' + o.pager.pageCount);
+            if (n.type === 'text' && pgRole === 'total') c.text = pagerText(o.pager, c.text, o.pager.total + ' items');
             // A text bound to State: the value itself, or (Text with {placeholders}) its own text with the names filled in.
             if (sbLayer?.text && n.type === 'text') {
                 if (sbLayer.text === 'template') c.text = evalCtx.interpolate(c.text);
@@ -614,6 +620,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     else if (m.flags.pagination) {
                         for (let p = 1; p <= Math.min(m.pages, 9); p++) emit(k, c.id, { ...inner, row: { label: String(p), '#': p, __page: p, __state: p === m.page ? 'selected' : undefined }, rowBind: { [T.textOf(k.id)]: { text: 'label' } }, rowRoot: k.id, rowIndex: p - 1, rowKind: 'page' });
                     }
+                    continue;
+                }
+                // Has pager: one page item per page (“…” for a gap), each drawn in its own state: selected for the current page.
+                if (inner?.pager?.roleOf(k) === 'pageItem') {
+                    const P = inner.pager, txt = ctx.descendants(k.id).find(x => x.type === 'text');
+                    pageItems(P.page, P.pageCount).forEach((item, i) => emit(k, c.id, { ...inner, row: { label: String(item), '#': i + 1, __pg: typeof item === 'number' ? item : undefined, __state: item === P.page ? 'selected' : undefined }, rowBind: txt ? { [txt.id]: { text: 'label' } } : {}, rowRoot: k.id, rowIndex: i, rowKind: 'pager' }));
                     continue;
                 }
                 // Has tabs: a layer of the tab bar is a tab (keyed by its name); a panel shows only while its tab is the active one.
@@ -823,6 +835,35 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (role === 'selectRow') return o.rowCtx?.isSelected ? 'selected' : 'default';
         if (role === 'selectAll') return { all: 'selected', some: 'indeterminate', none: 'default' }[o.tbl.m.pageState];
         return null;
+    }
+    // ---- Pagination (Has pager): a pager that works without a table; its page, page size and total are States ----
+    /** The pager of an instance: its roles and the page it shows (the page is clamped when the total shrinks). Null while its States are missing. */
+    function pagerInfo(n, b) {
+        const v = b.config.vars;
+        if (!['page', 'pageSize', 'total'].every(k => v[k] && evalCtx.has(v[k]))) { warnOnce('pager:' + n.id, n.name + ': The pager has no State yet. It does not run until “Set up pager State” is used.'); return null; }
+        const size = Math.max(1, Math.floor(Number(evalCtx.get(v.pageSize))) || b.config.pageSize);
+        const total = Math.max(0, Math.floor(Number(evalCtx.get(v.total))) || 0);
+        const pageCount = pageCountOf(total, size);
+        const want = Math.floor(Number(evalCtx.get(v.page))) || 1;
+        const page = pageAfter(want, size, total);
+        if (page !== want) evalCtx.set(v.page, page);
+        const roles = new Map();
+        for (const [role, id] of Object.entries(b.slots || {})) if (id) roles.set(id, role);
+        return { inst: n, b, size, total, page, pageCount, roleOf: node => roles.get(node.id) || (node.sourceId && roles.get(node.sourceId)) || null };
+    }
+    /** Prev at the first page and Next at the last are drawn disabled (and ignore clicks). */
+    const pagerEdgeForced = (o, n) => { const P = o?.pager, r = P?.roleOf(n); if (r === 'prev' && P.page <= 1) return 'disabled'; if (r === 'next' && P.page >= P.pageCount) return 'disabled'; return null; };
+    /** The text of a page label or a total: {page}, {pageCount}, {total} are filled in; any other text is the default. */
+    const pagerText = (P, t, fallback) => (t.includes('{') ? t.replace(/{page}/g, P.page).replace(/{pageCount}/g, P.pageCount).replace(/{total}/g, P.total) : fallback);
+    /** A click on a pager layer: prev / next / a page number change the page; the page size button goes to the next size and back to page 1. */
+    function pagerWire(c, role, o) {
+        const P = o.pager, v = P.b.config.vars, row = o.row;
+        const go = (id, value) => { const r = evalCtx.set(id, value); if (!r.ok) { flash(P.inst.name + ': ' + r.error); return false; } return true; };
+        const moved = page => { if (page !== P.page && go(v.page, page)) { stateChanged(); runTriggers(P.inst, 'onChange'); } };
+        if (role === 'prev' && P.page > 1) c._click = () => moved(P.page - 1);
+        else if (role === 'next' && P.page < P.pageCount) c._click = () => moved(P.page + 1);
+        else if (role === 'pageItem' && typeof row?.__pg === 'number') c._click = () => moved(row.__pg);
+        else if (role === 'pageSize') c._click = () => { if (go(v.pageSize, nextPageSize(P.size)) && go(v.page, 1)) { stateChanged(); runTriggers(P.inst, 'onChange'); } };
     }
     // ---- Tabs (Has tabs): a tab bar and the panels; the active tab is a State, and a click on a tab makes it the active one ----
     /** The tabs of an instance: the layers mapped to Tab and Panel, and the State that holds the active tab. Null (and says why) while not set up. */
