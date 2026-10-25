@@ -74,3 +74,9 @@ npm test --workspace @midas/studio
 |---|---|
 | API tidak bisa konek database | Pastikan Docker Desktop berjalan lalu `npm run infra:up` |
 | Studio memanggil API lama | Hentikan proses di port 4000 lalu jalankan ulang `npm run dev:server` |
+| Import / request balas **503** `api_unavailable` | API belum listen (migrasi, seed, dan cek bucket jalan dulu, ±beberapa detik) atau sudah mati. Tunggu lalu coba lagi; cek jendela server untuk error |
+| Request balas **500** tanpa pesan | Error di server: lihat log API, baris `request failed` / `server error response` menyebut route dan error-nya |
+| Proses studio mati dengan kode `3221226505` (0xC0000409) | Fast-fail native di proses Node/Vite (bukan exception JS, tidak ada baris di log). Terjadi setelah sesi HMR panjang. Jalankan ulang lewat `preview_start`/`npm run dev:studio`. Tidak ada crash report di Event Viewer, jadi penyebab pastinya belum diketahui. |
+| Server dihentikan tiba-tiba oleh tool preview | Proses yang dijalankan dari tool preview ikut berhenti saat sesi berganti; jalankan ulang dengan `preview_start` |
+
+Catatan: file `.midas` besar (mis. `scripts/ant-design/Ant Design.midas`, ±6,7 MB) tidak berada di folder yang dipantau Vite dan tidak dibaca server saat start. Ia bukan penyebab mati-nya proses.

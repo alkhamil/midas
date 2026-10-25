@@ -17,6 +17,16 @@ export async function buildApp() {
     // trustProxy: behind a hosting proxy the request arrives over http; honour X-Forwarded-* so Secure cookies and URLs are right.
     const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: config.bodyLimit, trustProxy: true });
     await app.register(cookie);
+    // Every 5xx is logged with its route and error (a bare 500 used to leave no trace on the server).
+    app.setErrorHandler((err, req, reply) => {
+        const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
+        req.log.error({ route: `${req.method} ${req.url.split('?')[0]}`, status, err: { message: err.message, stack: err.stack } }, 'request failed');
+        if (reply.sent) return;
+        return reply.code(status).send(status === 500 ? { error: 'internal', message: 'The server could not finish this request. The details are in the server log.' } : { error: err.code || 'error', message: err.message });
+    });
+    app.addHook('onResponse', async (req, reply) => {
+        if (reply.statusCode >= 500) req.log.error({ route: `${req.method} ${req.url.split('?')[0]}`, status: reply.statusCode }, 'server error response');
+    });
     app.addHook('onRequest', async req => loadUser(req));
     // View-only accounts can read and keep their own editor state (kv) and sign out; every other write is refused.
     app.addHook('preHandler', async (req, reply) => {
