@@ -369,6 +369,53 @@ sesudah Enter / submit, salah).
 Layer teks di *Bind to State* punya pilihan **Text with {placeholders}**: teks layer itu sendiri ditulis dengan nama dalam kurung kurawal
 (*Total: Rp {total}*) dan Preview mengisinya. Mengikat ke satu variable tetap mengganti seluruh teks.
 
+## Capabilities, slots, Convention (Phase 3)
+
+Tab Behavior kosong hanya menampilkan **Add Behavior**. Panelnya: baris *Start from* (preset bernama Ant Design) lalu capability
+per grup Input / Action / Data / Feedback; capability yang tidak cocok dengan layer disembunyikan ("N hidden"). Tiap capability
+tampil sebagai section yang bisa dilipat: ringkasan satu baris, toggle enable, urutan, hapus, dan lipatan **Advanced**.
+
+| Capability | Slots (* = wajib) | Disimpan di |
+|---|---|---|
+| Can type | value*, placeholder, icon | `inputBehavior.typeable` (`frameId` = slot value, `inputType`) |
+| Has validation | tanpa slot | `inputBehavior.validation` (`rules`, `trigger`, `off`) |
+| Has options | value*, placeholder, chip, remove | `behaviors[]` di master |
+| Shows items | item*, label*, search, empty | `behaviors[]` |
+| Opens popup | popup* | `behaviors[]` |
+| On click | tanpa slot | interaction `onClick` |
+| Has loading | icon | `behaviors[]` |
+| Show feedback | message*, title, icon, close, confirm, cancel | `behaviors[]` |
+
+Mapping slot disimpan di **master**; instance hanya menyimpan override (`behaviorOverrides`). Layer instance dicari lewat id →
+`sourceId` → nama yang sama. Slot wajib yang belum di-map memberi peringatan terlihat di section dan behavior itu tidak jalan
+(Preview menampilkan alasannya, mis. *Select: Value is not set. The popup does not open until it is mapped.*).
+
+**Convention** (`doc.data.convention`, per file): nama slot, nama state, dan komponen untuk tiap jenis feedback. Hanya
+*menyarankan*: banner di tab menawarkan **Accept** per slot atau **Accept all**; tidak ada yang di-map sendiri. Panel kecil
+bisa diedit. Skor nama: sama persis > diawali/diakhiri > mengandung sebagai kata; satu layer hanya untuk satu role; value ↔
+placeholder boleh berbagi satu layer; satu-satunya layer teks dipakai untuk role teks wajib.
+
+**Preset** (`planPreset`): Trigger (Button, FloatButton), Text entry (Input, TextArea, Password, Search, InputNumber,
+AutoComplete), Choice (Select single/multiple, Radio, Checkbox, Switch, Segmented), Feedback (Alert, Message, Notification,
+Modal, Drawer, Popconfirm). Event Ant: `onClick`, `onChange`, `onSearch`, `onOpenChange`, `onFinish`, `onFinishFailed`.
+
+**Select + Dropdown**: popup menempel di bawah Select dengan lebar sama, tutup saat klik di luar. Item dirender seperti repeater
+dengan state default/hover/selected/disabled. Single: pilih menutup. Multiple: toggle, popup tetap terbuka, chip dengan
+tombol remove, placeholder bila kosong. Slot search menyaring berdasarkan label; slot empty tampil bila tak ada hasil.
+Validasi Select memakai `validate()` yang sama dan menggerakkan state error-nya.
+
+**Feedback**: *Show feedback* memilih komponen milik user per jenis (Alert/Message/Notification memakai satu komponen dengan
+mode `type` success/error/warning/info). Bila belum dipilih: peringatan di section dan Preview memakai tampilan bawaan dengan
+badge kecil **built-in**. **Has loading**: bila komponen punya mode `loading` di koleksi `* states`, mode itu dipakai selama
+Simulated request lalu dikembalikan; bila tidak ada, klik selama loading diabaikan.
+
+**Validasi**: `validateByRules(rules, value, …)` di `validate.js` (required, type email/url/number/integer, min, max, len,
+pattern, message; `validateTrigger` change/blur) dipakai Input, Select, dan kondisi *Field is valid / invalid*.
+
+**Audit lama → slot**: `typeable.frameId` = slot value Can type; `validation.required/trigger` = Has validation (ditambah
+`rules`, `off`); `componentTypeOf` hanya jadi petunjuk preset; `stateMapping`/`stateModes` tetap perilaku state (bukan slot),
+nama state Convention hanya memperluas pencarian mode. Data lama tidak perlu migrasi.
+
 ## Versi data behavior dan migrasi
 
 File punya `behaviorVersion` yang **terpisah** dari `version` (yang tetap `1`; loader menolak nilai lain). Tidak ada = `1`

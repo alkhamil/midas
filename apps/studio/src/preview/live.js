@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle } from './flexStyle.js';
-import { createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
+import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -452,10 +452,12 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         }
         return ctx.field(inst);
     };
-    const requiredOf = (inst, ib) => !!(ib?.validation?.required || inst?.required);
+    const requiredOf = (inst, ib) => !ib?.validation?.off && !!(ib?.validation?.required || ib?.validation?.rules?.required || inst?.required);
+    /** The Ant style rules of Has validation (none while it is turned off). */
+    const rulesOf = ib => (ib?.validation?.off ? {} : { ...(ib?.validation?.rules || {}) });
 
     /** A copy of the frame with the current state applied, laid out by the editor's engine. */
-    function buildScene(frame, pinRoot, fillBox, matchBox) {
+    function buildScene(frame, pinRoot, fillBox, matchBox, extra) {
         const nodes = [];
         let seq = 0;
         const copies = new Map(), keyUse = new Map();
@@ -467,17 +469,23 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             // A layer bound to a List field (Behavior → Repeat) reads its value from the row being drawn.
             const rb = o?.row && o.rowBind ? (o.rowBind[n.id] || (n.sourceId && o.rowBind[n.sourceId])) : null;
             // State bindings: this layer's own "visible when", and the ones its container set for it.
+            // Slots: the layers of a Select (value, placeholder, chip, remove…), of the popup it opens (item, empty, search) and of a feedback component.
+            const sel = o?.sel, pop = o?.pop, fbx = o?.fb;
+            const selRole = o?.slotMap && (o.slotMap[n.id] || (n.sourceId && o.slotMap[n.sourceId]));
+            const popRole = pop?.roles?.[n.id], fbRole = fbx?.roles?.[n.id];
+            const slotShown = selRole === 'value' ? hasValue(sel?.value) : selRole === 'placeholder' ? !hasValue(sel?.value) : selRole === 'spinner' ? !!o.loading : popRole === 'empty' ? pop.rows.length === 0 : (fbx?.hide?.has(n.id) ? false : null);
             const sbOwn = ctx.stateBindFor?.(n)?.self, sbLayer = o?.stateLayers && (o.stateLayers[n.id] || (n.sourceId && o.stateLayers[n.sourceId]));
             const stVis = [sbOwn?.visible, sbLayer?.visible].filter(Boolean).map(id => truthy(evalCtx.get(id)))
                 .concat([sbOwn?.when, sbLayer?.when].filter(Boolean).map(w => { const r = testCondition(w, evalCtx.env({ fieldValid: fieldValidity })); return r.ok && r.value; }));
             const shown = stVis.length ? stVis.every(Boolean) : rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
-            if (shown === false || (shown === null && n.visible === false && !forced)) return;
+            const vis = slotShown ?? shown;
+            if (vis === false || (vis === null && n.visible === false && !forced)) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
                 const picked = runtime.get(n.id)?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
-                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = effStateOf(n);
+                const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, st = o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n);
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
@@ -486,19 +494,23 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, stateLayers: o?.stateLayers, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
                 inner.target = { fill: ownFill ? null : visualTarget(n, 'fill'), stroke: ownStroke ? null : visualTarget(n, 'stroke') };
                 inner.form = field ? inner : o?.form;      // the typeable field this instance sits in, however deep
+                // Behaviors with slots: a Select hands its value to the layers mapped to it; Has loading shows its icon while it loads.
+                const bsl = ctx.behaviorsFor?.(n) || [], hb = bsl.find(b => b.kind === 'has-options' && b.enabled), lb = bsl.find(b => b.kind === 'has-loading' && b.enabled && b.slots.icon);
+                if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
+                if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(n.id)?.state === 'loading'; }
                 if (swap) {
                     const v = ctx.node(src);
                     base = swapBase(n, v);
                     kidsOf = src;
                 }
                 else if (inner.ov) base = ctx.resolved(n, n, inner.ov);
-                wire = { inst: n, variants, modes, field };
+                wire = o?.rowRoot === n.id ? null : { inst: n, variants, modes, field };        // a row of a popup is not an instance that reacts on its own
                 // The icon of a password field is an instance of one of the two icon components picked in the Behavior tab:
                 // it is drawn as the one that matches whether the text is shown, and clicking it flips that.
                 // Hanya isi ikon yang ditukar: wrapper keeps its own box, colors and layout, lalu dipatok
@@ -525,7 +537,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const up = copies.get(parentId)?._key || '', nm = `${up}/${n.name || n.type}`, used = keyUse.get(nm) || 0;
             keyUse.set(nm, used + 1);
             c._key = used ? `${nm}#${used}` : nm;
-            c._pn = copies.get(parentId) || null;       // nodeToStyle needs the parent: Fill and positioning depend on it
+            c._pn = copies.get(parentId) || null;
+            c._src = n.id;
+            if (o?.rowRoot === n.id && o.rowIndex !== undefined) c._row = o.rowIndex;
+            if (popRole === 'search') c._search = true;
+            if (selRole === 'remove' && o.row && sel) { const v = o.row.value; c._click = () => removePick(sel, v); }
+            if (fbRole === 'close' || fbRole === 'cancel') c._click = () => fbx.close();
+            if (fbRole === 'confirm') c._click = () => fbx.confirm();       // nodeToStyle needs the parent: Fill and positioning depend on it
             if (n.scroll) c.scroll = n.scroll;
             if (n.overflow) c.overflow = n.overflow;
             if (toggle) c._toggle = toggle;
@@ -546,6 +564,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             }
             if (o?.iconScale && parentId !== null) scaleIconChild(c, n, copies.get(parentId), o.iconScale);
             if (rb?.text && n.type === 'text' && o.row[rb.text] !== undefined) c.text = String(o.row[rb.text]);
+            else if (n.type === 'text' && o?.row && !rb && o.rowBindNames?.[n.name] && o.row[o.rowBindNames[n.name]] !== undefined) c.text = String(o.row[o.rowBindNames[n.name]]);
+            if ((selRole === 'value' || (selRole === 'both' && sel && hasValue(sel.value))) && n.type === 'text' && sel) c.text = valueText(sel.options, sel.value);
+            if (n.type === 'text' && fbx?.texts && fbx.texts[n.id] !== undefined) c.text = fbx.texts[n.id];
             // A text bound to State: the value itself, or (Text with {placeholders}) its own text with the names filled in.
             if (sbLayer?.text && n.type === 'text') {
                 if (sbLayer.text === 'template') c.text = evalCtx.interpolate(c.text);
@@ -561,9 +582,22 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 rep.rows.forEach((row, i) => emit(kids[0], c.id, { ...(inner || {}), row: { ...row, '#': i + 1 }, rowBind: rep.bind }));
                 for (const k of kids.slice(1)) emit(k, c.id, inner);
             }
-            else for (const k of kids) emit(k, c.id, inner);
+            else for (const k of kids) {
+                const kRole = inner?.pop?.roles?.[k.id], sRole = inner?.slotMap && (inner.slotMap[k.id] || (k.sourceId && inner.slotMap[k.sourceId]));
+                if (kRole === 'item') {
+                    // The popup repeats its item once per option, each in the look of its state (default, hover, selected, disabled).
+                    const p = inner.pop;
+                    p.rows.forEach((row, i) => emit(k, c.id, { ...inner, row: { ...row, '#': i + 1, __state: p.states[i] }, rowBind: p.labelId ? { [p.labelId]: { text: 'label' } } : {}, rowBindNames: p.labelName ? { [p.labelName]: 'label' } : undefined, rowRoot: k.id, rowIndex: i }));
+                }
+                else if (sRole === 'chip' && inner.sel) {
+                    // A multiple Select draws one chip per pick (none when nothing is picked).
+                    const s = inner.sel, txt = ctx.descendants(k.id).find(x => x.type === 'text');
+                    if (s.mode === 'multiple') (Array.isArray(s.value) ? s.value : []).forEach((v, i) => emit(k, c.id, { ...inner, row: { label: s.options.find(x => x.value === String(v))?.label ?? String(v), value: String(v), '#': i + 1 }, rowBind: txt ? { [txt.id]: { text: 'label' } } : {}, rowBindNames: txt ? { [txt.name]: 'label' } : undefined, rowRoot: k.id, rowIndex: i }));
+                }
+                else emit(k, c.id, inner);
+            }
         };
-        emit(fillRootBox(overlayRootBase(frame, pinRoot, matchBox), fillBox), null, null);
+        emit(fillRootBox(overlayRootBase(frame, pinRoot, matchBox), fillBox), null, extra || null);
         return nodes;
     }
 
@@ -580,6 +614,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const draw = (c, parent, off) => {
             const e = drawNode(c, parent, off);
             if (e && c._key) e.dataset.sk = c._key;
+            if (e && c._row !== undefined) e.dataset.row = c._row;
+            if (e && c._search) e.dataset.search = '1';
+            if (e && c._click) { e.style.cursor = 'pointer'; e.addEventListener('pointerup', ev => { ev.stopPropagation(); c._click(); }); }
             if (e && c._toggle) wireToggle(e, c._toggle.inst);
             return e;
         };
@@ -658,7 +695,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (!css.textContent.includes(ph)) css.textContent += ph;
         const required = requiredOf(inst, o.input), when = o.input?.validation?.trigger || 'blur';
         // Wrong: required but emptied after it had text (or, strictly, empty at all), or text that does not fit the type.
-        const wrong = (v, strict) => !validateInput({ inputType: kind, required }, v, { touched: !!runtime.get(inst.id)?.touched, strict }).valid;
+        const wrong = (v, strict) => !validateInput({ inputType: kind, required, rules: rulesOf(o.input), label: inst.name }, v, { touched: !!runtime.get(inst.id)?.touched, strict }).valid;
         input.addEventListener('focus', () => {
             if (rendering || runtime.get(inst.id)?.state?.match(/^(focused|selected|typing)$/)) return;
             // Coming back to a field that has text: typing resumes after the last character.
@@ -689,6 +726,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             update(inst, bad ? { state: 'error', error: true } : { error: false });
             // A search field searches on Enter; any other field submits.
             runTriggers(inst, kind === 'search' ? 'onSearch' : 'onSubmit', input);
+            // Ant events: the field is finished valid, or not.
+            if (kind !== 'search') runTriggers(inst, wrong(input.value, true) ? 'onFinishFailed' : 'onFinish', input);
         });
         input.addEventListener('change', () => runTriggers(inst, 'onChange', input));
         return input;
@@ -710,13 +749,108 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (evalCtx.extra('loading') && it.actions.some(a => a.type === 'request')) return;
         runInteraction(it, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message || 'Something went wrong in this interaction.'));
     }
+    // ---- Select (Has options + Opens popup): the value, the popup, picking, search, chips ----
+    const selectInfo = (inst, hb) => ({ inst, b: hb, mode: hb.config.mode, options: hb.config.options, value: getSel(inst, hb) });
+    /** { layer id: role } for the layers a behavior maps (the layer, and the layer it was made from, so a swapped look still finds it). */
+    function slotMapOf(b) {
+        const out = {};
+        for (const [role, id] of Object.entries(b.slots || {})) {
+            if (!id) continue;
+            // value and placeholder on one layer: it shows the value when there is one, its own text (the placeholder) when there is not
+            const role2 = out[id] && out[id] !== role && [out[id], role].sort().join() === 'placeholder,value' ? 'both' : role;
+            out[id] = role2;
+            const src = ctx.node(id)?.sourceId;
+            if (src) out[src] = role2;
+        }
+        return out;
+    }
+    function getSel(inst, hb) { const bt = hb.config.bindTo; return toValue(hb.config.mode, bt && evalCtx.has(bt) ? evalCtx.get(bt) : runtime.get(inst.id)?.selection); }
+    function setSel(inst, hb, v) {
+        const bt = hb.config.bindTo;
+        if (bt && evalCtx.has(bt)) { const r = evalCtx.set(bt, v); if (!r.ok) flash(`${inst.name}: ${r.error}`); }
+        else runtime.set(inst.id, { ...(runtime.get(inst.id) || {}), selection: v });
+    }
+    function selectValidity(inst, hb, strict) {
+        const ib = ctx.inputFor?.(inst);
+        return validateSelection({ ...rulesOf(ib), ...(requiredOf(inst, ib) ? { required: true } : {}) }, getSel(inst, hb), inst.name, { touched: true, strict });
+    }
+    /** Select validation: on a pick (Check on change) or when the popup closes (Check on blur). The result drives its error state. */
+    function checkSelect(inst, hb, when) {
+        const trig = ctx.inputFor?.(inst)?.validation?.trigger || 'blur';
+        if (trig !== when) return;
+        const r = selectValidity(inst, hb, false);
+        update(inst, r.valid ? { error: false, ...(runtime.get(inst.id)?.state === 'error' ? { state: baseStateOf(inst) } : {}) } : { state: 'error', error: true });
+    }
+    function removePick(sel, value) {
+        setSel(sel.inst, sel.b, removeValue(sel.mode, sel.value, value));
+        checkSelect(sel.inst, sel.b, 'change');
+        draw();
+        runTriggers(sel.inst, 'onChange');
+    }
+    const selectBehaviors = inst => { const bs = ctx.behaviorsFor?.(inst) || []; return { hb: bs.find(b => b.kind === 'has-options' && b.enabled), ob: bs.find(b => b.kind === 'opens-popup' && b.enabled) }; };
+    const warnedSlots = new Set();
+    const warnOnce = (key, msg) => { if (warnedSlots.has(key)) return; warnedSlots.add(key); flash(msg); };
+    /** Click on a Select: open its popup (a Dropdown Menu component), unless a slot it needs is missing: then it says which. */
+    function openSelect(inst, anchor, rect) {
+        const { hb, ob } = selectBehaviors(inst);
+        if (!hb || !ob) return false;
+        const missing = [...slotIssues(hb), ...slotIssues(ob)];
+        if (missing.length) { flash(`${inst.name}: ${missing[0].why} The popup does not open until it is mapped.`); return true; }
+        const frame = ctx.componentTarget?.(ob.slots.popup);
+        if (!frame) { flash(`${inst.name}: the popup component is gone. Pick another one in Opens popup.`); return true; }
+        const si = (ctx.behaviorsFor?.(frame) || []).find(b => b.kind === 'shows-items' && b.enabled);
+        const sMissing = si ? slotIssues(si) : [{ why: 'It has no “Shows items” behavior.' }];
+        if (sMissing.length) { flash(`“${frame.name}” cannot be a popup: ${sMissing[0].why} Add and map Shows items on that component.`); return true; }
+        let query = '', hover = -1;
+        const rowsNow = () => (hb.config.showSearch || si.slots.search ? filterOptions(hb.config.options, query) : hb.config.options);
+        const popCtx = () => {
+            const rows = rowsNow(), roles = {};
+            roles[si.slots.item] = 'item';
+            if (si.slots.search) roles[si.slots.search] = 'search';
+            if (si.slots.empty) roles[si.slots.empty] = 'empty';
+            return { roles, rows, states: itemStates(rows, getSel(inst, hb), hover), labelId: si.slots.label, labelName: ctx.node(si.slots.label)?.name, query };
+        };
+        const action = { type: 'open-dropdown', targetComponentId: ob.slots.popup, position: ob.config.placement, width: ob.config.matchWidth ? 'parent' : 'self' };
+        const pickRow = (layer, i) => {
+            const row = rowsNow()[i];
+            if (!row) return;
+            const r = pickOption(hb.config.mode, getSel(inst, hb), row);
+            if (r.changed) { setSel(inst, hb, r.value); checkSelect(inst, hb, 'change'); draw(); runTriggers(inst, 'onChange'); }
+            if (r.closes) closeLayer(layer); else if (r.changed) layer.refresh();
+        };
+        openLayer(action, anchor, rect, { inst, trigger: 'onClick' }, {
+            pop: popCtx,
+            onClose: () => checkSelect(inst, hb, 'blur'),
+            after(layer, holder, again) {
+                holder.querySelectorAll('[data-row]').forEach(e => {
+                    const i = Number(e.dataset.row), row = rowsNow()[i];
+                    if (!row) return;
+                    e.style.cursor = row.disabled ? 'not-allowed' : 'pointer';
+                    e.addEventListener('pointerenter', () => { if (hover !== i) { hover = i; layer.refresh(); } });
+                    e.addEventListener('pointerup', () => pickRow(layer, i));
+                });
+                // The search slot: an input over it filters the options by label.
+                let box = holder.querySelector('[data-search]');
+                if (box && box.offsetWidth < 90 && box.parentElement && box.parentElement !== holder) box = box.parentElement;
+                if (box) {
+                    box.style.position = box.style.position || 'relative';
+                    const input = el('input', { position: 'absolute', inset: '0', width: '100%', height: '100%', boxSizing: 'border-box', padding: '0 10px', border: '0', outline: '0', background: 'transparent', font: 'inherit', color: 'inherit', zIndex: 2 }, box);
+                    input.value = query; input.placeholder = ''; input.setAttribute('aria-label', 'Search options');
+                    input.addEventListener('input', () => { query = input.value; hover = -1; const at = input.selectionStart; layer.refresh(); const next = holder.querySelector('[data-search] input, input[aria-label="Search options"]'); next?.focus(); try { next?.setSelectionRange(at, at); } catch { /* not every input has a caret */ } });
+                    if (again && query) queueMicrotask(() => { input.focus(); try { input.setSelectionRange(input.value.length, input.value.length); } catch { } });
+                    else if (!again) queueMicrotask(() => input.focus());
+                }
+            },
+        });
+        return true;
+    }
     const hostFor = (inst, anchor, rect, trigger) => ({
         ev: evalCtx,
         env: () => evalCtx.env({ fieldValid: fieldValidity }),
         perform: a => runAction(a, inst, anchor, rect, trigger),
         feedback: f => showFeedback(f, inst, anchor, rect, trigger),
         validateField: id => checkField(id),
-        request: a => simulateRequest(a),
+        request: a => simulateRequest(a, inst),
         changed: () => stateChanged(),
         warn: m => flash(m),
     });
@@ -724,12 +858,14 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     function stateChanged() { draw(); if (stateReady) { renderStateIfOpen(); } syncLoading(); }
 
     // ---- fields: validity as a condition, and "Check field" ----
-    const typeableIn = () => [ctx.node(frameId), ...ctx.descendants(frameId)].filter(n => n && n.isInstance && ctx.typeable(n));
+    const typeableIn = () => [ctx.node(frameId), ...ctx.descendants(frameId)].filter(n => n && n.isInstance && (ctx.typeable(n) || selectBehaviors(n).hb));
     function fieldValidity(id) {
         const n = id && ctx.node(id);
         if (!n) return undefined;
+        const { hb } = selectBehaviors(n);
+        if (hb) return selectValidity(n, hb, true).valid;
         const ib = ctx.inputFor?.(n), r = runtime.get(id) || {};
-        return validateInput({ inputType: ib?.typeable?.inputType || 'text', required: requiredOf(n, ib), label: n.name }, r.value ?? '', { touched: !!r.touched || !!r.value, strict: true }).valid;
+        return validateInput({ inputType: ib?.typeable?.inputType || 'text', required: requiredOf(n, ib), rules: rulesOf(ib), label: n.name }, r.value ?? '', { touched: !!r.touched || !!r.value, strict: true }).valid;
     }
     /** Check one field (or every field of the screen) like a submit: an invalid one shows its error state. → all valid */
     function checkField(id) {
@@ -744,9 +880,15 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
 
     // ---- Simulated request: loading, then the active scenario ----
     let activeScenario = null, slow = false;
-    function simulateRequest(a) {
+    function simulateRequest(a, inst) {
         const ms = requestDelay(a, slow);
-        return new Promise(resolve => setTimeout(() => resolve(resolveOutcome(ctx.state, activeScenario)), ms));
+        // A component with a loading mode (a Button with a loading state) switches to it while it waits; without one, clicks are just ignored.
+        const loads = inst && ctx.modes?.(inst)?.byState?.loading && (ctx.behaviorsFor?.(inst) || []).every(b => b.kind !== 'has-loading' || b.enabled);
+        if (loads) update(inst, { state: 'loading' });
+        return new Promise(resolve => setTimeout(() => {
+            if (loads) update(inst, { state: baseStateOf(inst) });
+            resolve(resolveOutcome(ctx.state, activeScenario));
+        }, ms));
     }
     const shield = el('div', { position: 'absolute', inset: '0', zIndex: 75, display: 'none', pointerEvents: 'auto', cursor: 'progress' }, root);
     const loadBar = el('div', { position: 'absolute', top: '0', left: '0', width: '40%', height: '3px', background: 'linear-gradient(90deg,#4f8cff,#8fb6ff)', zIndex: 76, display: 'none', animation: 'mvt-load 1s ease-in-out infinite' }, root);
@@ -758,11 +900,50 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     const feedbacks = [], stacks = {};
     const POS = { top: { top: '16px', left: '50%', transform: 'translateX(-50%)' }, 'top-right': { top: '16px', right: '16px' }, bottom: { bottom: '16px', left: '50%', transform: 'translateX(-50%)' }, center: { top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }, right: { top: '16px', right: '16px' } };
     const stackFor = pos => stacks[pos] || (stacks[pos] = el('div', { position: 'absolute', zIndex: 82, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none', width: 'min(360px, calc(100% - 32px))', ...(POS[pos] || POS['top-right']) }, root));
-    const cardStyle = lv => ({ ...chrome, background: '#fff', color: '#16161a', borderRadius: '10px', boxShadow: '0 12px 36px rgba(0,0,0,.22)', borderLeft: `4px solid ${LEVEL_COLOR[lv] || LEVEL_COLOR.info}`, padding: '12px 14px', pointerEvents: 'auto', fontSize: '14px', lineHeight: '1.4' });
+    const cardStyle = lv => ({ ...chrome, position: 'relative', background: '#fff', color: '#16161a', borderRadius: '10px', boxShadow: '0 12px 36px rgba(0,0,0,.22)', borderLeft: `4px solid ${LEVEL_COLOR[lv] || LEVEL_COLOR.info}`, padding: '12px 14px', pointerEvents: 'auto', fontSize: '14px', lineHeight: '1.4' });
     const btnStyle = primary => ({ ...chrome, padding: '6px 14px', borderRadius: '8px', border: primary ? '0' : '1px solid #d5d5dc', background: primary ? '#16161a' : '#fff', color: primary ? '#fff' : '#16161a', cursor: 'pointer', fontSize: '13px' });
     function closeFeedback(fb) { const i = feedbacks.indexOf(fb); if (i < 0) return; feedbacks.splice(i, 1); fb.nodes.forEach(n => n.remove()); clearTimeout(fb.timer); }
     function clearFeedback() { [...feedbacks].forEach(closeFeedback); }
+    /** The small "built-in" mark on feedback Preview drew itself because no component of the file is set for it. */
+    const builtinBadge = parent => { const b = el('span', { position: 'absolute', top: '3px', right: '6px', fontSize: '9px', lineHeight: '1', padding: '2px 5px', borderRadius: '999px', background: '#eceef2', color: '#6b7280', letterSpacing: '.02em', pointerEvents: 'none' }, parent); b.textContent = 'built-in'; b.dataset.builtin = '1'; };
+    /** Feedback drawn by the file's own component (Convention → Feedback components): its message / title layers get the text, its type comes from a variant or a mode. */
+    function showComponentFeedback(f, id, inst, anchor, rect, trigger) {
+        const first = ctx.componentTarget?.(id);
+        if (!first) { flash('The component for ' + f.kind + ' is gone: the built-in one is used.'); return null; }
+        const b = (ctx.behaviorsFor?.(first) || []).find(x => x.kind === 'show-feedback' && x.enabled);
+        const problem = b ? slotIssues(b)[0]?.why : 'It has no “Show feedback” behavior.';
+        if (problem) { flash(`“${first.name}” cannot draw ${f.kind}: ${problem} The built-in one is used.`); return null; }
+        const style = ctx.feedbackStyle?.(id, f.level, b.config.types) || { node: first, modes: {} };
+        const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
+        const roles = {};
+        for (const r of ['close', 'confirm', 'cancel']) if (b.slots[r]) roles[b.slots[r]] = r;
+        const texts = { [b.slots.message]: f.message };
+        const hide = new Set();
+        if (b.slots.title) { texts[b.slots.title] = f.title || ''; if (!f.title) hide.add(b.slots.title); }
+        const ctrl = { roles, texts, hide, close: () => closeFeedback(fb), confirm: () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger)).catch(e => flash(e.message)); } };
+        // The type (success / error…) is a mode of a collection: read in that mode while this scene is built.
+        const kept = new Map();
+        for (const [cid, mid] of Object.entries(style.modes || {})) { kept.set(cid, modeOver.get(cid)); modeOver.set(cid, mid); }
+        let nodes;
+        try { nodes = buildScene(style.node, false, null, null, { fb: ctrl }); }
+        finally { for (const [cid, v] of kept) v === undefined ? modeOver.delete(cid) : modeOver.set(cid, v); }
+        const backdrop = closable => { const x = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: 'rgba(15,23,42,.45)', pointerEvents: 'auto' }, root); fb.nodes.push(x); if (closable) x.onclick = () => closeFeedback(fb); };
+        const box = f.kind === 'alert' || f.kind === 'message' || f.kind === 'notification';
+        if (!box || f.blocking) backdrop(!f.blocking && f.kind === 'modal');
+        const holder = el('div', { pointerEvents: 'auto', position: box ? 'relative' : 'absolute', zIndex: 82 }, box ? stackFor(f.position) : root);
+        const content = renderScene(nodes, holder);
+        content.style.position = 'relative'; content.style.left = '0'; content.style.top = '0';
+        if (f.kind === 'drawer') Object.assign(holder.style, { top: '0', right: '0' });
+        else if (f.kind === 'modal') Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' });
+        else if (f.kind === 'popconfirm') { if (rect) Object.assign(holder.style, { left: px(Math.max(8, rect.left)), top: px(Math.max(8, rect.top - content.offsetHeight - 8)) }); else Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }); }
+        fb.nodes.push(holder);
+        feedbacks.push(fb);
+        if (f.duration > 0) fb.timer = setTimeout(() => closeFeedback(fb), f.duration);
+        return fb;
+    }
     function showFeedback(f, inst, anchor, rect, trigger) {
+        const own = ctx.feedbackComponent?.(f.kind, f.componentId);
+        if (own) { const done = showComponentFeedback(f, own, inst, anchor, rect, trigger); if (done) return done; }
         const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
         const mark = (parent, lv) => { const m = el('span', { display: 'inline-grid', placeItems: 'center', width: '18px', height: '18px', borderRadius: '50%', background: LEVEL_COLOR[lv] || LEVEL_COLOR.info, color: '#fff', fontSize: '11px', fontWeight: 700, flex: 'none' }, parent); m.textContent = LEVEL_MARK[lv] || 'i'; return m; };
         const body = (card, lv) => {
@@ -782,6 +963,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const x = el('button', { ...chrome, border: '0', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1', color: '#666' }, head);
             x.textContent = '\u00d7'; x.setAttribute('aria-label', 'Close'); x.onclick = () => closeFeedback(fb);
             card.setAttribute('role', 'alert');
+            builtinBadge(card);
             fb.nodes.push(card);
         }
         else if (f.kind === 'drawer') {
@@ -790,7 +972,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             body(card, f.level);
             const foot = el('div', { marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
             const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'Close'; ok.onclick = () => closeFeedback(fb);
-            card.setAttribute('role', 'dialog'); fb.nodes.push(card);
+            card.setAttribute('role', 'dialog'); builtinBadge(card); fb.nodes.push(card);
         }
         else {
             // modal and popconfirm: a card the person has to answer
@@ -801,7 +983,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             const foot = el('div', { display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
             if (f.onConfirm?.length || f.kind === 'popconfirm') { const no = el('button', btnStyle(false), foot); no.textContent = 'Cancel'; no.onclick = () => closeFeedback(fb); }
             const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
-            card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true');
+            card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true'); builtinBadge(card);
             fb.nodes.push(card);
         }
         feedbacks.push(fb);
@@ -882,6 +1064,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             return;
         }
         if (action.type === 'close-overlay') {
+            // A modal / drawer of the file is closed by its own button: this action closes the newest feedback first (all of them with “All overlays”).
+            if (action.close === 'all') clearFeedback();
+            else if (feedbacks.length && !layers.length) { closeFeedback(feedbacks.at(-1)); return; }
             closeLayers(action.close === 'all' ? 'all' : 'current', resolveMotion(action, 'close-overlay'));
             return;
         }
@@ -892,7 +1077,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     }
 
     /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
-    function openLayer(action, anchor, rect, from) {
+    function openLayer(action, anchor, rect, from, extra) {
         // The placed overlay instance wins (it is the edited copy on the canvas); else the picked component, else a legacy frame.
         const frame = resolveOpenTarget(ctx, action);
         if (!frame) return;
@@ -914,7 +1099,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             w: action.width === 'parent' ? a.width : null,
             h: action.height === 'parent' ? a.height : null,
         } : null;
-        const content = renderScene(buildScene(frame, true, null, matchBox), holder);
+        const content = renderScene(buildScene(frame, !extra, null, matchBox, extra ? { pop: extra.pop() } : null), holder);
         content.style.position = 'relative';
         content.style.left = '0';
         content.style.top = '0';
@@ -952,16 +1137,29 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             document.addEventListener('pointerleave', () => closeLayer(layer), { once: true });
             layer.off = () => document.removeEventListener('pointermove', move);
         }
+        if (extra) {
+            // A Select popup draws again when a pick, a hover or the search changes: the same scene, a new drawing.
+            layer.refresh = () => {
+                holder.replaceChildren();
+                const c2 = renderScene(buildScene(frame, false, null, matchBox, { pop: extra.pop() }), holder);
+                c2.style.position = 'relative'; c2.style.left = '0'; c2.style.top = '0';
+                extra.after?.(layer, holder, true);
+            };
+            layer.onClose = extra.onClose;
+        }
         layers.push(layer);
+        extra?.after?.(layer, holder, false);
         // On open / close: the layer that opened it hears about it.
         layer.owner = from?.inst || null;
         if (layer.owner) setTimeout(() => runTriggers(layer.owner, 'onOpenChange', anchor, rect), 0);
+        return layer;
     }
     function closeLayer(layer, motion) {
         const i = layers.indexOf(layer);
         if (i < 0) return;
         layers.splice(i, 1);
         layer.off?.();
+        layer.onClose?.();
         if (layer.owner && motion !== true) setTimeout(() => runTriggers(layer.owner, 'onOpenChange'), 0);
         const m = motion === true ? null : (motion || layer.motion || resolveMotion(null, 'close-overlay'));
         if (m && m.transition !== 'instant' && m.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -1019,6 +1217,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (own || go) ev.bhHandled = true;
             if (go && (pressed || !hasState('pressed'))) show(go);
             runTriggers(n, 'onClick', d, rect);
+            openSelect(n, d, rect);
         });
     }
 

@@ -159,6 +159,7 @@ function metaFor(fileId, docData) {
         variables: docData.variables,
         // State (behavior model 2) lives beside the tokens; the server keeps unknown meta fields as they are.
         state: docData.state,
+        convention: docData.convention,
         behaviorVersion: docData.behaviorVersion,
         thumbnailId: docData.thumbnailId ?? null,
         guideStyles: docData.guideStyles ?? [],
@@ -350,6 +351,7 @@ export const projectStorage = {
             tokens: meta.tokens,
             variables: meta.variables,
             state: meta.state,
+            convention: meta.convention,
             behaviorVersion: meta.behaviorVersion,
             thumbnailId: meta.thumbnailId,
             guideStyles: meta.guideStyles ?? [],

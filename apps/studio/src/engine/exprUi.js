@@ -56,7 +56,7 @@ export function exprHtml(opts, owner, expr) {
             case 'not': body = child('arg'); break;
             default: break;
         }
-        return `<div class="st-node">${pick}${body}</div>`;
+        return `<div class="st-node${e?.op === 'var' || e?.op === 'value' ? ' st-leaf' : ''}">${pick}${body}</div>`;
     };
     return node(expr, '');
 }

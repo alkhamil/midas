@@ -1,6 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
+import { behaviorsHtml, conventionHtml } from './capabilitiesUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -10,7 +11,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, STATE_ACTION_IDS, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
+import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, STATE_ACTION_IDS, matchLevel, levelsCovered, cleanConvention, resolveBehaviors, normalizeBehaviors, normalizeOverrides, normalizeConfig, slotIssues, applicability, suggestSlots, suggestStates, suggestPreset, planPreset, PRESETS, CAPABILITIES, SLOT_ROLES, BEHAVIOR_KINDS, DEFAULT_CONVENTION, summaryOf, inputSummary, normalizeFieldRules, validateByRules, patternProblem, optionsText, parseOptions, normalizeOptions, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
 
 
 // ===== document.js =====
@@ -802,6 +803,8 @@ if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
 /** doc.data.state: the State collection (page / app variables and derived values), separate from the Tokens in `variables`. */
 function stateStore() { return doc.data.state ||= { variables: [], derived: [] }; }
+/** doc.data.convention: the names this file treats as standard for slots and states (see convention.js). Always complete. */
+function conventionOf() { return cleanConvention(doc.data.convention); }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
 function varColl(id) { return varStore().collections.find(c => c.id === id); }
@@ -6882,6 +6885,7 @@ class DocumentModel {
             tokens: this.data.tokens,
             variables: this.data.variables,
             state: this.data.state ?? null,
+            convention: this.data.convention ?? null,
             behaviorVersion: this.data.behaviorVersion ?? null,
             thumbnailId: this.data.thumbnailId ?? null,
             guideStyles: this.data.guideStyles ?? []
@@ -8592,7 +8596,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', 'behaviors', 'behaviorOverrides', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -8798,6 +8802,7 @@ function changed({ ui = true, commit = false } = {}) {
 }
 function transaction(label, fn) { finishText(); history.begin(label); fn(); changed({ commit: true }); }
 function select(ids, { reveal = true } = {}) {
+    if (BH_UI.pick && ids.length === 1 && bhPickLayer(ids[0])) return;
     varOwnerId = null;
     // Selecting anything other than the main component we jumped to ends the "Return to instance" shortcut.
     if (state.returnTo && !(ids.length === 1 && ids[0] === state.returnTo.target))
@@ -13203,7 +13208,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', 'behaviors', 'behaviorOverrides'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -18808,7 +18813,7 @@ function liveContext() {
                     continue;
                 // The mode each state reads: the one picked in the Behavior tab, else the one its name suggests.
                 for (const state of LIVE_STATE_IDS) {
-                    const m = modeForState(c, state, pickedModeId(picks, cid, state));
+                    const m = modeForState(c, state, pickedModeId(picks, cid, state)) || (c.modes.find(x => x.id === suggestStates(c.modes, conventionOf())[state]) || null);
                     if (m)
                         byState[state] = { ...byState[state], [cid]: m.id };
                 }
@@ -18843,6 +18848,14 @@ function liveContext() {
         varType: id => items.get(id)?.type,
         /** What Preview reads State bindings from: the cleaned State of the file. */
         state: cleanState(stateStore()),
+        /** The file's Convention (slot names, state names, the component that draws each kind of feedback). */
+        convention: conventionOf(),
+        /** The behaviors of a component or instance, with the instance's overrides applied and every slot a layer of that node. */
+        behaviorsFor: behaviorsOf,
+        /** The look a feedback component takes for a level (success / error / warning / info): { node, modes, how }. */
+        feedbackStyle: feedbackStyleOf,
+        /** The component that draws a kind of feedback: the action's own pick, else the Convention's; null = Preview's built-in one. */
+        feedbackComponent(kind, own) { const id = own || conventionOf().feedback[kind]; return id && componentById(id) ? id : null; },
         /** Does any layer run a Simulated request? Then Preview offers the scenario switcher. */
         hasRequests: allNodes().some(x => x.interactions && JSON.stringify(x.interactions).includes('"type":"request"')),
         /** The State bindings of a layer: its own, else those of its main component. { self: { visible, mode }, layers: { [layer id]: { text, visible } } } */
@@ -19355,7 +19368,7 @@ function bhInteractionRows(n, frames) {
         const label = main && it.actions.length > 1 ? `Then ${j + 1}` : 'Do';
         return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
     };
-    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt };
+    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton };
     return list.map((it, i) => `<div class="bh-card"><div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>
         <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
         ${conditionHtml({ esc, state: stateNow, fields: fieldsList, owner: `interactions.${i}.if`, expr: it.if })}
@@ -19541,6 +19554,132 @@ function stateBindSection(n) {
     walk(n);
     return section('Bind to State', stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) }));
 }
+// ===== Capabilities (Add Behavior): Can type, Has validation, Has options, Opens popup, On click, Has loading, Show feedback =====
+const BH_UI = { addOpen: false, pick: null };       // the Add Behavior panel is open / the slot waiting for a click on a layer ({ nodeId, path })
+/** The layers a slot can be mapped to: inside the component (a set: inside its first variant). */
+function bhLayerList(n) {
+    const root = n.componentSet ? (defaultVariantOf(n) || setVariants(n)[0] || n) : n;
+    return subtreeInOrder(root.id).filter(x => x.id !== root.id && !x.softDeleted).slice(0, 400).map(x => ({ id: x.id, name: x.name, type: x.type, isInstance: !!x.isInstance }));
+}
+/**
+ * The behaviors of a component or an instance (Has options, Opens popup…): the master's, with the instance's overrides on top,
+ * and every slot named by a layer of THIS node: the layer itself, else the one made from it, else the one with the same name.
+ */
+function behaviorsOf(n, own = false) {
+    if (!n) return [];
+    const src = n.isInstance ? chainComponent(n) : n, set = src && parentSetOf(src);
+    // A variant without behaviors of its own follows its component set (Preview); the editor shows only what the selected node holds.
+    if (!n.isInstance) return resolveBehaviors(n.behaviors?.length || own ? n.behaviors : set?.behaviors, undefined);
+    const base = set?.behaviors?.length ? set.behaviors : src?.behaviors;
+    const list = resolveBehaviors(base, n.behaviorOverrides), kids = subtreeInOrder(n.id).filter(k => k.id !== n.id);
+    const find = lid => {
+        if (kids.some(k => k.id === lid)) return lid;
+        const made = kids.find(k => k.sourceId === lid);
+        if (made) return made.id;
+        const m = doc.get(lid) || nodeIndex().get(lid);
+        return m ? (kids.find(k => k.name === m.name && k.type === m.type)?.id ?? null) : null;
+    };
+    return list.map(b => ({ ...b, slots: Object.fromEntries(Object.entries(b.slots).map(([r, id]) => [r, r === 'popup' ? id : find(id)]).filter(([, v]) => v)) }));
+}
+/** The modes of the * states collections connected to a component, for "does it have a loading state?". */
+function bhStateModes(n) {
+    const src = n.isInstance ? chainComponent(n) : (n.componentSet ? (defaultVariantOf(n) || setVariants(n)[0]) : n), set = src && parentSetOf(src);
+    const out = [];
+    for (const cid of Object.keys({ ...src?.varModes, ...set?.varModes, ...n.varModes })) { const c = varColl(cid); if (c && isStateCollection(c)) out.push(...c.modes); }
+    return out;
+}
+function bhCapContext(n) {
+    const isInstance = !!n.isInstance, conv = conventionOf(), layers = bhLayerList(n), behaviors = behaviorsOf(n, true);
+    const ib = normalizeInputBehavior(n.inputBehavior);
+    const type = bhTypeOf(n), typeable = isInstance ? (n.typeable ?? looksLikeField(n)) : (n.typeable ?? type === 'input');
+    const hasClick = normalizeInteractions(isInstance ? interactionsForNode(n, chainComponent(n), parentSetOf(chainComponent(n) || n) || null).list : n.interactions).some(i => i.trigger === 'onClick');
+    const clickIt = normalizeInteractions(n.interactions).find(i => i.trigger === 'onClick');
+    const hasValidation = !!(ib?.validation && (ib.validation.required || ib.validation.rules || ib.validation.trigger));
+    const modes = bhStateModes(n), loadingMode = !!suggestStates(modes, conv).loading;
+    const has = k => k === 'can-type' ? !!(typeable || ib?.typeable?.inputType || ib?.typeable?.frameId) : k === 'has-validation' ? hasValidation : k === 'on-click' ? hasClick : behaviors.some(b => b.kind === k);
+    const inputKinds = new Set(['can-type', 'has-validation', 'on-click']);
+    const c = {
+        esc, bhSelect, node: n, isInstance, behaviors, layers, ib, typeable: typeable && (n.typeable !== undefined || ib?.typeable?.frameId || ib?.typeable?.inputType || isInstance), hasValidation, hasClick,
+        clickSummary: clickIt ? clickIt.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ') : (hasClick ? 'Follows the main component' : ''),
+        nameOf: id => (layers.find(l => l.id === id)?.name || doc.get(id)?.name || componentById(id)?.name || id),
+        state: stateStore(), convention: conv, open: BH_SECTIONS, addOpen: BH_UI.addOpen, pick: BH_UI.pick?.nodeId === n.id ? BH_UI.pick.path : null,
+        componentButton: bhComponentButton,
+        guess: n.isInstance && n.typeable === undefined && looksLikeField(n) ? 'its name' : '',
+        applies: k => (isInstance && !inputKinds.has(k)) ? { ok: false, reason: 'Set on the main component.' } : applicability(k, { layers, has, hasState: s => s === 'loading' ? loadingMode : modes.some(m => suggestStates([m], conv)[s]) }),
+        suggestedPreset: suggestPreset(isInstance ? (parentSetOf(chainComponent(n) || n)?.name || chainComponent(n)?.name || n.name) : n.name, PRESETS),
+        feedbackNote: b => bhFeedbackNote(b, n),
+    };
+    c.suggestions = bhSuggestions(n, c);
+    c.conventionHtml = conventionHtml(c);
+    return c;
+}
+function bhFeedbackNote(b, n) {
+    const id = n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
+    const found = ['success', 'error', 'warning', 'info'].filter(l => feedbackStyleOf(id, l, b.config.types)?.how);
+    return found.length ? `Found ${found.length} of 4 levels (${found.join(', ')}).` : 'No variant property or mode named like success / error / warning / info was found: every level will look the same.';
+}
+/** The look a feedback component takes for a level: a variant (its `type` property) or modes of a collection. → { node, modes, how } */
+function feedbackStyleOf(id, level, types) {
+    const target = id && componentById(id);
+    if (!target) return null;
+    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
+    if (set) for (const prop of variantProps(set)) {
+        const v = matchLevel(variantValues(set, prop), level, types);
+        if (v == null) continue;
+        const want = { ...(first.variant || {}), [prop]: v }, found = setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val));
+        if (found) return { node: found, modes: {}, how: `variant “${prop}”` };
+    }
+    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
+    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
+    for (const cid of colls) {
+        const coll = varColl(cid);
+        // A type collection (Info / Success / Warning / Error) can look like a states collection (success and error are state names): it counts when it covers the levels.
+        if (!coll || (isStateCollection(coll) && levelsCovered(coll.modes.map(x => x.name)) < 2)) continue;
+        const m = matchLevel(coll.modes.map(x => x.name), level, types);
+        if (m != null) return { node: first, modes: { [cid]: coll.modes.find(x => x.name === m).id }, how: `mode of “${coll.name}”` };
+    }
+    return { node: first, modes: {}, how: null };
+}
+/** One-click proposals from the file's Convention: the layer for each empty slot. → [{ section, role, layerId, name, path }] */
+function bhSuggestions(n, c) {
+    const out = [], conv = c.convention, layers = c.layers;
+    const roles = kind => (CAPABILITIES[kind]?.slots || []).filter(s => SLOT_ROLES[s.role].kind !== 'component').map(s => ({ role: s.role, kind: SLOT_ROLES[s.role].kind, required: !!s.required }));
+    if ((c.typeable || c.ib?.typeable?.inputType) && !c.ib?.typeable?.frameId)
+        for (const g of suggestSlots([{ role: 'value', kind: 'text', required: true }], layers, conv)) out.push({ section: 'Can type', role: g.role, layerId: g.layerId, name: g.name, path: 'input.typeable.frameId' });
+    c.behaviors.forEach((b, i) => {
+        const base = c.isInstance ? `behaviorOverrides.${b.id}` : `behaviors.${i}`;
+        for (const g of suggestSlots(roles(b.kind), layers, conv, b.slots)) out.push({ section: CAPABILITIES[b.kind].label, role: g.role, layerId: g.layerId, name: g.name, path: `${base}.slots.${g.role}` });
+    });
+    return out;
+}
+function bhCapabilitiesBlock(n) { return behaviorsHtml(bhCapContext(n)); }
+/** Add what a preset (or one capability) brings to a component. Only adds: what is there is kept. */
+function bhApplyPlan(n, plan) {
+    if (plan.input?.typeable) { n.typeable = true; const ib = { ...(n.inputBehavior || {}) }; ib.typeable = { ...(ib.typeable || {}), ...plan.input.typeable }; n.inputBehavior = normalizeInputBehavior(ib); }
+    if (plan.input?.validation) { const ib = { ...(n.inputBehavior || {}) }; ib.validation = { ...(plan.input.validation), ...(ib.validation && (ib.validation.required || ib.validation.rules) ? ib.validation : {}) }; n.inputBehavior = normalizeInputBehavior(ib); }
+    if (!n.isInstance && plan.behaviors.length) {
+        const list = [...(n.behaviors || [])];
+        for (const b of plan.behaviors) if (!list.some(x => x.kind === b.kind)) list.push({ id: `b${Date.now().toString(36)}${list.length}`, kind: b.kind, enabled: true, slots: {}, config: b.config, preset: b.preset });
+        n.behaviors = normalizeBehaviors(list);
+    }
+    if (plan.interactions?.length) {
+        const have = normalizeInteractions(n.interactions);
+        const add = plan.interactions.filter(i => !have.some(h => h.trigger === i.trigger));
+        if (add.length) n.interactions = normalizeInteractions([...have, ...add.map((i, k) => ({ ...i, id: `i${Date.now().toString(36)}${k}` }))]);
+    }
+}
+/** Click a layer (canvas or Layers panel) while a slot is waiting for it: map the slot and go back to the component. */
+function bhPickLayer(id) {
+    const p = BH_UI.pick;
+    if (!p) return false;
+    const n = doc.get(p.nodeId);
+    if (!n || id === n.id || !bhLayerList(n).some(l => l.id === id)) { if (!n || id !== n.id) BH_UI.pick = null; return false; }
+    BH_UI.pick = null;
+    transaction('Behavior', () => { bhWrite(n, p.path, id); doc.touch(n); });
+    select([n.id]);
+    return true;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && BH_UI.pick) { BH_UI.pick = null; renderInspector(); } }, true);
 function prototypeHtml() {
     const n = activeNode();
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
@@ -19566,9 +19705,9 @@ function prototypeHtml() {
     let html = `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div></section>`;
     const typeable = n.isInstance ? (n.typeable ?? looksLikeField(n)) : type === 'input';
     if (n.isInstance)
-        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="typeable" ${typeable ? 'checked' : ''}> A field people can type in</label><label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
+        html += section('This layer is', `<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>`);
     // The typing settings appear once the layer is marked as a field.
-    if (typeable) html += bhInputHtml(n, bhLayers(n));
+    html += bhCapabilitiesBlock(n);
     html += bhStateSection(n);
     if (n.type === 'frame') html += repeatHtml(n) + stateBindSection(n);
     const own = normalizeInteractions(n.interactions);
@@ -19594,6 +19733,22 @@ function prototypeHtml() {
 }
 /** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
 function bhWrite(n, path, value) {
+    // The file's Convention is not a layer property.
+    if (path.startsWith('convention.')) {
+        const conv = conventionOf();
+        setPath(conv, path.slice('convention.'.length), value ?? '');
+        doc.data.convention = cleanConvention(conv);
+        return;
+    }
+    // Capabilities kept on the component (behaviors) or what an instance changes (behaviorOverrides).
+    if (path.startsWith('behaviors.') || path.startsWith('behaviorOverrides.')) {
+        const cfg = { behaviors: structuredClone(n.behaviors || []), behaviorOverrides: structuredClone(n.behaviorOverrides || {}) };
+        setPath(cfg, path, value);
+        const list = normalizeBehaviors(cfg.behaviors), ov = normalizeOverrides(cfg.behaviorOverrides);
+        if (list.length) n.behaviors = list; else delete n.behaviors;
+        if (Object.keys(ov).length) n.behaviorOverrides = ov; else delete n.behaviorOverrides;
+        return;
+    }
     if (path.startsWith('frame.')) {
         n.frameRole = value || 'page';
         return;
@@ -19630,6 +19785,8 @@ function bhWrite(n, path, value) {
     }
     const cfg = { state: n.stateMapping || {}, interactions: n.interactions || [], input: n.inputBehavior || {} };
     setPath(cfg, path, value);
+    // The Required box of Has validation is one rule now; an older file's own flag must not keep it on.
+    if (path === 'input.validation.rules.required') setPath(cfg, 'input.validation.required', false);
     if (path.startsWith('state.') || n.stateMapping) n.stateMapping = normalizeStateMapping(cfg.state);
     if (path.startsWith('interactions.') || n.interactions) n.interactions = normalizeInteractions(cfg.interactions);
     if (path.startsWith('input.') || n.inputBehavior) n.inputBehavior = normalizeInputBehavior(cfg.input);
@@ -19660,7 +19817,9 @@ function bhConnectCollection(n, id) {
 }
 function bhSet(n, t) {
     const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
-    const value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
+    let value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
+    if (t.dataset.bhInvert) value = !value;
+    if (kind === 'options') { bhWrite(n, path, parseOptions(value)); return; }
     if (kind === 'prop') {
         // Ganti properti yang dipetakan (nama kuncinya berubah, nilainya ikut).
         const state = path.split('.')[1], oldProp = t.dataset.bhProp || '', newProp = value;
@@ -19711,6 +19870,39 @@ function bhSet(n, t) {
 }
 function bhAction(n, t) {
     const act = t.dataset.bhAct;
+    if (act === 'toggle-add') { BH_UI.addOpen = !BH_UI.addOpen; return; }
+    if (act === 'pick-slot') { BH_UI.pick = BH_UI.pick?.path === t.dataset.bhPath ? null : { nodeId: n.id, path: t.dataset.bhPath }; return; }
+    if (act === 'go-main') { const src = chainComponent(n); if (src) goToMainComponent((parentSetOf(src) || src).id, n.id); return; }
+    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { bhApplyPlan(n, plan); BH_UI.addOpen = false; for (const b of behaviorsOf(n)) BH_SECTIONS.add(`cap:${b.id}`); } return; }
+    if (act === 'add-cap') {
+        const kind = t.dataset.bhKind;
+        if (kind === 'can-type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BH_SECTIONS.add('cap:can-type'); }
+        else if (kind === 'has-validation') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BH_SECTIONS.add('cap:has-validation'); }
+        else if (kind === 'on-click') bhApplyPlan(n, { behaviors: [], input: null, interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate' }] }] });
+        else { bhApplyPlan(n, { behaviors: [{ kind, config: normalizeConfig(kind, {}) }], input: null, interactions: [] }); const b = behaviorsOf(n).find(x => x.kind === kind); if (b) BH_SECTIONS.add(`cap:${b.id}`); }
+        BH_UI.addOpen = false;
+        return;
+    }
+    if (act === 'del-cap') {
+        const kind = t.dataset.bhKind;
+        if (kind === 'can-type') { n.typeable = false; const ib = { ...(n.inputBehavior || {}) }; ib.typeable = {}; n.inputBehavior = normalizeInputBehavior(ib); }
+        else if (kind === 'has-validation') { const ib = { ...(n.inputBehavior || {}) }; ib.validation = {}; n.inputBehavior = normalizeInputBehavior(ib); }
+        else { const list = [...(n.behaviors || [])]; list.splice(Number(t.dataset.bhIndex), 1); if (list.length) n.behaviors = normalizeBehaviors(list); else delete n.behaviors; }
+        return;
+    }
+    if (act === 'move-cap') {
+        const list = [...(n.behaviors || [])], from = Number(t.dataset.bhIndex), to = from + Number(t.dataset.bhDir);
+        if (to < 0 || to >= list.length) return;
+        [list[from], list[to]] = [list[to], list[from]];
+        n.behaviors = list;
+        return;
+    }
+    if (act === 'accept-slot' || act === 'accept-all') {
+        const all = bhCapContext(n).suggestions, pick = act === 'accept-all' ? all : [all[Number(t.dataset.bhIndex)]].filter(Boolean);
+        for (const g of pick) bhWrite(n, g.path, g.layerId);
+        return;
+    }
+    if (act === 'reset-convention') { delete doc.data.convention; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
     if (act === 'add-action-at') {
         if (!t.value) return;
@@ -19857,6 +20049,13 @@ function bhAction(n, t) {
 $('#inspector').addEventListener('change', e => {
     const n = activeNode(), t = e.target;
     if (!n) return;
+    // A name of the file's Convention was edited ("slots.value" / "states.loading": comma separated words).
+    if (t.dataset.conv) {
+        const [group, key] = t.dataset.conv.split('.');
+        transaction('Convention', () => { const conv = conventionOf(); conv[group][key] = t.value.split(',').map(x => x.trim()).filter(Boolean); doc.data.convention = cleanConvention(conv); doc.touch(n); });
+        renderInspector();
+        return;
+    }
     // A condition (a sentence of dropdowns) was edited.
     const tgt = exprTarget(t.dataset);
     if (tgt) { transaction('Behavior', () => { bhEditExpr(n, tgt, t.value); doc.touch(n); }); renderInspector(); return; }

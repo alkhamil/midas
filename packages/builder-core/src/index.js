@@ -11,3 +11,6 @@ export * from './migrate.js';
 export * from './evalctx.js';
 export * from './actions.js';
 export * from './rules.js';
+export * from './capabilities.js';
+export * from './convention.js';
+export * from './select.js';

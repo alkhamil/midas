@@ -25,7 +25,7 @@ export const SET_OPS = [
 ];
 export const FEEDBACK_KINDS = [
     { id: 'alert', label: 'Alert' }, { id: 'message', label: 'Message' }, { id: 'modal', label: 'Modal' },
-    { id: 'drawer', label: 'Drawer' }, { id: 'popconfirm', label: 'Popconfirm' },
+    { id: 'drawer', label: 'Drawer' }, { id: 'popconfirm', label: 'Popconfirm' }, { id: 'notification', label: 'Notification' },
 ];
 export const FEEDBACK_LEVELS = ['success', 'error', 'warning', 'info'];
 export const FEEDBACK_POSITIONS = [
@@ -65,10 +65,11 @@ export function normalizeStateAction(type, a, normalizeList) {
             out.level = FEEDBACK_LEVELS.includes(a?.level) ? a.level : 'info';
             out.message = String(a?.message ?? '');
             if (a?.title) out.title = String(a.title);
-            out.position = FEEDBACK_POSITIONS.some(p => p.id === a?.position) ? a.position : (out.kind === 'drawer' ? 'right' : out.kind === 'modal' || out.kind === 'popconfirm' ? 'center' : out.kind === 'message' ? 'top' : 'top-right');
+            out.position = FEEDBACK_POSITIONS.some(p => p.id === a?.position) ? a.position : (out.kind === 'drawer' ? 'right' : out.kind === 'modal' || out.kind === 'popconfirm' ? 'center' : out.kind === 'message' ? 'top' : 'top-right');   // notification: top-right too
             const d = Number(a?.duration);
-            out.duration = Number.isFinite(d) ? Math.min(60000, Math.max(0, Math.round(d))) : (out.kind === 'alert' || out.kind === 'message' ? 3000 : 0);
+            out.duration = Number.isFinite(d) ? Math.min(60000, Math.max(0, Math.round(d))) : (out.kind === 'alert' || out.kind === 'message' || out.kind === 'notification' ? 3000 : 0);
             out.blocking = typeof a?.blocking === 'boolean' ? a.blocking : BLOCKING_KINDS.has(out.kind);
+            if (a?.componentId) out.componentId = String(a.componentId);       // overrides the file's Convention for this one action
             if (a?.confirmLabel) out.confirmLabel = String(a.confirmLabel);
             if ((out.kind === 'modal' || out.kind === 'popconfirm') && Array.isArray(a?.onConfirm) && a.onConfirm.length) out.onConfirm = normalizeList(a.onConfirm);
             break;
@@ -147,7 +148,7 @@ export function runStateAction(a, ev, env) {
 // ---------- feedback ----------
 /** What the host should draw for a show-feedback action: the message with {placeholders} filled. */
 export function resolveFeedback(a, ev) {
-    return { kind: a.kind, level: a.level, title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null };
+    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null };
 }
 
 // ---------- scenarios ----------

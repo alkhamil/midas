@@ -67,19 +67,65 @@ export function validateValues(fields, values, mode = 'create') {
 }
 
 /**
- * One input of a screen, as Preview sees it: its type (text / email / number / password), whether it is required, its value.
- * The same rules as the generated forms (validateField), so Preview and the app agree.
- * `touched`: the field had text once; `strict`: an empty required field is wrong even if nobody touched it (a submit).
- * → { valid: true } or { valid: false, reason: 'required' | 'email' | 'number' | 'rule', message }
+ * Ant Design style field rules, evaluated with the same wording as the generated forms.
+ *   rules = { required, type: 'string' | 'email' | 'number' | 'integer' | 'url', min, max, len, pattern, message? }
+ * min / max / len are a number of characters for text, a size for a number, a count of picks for a list (a multiple Select).
+ * `touched`: the field had a value once; `strict`: an empty required field is wrong even if nobody touched it (a submit).
+ * → { valid: true } or { valid: false, reason, message } (reason: required, email, number, integer, url, min, max, len, pattern)
  */
-export function validateInput({ inputType = 'text', required = false, label = 'This field' } = {}, value, { touched = true, strict = false } = {}) {
-    const t = String(value ?? '').trim();
-    const field = { name: 'input', label, type: inputType === 'number' ? 'number' : 'string', required, rules: inputType === 'email' ? ['email'] : [] };
-    if (!t) {
-        if (required && (strict || touched)) return { valid: false, reason: 'required', message: validateField(field, '') };
-        return { valid: true };
+export function validateByRules(rules = {}, value, { label = 'This field', touched = true, strict = false } = {}) {
+    const r = rules || {}, own = text => (r.message ? String(r.message) : text);
+    const bad = (reason, message) => ({ valid: false, reason, message: own(message) });
+    const list = Array.isArray(value);
+    const isEmpty = list ? value.length === 0 : String(value ?? '').trim() === '';
+    if (isEmpty) return r.required && (strict || touched) ? bad('required', VALIDATION_MESSAGES.required({ label })) : { valid: true };
+    const text = list ? '' : String(value).trim();
+    if (!list) {
+        if (r.type === 'email' && !EMAIL_RE.test(text)) return bad('email', VALIDATION_MESSAGES.email({ label }));
+        if (r.type === 'url' && !/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(text)) return bad('url', `${label} must be a valid URL.`);
+        if ((r.type === 'number' || r.type === 'integer') && !Number.isFinite(Number(text))) return bad('number', `${label} must be a number.`);
+        if (r.type === 'integer' && !Number.isInteger(Number(text))) return bad('integer', `${label} must be a whole number.`);
     }
-    if (inputType === 'number' && !Number.isFinite(Number(t))) return { valid: false, reason: 'number', message: `${label} must be a number.` };
-    const message = validateField(field, t);
-    return message ? { valid: false, reason: inputType === 'email' ? 'email' : 'rule', message } : { valid: true };
+    const numeric = !list && (r.type === 'number' || r.type === 'integer');
+    const size = list ? value.length : numeric ? Number(text) : text.length;
+    const unit = list ? ' items' : numeric ? '' : ' characters';
+    const num = v => (v === undefined || v === null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null);
+    const min = num(r.min), max = num(r.max), len = num(r.len);
+    if (len !== null && size !== len) return bad('len', `${label} must be exactly ${len}${unit}.`);
+    if (min !== null && size < min) return bad('min', numeric ? VALIDATION_MESSAGES.minValue({ label, count: min }) : `${label} must be at least ${min}${unit}.`);
+    if (max !== null && size > max) return bad('max', numeric ? VALIDATION_MESSAGES.maxValue({ label, count: max }) : `${label} cannot be more than ${max}${unit}.`);
+    if (r.pattern && !list) {
+        try { if (!new RegExp(r.pattern).test(text)) return bad('pattern', VALIDATION_MESSAGES.pattern({ label })); }
+        catch { /* an invalid pattern is reported where the rule is edited */ }
+    }
+    return { valid: true };
+}
+
+/**
+ * One input of a screen, as Preview sees it: its type (text / email / number / password), whether it is required, its value.
+ * The same rules as the generated forms; `rules` adds the Ant style rules of the Has validation capability.
+ * → { valid: true } or { valid: false, reason: 'required' | 'email' | 'number' | 'rule' | …, message }
+ */
+export function validateInput({ inputType = 'text', required = false, label = 'This field', rules } = {}, value, opts = {}) {
+    const type = inputType === 'email' ? 'email' : inputType === 'number' ? 'number' : undefined;
+    const r = validateByRules({ ...(rules || {}), required: required || !!rules?.required, type: rules?.type || type }, value, { label, ...opts });
+    return r.valid || r.reason === 'required' || r.reason === 'email' || r.reason === 'number' ? r : { ...r, reason: 'rule' };
+}
+
+/** The type a field rule can ask for. */
+export const RULE_TYPES = ['string', 'email', 'number', 'integer', 'url'];
+/** Ant style field rules as the file keeps them: required, type, min, max, len, pattern, message (nothing else). */
+export function normalizeFieldRules(r = {}) {
+    const out = {};
+    if (r?.required) out.required = true;
+    if (RULE_TYPES.includes(r?.type) && r.type !== 'string') out.type = r.type;
+    for (const k of ['min', 'max', 'len']) { const n = r?.[k] === '' || r?.[k] === undefined || r?.[k] === null ? NaN : Number(r[k]); if (Number.isFinite(n)) out[k] = n; }
+    if (typeof r?.pattern === 'string' && r.pattern) out.pattern = r.pattern;
+    if (typeof r?.message === 'string' && r.message) out.message = r.message;
+    return out;
+}
+/** Is a pattern a regular expression JavaScript can read? → null, or what is wrong with it (the editor says so before Preview has to). */
+export function patternProblem(pattern) {
+    if (!pattern) return null;
+    try { new RegExp(pattern); return null; } catch (e) { return String(e.message).replace(/^Invalid regular expression: /, ''); }
 }

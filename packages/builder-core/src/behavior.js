@@ -13,6 +13,7 @@
  */
 import { STATE_ACTIONS, STATE_ACTION_IDS, normalizeStateAction } from './actions.js';
 import { normalizeRules } from './rules.js';
+import { normalizeFieldRules } from './validate.js';
 
 export const STATE_ORDER = [
     'default', 'hover', 'pressed', 'focused', 'selected', 'typing', 'filled', 'empty', 'indeterminate', 'read-only',
@@ -71,6 +72,8 @@ export const TRIGGERS = [
     { id: 'onSearch', label: 'On search' },
     { id: 'onOpenChange', label: 'On open / close' },
     { id: 'onLoad', label: 'On page load' },
+    { id: 'onFinish', label: 'On finish (valid)' },
+    { id: 'onFinishFailed', label: 'On finish failed (invalid)' },
 ];
 
 export const ACTIONS = [
@@ -610,9 +613,9 @@ export const INPUT_TYPE_MAP = Object.fromEntries(INPUT_TYPES.map(t => [t.id, t])
 
 /** When a field is checked: as the pointer leaves it, as it is typed in, or when Enter is pressed. */
 export const VALIDATION_TRIGGERS = [
-    { id: 'blur', label: 'On blur' },
-    { id: 'change', label: 'On change' },
-    { id: 'submit', label: 'On submit' },
+    { id: 'blur', label: 'On blur (onBlur)' },
+    { id: 'change', label: 'On change (onChange)' },
+    { id: 'submit', label: 'On submit (onFinish)' },
 ];
 export const VALIDATION_TRIGGER_MAP = Object.fromEntries(VALIDATION_TRIGGERS.map(t => [t.id, t]));
 
@@ -638,6 +641,9 @@ export function normalizeInputBehavior(b) {
         validation: {
             required: !!validation.required,
             trigger: VALIDATION_TRIGGER_MAP[validation.trigger] ? validation.trigger : undefined,
+            // Ant style rules (required, type, min, max, len, pattern); `required` above stays for files written before them.
+            ...(validation.rules && typeof validation.rules === 'object' && Object.keys(normalizeFieldRules(validation.rules)).length ? { rules: normalizeFieldRules(validation.rules) } : {}),
+            ...(validation.off ? { off: true } : {}),
         },
     };
 }

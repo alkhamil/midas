@@ -65,6 +65,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + `<label class="field"><span>Position</span>${bhSelect(`${p}.position`, 'plain', a.position, FEEDBACK_POSITIONS.map(k => [k.id, k.label]))}</label>`
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`
                 + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(p)}.blocking" data-bh-kind="bool" ${a.blocking ? 'checked' : ''}> Blocking (nothing behind it can be used)</label>`
+                + feedbackComponentRows(ctx, p, a)
                 + nested + '<p class="small-label">Use {name} to show a State value, e.g. “{Attempts} of 5”.</p>';
         }
         default: return '';
@@ -93,4 +94,12 @@ export function rulesHtml(ctx, it, i, open) {
         return `<div class="bh-rule"><div class="bh-rule-head"><span></span><button type="button" class="bh-rule-title" data-bh-section="${esc(ok)}" aria-expanded="${oo}"><b>Otherwise</b><small>${other.actions.length} ${other.actions.length === 1 ? 'action' : 'actions'}</small></button><span class="bh-rule-acts"><button type="button" class="icon-button small" data-bh-act="del-otherwise" data-bh-index="${i}" title="Remove" aria-label="Remove otherwise">×</button></span></div>${oo ? `<div class="bh-rule-body">${other.actions.map((a, j) => ctx.renderAction(`${p}.actions.${j}`, a, it, `${p}.actions`, j)).join('')}${ctx.addActionAt(`${p}.actions`)}</div>` : ''}</div>`;
     })() : '';
     return `<div class="bh-rules">${head}<div class="bh-rules-body">${rules.items.map(ruleCard).join('')}${otherCard}<div class="bh-rules-add"><button type="button" class="vw-btn ghost" data-bh-act="add-rule" data-bh-index="${i}">+ Add rule</button>${other ? '' : `<button type="button" class="vw-btn ghost" data-bh-act="add-otherwise" data-bh-index="${i}">+ Otherwise</button>`}</div></div></div>`;
+}
+
+/** Which component draws this kind of feedback: the file's Convention, or just this action. No component = Preview's built-in one (badged). */
+function feedbackComponentRows(ctx, p, a) {
+    const { esc } = ctx, kind = a.kind, label = FEEDBACK_KINDS.find(k => k.id === kind)?.label || kind;
+    const mapped = ctx.convention?.feedback?.[kind] || a.componentId;
+    return (ctx.componentButton ? ctx.componentButton(`convention.feedback.${kind}`, ctx.convention?.feedback?.[kind] || '', `${label} component`) + ctx.componentButton(`${p}.componentId`, a.componentId || '', 'Only this action') : '')
+        + (mapped ? '' : `<p class="small-label bh-warn">⚠ No component is set for ${esc(label)}: Preview draws its built-in one, marked “built-in”. Pick your own above (it needs the Show feedback behavior).</p>`);
 }
