@@ -5,3 +5,7 @@ export * from './component-codegen.js';
 export * from './generate/index.js';
 export * from './zip.js';
 export * from './validate.js';
+export * from './state.js';
+export * from './expr.js';
+export * from './migrate.js';
+export * from './evalctx.js';

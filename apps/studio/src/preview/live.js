@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle } from './flexStyle.js';
-import { effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
+import { createEvalCtx, formatValue, truthy, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const el = (tag, style, parent) => {
@@ -340,8 +340,11 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     css.textContent = `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}} .live-preview input{font:inherit;border:0;border-radius:0;box-shadow:none;outline:0;background:transparent;appearance:none;-webkit-appearance:none} .live-preview input:hover,.live-preview input:focus,.live-preview input:focus-visible{border:0;outline:0;box-shadow:none} .live-preview input:-webkit-autofill{box-shadow:0 0 0 1000px transparent inset;-webkit-text-fill-color:currentColor;transition:background-color 9999s}`;
     css.textContent += `@keyframes mvt-pop{from{opacity:0;transform:scale(.96) translateY(6px)}}@keyframes mvt-fade{from{opacity:0}}::view-transition-old(root),::view-transition-new(root){animation-duration:var(--mvt-dur,180ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}::view-transition-old(midas-stage),::view-transition-new(midas-stage){animation-duration:var(--mvt-dur,220ms);animation-timing-function:var(--mvt-ease,cubic-bezier(0.2,0,0,1))}html[data-mvt='slide-left']::view-transition-old(midas-stage){animation-name:mvt-old-left}html[data-mvt='slide-left']::view-transition-new(midas-stage){animation-name:mvt-new-left}html[data-mvt='slide-right']::view-transition-old(midas-stage){animation-name:mvt-old-right}html[data-mvt='slide-right']::view-transition-new(midas-stage){animation-name:mvt-new-right}html[data-mvt='slide-up']::view-transition-old(midas-stage){animation-name:mvt-old-up}html[data-mvt='slide-up']::view-transition-new(midas-stage){animation-name:mvt-new-up}html[data-mvt='slide-down']::view-transition-old(midas-stage){animation-name:mvt-old-down}html[data-mvt='slide-down']::view-transition-new(midas-stage){animation-name:mvt-new-down}html[data-mvt='fade-scale']::view-transition-old(midas-stage){animation-name:mvt-old-scale}html[data-mvt='fade-scale']::view-transition-new(midas-stage){animation-name:mvt-new-scale}@keyframes mvt-old-left{to{transform:translateX(-60px);opacity:0}}@keyframes mvt-new-left{from{transform:translateX(60px);opacity:0}}@keyframes mvt-old-right{to{transform:translateX(60px);opacity:0}}@keyframes mvt-new-right{from{transform:translateX(-60px);opacity:0}}@keyframes mvt-old-up{to{transform:translateY(-60px);opacity:0}}@keyframes mvt-new-up{from{transform:translateY(60px);opacity:0}}@keyframes mvt-old-down{to{transform:translateY(60px);opacity:0}}@keyframes mvt-new-down{from{transform:translateY(-60px);opacity:0}}@keyframes mvt-old-scale{to{transform:scale(.98);opacity:0}}@keyframes mvt-new-scale{from{transform:scale(.96);opacity:0}}`;
     const runtime = new Map();            // instance id -> { state, value, error, selected, indeterminate, reveal, touched }
+    let stateReady = false;               // the State panel exists (built after the menu)
     let controlsReady = false;            // the variables panel exists (it is built after the menu)
     const varOver = new Map();            // variable id -> the value Set variable gave it (older files; kept while the preview is open)
+    // State (Variables → State): the values bindings read. Fresh on every open; Reset, Restart and leaving a page put them back.
+    let evalCtx = createEvalCtx(ctx.state);
     const modeOver = new Map();           // collection id -> the mode Set variable switched it to (kept while the preview is open)
     const layers = [];                   // dropdown / overlay / popover yang sedang terbuka
     let frameId = ctx.start, rendering = false;
@@ -363,7 +366,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     root.addEventListener('keydown', () => { byPointer = false; }, true);
 
     // What the canvas shows for the layer: the state its variable mode points at (Design), else default.
-    const baseStateOf = n => ctx.canvasState?.(n) || (n.disabled ? 'disabled' : 'default');
+    // An Option state bound to a layer's look (Behavior → Bind to State) decides its state; else what the canvas shows.
+    const boundModeOf = n => { const id = ctx.stateBindFor?.(n)?.self?.mode, v = id && evalCtx.get(id); return typeof v === 'string' && v ? v.toLowerCase() : null; };
+    const baseStateOf = n => boundModeOf(n) || ctx.canvasState?.(n) || (n.disabled ? 'disabled' : 'default');
     const stateOf = n => runtime.get(n.id)?.state || baseStateOf(n);
     // What is drawn is the base state plus what stays with the layer: checked / current, indeterminate, an empty value.
     const effStateOf = n => {
@@ -455,7 +460,10 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             // A boolean property a variable changed in Preview shows or hides its layer.
             // A layer bound to a List field (Behavior → Repeat) reads its value from the row being drawn.
             const rb = o?.row && o.rowBind ? (o.rowBind[n.id] || (n.sourceId && o.rowBind[n.sourceId])) : null;
-            const shown = rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
+            // State bindings: this layer's own "visible when", and the ones its container set for it.
+            const sbOwn = ctx.stateBindFor?.(n)?.self, sbLayer = o?.stateLayers && (o.stateLayers[n.id] || (n.sourceId && o.stateLayers[n.sourceId]));
+            const stVis = [sbOwn?.visible, sbLayer?.visible].filter(Boolean).map(id => truthy(evalCtx.get(id)));
+            const shown = stVis.length ? stVis.every(Boolean) : rb?.visible && o.row[rb.visible] !== undefined ? !!o.row[rb.visible] : o?.cOver && n.propBind?.visible && o.cOver.has(n.propBind.visible) ? o.cOver.get(n.propBind.visible) : null;
             if (shown === false || (shown === null && n.visible === false && !forced)) return;
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
@@ -471,7 +479,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, stateLayers: o?.stateLayers, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -531,10 +539,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             }
             if (o?.iconScale && parentId !== null) scaleIconChild(c, n, copies.get(parentId), o.iconScale);
             if (rb?.text && n.type === 'text' && o.row[rb.text] !== undefined) c.text = String(o.row[rb.text]);
+            if (sbLayer?.text && n.type === 'text' && evalCtx.has(sbLayer.text)) c.text = formatValue(evalCtx.get(sbLayer.text));
             nodes.push(c);
             copies.set(c.id, c);
             // A frame bound to a List repeats its first child once per row; the other children are drawn once after them.
-            const rep = ctx.repeatOf?.(n), kids = ctx.kids(kidsOf);
+            const sbSet = ctx.stateBindFor?.(n)?.layers;
+            if (sbSet) inner = { ...(inner || {}), stateLayers: { ...(inner?.stateLayers || {}), ...sbSet } };
+            const rep = ctx.repeatOf?.(n, evalCtx), kids = ctx.kids(kidsOf);
             if (rep && kids.length) {
                 rep.rows.forEach((row, i) => emit(kids[0], c.id, { ...(inner || {}), row: { ...row, '#': i + 1 }, rowBind: rep.bind }));
                 for (const k of kids.slice(1)) emit(k, c.id, inner);
@@ -970,7 +981,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         markCurrent();
     }
 
-    function show(id, motion) { frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); if (controlsReady) renderControls(); }
+    function show(id, motion) { if (id !== frameId) evalCtx.reset(['page']); frameId = id; navMotion = motion || null; runtime.clear(); closeLayers('all', true); syncTabFrame(id); draw(); if (controlsReady) renderControls(); }
     /** Restart (R): reset semua state interaksi ke awal tanpa reload — langsung pakai pengaturan kanvas + behavior yang sudah ada. */
     async function restartPreview() {
         // A preview tab holds a copy of the file from when it loaded: restart first re-reads the saved file (no page reload),
@@ -980,6 +991,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const fresh = await onRefresh();
                 if (fresh && fresh.frames?.length) {
                     ctx = fresh;
+                    evalCtx = createEvalCtx(ctx.state);
                     css.textContent = css.textContent
                         .replace(/^\.live-preview\{[^}]*\}/, `.live-preview{${ctx.vars.map(v => `--${v.name}:${v.value}`).join(';')}}`)
                         .replace(/\.live-preview \[data-field="[^"]*"\]::placeholder\{[^}]*\}/g, '');
@@ -990,9 +1002,11 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         }
         modeOver.clear();
         varOver.clear();
+        evalCtx = createEvalCtx(ctx.state);
         navMotion = null;
         show(ctx.start);
         renderControls();
+        if (stateReady) renderState();
     }
 
     // A dropdown or popover closes when the pointer goes down outside it (pressing what opened it does not count). An overlay
@@ -1208,6 +1222,87 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     vSearch.oninput = () => renderControls();
     controlsReady = true;
     renderControls();
+    // State panel: the current value of every state variable, editable by hand (actions come later), derived values read-only.
+    const stBtn = el('button', { ...chrome, position: 'absolute', top: '12px', left: '92px', zIndex: 60, width: '32px', height: '32px', display: 'none', placeItems: 'center', border: '0', borderRadius: '8px', background: 'rgba(30,30,30,.82)', cursor: 'pointer', opacity: '.75' }, root);
+    stBtn.title = 'State';
+    stBtn.setAttribute('aria-label', 'Preview state');
+    stBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>';
+    stBtn.onmouseenter = () => { stBtn.style.opacity = '1'; };
+    stBtn.onmouseleave = () => { stBtn.style.opacity = '.75'; };
+    const stPanel = el('aside', { ...chrome, position: 'absolute', top: surface === 'tab' ? '56px' : '12px', right: '12px', bottom: '12px', width: '320px', zIndex: 66, display: 'none', flexDirection: 'column', borderRadius: '12px', background: 'rgba(24,24,24,.97)', boxShadow: '0 12px 36px rgba(0,0,0,.34)', overflow: 'hidden' }, root);
+    stPanel.setAttribute('aria-label', 'Preview state');
+    const sHead = el('div', { display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 12px 8px 14px', fontWeight: 600 }, stPanel);
+    el('span', { flex: '1' }, sHead).textContent = 'State';
+    const sReset = el('button', { ...chrome, padding: '4px 8px', border: '1px solid rgba(255,255,255,.22)', borderRadius: '6px', background: 'transparent', cursor: 'pointer' }, sHead);
+    sReset.textContent = 'Reset';
+    const sShut = el('button', { ...chrome, width: '24px', height: '24px', border: '0', borderRadius: '6px', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1' }, sHead);
+    sShut.textContent = '\u00d7';
+    const sBody = el('div', { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 12px 12px' }, stPanel);
+    const sDerived = el('div', null, null);
+    const valueLine = v => Array.isArray(v) ? `${v.length} ${v.length === 1 ? 'row' : 'rows'}` : v && typeof v === 'object' ? JSON.stringify(v) : formatValue(v);
+    function renderDerived() {
+        sDerived.replaceChildren();
+        for (const d of ctx.state.derived || []) {
+            const row = el('div', { display: 'flex', gap: '8px', padding: '3px 0' }, sDerived), err = evalCtx.error(d.id);
+            el('span', { flex: '1', opacity: '.85', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis' }, row).textContent = d.name;
+            const val = el('span', { maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: err ? '#ff6b6b' : 'inherit' }, row);
+            val.textContent = err || valueLine(evalCtx.get(d.id));
+            val.title = val.textContent;
+        }
+    }
+    function renderState() {
+        const st = ctx.state, any = st.variables.length || (st.derived || []).length;
+        stBtn.style.display = any ? 'grid' : 'none';
+        if (!any) stPanel.style.display = 'none';
+        sBody.replaceChildren();
+        const apply = (id, value, input) => {
+            const r = evalCtx.set(id, value);
+            if (input) input.style.borderColor = r.ok ? 'rgba(255,255,255,.18)' : '#ff6b6b';
+            if (input) input.title = r.ok ? '' : r.error;
+            if (r.ok) { draw(); renderDerived(); }
+            return r.ok;
+        };
+        for (const v of st.variables) {
+            const wide = v.type === 'list' || v.type === 'object';
+            const row = el('label', { display: 'flex', flexDirection: wide ? 'column' : 'row', alignItems: wide ? 'stretch' : 'center', gap: '6px', padding: '4px 0' }, sBody);
+            const nm = el('span', { flex: '1', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: '.85' }, row);
+            nm.textContent = v.scope === 'app' ? `${v.name} · app` : v.name;
+            const cur = evalCtx.get(v.id);
+            if (v.type === 'boolean') {
+                const c = el('input', { width: '16px', height: '16px', margin: '0', accentColor: '#4f8cff' }, row);
+                c.type = 'checkbox'; c.checked = !!cur; c.onchange = () => apply(v.id, c.checked);
+            } else if (v.type === 'option') {
+                const c = el('select', { ...fieldStyle, width: '150px' }, row);
+                for (const o of v.options || []) { const op = el('option', null, c); op.value = o; op.textContent = o; }
+                c.value = cur; c.onchange = () => apply(v.id, c.value);
+            } else if (wide) {
+                const t = el('textarea', { ...fieldStyle, width: '100%', minHeight: '84px', fontFamily: 'ui-monospace, monospace', fontSize: '11px', resize: 'vertical' }, row);
+                t.value = JSON.stringify(cur, null, 1); t.spellcheck = false;
+                t.onchange = () => { try { apply(v.id, JSON.parse(t.value), t); } catch { t.style.borderColor = '#ff6b6b'; t.title = 'This is not valid JSON.'; } };
+            } else if (v.type === 'file') {
+                const c = el('input', { ...fieldStyle, width: '150px' }, row);
+                c.type = 'file';
+                c.onchange = () => { const f = c.files?.[0]; apply(v.id, f ? { name: f.name, size: f.size, type: f.type } : null, c); };
+            } else {
+                const c = el('input', { ...fieldStyle, width: '150px' }, row);
+                c.type = v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'text';
+                c.value = cur ?? '';
+                c.oninput = () => { if (v.type === 'number') { if (c.value !== '') apply(v.id, Number(c.value), c); } else apply(v.id, c.value, c); };
+            }
+        }
+        if ((st.derived || []).length) {
+            const title = el('div', { margin: '12px 0 4px', fontSize: '11px', letterSpacing: '.04em', textTransform: 'uppercase', opacity: '.6' }, sBody);
+            title.textContent = 'Derived';
+            sBody.appendChild(sDerived);
+            renderDerived();
+        }
+    }
+    const setStateOpen = on => { stPanel.style.display = on ? 'flex' : 'none'; stPanel.dataset.open = on ? '1' : ''; if (on) renderState(); };
+    stBtn.onclick = () => setStateOpen(!stPanel.dataset.open);
+    sShut.onclick = () => setStateOpen(false);
+    sReset.onclick = () => { evalCtx.reset(); draw(); renderState(); };
+    stateReady = true;
+    renderState();
     // Clicking the design itself folds the menu away again.
     root.addEventListener('pointerdown', ev => { if (drawer.dataset.open && !drawer.contains(ev.target) && !menuBtn.contains(ev.target)) setMenu(false); }, true);
     // Escape closes the top layer, then the menu, then leaves the preview (a field being typed in just loses focus).
@@ -1227,6 +1322,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (layers.length) closeLayers('current');
         else if (drawer.dataset.open) setMenu(false);
         else if (varsPanel.dataset.open && !document.activeElement?.dataset?.field) setVars(false);
+        else if (stPanel.dataset.open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) setStateOpen(false);
         else if (document.activeElement?.dataset?.field) document.activeElement.blur();
         else onExit?.();
     };

@@ -157,6 +157,9 @@ function metaFor(fileId, docData) {
         pageMeta: pages.map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null })),
         tokens: docData.tokens,
         variables: docData.variables,
+        // State (behavior model 2) lives beside the tokens; the server keeps unknown meta fields as they are.
+        state: docData.state,
+        behaviorVersion: docData.behaviorVersion,
         thumbnailId: docData.thumbnailId ?? null,
         guideStyles: docData.guideStyles ?? [],
         created: docData.created,
@@ -346,6 +349,8 @@ export const projectStorage = {
             pages,
             tokens: meta.tokens,
             variables: meta.variables,
+            state: meta.state,
+            behaviorVersion: meta.behaviorVersion,
             thumbnailId: meta.thumbnailId,
             guideStyles: meta.guideStyles ?? [],
             created: meta.created ?? file.created,

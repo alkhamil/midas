@@ -1,4 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
+import { stateTabHtml, wireStateTab } from './stateUi.js';
+import { stateBindHtml } from './behaviorUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { boot } from '../boot.js';
@@ -6,7 +8,7 @@ import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
+import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
 
 
 // ===== document.js =====
@@ -773,36 +775,7 @@ document.addEventListener('change', e => {
 const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
-const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect'], ['array', 'List']];
-// List (array) is a table of rows: `schema` names the fields ({key, type}), each mode holds the rows. It binds to a frame's Repeat in the Behavior tab, not to a single property.
-const ARRAY_FIELD_TYPES = ['string', 'number', 'boolean', 'color'];
-const ARRAY_DEFAULT_SCHEMA = [{ key: 'label', type: 'string' }, { key: 'value', type: 'string' }];
-const ARRAY_DEFAULT_ROWS = () => [{ label: 'Item 1', value: 'one' }, { label: 'Item 2', value: 'two' }, { label: 'Item 3', value: 'three' }];
-const arraySchema = item => Array.isArray(item?.schema) && item.schema.length ? item.schema : ARRAY_DEFAULT_SCHEMA;
-const arrayFieldDefault = type => type === 'number' ? 0 : type === 'boolean' ? false : type === 'color' ? '#d9d9d9' : '';
-function parseArraySchema(text) {
-    const seen = new Set(), out = [];
-    for (const part of String(text || '').split(',')) {
-        const [k, t] = part.split(':').map(s => s.trim());
-        const key = String(k || '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '');
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        out.push({ key, type: ARRAY_FIELD_TYPES.includes(t) ? t : 'string' });
-    }
-    return out;
-}
-function cleanArrayRows(rows, schema) {
-    if (!Array.isArray(rows)) return [];
-    return rows.filter(r => r && typeof r === 'object' && !Array.isArray(r)).map(r => {
-        const row = {};
-        for (const f of schema) row[f.key] = r[f.key] === undefined ? arrayFieldDefault(f.type) : r[f.key];
-        return row;
-    });
-}
-// Enum is a string variable that only takes one of its `options` (a union prop such as size: 'small' | 'middle' | 'large'): it is picked from a list in the Variables window and in Preview.
-const VAR_CREATE = [...VAR_TYPES.slice(0, 3), ['enum', 'Enum'], ...VAR_TYPES.slice(3)];
-const ENUM_DEFAULT_OPTIONS = ['option-1', 'option-2'];
-const varOptions = item => item?.type === 'string' && Array.isArray(item.options) && item.options.length ? item.options : null;
+const VAR_TYPES = [['color', 'Color'], ['number', 'Number'], ['string', 'String'], ['boolean', 'Boolean'], ['effect', 'Effect']];
 function vpropType(name) {
     const n = varOwnerNode() || activeNode(), src = n?.sourceId && componentById(n.sourceId), set = src && parentSetOf(src);
     if (!set)
@@ -825,6 +798,8 @@ function bindType(prop) { if (String(prop).startsWith('cprop:')) {
 }
 if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
+/** doc.data.state: the State collection (page / app variables and derived values), separate from the Tokens in `variables`. */
+function stateStore() { return doc.data.state ||= { variables: [], derived: [] }; }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
 function varColl(id) { return varStore().collections.find(c => c.id === id); }
@@ -1062,10 +1037,10 @@ function cleanVariables(v) {
     const ids = new Set(out.collections.map(c => c.id));
     for (const i of v.items)
         if (typeof i?.id === 'string' && ids.has(i.collectionId) && types.has(i.type) && i.values && typeof i.values === 'object')
-            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, ...(i.type === 'array' ? { schema: Array.isArray(i.schema) && i.schema.length ? i.schema.filter(f => f && typeof f.key === 'string' && f.key).map(f => ({ key: f.key, type: ARRAY_FIELD_TYPES.includes(f.type) ? f.type : 'string' })) : ARRAY_DEFAULT_SCHEMA.map(f => ({ ...f })) } : {}), ...(i.type === 'string' && Array.isArray(i.options) && i.options.length ? { options: [...new Set(i.options.map(String))] } : {}), ...(i.type === 'number' && i.range && typeof i.range === 'object' && Number.isFinite(+i.range.min) && Number.isFinite(+i.range.max) ? { range: { min: +i.range.min, max: +i.range.max, step: +i.range.step > 0 ? +i.range.step : 1 } } : {}), scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
+            out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, ...(i.type === 'string' && Array.isArray(i.options) && i.options.length ? { options: [...new Set(i.options.map(String))] } : {}), ...(i.type === 'number' && i.range && typeof i.range === 'object' && Number.isFinite(+i.range.min) && Number.isFinite(+i.range.max) ? { range: { min: +i.range.min, max: +i.range.max, step: +i.range.step > 0 ? +i.range.step : 1 } } : {}), scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
     return out.collections.every(c => c.modes.length) ? out : { collections: [], items: [] };
 }
-function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : type === 'array' ? [] : ''; }
+function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
 function varDisplayValue(item, node = null) { return varValue(doc, item, node); }
 // A single-fill layer without a fills list keeps its colour binding under "fill"; the Fill row reads it as "fills.0".
 // The combined horizontal / vertical padding fields read as bound when both sides carry the same variable (as imported).
@@ -1119,7 +1094,7 @@ function varRow(label, prop) {
     // A layer can be bound to a component property and to a variable at the same time: both chips show.
     return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
-function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : type === 'array' ? '☰' : '◐'; }
+function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
 const itemGlyph = item => varOptions(item) ? '≡' : varGlyph(item.type);
 function varOwnerOf(item) { return varColl(item.collectionId); }
 function aliasReaches(item, targetId, depth = 0) {
@@ -2164,7 +2139,7 @@ document.addEventListener('click', e => {
     }
 });
 // ----- Variables window -----
-const vw = { open: false, coll: null, search: '', type: '', collapsed: new Set(), menu: false, group: '', full: true, geom: null };
+const vw = { open: false, tab: 'tokens', coll: null, search: '', type: '', collapsed: new Set(), menu: false, group: '', full: true, geom: null };
 // A-Z order for variables and groups: names starting with "_" or "." come first, then the rest alphabetically (per path segment).
 const vwSegCmp = (a, b) => {
     const sa = /^[_.]/.test(a), sb = /^[_.]/.test(b);
@@ -2224,6 +2199,26 @@ function toggleVarsWindow(force) {
     closeVarPicker();
     syncRail();
 }
+// State tab of the Variables window (see stateUi.js): edits go through one undoable transaction, then the state is normalized.
+const stateUi = { open: new Set(), menu: false };
+const stateApi = {
+    state: () => stateStore(),
+    esc: s => esc(s),
+    render: () => renderVarsWindow(),
+    tx(label, fn) {
+        finishText();
+        history.begin(label);
+        const st = stateStore();
+        fn(st);
+        const clean = cleanState(st);
+        st.variables = clean.variables;
+        st.derived = clean.derived;
+        doc.touch();
+        if (history.commit()) saveSoon();
+        invalidate();
+        renderInspector();
+    },
+};
 function varsRows(coll) {
     const q = vw.search.trim().toLowerCase();
     const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!vw.type || i.type === vw.type) && (!q || i.name.toLowerCase().includes(q)));
@@ -2252,14 +2247,6 @@ function vwCell(item, coll, mode) {
     const v = raw === undefined ? varDefault(item.type) : raw;
     if (item.type === 'effect')
         return `<div class="vw-cell"><button class="vw-fx" data-vw-fx="${key}" title="Edit effect">${esc(fxSummary(v))}</button>${aliasBtn}</div>`;
-    if (item.type === 'array') {
-        const rows = Array.isArray(v) ? v.length : 0, fields = arraySchema(item).map(f => f.key).join(', ');
-        return `<div class="vw-cell"><button class="vw-fx vw-array" data-vw-detail="${item.id}" title="Edit rows and fields">${rows} ${rows === 1 ? 'row' : 'rows'} · ${esc(fields)}</button></div>`;
-    }
-    if (item.type === 'color') {
-        const { rgb, alpha } = vwSplitColor(v);
-        return `<div class="vw-cell"><label class="vw-sw big" style="background:${vwJoinColor(rgb, alpha)}"><input type="color" value="${rgb}" data-vw="${key}" data-vwt="color" aria-label="Color"></label><input class="vw-text" type="text" value="${esc(rgb.slice(1).toUpperCase())}" data-vw="${key}" data-vwt="hex" spellcheck="false" aria-label="Hex"><label class="vw-alpha ${alpha < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${alpha}" data-vw="${key}" data-vwt="alpha" aria-label="Opacity"><span>%</span></label>${aliasBtn}</div>`;
-    }
     if (item.type === 'number')
         return `<div class="vw-cell"><input class="vw-text" type="number" step="any" value="${esc(v)}" data-vw="${key}" data-vwt="number" aria-label="Number">${aliasBtn}</div>`;
     if (item.type === 'boolean')
@@ -2298,6 +2285,9 @@ function renderVarsWindow() {
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
 <div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
 <div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_CREATE.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${t === 'enum' ? '≡' : varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+    win.querySelector('.vw-title > span:first-child')?.insertAdjacentHTML('afterend', `<span class="vw-tabs" role="tablist"><button role="tab" class="${vw.tab !== 'state' ? 'on' : ''}" data-vw-tab="tokens" aria-selected="${vw.tab !== 'state'}">Tokens</button><button role="tab" class="${vw.tab === 'state' ? 'on' : ''}" data-vw-tab="state" aria-selected="${vw.tab === 'state'}">State</button></span>`);
+    if (vw.tab === 'state')
+        win.querySelector('.vw-body').innerHTML = `<div class="vw-main st-pane">${stateTabHtml(stateApi, stateUi)}</div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -2381,6 +2371,16 @@ function vwSetValue(key, val, live) {
     }
 }
 function wireVarsWindow(win) {
+    wireStateTab(win, stateApi, stateUi);
+    win.addEventListener('click', e => {
+        const t = e.target.closest?.('[data-vw-tab]');
+        if (!t || vw.tab === t.dataset.vwTab) return;
+        vw.tab = t.dataset.vwTab;
+        vw.menu = false;
+        stateUi.menu = false;
+        closeVarDetails();
+        renderVarsWindow();
+    });
     win.addEventListener('input', e => {
         const el = e.target;
         if (el.matches('[data-vw-search]')) {
@@ -2611,9 +2611,9 @@ function wireVarsWindow(win) {
             vw.menu = false;
             let newId;
             vwTx('Create variable', () => {
-                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + (isEnum ? 'Enum' : VAR_TYPES.find(x => x[0] === type)[1])), type, values: {}, ...(isEnum ? { options: [...ENUM_DEFAULT_OPTIONS] } : {}), ...(type === 'array' ? { schema: ARRAY_DEFAULT_SCHEMA.map(f => ({ ...f })) } : {}) };
+                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + (isEnum ? 'Enum' : VAR_TYPES.find(x => x[0] === type)[1])), type, values: {}, ...(isEnum ? { options: [...ENUM_DEFAULT_OPTIONS] } : {}) };
                 for (const m of coll.modes)
-                    item.values[m.id] = isEnum ? ENUM_DEFAULT_OPTIONS[0] : type === 'array' ? ARRAY_DEFAULT_ROWS() : varDefault(type);
+                    item.values[m.id] = isEnum ? ENUM_DEFAULT_OPTIONS[0] : varDefault(type);
                 varStore().items.push(item);
                 newId = item.id;
             });
@@ -2835,8 +2835,7 @@ const SCOPE_DEF = {
     number: [['size', 'Width and height'], ['gap', 'Gap'], ['padding', 'Padding'], ['radius', 'Corner radius'], ['strokeWidth', 'Stroke width'], ['opacity', 'Opacity'], ['fontSize', 'Font size'], ['lineHeight', 'Line height'], ['letterSpacing', 'Letter spacing'], ['fontWeight', 'Font weight']],
     string: [['text', 'Text content'], ['fontFamily', 'Font family'], ['fontStyle', 'Font style']],
     boolean: [['visible', 'Visibility']],
-    effect: [['effects', 'Effects']],
-    array: []
+    effect: [['effects', 'Effects']]
 };
 function scopeKeys(type) { return (SCOPE_DEF[type] || []).map(x => x[0]); }
 function scopeKeyFor(prop, node) {
@@ -2901,20 +2900,6 @@ function varInScope(item, prop, node) {
 }
 let vd = null;
 function closeVarDetails() { vd?.el.remove(); vd = null; }
-/** Rows × fields editor of a List variable for one mode. */
-function vdArrayHtml(item, key, rows) {
-    const schema = arraySchema(item);
-    const cell = (f, r, ri) => {
-        const v = r?.[f.key], at = `data-vd-cell="${key}|${ri}|${esc(f.key)}" data-vwt="${f.type}"`;
-        if (f.type === 'boolean') return `<select ${at}><option value="false" ${!v ? 'selected' : ''}>false</option><option value="true" ${v ? 'selected' : ''}>true</option></select>`;
-        if (f.type === 'number') return `<input type="number" step="any" ${at} value="${esc(v ?? 0)}">`;
-        if (f.type === 'color') return `<input type="color" ${at} value="${safeColor(String(v ?? '#d9d9d9')).slice(0, 7)}">`;
-        return `<input type="text" ${at} value="${esc(v ?? '')}" spellcheck="false">`;
-    };
-    const head = schema.map(f => `<th title="${esc(f.type)}">${esc(f.key)}</th>`).join('');
-    const body = rows.map((r, ri) => `<tr><td class="vd-arr-n">${ri + 1}</td>${schema.map(f => `<td>${cell(f, r, ri)}</td>`).join('')}<td><button class="icon-button small" data-vd-arr-del="${key}|${ri}" title="Remove row" aria-label="Remove row ${ri + 1}">${icon('close', 12)}</button></td></tr>`).join('');
-    return `<div class="vd-arr"><table><thead><tr><th>#</th>${head}<th></th></tr></thead><tbody>${body || `<tr><td colspan="${schema.length + 2}" class="vd-arr-empty">No rows yet.</td></tr>`}</tbody></table><button class="wide-button" data-vd-arr-add="${key}">＋ Add row</button></div>`;
-}
 function vdHtml(item) {
     const coll = varColl(item.collectionId), all = scopeKeys(item.type), cur = Array.isArray(item.scope) ? item.scope : all;
     let h = `<div class="vd-tabs"><button class="${vd.tab === 'details' ? 'on' : ''}" data-vd-tab="details">Details</button><button class="${vd.tab === 'scope' ? 'on' : ''}" data-vd-tab="scope">Scope</button><button class="icon-button small vd-x" data-vd-close aria-label="Close">${icon('close', 14)}</button></div>`;
@@ -2929,8 +2914,6 @@ function vdHtml(item) {
                 ctl = `<label class="vw-sw big" style="background:${safeColor(String(v))}"><input type="color" value="${safeColor(String(v)).length === 7 ? safeColor(String(v)) : '#0058CA'}" data-vd-val="${key}" data-vwt="color"></label><input data-vd-val="${key}" data-vwt="hex" value="${esc(safeColor(String(v)).replace('#', '').toUpperCase())}" spellcheck="false">`;
             else if (item.type === 'effect')
                 ctl = `<button class="vw-fx" data-vw-fx="${key}">${esc(fxSummary(v))}</button>`;
-            else if (item.type === 'array')
-                ctl = vdArrayHtml(item, key, Array.isArray(v) ? v : []);
             else if (item.type === 'number')
                 ctl = `<input type="number" step="any" data-vd-val="${key}" data-vwt="number" value="${esc(v)}">`;
             else if (item.type === 'boolean')
@@ -2941,8 +2924,6 @@ function vdHtml(item) {
                 ctl = `<input type="text" data-vd-val="${key}" data-vwt="string" value="${esc(v)}" spellcheck="false">`;
             h += `<div class="vd-row"><span>${esc(m.name)}</span><div class="vd-ctl">${ctl}</div></div>`;
         }
-        if (item.type === 'array')
-            h += `<div class="vd-sep"></div><label class="vd-row"><span>Fields</span><input data-vd-schema value="${esc(arraySchema(item).map(f => `${f.key}:${f.type}`).join(', '))}" placeholder="label:string, price:number, on:boolean, tint:color" spellcheck="false"></label><p class="vd-hint">Each row has these fields. Bind a frame to this list from the Behavior tab → Repeat.</p>`;
         if (item.type === 'string')
             h += `<div class="vd-sep"></div><label class="vd-row"><span>Options</span><input data-vd-options value="${esc((item.options || []).join(', '))}" placeholder="Empty = any text. Or: small, middle, large" spellcheck="false"></label>`;
         else if (item.type === 'number')
@@ -2951,7 +2932,7 @@ function vdHtml(item) {
     }
     else {
         const chk = (key, label, indent = false, on = cur.includes(key)) => `<label class="vd-check ${indent ? 'indent' : ''}"><input type="checkbox" data-vd-scope="${key}" ${on ? 'checked' : ''}> ${label}</label>`;
-        const typeName = { color: 'Color', number: 'Number', string: 'String', boolean: 'Boolean', effect: 'Effect', array: 'List' }[item.type];
+        const typeName = { color: 'Color', number: 'Number', string: 'String', boolean: 'Boolean', effect: 'Effect' }[item.type];
         h += `<div class="vd-body"><div class="vd-title">${typeName} scope</div>${chk('*', 'Show in all supported properties', false, all.every(k => cur.includes(k)))}`;
         if (item.type === 'color') {
             h += chk('fill', 'Fill', false, ['fillFrame', 'fillShape', 'fillText'].every(k => cur.includes(k)));
@@ -2963,14 +2944,6 @@ function vdHtml(item) {
     }
     return h;
 }
-/** Replace the rows of a List variable in one mode (key = "<item id>|<mode id>"). */
-function vdArrayEdit(key, fn, rerender = true) {
-    const [itemId, modeId] = key.split('|'), item = varItem(itemId);
-    if (!item || item.libId) return;
-    const cur = Array.isArray(item.values[modeId]) ? item.values[modeId] : [];
-    vwSetValue(key, fn(cur), false);
-    if (rerender) refreshVarDetails();
-}
 function refreshVarDetails() {
     if (!vd)
         return;
@@ -2980,7 +2953,6 @@ function refreshVarDetails() {
         return;
     }
     vd.el.innerHTML = vdHtml(item);
-    vd.el.classList.toggle('vd-wide', item.type === 'array');
 }
 function openVarDetails(id, anchor) {
     const same = vd && vd.id === id;
@@ -3004,12 +2976,6 @@ function openVarDetails(id, anchor) {
         }
         else if (t.closest('[data-vd-close]'))
             closeVarDetails();
-        else if ((b = t.closest('[data-vd-arr-add]')))
-            vdArrayEdit(b.dataset.vdArrAdd, rows => [...rows, Object.fromEntries(arraySchema(varItem(vd.id)).map(f => [f.key, arrayFieldDefault(f.type)]))]);
-        else if ((b = t.closest('[data-vd-arr-del]'))) {
-            const [iid, mid, ri] = b.dataset.vdArrDel.split('|');
-            vdArrayEdit(`${iid}|${mid}`, rows => rows.filter((_, i) => i !== +ri));
-        }
     });
     el.addEventListener('input', e => {
         const t = e.target;
@@ -3045,22 +3011,6 @@ function openVarDetails(id, anchor) {
                 else
                     delete item.range;
             }, false);
-        }
-        else if (t.matches('[data-vd-schema]')) {
-            const schema = parseArraySchema(t.value);
-            if (schema.length)
-                vwTx('List fields', () => {
-                    item.schema = schema;
-                    for (const m of varColl(item.collectionId).modes)
-                        if (Array.isArray(item.values[m.id])) item.values[m.id] = cleanArrayRows(item.values[m.id], schema);
-                }, false);
-            refreshVarDetails();
-        }
-        else if (t.dataset.vdCell) {
-            const [iid, mid, ri, field] = t.dataset.vdCell.split('|'), key = `${iid}|${mid}`;
-            const f = arraySchema(item).find(x => x.key === field), k = t.dataset.vwt;
-            const val = k === 'number' ? (Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0) : k === 'boolean' ? t.value === 'true' : t.value;
-            if (f) vdArrayEdit(`${key}`, rows => rows.map((r, i) => i === +ri ? { ...r, [field]: val } : r), false);
         }
         else if (t.matches('[data-vd-hidden]'))
             vwTx('Hide from publishing', () => { item.hidden = t.checked; }, false);
@@ -3881,6 +3831,8 @@ async function makeThumb() {
 }
 async function loadIntoEditor(data, id) {
     finishText();
+    // Older files keep their List variables in the tokens: move them to State before the tokens are cleaned.
+    data = migrateBehavior(data);
     data.variables = cleanVariables(data.variables);
     history.pending = null;
     history.undoStack = [];
@@ -6721,7 +6673,7 @@ function xyForTopLeft(n, tl) {
 }
 
 class DocumentModel {
-    constructor(data) { this.data = data || makeStarter(); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data) { this.data = migrateBehavior(data || makeStarter()); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6927,6 +6879,8 @@ class DocumentModel {
             pageId: this.data.pageId,
             tokens: this.data.tokens,
             variables: this.data.variables,
+            state: this.data.state ?? null,
+            behaviorVersion: this.data.behaviorVersion ?? null,
             thumbnailId: this.data.thumbnailId ?? null,
             guideStyles: this.data.guideStyles ?? []
         };
@@ -8636,7 +8590,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -13247,7 +13201,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -18885,13 +18839,19 @@ function liveContext() {
         },
         /** The type of a variable ('color', 'number', 'string', 'boolean'). */
         varType: id => items.get(id)?.type,
-        /** The rows of a List variable as read at `node` (its modes), plus the repeat settings a frame carries (own, else its main component's). */
-        repeatOf(n) {
+        /** What Preview reads State bindings from: the cleaned State of the file. */
+        state: cleanState(stateStore()),
+        /** The State bindings of a layer: its own, else those of its main component. { self: { visible, mode }, layers: { [layer id]: { text, visible } } } */
+        stateBindFor(n) { return n.stateBind || (n.sourceId ? chainComponent(n)?.stateBind : null) || null; },
+        /** The rows of a State list, plus the repeat settings a frame carries (own, else its main component's). */
+        repeatOf(n, env) {
             const cfg = n.repeat || (n.sourceId && componentById(n.sourceId)?.repeat);
-            const item = cfg?.variableId && items.get(cfg.variableId);
-            if (!item || item.type !== 'array') return null;
-            const schema = arraySchema(item), rows = cleanArrayRows(varValue(doc, item, n), schema);
-            return { rows, bind: cfg.bind || {}, schema };
+            const v = cfg?.variableId && stateStore().variables.find(x => x.id === cfg.variableId);
+            if (!v || v.type !== 'list') return null;
+            // Preview passes its evaluation context (the live values); the editor shows the initial rows.
+            const value = env ? env.get(v.id) : v.initial;
+            const rows = fitRows(v, Array.isArray(value) ? value : []), objects = (v.itemType || 'object') === 'object';
+            return { rows: objects ? rows : rows.map(x => ({ value: x })), bind: cfg.bind || {}, schema: objects ? schemaOf(v) : [{ key: 'value', type: v.itemType }] };
         },
         /** What Preview has set for a variable: its own value, else the value in the mode its collection was switched to. */
         overrideOf(item, over, modes) {
@@ -19055,7 +19015,7 @@ async function reloadPreviewContext() {
     const data = await projectStorage.loadProject(lib.fileId);
     if (!data)
         return null;
-    const parsed = DocumentModel.parse(data);
+    const parsed = migrateBehavior(DocumentModel.parse(data));
     parsed.variables = cleanVariables(parsed.variables);
     doc.data = parsed;
     doc.refresh();
@@ -19523,30 +19483,35 @@ function scrollBehaviorHtml(n) {
  * each layer of the template can read a field of the row (text, fill or visibility).
  */
 function repeatHtml(n) {
-    const lists = varStore().items.filter(i => i.type === 'array');
-    const cfg = n.repeat || {}, item = cfg.variableId && lists.find(i => i.id === cfg.variableId);
-    const collName = id => varColl(id)?.name || '';
-    const picker = `<label class="field"><span>List</span>${bhSelect('repeat.variableId', 'plain', cfg.variableId || '', [['', lists.length ? '— not repeated —' : 'No List variable yet'], ...lists.map(i => [i.id, `${collName(i.collectionId)} / ${i.name}`])])}</label>`;
-    let body = lists.length ? picker : '<div class="bh-empty"><b>No List variable yet</b><span>Create one in the Variables window (Create variable → List), then bind a frame to it here.</span></div>';
-    if (cfg.variableId && !item) body += '<p class="small-label">The List this frame used no longer exists.</p>';
+    const lists = stateStore().variables.filter(v => v.type === 'list');
+    const cfg = n.repeat || {}, item = cfg.variableId && lists.find(v => v.id === cfg.variableId);
+    const picker = `<label class="field"><span>List</span>${bhSelect('repeat.variableId', 'plain', cfg.variableId || '', [['', lists.length ? '— not repeated —' : 'No List state yet'], ...lists.map(v => [v.id, `${v.name} (${v.scope})`])])}</label>`;
+    let body = lists.length ? picker : '<div class="bh-empty"><b>No List state yet</b><span>Create one in Variables → State (Create state → List), then bind a frame to it here.</span></div>';
+    if (cfg.variableId && !item) body += '<p class="small-label bh-warn">The List this frame used no longer exists.</p>';
     if (item) {
-        const schema = arraySchema(item), kids = doc.children(n.id), tpl = kids[0];
-        if (!tpl) body += '<p class="small-label">Add a layer inside this frame: the first child becomes the row template.</p>';
+        const objects = (item.itemType || 'object') === 'object', schema = objects ? schemaOf(item) : [{ key: 'value', type: item.itemType }], kids = doc.children(n.id), tpl = kids[0];
+        if (!tpl) body += '<p class="small-label bh-warn">Add a layer inside this frame: the first child becomes the row template.</p>';
         else {
-            const rows = cleanArrayRows(varValue(doc, item, n), schema).length;
-            body += `<p class="small-label">Draws <b>${esc(tpl.name || tpl.type)}</b> once for each of the ${rows} ${rows === 1 ? 'row' : 'rows'}. Other children stay as they are.</p>`;
+            const rows = fitRows(item, item.initial).length;
+            body += `<p class="small-label">Draws <b>${esc(tpl.name || tpl.type)}</b> once for each of the ${rows} initial ${rows === 1 ? 'row' : 'rows'} (Preview follows the live list). Other children stay as they are.</p>`;
             const layers = [], walk = l => { layers.push(l); for (const c of doc.children(l.id)) walk(c); };
             walk(tpl);
             const fieldsOf = types => [['', '—'], ...(types.includes('string') ? [['#', '# (row number)']] : []), ...schema.filter(f => types.includes(f.type)).map(f => [f.key, f.key])];
             const rowsHtml = layers.map(l => {
                 const b = cfg.bind?.[l.id] || {}, sel = (prop, types, label) => { const opts = fieldsOf(types); return opts.length > 1 ? `<label class="bh-bind-cell"><small>${label}</small>${bhSelect(`repeat.bind.${l.id}.${prop}`, 'plain', b[prop] || '', opts)}</label>` : ''; };
-                const cells = (l.type === 'text' ? sel('text', ['string', 'number'], 'Text') : (l.type === 'frame' || l.type === 'ellipse' || l.type === 'rect' ? sel('fill', ['color'], 'Fill') : '')) + sel('visible', ['boolean'], 'Visible');
+                const cells = (l.type === 'text' ? sel('text', ['string', 'number', 'date'], 'Text') : (l.type === 'frame' || l.type === 'ellipse' || l.type === 'rect' ? sel('fill', ['color'], 'Fill') : '')) + sel('visible', ['boolean'], 'Visible');
                 return cells ? `<div class="bh-bind"><div class="bh-bind-name" title="${esc(l.name)}">${esc(l.name || l.type)}</div><div class="bh-bind-cells">${cells}</div></div>` : '';
             }).join('');
             body += rowsHtml ? `<div class="bh-binds">${rowsHtml}</div>` : '<p class="small-label">Nothing in the template can read a field yet: add text, color or true/false fields to the List.</p>';
         }
     }
     return section('Repeat', body);
+}
+/** Section Bind to State: layers read a state variable (text, visible) and an Option variable can drive the state mode. */
+function stateBindSection(n) {
+    const state = stateStore(), layers = [], walk = l => { for (const c of doc.children(l.id)) { if (layers.length < 60) layers.push(c); walk(c); } };
+    walk(n);
+    return section('Bind to State', stateBindHtml({ n, state, layers, esc, bhSelect, canMode: !!(n.isInstance || n.component || n.componentSet) }));
 }
 function prototypeHtml() {
     const n = activeNode();
@@ -19560,6 +19525,7 @@ function prototypeHtml() {
         if (isFrame) fhtml += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p>
             <label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
         fhtml += repeatHtml(n);
+        fhtml += stateBindSection(n);
         fhtml += scrollBehaviorHtml(n);
         return fhtml;
     }
@@ -19575,7 +19541,7 @@ function prototypeHtml() {
     // The typing settings appear once the layer is marked as a field.
     if (typeable) html += bhInputHtml(n, bhLayers(n));
     html += bhStateSection(n);
-    if (n.type === 'frame') html += repeatHtml(n);
+    if (n.type === 'frame') html += repeatHtml(n) + stateBindSection(n);
     const own = normalizeInteractions(n.interactions);
     // An instance without interactions of its own follows the component; the list is shown read-only.
     const inherited = n.isInstance && !own.length ? interactionsForNode(n, src, set) : null;
@@ -19615,6 +19581,16 @@ function bhWrite(n, path, value) {
         }
         if (r.bind && !Object.keys(r.bind).length) delete r.bind;
         if (!r.variableId) delete n.repeat; else n.repeat = { variableId: r.variableId, ...(r.bind ? { bind: r.bind } : {}) };
+        return;
+    }
+    if (path.startsWith('stateBind.')) {
+        const cfg = { stateBind: structuredClone(n.stateBind || {}) };
+        setPath(cfg, path, value);
+        const sb = cfg.stateBind, prune = o => { for (const k of Object.keys(o || {})) if (!o[k]) delete o[k]; return o && Object.keys(o).length ? o : undefined; };
+        const self = prune(sb.self), lays = {};
+        for (const [id, b] of Object.entries(sb.layers || {})) { const p = prune(b); if (p) lays[id] = p; }
+        if (!self && !Object.keys(lays).length) delete n.stateBind;
+        else n.stateBind = { ...(self ? { self } : {}), ...(Object.keys(lays).length ? { layers: lays } : {}) };
         return;
     }
     if (path.startsWith('scroll.')) {

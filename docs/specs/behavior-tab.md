@@ -9,8 +9,14 @@ Design dan Preview memakai sumber yang sama.
 > Stateful: pemetaan state ke variable, pembangun interaction, dan perilaku input field.
 
 Model datanya (canonical) ada di `packages/builder-core/src/behavior.js` — dipakai bersama oleh inspector
-desain (`apps/studio/src/engine/midas.js`), live preview (`apps/studio/src/preview/live.js`) dan Code Builder
-(`apps/studio/src/codebuilder/*`).
+desain (`apps/studio/src/engine/midas.js`), dan live preview (`apps/studio/src/preview/live.js`). Code Builder
+sudah dihapus dari Midas. Logika baru (State, ekspresi, migrasi) ditulis sebagai fungsi murni di builder-core, bukan di
+`midas.js`.
+
+> **Dua arti kata "state".** *State mapping* (Bagian 1) adalah keadaan tampilan sebuah komponen (hover, pressed, error)
+> yang dibaca dari mode variable collection. *State* (bagian "Variables: Tokens dan State") adalah **nilai yang berubah
+> saat halaman berjalan** (teks yang diketik, daftar baris, opsi terpilih). Keduanya bertemu lewat **Option state yang
+> menggerakkan mode** sebuah komponen.
 
 ## Kapan tab muncul
 
@@ -227,6 +233,86 @@ Preview dibuka dengan tombol **play** di header dan memenuhi jendela (tanpa pane
 di pojok kiri atas membuka sidebar yang berisi daftar frame dan **Exit preview**; klik pada desain atau Escape
 menutupnya, dan Escape berikutnya keluar dari Preview.
 
+## Variables: Tokens dan State
+
+Jendela Variables punya dua tab.
+
+- **Tokens** — variable desain (color, number, string, boolean, effect, enum) dengan mode. Tidak berubah. Tipe `array`
+  (List) **tidak lagi** ada di sini.
+- **State** — nilai saat berjalan, disimpan di `doc.data.state = { variables, derived }`, terpisah dari
+  `doc.data.variables`. State **tidak dibagikan lewat library**.
+
+### State variable
+
+`{ id, name, type, initial, scope, description?, options?, itemType?, schema? }`
+
+| Tipe | Nilai | Catatan |
+|---|---|---|
+| String / Number / Boolean | teks / angka / true-false | |
+| Option | salah satu dari `options` | bisa menggerakkan mode komponen (lihat Bind to State) |
+| List | array; `itemType` `object` (baris dengan `schema` field) atau `string` / `number` / `boolean` / `date` | dipakai Repeat |
+| Object | satu objek dengan `schema` | |
+| Date | `YYYY-MM-DD` atau kosong | |
+| File | `null` atau `{ name, size, type }` | diisi di Preview |
+
+Field `schema`: `[{ key, type }]`, tipe `string`, `number`, `boolean`, `date`, `color`. **Scope**: `page` (default, mulai lagi
+di tiap halaman) atau `app` (bertahan antar halaman). Aturan (tipe, nilai awal, `checkValue`, `cleanState`) ada di
+`packages/builder-core/src/state.js`.
+
+### Derived (nilai turunan)
+
+Hanya-baca, dihitung dari State oleh ekspresi JSON terstruktur (`packages/builder-core/src/expr.js`), tanpa `eval` dan tanpa
+string kode. Dibangun dari dropdown yang dibaca seperti kalimat: *Number of rows in [Rows of [People] where [status] [is]
+[active]]*.
+
+Operasi: `count`, `sum` (field), `filter` (field + pembanding), `length`, `isEmpty`, `equals`, `compare`
+(`eq ne gt gte lt lte contains startsWith endsWith`), `and`, `or`, `not`, `var`, `value`. Satu derived boleh membaca derived
+lain; lingkaran terdeteksi (*Circular: a → b → a*) dan pesannya muncul di variable itu, yang lain tetap dihitung.
+
+### Bind to State (tab Behavior)
+
+Frame, komponen, dan instance punya section **Bind to State**. Isinya: *This layer* (`Visible when`; untuk komponen juga
+`Look`, yaitu **Option state yang menentukan state mode**, nilainya harus nama state seperti `hover`, `disabled`, `error`), lalu
+satu kartu per layer di dalamnya (`Text` untuk teks, `Visible when` untuk semua). Data: `node.stateBind =
+{ self: { visible, mode }, layers: { [layerId]: { text, visible } } }`; instance memakai milik komponennya bila tidak punya
+sendiri. Teks yang terikat menampilkan nilai apa adanya (List: jumlah baris); "visible" memakai kebenaran nilai (teks kosong,
+`0`, list kosong = tidak). Variable yang sudah dihapus memunculkan peringatan, bukan diam-diam.
+
+Binding hanya bekerja di **Preview**; kanvas tetap menampilkan isi yang didesain.
+
+### Repeat
+
+Section **Repeat** mengikat sebuah frame ke **List state**. Anak pertama frame adalah template yang digambar sekali per baris;
+anak lain tetap sekali. Layer di dalam template membaca field baris: teks (`Text`), warna (`Fill`), `Visible`, atau nomor baris
+(`#`). Preview mengikuti nilai List yang sedang berjalan.
+
+### Preview: evaluation context dan panel State
+
+Preview membuat satu `evalCtx` (`packages/builder-core/src/evalctx.js`): nilai State sekarang + nilai derived. Semua binding
+membacanya. State **kembali ke nilai awal** saat Preview dibuka, saat **Restart** (R) atau **Reset** di panel State, dan State
+ber-scope `page` kembali saat pindah halaman. Tombol **State** (ikon database) membuka panel yang menampilkan semua variable
+dengan kontrol per tipe (nilai bisa diubah tangan) dan nilai derived; nilai yang tidak sah ditolak dan kolomnya diberi tanda.
+Panel ini untuk memeriksa binding; aksi yang mengubah State menyusul.
+
+## Versi data behavior dan migrasi
+
+File punya `behaviorVersion` yang **terpisah** dari `version` (yang tetap `1`; loader menolak nilai lain). Tidak ada = `1`
+(List masih token `array`); model ini = `2`.
+
+`migrateBehavior(data)` (`packages/builder-core/src/migrate.js`) murni dan idempoten, dipanggil setiap file dimuat: token
+`array` pindah menjadi State List ber-scope `page`, **id dipertahankan** sehingga `repeat.variableId` lama tetap bekerja
+(satu daftar per token: dipakai mode pertama yang berisi list). `behaviorVersion` yang lebih baru dari yang dikenal tetap
+dibuka: nilainya dipertahankan dan field State yang tidak dikenal dibuang oleh normalizer.
+
+## Change variant dan Smart animate
+
+Action **Change variant** (seperti *Change to* di Figma) memilih, per variant property dari component set layer ini, nilai
+tujuannya (`variants: { Property: 'Value' }`; yang dibiarkan *Keep current* tidak berubah). Perubahan dari **On hover / On mouse
+enter / On focus** kembali sendiri saat pointer pergi atau fokus hilang; dari **On click** bertahan. Transisinya **Smart
+animate** (default, 250 ms), Dissolve, atau Instant: layer yang namanya sama di variant lama dan baru berpindah, berubah ukuran,
+dan berganti warna (posisi, ukuran, warna, radius, opacity); layer baru fade in. Nilai variant yang bernama state (`Hover`,
+`Pressed`…) sudah dipakai Preview untuk state bawaan, jadi tanpa Smart animate.
+
 ## Layout di preview
 
 Preview tidak punya mesin layout sendiri dan tidak lagi meminjam hasil `ctx.layout`: auto layout diterjemahkan ke CSS
@@ -261,3 +347,4 @@ perataan baseline teks.
 - State mapping belum ikut dibangkitkan ke kode aplikasi (generator); sekarang baru berlaku di preview.
 - `Close overlay` menutup layer yang dibuka interaction; dialog bawaan Code Builder (konfirmasi hapus)
   tetap memakai mekanismenya sendiri.
+- Snapshot library lama yang masih memuat token `array` tidak ikut dimigrasi (State tidak dibagikan lewat library): List itu hilang saat library di-update.
