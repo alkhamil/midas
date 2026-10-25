@@ -53,6 +53,19 @@ export function stepAfter(current, delta, count, canLeave = true) {
     return Math.min(Math.max(0, current + delta), Math.max(0, count - 1));
 }
 
+/** The open sections of a Collapse, from its State: one key (accordion) or comma-separated keys (multiple). */
+export function openSections(value, mode) {
+    const text = String(value ?? '');
+    if (mode === 'multiple') return text.split(',').map(s => s.trim()).filter(Boolean);
+    return text ? [text] : [];
+}
+/** The open sections after a click on `key`: an accordion keeps one open (a click on the open one closes it); multiple toggles it. */
+export function toggleOpen(open, key, mode) {
+    const on = open.includes(key);
+    if (mode === 'multiple') return on ? open.filter(k => k !== key) : [...open, key];
+    return on ? [] : [key];
+}
+
 /** Prev / Next: whether each is disabled at the edges. */
 export function pagerEdges(page, pageCount) {
     return { prevDisabled: page <= 1, nextDisabled: page >= Math.max(1, pageCount) };

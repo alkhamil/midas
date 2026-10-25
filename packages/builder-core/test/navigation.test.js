@@ -1,7 +1,7 @@
 // Tabs and Pagination: the pure rules (clicks, disabled tabs, page clamping, page size, ellipsis, edges).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize, stepStatus, stepAfter } from '../src/index.js';
+import { activeAfterClick, pageCountOf, pageAfter, pageItems, pagerEdges, normalizeConfig, CAPABILITIES, applicability, summaryOf, SLOT_ROLES, slotIssues, PRESETS, PRESET_MAP, planPreset, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen } from '../src/index.js';
 
 test('a click makes its tab active; an unknown or disabled tab leaves the active one', () => {
     const tabs = ['a', 'b', 'c'];
@@ -98,4 +98,24 @@ test('Has steps needs a step State; the step layer and the gate are optional', (
     assert.deepEqual(normalizeConfig('has-steps', { state: 'c', gate: 'g', junk: 1 }), { state: 'c', gate: 'g' });
     assert.equal(planPreset('steps').behaviors[0].kind, 'has-steps');
     assert.deepEqual(PRESETS.filter(p => p.match.includes('steps')).map(p => p.id), ['steps']);
+});
+
+test('collapse: an accordion keeps one section open; a click on the open one closes it', () => {
+    assert.deepEqual(openSections('', 'accordion'), []);
+    assert.deepEqual(openSections('a', 'accordion'), ['a']);
+    assert.deepEqual(toggleOpen(['a'], 'b', 'accordion'), ['b']);
+    assert.deepEqual(toggleOpen(['a'], 'a', 'accordion'), []);
+});
+
+test('collapse: multiple sections toggle on their own; the State keeps them comma-separated', () => {
+    assert.deepEqual(openSections('a, b', 'multiple'), ['a', 'b']);
+    assert.deepEqual(toggleOpen(['a'], 'b', 'multiple'), ['a', 'b']);
+    assert.deepEqual(toggleOpen(['a', 'b'], 'a', 'multiple'), ['b']);
+});
+
+test('Has collapse needs its open-section State; its config is kept clean', () => {
+    assert.deepEqual(slotIssues({ kind: 'has-collapse', slots: { section: 's', panel: 'p' }, config: { state: '' } }, () => true).map(i => i.role), ['state']);
+    assert.deepEqual(normalizeConfig('has-collapse', { state: 'x', mode: 'multiple', junk: 1 }), { state: 'x', mode: 'multiple' });
+    assert.equal(normalizeConfig('has-collapse', {}).mode, 'accordion');
+    assert.deepEqual(PRESETS.filter(p => p.match.includes('accordion')).map(p => p.id), ['collapse']);
 });
