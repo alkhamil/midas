@@ -1,7 +1,7 @@
 // Behavior tab, Phase 3: "Add Behavior" (presets and capabilities), the collapsed section of each capability, the slot pickers,
 // the suggestions of the Convention and the Convention panel. Only draws: the rules (what a capability needs, what a preset is,
 // what is suggested) are in @midas/builder-core (capabilities.js, convention.js).
-import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, DEFAULT_CONVENTION, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules } from './behavior.js';
+import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules } from './behavior.js';
 
 const PLACEMENT_CHOICES = [['bottom-start', 'Below, aligned left'], ['bottom', 'Below, centered'], ['bottom-end', 'Below, aligned right'], ['top-start', 'Above, aligned left'], ['top', 'Above, centered'], ['top-end', 'Above, aligned right']];
 const layerOk = { text: l => l.type === 'text', frame: l => l.type === 'frame' || l.type === 'group' || !!l.isInstance, any: () => true };
@@ -136,17 +136,4 @@ export function addPanelHtml(c) {
     }).join('');
     const hidden = Object.keys(CAPABILITIES).map(k => ({ k, a: c.applies(k) })).filter(i => !i.a.ok && i.a.reason !== 'Already added.');
     return `<div class="bh-add-panel"><div class="bh-add-title">Start from${sug ? ` <small>suggested for “${esc(c.node.name)}”</small>` : ''}</div>${chips}<div class="bh-add-title">Or add one capability</div>${groups || '<p class="small-label">Everything that fits is already added.</p>'}${hidden.length ? `<p class="small-label" title="${esc(hidden.map(i => `${CAPABILITIES[i.k].label}: ${i.a.reason}`).join('\n'))}">${hidden.length} more do not fit this component (hover to see why).</p>` : ''}</div>`;
-}
-
-// ---------------------------------------------------------------------------------------------------- Behavior settings (file level)
-/** Per file: the slot names, the state names and the component that draws each kind of feedback. Not a property of a layer. */
-export function settingsHtml(c) {
-    const { esc } = c, conv = c.convention;
-    const row = (group, key) => `<label class="field bh-wide"><span>${esc(key)}</span><input data-conv="${group}.${key}" value="${esc((conv[group][key] || []).join(', '))}" placeholder="${esc((DEFAULT_CONVENTION[group][key] || []).join(', '))}" spellcheck="false"></label>`;
-    return `<p class="small-label">These settings belong to the whole file, not to the selected layer.</p>
-        <div class="bh-set-title">Feedback components</div><p class="small-label">What draws each kind of “Show feedback”. Empty = Preview’s built-in one, marked “built-in”.</p>${Object.keys(conv.feedback).map(k => c.componentButton(`convention.feedback.${k}`, conv.feedback[k], k[0].toUpperCase() + k.slice(1))).join('')}
-        <div class="bh-set-title">Convention</div><p class="small-label">When a layer or a mode is named like one of these, Behavior suggests it for that role. Nothing is mapped until you accept.</p>
-        <div class="small-label"><b>Slots</b></div>${Object.keys(conv.slots).map(k => row('slots', k)).join('')}
-        <div class="small-label"><b>States</b> <small>(modes of a * states collection)</small></div>${Object.keys(conv.states).map(k => row('states', k)).join('')}
-        <button type="button" class="vw-btn ghost" data-bh-act="reset-convention">Reset to defaults</button>`;
 }

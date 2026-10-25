@@ -3549,3 +3549,31 @@ small.bh-warn{display:block;font-size:10px}
 .bh-win-del { align-self: flex-start; color: #e5484d }
 .bh-set-title { font-weight: 600; font-size: 12px; margin-top: 6px }
 .bh-window .bh-win-del, .bh-window .vw-btn.bh-win-del { color: #e5484d }
+
+/* ===== Behavior settings window ===== */
+.bhs { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+.bhs-tabs { display: flex; gap: 2px; padding: 2px; background: var(--field); border-radius: 8px }
+.bhs-tabs button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 550; cursor: pointer }
+.bhs-tabs button.on { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--border-soft) }
+.bhs-help { margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted) }
+.bhs-search { height: 30px; border: 1px solid transparent; border-radius: 6px; background: var(--field); color: var(--text); font: inherit; font-size: 11px; padding: 0 8px; min-width: 0 }
+.bhs-search:focus { border-color: var(--accent); outline: 0 }
+.bhs-rows { display: flex; flex-direction: column }
+.bhs-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: start; padding: 7px 0; border-bottom: 1px solid var(--border-soft) }
+.bhs-role { font-size: 11px; font-weight: 550; line-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.bhs-row.custom .bhs-role::after { content: ' •'; color: var(--accent) }
+.bhs-toks { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0 }
+.bhs-tok { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 22px; padding: 0 7px; border: 0; border-radius: 11px; background: var(--field); color: var(--text); font: inherit; font-size: 10.5px; cursor: pointer }
+.bhs-tok span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px }
+.bhs-tok i { font-style: normal; opacity: .5 }
+.bhs-tok:hover { background: var(--accent-bg) }
+.bhs-tok:hover i { opacity: 1; color: #e5484d }
+.bhs-tok.add, .bhs-tok.more { color: var(--muted); padding: 0 8px }
+.bhs-new { width: 90px; height: 22px; border: 1px solid var(--accent); border-radius: 11px; background: var(--field); color: var(--text); font: inherit; font-size: 10.5px; padding: 0 8px }
+.bhs-none { margin: 8px 0; font-size: 11px; color: var(--muted) }
+.bhs-fb { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--border-soft) }
+.bhs-fb-head { display: flex; align-items: center; gap: 6px; font-size: 12px }
+.bhs-badge { font-size: 9.5px; padding: 1px 6px; border-radius: 8px; background: #fff4db; color: #8a5a00 }
+.bhs-fb .bh-pickrow > span { min-width: 70px; max-width: 70px }
+.bhs-fb .swap-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.bhs-foot { display: flex; justify-content: flex-end; padding-top: 4px }

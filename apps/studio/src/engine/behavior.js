@@ -7,7 +7,7 @@ export {
     createEvalCtx, formatValue, truthy, cleanState, checkValue, fitRows, schemaOf, schemaText, parseSchema, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, normalizeStateVariable, uniqueStateName, defaultValue, fieldDefault, initialValues, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, migrateBehavior,
     runActions, runInteraction, STATE_ACTION_IDS, STATE_ACTIONS, SET_OPS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, describeAction, requestDelay, resolveOutcome, scenariosOf, normalizeScenarios, DEFAULT_SCENARIOS, SCENARIO_KINDS, BUILTINS, placeholdersOf, testCondition, validateInput, describeExpr, normalizeRules, ruleSummary, normalizeActions,
     CAPABILITIES, CAPABILITY_GROUPS, CAPABILITY_IDS, BEHAVIOR_KINDS, SLOT_ROLES, PRESETS, PRESET_FAMILIES, PRESET_MAP, applicability, inputSummary, normalizeBehaviors, normalizeOverrides, normalizeConfig, planPreset, resolveBehaviors, slotIssues, summaryOf,
-    DEFAULT_CONVENTION, cleanConvention, matchScore, suggestSlots, suggestStates, suggestPreset,
+    DEFAULT_CONVENTION, cleanConvention, normalizeName, matchScore, suggestSlots, suggestStates, suggestPreset,
     filterOptions, hasValue, itemStates, normalizeOptions, optionsText, parseOptions, pickOption, removeValue, selectedLabels, showsEmpty, toValue, valueText, emptyValue, validateSelection,
     matchLevel, levelsCovered, validateByRules, normalizeFieldRules, patternProblem, RULE_TYPES,
     overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf,

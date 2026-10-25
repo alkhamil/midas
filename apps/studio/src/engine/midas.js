@@ -5,7 +5,8 @@ import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
-import { addPanelHtml, capabilityBodyHtml, capabilitySections, settingsHtml, suggestionsHtml } from './capabilitiesUi.js';
+import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml } from './capabilitiesUi.js';
+import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
@@ -19729,7 +19730,7 @@ function bhPickLayer(id) {
 }
 // Esc: first cancels picking a layer, then goes back from a drilled-in view, then closes the window.
 document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || e.target.closest?.('[data-bhs-new]')) return;
     // What Esc closes here must not also clear the selection.
     const used = BH_UI.pick || BHW.kind;
     if (BH_UI.pick) { BH_UI.pick = null; renderInspector(); }
@@ -19740,7 +19741,7 @@ document.addEventListener('keydown', e => {
 // ===== Behavior tab: compact lists in the panel, editing in one floating window =====
 // The panel only lists (a header with "+", one row per item). A row, or "+", opens the item in #bh-window (the Variables window's
 // shell, 320px wide, left of the inspector). Changes apply live; closing the window returns to the list.
-const BHW = { kind: null, key: '', sub: '', nodeId: null, y: 0, next: null };
+const BHW = { kind: null, key: '', sub: '', nodeId: null, y: 0, next: null, tab: 'slots', q: '', adding: '', expanded: new Set() };
 const bhwIs = (kind, key) => BHW.kind === kind && BHW.key === key;
 /** What an action does, in words ("Navigate → Home"). */
 function bhActionText(a, frames) {
@@ -19855,7 +19856,7 @@ function bhwContent(n) {
             return { title: s.title, body: suggestionsHtml(c, s.title) + capabilityBodyHtml(c, s) };
         }
         case 'add': return { title: 'Add behavior', body: addPanelHtml(bhCapContext(n)) };
-        case 'settings': return { title: 'Behavior settings', body: settingsHtml(bhCapContext(n)) };
+        case 'settings': return { title: 'Behavior settings', body: settingsWindowHtml(bhCapContext(n), BHW) };
         case 'state': return { title: 'State mapping', body: bhStateBody(n) };
         case 'repeat': return { title: 'Repeat', body: repeatBody(n) };
         case 'bind': return { title: 'Bind to State', body: stateBindBody(n) };
@@ -19896,12 +19897,14 @@ function renderBhWindow(place) {
         win.style.top = clamp((BHW.y || r.top + 60) - 24, 56, Math.max(56, innerHeight - h - 16)) + 'px';
     }
     win.querySelector('.bh-win-body').scrollTop = scroll;
+    win.querySelector('[data-bhs-new]')?.focus();
     void ok;
 }
 function bhwOpen(kind, key = '', y = 0) {
     const n = activeNode();
     if (!n) return;
     Object.assign(BHW, { kind, key, sub: '', nodeId: n.id, y: y || BHW.y });
+    if (kind === 'settings') Object.assign(BHW, { tab: BHW.tab || 'slots', q: '', adding: '', expanded: new Set() });
     invalidate();
     renderInspector();
     renderBhWindow(true);
@@ -19931,6 +19934,36 @@ document.addEventListener('click', e => {
     }
     bhwOpen(kind, key, e.clientY);
 });
+// ----- Behavior settings: tabs, tokens, search
+function bhsEdit(edit) {
+    const n = activeNode();
+    if (!n) return;
+    transaction('Convention', () => { doc.data.convention = editConvention(conventionOf(), edit); doc.touch(n); });
+    renderBhWindow();
+}
+document.addEventListener('click', e => {
+    const win = $('#bh-window');
+    if (!win || !win.contains(e.target) || BHW.kind !== 'settings') return;
+    const t = e.target.closest('[data-bhs-tab],[data-bhs-rm],[data-bhs-add],[data-bhs-more]');
+    if (!t) return;
+    e.preventDefault();
+    if (t.dataset.bhsTab) { Object.assign(BHW, { tab: t.dataset.bhsTab, q: '', adding: '' }); renderBhWindow(); }
+    else if (t.dataset.bhsAdd) { BHW.adding = t.dataset.bhsAdd; renderBhWindow(); }
+    else if (t.dataset.bhsMore) { const id = t.dataset.bhsMore; BHW.expanded.has(id) ? BHW.expanded.delete(id) : BHW.expanded.add(id); renderBhWindow(); }
+    else if (t.dataset.bhsRm) { const [id, word] = t.dataset.bhsRm.split('|'), [group, key] = id.split('.'); bhsEdit({ op: 'remove', group, key, word }); }
+});
+document.addEventListener('input', e => {
+    if (e.target.dataset?.bhsQ === undefined || BHW.kind !== 'settings') return;
+    BHW.q = e.target.value;
+    const rows = $('#bh-window [data-bhs-rows]');
+    if (rows) rows.innerHTML = tokenTableHtml(bhCapContext(activeNode()), BHW);
+});
+document.addEventListener('keydown', e => {
+    const inp = e.target.closest?.('[data-bhs-new]');
+    if (!inp) return;
+    if (e.key === 'Enter') { e.preventDefault(); const [group, key] = inp.dataset.bhsNew.split('.'), word = inp.value; BHW.adding = ''; if (word.trim()) bhsEdit({ op: 'add', group, key, word }); else renderBhWindow(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); BHW.adding = ''; renderBhWindow(); }
+}, true);
 document.addEventListener('keydown', e => {
     const row = e.target.closest?.('.bh-item[data-bhw-open]');
     if (row && (e.key === 'Enter' || e.key === ' ') && e.target === row) { e.preventDefault(); row.click(); }
@@ -20113,7 +20146,7 @@ function bhAction(n, t) {
         for (const g of pick) bhWrite(n, g.path, g.layerId);
         return;
     }
-    if (act === 'reset-convention') { delete doc.data.convention; return; }
+    if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }
     if (act === 'remove-unused-overlays') { const ids = bhUnusedOverlays(n).map(o => o.id); for (const id of ids) state.selection.delete(id); if (ids.length) doc.remove(ids); return; }
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }

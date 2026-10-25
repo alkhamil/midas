@@ -389,7 +389,7 @@ Perubahan berlaku langsung; X atau Esc menutup (Esc tidak ikut membatalkan selek
 | `interaction` | id interaction | When, If, action + parameter, baris **Rules ›**. Rules dibuka sebagai tampilan dalam window yang sama (`sub: 'rules'`, tombol panah kembali di title bar; Esc kembali dulu, baru menutup) |
 | `cap` | id capability | alasan peringatan, saran Convention untuk capability itu (Accept / Accept all), slot, aturan validasi, Advanced |
 | `add` | | Add behavior: *Start from* preset, lalu capability per grup. Memilih satu langsung membuka window konfigurasinya |
-| `settings` | | **Behavior settings** (level file): Feedback components dan Convention. Dibuka dari ikon gear di header Behavior dan dari *Edit convention…* di dropdown slot |
+| `settings` | | **Behavior settings** (level file), tiga tab (`settingsUi.js`): **Slots** dan **States** = tabel satu baris per role / state dengan nama yang diterima sebagai token kecil (3 tampil + "+N", klik token = hapus, "+" = tambah, kotak cari di atas); **Feedback** = satu baris per jenis dengan pemilih komponen dan badge *built-in* bila belum di-map. Footer *Reset … to defaults* hanya mereset tab yang aktif (mapping feedback milikmu tidak ikut hilang saat reset Slots). Dibuka dari ikon gear dan dari *Edit convention…* di dropdown slot |
 | `state` | | State mapping (hubungkan collection, mode per state, override) |
 | `repeat` / `bind` | | isi section Repeat / Bind to State |
 
@@ -501,3 +501,7 @@ perataan baseline teks.
 - `Close overlay` menutup layer yang dibuka interaction; dialog bawaan Code Builder (konfirmasi hapus)
   tetap memakai mekanismenya sendiri.
 - Snapshot library lama yang masih memuat token `array` tidak ikut dimigrasi (State tidak dibagikan lewat library): List itu hilang saat library di-update.
+
+## Overlay yang dibuat Midas
+
+Action Open dropdown / overlay / popover memakai instance overlay di level halaman (`isOverlay`, `overlayTrigger`). Instance yang dibuat Midas diberi `autoCreated: true` dan `ownerId` (id interaction yang memintanya); layer buatan user tidak pernah diberi tanda dan tidak pernah dihapus otomatis. Setelah tiap edit Behavior, overlay bertanda yang tidak diminta interaction mana pun dihapus dalam transaksi yang sama (satu undo); yang masih diminta interaction lain tetap, ownernya pindah. Menghapus trigger atau frame-nya ikut menghapus overlay-nya; saat file dibuka overlay bertanda yang triggernya sudah tidak ada dibuang. Overlay tanpa tanda (file lama) yang tidak dibuka interaction apa pun ditawarkan: *Remove N unused overlay layers* di section Interactions. Di kanvas overlay tersembunyi dan hanya muncul saat window interaction-nya terbuka (atau dipilih), dengan tag *Overlay of …*. Logika murni: `packages/builder-core/src/overlays.js`.
