@@ -10,6 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
+import { rowRuntimeKey } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -372,13 +373,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     const baseStateOf = n => boundModeOf(n) || ctx.canvasState?.(n) || (n.disabled ? 'disabled' : 'default');
     // A look bound to an Option state wins over the plain "default" a pointer leaves behind, and a bound "disabled" ignores hover / press.
     const stateOf = n => {
-        const rs = runtime.get(n.id)?.state, bound = boundModeOf(n);
+        const rs = runtime.get(rowRuntimeKey(n.id, n.__row))?.state, bound = boundModeOf(n);
         if (bound && (!rs || rs === 'default' || bound === 'disabled')) return bound;
         return rs || baseStateOf(n);
     };
     // What is drawn is the base state plus what stays with the layer: checked / current, indeterminate, an empty value.
     const effStateOf = n => {
-        const r = runtime.get(n.id) || {};
+        const r = runtime.get(rowRuntimeKey(n.id, n.__row)) || {};
         const st = stateOf(n);
         // empty hanya dihitung kalau runtime sudah ada value tracking (sudah diketik / di-blur)
         const hasValue = Object.hasOwn(r, 'value');
@@ -464,6 +465,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const copies = new Map(), keyUse = new Map();
         // o: the instance being copied, with the variant to borrow looks from, the variable modes to read in and the texts to carry over.
         const emit = (n, parentId, o) => {
+            // A layer inside a repeated row carries its row key: its runtime state (hover, selected…) is kept per row.
+            if (o?.rowKey !== undefined && n.isInstance) n = { ...n, __row: o.rowKey };
             const roles = o?.roles, err = !!o?.err;
             const forced = err && roles?.showHint && n.propBind?.visible === roles.showHint;
             // A boolean property a variable changed in Preview shows or hides its layer.
@@ -485,18 +488,18 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             let base = o?.ov ? ctx.resolved(n, o.inst, o.ov) : n, kidsOf = n.id, inner = o, wire = null, toggle = null;
             if (n.isInstance) {
                 // The variant a Change variant action picked wins; else the one a variable Preview changed.
-                const picked = runtime.get(n.id)?.variant;
+                const picked = runtime.get(rowRuntimeKey(n.id, n.__row))?.variant;
                 const vv = (picked && ctx.variantByProps?.(n, picked)) || ((varOver.size || modeOver.size) ? ctx.variantFor?.(n, varOver, modeOver) : null);
                 const variants = ctx.variants(n, vv), modes = ctx.modes(n), ib2 = ctx.inputFor?.(n), field = ctx.typeable(n) && (n.typeable === true || ib2?.typeable?.frameId || !clickableOf(n)) ? fieldOf(n, ib2) : null, forced = tblForced(tbRole, o), st = forced ?? (o?.rowRoot === n.id && o.row?.__state ? o.row.__state : effStateOf(n));
                 // Kanvas menggambar varian pilihan desainer apa adanya; preview hanya menukar varian kalau ada
                 // interaksi yang mengubah state (hover, tekan, pilih…). Tanpa sentuhan, varian yang sekarang dipertahankan:
                 // instance yang didesain sebagai Disabled tidak dibalikkan ke Default.
-                const rt = runtime.get(n.id) || (forced ? {} : null);
+                const rt = runtime.get(rowRuntimeKey(n.id, n.__row)) || (forced ? {} : null);
                 const freshSt = effectiveState(baseStateOf(n), { empty: false });
                 const src = (!rt || st === freshSt ? null : pick(variants?.byState, st)) || vv;
                 const swap = src && (vv || src !== variants.current);
                 const texts = new Map(ctx.descendants(n.id).filter(x => x.type === 'text' && x.sourceId).map(x => [x.sourceId, x.text]));
-                inner = { inst: n, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(n.id)?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
+                inner = { inst: n, rowKey: o?.rowKey, swapped: !!swap, ov: pick(modes?.byState, st) || null, texts, field, roles: ctx.roles(n), err: !!runtime.get(rowRuntimeKey(n.id, n.__row))?.error, input: ib2, state: st, mapping: ctx.mappingFor?.(n), target: {}, row: o?.row, rowBind: o?.rowBind, rowBindNames: o?.rowBindNames, rowRoot: o?.rowRoot, rowIndex: o?.rowIndex, stateLayers: o?.stateLayers, pop: o?.pop, sel: o?.sel, slotMap: o?.slotMap, fb: o?.fb, loading: o?.loading, tbl: o?.tbl, rowCtx: o?.rowCtx, rowKind: o?.rowKind, cOver: (varOver.size || modeOver.size) ? ctx.cpropOverrides?.(n, varOver, modeOver) : null };
                 // Warna state dipakai lapisan yang benar-benar membawa tampilan komponen.
                 const ownFill = n.fill && n.fill !== 'none' && !Array.isArray(n.fills);
                 const ownStroke = n.strokeWidth > 0 && n.stroke && n.stroke !== 'none';
@@ -507,7 +510,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const tby = tableBehaviors(bsl);
                 if (tby) inner.tbl = tableInfo(n, tby);
                 if (hb) { inner.sel = selectInfo(n, hb); inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf(hb) }; }
-                if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(n.id)?.state === 'loading'; }
+                if (lb) { inner.slotMap = { ...(inner.slotMap || {}), ...slotMapOf({ slots: { spinner: lb.slots.icon } }) }; inner.loading = runtime.get(rowRuntimeKey(n.id, n.__row))?.state === 'loading'; }
                 if (swap) {
                     const v = ctx.node(src);
                     base = swapBase(n, v);
@@ -522,7 +525,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 const form = o?.form, tg = form?.input?.typeable, ids = tg ? ctx.componentIdsOf(n) : [];
                 if (tg && ids.some(id => id === tg.showIconId || id === tg.hideIconId)) {
                     toggle = form;
-                    const want = runtime.get(form.inst.id)?.reveal ? tg.hideIconId : tg.showIconId;
+                    const want = runtime.get(rowRuntimeKey(form.inst.id, form.inst.__row))?.reveal ? tg.hideIconId : tg.showIconId;
                     const to = want && !ids.includes(want) ? ctx.componentTarget(want, ctx.node(ids[0])) : null;
                     if (to) {
                         base = pinBox(base);
@@ -603,7 +606,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     if (!m.ok) continue;
                     if (tRole === 'row') {
                         if (m.loading) continue;                                    // the loading slot stands in for the rows
-                        m.rows.forEach((row, i) => emit(k, c.id, { ...inner, row: { ...row, '#': m.rowOffset + i + 1, __state: tblRowState(T, row, i) }, rowBind: T.binds, rowCtx: rowCtxOf(m, row, i), rowRoot: k.id, rowIndex: i, rowKind: 'row' }));
+                        m.rows.forEach((row, i) => emit(k, c.id, { ...inner, row: { ...row, '#': m.rowOffset + i + 1, __state: tblRowState(T, row, i) }, rowBind: T.binds, rowCtx: rowCtxOf(m, row, i), rowRoot: k.id, rowIndex: i, rowKind: 'row', rowKey: String(row[m.idField]) }));
                     }
                     else if (m.flags.pagination) {
                         for (let p = 1; p <= Math.min(m.pages, 9); p++) emit(k, c.id, { ...inner, row: { label: String(p), '#': p, __page: p, __state: p === m.page ? 'selected' : undefined }, rowBind: { [T.textOf(k.id)]: { text: 'label' } }, rowRoot: k.id, rowIndex: p - 1, rowKind: 'page' });
@@ -696,7 +699,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     function wireToggle(e, inst) {
         e.style.cursor = 'pointer';
         e.addEventListener('mousedown', ev => ev.preventDefault());
-        e.addEventListener('pointerup', () => update(inst, { reveal: !runtime.get(inst.id)?.reveal }));
+        e.addEventListener('pointerup', () => update(inst, { reveal: !runtime.get(rowRuntimeKey(inst.id, inst.__row))?.reveal }));
     }
 
     function textBox(c, parent, off, extra) {
@@ -707,7 +710,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
 
     /** The field's text is the placeholder: an input takes its place, wide enough for what is typed. */
     function renderField(c, parent, off, extra) {
-        const o = c._field, inst = o.inst, cur = runtime.get(inst.id) || {};
+        const o = c._field, inst = o.inst, cur = runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {};
         const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0', flexShrink: '1' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
@@ -724,9 +727,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (!css.textContent.includes(ph)) css.textContent += ph;
         const required = requiredOf(inst, o.input), when = o.input?.validation?.trigger || 'blur';
         // Wrong: required but emptied after it had text (or, strictly, empty at all), or text that does not fit the type.
-        const wrong = (v, strict) => !validateInput({ inputType: kind, required, rules: rulesOf(o.input), label: inst.name }, v, { touched: !!runtime.get(inst.id)?.touched, strict }).valid;
+        const wrong = (v, strict) => !validateInput({ inputType: kind, required, rules: rulesOf(o.input), label: inst.name }, v, { touched: !!runtime.get(rowRuntimeKey(inst.id, inst.__row))?.touched, strict }).valid;
         input.addEventListener('focus', () => {
-            if (rendering || runtime.get(inst.id)?.state?.match(/^(focused|selected|typing)$/)) return;
+            if (rendering || runtime.get(rowRuntimeKey(inst.id, inst.__row))?.state?.match(/^(focused|selected|typing)$/)) return;
             // Coming back to a field that has text: typing resumes after the last character.
             if (input.value) caretAtEnd = true;
             update(inst, { state: input.value ? 'typing' : byPointer ? 'selected' : 'focused', error: false });
@@ -734,9 +737,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         input.addEventListener('input', () => {
             // A number field takes digits, a sign and one decimal point.
             if (kind === 'number') input.value = input.value.replace(/[^0-9.\-]/g, '').replace(/(\..*?)\./g, '$1');
-            const was = runtime.get(inst.id) || {};
+            const was = runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {};
             const bad = when === 'change' && wrong(input.value);
-            runtime.set(inst.id, { ...was, value: input.value, error: bad, touched: was.touched || !!input.value });
+            runtime.set(rowRuntimeKey(inst.id, inst.__row), { ...was, value: input.value, error: bad, touched: was.touched || !!input.value });
             tblSearch(inst, input.value);
             const state = bad ? 'error' : 'typing';
             if (was.state !== state) update(inst, { state, error: bad });
@@ -745,7 +748,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         input.addEventListener('blur', () => {
             if (rendering) return;
             // Leaving a required field that was never filled is not an error: it goes back to default. Emptying one that had text is.
-            const bad = when === 'submit' ? !!runtime.get(inst.id)?.error && wrong(input.value, true) : wrong(input.value);
+            const bad = when === 'submit' ? !!runtime.get(rowRuntimeKey(inst.id, inst.__row))?.error && wrong(input.value, true) : wrong(input.value);
             update(inst, { state: bad ? 'error' : input.value ? 'filled' : 'default', error: bad, value: input.value });
             runTriggers(inst, 'onBlur', input);
         });
@@ -848,11 +851,11 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         }
         return out;
     }
-    function getSel(inst, hb) { const bt = hb.config.bindTo; return toValue(hb.config.mode, bt && evalCtx.has(bt) ? evalCtx.get(bt) : runtime.get(inst.id)?.selection); }
+    function getSel(inst, hb) { const bt = hb.config.bindTo; return toValue(hb.config.mode, bt && evalCtx.has(bt) ? evalCtx.get(bt) : runtime.get(rowRuntimeKey(inst.id, inst.__row))?.selection); }
     function setSel(inst, hb, v) {
         const bt = hb.config.bindTo;
         if (bt && evalCtx.has(bt)) { const r = evalCtx.set(bt, v); if (!r.ok) flash(`${inst.name}: ${r.error}`); }
-        else runtime.set(inst.id, { ...(runtime.get(inst.id) || {}), selection: v });
+        else runtime.set(rowRuntimeKey(inst.id, inst.__row), { ...(runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {}), selection: v });
     }
     function selectValidity(inst, hb, strict) {
         const ib = ctx.inputFor?.(inst);
@@ -863,7 +866,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const trig = ctx.inputFor?.(inst)?.validation?.trigger || 'blur';
         if (trig !== when) return;
         const r = selectValidity(inst, hb, false);
-        update(inst, r.valid ? { error: false, ...(runtime.get(inst.id)?.state === 'error' ? { state: baseStateOf(inst) } : {}) } : { state: 'error', error: true });
+        update(inst, r.valid ? { error: false, ...(runtime.get(rowRuntimeKey(inst.id, inst.__row))?.state === 'error' ? { state: baseStateOf(inst) } : {}) } : { state: 'error', error: true });
     }
     function removePick(sel, value) {
         setSel(sel.inst, sel.b, removeValue(sel.mode, sel.value, value));
@@ -956,7 +959,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     function checkField(id) {
         let all = true;
         for (const n of id ? [ctx.node(id)].filter(Boolean) : typeableIn()) {
-            const ok = fieldValidity(n.id), r = runtime.get(n.id) || {};
+            const ok = fieldValidity(n.id), r = runtime.get(rowRuntimeKey(n.id, n.__row)) || {};
             if (!ok) all = false;
             update(n, ok ? { error: false, ...(r.state === 'error' ? { state: r.value ? 'filled' : 'default' } : {}) } : { state: 'error', error: true });
         }
@@ -1112,33 +1115,33 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
      */
     function changeVariant(inst, action, trigger) {
         if (!action.variants || !Object.keys(action.variants).length) return;
-        const cur = runtime.get(inst.id) || {};
+        const cur = runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {};
         const hold = /^(onHover|onMouseEnter|onFocus)$/.test(trigger) ? trigger : null;
         const next = { ...(cur.variant || {}), ...action.variants };
         // The redraw puts a new element under the pointer, which enters again: the same pick must not redraw forever.
         if (Object.entries(next).every(([k, v]) => cur.variant?.[k] === v)) return;
-        runtime.set(inst.id, { ...cur, variant: next, variantBy: hold || null, variantMotion: resolveMotion(action, 'change-variant') });
-        pendingSmart = runtime.get(inst.id).variantMotion;
+        runtime.set(rowRuntimeKey(inst.id, inst.__row), { ...cur, variant: next, variantBy: hold || null, variantMotion: resolveMotion(action, 'change-variant') });
+        pendingSmart = runtime.get(rowRuntimeKey(inst.id, inst.__row)).variantMotion;
         draw();
     }
     /** Undo what a hover (pointer leaves) or a focus (focus is lost) changed with Change variant. */
     function revertVariant(inst, triggers) {
-        const cur = runtime.get(inst.id);
+        const cur = runtime.get(rowRuntimeKey(inst.id, inst.__row));
         if (!cur?.variant || !triggers.includes(cur.variantBy)) return;
         const { variant, variantBy, ...rest } = cur;
-        runtime.set(inst.id, rest);
+        runtime.set(rowRuntimeKey(inst.id, inst.__row), rest);
         pendingSmart = cur.variantMotion || null;
         draw();
     }
     /** Set active / selected: the layer is checked / current; "only this one" switches the others of its kind off. */
     function setSelected(inst, mode) {
         const has = r => !!runtime.get(r.id)?.selected;
-        runtime.set(inst.id, { ...(runtime.get(inst.id) || {}), selected: mode === 'toggle' ? !has(inst) : true });
+        runtime.set(rowRuntimeKey(inst.id, inst.__row), { ...(runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {}), selected: mode === 'toggle' ? !has(inst) : true });
         if (mode === 'exclusive') {
             const mine = new Set(ctx.componentIdsOf(inst));
             for (const sib of ctx.kids(inst.parentId))
                 if (sib.id !== inst.id && sib.isInstance && ctx.componentIdsOf(sib).some(id => mine.has(id)))
-                    runtime.set(sib.id, { ...(runtime.get(sib.id) || {}), selected: false });
+                    runtime.set(rowRuntimeKey(sib.id, sib.__row), { ...(runtime.get(rowRuntimeKey(sib.id, sib.__row)) || {}), selected: false });
         }
         draw();
     }
@@ -1308,9 +1311,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     }
 
     function update(n, patch) {
-        const cur = runtime.get(n.id) || {}, next = { ...cur, ...patch };
+        const cur = runtime.get(rowRuntimeKey(n.id, n.__row)) || {}, next = { ...cur, ...patch };
         if (['state', 'error', 'value', 'reveal'].every(k => next[k] === cur[k])) return;
-        runtime.set(n.id, next);
+        runtime.set(rowRuntimeKey(n.id, n.__row), next);
         draw();
     }
 

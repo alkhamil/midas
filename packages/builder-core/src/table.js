@@ -81,3 +81,9 @@ export function cellBinds(m, textLayerOf = id => id) {
     for (const c of m.columns) if (c.cell) out[textLayerOf(c.cell)] = { text: c.key };
     return out;
 }
+
+/**
+ * The key a layer's runtime state (hover, pressed, focused, selected, loading…) is kept under. A layer inside a repeated row has one
+ * copy per row, so its state is kept per row: hovering one row's button leaves every other row alone.
+ */
+export const rowRuntimeKey = (id, rowKey) => (rowKey === undefined || rowKey === null ? id : `${id}@${rowKey}`);
