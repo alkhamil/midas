@@ -207,3 +207,9 @@ export async function runActions(actions, host) {
         else await host.perform(a);
     }
 }
+
+/**
+ * Does a layer carry interactions of its own? Preview wires a click, hover or press on such a layer even when it is not an instance
+ * (a plain frame with On click works like a Button instance). Without this, the interaction is silently never played.
+ */
+export const hasOwnInteractions = node => Array.isArray(node?.interactions) && node.interactions.length > 0;

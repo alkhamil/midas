@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
-import { rowRuntimeKey } from '../engine/behavior.js';
+import { rowRuntimeKey, hasOwnInteractions } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -548,7 +548,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                     }
                 }
             }
-            else if (n.prototypeTarget) wire = { inst: n };
+            else if (n.prototypeTarget || hasOwnInteractions(n)) wire = { inst: n };
             if (varOver.size || modeOver.size) base = ctx.overridden(base, varOver, modeOver);
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
             // Smart animate matches layers across two drawings by their name path ("Button/Label"), repeated names by their order.
