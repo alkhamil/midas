@@ -3078,6 +3078,7 @@ select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color
 .sc-row:hover .sc-acts { display: inline-flex }
 .sc-all { justify-self: center; display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; cursor: pointer; padding: 6px 0 }
 .sc-all:hover { color: var(--text) }
+.sc-row .fr-sw { position: relative }
 .sc-row .fr-sw input[type=color] { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer }
 
 /* Menus and lists: a long label is cut with an ellipsis instead of wrapping or pushing the width. */
