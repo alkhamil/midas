@@ -9,7 +9,7 @@ import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml }
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
 import { setRowRefs } from './rulesUi.js';
-import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns } from './behavior.js';
+import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns, feedbackPlacePos } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
@@ -9347,7 +9347,9 @@ function renderTargetPanel() {
 /** Varian/komponen yang akan dibuka sebuah action open (tambahan frame lama tidak ikut). */
 function overlayTargetId(a) {
     if (a.targetVariantId) return a.targetVariantId;
-    const c = a.targetComponentId && componentById(a.targetComponentId);
+    // A feedback action draws its own component, else the file's Convention for its kind.
+    const id = a.type === 'show-feedback' ? (a.componentId || conventionOf().feedback?.[a.kind]) : a.targetComponentId;
+    const c = id && componentById(id);
     if (!c) return null;
     return (c.componentSet ? defaultVariantOf(c)?.id : c.id) || c.id;
 }
@@ -9364,7 +9366,7 @@ function placedOverlay(triggerId, a) {
 }
 /** Instance overlay untuk sebuah action: id tersimpan dulu, lalu scan cadangan. */
 function placedOverlayFor(triggerId, a) {
-    if (!a || (!a.targetComponentId && !a.targetFrameId)) return null;
+    if (!a || (!a.targetComponentId && !a.targetFrameId && a.type !== 'show-feedback')) return null;
     if (a.overlayInstanceId) {
         const n = nodeIndex().get(a.overlayInstanceId);
         if (n && !n.softDeleted) return n;
@@ -9426,11 +9428,14 @@ function placeOverlayOnCanvas(triggerId, a, opts = {}) {
         toast('Target component is missing.');
         return null;
     }
-    const box = doc.world(triggerId)?.box;
+    // A feedback component sits at the edge of the top-level frame its action lives in; the others sit at their trigger.
+    const feedback = a.type === 'show-feedback';
+    const frame = feedback ? (doc.ancestors(trig).at(-1) || trig) : trig;
+    const box = doc.world(frame.id)?.box;
     if (!box) return null;
     const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
     const h = a.type === 'open-dropdown' && a.height === 'parent' ? Math.round(box.h) : master.h;
-    const pos = placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
+    const pos = feedback ? feedbackPlacePos(box, w, h, a.position, a.offset) : placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
     let createdId = null;
     instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, autoCreated: true, ownerId: ownerOfAction(ovHelpers().interactionsOf(trig), a), overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
     return createdId || activeNode()?.id || null;
@@ -19454,13 +19459,13 @@ document.addEventListener('click', e => {
     e.stopPropagation();
     const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
     const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
-    const actAt = p => { const m = p.match(/^interactions\.(\d+)\.actions\.(\d+)\.targetComponentId$/); return m ? n.interactions?.[+m[1]]?.actions?.[+m[2]] : null; };
-    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
+    const actAt = p => (/\.(targetComponentId|componentId)$/.test(p) ? getPath(n, p.replace(/\.(targetComponentId|componentId)$/, '')) : null);
+    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
     if (clear) return write(null);
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (path.endsWith('.targetComponentId')) bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && /^open-/.test(ac.type)) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.targetComponentId$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && (/^open-/.test(ac.type) || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
     });
 });
 document.addEventListener('click', e => {

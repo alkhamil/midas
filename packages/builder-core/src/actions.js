@@ -36,6 +36,21 @@ export const FEEDBACK_POSITIONS = [
     { id: 'center', label: 'Center' }, { id: 'right', label: 'Right (drawer)' },
 ];
 const BLOCKING_KINDS = new Set(['modal', 'popconfirm']);
+
+/**
+ * Where a feedback component sits on the canvas: at the frame edge (or centre) for its position, moved by the offset.
+ * `frame` is { x, y, w, h } of the top-level frame the action's layer lives in; (x, y) is the top-left of the component.
+ */
+export function feedbackPlacePos(frame, w, h, position, offset) {
+    const ox = Number(offset?.x) || 0, oy = Number(offset?.y) || 0;
+    const centerX = frame.x + (frame.w - w) / 2, centerY = frame.y + (frame.h - h) / 2;
+    const at = {
+        top: { x: centerX, y: frame.y }, 'top-right': { x: frame.x + frame.w - w, y: frame.y },
+        bottom: { x: centerX, y: frame.y + frame.h - h }, center: { x: centerX, y: centerY },
+        right: { x: frame.x + frame.w - w, y: frame.y },
+    }[position] || { x: centerX, y: centerY };
+    return { x: at.x + ox, y: at.y + oy };
+}
 const expr = (v, fallback) => (isPlain(v) && typeof v.op === 'string' ? structuredClone(v) : fallback);
 const where = w => (isPlain(w) && w.field !== undefined && w.cmp ? { field: String(w.field), cmp: String(w.cmp), value: expr(w.value, lit('')) } : undefined);
 const exprMap = m => Object.fromEntries(Object.entries(isPlain(m) ? m : {}).filter(([k]) => k).map(([k, v]) => [k, expr(v, lit(''))]));
@@ -77,6 +92,9 @@ export function normalizeStateAction(type, a, normalizeList) {
             out.motion = normalizeFeedbackMotion(a?.motion, out.kind);
             if ((out.kind === 'modal' || out.kind === 'popconfirm') && Array.isArray(a?.onConfirm) && a.onConfirm.length) out.onConfirm = normalizeList(a.onConfirm);
             if (normalizeAppearance(a?.appearance)) out.appearance = normalizeAppearance(a.appearance);
+            // Offset from the edge of the frame for its position, and the copy placed on the canvas for this action.
+            if (isPlain(a?.offset)) { const ox = Number(a.offset.x) || 0, oy = Number(a.offset.y) || 0; if (ox || oy) out.offset = { x: ox, y: oy }; }
+            if (a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
             break;
         }
         default: break;

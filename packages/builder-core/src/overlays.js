@@ -4,7 +4,7 @@
 // drew or placed themselves never carry these marks and are never removed by anything here.
 // Pure: it works on a flat list of nodes; how a trigger's actions are found (inherited ones included) is passed in.
 
-export const OVERLAY_ACTION_TYPES = ['open-dropdown', 'open-overlay', 'open-popover'];
+export const OVERLAY_ACTION_TYPES = ['open-dropdown', 'open-overlay', 'open-popover', 'show-feedback'];
 
 /** A page-level instance placed for an action (not a layer the user drew). */
 export const isOverlayLayer = n => !!n && !n.parentId && !!n.isOverlay;
