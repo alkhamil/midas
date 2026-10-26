@@ -9,7 +9,7 @@ import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml }
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
 import { setRowRefs } from './rulesUi.js';
-import { levelStatus, suggestLevelMap, aliasCollectionIds } from './behavior.js';
+import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
@@ -19829,58 +19829,56 @@ function bhCapContext(n) {
  * The type mapping of a feedback component: the names its type values can take (variant values and the modes of its type
  * collections), and what each of the four levels resolves to (explicit mapping, one clear name, ambiguous, or none).
  */
+function typeGroupsOf(target) {
+    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
+    const groups = [];
+    if (set) for (const prop of variantProps(set)) groups.push({ values: variantValues(set, prop).map(String), prop });
+    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
+    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
+    for (const cid of colls) { const coll = varColl(cid); if (coll) groups.push({ values: coll.modes.map(x => x.name), coll, cid }); }
+    // The type dimensions: the groups whose values cover at least two levels (a single "Default" or "Size" value list is not a type).
+    return { set, first, groups: groups.filter(g => isTypeDimension(g.values)) };
+}
+/**
+ * The type mapping of a feedback component: the names its type values can take (from its type dimensions only), and what each
+ * of the four levels resolves to (explicit mapping, one clear name, ambiguous, or none). hasType = it has a type dimension at all.
+ */
 function feedbackTypeInfo(id) {
     const target = id && componentById(id);
     if (!target) return null;
-    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
-    const values = new Set();
-    if (set) for (const prop of variantProps(set)) for (const v of variantValues(set, prop)) values.add(String(v));
-    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
-    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
-    for (const cid of colls) {
-        const coll = varColl(cid);
-        if (!coll || (isStateCollection(coll) && levelsCovered(coll.modes.map(x => x.name)) < 2)) continue;
-        for (const m of coll.modes) values.add(m.name);
-    }
-    const list = [...values];
+    const { groups } = typeGroupsOf(target), list = [...new Set(groups.flatMap(g => g.values))];
     const idx = (target.behaviors || []).findIndex(b => b.kind === 'show-feedback');
     const explicit = idx >= 0 ? (target.behaviors[idx].config?.types || {}) : {};
     const levels = Object.fromEntries(['success', 'error', 'warning', 'info'].map(l => [l, levelStatus(list, l, explicit)]));
-    return { id: target.id, name: target.name, values: list, levels, explicit, hasBehavior: idx >= 0, index: idx };
+    return { id: target.id, name: target.name, values: list, levels, explicit, hasType: groups.length > 0, hasBehavior: idx >= 0, index: idx };
 }
 function bhFeedbackNote(b, n) {
     const id = n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
     const info = feedbackTypeInfo(id);
     if (!info) return 'No component is set for this feedback kind.';
+    if (!info.hasType) return 'No type: it always draws its own look.';
     const bad = ['success', 'error', 'warning', 'info'].filter(l => info.levels[l].source !== 'explicit' && info.levels[l].source !== 'name');
-    const found = 4 - bad.length;
-    return bad.length ? `Type mapping: ${found} of 4 levels mapped. ${bad.map(l => `${l}: ${info.levels[l].source === 'ambiguous' ? 'ambiguous (' + info.levels[l].options.join(', ') + ')' : 'no match'}`).join('; ')}. Fix it in Feedback → Type mapping.` : 'Type mapping: all 4 levels mapped.';
+    if (!bad.length) return 'Type mapping: all 4 levels mapped.';
+    const found = 4 - bad.length, label = mappingWarns(b.config?.kind, info.levels) ? 'Type mapping' : 'Type (optional)';
+    return `${label}: ${found} of 4 levels mapped. ${bad.map(l => `${l}: ${info.levels[l].source === 'ambiguous' ? 'ambiguous (' + info.levels[l].options.join(', ') + ')' : 'no match'}`).join('; ')}. Fix it in Feedback → Type mapping.`;
 }
 /** The look a feedback component takes for a level: a variant (its `type` property) or modes of a collection. → { node, modes, how } */
 function feedbackStyleOf(id, level, types) {
     const target = id && componentById(id);
     if (!target) return null;
-    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
-    if (set) for (const prop of variantProps(set)) {
-        const v = matchLevel(variantValues(set, prop), level, types);
+    const { set, first, groups } = typeGroupsOf(target);
+    for (const g of groups) {
+        const v = matchLevel(g.values, level, types);
         if (v == null) continue;
-        const want = { ...(first.variant || {}), [prop]: v }, found = setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val));
-        if (found) return { node: found, modes: {}, how: `variant “${prop}”` };
-    }
-    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
-    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
-    // The type dimension of this component: a variant property, or a collection that covers at least two levels.
-    let dimension = !!(set && variantProps(set).length);
-    for (const cid of colls) {
-        const coll = varColl(cid);
-        // A type collection (Info / Success / Warning / Error) can look like a states collection (success and error are state names): it counts when it covers the levels.
-        if (!coll || (isStateCollection(coll) && levelsCovered(coll.modes.map(x => x.name)) < 2)) continue;
-        dimension = true;
-        const m = matchLevel(coll.modes.map(x => x.name), level, types);
-        if (m != null) return { node: first, modes: { [cid]: coll.modes.find(x => x.name === m).id }, how: `mode of “${coll.name}”` };
+        if (g.prop) {
+            const want = { ...(first.variant || {}), [g.prop]: v }, found = setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val));
+            if (found) return { node: found, modes: {}, how: `variant “${g.prop}”` };
+        }
+        else return { node: first, modes: { [g.cid]: g.coll.modes.find(x => x.name === v).id }, how: `mode of “${g.coll.name}”` };
     }
     // Typed component, no value for this level: say so (the caller shows it) instead of drawing the first look under the wrong type.
-    if (dimension) return { node: null, modes: {}, how: null, unmapped: true };
+    if (groups.length) return { node: null, modes: {}, how: null, unmapped: true };
+    // No type dimension: the Type setting is ignored (an old action keeps its value, it just has no effect).
     return { node: first, modes: {}, how: null };
 }
 /** One-click proposals from the file's Convention: the layer for each empty slot. → [{ section, role, layerId, name, path }] */

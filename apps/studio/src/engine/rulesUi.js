@@ -1,7 +1,7 @@
 // Behavior tab, Phase 2: conditions ("If …"), the editors of the State / list / feedback / request actions, and the Rules of an
 // interaction. Only draws. What a condition means, how rules are picked and what the actions do is in @midas/builder-core.
 import { exprHtml } from './exprUi.js';
-import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, normalizeFeedbackMotion, ruleSummary, schemaOf } from './behavior.js';
+import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, ignoredTypeNote, normalizeFeedbackMotion, ruleSummary, schemaOf, showsTypeField } from './behavior.js';
 
 const lit = value => ({ op: 'value', value });
 
@@ -64,8 +64,12 @@ export function stateActionFields(ctx, p, a, it) {
         case 'show-feedback': {
             const nested = (a.kind === 'modal' || a.kind === 'popconfirm')
                 ? `<div class="bh-fields"><div class="small-label">When confirmed</div>${(a.onConfirm || []).map((x, j) => ctx.renderAction(`${p}.onConfirm.${j}`, x, it, `${p}.onConfirm`, j)).join('')}${ctx.addActionAt(`${p}.onConfirm`)}</div>` : '';
+            // The component's type dimension decides whether Type applies; a stale Type on a component without one is kept, not used.
+            const info = ctx.feedbackTypes?.(a.componentId || ctx.convention?.feedback?.[a.kind]) || null, hasType = !!info?.hasType;
+            const typeRow = showsTypeField(a.kind, hasType) ? `<label class="field"><span>Type</span>${bhSelect(`${p}.level`, 'plain', a.level, FEEDBACK_LEVELS.map(k => [k, k]))}</label>` : '';
+            const ignored = info && ignoredTypeNote(info.name, hasType, a.level);
             return `<label class="field"><span>Show</span>${bhSelect(`${p}.kind`, 'plain', a.kind, FEEDBACK_KINDS.map(k => [k.id, k.label]))}</label>`
-                + `<label class="field"><span>Type</span>${bhSelect(`${p}.level`, 'plain', a.level, FEEDBACK_LEVELS.map(k => [k, k]))}</label>`
+                + typeRow + (ignored ? `<p class="small-label bh-warn">⚠ ${esc(ignored)}</p>` : '')
                 + `<label class="field"><span>Title</span><input data-bh-path="${esc(p)}.title" data-bh-kind="plain" value="${esc(a.title || '')}" placeholder="Optional" spellcheck="false"></label>`
                 + `<label class="field"><span>Message</span><input data-bh-path="${esc(p)}.message" data-bh-kind="plain" value="${esc(a.message || '')}" placeholder="Total: {total}" spellcheck="false" title="Put a State name in {braces} to show its value"></label>`
                 + `<label class="field"><span>Position</span>${bhSelect(`${p}.position`, 'plain', a.position, FEEDBACK_POSITIONS.map(k => [k.id, k.label]))}</label>`

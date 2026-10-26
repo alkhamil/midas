@@ -351,3 +351,14 @@ export function suggestLevelMap(values) {
 }
 /** How many of the four levels a set of values can draw. */
 export const levelsCovered = values => ['success', 'error', 'warning', 'info'].filter(l => matchLevel(values, l)).length;
+/** Kinds of feedback that expect a type: they warn when it is missing or incomplete. Modal, Drawer and Popconfirm never need one. */
+export const TYPED_FEEDBACK_KINDS = ['alert', 'message', 'notification'];
+export const expectsType = kind => TYPED_FEEDBACK_KINDS.includes(kind);
+/** Is a value group (a variant property, a type collection) a type dimension of a component? Its values must cover at least two levels. */
+export const isTypeDimension = values => levelsCovered(values) >= 2;
+/** Is the Type field of a Show feedback action meaningful? Only for a component with a type dimension, or a kind that expects one. */
+export const showsTypeField = (kind, hasType) => hasType || expectsType(kind);
+/** Does the type mapping warn? Only for a kind that expects a type, and only while one of its levels does not resolve. */
+export const mappingWarns = (kind, levels) => expectsType(kind) && Object.values(levels).some(s => s.source !== 'explicit' && s.source !== 'name');
+/** The note on an action whose Type cannot apply (the component has no type dimension), or null. */
+export const ignoredTypeNote = (name, hasType, level) => (!hasType && level ? `${name} has no type; the Type setting is ignored` : null);
