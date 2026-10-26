@@ -76,6 +76,7 @@ export function normalizeStateAction(type, a, normalizeList) {
             if (a?.confirmLabel) out.confirmLabel = String(a.confirmLabel);
             out.motion = normalizeFeedbackMotion(a?.motion, out.kind);
             if ((out.kind === 'modal' || out.kind === 'popconfirm') && Array.isArray(a?.onConfirm) && a.onConfirm.length) out.onConfirm = normalizeList(a.onConfirm);
+            if (normalizeAppearance(a?.appearance)) out.appearance = normalizeAppearance(a.appearance);
             break;
         }
         default: break;
@@ -152,9 +153,35 @@ export function runStateAction(a, ev, env) {
 }
 
 // ---------- feedback ----------
+/**
+ * Appearance pinned on an action: the modes of the component's collections and the values of its variant properties.
+ * A value is a fixed string, or { stateId } to read a State at runtime. Empty entries mean "Default (as designed)" and are dropped.
+ * → { modes?, variants? } or undefined when nothing is pinned.
+ */
+export function normalizeAppearance(x) {
+    if (!isPlain(x)) return undefined;
+    const pick = m => Object.fromEntries(Object.entries(isPlain(m) ? m : {}).flatMap(([k, v]) => {
+        if (isPlain(v) && typeof v.stateId === 'string' && v.stateId) return [[k, { stateId: v.stateId }]];
+        return typeof v === 'string' && v !== '' ? [[k, v]] : [];
+    }));
+    const modes = pick(x.modes), variants = pick(x.variants);
+    if (!Object.keys(modes).length && !Object.keys(variants).length) return undefined;
+    return { ...(Object.keys(modes).length ? { modes } : {}), ...(Object.keys(variants).length ? { variants } : {}) };
+}
+/** The pinned appearance with its State bindings read now: a State that holds nothing (or '') falls back to the default. */
+export function resolveAppearance(ap, ev) {
+    if (!ap) return undefined;
+    const read = m => Object.fromEntries(Object.entries(m || {}).flatMap(([k, v]) => {
+        const val = typeof v === 'string' ? v : ev.get(v.stateId);
+        return val === undefined || val === null || val === '' ? [] : [[k, String(val)]];
+    }));
+    const modes = read(ap.modes), variants = read(ap.variants);
+    if (!Object.keys(modes).length && !Object.keys(variants).length) return undefined;
+    return { modes, variants };
+}
 /** What the host should draw for a show-feedback action: the message with {placeholders} filled. */
 export function resolveFeedback(a, ev) {
-    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind) };
+    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind), appearance: resolveAppearance(a.appearance, ev) };
 }
 
 // ---------- scenarios ----------

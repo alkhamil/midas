@@ -76,6 +76,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`
                 + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(p)}.blocking" data-bh-kind="bool" ${a.blocking ? 'checked' : ''}> Blocking (nothing behind it can be used)</label>`
                 + feedbackComponentRows(ctx, p, a)
+                + appearanceRows(ctx, p, a)
                 + feedbackMotionRows(ctx, p, a)
                 + nested + '<p class="small-label">Use {name} to show a State value, e.g. “{Attempts} of 5”.</p>';
         }
@@ -134,6 +135,22 @@ function feedbackMotionRows(ctx, p, a) {
         + `<button type="button" class="vw-btn ghost" data-bh-act="play-feedback" data-feedback-json="${esc(JSON.stringify(payload))}">▶ Play enter and exit</button></div>`;
 }
 
+/**
+ * Appearance: the modes and variants this one action pins on the component it draws. One row per type dimension (its first option is
+ * "Follows type", so Type mapping keeps driving it) and per other variant property ("Default (as designed)"). Stored on the action.
+ */
+function appearanceRows(ctx, p, a) {
+    const { esc, bhSelect } = ctx;
+    const rows = ctx.appearanceOptions?.(a.componentId || ctx.convention?.feedback?.[a.kind]) || [];
+    if (!rows.length) return '';
+    const pin = a.appearance || {};
+    return `<div class="bh-motion"><div class="small-label">Appearance</div>`
+        + rows.map(r => {
+            const cur = r.kind === 'mode' ? pin.modes?.[r.key] : pin.variants?.[r.key];
+            return `<label class="field"><span>${esc(r.label)}</span>${bhSelect(`${p}.appearance.${r.kind === 'mode' ? 'modes' : 'variants'}.${r.key}`, 'plain', typeof cur === 'string' ? cur : '', [['', r.type ? 'Follows type' : 'Default (as designed)'], ...r.options])}</label>`;
+        }).join('')
+        + '<p class="small-label">Pinned here applies to this action only. Default restores the designed look.</p></div>';
+}
 /** Which component draws this kind of feedback: the file's Convention, or just this action. No component = Preview's built-in one (badged). */
 function feedbackComponentRows(ctx, p, a) {
     const { esc } = ctx, kind = a.kind, label = FEEDBACK_KINDS.find(k => k.id === kind)?.label || kind;

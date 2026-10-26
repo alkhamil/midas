@@ -19059,6 +19059,8 @@ function liveContext() {
         behaviorsFor: behaviorsOf,
         /** The look a feedback component takes for a level (success / error / warning / info): { node, modes, how }. */
         feedbackStyle: feedbackStyleOf,
+        /** The Appearance rows of a feedback component: its type dimension and its variant properties, with their values. */
+        appearanceOptions: appearanceOptionsOf,
         /** The component that draws a kind of feedback: the action's own pick, else the Convention's; null = Preview's built-in one. */
         feedbackComponent(kind, own) { const id = own || conventionOf().feedback[kind]; return id && componentById(id) ? id : null; },
         /** Does any layer run a Simulated request? Then Preview offers the scenario switcher. */
@@ -19826,6 +19828,7 @@ function bhCapContext(n) {
     };
     c.suggestions = bhSuggestions(n, c);
     c.feedbackTypes = feedbackTypeInfo;
+    c.appearanceOptions = appearanceOptionsOf;
     return c;
 }
 /**
@@ -19868,8 +19871,35 @@ function bhFeedbackNote(b, n) {
     const found = 4 - bad.length, label = mappingWarns(b.config?.kind, info.levels) ? 'Type mapping' : 'Type (optional)';
     return `${label}: ${found} of 4 levels mapped. ${bad.map(l => `${l}: ${info.levels[l].source === 'ambiguous' ? 'ambiguous (' + info.levels[l].options.join(', ') + ')' : 'no match'}`).join('; ')}. Fix it in Feedback → Type mapping.`;
 }
+/** The look a feedback component takes for a level, then what the action pinned on top of it. → { node, modes, how } */
+function feedbackStyleOf(id, level, types, pin) {
+    const s = feedbackStyleBase(id, level, types);
+    if (!s || s.unmapped || !s.node || !pin) return s;
+    // Pinned on the action beats Type mapping and the instance's own modes; a value that no longer exists falls back to the look above.
+    const modes = { ...s.modes, ...(pin.modes || {}) };
+    const set = s.node.componentSet ? s.node : parentSetOf(s.node);
+    const want = { ...(s.node.variant || {}), ...(pin.variants || {}) };
+    const found = pin.variants && set && Object.keys(pin.variants).length ? setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val)) : null;
+    return { ...s, node: found || s.node, modes, pinned: !!(pin.modes || pin.variants) };
+}
+/**
+ * The rows of the shared Appearance section for a component: one per type dimension (a mode or a variant property) and one per
+ * other variant property of its set. → [{ key, kind: 'mode' | 'variant', label, type, options: [[value, label]] }]
+ */
+function appearanceOptionsOf(id) {
+    const target = id && componentById(id);
+    if (!target) return [];
+    const { set, groups } = typeGroupsOf(target);
+    const rows = [];
+    for (const g of groups) {
+        if (g.prop) rows.push({ key: g.prop, kind: 'variant', label: g.prop, type: true, options: variantValues(set, g.prop).map(v => [String(v), String(v)]) });
+        else rows.push({ key: g.cid, kind: 'mode', label: g.coll.name, type: true, options: g.coll.modes.map(m => [m.id, m.name]) });
+    }
+    if (set) for (const k of variantProps(set)) if (!rows.some(r => r.kind === 'variant' && r.key === k)) rows.push({ key: k, kind: 'variant', label: k, type: false, options: variantValues(set, k).map(v => [String(v), String(v)]) });
+    return rows;
+}
 /** The look a feedback component takes for a level: a variant (its `type` property) or modes of a collection. → { node, modes, how } */
-function feedbackStyleOf(id, level, types) {
+function feedbackStyleBase(id, level, types) {
     const target = id && componentById(id);
     if (!target) return null;
     const { set, first, groups } = typeGroupsOf(target);

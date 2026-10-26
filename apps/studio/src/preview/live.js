@@ -1327,7 +1327,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const b = (ctx.behaviorsFor?.(first) || []).find(x => x.kind === 'show-feedback' && x.enabled);
         const problem = b ? slotIssues(b)[0]?.why : 'It has no “Show feedback” behavior.';
         if (problem) { flash(`“${first.name}” cannot draw ${f.kind}: ${problem} The built-in one is used.`); return null; }
-        const style = ctx.feedbackStyle?.(id, f.level, b.config.types) || { node: first, modes: {} };
+        const style = ctx.feedbackStyle?.(id, f.level, b.config.types, f.appearance) || { node: first, modes: {} };
         if (style.unmapped || !style.node) { flash(`“${first.name}” has no look for ${f.level}: map it in Feedback → Type mapping. The built-in one is used.`); return null; }
         const fb = { nodes: [], blocking: !!f.blocking, id: ++feedbackSeq };
         const m0 = resolveFeedbackMotion(f.motion, { kind: f.kind, placement: f.position, reduced: reducedMotion() });
