@@ -19822,6 +19822,7 @@ function bhCapContext(n) {
         applies: k => (isInstance && !inputKinds.has(k)) ? { ok: false, reason: 'Set on the main component.' } : applicability(k, { layers, has, hasList: stateStore().variables.some(v => v.type === 'list' && (v.itemType || 'object') === 'object'), hasState: s => s === 'loading' ? loadingMode : modes.some(m => suggestStates([m], conv)[s]) }),
         suggestedPreset: suggestPreset(isInstance ? (parentSetOf(chainComponent(n) || n)?.name || chainComponent(n)?.name || n.name) : n.name, PRESETS),
         feedbackNote: b => bhFeedbackNote(b, n),
+        feedbackHasType: () => feedbackTypeInfo(feedbackComponentId(n))?.hasType ?? null,
     };
     c.suggestions = bhSuggestions(n, c);
     c.feedbackTypes = feedbackTypeInfo;
@@ -19854,9 +19855,12 @@ function feedbackTypeInfo(id) {
     const levels = Object.fromEntries(['success', 'error', 'warning', 'info'].map(l => [l, levelStatus(list, l, explicit)]));
     return { id: target.id, name: target.name, values: list, levels, explicit, hasType: groups.length > 0, hasBehavior: idx >= 0, index: idx };
 }
+/** The component whose feedback look a node stands for: its chain's main component, its default variant, or itself. */
+function feedbackComponentId(n) {
+    return n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
+}
 function bhFeedbackNote(b, n) {
-    const id = n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
-    const info = feedbackTypeInfo(id);
+    const info = feedbackTypeInfo(feedbackComponentId(n));
     if (!info) return 'No component is set for this feedback kind.';
     if (!info.hasType) return 'No type: it always draws its own look.';
     const bad = ['success', 'error', 'warning', 'info'].filter(l => info.levels[l].source !== 'explicit' && info.levels[l].source !== 'name');

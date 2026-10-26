@@ -1,7 +1,7 @@
 // Type dimension: a component has a type only when one of its value groups covers at least two of the four levels.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isTypeDimension, showsTypeField, mappingWarns, ignoredTypeNote, expectsType, levelStatus, suggestLevelMap } from '../src/index.js';
+import { isTypeDimension, showsTypeField, mappingWarns, ignoredTypeNote, hidesTypeRows, expectsType, levelStatus, suggestLevelMap } from '../src/index.js';
 
 test('a group that covers two levels is a type dimension, through synonyms too', () => {
     assert.equal(isTypeDimension(['Info', 'Error']), true);
@@ -43,6 +43,13 @@ test('no warning when every level resolves, or when the kind is a typed one with
     const levels = Object.fromEntries(['success', 'error', 'warning', 'info'].map(l => [l, levelStatus(['info', 'success', 'warning', 'danger'], l)]));
     assert.equal(Object.keys(full).length, 4);
     assert.equal(mappingWarns('alert', levels), false);
+});
+
+test('a feedback component with no type dimension hides its type rows; a typed one and an unknown one keep them', () => {
+    assert.equal(hidesTypeRows(isTypeDimension(['Primary', 'Danger'])), true, 'one level is not a type');
+    assert.equal(hidesTypeRows(isTypeDimension(['Small', 'Medium', 'Large'])), true, 'a size group is not a type');
+    assert.equal(hidesTypeRows(isTypeDimension(['Info', 'Error'])), false, 'a typed component keeps the rows');
+    assert.equal(hidesTypeRows(null), false, 'no component set: keep the rows and its note');
 });
 
 test('a Type set on a component with no type dimension is reported as ignored, once, without an error', () => {

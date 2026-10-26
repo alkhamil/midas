@@ -364,3 +364,5 @@ export const showsTypeField = (kind, hasType) => hasType || expectsType(kind);
 export const mappingWarns = (kind, levels) => expectsType(kind) && Object.values(levels).some(s => s.source !== 'explicit' && s.source !== 'name');
 /** The note on an action whose Type cannot apply (the component has no type dimension), or null. */
 export const ignoredTypeNote = (name, hasType, level) => (!hasType && level ? `${name} has no type; the Type setting is ignored` : null);
+/** A feedback component with no type dimension hides its type rows (the Type line and the Success / Error / Warning / Info overrides). Unknown (no component set) keeps them. */
+export const hidesTypeRows = hasType => hasType === false;

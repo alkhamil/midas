@@ -1,7 +1,7 @@
 // Behavior tab, Phase 3: "Add Behavior" (presets and capabilities), the collapsed section of each capability, the slot pickers,
 // the suggestions of the Convention and the Convention panel. Only draws: the rules (what a capability needs, what a preset is,
 // what is suggested) are in @midas/builder-core (capabilities.js, convention.js).
-import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, hasTypeable, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules, schemaOf, columnLabel } from './behavior.js';
+import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, hasTypeable, hidesTypeRows, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules, schemaOf, columnLabel } from './behavior.js';
 
 const PLACEMENT_CHOICES = [['bottom-start', 'Below, aligned left'], ['bottom', 'Below, centered'], ['bottom-end', 'Below, aligned right'], ['top-start', 'Above, aligned left'], ['top', 'Above, centered'], ['top-end', 'Above, aligned right']];
 const layerOk = { text: l => l.type === 'text', frame: l => l.type === 'frame' || l.type === 'group' || !!l.isInstance, any: () => true };
@@ -83,8 +83,8 @@ function bodyFeedback(c, s) {
         + slotRow(c, `${p}.slots.icon`, 'icon', b.slots.icon, false)
         + slotRow(c, `${p}.slots.close`, 'close', b.slots.close, false)
         + (['modal', 'popconfirm', 'drawer'].includes(cf.kind) ? slotRow(c, `${p}.slots.confirm`, 'confirm', b.slots.confirm, false) + slotRow(c, `${p}.slots.cancel`, 'cancel', b.slots.cancel, false) : '')
-        + `<p class="small-label">Its type (success / error / warning / info) comes from the variant property or mode whose values are named like them. ${s.typeNote || ''}</p>`
-        + c.advanced(b.id, LV.map(l => field(esc, `${l[0].toUpperCase()}${l.slice(1)} is`, `<input data-bh-path="${p}.config.types.${l}" data-bh-kind="plain" value="${esc(cf.types?.[l] || '')}" placeholder="auto" spellcheck="false">`, 'The exact name of the variant value or mode for this level')).join(''));
+        + (hidesTypeRows(s.hasType) ? '' : `<p class="small-label">Its type (success / error / warning / info) comes from the variant property or mode whose values are named like them. ${s.typeNote || ''}</p>`
+            + c.advanced(b.id, LV.map(l => field(esc, `${l[0].toUpperCase()}${l.slice(1)} is`, `<input data-bh-path="${p}.config.types.${l}" data-bh-kind="plain" value="${esc(cf.types?.[l] || '')}" placeholder="auto" spellcheck="false">`, 'The exact name of the variant value or mode for this level')).join('')));
 }
 // ----- tables
 const colSlot = (c, path, label, current, layers, hint) => {
@@ -208,7 +208,7 @@ export function capabilitySections(c) {
     if (c.ib?.validation && (c.ib.validation.required || c.ib.validation.rules || c.ib.validation.trigger || c.hasValidation)) out.push({ kind: 'has-validation', id: 'has-validation', title: CAPABILITIES['has-validation'].label, enabled: !c.ib.validation.off, ib: c.ib, summary: inputSummary('has-validation', c.ib), issues: [], toggle: { kind: 'invert', path: 'input.validation.off' }, fixed: true, canDelete: 'validation' });
     c.behaviors.forEach((b, i) => {
         const issues = slotIssues(b, id => c.layers.some(l => l.id === id));
-        out.push({ kind: b.kind, id: b.id, b, title: CAPABILITIES[b.kind].label, enabled: b.enabled, summary: summaryOf(b, c.nameOf), issues, index: i, path: c.isInstance ? `behaviorOverrides.${b.id}` : `behaviors.${i}`, count: c.behaviors.length, typeNote: b.kind === 'show-feedback' ? c.feedbackNote?.(b) : '' });
+        out.push({ kind: b.kind, id: b.id, b, title: CAPABILITIES[b.kind].label, enabled: b.enabled, summary: summaryOf(b, c.nameOf), issues, index: i, path: c.isInstance ? `behaviorOverrides.${b.id}` : `behaviors.${i}`, count: c.behaviors.length, typeNote: b.kind === 'show-feedback' ? c.feedbackNote?.(b) : '', hasType: b.kind === 'show-feedback' ? c.feedbackHasType?.() : undefined });
     });
     if (c.hasClick) out.push({ kind: 'on-click', id: 'on-click', title: CAPABILITIES['on-click'].label, enabled: true, summary: c.clickSummary || 'Does something when it is clicked', issues: [], clickSummary: c.clickSummary, fixed: true, noActions: true });
     return out;
