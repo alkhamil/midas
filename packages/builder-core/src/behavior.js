@@ -398,7 +398,11 @@ export function stateOfMode(modeName) {
  * Nilai variable dalam mode tertentu (alias ikut diselesaikan). `items` dipakai untuk mencari
  * target alias.
  */
-export function variableValueInMode(item, coll, modeId, items = [], collections = []) {
+/**
+ * The value of a variable in one mode. An alias reads its target in the target's OWN collection: the mode of that collection comes
+ * from modeFor(collectionId) (the instance or the override that picks it), never from the source collection's mode id.
+ */
+export function variableValueInMode(item, coll, modeId, items = [], collections = [], modeFor = null) {
     if (!item || !coll || !coll.modes?.length) return undefined;
     const mode = modeId && coll.modes.some(m => m.id === modeId) ? modeId : coll.modes[0].id;
     let v = item.values?.[mode];
@@ -406,11 +410,24 @@ export function variableValueInMode(item, coll, modeId, items = [], collections 
     if (v === undefined) v = coll.modes.map(m => item.values?.[m.id]).find(x => x !== undefined);
     if (v && typeof v === 'object' && v.alias) {
         const target = items.find(i => i.id === v.alias);
-        // An alias may point into another collection (e.g. primitives): read it with that collection's own modes.
         const targetColl = collections.find(c => c.id === target?.collectionId) || coll;
-        return target ? variableValueInMode(target, targetColl, mode, items, collections) : undefined;
+        if (!target) return undefined;
+        const picked = modeFor ? modeFor(targetColl.id) : null;
+        const tMode = picked && targetColl.modes.some(m => m.id === picked) ? picked : targetColl.modes[0]?.id;
+        return variableValueInMode(target, targetColl, tMode, items, collections, modeFor);
     }
     return v;
+}
+/** The collections an alias chain passes through (the item's own collection first). */
+export function aliasCollectionIds(item, items = []) {
+    const out = [];
+    let cur = item;
+    for (let i = 0; cur && i < 20; i++) {
+        out.push(cur.collectionId);
+        const v = Object.values(cur.values || {}).find(x => x && typeof x === 'object' && x.alias);
+        cur = v ? items.find(x => x.id === v.alias) : null;
+    }
+    return out;
 }
 
 /** Collection state yang disambungkan ke sebuah node (state → mode). */

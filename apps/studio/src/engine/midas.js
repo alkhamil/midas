@@ -9,7 +9,7 @@ import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml }
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
 import { setRowRefs } from './rulesUi.js';
-import { levelStatus, suggestLevelMap } from './behavior.js';
+import { levelStatus, suggestLevelMap, aliasCollectionIds } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
@@ -829,6 +829,17 @@ function nodeMode(d, n, coll) {
     if (pm && coll.modes.some(x => x.id === pm))
         return pm;
     return coll.modes[0]?.id;
+}
+/** The mode a layer picks for a collection: its own variable modes, then the nearest layer above it that sets one. */
+function modeInChain(n, cid, collections, nodeOf) {
+    const coll = collections.find(c => c.id === cid);
+    let cur = n;
+    for (let i = 0; cur && i < 200; i++) {
+        const m = cur.varModes?.[cid];
+        if (m && coll?.modes.some(x => x.id === m)) return m;
+        cur = cur.parentId ? nodeOf(cur.parentId) : null;
+    }
+    return null;
 }
 function varValue(d, item, node, depth = 0) {
     const store = d.data.variables, coll = store?.collections.find(c => c.id === item.collectionId);
@@ -19149,6 +19160,10 @@ function liveContext() {
         overridden(n, over, modes) {
             if (!n.vars || (!over.size && !modes?.size))
                 return n;
+            // The mode of a collection for this layer: a pick (Show feedback, Preview's switch) first, else the nearest layer above
+            // that the instance set (its variable modes). Aliases read their target with this, so a pick in one collection reaches the
+            // collection the design aliases to.
+            const modeFor = cid => modes?.get(cid) ?? modeInChain(n, cid, store.collections, id => this.node(id));
             let c = null;
             for (const [prop, id] of Object.entries(n.vars)) {
                 if (prop.includes(':') || !bindType(prop))
@@ -19159,9 +19174,9 @@ function liveContext() {
                 let val;
                 if (over.has(id))
                     val = over.get(id);
-                else if (modes?.size && modes.has(item.collectionId)) {
+                else if (modes?.size && aliasCollectionIds(item, store.items).some(cid => modes.has(cid) || modeInChain(n, cid, store.collections, id2 => this.node(id2)))) {
                     const coll = store.collections.find(x => x.id === item.collectionId);
-                    val = variableValueInMode(item, coll, modes.get(item.collectionId), store.items, store.collections);
+                    val = variableValueInMode(item, coll, modeFor(item.collectionId), store.items, store.collections, modeFor);
                 }
                 if (val === undefined || val === null)
                     continue;
