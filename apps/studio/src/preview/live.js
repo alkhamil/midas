@@ -1751,7 +1751,18 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (next && !next.disabled) queueMicrotask(() => next.isConnected && next.focus({ preventScroll: true }));
         }
         }; // end swap
-        if (useVT) { try { document.startViewTransition(() => { swap(); }); } catch { swap(); } }
+        // A view transition runs the swap in its callback, and a page that is not painting (a background tab) may never call it:
+        // the frame is swapped at the latest after the transition time, so the stage can never stay empty.
+        if (useVT) {
+            let done = false;
+            const once = () => { if (!done) { done = true; swap(); } };
+            try {
+                const vt = document.startViewTransition(() => { once(); });
+                vt.ready?.catch(() => {});
+                vt.finished?.catch(() => {});
+            } catch { once(); }
+            setTimeout(once, motion.duration + 250);
+        }
         else swap();
         rendering = false;
         markCurrent();
