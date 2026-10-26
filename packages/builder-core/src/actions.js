@@ -44,19 +44,8 @@ export const PLACEMENTS = [
 ];
 
 /** The old names of a feedback position, as they map onto a placement. */
-const LEGACY_FEEDBACK_POSITION = { top: 'top', 'top-right': 'top-end', bottom: 'bottom', center: 'top', right: 'right' };
+const LEGACY_FEEDBACK_POSITION = { top: 'top', 'top-right': 'top-end', bottom: 'bottom', center: 'center', right: 'right' };
 
-/**
- * Where a feedback component stacks in Preview, from its placement: a drawer and a modal are fixed, and an alert, message or
- * notification stacks at the top, right, or bottom edge of the screen.
- */
-export function feedbackRegion(kind, position) {
-    if (kind === 'drawer') return 'right';
-    if (kind === 'modal' || kind === 'popconfirm') return 'center';
-    const side = String(position || '').split('-')[0];
-    if (side === 'bottom') return 'bottom';
-    return side === 'top' ? 'top' : 'top-right';
-}
 const expr = (v, fallback) => (isPlain(v) && typeof v.op === 'string' ? structuredClone(v) : fallback);
 const where = w => (isPlain(w) && w.field !== undefined && w.cmp ? { field: String(w.field), cmp: String(w.cmp), value: expr(w.value, lit('')) } : undefined);
 const exprMap = m => Object.fromEntries(Object.entries(isPlain(m) ? m : {}).filter(([k]) => k).map(([k, v]) => [k, expr(v, lit(''))]));
@@ -89,7 +78,7 @@ export function normalizeStateAction(type, a, normalizeList) {
             out.level = FEEDBACK_LEVELS.includes(a?.level) ? a.level : 'info';
             out.message = String(a?.message ?? '');
             if (a?.title) out.title = String(a.title);
-            out.position = PLACEMENTS.includes(a?.position) ? a.position : LEGACY_FEEDBACK_POSITION[a?.position] || (out.kind === 'drawer' ? 'right' : out.kind === 'message' ? 'top' : 'top-end');   // notification: top-right too
+            out.position = PLACEMENTS.includes(a?.position) || a?.position === 'center' ? a.position : LEGACY_FEEDBACK_POSITION[a?.position] || (out.kind === 'drawer' ? 'right' : out.kind === 'modal' || out.kind === 'popconfirm' ? 'center' : out.kind === 'message' ? 'top' : 'top-end');   // notification: top-right too
             const d = Number(a?.duration);
             out.duration = Number.isFinite(d) ? Math.min(60000, Math.max(0, Math.round(d))) : (out.kind === 'alert' || out.kind === 'message' || out.kind === 'notification' ? 3000 : 0);
             out.blocking = typeof a?.blocking === 'boolean' ? a.blocking : BLOCKING_KINDS.has(out.kind);
@@ -206,7 +195,7 @@ export function resolveAppearance(ap, ev) {
 }
 /** What the host should draw for a show-feedback action: the message with {placeholders} filled. */
 export function resolveFeedback(a, ev) {
-    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: feedbackRegion(a.kind, a.position), duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind), appearance: resolveAppearance(a.appearance, ev) };
+    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, placement: a.position, offset: a.offset, anchorFrameId: a.anchorFrameId, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind), appearance: resolveAppearance(a.appearance, ev) };
 }
 
 // ---------- scenarios ----------

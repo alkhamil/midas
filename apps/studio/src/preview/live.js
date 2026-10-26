@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
-import { resolveFeedbackMotion, createFeedbackLifecycle, flipDeltas, resolveAppearance } from '../engine/behavior.js';
+import { resolveFeedbackMotion, createFeedbackLifecycle, flipDeltas, resolveAppearance, framedPlacePos } from '../engine/behavior.js';
 import { rowRuntimeKey, hasOwnInteractions } from '../engine/behavior.js';
 import { submitForm as runFormCheck, outcomeOf } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
@@ -1322,6 +1322,20 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     });
     /** The small "built-in" mark on feedback Preview drew itself because no component of the file is set for it. */
     const builtinBadge = parent => { const b = el('span', { position: 'absolute', top: '3px', right: '6px', fontSize: '9px', lineHeight: '1', padding: '2px 5px', borderRadius: '999px', background: '#eceef2', color: '#6b7280', letterSpacing: '.02em', pointerEvents: 'none' }, parent); b.textContent = 'built-in'; b.dataset.builtin = '1'; };
+    /** The box a framed action sits against on screen: its Relative to frame, else the frame its layer is in, else the trigger. */
+    function anchorBox(id, anchor, rect) {
+        const named = id ? root.querySelector(`[data-node="${CSS.escape(id)}"]`) : null;
+        const e = named || outermostNode(anchor);
+        const b = e ? e.getBoundingClientRect() : rect || root.getBoundingClientRect();
+        return { x: b.left, y: b.top, w: b.width, h: b.height };
+    }
+    function outermostNode(e) { let out = null; for (let x = e; x && x !== root; x = x.parentElement) if (x.dataset?.node) out = x; return out; }
+    /** Places a feedback card (already in the Preview) at its placement against its frame, moved by its offset. */
+    function placeAt(node, f, anchor, rect) {
+        const r = root.getBoundingClientRect();
+        const p = framedPlacePos(anchorBox(f.anchorFrameId, anchor, rect), node.offsetWidth, node.offsetHeight, f.placement, f.offset);
+        Object.assign(node.style, { position: 'absolute', left: px(p.x - r.left), top: px(p.y - r.top), right: 'auto', bottom: 'auto', transform: 'none' });
+    }
     /** Feedback drawn by the file's own component (Convention → Feedback components): its message / title layers get the text, its type comes from a variant or a mode. */
     function showComponentFeedback(f, id, inst, anchor, rect, trigger, rowCtx) {
         const first = ctx.componentTarget?.(id);
@@ -1352,16 +1366,15 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         };
         const box = f.kind === 'alert' || f.kind === 'message' || f.kind === 'notification';
         if (!box || f.blocking) backdrop(!f.blocking && f.kind === 'modal');
-        const pos = box ? stackFor(f.position) : null, prev = box ? stackTops(f.position) : null;
-        const holder = el('div', { pointerEvents: 'auto', position: box ? 'relative' : 'absolute', zIndex: 82 }, box ? pos : root);
-        if (box) { holder.dataset.fbId = String(fb.id); fb.pos = f.position; }
+        const holder = el('div', { pointerEvents: 'auto', position: 'absolute', zIndex: 82 }, root);
+        if (box) holder.dataset.fbId = String(fb.id);
         const content = renderScene(nodes, holder);
         content.style.position = 'relative'; content.style.left = '0'; content.style.top = '0';
         if (f.kind === 'drawer') Object.assign(holder.style, { top: '0', right: '0' });
         else if (f.kind === 'modal') Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' });
         else if (f.kind === 'popconfirm') { if (rect) Object.assign(holder.style, { left: px(Math.max(8, rect.left)), top: px(Math.max(8, rect.top - content.offsetHeight - 8)) }); else Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }); }
         fb.nodes.push(holder);
-        if (box) flipStack(f.position, prev);
+        if (f.kind !== 'drawer' && f.kind !== 'popconfirm') placeAt(holder, f, anchor, rect);
         return startFeedback(fb, f, holder, fb.backdrop || null);
     }
     function showFeedback(f, inst, anchor, rect, trigger, rowCtx) {
@@ -1387,10 +1400,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const confirmRun = () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger, rowCtx)).catch(e => flash(e.message)); };
         if (f.kind === 'alert' || f.kind === 'message' || f.kind === 'notification') {
             if (f.blocking) backdrop(false);
-            const prev = stackTops(f.position);
-            const card = el('div', cardStyle(f.level), stackFor(f.position));
+            const card = el('div', cardStyle(f.level), root);
             card.dataset.fbId = String(fb.id);
-            fb.pos = f.position;
             if (f.kind === 'message') Object.assign(card.style, { borderLeft: '0', borderRadius: '999px', padding: '8px 16px' });
             const head = body(card, f.level);
             const x = el('button', { ...chrome, border: '0', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1', color: '#666' }, head);
@@ -1398,7 +1409,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             card.setAttribute('role', 'alert');
             builtinBadge(card);
             fb.nodes.push(card);
-            flipStack(f.position, prev);
+            placeAt(card, f, anchor, rect);
             return startFeedback(fb, f, card, fb.backdrop || null);
         }
         if (f.kind === 'drawer') {
@@ -1433,6 +1444,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
         card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true'); builtinBadge(card);
         fb.nodes.push(card);
+        if (f.kind === 'modal') placeAt(card, f, anchor, rect);
         return startFeedback(fb, f, card, fb.backdrop || null);
     }
     /** Something is misconfigured (a condition that cannot be read, a State action with no variable): say so, never skip silently. */
@@ -1564,8 +1576,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 backdrop = el('div', { position: 'fixed', inset: '0', zIndex: 69, pointerEvents: 'auto', background: 'rgba(15,23,42,.45)' }, portal);
                 if (action.closeOnBackdrop) backdrop.addEventListener('click', () => closeLayers('all'));
             }
-            const vp = { x: 0, y: 0, w: r.width, h: r.height };
-            const op = action.position ? placeOverlayPos(vp, w, h, action.position, action.offset) : { x: (vp.w - w) / 2, y: (vp.h - h) / 2 };
+            const op = framedPlacePos(anchorBox(action.anchorFrameId, anchor, rect), w, h, action.position || 'center', action.offset);
             place(op.x, op.y);
         }
         else if (a) {

@@ -72,7 +72,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + typeRow + (ignored ? `<p class="small-label bh-warn">⚠ ${esc(ignored)}</p>` : '')
                 + `<label class="field"><span>Title</span><input data-bh-path="${esc(p)}.title" data-bh-kind="plain" value="${esc(a.title || '')}" placeholder="Optional" spellcheck="false"></label>`
                 + `<label class="field"><span>Message</span><input data-bh-path="${esc(p)}.message" data-bh-kind="plain" value="${esc(a.message || '')}" placeholder="Total: {total}" spellcheck="false" title="Put a State name in {braces} to show its value"></label>`
-                + `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', a.position, PLACEMENTS.map(k => [k, k]))}</label>`
+                + `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', a.position, ['center', ...PLACEMENTS].map(k => [k, k]))}</label>`
                 + anchorRow(ctx, p, a)
                 + `<label class="field"><span>Offset X</span><input type="number" data-bh-path="${esc(p)}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label>`
                 + `<label class="field"><span>Offset Y</span><input type="number" data-bh-path="${esc(p)}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`

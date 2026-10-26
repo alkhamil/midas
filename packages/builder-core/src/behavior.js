@@ -129,6 +129,22 @@ export function offsetXY(offset, position, kind) {
     const s = side || dflt;
     return (s === 'left' || s === 'right') ? { x: n, y: 0 } : (s === 'top' || s === 'bottom') ? { x: 0, y: n } : { x: 0, y: 0 };
 }
+/**
+ * A framed action (Show feedback, Open overlay) sits against its frame: a side puts it on that edge of the frame, inside it,
+ * and the alignment (start / centre / end) runs along the edge. 'center' centres it. The offset moves it in x and y.
+ */
+export function framedPlacePos(box, w, h, position, offset) {
+    const ox = Number(offset?.x) || 0, oy = Number(offset?.y) || 0;
+    const parts = String(position || '').split('-');
+    const side = PLACEMENTS.includes(position) ? parts[0] : null;
+    const align = parts[1] || 'center';
+    const along = (start, sz, aSz) => align === 'start' ? start : align === 'end' ? start + aSz - sz : start + (aSz - sz) / 2;
+    if (!side) return { x: box.x + (box.w - w) / 2 + ox, y: box.y + (box.h - h) / 2 + oy };
+    if (side === 'top') return { x: along(box.x, w, box.w) + ox, y: box.y + oy };
+    if (side === 'bottom') return { x: along(box.x, w, box.w) + ox, y: box.y + box.h - h + oy };
+    if (side === 'left') return { x: box.x + ox, y: along(box.y, h, box.h) + oy };
+    return { x: box.x + box.w - w + ox, y: along(box.y, h, box.h) + oy };
+}
 export function placeOverlayPos(anchor, w, h, position, offset = 0) {
     const gap = (offset && typeof offset === 'object') ? 0 : Number(offset) || 0;
     const ox = (offset && typeof offset === 'object' ? Number(offset.x) : 0) || 0;
