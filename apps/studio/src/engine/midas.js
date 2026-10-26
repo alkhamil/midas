@@ -19353,6 +19353,14 @@ function bhTypeOf(n) {
  * A component a behavior points at (an icon, a dropdown's content…): a button that opens the same grouped, searchable picker as
  * "Swap instance". A component set is stored by its own id, so any of its variants counts.
  */
+/** Whether a component already defines motion of its own (Smart animate or Change variant, in it or below it). */
+/** Play requests for an open Preview (see live.js). */
+const feedbackPlay = typeof BroadcastChannel === 'function' ? new BroadcastChannel('midas:feedback-play') : null;
+function componentHasMotion(id) {
+    const top = id ? doc.get(id) : null;
+    if (!top) return false;
+    return [top, ...doc.descendants(top.id)].some(n => (bhCfg(n).interactions || []).some(it => (it.actions || []).some(a => a.transition === 'smart-animate' || a.type === 'change-variant')));
+}
 function bhComponentButton(path, value, label) {
     const c = value && allNodes().find(n => n.id === value);
     const text = c ? c.name : value ? '(missing component)' : 'Choose component';
@@ -19534,7 +19542,7 @@ function bhInteractionRows(n, frames, opts = {}) {
         const label = main && it.actions.length > 1 ? `Then ${j + 1}` : 'Do';
         return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
     };
-    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton };
+    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton, componentHasMotion };
     // In the window one interaction is shown on its own (opts.only = its id); its Rules open as a view of their own (opts.rulesOnly).
     const rulesCount = it => (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
     const drill = it => `<button type="button" class="bh-drill" data-bhw-sub="rules"><span><b>Rules</b><small>${rulesCount(it) ? `${rulesCount(it)} · first match wins` : 'none yet'}</small></span>${icon('chevronRight', 12)}</button>`;
@@ -20441,6 +20449,15 @@ function bhAction(n, t) {
     if (act === 'clear-repeat') { delete n.repeat; return; }
     if (act === 'clear-bind') { delete n.stateBind; return; }
     const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
+    if (act === 'play-feedback') {
+        const detail = JSON.parse(t.dataset.feedbackJson || '{}');
+        let answered = false;
+        const onAck = e => { if (e.data?.type === 'ack') answered = true; };
+        feedbackPlay?.addEventListener('message', onAck);
+        feedbackPlay?.postMessage({ type: 'play', detail });
+        setTimeout(() => { feedbackPlay?.removeEventListener('message', onAck); if (!answered) toast('Open Preview to play this feedback.'); }, 400);
+        return;
+    }
     if (act === 'add-action-at') {
         if (!t.value) return;
         bhWrite(n, t.dataset.bhList, [...listAt(t.dataset.bhList), { type: t.value }]);

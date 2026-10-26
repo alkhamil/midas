@@ -10,6 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
+import { resolveFeedbackMotion, createFeedbackLifecycle, flipDeltas } from '../engine/behavior.js';
 import { rowRuntimeKey, hasOwnInteractions } from '../engine/behavior.js';
 import { submitForm as runFormCheck, outcomeOf } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
@@ -1213,8 +1214,110 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     const stackFor = pos => stacks[pos] || (stacks[pos] = el('div', { position: 'absolute', zIndex: 82, display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'none', width: 'min(360px, calc(100% - 32px))', ...(POS[pos] || POS['top-right']) }, root));
     const cardStyle = lv => ({ ...chrome, position: 'relative', background: '#fff', color: '#16161a', borderRadius: '10px', boxShadow: '0 12px 36px rgba(0,0,0,.22)', borderLeft: `4px solid ${LEVEL_COLOR[lv] || LEVEL_COLOR.info}`, padding: '12px 14px', pointerEvents: 'auto', fontSize: '14px', lineHeight: '1.4' });
     const btnStyle = primary => ({ ...chrome, padding: '6px 14px', borderRadius: '8px', border: primary ? '0' : '1px solid #d5d5dc', background: primary ? '#16161a' : '#fff', color: primary ? '#fff' : '#16161a', cursor: 'pointer', fontSize: '13px' });
-    function closeFeedback(fb) { const i = feedbacks.indexOf(fb); if (i < 0) return; feedbacks.splice(i, 1); fb.nodes.forEach(n => n.remove()); clearTimeout(fb.timer); fb.cleanup?.(); }
-    function clearFeedback() { [...feedbacks].forEach(closeFeedback); }
+    let reduceOverride = null, feedbackSeq = 0;
+    /** Reduce motion: the Preview toolbar toggle when it is set, else the system setting. Every motion of the preview reads this. */
+    function reducedMotion() { return reduceOverride ?? !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; }
+    /** Takes a feedback out of the open list (its exit has started, or it is being removed): the next close or stack layout ignores it. */
+    function dropFromList(fb) { const i = feedbacks.indexOf(fb); if (i >= 0) feedbacks.splice(i, 1); }
+    /** The nodes of a feedback go, and the cards left in its stack slide into the gap. */
+    function removeFeedbackNodes(fb) {
+        const pos = fb.pos, prev = pos ? stackTops(pos) : null;
+        fb.nodes.forEach(n => n.remove());
+        if (pos) flipStack(pos, prev);
+    }
+    /** Close one feedback: its exit plays, then its nodes go. Every close path comes here; a second close does nothing. */
+    function closeFeedback(fb, { immediate = false } = {}) {
+        if (immediate) fb.killed = true;
+        fb.cleanup?.();
+        if (!fb.life) { dropFromList(fb); removeFeedbackNodes(fb); return; }
+        fb.life.close();
+    }
+    function clearFeedback() { [...feedbacks].forEach(fb => closeFeedback(fb, { immediate: true })); }
+    /** Where each card of a stack is now, by feedback id (the short slide when another card comes or goes). */
+    const stackTops = pos => {
+        const out = new Map();
+        for (const c of stacks[pos]?.children || []) if (c.dataset.fbId) out.set(c.dataset.fbId, c.getBoundingClientRect().top);
+        return out;
+    };
+    /** The cards that moved in a stack animate from where they were to where they are now (FLIP), in 160 ms. */
+    function flipStack(pos, prev) {
+        if (reducedMotion() || !prev?.size) return;
+        const d = flipDeltas(prev, stackTops(pos));
+        for (const c of stacks[pos]?.children || []) {
+            const dy = d[c.dataset.fbId];
+            if (dy) c.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], { duration: 160, easing: 'ease-out' });
+        }
+    }
+    /**
+     * The lifecycle of one feedback (builder-core createFeedbackLifecycle) on WAAPI: the enter on the card and its backdrop, the
+     * Hide-after timer after the enter, the exit on every close path, and the removal of the nodes when the exit ends.
+     * A hidden page can stall animations, so every step also has a timeout that finishes it.
+     */
+    function feedbackLife(fb, f, m, card, backdrop) {
+        const timing = s => ({ duration: s.duration, delay: s.delay, easing: s.easingCss });
+        return createFeedbackLifecycle({
+            autoMs: f.duration > 0 ? f.duration : 0,
+            hoverPause: !!m.hoverPause && f.duration > 0,
+            ops: {
+                now: () => performance.now(),
+                schedule: (fn, ms) => setTimeout(fn, ms),
+                cancel: h => clearTimeout(h),
+                playEnter(done) {
+                    const s = m.enter;
+                    if (s.skip || !card) { done(); return () => { }; }
+                    let ended = false;
+                    const end = () => { if (!ended) { ended = true; clearTimeout(guard); done(); } };
+                    const list = [card.animate(s.keyframes, { ...timing(s), fill: 'backwards' })];
+                    if (backdrop) list.push(backdrop.animate([{ opacity: 0 }, { opacity: m.backdrop.opacity }], { ...timing(s), fill: 'backwards' }));
+                    fb.enterAnims = list;
+                    const guard = setTimeout(end, s.delay + s.duration + 80);
+                    Promise.allSettled(list.map(a => a.finished)).then(end);
+                    // Nothing to cancel: an exit that starts now reads the card's current frame and replaces this one.
+                    return () => { };
+                },
+                playExit(done) {
+                    dropFromList(fb);
+                    const s = m.exit;
+                    let ended = false;
+                    const end = () => { if (!ended) { ended = true; clearTimeout(guard); done(); } };
+                    const guard = setTimeout(end, s.delay + s.duration + 80);
+                    if (s.skip || !card || fb.killed) { end(); return; }
+                    // The frame the card and backdrop are in now: an exit that interrupts the enter continues from there.
+                    const cs = getComputedStyle(card), bs = backdrop ? getComputedStyle(backdrop) : null;
+                    const now = { opacity: cs.opacity, transform: cs.transform, backdrop: bs?.opacity };
+                    for (const a of fb.enterAnims || []) a.cancel();
+                    fb.enterAnims = null;
+                    const frames = s.keyframes.map((k, i) => (i === 0 ? { ...k, opacity: now.opacity, ...(k.transform !== undefined ? { transform: now.transform } : {}) } : k));
+                    const list = [card.animate(frames, { ...timing(s), fill: 'forwards' })];
+                    if (backdrop) list.push(backdrop.animate([{ opacity: now.backdrop }, { opacity: 0 }], { ...timing(s), fill: 'forwards' }));
+                    Promise.allSettled(list.map(a => a.finished)).then(end);
+                },
+                remove: () => removeFeedbackNodes(fb),
+            },
+        });
+    }
+    /** Starts a feedback: it joins the open list and its enter plays. `card` is the node that moves (its base transform is kept). */
+    function startFeedback(fb, f, card, backdrop) {
+        const base = card.style.transform && card.style.transform !== 'none' ? card.style.transform : '';
+        const m = resolveFeedbackMotion(f.motion, { kind: f.kind, placement: f.position, reduced: reducedMotion(), base });
+        fb.motion = m;
+        fb.life = feedbackLife(fb, f, m, card, backdrop || null);
+        feedbacks.push(fb);
+        fb.life.start();
+        return fb;
+    }
+    /** The editor's Play button (and the Rules "Play"): one feedback of the given kind, its enter, a short hold, then its exit. */
+    function playFeedbackDemo(d) {
+        showFeedback({ ...d.feedback, title: d.feedback?.title || '', message: d.feedback?.message || 'Preview of the motion', duration: 1200, blocking: false, onConfirm: null, confirmLabel: '', componentId: d.componentId || '', motion: { ...(d.feedback?.motion || {}), hoverPause: false } }, null, null, null, null, null);
+    }
+    // A Play from the Behavior window arrives here (the Preview tab is its own page, so it is a channel, not an event).
+    const feedbackPlay = typeof BroadcastChannel === 'function' ? new BroadcastChannel('midas:feedback-play') : null;
+    feedbackPlay?.addEventListener('message', e => {
+        if (e.data?.type !== 'play') return;
+        if (!root.isConnected) { feedbackPlay.close(); return; }
+        feedbackPlay.postMessage({ type: 'ack' });
+        playFeedbackDemo(e.data.detail || {});
+    });
     /** The small "built-in" mark on feedback Preview drew itself because no component of the file is set for it. */
     const builtinBadge = parent => { const b = el('span', { position: 'absolute', top: '3px', right: '6px', fontSize: '9px', lineHeight: '1', padding: '2px 5px', borderRadius: '999px', background: '#eceef2', color: '#6b7280', letterSpacing: '.02em', pointerEvents: 'none' }, parent); b.textContent = 'built-in'; b.dataset.builtin = '1'; };
     /** Feedback drawn by the file's own component (Convention → Feedback components): its message / title layers get the text, its type comes from a variant or a mode. */
@@ -1225,7 +1328,8 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const problem = b ? slotIssues(b)[0]?.why : 'It has no “Show feedback” behavior.';
         if (problem) { flash(`“${first.name}” cannot draw ${f.kind}: ${problem} The built-in one is used.`); return null; }
         const style = ctx.feedbackStyle?.(id, f.level, b.config.types) || { node: first, modes: {} };
-        const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
+        const fb = { nodes: [], blocking: !!f.blocking, id: ++feedbackSeq };
+        const m0 = resolveFeedbackMotion(f.motion, { kind: f.kind, placement: f.position, reduced: reducedMotion() });
         const roles = {};
         for (const r of ['close', 'confirm', 'cancel']) if (b.slots[r]) roles[b.slots[r]] = r;
         const texts = { [b.slots.message]: f.message };
@@ -1238,24 +1342,30 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         let nodes;
         try { nodes = buildScene(style.node, false, null, null, { fb: ctrl }); }
         finally { for (const [cid, v] of kept) v === undefined ? modeOver.delete(cid) : modeOver.set(cid, v); }
-        const backdrop = closable => { const x = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: 'rgba(15,23,42,.45)', pointerEvents: 'auto' }, root); fb.nodes.push(x); if (closable) x.onclick = () => closeFeedback(fb); };
+        const backdrop = closable => {
+            const x = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: m0.backdrop.color, opacity: String(m0.backdrop.opacity), pointerEvents: 'auto' }, root);
+            fb.nodes.push(x); fb.backdrop = x;
+            if (closable) x.onclick = () => closeFeedback(fb);
+        };
         const box = f.kind === 'alert' || f.kind === 'message' || f.kind === 'notification';
         if (!box || f.blocking) backdrop(!f.blocking && f.kind === 'modal');
-        const holder = el('div', { pointerEvents: 'auto', position: box ? 'relative' : 'absolute', zIndex: 82 }, box ? stackFor(f.position) : root);
+        const pos = box ? stackFor(f.position) : null, prev = box ? stackTops(f.position) : null;
+        const holder = el('div', { pointerEvents: 'auto', position: box ? 'relative' : 'absolute', zIndex: 82 }, box ? pos : root);
+        if (box) { holder.dataset.fbId = String(fb.id); fb.pos = f.position; }
         const content = renderScene(nodes, holder);
         content.style.position = 'relative'; content.style.left = '0'; content.style.top = '0';
         if (f.kind === 'drawer') Object.assign(holder.style, { top: '0', right: '0' });
         else if (f.kind === 'modal') Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' });
         else if (f.kind === 'popconfirm') { if (rect) Object.assign(holder.style, { left: px(Math.max(8, rect.left)), top: px(Math.max(8, rect.top - content.offsetHeight - 8)) }); else Object.assign(holder.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }); }
         fb.nodes.push(holder);
-        feedbacks.push(fb);
-        if (f.duration > 0) fb.timer = setTimeout(() => closeFeedback(fb), f.duration);
-        return fb;
+        if (box) flipStack(f.position, prev);
+        return startFeedback(fb, f, holder, fb.backdrop || null);
     }
     function showFeedback(f, inst, anchor, rect, trigger, rowCtx) {
         const own = ctx.feedbackComponent?.(f.kind, f.componentId);
         if (own) { const done = showComponentFeedback(f, own, inst, anchor, rect, trigger, rowCtx); if (done) return done; }
-        const fb = { nodes: [], timer: 0, blocking: !!f.blocking };
+        const fb = { nodes: [], blocking: !!f.blocking, id: ++feedbackSeq };
+        const m0 = resolveFeedbackMotion(f.motion, { kind: f.kind, placement: f.position, reduced: reducedMotion() });
         const mark = (parent, lv) => { const m = el('span', { display: 'inline-grid', placeItems: 'center', width: '18px', height: '18px', borderRadius: '50%', background: LEVEL_COLOR[lv] || LEVEL_COLOR.info, color: '#fff', fontSize: '11px', fontWeight: 700, flex: 'none' }, parent); m.textContent = LEVEL_MARK[lv] || 'i'; return m; };
         const body = (card, lv) => {
             const head = el('div', { display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }, card);
@@ -1264,50 +1374,63 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             if (f.title || !(f.kind === 'alert' || f.kind === 'message')) { if (f.message) el('div', { marginTop: '6px', opacity: f.title ? 0.8 : 1 }, card).textContent = f.message; }
             return head;
         };
-        const backdrop = (closable) => { const b = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: 'rgba(15,23,42,.45)', pointerEvents: 'auto' }, root); fb.nodes.push(b); if (closable) b.onclick = () => closeFeedback(fb); return b; };
+        // The dim layer: its colour and opacity are the Backdrop settings; it fades with the card (see feedbackLife).
+        const backdrop = closable => {
+            const b = el('div', { position: 'absolute', inset: '0', zIndex: 81, background: m0.backdrop.color, opacity: String(m0.backdrop.opacity), pointerEvents: 'auto' }, root);
+            fb.nodes.push(b); fb.backdrop = b;
+            if (closable) b.onclick = () => closeFeedback(fb);
+            return b;
+        };
         const confirmRun = () => { closeFeedback(fb); if (f.onConfirm?.length) runActions(f.onConfirm, hostFor(inst, anchor, rect, trigger, rowCtx)).catch(e => flash(e.message)); };
-        if (f.kind === 'alert' || f.kind === 'message') {
+        if (f.kind === 'alert' || f.kind === 'message' || f.kind === 'notification') {
             if (f.blocking) backdrop(false);
+            const prev = stackTops(f.position);
             const card = el('div', cardStyle(f.level), stackFor(f.position));
+            card.dataset.fbId = String(fb.id);
+            fb.pos = f.position;
             if (f.kind === 'message') Object.assign(card.style, { borderLeft: '0', borderRadius: '999px', padding: '8px 16px' });
             const head = body(card, f.level);
             const x = el('button', { ...chrome, border: '0', background: 'transparent', cursor: 'pointer', fontSize: '16px', lineHeight: '1', color: '#666' }, head);
-            x.textContent = '\u00d7'; x.setAttribute('aria-label', 'Close'); x.onclick = () => closeFeedback(fb);
+            x.textContent = '×'; x.setAttribute('aria-label', 'Close'); x.onclick = () => closeFeedback(fb);
             card.setAttribute('role', 'alert');
             builtinBadge(card);
             fb.nodes.push(card);
+            flipStack(f.position, prev);
+            return startFeedback(fb, f, card, fb.backdrop || null);
         }
-        else if (f.kind === 'drawer') {
+        if (f.kind === 'drawer') {
             backdrop(!f.blocking);
             const card = el('div', { ...cardStyle(f.level), position: 'absolute', zIndex: 82, top: '0', right: '0', bottom: '0', width: 'min(380px, 90%)', borderRadius: '0', borderLeft: '0', display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }, root);
             body(card, f.level);
             const foot = el('div', { marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
             const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'Close'; ok.onclick = () => closeFeedback(fb);
             card.setAttribute('role', 'dialog'); builtinBadge(card); fb.nodes.push(card);
+            return startFeedback(fb, f, card, fb.backdrop);
         }
-        else {
-            // modal and popconfirm: a card the person has to answer
-            backdrop(!f.blocking && f.kind === 'modal');
-            const card = el('div', { ...cardStyle(f.level), position: 'absolute', zIndex: 82, left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: f.kind === 'popconfirm' ? 'min(300px, 90%)' : 'min(420px, 90%)', borderLeft: '0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }, root);
-            if (f.kind === 'popconfirm' && rect) Object.assign(card.style, { left: px(Math.max(8, rect.left)), top: px(Math.max(8, rect.top - 120)), transform: 'none' });
-            body(card, f.level);
-            const foot = el('div', { display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
-            if (f.onConfirm?.length || f.kind === 'popconfirm') { const no = el('button', btnStyle(false), foot); no.textContent = 'Cancel'; no.onclick = () => closeFeedback(fb); }
-            // A Popconfirm is answered in place: Esc and a click outside it are Cancel (nothing runs, the row stays).
-            if (f.kind === 'popconfirm') {
-                const away = e => { if (!card.contains(e.target)) closeFeedback(fb); };
-                const esc = e => { if (e.key === 'Escape') closeFeedback(fb); };
-                // attached on the next turn, so the click that opened it is not the one that closes it
-                const t = setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
-                fb.cleanup = () => { clearTimeout(t); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); };
-            }
-            const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
-            card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true'); builtinBadge(card);
-            fb.nodes.push(card);
+        // modal and popconfirm: a card the person has to answer
+        backdrop(!f.blocking && f.kind === 'modal');
+        const card = el('div', { ...cardStyle(f.level), position: 'absolute', zIndex: 82, left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: f.kind === 'popconfirm' ? 'min(300px, 90%)' : 'min(420px, 90%)', borderLeft: '0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }, root);
+        if (f.kind === 'popconfirm' && rect) {
+            const left = Math.max(8, rect.left), top = Math.max(8, rect.top - 120);
+            Object.assign(card.style, { left: px(left), top: px(top), transform: 'none' });
+            // A Popconfirm grows out of its anchor: the scale origin is the centre of the trigger.
+            card.style.transformOrigin = `${px(rect.left + (rect.right - rect.left) / 2 - left)} ${px(rect.top + (rect.bottom - rect.top) / 2 - top)}`;
         }
-        feedbacks.push(fb);
-        if (f.duration > 0) fb.timer = setTimeout(() => closeFeedback(fb), f.duration);
-        return fb;
+        body(card, f.level);
+        const foot = el('div', { display: 'flex', justifyContent: 'flex-end', gap: '8px' }, card);
+        if (f.onConfirm?.length || f.kind === 'popconfirm') { const no = el('button', btnStyle(false), foot); no.textContent = 'Cancel'; no.onclick = () => closeFeedback(fb); }
+        // A Popconfirm is answered in place: Esc and a click outside it are Cancel (nothing runs, the row stays).
+        if (f.kind === 'popconfirm') {
+            const away = e => { if (!card.contains(e.target)) closeFeedback(fb); };
+            const esc = e => { if (e.key === 'Escape') closeFeedback(fb); };
+            // attached on the next turn, so the click that opened it is not the one that closes it
+            const t = setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
+            fb.cleanup = () => { clearTimeout(t); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); };
+        }
+        const ok = el('button', btnStyle(true), foot); ok.textContent = f.confirmLabel || 'OK'; ok.onclick = confirmRun;
+        card.setAttribute('role', f.kind === 'modal' ? 'dialog' : 'alertdialog'); card.setAttribute('aria-modal', 'true'); builtinBadge(card);
+        fb.nodes.push(card);
+        return startFeedback(fb, f, card, fb.backdrop || null);
     }
     /** Something is misconfigured (a condition that cannot be read, a State action with no variable): say so, never skip silently. */
     function flash(msg) {
@@ -1440,7 +1563,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             place(dp.x, dp.y);
         }
         const layer = { holder, backdrop, kind, key, anchor: a, motion: resolveMotion(action, action.type) };
-        if (layer.motion.transition !== 'instant' && layer.motion.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        if (layer.motion.transition !== 'instant' && layer.motion.duration > 0 && !reducedMotion()) {
             content.style.animation = `${layer.motion.transition === 'fade' ? 'mvt-fade' : 'mvt-pop'} ${layer.motion.duration}ms ${layer.motion.easingCss}`;
             if (backdrop) backdrop.style.animation = `mvt-fade ${layer.motion.duration}ms ${layer.motion.easingCss}`;
         }
@@ -1481,7 +1604,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         layer.onClose?.();
         if (layer.owner && motion !== true) setTimeout(() => runTriggers(layer.owner, 'onOpenChange'), 0);
         const m = motion === true ? null : (motion || layer.motion || resolveMotion(null, 'close-overlay'));
-        if (m && m.transition !== 'instant' && m.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        if (m && m.transition !== 'instant' && m.duration > 0 && !reducedMotion()) {
             for (const n of [layer.holder, layer.backdrop]) if (n) { n.style.transition = `opacity ${m.duration}ms ${m.easingCss}`; n.style.opacity = '0'; }
             setTimeout(() => { layer.holder.remove(); layer.backdrop?.remove(); }, m.duration + 40);
             return;
@@ -1577,7 +1700,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         if (!f) return;
         const smart = pendingSmart;
         pendingSmart = null;
-        const smartOn = smart && smart.transition === 'smart-animate' && smart.duration > 0 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const smartOn = smart && smart.transition === 'smart-animate' && smart.duration > 0 && !reducedMotion();
         const a = document.activeElement, keep = a?.dataset?.field, toEnd = caretAtEnd, caret = a?.selectionStart;
         caretAtEnd = false;
         rendering = true;
@@ -1590,7 +1713,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const typingNow = !!document.activeElement?.dataset?.field;
         // View Transitions hanya untuk navigasi (sekali per klik). State hover/pressed/selected digambar
         // instant seperti semula: transisi di tiap gerakan mouse menumpuk dan bikin flicker + input terasa telat.
-        const useVT = animate && navigated && !typingNow && motion.duration > 0 && motion.transition !== 'instant' && typeof document.startViewTransition === 'function' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const useVT = animate && navigated && !typingNow && motion.duration > 0 && motion.transition !== 'instant' && typeof document.startViewTransition === 'function' && !reducedMotion();
         const docEl = document.documentElement;
         if (useVT) {
             docEl.dataset.mvt = motion.transition;
@@ -1787,6 +1910,18 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         slowBtn.title = 'Make requests take three times as long';
         slowBtn.setAttribute('aria-pressed', 'false');
         slowBtn.onclick = () => { slow = !slow; slowBtn.setAttribute('aria-pressed', String(slow)); slowBtn.style.background = slow ? 'rgba(255,255,255,.22)' : 'transparent'; };
+    }
+    // Reduce motion: a toolbar toggle. It follows the system setting until it is pressed.
+    {
+        const host = surface === "tab" ? root.querySelector('[aria-label="Preview scale"]') : null;
+        const rm = el('button', { ...chrome, padding: '5px 10px', border: '0', borderRadius: '7px', color: '#fff', cursor: 'pointer', fontSize: '12px' }, host || root);
+        if (!host) Object.assign(rm.style, { position: 'absolute', top: '52px', right: '12px', zIndex: 60, background: 'rgba(30,30,30,.82)', borderRadius: '10px' });
+        rm.textContent = 'Reduce motion';
+        rm.title = 'Motion plays as a short fade. Follows the system setting until pressed.';
+        rm.setAttribute('aria-label', 'Reduce motion');
+        const paint = () => { const on = reducedMotion(); rm.setAttribute('aria-pressed', String(on)); rm.style.background = on ? 'rgba(255,255,255,.22)' : host ? 'transparent' : 'rgba(30,30,30,.82)'; };
+        rm.onclick = () => { reduceOverride = !reducedMotion(); paint(); };
+        paint();
     }
     function paintBar() {
         const bar = root.querySelector('[aria-label="Preview scale"]');

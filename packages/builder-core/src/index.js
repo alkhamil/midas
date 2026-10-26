@@ -20,3 +20,4 @@ export * from './navigation.js';
 export * from './columns.js';
 export * from './table.js';
 export * from './form.js';
+export * from './feedbackMotion.js';

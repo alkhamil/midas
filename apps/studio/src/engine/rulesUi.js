@@ -1,7 +1,7 @@
 // Behavior tab, Phase 2: conditions ("If …"), the editors of the State / list / feedback / request actions, and the Rules of an
 // interaction. Only draws. What a condition means, how rules are picked and what the actions do is in @midas/builder-core.
 import { exprHtml } from './exprUi.js';
-import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, SET_OPS, describeExpr, ruleSummary, schemaOf } from './behavior.js';
+import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, normalizeFeedbackMotion, ruleSummary, schemaOf } from './behavior.js';
 
 const lit = value => ({ op: 'value', value });
 
@@ -72,6 +72,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`
                 + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(p)}.blocking" data-bh-kind="bool" ${a.blocking ? 'checked' : ''}> Blocking (nothing behind it can be used)</label>`
                 + feedbackComponentRows(ctx, p, a)
+                + feedbackMotionRows(ctx, p, a)
                 + nested + '<p class="small-label">Use {name} to show a State value, e.g. “{Attempts} of 5”.</p>';
         }
         default: return '';
@@ -100,6 +101,33 @@ export function rulesHtml(ctx, it, i, open) {
         return `<div class="bh-rule"><div class="bh-rule-head"><span></span><button type="button" class="bh-rule-title" data-bh-section="${esc(ok)}" aria-expanded="${oo}"><b>Otherwise</b><small>${other.actions.length} ${other.actions.length === 1 ? 'action' : 'actions'}</small></button><span class="bh-rule-acts"><button type="button" class="icon-button small" data-bh-act="del-otherwise" data-bh-index="${i}" title="Remove" aria-label="Remove otherwise">×</button></span></div>${oo ? `<div class="bh-rule-body">${other.actions.map((a, j) => ctx.renderAction(`${p}.actions.${j}`, a, it, `${p}.actions`, j)).join('')}${ctx.addActionAt(`${p}.actions`)}</div>` : ''}</div>`;
     })() : '';
     return `<div class="bh-rules">${head}<div class="bh-rules-body">${rules.items.map(ruleCard).join('')}${otherCard}<div class="bh-rules-add"><button type="button" class="vw-btn ghost" data-bh-act="add-rule" data-bh-index="${i}">+ Add rule</button>${other ? '' : `<button type="button" class="vw-btn ghost" data-bh-act="add-otherwise" data-bh-index="${i}">+ Otherwise</button>`}</div></div></div>`;
+}
+
+/**
+ * Motion of a feedback: enter and exit (effect, duration, delay, easing), slide distance, the Hide-after pause on hover, whose motion
+ * plays, the backdrop, and Play (one enter and exit in the live Preview). The numbers are read by feedbackMotion.js.
+ */
+function feedbackMotionRows(ctx, p, a) {
+    const { esc } = ctx, mp = `${p}.motion`, m = normalizeFeedbackMotion(a.motion, a.kind);
+    const mapped = ctx.convention?.feedback?.[a.kind] || a.componentId || '';
+    const effects = FEEDBACK_EFFECTS.map(x => [x.id, x.label]), easings = MOTION_EASINGS.map(x => [x.id, x.label]);
+    const num = (path, v, lo, hi, label, unit, stepBy = 1) => `<label class="field"><span>${label}</span><input type="number" min="${lo}" max="${hi}" step="${stepBy}" data-bh-path="${esc(path)}" data-bh-kind="plain" value="${v}" aria-label="${esc(label)}"><i class="unit">${unit}</i></label>`;
+    const step = (phase, s) => `<div class="bh-motion-step"><div class="small-label">${phase === 'enter' ? 'Enter' : 'Exit (defaults to the reverse of enter)'}</div>`
+        + `<label class="field"><span>Effect</span>${bhSelect(`${mp}.${phase}.effect`, 'plain', s.effect, effects)}</label>`
+        + num(`${mp}.${phase}.duration`, s.duration, 0, 2000, 'Duration', 'ms')
+        + num(`${mp}.${phase}.delay`, s.delay, 0, 2000, 'Delay', 'ms')
+        + `<label class="field"><span>Easing</span>${bhSelect(`${mp}.${phase}.easing`, 'plain', s.easing, easings)}</label></div>`;
+    const note = ctx.componentHasMotion?.(mapped)
+        ? `<p class="small-label bh-warn">This component already defines motion (Smart animate or Change variant). Pick “Component's own” to keep only its motion, or “Midas animation” to add Midas's on top.</p>`
+        : '';
+    const payload = { feedback: { kind: a.kind, level: a.level, position: a.position, title: a.title || '', message: a.message || '', motion: m }, componentId: mapped };
+    return `<div class="bh-motion"><div class="small-label">Motion</div>${step('enter', m.enter)}${step('exit', m.exit)}`
+        + `<label class="field"><span>Slide distance</span>${num(`${mp}.distance`, m.distance, 0, 200, 'Slide distance', 'px')}</label>`
+        + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${mp}.hoverPause" data-bh-kind="bool" ${m.hoverPause ? 'checked' : ''}> Pause Hide after while hovered</label>`
+        + `<label class="field"><span>Animation</span>${bhSelect(`${mp}.source`, 'plain', m.source, FEEDBACK_SOURCES.map(x => [x.id, x.label]))}</label>${note}`
+        + `<div class="small-label">Backdrop</div>${num(`${mp}.backdrop.opacity`, m.backdrop.opacity, 0, 1, 'Backdrop opacity', '', 0.05)}`
+        + `<label class="field"><span>Backdrop colour</span><input data-bh-path="${mp}.backdrop.color" data-bh-kind="plain" value="${esc(m.backdrop.color)}" spellcheck="false" aria-label="Backdrop colour"></label>`
+        + `<button type="button" class="vw-btn ghost" data-bh-act="play-feedback" data-feedback-json="${esc(JSON.stringify(payload))}">▶ Play enter and exit</button></div>`;
 }
 
 /** Which component draws this kind of feedback: the file's Convention, or just this action. No component = Preview's built-in one (badged). */

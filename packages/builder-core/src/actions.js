@@ -4,6 +4,7 @@
 import { evaluate, compareValues } from './expr.js';
 import { coerceField, coerceTo, schemaOf, scenariosOf, DEFAULT_SCENARIOS } from './state.js';
 import { selectRule, testCondition } from './rules.js';
+import { normalizeFeedbackMotion } from './feedbackMotion.js';
 
 const isPlain = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const lit = value => ({ op: 'value', value });
@@ -73,6 +74,7 @@ export function normalizeStateAction(type, a, normalizeList) {
             out.blocking = typeof a?.blocking === 'boolean' ? a.blocking : BLOCKING_KINDS.has(out.kind);
             if (a?.componentId) out.componentId = String(a.componentId);       // overrides the file's Convention for this one action
             if (a?.confirmLabel) out.confirmLabel = String(a.confirmLabel);
+            out.motion = normalizeFeedbackMotion(a?.motion, out.kind);
             if ((out.kind === 'modal' || out.kind === 'popconfirm') && Array.isArray(a?.onConfirm) && a.onConfirm.length) out.onConfirm = normalizeList(a.onConfirm);
             break;
         }
@@ -152,7 +154,7 @@ export function runStateAction(a, ev, env) {
 // ---------- feedback ----------
 /** What the host should draw for a show-feedback action: the message with {placeholders} filled. */
 export function resolveFeedback(a, ev) {
-    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null };
+    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind) };
 }
 
 // ---------- scenarios ----------

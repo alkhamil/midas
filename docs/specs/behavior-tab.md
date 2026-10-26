@@ -332,7 +332,7 @@ Aksi yang sudah ada (navigate, overlay, set variable/mode, set selected, change 
 |---|---|
 | **Set State** | `set` (nilai tetap atau variable lain, disesuaikan dengan tipe), `increment` / `decrement` (Number), `toggle` (Boolean), `reset` ke nilai awal |
 | **Add / Update / Delete row, Clear** (List) | add: nilai per field (field yang tidak diisi memakai default tipenya); update dan delete: untuk **baris yang cocok** (*Only rows where field …*) atau semua baris |
-| **Show feedback** | `kind` alert / message / modal / drawer / popconfirm, `level` success / error / warning / info, title, message, posisi, *Hide after* (ms, 0 = tetap), **blocking**. Modal dan popconfirm punya *When confirmed* (aksi yang jalan saat OK) |
+| **Show feedback** | `kind` alert / message / notification / modal / drawer / popconfirm, `level` success / error / warning / info, title, message, posisi, *Hide after* (ms, 0 = tetap), **blocking**, **Motion** (see *Feedback motion* below). Modal dan popconfirm punya *When confirmed* (aksi yang jalan saat OK) |
 | **Check field** | memeriksa satu field (atau semua field di layar) seperti submit; yang tidak valid masuk state error |
 | **Simulated request** | lihat bawah |
 
@@ -471,6 +471,22 @@ Deviations from the first design (kept on purpose, to keep to the existing State
 - Menu: sub-menus are not in this family.
 - Steps and Collapse: the gate is a boolean State (a condition such as “step form valid” is not connected yet).
 - onChange runs on every change; the checks did not include an interaction that reads it.
+
+### Feedback motion
+
+Each Show feedback action has a `motion` object (builder-core `feedbackMotion.js`, normalized in `actions.js`):
+
+- **Enter / Exit**: effect (None, Fade, Slide, Scale, Slide + fade), duration, delay, easing (the Interactions presets: Standard, Ease out, Ease in-out, Linear, Spring). Exit defaults to the enter effect, played in reverse.
+- **Slide** starts from the edge the placement names: top slides down, bottom slides up, left / right and top-right from that edge. Center (modal, popconfirm) has no direction, so slide acts as scale. **Scale** grows from 96 % and fades in (the Modal default).
+- **Defaults per kind**: Alert and Message slide + fade 200 ms; Notification slides from the edge 250 ms; Modal scales 200 ms; Drawer slides 250 ms; Popconfirm scales 200 ms from its anchor. Only Message and Notification pause Hide after on hover by default.
+- **Distance** (slide, default 16 px), **Backdrop** opacity and colour (the backdrop fades with the card).
+- **Lifecycle** (`createFeedbackLifecycle`): enter, then Hide after starts when the enter ends, then exit, then removal. The close button, Esc, a backdrop click and "Close overlay" all run the exit. Closing during enter runs the exit from the current frame. With hover pause on, hovering pauses Hide after and keeps the time left.
+- **Stacking**: when a card joins or leaves a stack, the others slide into their new place (FLIP, 160 ms).
+- **Reduced motion** (system setting, or the Preview toolbar "Reduce motion" toggle): spatial effects become a fade of at most 120 ms.
+- **Animation source**: Midas animation (default), Component's own (Midas adds none; the editor notes when the component already has Smart animate or Change variant), or None.
+- **Play** runs one enter and exit in an open Preview, over the `midas:feedback-play` BroadcastChannel. The Preview acknowledges it; without an answer the editor says to open Preview.
+
+Not done: ease-in and custom cubic-bezier easings (only the Interactions presets exist); the component path does not run the component's own motion on show.
 
 ## Form container (Phase 5, slice 1)
 
