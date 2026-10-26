@@ -108,7 +108,7 @@ export function rulesHtml(ctx, it, i, open) {
  * plays, the backdrop, and Play (one enter and exit in the live Preview). The numbers are read by feedbackMotion.js.
  */
 function feedbackMotionRows(ctx, p, a) {
-    const { esc } = ctx, mp = `${p}.motion`, m = normalizeFeedbackMotion(a.motion, a.kind);
+    const { esc, bhSelect } = ctx, mp = `${p}.motion`, m = normalizeFeedbackMotion(a.motion, a.kind);
     const mapped = ctx.convention?.feedback?.[a.kind] || a.componentId || '';
     const effects = FEEDBACK_EFFECTS.map(x => [x.id, x.label]), easings = MOTION_EASINGS.map(x => [x.id, x.label]);
     const num = (path, v, lo, hi, label, unit, stepBy = 1) => `<label class="field"><span>${label}</span><input type="number" min="${lo}" max="${hi}" step="${stepBy}" data-bh-path="${esc(path)}" data-bh-kind="plain" value="${v}" aria-label="${esc(label)}"><i class="unit">${unit}</i></label>`;
