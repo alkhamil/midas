@@ -19826,13 +19826,18 @@ function feedbackStyleOf(id, level, types) {
     }
     const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
     for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
+    // The type dimension of this component: a variant property, or a collection that covers at least two levels.
+    let dimension = !!(set && variantProps(set).length);
     for (const cid of colls) {
         const coll = varColl(cid);
         // A type collection (Info / Success / Warning / Error) can look like a states collection (success and error are state names): it counts when it covers the levels.
         if (!coll || (isStateCollection(coll) && levelsCovered(coll.modes.map(x => x.name)) < 2)) continue;
+        dimension = true;
         const m = matchLevel(coll.modes.map(x => x.name), level, types);
         if (m != null) return { node: first, modes: { [cid]: coll.modes.find(x => x.name === m).id }, how: `mode of “${coll.name}”` };
     }
+    // Typed component, no value for this level: say so (the caller shows it) instead of drawing the first look under the wrong type.
+    if (dimension) return { node: null, modes: {}, how: null, unmapped: true };
     return { node: first, modes: {}, how: null };
 }
 /** One-click proposals from the file's Convention: the layer for each empty slot. → [{ section, role, layerId, name, path }] */
