@@ -3806,6 +3806,23 @@ const deepLink = (() => {
 })();
 // Route /preview/: URL tidak boleh ditulis ulang dan boot tidak boleh membuka file lain.
 const isPreviewRoute = !!deepLink?.tab;
+/** Start-up failure: a message and a Retry button (reloads the page), instead of a screen that stays on its last stage. */
+function showStartError(message) {
+    if (document.getElementById('start-error')) return;
+    const box = document.createElement('div');
+    box.id = 'start-error';
+    box.setAttribute('role', 'alert');
+    box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(255,255,255,.96);font:14px Inter,system-ui,sans-serif;color:#222';
+    box.innerHTML = '<div style=\x27max-width:420px;padding:24px;text-align:center\x27><b style=\x27display:block;margin-bottom:8px\x27>Midas did not start</b><div id=\x27start-error-msg\x27 style=\x27color:#666;margin-bottom:16px\x27></div><button id=\x27start-error-retry\x27 style=\x27padding:8px 16px;border:0;border-radius:8px;background:#16161a;color:#fff;cursor:pointer\x27>Retry</button></div>';
+    box.querySelector('#start-error-msg').textContent = message;
+    box.querySelector('#start-error-retry').onclick = () => location.reload();
+    document.body.appendChild(box);
+}
+/** Rejects when `p` has not settled in `ms` (the renderer start can wait on a GPU that never answers). */
+function withTimeout(p, ms, message) {
+    let timer;
+    return Promise.race([p, new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(message)), ms); })]).finally(() => clearTimeout(timer));
+}
 function syncUrl() {
     if (state.previewTab || isPreviewRoute) return;
     try {
@@ -19192,7 +19209,8 @@ async function startPreviewTab() {
     document.body.classList.add('preview-tab');
     const ctx = liveContext();
     if (!ctx.frames.length) {
-        document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#fff;color:#666;font:14px Inter,system-ui,sans-serif">Create a frame to preview your design, then refresh this tab.</div>');
+        // Nothing to show is a state, not a stuck start: the same message box as a failed start, with a way out.
+        showStartError('Create a frame to preview your design, then retry.');
         return;
     }
     const m = await import('../preview/live.js');
@@ -23163,11 +23181,18 @@ if (previewOnly) {
     // A preview tab never shows the editor: no renderer / GPU, no canvas fit, no panels. Only the document, its fonts and Preview.
     state.previewTab = true;
     await boot.step(95, 'Opening preview');
-    await startPreviewTab();
+    try {
+        await startPreviewTab();
+    }
+    catch (e) {
+        console.error('[boot] preview', e);
+        showStartError('Preview could not start: ' + (e?.message || e));
+    }
 }
 if (!previewOnly) {
 await boot.step(90, 'Starting renderer');
-await renderer.initialize();
+// The renderer start is guarded: a GPU start that never answers shows an error with Retry instead of a stuck screen.
+await withTimeout(renderer.initialize(), 15000, 'The graphics renderer did not start within 15 s.').catch(e => { console.error('[boot] renderer', e); showStartError(e.message || String(e)); });
 await boot.step(95, 'Drawing');
 renderer.resize(area.clientWidth, area.clientHeight);
 overlay.width = Math.round(area.clientWidth * renderer.dpr);
