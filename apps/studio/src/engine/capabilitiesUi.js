@@ -1,7 +1,7 @@
 // Behavior tab, Phase 3: "Add Behavior" (presets and capabilities), the collapsed section of each capability, the slot pickers,
 // the suggestions of the Convention and the Convention panel. Only draws: the rules (what a capability needs, what a preset is,
 // what is suggested) are in @midas/builder-core (capabilities.js, convention.js).
-import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules, schemaOf, columnLabel } from './behavior.js';
+import { BEHAVIOR_KINDS, CAPABILITIES, CAPABILITY_GROUPS, FEEDBACK_KINDS, INPUT_TYPES, PRESETS, PRESET_FAMILIES, RULE_TYPES, SLOT_ROLES, VALIDATION_TRIGGERS, hasTypeable, inputSummary, optionsText, patternProblem, slotIssues, summaryOf, normalizeFieldRules, schemaOf, columnLabel } from './behavior.js';
 
 const PLACEMENT_CHOICES = [['bottom-start', 'Below, aligned left'], ['bottom', 'Below, centered'], ['bottom-end', 'Below, aligned right'], ['top-start', 'Above, aligned left'], ['top', 'Above, centered'], ['top-end', 'Above, aligned right']];
 const layerOk = { text: l => l.type === 'text', frame: l => l.type === 'frame' || l.type === 'group' || !!l.isInstance, any: () => true };
@@ -204,7 +204,7 @@ const TITLES = { 'has-form': bodyForm, 'has-carousel': bodyCarousel, 'has-menu':
 /** The ordered sections: Can type, Has validation, then the stored behaviors in their order, then On click. */
 export function capabilitySections(c) {
     const out = [];
-    if (c.typeable || c.ib?.typeable) out.push({ kind: 'can-type', id: 'can-type', title: CAPABILITIES['can-type'].label, enabled: !!c.typeable, ib: c.ib, summary: inputSummary('can-type', c.ib), issues: c.ib?.typeable?.frameId ? [] : [{ why: c.guess ? `Using “${c.guess}” as a guess: pick the layer to make it explicit.` : 'Value is not set.' }], toggle: { kind: 'proto', key: 'typeable' }, fixed: true });
+    if (c.typeable || hasTypeable(c.ib)) out.push({ kind: 'can-type', id: 'can-type', title: CAPABILITIES['can-type'].label, enabled: !!c.typeable, ib: c.ib, summary: inputSummary('can-type', c.ib), issues: c.ib?.typeable?.frameId ? [] : [{ why: c.guess ? `Using “${c.guess}” as a guess: pick the layer to make it explicit.` : 'Value is not set.' }], toggle: { kind: 'proto', key: 'typeable' }, fixed: true });
     if (c.ib?.validation && (c.ib.validation.required || c.ib.validation.rules || c.ib.validation.trigger || c.hasValidation)) out.push({ kind: 'has-validation', id: 'has-validation', title: CAPABILITIES['has-validation'].label, enabled: !c.ib.validation.off, ib: c.ib, summary: inputSummary('has-validation', c.ib), issues: [], toggle: { kind: 'invert', path: 'input.validation.off' }, fixed: true, canDelete: 'validation' });
     c.behaviors.forEach((b, i) => {
         const issues = slotIssues(b, id => c.layers.some(l => l.id === id));

@@ -351,6 +351,8 @@ export function suggestLevelMap(values) {
 }
 /** How many of the four levels a set of values can draw. */
 export const levelsCovered = values => ['success', 'error', 'warning', 'info'].filter(l => matchLevel(values, l)).length;
+/** Is Can type set on an input behavior? An empty `typeable` ({}) after Remove means it is not. */
+export const hasTypeable = ib => !!(ib?.typeable?.frameId || ib?.typeable?.inputType || ib?.typeable?.bindTo);
 /** Kinds of feedback that expect a type: they warn when it is missing or incomplete. Modal, Drawer and Popconfirm never need one. */
 export const TYPED_FEEDBACK_KINDS = ['alert', 'message', 'notification'];
 export const expectsType = kind => TYPED_FEEDBACK_KINDS.includes(kind);
