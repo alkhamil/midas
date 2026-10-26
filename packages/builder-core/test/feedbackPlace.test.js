@@ -27,3 +27,12 @@ test('Preview stacks a feedback by the edge its placement touches; drawers and m
     assert.equal(feedbackRegion('drawer', 'bottom'), 'right');
     assert.equal(feedbackRegion('modal', 'top'), 'center');
 });
+
+test('Relative to: a framed action keeps the frame it sits against; an empty one is the frame of its layer', () => {
+    const [f] = normalizeActions([{ type: 'show-feedback', kind: 'alert', anchorFrameId: 'frameA' }]);
+    assert.equal(f.anchorFrameId, 'frameA');
+    const [o] = normalizeActions([{ type: 'open-overlay', targetComponentId: 'dlg', anchorFrameId: 'frameB' }]);
+    assert.equal(o.anchorFrameId, 'frameB');
+    const [e] = normalizeActions([{ type: 'show-feedback', kind: 'alert' }]);
+    assert.equal(e.anchorFrameId, undefined);
+});

@@ -12,7 +12,7 @@ import { setRowRefs } from './rulesUi.js';
 import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
-import { appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
+import { anchorRow, appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -9429,8 +9429,10 @@ function placeOverlayOnCanvas(triggerId, a, opts = {}) {
         return null;
     }
     // A feedback component and an overlay sit against the top-level frame their action lives in; the others sit at their trigger.
+    // A framed action sits against the frame it names (Relative to), else the top-level frame its layer lives in.
     const framed = a.type === 'show-feedback' || a.type === 'open-overlay';
-    const frame = framed ? (doc.ancestors(trig).at(-1) || trig) : trig;
+    const named = framed && a.anchorFrameId ? doc.get(a.anchorFrameId) : null;
+    const frame = framed ? (named || doc.ancestors(trig).at(-1) || trig) : trig;
     const box = doc.world(frame.id)?.box;
     if (!box) return null;
     const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
@@ -19534,7 +19536,7 @@ function bhInteractionRows(n, frames, opts = {}) {
     const list = normalizeInteractions(n.interactions);
     if (!list.length) return '<div class="bh-empty"><b>No interaction yet</b><span>Pick a trigger below, then what it should do, so this component reacts in Preview.</span></div>';
     // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
-    const placementRows = (p, a, fallback) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', normalizePlacement(a.position, fallback), PLACEMENTS.map(x => [x, x]))}</label><label class="field"><span>Offset X</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`;
+    const placementRows = (p, a, fallback, list = PLACEMENTS) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', list.includes(a.position) ? a.position : list === PLACEMENTS ? normalizePlacement(a.position, fallback) : fallback, list.map(x => [x, x]))}</label><label class="field"><span>Offset X</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`;
     // Gerakan standar preview: transisi, durasi (ms), dan easing. Kosong = mengikuti default standar.
     const motionRows = (p, a, kind) => {
         const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
@@ -19577,7 +19579,7 @@ function bhInteractionRows(n, frames, opts = {}) {
         if (a.type === 'change-variant') return variantRows(p, a, it);
         if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page') + motionRows(p, a, 'navigate');
         if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + dropdownSizeRows(p, a) + motionRows(p, a, 'open-dropdown');
-        if (a.type === 'open-overlay') return openPick(p, a, 'Open') + bhSelect(`${p}.position`, 'plain', a.position || 'center', POSITIONS) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked') + motionRows(p, a, 'open-overlay');
+        if (a.type === 'open-overlay') return openPick(p, a, 'Open') + anchorRow({ esc, bhSelect, pageFrames: pageFramesOf }, p, a) + placementRows(p, a, 'center', ['center', ...PLACEMENTS]) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked') + motionRows(p, a, 'open-overlay');
         if (a.type === 'open-popover') return openPick(p, a, 'Open') + bhSelect(`${p}.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(p, a, 'top') + motionRows(p, a, 'open-popover');
         if (a.type === 'close-overlay') return bhSelect(`${p}.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]) + motionRows(p, a, 'close-overlay');
         if (a.type === 'set-variable') return variableRows(p, a);
@@ -19843,6 +19845,7 @@ function bhCapContext(n) {
     c.suggestions = bhSuggestions(n, c);
     c.feedbackTypes = feedbackTypeInfo;
     c.appearanceOptions = appearanceOptionsOf;
+    c.pageFrames = pageFramesOf;
     return c;
 }
 /**
@@ -20330,7 +20333,7 @@ function bhConnectCollection(n, id) {
  * from the new values (the placement is only made when the action's component is picked, so a change would not move it).
  */
 function replaceFeedbackCopy(n, path) {
-    const base = path.replace(/.(position|offset.x|offset.y)$/, '');
+    const base = path.replace(/.(position|offset|anchorFrameId)$/, '');
     if (base === path) return;
     const act = getPath(n, base);
     if (!act || act.type !== 'show-feedback' || !act.overlayInstanceId) return;
@@ -20342,6 +20345,10 @@ function replaceFeedbackCopy(n, path) {
     doc.touch(n);
     renderTargetPanel();
     invalidate();
+}
+/** The top-level frames of the page, for Relative to: the frames a framed action can sit against. */
+function pageFramesOf() {
+    return doc.nodes.filter(n => !n.parentId && n.type === 'frame' && !n.isOverlay && !n.softDeleted && !n.component && !n.componentSet).map(n => ({ id: n.id, name: n.name || 'Frame' }));
 }
 function bhSet(n, t) {
     const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
@@ -20371,8 +20378,7 @@ function bhSet(n, t) {
     }
     const parent = path.split('.').slice(0, -1).join('.');
     if (kind === 'offset') {
-        const am = path.match(/^interactions\.(\d+)\.actions\.(\d+)\.offset$/);
-        const act = am && n.interactions?.[+am[1]]?.actions?.[+am[2]];
+        const act = getPath(n, path.replace(/\.offset$/, ''));
         const base = act ? offsetXY(act.offset, act.position, act.type) : { x: 0, y: 0 };
         base[t.dataset.bhAxis === 'y' ? 'y' : 'x'] = value === '' ? 0 : Number(value) || 0;
         bhWrite(n, path, !base.x && !base.y ? undefined : base);

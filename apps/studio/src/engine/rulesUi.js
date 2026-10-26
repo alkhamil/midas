@@ -1,7 +1,7 @@
 // Behavior tab, Phase 2: conditions ("If …"), the editors of the State / list / feedback / request actions, and the Rules of an
 // interaction. Only draws. What a condition means, how rules are picked and what the actions do is in @midas/builder-core.
 import { exprHtml } from './exprUi.js';
-import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, PLACEMENTS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, ignoredTypeNote, normalizeFeedbackMotion, ruleSummary, schemaOf, showsTypeField } from './behavior.js';
+import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, PLACEMENTS, offsetXY, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, ignoredTypeNote, normalizeFeedbackMotion, ruleSummary, schemaOf, showsTypeField } from './behavior.js';
 
 const lit = value => ({ op: 'value', value });
 
@@ -72,9 +72,10 @@ export function stateActionFields(ctx, p, a, it) {
                 + typeRow + (ignored ? `<p class="small-label bh-warn">⚠ ${esc(ignored)}</p>` : '')
                 + `<label class="field"><span>Title</span><input data-bh-path="${esc(p)}.title" data-bh-kind="plain" value="${esc(a.title || '')}" placeholder="Optional" spellcheck="false"></label>`
                 + `<label class="field"><span>Message</span><input data-bh-path="${esc(p)}.message" data-bh-kind="plain" value="${esc(a.message || '')}" placeholder="Total: {total}" spellcheck="false" title="Put a State name in {braces} to show its value"></label>`
-                + `<label class="field"><span>Position</span>${bhSelect(`${p}.position`, 'plain', a.position, PLACEMENTS.map(k => [k, k]))}</label>`
-                // Offset from the edge of the frame for this position; the copy on the canvas moves with it.
-                + `<div class="bh-fields"><label class="field"><span>Offset X</span><input type="number" data-bh-path="${esc(p)}.offset.x" data-bh-kind="plain" value="${a.offset?.x ?? 0}" aria-label="Offset X"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${esc(p)}.offset.y" data-bh-kind="plain" value="${a.offset?.y ?? 0}" aria-label="Offset Y"><i class="unit">px</i></label></div>`
+                + `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', a.position, PLACEMENTS.map(k => [k, k]))}</label>`
+                + anchorRow(ctx, p, a)
+                + `<label class="field"><span>Offset X</span><input type="number" data-bh-path="${esc(p)}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label>`
+                + `<label class="field"><span>Offset Y</span><input type="number" data-bh-path="${esc(p)}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`
                 + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(p)}.blocking" data-bh-kind="bool" ${a.blocking ? 'checked' : ''}> Blocking (nothing behind it can be used)</label>`
                 + feedbackComponentRows(ctx, p, a)
@@ -141,6 +142,13 @@ function feedbackMotionRows(ctx, p, a) {
  * Appearance: the modes and variants this one action pins on the component it draws. One row per type dimension (its first option is
  * "Follows type", so Type mapping keeps driving it) and per other variant property ("Default (as designed)"). Stored on the action.
  */
+/** Relative to: the frame a framed action (Show feedback, Open overlay) sits against. Empty = the frame its layer lives in. */
+export function anchorRow(ctx, p, a) {
+    const { esc, bhSelect } = ctx;
+    const frames = ctx.pageFrames?.() || [];
+    const cur = frames.some(x => x.id === a.anchorFrameId) ? a.anchorFrameId : '';
+    return `<label class="field"><span>Relative to</span>${bhSelect(`${p}.anchorFrameId`, 'plain', cur, [['', 'Frame of this layer'], ...frames.map(x => [x.id, x.name])])}</label>`;
+}
 export function appearanceRows(ctx, p, a, componentId, { feedback = false } = {}) {
     const { esc, bhSelect } = ctx;
     const rows = ctx.appearanceOptions?.(componentId) || [];

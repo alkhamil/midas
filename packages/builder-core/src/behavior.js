@@ -606,6 +606,7 @@ export function normalizeAction(a) {
     if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
     if (/^open-/.test(type) && a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
     if (/^open-/.test(type) && normalizeAppearance(a?.appearance)) out.appearance = normalizeAppearance(a.appearance);
+    if (type === 'open-overlay' && a?.anchorFrameId) out.anchorFrameId = String(a.anchorFrameId);
     if (type === 'open-dropdown') {
         if (a?.width === 'parent') out.width = 'parent';
         if (a?.height === 'parent') out.height = 'parent';

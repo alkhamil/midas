@@ -101,6 +101,7 @@ export function normalizeStateAction(type, a, normalizeList) {
             // Offset from the edge of the frame for its position, and the copy placed on the canvas for this action.
             if (isPlain(a?.offset)) { const ox = Number(a.offset.x) || 0, oy = Number(a.offset.y) || 0; if (ox || oy) out.offset = { x: ox, y: oy }; }
             if (a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
+            if (a?.anchorFrameId) out.anchorFrameId = String(a.anchorFrameId);
             break;
         }
         default: break;
