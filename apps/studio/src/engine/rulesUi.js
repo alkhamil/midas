@@ -76,7 +76,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`
                 + `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(p)}.blocking" data-bh-kind="bool" ${a.blocking ? 'checked' : ''}> Blocking (nothing behind it can be used)</label>`
                 + feedbackComponentRows(ctx, p, a)
-                + appearanceRows(ctx, p, a)
+                + appearanceRows(ctx, p, a, a.componentId || ctx.convention?.feedback?.[a.kind], { feedback: true })
                 + feedbackMotionRows(ctx, p, a)
                 + nested + '<p class="small-label">Use {name} to show a State value, e.g. “{Attempts} of 5”.</p>';
         }
@@ -139,17 +139,22 @@ function feedbackMotionRows(ctx, p, a) {
  * Appearance: the modes and variants this one action pins on the component it draws. One row per type dimension (its first option is
  * "Follows type", so Type mapping keeps driving it) and per other variant property ("Default (as designed)"). Stored on the action.
  */
-function appearanceRows(ctx, p, a) {
+export function appearanceRows(ctx, p, a, componentId, { feedback = false } = {}) {
     const { esc, bhSelect } = ctx;
-    const rows = ctx.appearanceOptions?.(a.componentId || ctx.convention?.feedback?.[a.kind]) || [];
+    const rows = ctx.appearanceOptions?.(componentId) || [];
     if (!rows.length) return '';
     const pin = a.appearance || {};
+    // A pinned type row overrides Type mapping: say so on the row, so it is clear why the level no longer drives it.
+    const pinnedOf = r => (r.kind === 'mode' ? pin.modes?.[r.key] : pin.variants?.[r.key]);
+    const overridesType = feedback && rows.some(r => r.type && typeof pinnedOf(r) === 'string' && pinnedOf(r) !== '');
     return `<div class="bh-motion"><div class="small-label">Appearance</div>`
         + rows.map(r => {
             const cur = r.kind === 'mode' ? pin.modes?.[r.key] : pin.variants?.[r.key];
-            return `<label class="field"><span>${esc(r.label)}</span>${bhSelect(`${p}.appearance.${r.kind === 'mode' ? 'modes' : 'variants'}.${r.key}`, 'plain', typeof cur === 'string' ? cur : '', [['', r.type ? 'Follows type' : 'Default (as designed)'], ...r.options])}</label>`;
+            const pinned = typeof cur === 'string' && cur !== '';
+            const note = r.type && pinned && feedback ? ' · pinned, overrides Type' : '';
+            return `<label class="field${pinned ? ' bh-pinned' : ''}"><span title="${esc(r.label)}">${esc(r.label)}${esc(note)}</span>${bhSelect(`${p}.appearance.${r.kind === 'mode' ? 'modes' : 'variants'}.${r.key}`, 'plain', typeof cur === 'string' ? cur : '', [['', r.type && feedback ? 'Follows type' : 'As designed'], ...r.options])}</label>`;
         }).join('')
-        + '<p class="small-label">Pinned here applies to this action only. Default restores the designed look.</p></div>';
+        + `<p class="small-label">${overridesType ? 'Type is overridden by the pinned value above. ' : ''}Pinned here applies to this action only. As designed restores the look from the file.</p></div>`;
 }
 /** Which component draws this kind of feedback: the file's Convention, or just this action. No component = Preview's built-in one (badged). */
 function feedbackComponentRows(ctx, p, a) {

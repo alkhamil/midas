@@ -10,7 +10,7 @@
 // State mapping (tab Behavior) dibaca di sini: setiap state nilai diambil dari variable collection, jadi tidak ada
 // state hardcoded dari kit ui-standard.
 import { nodeToStyle, layoutOrder, zIndexMap } from './flexStyle.js';
-import { resolveFeedbackMotion, createFeedbackLifecycle, flipDeltas } from '../engine/behavior.js';
+import { resolveFeedbackMotion, createFeedbackLifecycle, flipDeltas, resolveAppearance } from '../engine/behavior.js';
 import { rowRuntimeKey, hasOwnInteractions } from '../engine/behavior.js';
 import { submitForm as runFormCheck, outcomeOf } from '../engine/behavior.js';
 import { filterOptions, hasValue, itemStates, pickOption, removeValue, slotIssues, activeAfterClick, pageCountOf, pageAfter, pageItems, nextPageSize, stepStatus, stepAfter, openSections, toggleOpen, carouselIndex, toValue, valueText, validateSelection, createEvalCtx, formatValue, truthy, runActions, runInteraction, STATE_ACTION_IDS, requestDelay, resolveOutcome, scenariosOf, testCondition, validateInput, effectiveState, normalizeInteractions, normalizePlacement, overridesFor, placeOverlayPos, resolveMotion, stateChain, tableBehaviors, tableRoles, tableView, sortWrites, pageWrites, searchWrites, toggleRowWrites, selectPageWrites, rowCtxOf, cellBinds } from '../engine/behavior.js';
@@ -324,9 +324,11 @@ export function swapBase(n, v) {
  * sees. Else the picked component / variant, else the legacy frame target. A placed copy that
  * was deleted falls back instead of drawing nothing.
  */
-export function resolveOpenTarget(ctx, action) {
+export function resolveOpenTarget(ctx, action, look) {
     const placed = action?.overlayInstanceId ? ctx.node(action.overlayInstanceId) : null;
     if (placed && !placed.softDeleted) return placed;
+    // A variant pinned on the action (Appearance) picks the variant; without a pin the action's own variant or the default is used.
+    if (action?.targetComponentId && look?.variants && Object.keys(look.variants).length) return ctx.componentTarget(action.targetComponentId, ctx.appearanceLike(action.targetComponentId, look.variants));
     if (action?.targetComponentId) return ctx.componentTarget(action.targetComponentId, action.targetVariantId && ctx.node(action.targetVariantId));
     return (action && ctx.node(action.targetFrameId)) || null;
 }
@@ -1522,7 +1524,9 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** Buka sebuah frame sebagai dropdown / overlay / popover / tooltip. */
     function openLayer(action, anchor, rect, from, extra) {
         // The placed overlay instance wins (it is the edited copy on the canvas); else the picked component, else a legacy frame.
-        const frame = resolveOpenTarget(ctx, action);
+        // Appearance pinned on the action: State bindings are read now; the modes apply while this layer is drawn.
+        const look = resolveAppearance(action.appearance, evalCtx);
+        const frame = resolveOpenTarget(ctx, action, look);
         if (!frame) return;
         const kind = action.type === 'open-dropdown' ? 'dropdown' : action.type === 'open-overlay' ? 'overlay' : 'popover';
         // The same trigger on the same layer: a hover that redraws its anchor must not stack copies; a click toggles it.
@@ -1542,7 +1546,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
             w: action.width === 'parent' ? a.width : null,
             h: action.height === 'parent' ? a.height : null,
         } : null;
-        const content = renderScene(buildScene(frame, !extra, null, matchBox, extra ? { pop: extra.pop() } : null), holder);
+        // Pinned modes go over the instance's own modes for this drawing only (the same swap the Show feedback look uses).
+        const kept = new Map();
+        for (const [cid, mid] of Object.entries(look?.modes || {})) { kept.set(cid, modeOver.get(cid)); modeOver.set(cid, mid); }
+        let scene;
+        try { scene = buildScene(frame, !extra, null, matchBox, extra ? { pop: extra.pop() } : null); }
+        finally { for (const [cid, v] of kept) v === undefined ? modeOver.delete(cid) : modeOver.set(cid, v); }
+        const content = renderScene(scene, holder);
         content.style.position = 'relative';
         content.style.left = '0';
         content.style.top = '0';

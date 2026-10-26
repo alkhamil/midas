@@ -29,6 +29,13 @@ test('the Show feedback action keeps its pinned appearance and hands it to the h
     assert.deepEqual(resolveFeedback(a, ev({})).appearance, { modes: { c1: 'm-error' }, variants: {} });
 });
 
+test('an open action (dropdown, overlay, popover) keeps its pinned appearance too', () => {
+    const [d] = normalizeActions([{ type: 'open-dropdown', targetComponentId: 'menu', appearance: { variants: { Size: 'Large' }, modes: { c1: '' } } }]);
+    assert.deepEqual(d.appearance, { variants: { Size: 'Large' } });
+    const [o] = normalizeActions([{ type: 'open-overlay', targetComponentId: 'dlg' }]);
+    assert.equal(o.appearance, undefined);
+});
+
 test('two actions on the same component can pin different modes; an unpinned action has no appearance', () => {
     const [x, y, z] = normalizeActions([
         { type: 'show-feedback', kind: 'alert', level: 'error', appearance: { modes: { c1: 'm-error' } } },

@@ -12,7 +12,7 @@ import { setRowRefs } from './rulesUi.js';
 import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
-import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
+import { appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
 import { exprTarget, editExpr, editArgs } from './exprUi.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -19202,6 +19202,13 @@ function liveContext() {
             const vs = setVariants(n), want = like?.variant;
             return (want && vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x))) || defaultVariantOf(n) || vs[0] || null;
         },
+        /** The `like` for componentTarget that pins variant properties on top of a set's default variant (partial pins stay valid). */
+        appearanceLike(id, variants) {
+            const n = _nodeMap.get(id);
+            if (!n || n.softDeleted || !n.componentSet) return null;
+            const base = defaultVariantOf(n) || setVariants(n)[0];
+            return { variant: { ...(base?.variant || {}), ...(variants || {}) } };
+        },
         /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
         variants(inst, like) {
             const src = (like && _nodeMap.get(like)) || chainComponent(inst), set = src && parentSetOf(src);
@@ -19530,7 +19537,9 @@ function bhInteractionRows(n, frames, opts = {}) {
     };
     // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
     const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
-        + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '');
+        + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '')
+        // Appearance sits right under the picker: the modes and variants this action pins on the component it opens.
+        + appearanceRows({ esc, bhSelect, appearanceOptions: appearanceOptionsOf }, p, a, a.targetComponentId);
     const dropdownSizeRows = (p, a) => `<label class="field"><span>W</span>${bhSelect(`${p}.width`, 'plain', a.width === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label><label class="field"><span>H</span>${bhSelect(`${p}.height`, 'plain', a.height === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label>`;
     // Set variable: switch a variable collection to one of its modes. Every variable in the collection then reads
     // that mode's value, so one action changes a whole theme / state at once.

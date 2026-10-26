@@ -11,7 +11,7 @@
  * Every state the Behavior tab knows, in the order they are listed. A state is a name a collection's mode can have; which
  * ones a component uses is up to its collection (Checkbox states has selected / indeterminate / disabled-on …).
  */
-import { STATE_ACTIONS, STATE_ACTION_IDS, normalizeStateAction } from './actions.js';
+import { STATE_ACTIONS, STATE_ACTION_IDS, normalizeAppearance, normalizeStateAction } from './actions.js';
 import { normalizeRules } from './rules.js';
 import { normalizeFieldRules } from './validate.js';
 
@@ -609,6 +609,7 @@ export function normalizeAction(a) {
     }
     if (/^open-/.test(type) && a?.targetVariantId) out.targetVariantId = String(a.targetVariantId);
     if (/^open-/.test(type) && a?.overlayInstanceId) out.overlayInstanceId = String(a.overlayInstanceId);
+    if (/^open-/.test(type) && normalizeAppearance(a?.appearance)) out.appearance = normalizeAppearance(a.appearance);
     if (type === 'open-dropdown') {
         if (a?.width === 'parent') out.width = 'parent';
         if (a?.height === 'parent') out.height = 'parent';
