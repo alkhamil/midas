@@ -450,7 +450,8 @@ function enableAutoLayout(f, forceDir = null, opts = {}) {
 }
 function addAutoLayout() {
     const roots = selectedRoots();
-    if (roots.some(r => r.isInstance || insideInstance(r))) {
+    // An instance itself can be wrapped (its parent is the component being edited); only what sits inside an instance is locked.
+    if (roots.some(r => insideInstance(r))) {
         toast('Layout is changed on the main component; instances follow it.');
         return;
     }
@@ -458,7 +459,8 @@ function addAutoLayout() {
         toast('Select a frame or layers first to add auto layout.');
         return;
     }
-    if (roots.length === 1 && roots[0].type === 'frame' && !isAutoLayout(roots[0])) {
+    // A single frame gets auto layout in place, but an instance is wrapped, never changed.
+    if (roots.length === 1 && roots[0].type === 'frame' && !roots[0].isInstance && !isAutoLayout(roots[0])) {
         transaction('Add auto layout', () => enableAutoLayout(roots[0]));
         return;
     }
