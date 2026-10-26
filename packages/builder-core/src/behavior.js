@@ -11,7 +11,7 @@
  * Every state the Behavior tab knows, in the order they are listed. A state is a name a collection's mode can have; which
  * ones a component uses is up to its collection (Checkbox states has selected / indeterminate / disabled-on …).
  */
-import { STATE_ACTIONS, STATE_ACTION_IDS, normalizeAppearance, normalizeStateAction } from './actions.js';
+import { PLACEMENTS, STATE_ACTIONS, STATE_ACTION_IDS, normalizeAppearance, normalizeStateAction } from './actions.js';
 import { normalizeRules } from './rules.js';
 import { normalizeFieldRules } from './validate.js';
 
@@ -307,10 +307,6 @@ export const POSITIONS = [
  * Where a dropdown or popover sits around the thing that opened it: a side, then how it lines up along that side.
  * (An overlay is placed on the screen instead: see POSITIONS.)
  */
-export const PLACEMENTS = [
-    'top-start', 'top', 'top-end', 'right-start', 'right', 'right-end',
-    'bottom-start', 'bottom', 'bottom-end', 'left-start', 'left', 'left-end',
-];
 
 const LEGACY_PLACEMENT = { 'top-left': 'top-start', 'top-right': 'top-end', 'bottom-left': 'bottom-start', 'bottom-right': 'bottom-end' };
 

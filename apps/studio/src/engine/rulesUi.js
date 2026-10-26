@@ -1,7 +1,7 @@
 // Behavior tab, Phase 2: conditions ("If …"), the editors of the State / list / feedback / request actions, and the Rules of an
 // interaction. Only draws. What a condition means, how rules are picked and what the actions do is in @midas/builder-core.
 import { exprHtml } from './exprUi.js';
-import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, ignoredTypeNote, normalizeFeedbackMotion, ruleSummary, schemaOf, showsTypeField } from './behavior.js';
+import { BUILTINS, FEEDBACK_KINDS, FEEDBACK_LEVELS, FEEDBACK_POSITIONS, PLACEMENTS, FEEDBACK_EFFECTS, FEEDBACK_SOURCES, MOTION_EASINGS, SET_OPS, describeExpr, ignoredTypeNote, normalizeFeedbackMotion, ruleSummary, schemaOf, showsTypeField } from './behavior.js';
 
 const lit = value => ({ op: 'value', value });
 
@@ -72,7 +72,7 @@ export function stateActionFields(ctx, p, a, it) {
                 + typeRow + (ignored ? `<p class="small-label bh-warn">⚠ ${esc(ignored)}</p>` : '')
                 + `<label class="field"><span>Title</span><input data-bh-path="${esc(p)}.title" data-bh-kind="plain" value="${esc(a.title || '')}" placeholder="Optional" spellcheck="false"></label>`
                 + `<label class="field"><span>Message</span><input data-bh-path="${esc(p)}.message" data-bh-kind="plain" value="${esc(a.message || '')}" placeholder="Total: {total}" spellcheck="false" title="Put a State name in {braces} to show its value"></label>`
-                + `<label class="field"><span>Position</span>${bhSelect(`${p}.position`, 'plain', a.position, FEEDBACK_POSITIONS.map(k => [k.id, k.label]))}</label>`
+                + `<label class="field"><span>Position</span>${bhSelect(`${p}.position`, 'plain', a.position, PLACEMENTS.map(k => [k, k]))}</label>`
                 // Offset from the edge of the frame for this position; the copy on the canvas moves with it.
                 + `<div class="bh-fields"><label class="field"><span>Offset X</span><input type="number" data-bh-path="${esc(p)}.offset.x" data-bh-kind="plain" value="${a.offset?.x ?? 0}" aria-label="Offset X"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${esc(p)}.offset.y" data-bh-kind="plain" value="${a.offset?.y ?? 0}" aria-label="Offset Y"><i class="unit">px</i></label></div>`
                 + `<label class="field"><span>Hide after</span><input type="number" min="0" max="60000" data-bh-path="${esc(p)}.duration" data-bh-kind="plain" value="${a.duration ?? 0}" aria-label="Hide after in ms" title="0 = stays until closed"><i class="unit">ms</i></label>`

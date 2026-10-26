@@ -9,7 +9,7 @@ import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml }
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
 import { setRowRefs } from './rulesUi.js';
-import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns, feedbackPlacePos } from './behavior.js';
+import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
@@ -9435,7 +9435,7 @@ function placeOverlayOnCanvas(triggerId, a, opts = {}) {
     if (!box) return null;
     const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
     const h = a.type === 'open-dropdown' && a.height === 'parent' ? Math.round(box.h) : master.h;
-    const pos = feedback ? feedbackPlacePos(box, w, h, a.position, a.offset) : placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
+    const pos = placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
     let createdId = null;
     instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, autoCreated: true, ownerId: ownerOfAction(ovHelpers().interactionsOf(trig), a), overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
     return createdId || activeNode()?.id || null;

@@ -37,19 +37,25 @@ export const FEEDBACK_POSITIONS = [
 ];
 const BLOCKING_KINDS = new Set(['modal', 'popconfirm']);
 
+/** The placements a feedback component can take: the same list as an Open dropdown, so both read the same way. */
+export const PLACEMENTS = [
+    'top-start', 'top', 'top-end', 'right-start', 'right', 'right-end',
+    'bottom-start', 'bottom', 'bottom-end', 'left-start', 'left', 'left-end',
+];
+
+/** The old names of a feedback position, as they map onto a placement. */
+const LEGACY_FEEDBACK_POSITION = { top: 'top', 'top-right': 'top-end', bottom: 'bottom', center: 'top', right: 'right' };
+
 /**
- * Where a feedback component sits on the canvas: at the frame edge (or centre) for its position, moved by the offset.
- * `frame` is { x, y, w, h } of the top-level frame the action's layer lives in; (x, y) is the top-left of the component.
+ * Where a feedback component stacks in Preview, from its placement: a drawer and a modal are fixed, and an alert, message or
+ * notification stacks at the top, right, or bottom edge of the screen.
  */
-export function feedbackPlacePos(frame, w, h, position, offset) {
-    const ox = Number(offset?.x) || 0, oy = Number(offset?.y) || 0;
-    const centerX = frame.x + (frame.w - w) / 2, centerY = frame.y + (frame.h - h) / 2;
-    const at = {
-        top: { x: centerX, y: frame.y }, 'top-right': { x: frame.x + frame.w - w, y: frame.y },
-        bottom: { x: centerX, y: frame.y + frame.h - h }, center: { x: centerX, y: centerY },
-        right: { x: frame.x + frame.w - w, y: frame.y },
-    }[position] || { x: centerX, y: centerY };
-    return { x: at.x + ox, y: at.y + oy };
+export function feedbackRegion(kind, position) {
+    if (kind === 'drawer') return 'right';
+    if (kind === 'modal' || kind === 'popconfirm') return 'center';
+    const side = String(position || '').split('-')[0];
+    if (side === 'bottom') return 'bottom';
+    return side === 'top' ? 'top' : 'top-right';
 }
 const expr = (v, fallback) => (isPlain(v) && typeof v.op === 'string' ? structuredClone(v) : fallback);
 const where = w => (isPlain(w) && w.field !== undefined && w.cmp ? { field: String(w.field), cmp: String(w.cmp), value: expr(w.value, lit('')) } : undefined);
@@ -83,7 +89,7 @@ export function normalizeStateAction(type, a, normalizeList) {
             out.level = FEEDBACK_LEVELS.includes(a?.level) ? a.level : 'info';
             out.message = String(a?.message ?? '');
             if (a?.title) out.title = String(a.title);
-            out.position = FEEDBACK_POSITIONS.some(p => p.id === a?.position) ? a.position : (out.kind === 'drawer' ? 'right' : out.kind === 'modal' || out.kind === 'popconfirm' ? 'center' : out.kind === 'message' ? 'top' : 'top-right');   // notification: top-right too
+            out.position = PLACEMENTS.includes(a?.position) ? a.position : LEGACY_FEEDBACK_POSITION[a?.position] || (out.kind === 'drawer' ? 'right' : out.kind === 'message' ? 'top' : 'top-end');   // notification: top-right too
             const d = Number(a?.duration);
             out.duration = Number.isFinite(d) ? Math.min(60000, Math.max(0, Math.round(d))) : (out.kind === 'alert' || out.kind === 'message' || out.kind === 'notification' ? 3000 : 0);
             out.blocking = typeof a?.blocking === 'boolean' ? a.blocking : BLOCKING_KINDS.has(out.kind);
@@ -199,7 +205,7 @@ export function resolveAppearance(ap, ev) {
 }
 /** What the host should draw for a show-feedback action: the message with {placeholders} filled. */
 export function resolveFeedback(a, ev) {
-    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: a.position, duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind), appearance: resolveAppearance(a.appearance, ev) };
+    return { kind: a.kind, level: a.level, componentId: a.componentId || '', title: ev.interpolate(a.title || ''), message: ev.interpolate(a.message || ''), position: feedbackRegion(a.kind, a.position), duration: a.duration, blocking: !!a.blocking, confirmLabel: a.confirmLabel || '', onConfirm: a.onConfirm || null, motion: normalizeFeedbackMotion(a.motion, a.kind), appearance: resolveAppearance(a.appearance, ev) };
 }
 
 // ---------- scenarios ----------

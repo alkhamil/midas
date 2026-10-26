@@ -7,7 +7,8 @@
 //   Has options, Opens popup, Shows items, Has loading, Show feedback
 //                                 are entries of `node.behaviors` on the master component: [{ id, kind, enabled, slots, config }]
 // An instance inherits them and stores only what it changes: `node.behaviorOverrides = { [id]: { enabled?, slots?, config? } }`.
-import { INPUT_TYPE_MAP, PLACEMENTS, normalizePlacement } from './behavior.js';
+import { INPUT_TYPE_MAP, normalizePlacement } from './behavior.js';
+import { PLACEMENTS } from './actions.js';
 import { normalizeOptions } from './select.js';
 import { normalizeFieldRules } from './validate.js';
 
