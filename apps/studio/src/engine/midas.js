@@ -9,6 +9,7 @@ import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml }
 import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
 import { dataWindowHtml } from './dataUi.js';
 import { setRowRefs } from './rulesUi.js';
+import { levelStatus, suggestLevelMap } from './behavior.js';
 import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
 import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
 import { conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
@@ -19560,7 +19561,7 @@ function bhInteractionRows(n, frames, opts = {}) {
         const label = main && it.actions.length > 1 ? `Then ${j + 1}` : 'Do';
         return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
     };
-    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton, componentHasMotion };
+    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton, componentHasMotion, feedbackTypes: feedbackTypeInfo };
     // In the window one interaction is shown on its own (opts.only = its id); its Rules open as a view of their own (opts.rulesOnly).
     const rulesCount = it => (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
     const drill = it => `<button type="button" class="bh-drill" data-bhw-sub="rules"><span><b>Rules</b><small>${rulesCount(it) ? `${rulesCount(it)} · first match wins` : 'none yet'}</small></span>${icon('chevronRight', 12)}</button>`;
@@ -19806,12 +19807,39 @@ function bhCapContext(n) {
         feedbackNote: b => bhFeedbackNote(b, n),
     };
     c.suggestions = bhSuggestions(n, c);
+    c.feedbackTypes = feedbackTypeInfo;
     return c;
+}
+/**
+ * The type mapping of a feedback component: the names its type values can take (variant values and the modes of its type
+ * collections), and what each of the four levels resolves to (explicit mapping, one clear name, ambiguous, or none).
+ */
+function feedbackTypeInfo(id) {
+    const target = id && componentById(id);
+    if (!target) return null;
+    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
+    const values = new Set();
+    if (set) for (const prop of variantProps(set)) for (const v of variantValues(set, prop)) values.add(String(v));
+    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
+    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
+    for (const cid of colls) {
+        const coll = varColl(cid);
+        if (!coll || (isStateCollection(coll) && levelsCovered(coll.modes.map(x => x.name)) < 2)) continue;
+        for (const m of coll.modes) values.add(m.name);
+    }
+    const list = [...values];
+    const idx = (target.behaviors || []).findIndex(b => b.kind === 'show-feedback');
+    const explicit = idx >= 0 ? (target.behaviors[idx].config?.types || {}) : {};
+    const levels = Object.fromEntries(['success', 'error', 'warning', 'info'].map(l => [l, levelStatus(list, l, explicit)]));
+    return { id: target.id, name: target.name, values: list, levels, explicit, hasBehavior: idx >= 0, index: idx };
 }
 function bhFeedbackNote(b, n) {
     const id = n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
-    const found = ['success', 'error', 'warning', 'info'].filter(l => feedbackStyleOf(id, l, b.config.types)?.how);
-    return found.length ? `Found ${found.length} of 4 levels (${found.join(', ')}).` : 'No variant property or mode named like success / error / warning / info was found: every level will look the same.';
+    const info = feedbackTypeInfo(id);
+    if (!info) return 'No component is set for this feedback kind.';
+    const bad = ['success', 'error', 'warning', 'info'].filter(l => info.levels[l].source !== 'explicit' && info.levels[l].source !== 'name');
+    const found = 4 - bad.length;
+    return bad.length ? `Type mapping: ${found} of 4 levels mapped. ${bad.map(l => `${l}: ${info.levels[l].source === 'ambiguous' ? 'ambiguous (' + info.levels[l].options.join(', ') + ')' : 'no match'}`).join('; ')}. Fix it in Feedback → Type mapping.` : 'Type mapping: all 4 levels mapped.';
 }
 /** The look a feedback component takes for a level: a variant (its `type` property) or modes of a collection. → { node, modes, how } */
 function feedbackStyleOf(id, level, types) {
@@ -20458,6 +20486,21 @@ function bhAction(n, t) {
     if (act === 'accept-slot' || act === 'accept-all') {
         const all = bhCapContext(n).suggestions, only = t.dataset.bhOnly, pick = act === 'accept-all' ? all.filter(g => !only || g.section === only) : [all[Number(t.dataset.bhIndex)]].filter(Boolean);
         for (const g of pick) bhWrite(n, g.path, g.layerId);
+        return;
+    }
+    if (act === 'type-map' || act === 'type-map-accept') {
+        const comp = componentById(t.dataset.typeComp), info = comp ? feedbackTypeInfo(comp.id) : null;
+        if (!info || !info.hasBehavior) return;
+        const base = `behaviors.${info.index}.config.types`;
+        transaction('Behavior', () => {
+            if (act === 'type-map-accept') {
+                const sug = suggestLevelMap(info.values);
+                bhWrite(comp, base, Object.keys(sug).length ? { ...info.explicit, ...sug } : info.explicit);
+            }
+            else bhWrite(comp, `${base}.${t.dataset.typeLevel}`, t.value || undefined);
+            doc.touch(comp);
+        });
+        renderInspector();
         return;
     }
     if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }

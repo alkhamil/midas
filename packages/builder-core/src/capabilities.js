@@ -326,12 +326,28 @@ const LEVEL_WORDS = { success: ['success', 'succeeded', 'ok', 'done', 'positive'
  * Which of a component's `values` (variant values, or the modes of a type collection) stands for a level (success, error, warning, info).
  * `explicit` = the config's own mapping { level: value }, which always wins. → the value, or null.
  */
-export function matchLevel(values, level, explicit) {
+export function levelStatus(values, level, explicit) {
     const list = values || [];
-    if (explicit?.[level] && list.includes(explicit[level])) return explicit[level];
+    if (explicit?.[level]) return list.includes(explicit[level]) ? { value: explicit[level], source: 'explicit', options: [] } : { value: null, source: 'missing', options: [] };
     const words = LEVEL_WORDS[level] || [level];
     const norm = v => String(v).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    return list.find(v => words.includes(norm(v))) ?? list.find(v => words.some(w => norm(v).split(' ').includes(w))) ?? null;
+    // A whole-word name beats a word inside a longer name ('Error' over 'Error state').
+    const exact = list.filter(v => words.includes(norm(v)));
+    const hits = exact.length ? exact : list.filter(v => words.some(w => norm(v).split(' ').includes(w)));
+    if (hits.length === 1) return { value: hits[0], source: 'name', options: hits };
+    if (hits.length > 1) return { value: null, source: 'ambiguous', options: hits };
+    return { value: null, source: 'none', options: [] };
+}
+/** The value a level resolves to (the first of several names when they are ambiguous), or null. */
+export function matchLevel(values, level, explicit) {
+    const s = levelStatus(values, level, explicit);
+    return s.value ?? s.options[0] ?? null;
+}
+/** The mapping the name rules suggest for all four levels: only the levels with one clear name. */
+export function suggestLevelMap(values) {
+    const out = {};
+    for (const l of ['success', 'error', 'warning', 'info']) { const s = levelStatus(values, l); if (s.source === 'name') out[l] = s.value; }
+    return out;
 }
 /** How many of the four levels a set of values can draw. */
 export const levelsCovered = values => ['success', 'error', 'warning', 'info'].filter(l => matchLevel(values, l)).length;
