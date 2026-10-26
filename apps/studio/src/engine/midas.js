@@ -9428,9 +9428,9 @@ function placeOverlayOnCanvas(triggerId, a, opts = {}) {
         toast('Target component is missing.');
         return null;
     }
-    // A feedback component sits at the edge of the top-level frame its action lives in; the others sit at their trigger.
-    const feedback = a.type === 'show-feedback';
-    const frame = feedback ? (doc.ancestors(trig).at(-1) || trig) : trig;
+    // A feedback component and an overlay sit against the top-level frame their action lives in; the others sit at their trigger.
+    const framed = a.type === 'show-feedback' || a.type === 'open-overlay';
+    const frame = framed ? (doc.ancestors(trig).at(-1) || trig) : trig;
     const box = doc.world(frame.id)?.box;
     if (!box) return null;
     const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
@@ -19465,7 +19465,7 @@ document.addEventListener('click', e => {
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && (/^open-/.test(ac.type) || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && (ac.type === 'open-dropdown' || ac.type === 'open-popover' || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
     });
 });
 document.addEventListener('click', e => {
@@ -20325,6 +20325,24 @@ function bhConnectCollection(n, id) {
     if (!mode) return;
     n.varModes = { ...(n.varModes || {}), [coll.id]: mode.id };
 }
+/**
+ * A Show feedback copy on the canvas follows its Position and Offset: when either changes, the copy is removed and placed again
+ * from the new values (the placement is only made when the action's component is picked, so a change would not move it).
+ */
+function replaceFeedbackCopy(n, path) {
+    const base = path.replace(/.(position|offset.x|offset.y)$/, '');
+    if (base === path) return;
+    const act = getPath(n, base);
+    if (!act || act.type !== 'show-feedback' || !act.overlayInstanceId) return;
+    const copy = doc.get(act.overlayInstanceId);
+    if (copy) { state.selection.delete(copy.id); doc.remove([copy.id]); }
+    bhWrite(n, `${base}.overlayInstanceId`, undefined);
+    const pid = ensureOverlayPlaced(n.id, getPath(n, base), { keepSelection: true });
+    if (pid) bhWrite(n, `${base}.overlayInstanceId`, pid);
+    doc.touch(n);
+    renderTargetPanel();
+    invalidate();
+}
 function bhSet(n, t) {
     const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
     let value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
@@ -20750,8 +20768,10 @@ function bhOnChange(e) {
             n[t.dataset.proto] = t.type === 'checkbox' ? t.checked : t.value;
         else if (t.dataset.bhAct)
             bhAction(n, t);
-        else if (t.dataset.bhPath)
+        else if (t.dataset.bhPath) {
             bhSet(n, t);
+            replaceFeedbackCopy(n, t.dataset.bhPath);
+        }
         doc.touch(n);
     });
     renderInspector();
