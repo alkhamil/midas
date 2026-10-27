@@ -105,16 +105,26 @@ export function runLayout(d, { hasKids = () => true } = {}) {
         return lines;
     };
     const sizeOn = (c, axis) => (axis === 'h' ? c.w : c.h) + 2 * ext(c);
-    // Grid tracks: column width / row height = largest child in that column / row.
+    // Grid tracks, CSS grid semantics. A column (row) is 'hug' (its largest child, the default when gridColumns / gridRows has no
+    // entry), 'fill' (1fr: shares what the fixed and hug tracks leave) or a number (px). Fill children stretch to their track.
     const gridCols = n => Math.max(1, Math.round(n.gridCols || 2));
-    const gridTracks = (n, fl) => {
-        const cols = gridCols(n), colW = Array(cols).fill(0), rowH = [];
-        fl.forEach((c, i) => {
-            const ci = i % cols, ri = Math.floor(i / cols);
-            colW[ci] = Math.max(colW[ci], c.w);
-            rowH[ri] = Math.max(rowH[ri] || 0, c.h);
+    const gridRowCount = (n, fl) => Math.max(1, Math.ceil(fl.length / gridCols(n)));
+    // avail: the room the grid has on this axis; undefined while the grid hugs, so fill tracks take nothing.
+    const gridTrackSizes = (n, fl, axis, avail) => {
+        const cols = gridCols(n), count = axis === 'h' ? cols : gridRowCount(n, fl);
+        const specs = (axis === 'h' ? n.gridColumns : n.gridRows) || [];
+        const gap = axis === 'h' ? lyGap(n) : lyGapCross(n, lyGap(n));
+        const trackOf = (k, i) => (axis === 'h' ? k % cols === i : Math.floor(k / cols) === i);
+        const sizes = Array.from({ length: count }, (_, i) => {
+            const s = specs[i] ?? 'hug';
+            if (s === 'fill') return null;
+            if (s === 'hug') return fl.reduce((m, c, k) => trackOf(k, i) && !fillOn(c, axis) ? Math.max(m, axis === 'h' ? c.w : c.h) : m, 0);
+            return Math.max(0, +s || 0);
         });
-        return { cols, colW, rowH };
+        const fixed = sizes.reduce((s, v) => s + (v ?? 0), 0) + gap * (count - 1);
+        const fills = sizes.filter(v => v === null).length;
+        const share = fills && avail !== undefined ? Math.max(0, (avail - fixed) / fills) : 0;
+        return sizes.map(v => v ?? share);
     };
     // Phase "up": resolve hug sizes bottom-up on one axis (fill children count as their natural size).
     const up0 = (n, axis) => {
@@ -152,10 +162,11 @@ export function runLayout(d, { hasKids = () => true } = {}) {
         if (!isAutoLayout(n) || eff(n, axis) !== 'hug')
             return;
         if (n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow);
+            const S = gridTrackSizes(n, fl, axis, undefined);
             const total = axis === 'h'
-                ? T.colW.reduce((s, v) => s + v, 0) + gap * Math.max(0, Math.min(T.cols, fl.length) - 1) + P.l + P.r
-                : T.rowH.reduce((s, v) => s + v, 0) + gapC * Math.max(0, T.rowH.length - 1) + P.t + P.b;
+                ? S.reduce((s, v) => s + v, 0) + gap * Math.max(0, S.length - 1) + P.l + P.r
+                : S.reduce((s, v) => s + v, 0) + gapC * Math.max(0, S.length - 1) + P.t + P.b;
             if (axis === 'h')
                 n.w = Math.max(1, total);
             else
@@ -210,22 +221,13 @@ export function runLayout(d, { hasKids = () => true } = {}) {
     const down = (n, axis) => {
         const ch = kids.get(n.id) || [];
         if (isAutoLayout(n) && n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), cols = gridCols(n);
-            if (axis === 'h') {
-                const share = Math.max(0, (Math.max(0, n.w - P.l - P.r) - gap * (cols - 1)) / cols);
-                for (const c of fl)
-                    if (fillOn(c, 'h'))
-                        assign(c, 'h', share);
-            }
-            else {
-                const rows = [];
-                fl.forEach((c, i) => { (rows[Math.floor(i / cols)] ||= []).push(c); });
-                const nat = rows.map(r => Math.max(0, ...r.map(c => fillOn(c, 'v') ? 0 : c.h)));
-                const natTot = nat.reduce((s, v) => s + v, 0), extra = rows.length ? Math.max(0, (Math.max(0, n.h - P.t - P.b) - natTot - gapC * (rows.length - 1)) / rows.length) : 0;
-                rows.forEach((r, ri) => { for (const c of r)
-                    if (fillOn(c, 'v'))
-                        assign(c, 'v', Math.max(nat[ri], extra)); });
-            }
+            const P = lyPads(n), fl = ch.filter(inFlow), cols = gridCols(n);
+            const S = gridTrackSizes(n, fl, axis, axis === 'h' ? Math.max(0, n.w - P.l - P.r) : Math.max(0, n.h - P.t - P.b));
+            fl.forEach((c, i) => {
+                if (!fillOn(c, axis))
+                    return;
+                assign(c, axis, axis === 'h' ? S[i % cols] : S[Math.floor(i / cols)]);
+            });
         }
         else if (isAutoLayout(n)) {
             const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), fl = ch.filter(inFlow);
@@ -282,16 +284,17 @@ export function runLayout(d, { hasKids = () => true } = {}) {
     };
     const place = (n, ch) => {
         if (n.layout === 'grid') {
-            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), T = gridTracks(n, fl);
+            const P = lyPads(n), gap = lyGap(n), gapC = lyGapCross(n, gap), fl = ch.filter(inFlow), cols = gridCols(n);
+            const SW = gridTrackSizes(n, fl, 'h', Math.max(0, n.w - P.l - P.r)), SH = gridTrackSizes(n, fl, 'v', Math.max(0, n.h - P.t - P.b));
             const colX = [], rowY = [];
             let ax = 0, ay = 0;
-            T.colW.forEach((w, i) => { colX[i] = ax; ax += w + gap; });
-            T.rowH.forEach((h, i) => { rowY[i] = ay; ay += h + gapC; });
+            SW.forEach((w, i) => { colX[i] = ax; ax += w + gap; });
+            SH.forEach((h, i) => { rowY[i] = ay; ay += h + gapC; });
             const hA = n.primaryAlign || 'start', vA = n.counterAlign || n.layoutAlign || 'start';
             fl.forEach((c, i) => {
-                const ci = i % T.cols, ri = Math.floor(i / T.cols);
-                const ox = hA === 'center' ? (T.colW[ci] - c.w) / 2 : hA === 'end' ? T.colW[ci] - c.w : 0;
-                const oy = vA === 'center' ? (T.rowH[ri] - c.h) / 2 : vA === 'end' ? T.rowH[ri] - c.h : 0;
+                const ci = i % cols, ri = Math.floor(i / cols);
+                const ox = hA === 'center' ? (SW[ci] - c.w) / 2 : hA === 'end' ? SW[ci] - c.w : 0;
+                const oy = vA === 'center' ? (SH[ri] - c.h) / 2 : vA === 'end' ? SH[ri] - c.h : 0;
                 if (!c._drag) {
                     c.x = P.l + colX[ci] + ox;
                     c.y = P.t + rowY[ri] + oy;

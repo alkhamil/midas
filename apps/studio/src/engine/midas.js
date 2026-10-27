@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf } from './behavior.js';
-import { layoutOrder, strokeIsOn, strokeSideWidths } from '../preview/flexStyle.js';
+import { gridTrackCss, layoutOrder, strokeIsOn, strokeSideWidths } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
@@ -195,7 +195,7 @@ function autoLayoutControls(n) {
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
     return `<div class="field-label"><span>Alignment &amp; gap</span><button class="icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
 <div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: 'Row gap (negative overlaps)' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: wrap && !horiz ? 'Gap between columns (negative overlaps)' : 'Gap between rows (negative overlaps)' }) : ''}`}</div></div>
-<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding" aria-label="Individual padding">${STROKE_ICON.sides}</button></div>${padFields}`;
+${grid ? gridTracksHtml(n) : ''}<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding" aria-label="Individual padding">${STROKE_ICON.sides}</button></div>${padFields}`;
 }
 // ----- auto layout settings (strokes in layout, canvas stacking, text baseline, auto spacing) -----
 let lyPop = null;
@@ -451,6 +451,47 @@ document.addEventListener('change', e => {
     const el = e.target;
     if (el.matches?.('[data-ly-abs]')) {
         transaction('Absolute position', () => { for (const n of selected()) { n.layoutPositioning = el.checked ? 'absolute' : 'auto'; doc.touch(n); } });
+    }
+});
+
+// ----- grid tracks (gridColumns / gridRows): one compact row per column and per row, Hug / Fill / Fixed + px -----
+function gridTracksHtml(n) {
+    const cols = Math.max(1, Math.round(n.gridCols || 2)), used = doc.children(n.id).filter(c => c.visible !== false && c.layoutPositioning !== 'absolute').length;
+    const rows = Math.max(1, Math.ceil(used / cols));
+    const row = (axis, i) => {
+        const spec = ((axis === 'col' ? n.gridColumns : n.gridRows) || [])[i] ?? 'hug', mode = typeof spec === 'number' ? 'fixed' : spec;
+        const name = axis === 'col' ? `Column ${i + 1}` : `Row ${i + 1}`;
+        const opts = [['hug', 'Hug'], ['fill', 'Fill'], ['fixed', 'Fixed']].map(([v, l]) => `<option value="${v}" ${v === mode ? 'selected' : ''}>${l}</option>`).join('');
+        return `<div class="property-grid grid-track-row"><span class="small-label">${name}</span><select data-grid-track="${axis}:${i}" aria-label="${name} sizing">${opts}</select><input type="number" min="0" step="1" data-grid-px="${axis}:${i}" value="${mode === 'fixed' ? fmt(spec) : ''}" ${mode === 'fixed' ? '' : 'disabled'} aria-label="${name} px"><i class="unit">px</i></div>`;
+    };
+    const cols_ = Array.from({ length: cols }, (_, i) => row('col', i)).join('');
+    const rows_ = Array.from({ length: rows }, (_, i) => row('row', i)).join('');
+    return `<div class="field-label"><span>Columns</span></div><div class="stack">${cols_}</div><div class="field-label"><span>Rows</span></div><div class="stack">${rows_}</div>`;
+}
+// mode: 'hug' | 'fill' | 'fixed' (Fixed keeps its px, or 100 px to start) | 'px' (set the px of a Fixed track)
+function setGridTrack(axis, i, mode, px) {
+    const key = axis === 'col' ? 'gridColumns' : 'gridRows';
+    lyEach('Grid track', f => {
+        const cols = Math.max(1, Math.round(f.gridCols || 2));
+        const count = axis === 'col' ? cols : Math.max(1, Math.ceil(doc.children(f.id).filter(c => c.visible !== false && c.layoutPositioning !== 'absolute').length / cols));
+        const list = Array.from({ length: count }, (_, k) => f[key]?.[k] ?? 'hug');
+        const cur = list[i];
+        if (mode === 'px') { if (typeof cur === 'number' && Number.isFinite(px)) list[i] = Math.max(0, px); }
+        else if (mode === 'fixed') list[i] = typeof cur === 'number' ? cur : 100;
+        else list[i] = mode;
+        f[key] = list;
+    });
+}
+document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches?.('[data-grid-track]')) {
+        const [axis, i] = el.dataset.gridTrack.split(':');
+        setGridTrack(axis, +i, el.value);
+        return;
+    }
+    if (el.matches?.('[data-grid-px]')) {
+        const [axis, i] = el.dataset.gridPx.split(':');
+        setGridTrack(axis, +i, 'px', el.valueAsNumber);
     }
 });
 
@@ -12368,7 +12409,8 @@ function inspectCSS() {
     if (n.shadow)
         css += `\nbox-shadow: ${n.shadowX}px ${n.shadowY}px ${n.shadowBlur}px ${n.shadowColor}${Math.round(n.shadowOpacity * 255).toString(16).padStart(2, '0')};`;
     if (n.layout && n.layout !== 'none')
-        css += n.layout === 'grid' ? `\ndisplay: grid;\ngrid-template-columns: repeat(${n.gridCols || 2}, auto);\ngap: ${n.gapCross ?? n.gap ?? 16}px ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;` : `\ndisplay: flex;\nflex-direction: ${n.layout === 'horizontal' ? 'row' : 'column'};${n.layoutWrap ? '\nflex-wrap: wrap;' : ''}\ngap: ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;`;
+        css += n.layout === 'grid' ? `\ndisplay: grid;\ngrid-template-columns: ${Array.from({ length: Math.max(1, Math.round(n.gridCols || 2)) }, (_, i) => gridTrackCss(n.gridColumns?.[i])).join(' ')};${n.gridRows?.length ? `
+grid-template-rows: ${n.gridRows.map(gridTrackCss).join(' ')};` : ''}\ngap: ${n.gapCross ?? n.gap ?? 16}px ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;` : `\ndisplay: flex;\nflex-direction: ${n.layout === 'horizontal' ? 'row' : 'column'};${n.layoutWrap ? '\nflex-wrap: wrap;' : ''}\ngap: ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;`;
     modal(`${modalHeader('Inspect CSS', esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>Geometry and visual styles. Vector paths and text shaping remain renderer-specific.</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">Copy CSS</button></div>`);
     $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast('CSS copied')).catch(() => toast('Clipboard blocked. Select the code to copy it.'));
 }
