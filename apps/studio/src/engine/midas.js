@@ -22942,7 +22942,7 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
-window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
+window.midas = { hitTest, thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
