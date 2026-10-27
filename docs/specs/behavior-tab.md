@@ -525,31 +525,68 @@ dan berganti warna (posisi, ukuran, warna, radius, opacity); layer baru fade in.
 ## Layout di preview
 
 Preview tidak punya mesin layout sendiri dan tidak lagi meminjam hasil `ctx.layout`: auto layout diterjemahkan ke CSS
-flexbox dan browser yang menghitungnya. Satu-satunya tempat pemetaan itu adalah `nodeToStyle(node, parent)` di
+flexbox (dan grid) dan browser yang menghitungnya. Satu-satunya tempat pemetaan itu adalah `nodeToStyle(node, parent)` di
 `apps/studio/src/preview/flexStyle.js` (fungsi murni, dites di `apps/studio/test/flexStyle.test.js`). `parent` wajib
 ada karena Fill hanya bisa ditentukan dari arah parent.
+
+Kanvas dihitung oleh `runLayout` di `apps/studio/src/engine/autolayout.js`. Keduanya dibandingkan oleh **konformansi layout**
+(`npm run test:layout` dari `apps/studio`): setiap fixture (`test/fixtures/layoutFixtures.js`, deterministik) dirender sebagai
+DOM dengan `nodeToStyle` di Chromium headless, lalu tiap layer harus berada di kotak yang sama dengan kanvas (x, y, lebar, tinggi;
+toleransi 1 px). Layer tersembunyi tidak dirender di keduanya dan tidak memakan jarak.
 
 | Midas | CSS |
 |---|---|
 | `layout` `horizontal` / `vertical` (`layoutFlip`) | `display: flex`, `flex-direction: row` / `column` (`-reverse`) |
+| `layout` `grid` (`gridCols`, `gridColumns`, `gridRows`, `gap`, `gapCross`) | `display: grid`; `grid-template-columns` / `-rows`: track `hug` = `auto`, `fill` = `minmax(0, 1fr)`, angka = `px`; entri yang tidak ada = `hug`. Padding dipasang, track diletakkan di awal (`justify-content` / `align-content: start`) |
 | `gap`, `gapCross` | `gap` (atau `column-gap` / `row-gap` bila berbeda) |
 | `padding`, `padT/R/B/L` | `padding`, `box-sizing: border-box` |
 | `primaryAlign` start / center / end | `justify-content` flex-start / center / flex-end |
 | `gapAuto` + `gapMode` between / evenly / around | `justify-content` space-between / space-evenly / space-around |
 | `counterAlign` | `align-items` |
+| `alignBaseline` (horizontal) | `align-items: baseline` |
 | `layoutWrap` | `flex-wrap: wrap` |
 | Fixed | `width` / `height` px (`flex-shrink: 0` di sumbu utama) |
 | Hug | `auto`; teks yang hug lebarnya `white-space: nowrap` |
 | Fill di sumbu utama parent | `flex: 1 1 0` + `min-width: 0` (`min-height: 0` untuk kolom) |
+| Stroke *included* di parent | padding frame = padding + stroke dalam; anak: `margin` sebesar bagian stroke luar (Outside penuh, Center setengah, Inside nol) |
 | Fill di sumbu silang | `align-self: stretch`, tanpa ukuran di sumbu itu |
+| Fill di dalam Hug (sumbu sama) | teks dan frame: `auto` (hug); layer lain: `px` ukuran tersimpan |
 | `layoutPositioning: absolute` | `position: absolute` dengan `left` / `top` = x / y |
 | frame tanpa auto layout | `position: relative`, anaknya `position: absolute` di x / y |
 | `clip` | `overflow: hidden` |
 | `minW` `maxW` `minH` `maxH` | `min-width` dst. |
 
-Root mengikuti mode ukurannya sendiri (Fixed px, Hug `fit-content`, Fill `100%`). Hug hanya berarti pada teks dan frame
-auto layout; pada layer lain ia dibaca sebagai Fixed. Yang belum dipetakan: opsi *strokes included* di dalam alur, dan
-perataan baseline teks.
+Root mengikuti mode ukurannya sendiri (Fixed px, Hug `fit-content`, Fill `100%`).
+
+Aturan yang sama di kanvas dan Preview (dikunci oleh fixture):
+
+- **Hug hanya berarti pada teks dan frame auto layout.** Hug pada layer lain dibaca sebagai Fixed. Ini perilaku Figma yang disengaja
+  (fixture `hug-plain-rect-is-fixed`).
+- **Teks Hug** memakai lebar terukur persis, tanpa pembulatan ke atas atau tambahan 1 px. Kanvas dan browser memakai font dan
+  string font yang sama, jadi selisihnya hanya sub-piksel. Preview memberi `nowrap`, sehingga teks tidak bisa pindah baris
+  karena selisih itu. Ekspor SVG memberi margin di kiri dan kanan pada clip teks, agar glyph terakhir yang melewati
+  lebar advance tidak terpotong. Clip vertikal tetap di kotak.
+- **Ukuran minimum frame auto layout = padding-nya**, ditambah stroke dalam bila stroke ikut layout (kotak border-box, seperti browser).
+- **Stroke ikut layout** (fixture `strokes-*`): bagian stroke luar anak mengambil ruang di alur; stroke dalam frame mendorong isinya. Stroke yang tidak ikut layout tidak mengubah alur.
+- **Min / max pada Fill** (fixture `fill-minmax-redistribute`): sisa atau kekurangan dari clamp dibagikan ulang ke Fill saudaranya,
+  diulang sampai tidak ada yang ter-clamp lagi, seperti flexbox.
+- **Fill di dalam Hug** (fixture `fill-inside-hug`, `random-07/10/11`): sama seperti Figma, Fill anak pada sumbu yang sama dengan parent Hug
+  diperlakukan sebagai Hug (ukuran alami), di kanvas dan di Preview. Di editor, memberi Fill ke anak dari parent Hug mengubah parent
+  menjadi Fixed dengan ukuran sekarang (Figma juga menghentikan Hug di sumbu itu). Fill bertingkat di dalam Hug ikut aturan ini.
+- **Teks yang lebarnya tetap** dipecah di dalam kata bila kata lebih lebar dari kotaknya (`overflow-wrap: anywhere`), seperti kanvas.
+
+Grid (`gridColumns` / `gridRows`, satu entri per track):
+
+- Kanvas dan Preview memakai model yang sama. Track fixed (px) dan hug dihitung dulu, sisanya dibagi rata ke track fill (ruang
+  yang tidak ada = 0, jadi track fill di parent yang hug adalah ukuran alami).
+- Anak Fill mengisi track-nya. Anak yang tidak Fill mengikuti `primaryAlign` / `counterAlign` di dalam track.
+- Inspector: di layout Grid ada satu baris per kolom dan per baris (Hug / Fill / Fixed + px).
+- Figma `.fig`: track grid tidak dipetakan. Frame GRID diimpor sebagai frame biasa (perilaku yang sudah ada).
+- Perubahan perilaku: grid tanpa entri track dulu membagi rata Fill anak ke container; sekarang Fill anak mengisi kolomnya
+  (anak terbesar yang bukan Fill).
+
+Yang belum sama dengan kanvas: tidak ada di harness (`npm run test:layout` hijau). Yang belum diverifikasi: inspector grid
+dan aturan Fill-membuat-parent-Fixed di editor yang berjalan (belum ada harness editor).
 
 ## Batasan
 
