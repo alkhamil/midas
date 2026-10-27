@@ -5,3 +5,6 @@ data/
 .DS_Store
 .gen-test/
 .env.render
+
+# Layout visual check output (npm run test:layout / visual.mjs)
+apps/studio/test/layout/out/
