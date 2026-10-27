@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf } from './behavior.js';
-import { layoutOrder, strokeIsOn, strokeSideWidths } from '../preview/flexStyle.js';
+import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { stateTabHtml, wireStateTab } from './stateUi.js';
 import { stateBindHtml } from './behaviorUi.js';
@@ -20,7 +20,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
-import { FONT_STACK, clampToLimits, displayText, fontSpec, hugText, isAutoLayout, layoutText, lyPads, measureCanvas, runLayout, sizingOf } from './autolayout.js';
+import { FONT_STACK, clampToLimits, displayText, fontSpec, hugText, isAutoLayout, layoutText, lyPads, measureCanvas, runLayout, sizingOf, strokeIsOn, strokeSideWidths } from './autolayout.js';
 // Layout clamp for this document: an empty slot of an instance keeps its minimum size (see clampToLimits).
 const layoutOpts = { hasKids: id => !!doc.children(id).length };
 function clampMM(n, dim, v) { return clampToLimits(n, dim, v, layoutOpts.hasKids); }
@@ -8014,10 +8014,7 @@ function exportSVG(doc, ids) {
         }
         if (n.type === 'text') {
             const l = layoutText(n), anchor = n.textAlign === 'center' ? 'middle' : n.textAlign === 'right' ? 'end' : 'start', x = n.textAlign === 'center' ? n.w / 2 : n.textAlign === 'right' ? n.w : 0;
-            // The clip keeps a margin on both sides: a text that hugs its width is exactly as wide as its advance, and the ink of the
-            // last glyph can reach past it. Vertical clipping stays at the box.
-            const clipPad = Math.ceil(n.fontSize || 16);
-            defs += `<clipPath id="${prefix}t"><rect x="${f(-clipPad)}" width="${f(n.w + 2 * clipPad)}" height="${f(n.h)}"/></clipPath>`;
+            defs += `<clipPath id="${prefix}t"><rect width="${f(n.w)}" height="${f(n.h)}"/></clipPath>`;
             const textStroke = strokeIsOn(n) ? ` stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(n.strokeWidth)}" stroke-linejoin="${e(n.strokeJoin || 'round')}" paint-order="stroke"` : '';
             if (n.spans && n.spans.length > 1) {
                 const tspans = n.spans.map(s => {
@@ -9504,14 +9501,6 @@ function setProperty(prop, value, { live = false } = {}) {
                 n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
             else
                 n.h = Math.max(n.h, layoutText(n).height);
-        }
-        // Figma: a Fill child stops its auto layout parent from hugging on that axis, so the parent becomes Fixed at its current size.
-        if ((prop === 'layoutSizingH' || prop === 'layoutSizingV') && v === 'fill') {
-            const p = doc.get(n.parentId), axis = prop === 'layoutSizingH' ? 'h' : 'v';
-            if (isAutoLayout(p) && sizingOf(p, axis) === 'hug') {
-                p[prop] = 'fixed';
-                doc.touch(p);
-            }
         }
         if (['layout', 'gap', 'padding', 'layoutAlign'].includes(prop))
             applyLayout(n);
