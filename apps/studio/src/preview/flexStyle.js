@@ -90,17 +90,13 @@ export function sizingOf(n, axis, parentIsAuto = false) {
     return v || 'fixed';
 }
 
-/** One grid track in CSS: 'hug' = auto (its largest child), 'fill' = minmax(0, 1fr), a number = px. A missing entry is 'hug'. */
-export const gridTrackCss = s => s === 'fill' ? 'minmax(0, 1fr)' : Number.isFinite(+s) && s !== '' && s !== null && s !== undefined ? `${Math.max(0, +s)}px` : 'auto';
-
 /** The flex container half of the style: only for frames with auto layout. */
 function containerStyle(n) {
     const s = {};
     if (n.layout === 'grid') {
         const cols = Math.max(1, Math.round(n.gridCols || 2));
         s.display = 'grid';
-        s.gridTemplateColumns = Array.from({ length: cols }, (_, i) => gridTrackCss(n.gridColumns?.[i])).join(' ');
-        if (n.gridRows?.length) s.gridTemplateRows = n.gridRows.map(gridTrackCss).join(' ');
+        s.gridTemplateColumns = `repeat(${cols}, auto)`;
         s.gap = px(n.gap ?? 16);
         if (finite(n.gapCross)) s.rowGap = px(n.gapCross);
         s.justifyItems = ALIGN[n.primaryAlign || 'start'];
