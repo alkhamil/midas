@@ -193,6 +193,7 @@ async function uploadNewAssets(fileId, docData) {
     await Promise.all(Array.from({ length: 8 }, worker));
 }
 
+const lazyQueues = new Map(); // file id → page ids left for the editor to stream in
 async function saveMeta(fileId, docData) {
     const meta = metaFor(fileId, docData);
     try {
@@ -282,13 +283,35 @@ export const projectStorage = {
     },
 
     // Simpan satu page yang berubah + metadata dokumen.
+    /** Ids of the pages `loadProject(…, { lazy: true })` left out; handing them over empties the queue. */
+    pendingPages(fileId) {
+        const ids = lazyQueues.get(fileId) || [];
+        lazyQueues.delete(fileId);
+        return ids;
+    },
+
+    /** One page of a file (its data), or null when it is gone; remembers the version for later saves. */
+    async loadPage(fileId, pageId) {
+        try {
+            const r = (await api('GET', `${fileUrl(fileId)}/pages/${enc(pageId)}`)).page;
+            if (!r) return null;
+            pagesOf(fileId).set(r.pageId, r.version);
+            return r.data;
+        } catch (e) {
+            if (e.status === 404) return null;
+            throw e;
+        }
+    },
+
     async saveActivePage(fileId, docData, activePage) {
         await uploadNewAssets(fileId, docData);
         await saveMeta(fileId, docData);
         await savePage(fileId, activePage);
     },
 
-    async loadProject(fileId) {
+    // `lazy`: only the first page (the one the editor opens on) is fetched here; the other page ids are queued for
+    // `pendingPages()` so the editor can show the file at once and stream the rest in (a big file is 90+ pages, 100s of MB).
+    async loadProject(fileId, { lazy = false, firstPage = null } = {}) {
         let file;
         try {
             file = (await api('GET', fileUrl(fileId))).file;
@@ -299,7 +322,13 @@ export const projectStorage = {
         // The pages are the bulk of a file. They are fetched one by one (six at a time): the start bar follows how many are in
         // (38% → 70%), and no single huge response has to be parsed in one go.
         boot.set(38);
-        const pageIds = (file.meta?.pageMeta || []).map(pm => pm.id);
+        let pageIds = (file.meta?.pageMeta || []).map(pm => pm.id);
+        lazyQueues.delete(fileId);
+        if (lazy && pageIds.length > 3) {
+            const first = pageIds.includes(firstPage) ? firstPage : pageIds.includes(file.meta?.pageId) ? file.meta.pageId : pageIds[0];
+            lazyQueues.set(fileId, pageIds.filter(id => id !== first));
+            pageIds = [first];
+        }
         let rows;
         const assetsReq = api('GET', `${fileUrl(fileId)}/assets`);
         if (!pageIds.length)
