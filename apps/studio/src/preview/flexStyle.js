@@ -39,6 +39,35 @@ export function zIndexMap(parent, kids) {
     return new Map(flow.every((k, i) => k === stacked[i]) ? [] : stacked.map((k, i) => [k.id, i + 1]));
 }
 
+/** A layer's stroke is drawn: on, with a width, not hidden, and not a group. Shared by the canvas and Preview. */
+export function strokeIsOn(n) { return !['group'].includes(n.type) && n.strokeWidth > 0 && n.strokeVisible !== false && !!n.stroke && n.stroke !== 'none'; }
+
+/** Width of the stroke on each side (Strokes: all / top / custom sides). */
+export function strokeSideWidths(n) {
+    const w = n.strokeWidth || 0, m = n.strokeSides || 'all';
+    if (m === 'custom')
+        return { t: n.strokeT ?? w, r: n.strokeR ?? w, b: n.strokeB ?? w, l: n.strokeL ?? w };
+    if (m === 'all')
+        return { t: w, r: w, b: w, l: w };
+    return { t: m === 'top' ? w : 0, r: m === 'right' ? w : 0, b: m === 'bottom' ? w : 0, l: m === 'left' ? w : 0 };
+}
+
+/**
+ * How far a child's stroke reaches outside its box, when its parent includes strokes in the layout: a Outside stroke takes its
+ * whole width, Center half, Inside nothing. Applied as a margin in Preview, as an offset in the canvas.
+ */
+export function strokeOutset(n) {
+    if (!strokeIsOn(n) || n.strokeAlign === 'inside') return 0;
+    return n.strokeAlign === 'outside' ? (n.strokeWidth || 0) : (n.strokeWidth || 0) / 2;
+}
+
+/** A frame's own stroke pushes its content in, per side, when strokes are included: Inside all of it, Center half, Outside none. */
+export function strokeInset(n) {
+    if (!strokeIsOn(n) || n.strokeAlign === 'outside') return { t: 0, r: 0, b: 0, l: 0 };
+    const k = n.strokeAlign === 'inside' ? 1 : .5, s = strokeSideWidths(n);
+    return { t: s.t * k, r: s.r * k, b: s.b * k, l: s.l * k };
+}
+
 /** 'fixed' | 'hug' | 'fill' for one axis ('h' | 'v'). Hug only means something on text and on auto layout frames. */
 export function sizingOf(n, axis, parentIsAuto = false) {
     const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;

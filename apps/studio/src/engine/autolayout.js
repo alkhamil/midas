@@ -1,7 +1,7 @@
 // Auto layout engine and text measurement, shared by the editor (midas.js) and the layout conformance test.
 // Pure apart from the canvas used to measure text. Nothing here reads the document: the caller says how a node
 // with children is treated (clampToLimits' hasKids, used for the empty-slot minimum of an instance).
-import { layoutOrder } from '../preview/flexStyle.js';
+import { layoutOrder, strokeInset, strokeOutset, strokeSideWidths, strokeIsOn } from '../preview/flexStyle.js';
 import { splitOverlayParts } from './behavior.js';
 
 // ===== autolayout engine =====
@@ -49,15 +49,19 @@ export function runLayout(d, { hasKids = () => true } = {}) {
     const parentOf = n => d.get(n.parentId);
     // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
     // frame's own inner stroke pushes its content in, like Figma.
-    const strokeOut = c => !strokeIsOn(c) ? 0 : c.strokeAlign === 'inside' ? 0 : c.strokeAlign === 'outside' ? (c.strokeWidth || 0) : (c.strokeWidth || 0) / 2;
+    const strokeOut = strokeOutset;
     // Per side: a frame with a stroke on its left edge only takes room on that side only.
-    const strokeIn = n => {
-        if (!strokeIsOn(n) || n.strokeAlign === 'outside')
-            return { t: 0, r: 0, b: 0, l: 0 };
-        const k = n.strokeAlign === 'inside' ? 1 : .5, s = strokeSideWidths(n);
-        return { t: s.t * k, r: s.r * k, b: s.b * k, l: s.l * k };
-    };
+    const strokeIn = strokeInset;
     const ext = c => parentOf(c)?.strokesIncluded ? strokeOut(c) : 0;
+    // Figma: a Fill child of an auto layout frame that hugs on that axis has no space to share; it keeps its natural size (Hug).
+    const resolvesHugC = (n, axis) => {
+        const s = sizingOf(n, axis);
+        if (s === 'hug') return true;
+        const p = parentOf(n);
+        return s === 'fill' && !!p && isAutoLayout(p) && n.layoutPositioning !== 'absolute' && resolvesHugC(p, axis);
+    };
+    const hugParentOn = (c, axis) => { const p = parentOf(c); return !!p && isAutoLayout(p) && c.layoutPositioning !== 'absolute' && resolvesHugC(p, axis); };
+    const fillOn = (c, axis) => sizingOf(c, axis) === 'fill' && !hugParentOn(c, axis);
     const lyPads = n => {
         const P = lyPadsBase(n);
         if (!n.strokesIncluded)
@@ -73,6 +77,8 @@ export function runLayout(d, { hasKids = () => true } = {}) {
         const p = parentOf(n), inFrame = !!p && p.type === 'frame' && n.layoutPositioning !== 'absolute';
         if (v === 'fill' && !inFrame)
             v = 'fixed';
+        if (v === 'fill' && hugParentOn(n, axis))
+            v = 'hug';
         if (v === 'fill')
             v = (axis === 'h' ? n._fw : n._fh) ? 'fixed' : 'hug';
         if (v === 'hug' && !(n.type === 'text' || n.type === 'frame'))
@@ -208,16 +214,16 @@ export function runLayout(d, { hasKids = () => true } = {}) {
             if (axis === 'h') {
                 const share = Math.max(0, (Math.max(0, n.w - P.l - P.r) - gap * (cols - 1)) / cols);
                 for (const c of fl)
-                    if (sizingOf(c, 'h') === 'fill')
+                    if (fillOn(c, 'h'))
                         assign(c, 'h', share);
             }
             else {
                 const rows = [];
                 fl.forEach((c, i) => { (rows[Math.floor(i / cols)] ||= []).push(c); });
-                const nat = rows.map(r => Math.max(0, ...r.map(c => sizingOf(c, 'v') === 'fill' ? 0 : c.h)));
+                const nat = rows.map(r => Math.max(0, ...r.map(c => fillOn(c, 'v') ? 0 : c.h)));
                 const natTot = nat.reduce((s, v) => s + v, 0), extra = rows.length ? Math.max(0, (Math.max(0, n.h - P.t - P.b) - natTot - gapC * (rows.length - 1)) / rows.length) : 0;
                 rows.forEach((r, ri) => { for (const c of r)
-                    if (sizingOf(c, 'v') === 'fill')
+                    if (fillOn(c, 'v'))
                         assign(c, 'v', Math.max(nat[ri], extra)); });
             }
         }
@@ -225,12 +231,30 @@ export function runLayout(d, { hasKids = () => true } = {}) {
             const horiz = n.layout === 'horizontal', wrap = !!n.layoutWrap, P = lyPads(n), gap = lyGap(n), fl = ch.filter(inFlow);
             const prim = (axis === 'h') === horiz, inner = axis === 'h' ? Math.max(0, n.w - P.l - P.r) : Math.max(0, n.h - P.t - P.b);
             if (prim && !wrap) {
-                const fills = fl.filter(c => sizingOf(c, axis) === 'fill');
+                const fills = fl.filter(c => fillOn(c, axis));
                 if (fills.length) {
-                    const gapUse = n.gapAuto ? 0 : gap, fixedTot = fl.reduce((s, c) => s + (sizingOf(c, axis) === 'fill' ? 0 : sizeOn(c, axis)), 0);
-                    const share = Math.max(0, (inner - fixedTot - gapUse * Math.max(0, fl.length - 1)) / fills.length);
-                    for (const c of fills)
-                        assign(c, axis, Math.max(0, share - 2 * ext(c)));
+                    const gapUse = n.gapAuto ? 0 : gap, fixedTot = fl.reduce((s, c) => s + (fillOn(c, axis) ? 0 : sizeOn(c, axis)), 0);
+                    // Equal shares, but a Fill child clamped by its min / max takes what it cannot use out of the pool, and the
+                    // rest is shared again among the others until nothing is clamped (Figma / flexbox behavior).
+                    const dim = axis === 'h' ? 'w' : 'h';
+                    let pool = fills, room = inner - fixedTot - gapUse * Math.max(0, fl.length - 1);
+                    for (;;) {
+                        const share = Math.max(0, room / pool.length);
+                        const clamped = pool.filter(c => clampMM(c, dim, Math.max(0, share - 2 * ext(c))) !== Math.max(0, share - 2 * ext(c)));
+                        if (!clamped.length) {
+                            for (const c of pool)
+                                assign(c, axis, Math.max(0, share - 2 * ext(c)));
+                            break;
+                        }
+                        for (const c of clamped) {
+                            const v = clampMM(c, dim, Math.max(0, share - 2 * ext(c)));
+                            assign(c, axis, v);
+                            room -= v + 2 * ext(c);
+                        }
+                        pool = pool.filter(c => !clamped.includes(c));
+                        if (!pool.length)
+                            break;
+                    }
                 }
             }
             else if (!prim) {
@@ -238,14 +262,14 @@ export function runLayout(d, { hasKids = () => true } = {}) {
                 for (const line of lines) {
                     const lineCross = wrap ? Math.max(0, ...line.map(c => sizeOn(c, axis))) : inner;
                     for (const c of line)
-                        if (sizingOf(c, axis) === 'fill')
-                            assign(c, axis, lineCross);
+                        if (fillOn(c, axis))
+                            assign(c, axis, Math.max(0, lineCross - 2 * ext(c)));
                 }
             }
         }
         else if (n.type === 'frame') {
             for (const c of ch.filter(inFlow))
-                if (sizingOf(c, axis) === 'fill') {
+                if (fillOn(c, axis)) {
                     assign(c, axis, axis === 'h' ? n.w : n.h);
                     if (axis === 'h')
                         c.x = 0;
@@ -344,6 +368,11 @@ export function runLayout(d, { hasKids = () => true } = {}) {
 export function clampToLimits(n, dim, v, hasKids = () => true) {
     let lo = dim === 'w' ? n.minW : n.minH;
     const hi = dim === 'w' ? n.maxW : n.maxH;
+    // A frame with auto layout is never smaller than its padding (border-box, as in the browser), plus its inner stroke when included.
+    if (isAutoLayout(n)) {
+        const P = lyPads(n), I = n.strokesIncluded ? strokeInset(n) : { t: 0, r: 0, b: 0, l: 0 };
+        lo = Math.max(lo ?? 0, dim === 'w' ? P.l + P.r + I.l + I.r : P.t + P.b + I.t + I.b);
+    }
     // An empty slot of an instance stays big enough to see and click (its "+" placeholder).
     if (n.propBind?.slot && n.sourceId && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug' && !hasKids(n.id))
         lo = Math.max(lo ?? 0, dim === 'w' ? 120 : 56);
@@ -461,21 +490,12 @@ export function layoutText(n, ctx = measureCanvas.getContext('2d')) {
     return { lines, lineHeight: lh, height: contentH, baseline: (lh - (n.fontSize || 16)) / 2 + ascent + dy };
 }
 
-export function strokeIsOn(n) { return !['group'].includes(n.type) && n.strokeWidth > 0 && n.strokeVisible !== false && !!n.stroke && n.stroke !== 'none'; }
-
-export function strokeSideWidths(n) {
-    const w = n.strokeWidth || 0, m = n.strokeSides || 'all';
-    if (m === 'custom')
-        return { t: n.strokeT ?? w, r: n.strokeR ?? w, b: n.strokeB ?? w, l: n.strokeL ?? w };
-    if (m === 'all')
-        return { t: w, r: w, b: w, l: w };
-    return { t: m === 'top' ? w : 0, r: m === 'right' ? w : 0, b: m === 'bottom' ? w : 0, l: m === 'left' ? w : 0 };
-}
 
 export function hugText(n) {
     const l = layoutText(n), ctx = measureCanvas.getContext('2d');
     ctx.font = fontSpec(n);
     ctx.letterSpacing = `${n.letterSpacing || 0}px`;
-    n.w = Math.max(1, Math.ceil(Math.max(0, ...l.lines.map(t => ctx.measureText(t).width))) + 1);
+    // The exact measured width: Preview sets the same text to nowrap, so the browser lays it out in this width.
+    n.w = Math.max(1, Math.max(0, ...l.lines.map(t => ctx.measureText(t).width)));
     n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, l.height));
 }
