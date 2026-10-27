@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
-    "test:layout": "node test/layout/conformance.mjs",
-    "bench:select": "node test/perf/selectBench.mjs bench5k"
+    "test:layout": "node test/layout/conformance.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
