@@ -1,0 +1,127 @@
+// Phase 2 of the load rules: needs the whole document. Each instance's props are checked against its master's template
+// and binding. Only the master holds the binding; an instance never names a template.
+import { TEMPLATES } from './registry.js';
+import { assertBehaviorShape, behaviorError } from './data.js';
+import { isPropVisible, resolveProps, valueProblem } from './instance-props.js';
+import { planInstanceAnatomy } from './anatomy.js';
+
+/**
+ * Phase 1 and phase 2 for a whole document. Throws BehaviorDataError naming the node and the prop, mode or layer at fault.
+ * @param {{ variables?: { collections?: any[] }, pages?: { nodes?: any[] }[] } | null | undefined} doc
+ */
+export function assertBehaviorData(doc) {
+    assertBehaviorShape(doc);
+    const all = [...allNodes(doc)];
+    const nodes = new Map(all.map(n => [n.id, n]));
+    const children = childrenByParent(all);
+    const collections = doc?.variables?.collections || [];
+    for (const n of all) {
+        if (n.isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections);
+        if (n.isInstance) checkAnatomy(n, nodes, children);
+        if (n.behavior && 'slot' in n.behavior && !nodes.get(n.parentId)?.isInstance) throw behaviorError(n, 'a managed layer sits outside an instance');
+    }
+}
+
+/**
+ * The children of every node, in document order.
+ * @param {any[]} all
+ * @returns {Map<string | null, any[]>}
+ */
+function childrenByParent(all) {
+    /** @type {Map<string | null, any[]>} */
+    const out = new Map();
+    for (const n of all) {
+        const key = n.parentId ?? null;
+        if (!out.has(key)) out.set(key, []);
+        /** @type {any[]} */ (out.get(key)).push(n);
+    }
+    return out;
+}
+
+/**
+ * The nodes under `id`, depth first.
+ * @param {string} id
+ * @param {Map<string | null, any[]>} children
+ * @returns {any[]}
+ */
+function descendantsOf(id, children) {
+    return (children.get(id) || []).flatMap(c => [c, ...descendantsOf(c.id, children)]);
+}
+
+/**
+ * The managed layers of an instance must match its values: present iff hasIcon, the right slot, the right position.
+ * Nothing is repaired; the first mismatch fails the file. A master without a label layer or auto layout is not checked.
+ * @param {any} n an instance
+ * @param {Map<string, any>} nodes every node of the document by id
+ * @param {Map<string | null, any[]>} children
+ */
+function checkAnatomy(n, nodes, children) {
+    const master = nodes.get(n.sourceId);
+    const { ops, reason } = planInstanceAnatomy({
+        binding: master?.behavior,
+        masterRoot: { isAutoLayout: !!master && master.type === 'frame' && !!master.layout && master.layout !== 'none' },
+        masterTree: master ? descendantsOf(master.id, children) : [],
+        stored: n.behavior?.props,
+        children: (children.get(n.id) || []).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null })),
+    });
+    if (reason || !ops.length) return;
+    const op = ops[0];
+    /** @param {string} id */
+    const slotOf = id => nodes.get(id)?.behavior?.slot;
+    const problem = op.op === 'remove' ? `managed layer "${slotOf(op.id)}" is not expected for these values`
+        : op.op === 'insert' ? `managed layer "${op.slot}" is missing`
+            : `managed layer "${slotOf(op.id)}" is at the wrong position`;
+    throw behaviorError(n, problem);
+}
+
+/**
+ * Every node of every page, in order.
+ * @param {{ pages?: { nodes?: any[] }[] } | null | undefined} doc
+ */
+function* allNodes(doc) {
+    for (const page of doc?.pages || []) yield* page.nodes || [];
+}
+
+/**
+ * @param {any} n an instance with props
+ * @param {Map<string, any>} nodes every node of the document by id
+ * @param {any[]} collections the document's variable collections
+ */
+function checkInstance(n, nodes, collections) {
+    /** @type {(problem: string) => never} */
+    const fail = problem => {
+        throw behaviorError(n, problem);
+    };
+    const binding = nodes.get(n.sourceId)?.behavior;
+    if (!binding || !('templateId' in binding)) fail('its master has no behavior binding');
+    const template = TEMPLATES.get(binding.templateId);
+    if (!template) fail(`its master names an unknown template "${binding.templateId}"`);
+    const stored = n.behavior.props;
+    for (const name of Object.keys(stored)) {
+        if (!Object.hasOwn(template.props, name)) fail(`prop "${name}" is not a prop of ${template.id}`);
+        const def = template.props[name];
+        const problem = valueProblem(def, stored[name]);
+        if (problem) fail(`prop "${name}": ${problem}`);
+        if (def.source === 'variable' && stored[name] !== null) checkMode(fail, name, stored[name], binding, collections);
+    }
+    const resolved = resolveProps(template, stored);
+    for (const name of Object.keys(stored)) {
+        if (!isPropVisible(template, name, resolved)) fail(`prop "${name}" is hidden by its visibleIf but holds a value`);
+    }
+}
+
+/**
+ * The mode a variable prop stores must be a mode of the collection the master binds to that prop.
+ * @param {(problem: string) => never} fail
+ * @param {string} name
+ * @param {string} mode
+ * @param {{ variables: Record<string, string | null> }} binding
+ * @param {any[]} collections
+ */
+function checkMode(fail, name, mode, binding, collections) {
+    const collectionId = binding.variables[name];
+    if (!collectionId) fail(`prop "${name}" holds a mode but no collection is bound to it`);
+    const collection = collections.find(c => c.id === collectionId);
+    if (!collection) fail(`prop "${name}" is bound to collection "${collectionId}", which does not exist`);
+    if (!collection.modes?.some((/** @type {{ id: string }} */ m) => m.id === mode)) fail(`mode "${mode}" is not in collection "${collection.name}"`);
+}

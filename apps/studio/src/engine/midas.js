@@ -1,28 +1,16 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData } from '@midas/builder-core';
-import { overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf } from './behavior.js';
-import { layoutOrder } from '../preview/flexStyle.js';
-import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
-import { stateTabHtml, wireStateTab } from './stateUi.js';
-import { stateBindHtml } from './behaviorUi.js';
-import { addPanelHtml, capabilityBodyHtml, capabilitySections, suggestionsHtml } from './capabilitiesUi.js';
-import { editConvention, resetConvention, settingsWindowHtml, tokenTableHtml } from './settingsUi.js';
-import { dataWindowHtml } from './dataUi.js';
-import { setRowRefs } from './rulesUi.js';
-import { levelStatus, suggestLevelMap, aliasCollectionIds, isTypeDimension, mappingWarns, framedPlacePos } from './behavior.js';
-import { castCell, columnLabel, editColumns, rowRefsOf, generateRows, importInto, nextId, planTableState, rowsFromCSV, rowsFromJSON, suggestColumnSlots, toCSV } from './behavior.js';
-import { ROW_ICON, itemRow, sectionBlock, splitOpen, windowHtml } from './behaviorPanelUi.js';
-import { anchorRow, appearanceRows, conditionHtml, rulesHtml, stateActionFields } from './rulesUi.js';
-import { exprTarget, editExpr, editArgs } from './exprUi.js';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior } from '@midas/builder-core';
+import { behaviorPanelHtml } from './behaviorPanel.js';
+import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
+import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
-import { buildIconPage, assetIdsOf, looksLikeIcon, iconNameParts, iconStyleOf, dataUrlToSvg } from '../iconSet.js';
-import { ACTIONS, componentTypeOf, clickPick, FRAME_ROLES, INPUT_TYPES, interactionsForNode, isStateCollection, SELECT_MODES, STATE_ORDER, VALIDATION_TRIGGERS, stateLabel, stateOfModeId, statesIn, normalizeInputBehavior, normalizeInteractions, modeForState, normalizePlacement, actionPlacement, DROPDOWN_SIZES, normalizeStateMapping, offsetXY, pickedModeId, PLACEMENTS, POSITIONS, getPath, setPath, STATE_HINT, STATE_LABEL, STATE_PROPS, STATE_PROP_MAP, statesFor, TARGET_ROLES, TRIGGERS, TYPE_LABEL, variableValueInMode, STATE_ACTION_IDS, matchLevel, levelsCovered, cleanConvention, resolveBehaviors, normalizeBehaviors, normalizeOverrides, normalizeConfig, slotIssues, applicability, suggestSlots, suggestStates, suggestPreset, planPreset, PRESETS, CAPABILITIES, SLOT_ROLES, BEHAVIOR_KINDS, DEFAULT_CONVENTION, summaryOf, inputSummary, normalizeFieldRules, validateByRules, patternProblem, optionsText, parseOptions, normalizeOptions, migrateBehavior, cleanState, createEvalCtx, initialValues, formatValue, truthy, STATE_TYPES, STATE_SCOPES, STATE_FIELD_TYPES, LIST_ITEM_TYPES, DEFAULT_SCHEMA, schemaOf, parseSchema, schemaText, fieldDefault, defaultValue, checkValue, fitRows, normalizeStateVariable, uniqueStateName, evaluateState, defaultExpr, getAt, setAt, OPERATIONS, COMPARATORS, TRANSITIONS, VARIANT_TRANSITIONS, MOTION_EASINGS, MOTION_EASING_MAP, MOTION_DEFAULTS, placeOverlayPos, isOverlayRoot, splitOverlayParts, overlayRootOf, canReparentOverlay, SCROLL_OVERFLOWS, SCROLL_POSITIONS, normalizeScroll } from './behavior.js';
+import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
 
 
 // ===== document.js =====
@@ -52,7 +40,6 @@ function union(boxes) {
     }
     return { x, y, w: r - x, h: b - y };
 }
-const intersects = (a, b) => a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
 const _colorCache = new Map();
 function color(c, opacity = 1) {
     if (!c || c === 'none')
@@ -92,16 +79,6 @@ function sizingOf(n, axis) {
     return 'fixed';
 }
 function runLayout(d) {
-    // Overlay roots live outside the main hierarchy: each lays out in its own context (spec).
-    if (!d.isOverlayPart) {
-        const parts = splitOverlayParts(d.nodes);
-        if (parts) {
-            const self = d, get = self.get.bind(self), touch = (...a) => self.touch(...a);
-            for (const sub of parts.subs) runLayout({ nodes: sub, get, touch, isOverlayPart: true });
-            if (!parts.main.length) return;
-            d = { nodes: parts.main, get, touch };
-        }
-    }
     const nodes = d.nodes;
     if (!nodes.some(n => n.minW != null || n.maxW != null || n.minH != null || n.maxH != null || isAutoLayout(n) || n.layoutSizingH === 'fill' || n.layoutSizingV === 'fill' || (n.type === 'frame' && (n.layoutSizingH === 'hug' || n.layoutSizingV === 'hug'))))
         return;
@@ -113,7 +90,7 @@ function runLayout(d) {
         kids.get(k).push(n);
     }
     for (const [k, list] of kids) {
-        // the order of the flow comes from the same function Preview uses
+        // the order of the flow comes from layoutOrder
         kids.set(k, layoutOrder(k && d.get(k), list));
     }
     const before = new Map(nodes.map(n => [n, [n.x, n.y, n.w, n.h, n.autoW]]));
@@ -496,18 +473,6 @@ function reorderDrag(n) {
     const at = target ? doc.nodes.indexOf(target) : doc.nodes.indexOf(sibs[sibs.length - 1]) + 1;
     doc.nodes.splice(at, 0, n);
 }
-function sizingSelect(n, axis) {
-    const p = doc.get(n.parentId), inAuto = p?.type === 'frame' && n.layoutPositioning !== 'absolute';
-    const opts = [['fixed', 'Fixed']];
-    if (n.type === 'text' || n.type === 'frame')
-        opts.push(['hug', 'Hug']);
-    if (inAuto)
-        opts.push(['fill', 'Fill']);
-    let cur = sizingOf(n, axis);
-    if (!opts.some(o => o[0] === cur))
-        cur = 'fixed';
-    return selectField(axis === 'h' ? 'layoutSizingH' : 'layoutSizingV', cur, opts);
-}
 function autoLayoutControls(n) {
     if (!isAutoLayout(n))
         return '';
@@ -812,10 +777,6 @@ function bindType(prop) { if (String(prop).startsWith('cprop:')) {
 }
 if (String(prop).startsWith('vprop:'))
     return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
-/** doc.data.state: the State collection (page / app variables and derived values), separate from the Tokens in `variables`. */
-function stateStore() { return doc.data.state ||= { variables: [], derived: [] }; }
-/** doc.data.convention: the names this file treats as standard for slots and states (see convention.js). Always complete. */
-function conventionOf() { return cleanConvention(doc.data.convention); }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
 function varColl(id) { return varStore().collections.find(c => c.id === id); }
@@ -832,17 +793,6 @@ function nodeMode(d, n, coll) {
     if (pm && coll.modes.some(x => x.id === pm))
         return pm;
     return coll.modes[0]?.id;
-}
-/** The mode a layer picks for a collection: its own variable modes, then the nearest layer above it that sets one. */
-function modeInChain(n, cid, collections, nodeOf) {
-    const coll = collections.find(c => c.id === cid);
-    let cur = n;
-    for (let i = 0; cur && i < 200; i++) {
-        const m = cur.varModes?.[cid];
-        if (m && coll?.modes.some(x => x.id === m)) return m;
-        cur = cur.parentId ? nodeOf(cur.parentId) : null;
-    }
-    return null;
 }
 function varValue(d, item, node, depth = 0) {
     const store = d.data.variables, coll = store?.collections.find(c => c.id === item.collectionId);
@@ -1114,7 +1064,7 @@ function layerPropOptions(n, prop) {
     return holder ? { holder, props: cpropsOf(holder).filter(p => p.type === type) } : { holder: null, props: [] };
 }
 function varRow(label, prop) {
-    const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { holder, props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
+    const n = activeNode(), field = prop === 'visible' ? 'visible' : prop === 'text' ? 'text' : null, pid = n && field && n.propBind?.[field], { props } = n && field ? layerPropOptions(n, prop) : { holder: null, props: [] };
     // The property is looked up by id across the file, so layers inside instances (copied from the main component) show their binding too.
     const bp = pid && (props.find(p => p.id === pid) || (() => { for (const pg of doc.data.pages) for (const x of pg.nodes) { const p = x.cprops?.find(q => q.id === pid); if (p) return p; } return null; })());
     const v = boundVar(prop);
@@ -1123,7 +1073,6 @@ function varRow(label, prop) {
 }
 function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
 const itemGlyph = item => varOptions(item) ? '≡' : varGlyph(item.type);
-function varOwnerOf(item) { return varColl(item.collectionId); }
 function aliasReaches(item, targetId, depth = 0) {
     if (depth > 20)
         return true;
@@ -1266,82 +1215,6 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
         else if (d) {
             closeVarPicker();
             onDetach();
-        }
-    });
-    pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVarPicker(); } });
-    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
-        if (!document.body.contains(pop)) {
-            document.removeEventListener('pointerdown', away, true);
-            return;
-        }
-        if (!pop.contains(ev.target) && !ev.target.closest?.('.stp-menu')) {
-            closeVarPicker();
-            document.removeEventListener('pointerdown', away, true);
-        }
-    }, true), 0);
-}
-/**
- * Pemilih variable collection, memakai jendela yang sama dengan pemilih variable di Design: pencarian, filter
- * library, dan daftar collection. Dipakai state mapping dan interaction "Set variable".
- */
-function openCollectionPicker(anchor, { current = null, onPick, onClear = null, clearLabel = 'Clear collection', only = null } = {}) {
-    closeVarPicker();
-    const pop = document.createElement('div');
-    pop.id = 'var-picker';
-    pop.className = 'var-picker';
-    let q = '', lib = '';
-    const libOpts = () => {
-        const store = varStore();
-        return `<option value="">All libraries</option><option value="@file" ${lib === '@file' ? 'selected' : ''}>Created in this file</option>${vpkLibIds(store).map(id => `<option value="lib:${esc(id)}" ${lib === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}`;
-    };
-    const render = () => {
-        const ql = q.trim().toLowerCase();
-        const list = (only || varStore().collections || []).filter(c => {
-            if (lib === '@file' && c.libId)
-                return false;
-            if (lib.startsWith('lib:') && c.libId !== lib.slice(4))
-                return false;
-            return !ql || c.name.toLowerCase().includes(ql) || (!!c.libId && libName(c.libId).toLowerCase().includes(ql));
-        });
-        pop.querySelector('.vp-list').innerHTML = list.length
-            ? list.map(c => {
-                const n = (c.modes || []).length;
-                return `<button class="vp-item vpk-item ${c.id === current ? 'on' : ''}" data-pick-coll="${esc(c.id)}" title="${esc((c.libId ? libName(c.libId) + ' / ' : '') + c.name)}">${VAR_ICON}<span class="vp-name">${esc(c.name)}</span><span class="vp-val">${n} mode${n === 1 ? '' : 's'}</span>${c.id === current ? icon('check', 12) : ''}</button>`;
-            }).join('')
-            : `<div class="vp-empty">No collections${ql ? ' match your search' : ' yet. Create one in the Variables window'}.</div>`;
-    };
-    const build = () => {
-        pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" spellcheck="false" autocomplete="off" aria-label="Search collections"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Library">${libOpts()}</select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>${onClear && current ? `<button class="vp-detach" data-pick-clear>${esc(clearLabel)}</button>` : ''}`;
-        render();
-    };
-    build();
-    document.body.appendChild(pop);
-    const r = anchor.getBoundingClientRect(), w = 280;
-    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
-    pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
-    pop.querySelector('[data-vpk-search]').focus({ preventScroll: true });
-    pop.querySelector('.vpk-item.on')?.scrollIntoView?.({ block: 'center' });
-    pop.addEventListener('input', e => {
-        if (!e.target.matches('[data-vpk-search]'))
-            return;
-        q = e.target.value;
-        render();
-    });
-    pop.addEventListener('change', e => {
-        if (!e.target.matches('[data-vpk-coll]'))
-            return;
-        lib = e.target.value;
-        render();
-    });
-    pop.addEventListener('click', e => {
-        const b = e.target.closest('[data-pick-coll]'), c = e.target.closest('[data-pick-clear]');
-        if (b) {
-            closeVarPicker();
-            onPick(b.dataset.pickColl);
-        }
-        else if (c) {
-            closeVarPicker();
-            onClear();
         }
     });
     pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeVarPicker(); } });
@@ -2226,127 +2099,6 @@ function toggleVarsWindow(force) {
     closeVarPicker();
     syncRail();
 }
-// State tab of the Variables window (see stateUi.js): edits go through one undoable transaction, then the state is normalized.
-const stateUi = { open: new Set(), menu: false };
-const stateApi = {
-    state: () => stateStore(),
-    esc: s => esc(s),
-    render: () => { renderVarsWindow(); renderDataWindow(); },
-    openData: id => openDataWindow(id),
-    tx(label, fn) {
-        finishText();
-        history.begin(label);
-        const st = stateStore();
-        fn(st);
-        const clean = cleanState(st);
-        st.variables = clean.variables;
-        st.derived = clean.derived;
-        doc.touch();
-        if (history.commit()) saveSoon();
-        invalidate();
-        renderInspector();
-    },
-};
-// ----- Data window of a List State: a grid for its columns and its sample rows
-const DW = { id: null, import: null, generate: 25 };
-function openDataWindow(id) {
-    let win = document.getElementById('data-window');
-    if (!win) {
-        win = document.createElement('section');
-        win.id = 'data-window';
-        win.className = 'vars-window data-window hidden';
-        win.setAttribute('role', 'dialog');
-        document.body.appendChild(win);
-        win.style.left = Math.max(12, innerWidth / 2 - 420) + 'px';
-        win.style.top = '90px';
-        wireDataWindow(win);
-        wireWindowDrag(win, () => false);
-    }
-    Object.assign(DW, { id, import: null });
-    win.classList.remove('hidden');
-    renderDataWindow();
-}
-function closeDataWindow() { DW.id = null; document.getElementById('data-window')?.classList.add('hidden'); }
-function renderDataWindow() {
-    const win = document.getElementById('data-window');
-    if (!win || !DW.id) return;
-    const v = stateStore().variables.find(x => x.id === DW.id);
-    if (!v) { closeDataWindow(); return; }
-    const scroll = win.querySelector('.dw-body')?.scrollTop || 0;
-    guarded(() => {
-        win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Data · ${esc(v.name)}</span><span class="vw-title-actions"><button type="button" class="vw-mini" data-dw-act="close" title="Close" aria-label="Close data">${icon('close', 12)}</button></span></div><div class="dw-body">${dataWindowHtml({ esc }, v, DW)}</div>`;
-    }, err => { win.innerHTML = `<div class="vw-title" data-vw-drag><span>Data</span><span class="vw-title-actions"><button type="button" class="vw-mini" data-dw-act="close" aria-label="Close data">${icon('close', 12)}</button></span></div><div class="dw-body">${errorBoundaryHtml('Data', err)}</div>`; win.querySelector('[data-eb-retry]').onclick = renderDataWindow; });
-    const b = win.querySelector('.dw-body');
-    if (b) b.scrollTop = scroll;
-}
-function dwEdit(label, fn) {
-    stateApi.tx(label, st => {
-        const v = st.variables.find(x => x.id === DW.id);
-        if (!v) return;
-        const out = fn({ schema: schemaOf(v).map(f => ({ ...f })), rows: (v.initial || []).map(r => ({ ...r })) }, v);
-        if (out) { v.schema = out.schema; v.initial = out.rows; }
-    });
-    renderDataWindow();
-}
-function wireDataWindow(win) {
-    win.addEventListener('click', e => {
-        const b = e.target.closest('[data-dw-act]');
-        if (!b || !win.contains(b)) return;
-        const act = b.dataset.dwAct, key = b.dataset.dwKey, i = Number(b.dataset.dwI);
-        if (act === 'close') return closeDataWindow();
-        if (act === 'add-row') return dwEdit('Add row', d => ({ schema: d.schema, rows: [...d.rows, Object.fromEntries(d.schema.map(f => [f.key, castCell(f, undefined)]))] }));
-        if (act === 'del-row') return dwEdit('Remove row', d => ({ schema: d.schema, rows: d.rows.filter((_, k) => k !== i) }));
-        if (act === 'clear') return dwEdit('Clear rows', d => ({ schema: d.schema, rows: [] }));
-        if (act === 'add-col') return dwEdit('Add column', d => editColumns(d, { op: 'add' }));
-        if (act === 'del-col') return dwEdit('Remove column', d => editColumns(d, { op: 'del', key }));
-        if (act === 'move-left' || act === 'move-right') return dwEdit('Move column', d => editColumns(d, { op: 'move', key, value: act === 'move-left' ? -1 : 1 }));
-        if (act === 'generate') {
-            const n = Math.max(1, Math.min(500, Math.floor(Number(win.querySelector('[data-dw-n]')?.value)) || 25));
-            DW.generate = n;
-            return dwEdit('Generate rows', (d, v) => { const idCol = d.schema.find(f => /^id$/i.test(f.key)); return { schema: d.schema, rows: [...d.rows, ...generateRows(d.schema, n, { seed: Date.now() % 100000, startId: idCol ? Number(nextId(d.rows, idCol.key)) : 1 })] }; });
-        }
-        if (act === 'export') {
-            const v = stateStore().variables.find(x => x.id === DW.id);
-            if (!v) return;
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([toCSV(schemaOf(v), v.initial || [])], { type: 'text/csv' }));
-            a.download = `${v.name.replace(/[^\w-]+/g, '-')}.csv`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-            return;
-        }
-        if (act === 'import-open') { DW.import = { kind: 'csv', text: '', keep: false, append: false, note: '' }; return renderDataWindow(); }
-        if (act === 'import-close') { DW.import = null; return renderDataWindow(); }
-        if (act === 'import-kind') { DW.import.kind = b.dataset.dwKind; DW.import.note = ''; return renderDataWindow(); }
-        if (act === 'import-apply') {
-            const imp = DW.import, ta = win.querySelector('[data-dw-text]');
-            imp.text = ta ? ta.value : imp.text;
-            const parsed = imp.kind === 'csv' ? rowsFromCSV(imp.text) : rowsFromJSON(imp.text);
-            if (!parsed.rows.length) { imp.ok = false; imp.note = parsed.problems[0] || 'There are no rows in this text.'; return renderDataWindow(); }
-            dwEdit('Import data', d => importInto(d, parsed, { keepColumns: imp.keep, append: imp.append }));
-            DW.import = { ...imp, ok: true, note: `Imported ${parsed.rows.length} rows.${parsed.problems.length ? ' ' + parsed.problems.join(' ') : ''}`, text: '' };
-            return renderDataWindow();
-        }
-    });
-    win.addEventListener('change', async e => {
-        const t = e.target;
-        if (!win.contains(t)) return;
-        const d = t.dataset;
-        if (d.dwCell !== undefined) {
-            const [i, key] = d.dwCell.split('|');
-            return dwEdit('Edit cell', data => {
-                const f = data.schema.find(x => x.key === key);
-                const val = f?.type === 'boolean' ? t.checked : f?.type === 'number' ? (Number.isFinite(t.valueAsNumber) ? t.valueAsNumber : 0) : t.value;
-                return { schema: data.schema, rows: data.rows.map((r, k) => (k === Number(i) ? { ...r, [key]: val } : r)) };
-            });
-        }
-        if (d.dwF) return dwEdit('Edit column', data => editColumns(data, { op: d.dwF, key: d.dwKey, value: t.value }));
-        if (d.dwOpt !== undefined && DW.import) { if (d.dwOpt === 'keep') DW.import.keep = t.value === '1'; else DW.import.append = t.checked; return; }
-        if (d.dwFile !== undefined && DW.import && t.files?.[0]) { DW.import.text = await t.files[0].text(); DW.import.note = ''; renderDataWindow(); }
-    });
-    win.addEventListener('input', e => { if (e.target.dataset?.dwText !== undefined && DW.import) DW.import.text = e.target.value; });
-    win.addEventListener('click', e => { const f = e.target.closest('label.dw-file'); if (f) f.querySelector('input')?.click(); });
-}
 function varsRows(coll) {
     const q = vw.search.trim().toLowerCase();
     const items = varStore().items.filter(i => i.collectionId === coll.id && vwInGroup(i) && (!vw.type || i.type === vw.type) && (!q || i.name.toLowerCase().includes(q)));
@@ -2424,9 +2176,6 @@ function renderVarsWindowBody(win) {
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
 <div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
 <div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_CREATE.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${t === 'enum' ? '≡' : varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
-    win.querySelector('.vw-title > span:first-child')?.insertAdjacentHTML('afterend', `<span class="vw-tabs" role="tablist"><button role="tab" class="${vw.tab !== 'state' ? 'on' : ''}" data-vw-tab="tokens" aria-selected="${vw.tab !== 'state'}">Tokens</button><button role="tab" class="${vw.tab === 'state' ? 'on' : ''}" data-vw-tab="state" aria-selected="${vw.tab === 'state'}">State</button></span>`);
-    if (vw.tab === 'state')
-        win.querySelector('.vw-body').innerHTML = `<div class="vw-main st-pane">${stateTabHtml(stateApi, stateUi)}</div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -2455,6 +2204,10 @@ function vwRenameGroup(coll, old, nn) {
 // Collections that come from a library are changed in the library file only.
 const vwReadOnly = () => !!varColl(vw.coll)?.libId;
 function vwTx(label, fn, rerender = true) {
+    if (viewOnly()) {
+        viewOnlyNotice();
+        return;
+    }
     if (vwReadOnly()) {
         toast('This collection comes from a library: edit it in the library file.');
         return;
@@ -2510,16 +2263,6 @@ function vwSetValue(key, val, live) {
     }
 }
 function wireVarsWindow(win) {
-    wireStateTab(win, stateApi, stateUi);
-    win.addEventListener('click', e => {
-        const t = e.target.closest?.('[data-vw-tab]');
-        if (!t || vw.tab === t.dataset.vwTab) return;
-        vw.tab = t.dataset.vwTab;
-        vw.menu = false;
-        stateUi.menu = false;
-        closeVarDetails();
-        renderVarsWindow();
-    });
     win.addEventListener('input', e => {
         const el = e.target;
         if (el.matches('[data-vw-search]')) {
@@ -2684,7 +2427,8 @@ function wireVarsWindow(win) {
         if ((el = t.closest('[data-vw-del-coll]'))) {
             e.stopPropagation();
             const id = el.dataset.vwDelColl, s = varStore();
-            vwTx('Delete collection', () => {
+            deleteWhenLoaded('Delete collection', () => {
+                dropBehaviorRefs(id);
                 s.collections = s.collections.filter(c => c.id !== id);
                 const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
                 s.items = s.items.filter(i => i.collectionId !== id);
@@ -2802,7 +2546,8 @@ function wireVarsWindow(win) {
             const coll = varColl(vw.coll), id = el.dataset.vwDelMode;
             if (coll.modes.length < 2)
                 return;
-            vwTx('Delete mode', () => {
+            deleteWhenLoaded('Delete mode', () => {
+                dropBehaviorRefs(coll.id, id);
                 coll.modes = coll.modes.filter(m => m.id !== id);
                 for (const i of varStore().items.filter(x => x.collectionId === coll.id))
                     delete i.values[id];
@@ -2830,7 +2575,7 @@ function wireVarsWindow(win) {
     });
     wireWindowDrag(win, () => vw.full);
 }
-/** Dragging a floating window by its title bar (the Variables window and the Behavior window share it). */
+/** Dragging a floating window by its title bar (the Variables window uses it). */
 function wireWindowDrag(win, locked) {
     win.addEventListener('pointerdown', e => {
         const bar = e.target.closest('[data-vw-drag]');
@@ -3646,15 +3391,6 @@ function applyConstraints(d) {
         constraintSizes.set(f, { w: f.w, h: f.h });
     }
 }
-function constraintsSection(n) {
-    const p = doc.get(n.parentId);
-    if (!p || p.type !== 'frame' || (isAutoLayout(p) && n.layoutPositioning !== 'absolute'))
-        return '';
-    const h = n.constraintH || 'left', v = n.constraintV || 'top';
-    const pin = (side, on) => `<button class="cn-pin ${side} ${on ? 'on' : ''}" data-cn-pin="${side}" aria-label="Pin to ${side}" title="Pin to ${side}"><i></i></button>`;
-    const box = `<div class="cn-box"><div class="cn-inner ${h === 'scale' || v === 'scale' ? 'scale' : ''}"></div>${pin('top', ['top', 'stretch'].includes(v))}${pin('bottom', ['bottom', 'stretch'].includes(v))}${pin('left', ['left', 'stretch'].includes(h))}${pin('right', ['right', 'stretch'].includes(h))}<i class="cn-cx ${h === 'center' ? 'on' : ''}"></i><i class="cn-cy ${v === 'center' ? 'on' : ''}"></i></div>`;
-    return section('Constraints', `<div class="cn-row">${box}<div class="cn-sel"><div class="field-label"><span>Horizontal</span></div>${selectField('constraintH', h, [['left', 'Left'], ['right', 'Right'], ['stretch', 'Left & Right'], ['center', 'Center'], ['scale', 'Scale']])}<div class="field-label"><span>Vertical</span></div>${selectField('constraintV', v, [['top', 'Top'], ['bottom', 'Bottom'], ['stretch', 'Top & Bottom'], ['center', 'Center'], ['scale', 'Scale']])}</div></div>`);
-}
 function floatControl(n) {
     if (!isAutoLayout(doc.get(n.parentId)))
         return '';
@@ -3800,27 +3536,12 @@ async function kvGet(key) {
     }
 }
 async function kvPut(key, value) { return kv.put(key, value); }
-async function kvDel(key) {
-    try {
-        await kv.del(key);
-    }
-    catch { }
-}
-
-
-
-
-
-
-
 function libSaveIndex() { return kvPut('index', JSON.stringify(lib.index)); }
-// URL <-> editor state, like Figma: /file/<id>?page=<pageId>&node-id=<id>. A refresh reopens the same file, page and selection. Preview tab di route sendiri /preview/<id> supaya reload tetap di preview.
+// URL <-> editor state, like Figma: /file/<id>?page=<pageId>&node-id=<id>. A refresh reopens the same file, page and selection.
 const deepLink = (() => {
-    const m = /^\/(?:file|preview)\/([^/]+)\/?$/.exec(location.pathname), q = new URLSearchParams(location.search);
-    return m ? { id: decodeURIComponent(m[1]), tab: location.pathname.startsWith('/preview/'), page: q.get('page'), nodes: (q.get('node-id') || '').split(',').filter(Boolean), preview: q.get('preview'), scale: q.get('scale'), used: false } : null;
+    const m = /^\/file\/([^/]+)\/?$/.exec(location.pathname), q = new URLSearchParams(location.search);
+    return m ? { id: decodeURIComponent(m[1]), page: q.get('page'), nodes: (q.get('node-id') || '').split(',').filter(Boolean), used: false } : null;
 })();
-// Route /preview/: URL tidak boleh ditulis ulang dan boot tidak boleh membuka file lain.
-const isPreviewRoute = !!deepLink?.tab;
 /** Start-up failure: a message and a Retry button (reloads the page), instead of a screen that stays on its last stage. */
 function showStartError(message) {
     if (document.getElementById('start-error')) return;
@@ -3839,7 +3560,6 @@ function withTimeout(p, ms, message) {
     return Promise.race([p, new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(message)), ms); })]).finally(() => clearTimeout(timer));
 }
 function syncUrl() {
-    if (state.previewTab || isPreviewRoute) return;
     try {
         const inFile = !lib.open && lib.fileId && lib.index.some(m => m.id === lib.fileId && !m.trashed);
         let url = '/';
@@ -3869,9 +3589,8 @@ async function libBoot() {
     // Projects are stored page by page (file:<id>:meta + pages); the oldest ones as a single file:<id> blob.
     const hasStored = async id => !!(await kvGet('file:' + id + ':meta') || await kvGet('file:' + id));
     const loadStored = async id => { try {
-        // The editor opens on one page; the rest streams in afterwards (a preview tab needs every page at once).
-        const lazy = !isPreviewRoute && !(deepLink && (deepLink.tab || deepLink.preview != null));
-        return await projectStorage.loadProject(id, { lazy, firstPage: deepLink && deepLink.id === id ? deepLink.page : null });
+        // The editor opens on one page; the rest streams in afterwards.
+        return await projectStorage.loadProject(id, { lazy: true, firstPage: deepLink && deepLink.id === id ? deepLink.page : null });
     }
     catch {
         return null;
@@ -3925,7 +3644,7 @@ async function libBoot() {
         catch { }
         json = legacy;
     }
-    if (!json && !isPreviewRoute) {
+    if (!json) {
         // The remembered file is gone: reopen the most recent one that still has content, and drop index entries
         // that never got any, so reloading does not pile up empty files.
         const keep = [];
@@ -3944,7 +3663,7 @@ async function libBoot() {
     if (!json) {
         // Tidak ada file yang bisa dibuka: editor memakai dokumen kosong yang belum disimpan. Ia baru masuk Recents &
         // server saat pertama kali diedit (save() menambahkannya), jadi file yang sudah dihapus tidak "hidup lagi".
-        lib.fileId = isPreviewRoute ? deepLink.id : uid();
+        lib.fileId = uid();
     }
     // Housekeeping so Recents cannot pile up on every refresh: one entry per id, and entries that never got any content
     // (an empty "Untitled" created by an earlier boot) are dropped, except the file that is open right now.
@@ -3993,8 +3712,6 @@ async function makeThumb() {
 }
 async function loadIntoEditor(data, id) {
     finishText();
-    // Older files keep their List variables in the tokens: move them to State before the tokens are cleaned.
-    data = migrateBehavior(data);
     data.variables = cleanVariables(data.variables);
     history.pending = null;
     history.undoStack = [];
@@ -4160,7 +3877,6 @@ async function libImportFile(file) {
         hideBusy();
     }
 }
-async function libJson(id) { return id === lib.fileId ? doc.serialize() : await kvGet('file:' + id); }
 async function libDuplicate(id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta)
@@ -5255,8 +4971,6 @@ function paintGlassHighlights(ctx, n, path, e) {
     ctx.stroke(path);
     ctx.restore();
 }
-// ----- inspector -----
-const fxField = (i, key, label, value, o = {}) => `<label class="field" title="${esc(o.title || label)}"><span>${label}</span><input type="number" step="${o.step || 1}" ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${fmt(value ?? 0)}" data-fx-idx="${i}" data-fx-key="${key}" aria-label="${esc(o.title || label)}"></label>`;
 function addEffect(type) {
     transaction('Add effect', () => {
         for (const n of selected()) {
@@ -5502,11 +5216,6 @@ function findDropTarget(g, w) {
     }
     // Instances are closed: layers can only be dropped into frames marked as a slot property.
     const t = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true, exclude }), w));
-    const get = id => doc.get(id);
-    for (const id of g.roots) {
-        const s = doc.get(id);
-        if (s && !canReparentOverlay(s, t || null, get)) return null;
-    }
     return t;
 }
 // Where a dragged layer will land. Children of an auto layout frame stay put (and just reorder) while the pointer is still inside it.
@@ -5515,7 +5224,6 @@ function dropTargetFor(g, n) {
     if (cur && isAutoLayout(cur) && n.layoutPositioning !== 'absolute' && g.lastWorld && insideNodeBox(cur, g.lastWorld))
         return cur;
     const t = g.dropTarget || null;
-    if (n && t && !canReparentOverlay(n, t, id => doc.get(id))) return doc.get(n.parentId) || null;
     return t;
 }
 // A frame (or section) drawn around existing layers adopts every sibling whose bounds sit fully inside it.
@@ -5523,11 +5231,9 @@ function nestNodesInside(frame) {
     const box = doc.world(frame.id) && doc.bounds([frame.id]);
     if (!box || box.w < 2 || box.h < 2)
         return;
-    const get = id => doc.get(id);
-    if (overlayRootOf(frame, get)) return;
     const eps = .5, skip = new Set([frame.id, ...doc.ancestors(frame).map(a => a.id)]);
     const kids = doc.children(frame.parentId || null).filter(c => {
-        if (skip.has(c.id) || c.locked || c.isSection && !frame.isSection || overlayRootOf(c, get))
+        if (skip.has(c.id) || c.locked || c.isSection && !frame.isSection)
             return false;
         const b = doc.bounds([c.id]);
         return b && b.x >= box.x - eps && b.y >= box.y - eps && b.x + b.w <= box.x + box.w + eps && b.y + b.h <= box.y + box.h + eps;
@@ -5544,7 +5250,6 @@ function nestNodesInside(frame) {
     select([frame.id]);
 }
 function reparentNode(n, target, worldMatrix) {
-    if (n && !canReparentOverlay(n, target || null, id => doc.get(id))) return false;
     const m = worldMatrix || doc.world(n.id).matrix, inv = target ? doc.world(target.id).inverse : identity();
     n.parentId = target ? target.id : null;
     setFromMatrix(n, multiply(inv, m));
@@ -6411,10 +6116,6 @@ document.addEventListener('change', e => {
     else if (el.matches('[data-sc-op]'))
         scSetColor(g, null, clamp((+el.value || 0) / 100, 0, 1));
 });
-// ===== Layout grids (Grid / Columns / Rows guides on a frame) =====
-// n.layoutGrids = [{ id, type: 'grid' | 'columns' | 'rows', size, count (0 = auto), gutter, margin, align: 'stretch' | 'min' | 'center' | 'max', color, opacity, visible }]
-const LG_TYPES = [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']];
-const LG_ALIGN = [['stretch', 'Stretch'], ['min', 'Left / Top'], ['center', 'Center'], ['max', 'Right / Bottom']];
 function newLayoutGrid(type = 'grid') {
     return type === 'grid' ? { id: uid(), type, size: 10, color: '#ff0000', opacity: .1, visible: true }
         : { id: uid(), type, count: 5, gutter: 20, margin: 0, align: 'stretch', size: 80, color: '#ff0000', opacity: .1, visible: true };
@@ -6436,10 +6137,10 @@ function lgStripes(g, length) {
     return out;
 }
 function drawLayoutGrids(c) {
-    const z = state.camera.zoom, peek = overlayPeek();
+    const z = state.camera.zoom;
     for (const s of doc.scene()) {
         const n = s.node;
-        if (!n.layoutGrids?.length || s.hidden || n.type !== 'frame' || !overlayShown(n.id, peek))
+        if (!n.layoutGrids?.length || s.hidden || n.type !== 'frame')
             continue;
         const p = worldToScreen(s.box.x, s.box.y);
         if (p.x > area.clientWidth || p.y > area.clientHeight || p.x + s.box.w * z < 0 || p.y + s.box.h * z < 0)
@@ -6489,7 +6190,6 @@ const LG_ICONS = {
     columns: svgI('<path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11"/>'),
     rows: svgI('<path d="M2.5 2.5h11v11h-11zM2.5 6.2h11M2.5 9.8h11"/>')
 };
-const LG_BOOK_ICON = svgI('<path d="M3 3.5h4.5v9H3zM8.5 3.5H13v9H8.5z"/>');
 function lgSummary(g) {
     if (g.type === 'grid')
         return 'Grid ' + (g.size || 10) + 'px';
@@ -6845,7 +6545,7 @@ function xyForTopLeft(n, tl) {
 const lazyPages = new Set();
 class DocumentModel {
     // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
-    constructor(data, { lazy = false } = {}) { this.data = migrateBehavior(data || makeStarter()); if (!lazy) dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6933,11 +6633,6 @@ class DocumentModel {
         for (const id of ids)
             for (const n of this.descendants(id))
                 all.add(n.id);
-        // The overlay layers Midas placed for a trigger that goes away go with it (and what is inside them).
-        for (const oid of overlaysOfTriggers(this.nodes, all)) {
-            all.add(oid);
-            for (const d of this.descendants(oid)) all.add(d.id);
-        }
         this.page.nodes = this.nodes.filter(n => !all.has(n.id));
         // Guides bound to a removed frame are its children: they go with it.
         if (this.page.guides)
@@ -6954,7 +6649,6 @@ class DocumentModel {
                     const before = this.revision;
                     applyVariables(this);
                     applyConstraints(this);
-                    syncOverlaySizes(this);
                     runLayout(this);
                     if (this.revision === before)
                         break;
@@ -6978,14 +6672,12 @@ class DocumentModel {
             // A visible mask layer clips every sibling stacked above it (Figma semantics); the mask itself is not painted.
             // Auto layout "Canvas stacking: First on top" paints the children in reverse order (layer order is unchanged).
             const rawKids = byParent.get(pid) || [], pn = pid ? this.get(pid) : null;
-            // Root-level overlay portals walk after ordinary nodes so their trigger's world box is already computed.
-            const kidsOf = pid === null ? [...rawKids.filter(k => !isOverlayRoot(k)), ...rawKids.filter(k => isOverlayRoot(k))] : rawKids;
             // Mask entries, built once per parent: a visible mask clips every sibling stacked below it (Figma: the mask sits above what it masks).
             const maskFor = new Map();
             let active = null;
             const flipped = !!pn?.layoutFlip;
-            for (let j = 0; j < kidsOf.length; j++) {
-                const i = flipped ? kidsOf.length - 1 - j : j, k = kidsOf[i];
+            for (let j = 0; j < rawKids.length; j++) {
+                const i = flipped ? rawKids.length - 1 - j : j, k = rawKids[i];
                 if (k.isMask && k.visible) {
                     const mm = multiply(m, localMatrix(k));
                     active = { mask: k, matrix: mm, inverse: inverse(mm), w: k.w, h: k.h, radius: k.type === 'ellipse' ? Math.min(k.w, k.h) / 2 : k.radius || 0, radii: k.type === 'ellipse' ? null : cornerRadii(k) };
@@ -6993,27 +6685,10 @@ class DocumentModel {
                 else
                     maskFor.set(k.id, active);
             }
-            for (const n of pn?.layoutReverseZ && isAutoLayout(pn) ? [...kidsOf].reverse() : kidsOf) {
+            for (const n of pn?.layoutReverseZ && isAutoLayout(pn) ? [...rawKids].reverse() : rawKids) {
                 if (visited.has(n.id))
                     continue;
                 visited.add(n.id);
-                if (pid === null && isOverlayRoot(n)) {
-                    const found = overlayActionOf(n.id);
-                    if (found) {
-                        const { trig, action } = found;
-                        const tbox = world.get(trig.id)?.box;
-                        if (tbox) {
-                            let anchorBox = tbox;
-                            if (action.type === 'open-overlay') {
-                                const topFrame = [trig, ...this.ancestors(trig)].reverse().find(a => a.type === 'frame' && !a.parentId && !a.isSection);
-                                anchorBox = (topFrame && world.get(topFrame.id)?.box) || tbox;
-                            }
-                            const pos = placeOverlayPos(anchorBox, n.w, n.h, actionPlacement(action), action.offset);
-                            n.x = Math.round(pos.x);
-                            n.y = Math.round(pos.y);
-                        }
-                    }
-                }
                 const clips = maskFor.get(n.id) ? [...parentClips, maskFor.get(n.id)] : parentClips;
                 const mat = multiply(m, localMatrix(n)), box = boxOf(mat, n.w, n.h), o = opacity * n.opacity, hide = hidden || !n.visible, lock = locked || n.locked;
                 const item = { node: n, matrix: mat, inverse: inverse(mat), box, opacity: o, clips, hidden: hide, locked: lock, boolChild: boolInside.has(pid) };
@@ -7061,9 +6736,6 @@ class DocumentModel {
             pageId: this.data.pageId,
             tokens: this.data.tokens,
             variables: this.data.variables,
-            state: this.data.state ?? null,
-            convention: this.data.convention ?? null,
-            behaviorVersion: this.data.behaviorVersion ?? null,
             thumbnailId: this.data.thumbnailId ?? null,
             guideStyles: this.data.guideStyles ?? []
         };
@@ -7955,13 +7627,12 @@ class Renderer {
             return;
         const start = performance.now();
         const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, w: this.width / camera.zoom, h: this.height / camera.zoom };
-        const peek = overlayPeek();
-        // What does not depend on the camera (layer kind, masks, hidden overlays) is filtered once per scene, not every frame;
+        // What does not depend on the camera (layer kind, masks) is filtered once per scene, not every frame;
         // a pan or zoom only repeats the cheap viewport test.
-        const raw = this.doc.scene(), peekKey = peek.size ? [...peek].join(',') : '';
+        const raw = this.doc.scene();
         let base = this._baseCache;
-        if (!base || base.raw !== raw || base.skip !== this.skipId || base.peek !== peekKey) {
-            base = { raw, skip: this.skipId, peek: peekKey, list: raw.filter(s => s.node.id !== this.skipId && overlayShown(s.node.id, peek) && s.node.type !== 'group' && !s.node.isMask && !s.boolChild) };
+        if (!base || base.raw !== raw || base.skip !== this.skipId) {
+            base = { raw, skip: this.skipId, list: raw.filter(s => s.node.id !== this.skipId && s.node.type !== 'group' && !s.node.isMask && !s.boolChild) };
             this._baseCache = base;
         }
         const vx0 = viewport.x - 100, vy0 = viewport.y - 100, vx1 = viewport.x + viewport.w + 100, vy1 = viewport.y + viewport.h + 100;
@@ -8601,7 +8272,7 @@ await boot.step(80, 'Preparing document');
 const bootLazyPages = initial ? claimLazyPages(lib.fileId) : [];
 const doc = new DocumentModel(initial, { lazy: bootLazyPages.length > 0 }), history = new History(doc);
 document.body.classList.toggle('view-only', getSignedInUser()?.role === 'viewer');
-const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], targetExpanded: new Set(), selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
+const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
 let scheduled = false, lastInspector = 0, uiQueued = false;
 const renderer = new Renderer($('#scene'), doc, status => { $('#engine-label').textContent = status === 'WebGPU' ? 'WebGPU accelerated' : status === 'Canvas 2D' ? 'Canvas 2D fallback' : status; $('#engine-label').title = status === 'WebGPU' ? 'Shapes: instanced GPU quads. Text and paths: cached raster atlas.' : renderer?.gpuError || status; }, () => invalidate());
@@ -8688,8 +8359,6 @@ async function streamPages(fileId, ids) {
     if (lib.fileId !== fileId)
         return; // another file was opened: it owns lazyPages now
     // Everything is here: the clean-ups that need the whole file run now.
-    if (dropDanglingOverlays(doc.data))
-        doc.refresh();
     syncComponents(true);
     doc.revision++;
     doc.structure++;
@@ -8707,8 +8376,6 @@ let saveQueued = false;
 async function save() {
     clearTimeout(saveTimer);
     clearTimeout(retryTimer);
-    if (state.previewTab)
-        return;
     if (!lib.fileId || conflictOpen)
         return;
     // View-only accounts never write: the server would refuse, so edits stay on this screen only.
@@ -8810,8 +8477,6 @@ async function resolveConflict() {
     }
 }
 function invalidate() {
-    if (state.previewTab)
-        return; // a preview tab has no editor canvas to redraw
     if (scheduled)
         return;
     scheduled = true;
@@ -8868,7 +8533,7 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', 'behaviors', 'behaviorOverrides', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'behavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
             for (const [k, v] of far ? [] : Object.entries(src)) {
@@ -9046,25 +8711,12 @@ function viewOnlyNotice() {
         toast(lazyPages.size ? 'Still loading the pages of this file: you can look around now and edit when it is done.' : 'View only: you can look around, but this account cannot change files.');
     }
 }
-function changed({ ui = true, commit = false, behaviorOnly = false } = {}) {
+function changed({ ui = true, commit = false } = {}) {
     if (commit && viewOnly()) {
         history.cancel();
         doc.refresh();
         viewOnlyNotice();
         refreshUI();
-        return;
-    }
-    // Only Behavior fields changed (see behaviorProbe): nothing to lay out, no instance to sync, no layer row or page to redraw.
-    if (commit && behaviorOnly) {
-        doc.touch(null, { structure: false });
-        const hadPending = !!history.pending;
-        if (history.commit() || !hadPending)
-            saveSoon();
-        if (ui) {
-            renderTargetPanel();
-            renderInspector();
-        }
-        invalidate();
         return;
     }
     refreshBooleans();
@@ -9095,52 +8747,17 @@ function changed({ ui = true, commit = false, behaviorOnly = false } = {}) {
     }
     invalidate();
 }
-// The fields only the Behavior tab writes. The canvas never reads them and syncComponents / markSelectedOverrides skip them
-// (all are in SYNC_OMIT), so an edit that changes nothing else needs no layout, no instance sync and no index rebuild.
-const BEHAVIOR_KEYS = new Set(['interactions', 'behaviors', 'behaviorOverrides', 'stateMapping', 'stateModes', 'inputBehavior', 'repeat', 'stateBind', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'version']);
-const BEHAVIOR_LABELS = new Set(['Behavior', 'Add interaction', 'Convention']);
-/** Before an edit: → () => true when, since then, the page has the same layers and only BEHAVIOR_KEYS changed on them. */
-function behaviorProbe() {
-    const page = doc.page, nodes = page.nodes, copies = nodes.map(n => ({ ...n })), vars = JSON.stringify(doc.data.variables ?? null), tokens = doc.data.tokens;
-    return () => {
-        if (doc.page !== page || page.nodes !== nodes || nodes.length !== copies.length || doc.data.tokens !== tokens)
-            return false;
-        for (let i = 0; i < nodes.length; i++) {
-            const n = nodes[i], c = copies[i];
-            if (n.id !== c.id)
-                return false;
-            for (const k in n)
-                if (n[k] !== c[k] && !BEHAVIOR_KEYS.has(k))
-                    return false;
-            for (const k in c)
-                if (!(k in n) && !BEHAVIOR_KEYS.has(k))
-                    return false;
-        }
-        return JSON.stringify(doc.data.variables ?? null) === vars;
-    };
-}
 function transaction(label, fn) {
-    finishText();
-    history.begin(label);
-    if (!BEHAVIOR_LABELS.has(label)) {
-        fn();
-        changed({ commit: true });
+    if (viewOnly()) {
+        viewOnlyNotice();
         return;
     }
-    const unchanged = behaviorProbe(), structure = doc.structure;
+    finishText();
+    history.begin(label);
     fn();
-    let light = unchanged();
-    // Ids, parents, components and sources are as they were: the whole-file indexes stay valid.
-    if (light)
-        doc.structure = structure;
-    if (label !== 'Convention' && pruneOverlays())
-        light = false; // overlay layers were removed
-    else if (light)
-        doc.structure = structure; // re-owning an overlay only changes its ownerId
-    changed({ commit: true, behaviorOnly: light });
+    changed({ commit: true });
 }
 function select(ids, { reveal = true } = {}) {
-    if (BH_UI.pick && ids.length === 1 && bhPickLayer(ids[0])) return;
     varOwnerId = null;
     // Selecting anything other than the main component we jumped to ends the "Return to instance" shortcut.
     if (state.returnTo && !(ids.length === 1 && ids[0] === state.returnTo.target))
@@ -9392,244 +9009,7 @@ function vectorThumb(n) {
     // Vector-effect keeps hairline strokes visible however much the shape is shrunk.
     return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
-/** Frame overlay (dropdown/overlay/popover/tooltip): isi yang hanya tampil saat trigger-nya diselect. */
-function overlayRoleOf(n) {
-    const r = n?.frameRole || n?.role;
-    return r && r !== 'page' ? r : null;
-}
-let _ovIndex = null, _ovIndexRev = -1;
-let _ovByTrigger = new Map();
-/** id node → id frame overlay teratas yang menaunginya (null kalau bukan isi overlay). */
-function overlayIndex() {
-    if (_ovIndex && _ovIndexRev === doc.structure) return _ovIndex;
-    _ovIndex = new Map();
-    _ovByTrigger = new Map();
-    const kids = new Map(), ids = new Set();
-    for (const n of allNodes()) {
-        ids.add(n.id);
-        if (!kids.has(n.parentId || '')) kids.set(n.parentId || '', []);
-        kids.get(n.parentId || '').push(n);
-    }
-    const walk = (nid, root, depth = 0, seen = new Set()) => {
-        if (depth > 500 || seen.has(nid)) return;
-        seen.add(nid);
-        _ovIndex.set(nid, root);
-        for (const k of kids.get(nid) || []) walk(k.id, root, depth + 1, seen);
-    };
-    for (const n of allNodes()) {
-        if (n.parentId && ids.has(n.parentId)) continue;
-        if (n.isOverlay && n.overlayTrigger) {
-            if (!_ovByTrigger.has(n.overlayTrigger)) _ovByTrigger.set(n.overlayTrigger, []);
-            _ovByTrigger.get(n.overlayTrigger).push(n.id);
-        }
-        walk(n.id, overlayRoleOf(n) || n.isOverlay ? n.id : null);
-    }
-    _ovIndexRev = doc.structure;
-    return _ovIndex;
-}
-/** The small tag on an overlay layer: whose it is. */
-function overlayTag(n) {
-    if (!isOverlayLayer(n) || !n.overlayTrigger) return '';
-    const t = nodeIndex().get(n.overlayTrigger);
-    return t ? `Overlay of ${t.name}` : 'Unused overlay';
-}
-/** The overlays of the interaction whose window is open: they appear on the canvas only now, below their trigger. */
-function bhwOverlays() {
-    if (BHW.kind !== 'interaction' || !BHW.nodeId) return [];
-    const trig = nodeIndex().get(BHW.nodeId), it = trig && ovHelpers().interactionsOf(trig).find(i => i.id === BHW.key);
-    if (!it) return [];
-    const acts = overlayActionsOf([it]).map(x => x.action);
-    return doc.nodes.filter(o => isOverlayLayer(o) && o.overlayTrigger === trig.id && acts.some(x => x.overlayInstanceId === o.id || overlayTargetId(x) === o.sourceId)).map(o => o.id);
-}
-/** Overlay yang boleh tampil di kanvas: trigger-nya (atau child di dalamnya) / dirinya / anaknya sedang diselect. */
-function overlayPeek() {
-    const show = new Set(bhwOverlays());
-    for (const id of state.selection) {
-        const root = overlayIndex().get(id);
-        if (root) show.add(root);
-        const selNode = nodeIndex().get(id);
-        const chain = selNode ? [selNode, ...doc.ancestors(selNode)] : [];
-        for (const n of chain) {
-            const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
-            for (const it of interactionsForNode(n, src, set).list) for (const a of it.actions || []) {
-                if (!/^open-/.test(a.type)) continue;
-                if (a.targetFrameId) {
-                    const r = overlayIndex().get(a.targetFrameId);
-                    if (r) show.add(r);
-                }
-            }
-        }
-    }
-    return show;
-}
-/** true kalau node boleh digambar/diklik (bukan isi overlay yang sedang disembunyikan). */
-function overlayShown(id, peek) {
-    const r = overlayIndex().get(id);
-    return !r || (peek || overlayPeek()).has(r);
-}
-/** Target open (dropdown/overlay/popover) dari node aktif: miliknya dulu, kalau tidak ada milik komponennya. */
-function bhOpenTargets() {
-    const n = activeNode();
-    if (!n) return { list: [], inherited: false, source: '' };
-    const pick = list => (Array.isArray(list) ? list : []).flatMap(it => (Array.isArray(it?.actions) ? it.actions : []).filter(a => /^open-/.test(a.type) && (a.targetComponentId || a.targetFrameId)).map(a => ({ trigger: it.trigger, action: a })));
-    const own = pick(normalizeInteractions(n.interactions));
-    if (own.length) return { list: own, inherited: false, source: '' };
-    const src = chainComponent(n), set = src && parentSetOf(src);
-    const inh = interactionsForNode(n, src, set);
-    return { list: pick(inh.list), inherited: inh.inherited, source: set?.name || src?.name || '' };
-}
-/** Lapisan target interaction di sidebar kiri: struktur isi yang akan terbuka, klik untuk melihat di kanvas. */
-function renderTargetPanel() {
-    const el = document.getElementById('target-panel');
-    if (!el) return;
-    const searching = !document.getElementById('layer-search-box')?.classList.contains('hidden');
-    const activeSel = state.leftTab === 'layers' && !searching ? activeNode() : null;
-    let { list, inherited, source } = activeSel ? bhOpenTargets() : { list: [] };
-    if (activeSel) {
-        const r = overlayIndex().get(activeSel.id);
-        if (r && !list.some(e => e.action.targetFrameId === r)) list = [...list, { trigger: null, action: { type: `open-${overlayRoleOf(nodeIndex().get(r)) || 'overlay'}`, targetFrameId: r } }];
-    }
-    const kids = new Map();
-    for (const n of allNodes()) {
-        if (!kids.has(n.parentId)) kids.set(n.parentId, []);
-        kids.get(n.parentId).push(n);
-    }
-    const rowFor = (n, depth) => {
-        if (depth > 100) return '';
-        const sub = (kids.get(n.id) || []).filter(k => k.visible !== false);
-        const open = state.targetExpanded.has(n.id);
-        let html = `<div class="layer-row${!n.visible ? ' dim' : ''}" data-tlayer="${n.id}" style="--depth:${depth}" role="treeitem"><button class="expand" data-texpand="${n.id}" aria-label="${open ? 'Collapse' : 'Expand'}">${sub.length ? (open ? icon('chevronDown', 10) : icon('chevronRight', 10)) : ''}</button><span class="layer-icon">${vectorThumb(n) || icon(n.component || n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type === 'frame' ? 'frame' : n.type === 'text' ? 'text' : 'rect', 13)}</span><span class="layer-name" title="${esc(n.name)}">${esc(n.name)}</span></div>`;
-        if (open) for (const k of [...sub].reverse()) html += rowFor(k, depth + 1);
-        return html;
-    };
-    let html = '';
-    for (const { trigger, action } of list) {
-        const active = activeNode();
-        const placed = active && placedOverlayFor(active.id, action);
-        const master = !placed && action.targetComponentId && componentById(action.targetComponentId);
-        const variant = !placed && action.targetVariantId && allNodes().find(x => x.id === action.targetVariantId);
-        const node = placed || variant || master || (action.targetFrameId && allNodes().find(x => x.id === action.targetFrameId));
-        if (!node) continue;
-        const contentsName = `${node.name} Contents`;
-        html += `<div class="target-head"><span>${esc(contentsName)}</span><button type="button" class="swap-btn" data-tlocate="${node.id}">Show</button></div>`;
-        if (inherited && source) html += `<div class="target-note">Applied from ${esc(source)}.</div>`;
-        html += rowFor(node, 0);
-    }
-    el.innerHTML = html;
-    el.classList.toggle('hidden', !html);
-}
-/** Varian/komponen yang akan dibuka sebuah action open (tambahan frame lama tidak ikut). */
-function overlayTargetId(a) {
-    if (a.targetVariantId) return a.targetVariantId;
-    // A feedback action draws its own component, else the file's Convention for its kind.
-    const id = a.type === 'show-feedback' ? (a.componentId || conventionOf().feedback?.[a.kind]) : a.targetComponentId;
-    const c = id && componentById(id);
-    if (!c) return null;
-    return (c.componentSet ? defaultVariantOf(c)?.id : c.id) || c.id;
-}
-/** Instance overlay yang sudah ditaruh untuk trigger+target ini (scan cadangan bila id tersimpan hilang). */
-function placedOverlay(triggerId, a) {
-    const vid = overlayTargetId(a);
-    if (!vid) return null;
-    overlayIndex();
-    for (const oid of _ovByTrigger.get(triggerId) || []) {
-        const n = nodeIndex().get(oid);
-        if (n && !n.parentId && n.isOverlay && n.sourceId === vid) return n;
-    }
-    return null;
-}
-/** Instance overlay untuk sebuah action: id tersimpan dulu, lalu scan cadangan. */
-function placedOverlayFor(triggerId, a) {
-    if (!a || (!a.targetComponentId && !a.targetFrameId && a.type !== 'show-feedback')) return null;
-    if (a.overlayInstanceId) {
-        const n = nodeIndex().get(a.overlayInstanceId);
-        if (n && !n.softDeleted) return n;
-    }
-    return placedOverlay(triggerId, a);
-}
-/** How overlays find who asks for them: a trigger's interactions (an instance follows its main component) and the component an action opens. */
-function ovHelpers() {
-    return {
-        interactionsOf(n) {
-            if (!n.isInstance) return normalizeInteractions(n.interactions);
-            const src = chainComponent(n), set = src && parentSetOf(src);
-            return interactionsForNode(n, src, set).list;
-        },
-        targetOf: overlayTargetId,
-    };
-}
-/**
- * After an edit of interactions: the overlay layers Midas made that no interaction asks for any more are removed, and one an
- * interaction still asks for stays (its owner becomes the one that remains). Runs inside the edit's transaction: one undo step.
- */
-function pruneOverlays() {
-    const nodes = doc.nodes, helpers = ovHelpers();
-    const gone = overlaysToPrune(nodes, helpers).filter(id => doc.get(id));
-    for (const r of reowned(nodes, helpers)) { const o = doc.get(r.id); if (o) { o.ownerId = r.ownerId; doc.touch(o); } }
-    if (!gone.length) return 0;
-    for (const id of gone) state.selection.delete(id);
-    doc.remove(gone);
-    return gone.length;
-}
-/** Overlay layers on this page nobody asks for that belong to `n` (or to a trigger that is gone): offered for cleanup, never removed silently. */
-function bhUnusedOverlays(n) {
-    return unusedOverlays(doc.nodes, ovHelpers()).filter(o => { const ov = doc.get(o.id); return ov && (ov.overlayTrigger === n.id || !doc.get(ov.overlayTrigger)); });
-}
-/** Pastikan ada instance overlay untuk trigger+target: pakai yang sudah ada, atau taruh baru. */
-function ensureOverlayPlaced(triggerId, a, opts = {}) {
-    const ex = placedOverlayFor(triggerId, a);
-    if (ex) {
-        if (!opts.keepSelection) select([ex.id]);
-        return ex.id;
-    }
-    return placeOverlayOnCanvas(triggerId, a, opts);
-}
-/** Taruh isi overlay sebagai instance di kanvas, di posisi trigger-nya: bisa diklik dan diedit langsung. */
-function bhParseOff(s) {
-    if (s === undefined || s === null || s === '') return undefined;
-    if (String(s).includes(',')) {
-        const [x, y] = String(s).split(',').map(Number);
-        return { x: x || 0, y: y || 0 };
-    }
-    return Number(s);
-}
-function placeOverlayOnCanvas(triggerId, a, opts = {}) {
-    const trig = doc.get(triggerId);
-    if (!trig) return null;
-    const vid = overlayTargetId(a);
-    const master = vid && nodeIndex().get(vid);
-    if (!master) {
-        toast('Target component is missing.');
-        return null;
-    }
-    // A feedback component and an overlay sit against the top-level frame their action lives in; the others sit at their trigger.
-    // A framed action sits against the frame it names (Relative to), else the top-level frame its layer lives in.
-    const framed = a.type === 'show-feedback' || a.type === 'open-overlay';
-    const named = framed && a.anchorFrameId ? doc.get(a.anchorFrameId) : null;
-    const frame = framed ? (named || doc.ancestors(trig).at(-1) || trig) : trig;
-    const box = doc.world(frame.id)?.box;
-    if (!box) return null;
-    const w = a.type === 'open-dropdown' && a.width === 'parent' ? Math.round(box.w) : master.w;
-    const h = a.type === 'open-dropdown' && a.height === 'parent' ? Math.round(box.h) : master.h;
-    const pos = framed ? framedPlacePos(box, w, h, actionPlacement(a), a.offset) : placeOverlayPos(box, w, h, actionPlacement(a), a.offset);
-    let createdId = null;
-    instantiate(master.id, { x: pos.x + w / 2, y: pos.y + h / 2 }, null, { isOverlay: true, autoCreated: true, ownerId: ownerOfAction(ovHelpers().interactionsOf(trig), a), overlayTrigger: triggerId, keepSelection: !!opts.keepSelection, onCreated: r => { createdId = r.id; } });
-    return createdId || activeNode()?.id || null;
-}
-/** Tunjukkan sebuah layer di kanvas tanpa memindahkan seleksi editor. */
-function revealOnCanvas(id) {
-    const pg = pageOfNode(id);
-    if (pg && pg.id !== doc.page.id) switchPage(pg.id);
-    doc.scene();
-    const box = doc.world(id)?.box;
-    if (!box) return;
-    const w = area.clientWidth, h = area.clientHeight;
-    state.camera.x = w / 2 - (box.x + box.w / 2) * state.camera.zoom;
-    state.camera.y = h / 2 - (box.y + box.h / 2) * state.camera.zoom;
-    invalidate();
-}
 function renderLayers() {
-    renderTargetPanel();
     // Plugins memakai seluruh panel kiri (tanpa pages/layers).
     const pluginsMode = state.leftTab === 'plugins';
     $('#plugins-panel').classList.toggle('hidden', !pluginsMode);
@@ -9719,37 +9099,158 @@ function field(label, prop, value, opts = {}) {
         return `<div class="field var-bound" title="${esc(opts.title || prop)}"><span>${label}</span>${varChip(prop, bv)}</div>`;
     return fieldBase(label, prop, value, opts).replace(/<\/label>$/, `${varBindButton(prop)}</label>`);
 }
-function colorField(prop, value, opacityProp = null, opacity = 1) {
-    const bv = VAR_BIND[prop] ? boundVar(prop) : null;
-    if (bv)
-        return `<div class="fill-row">${varChip(prop, bv)}${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`;
-    return colorFieldBase(prop, value, opacityProp, opacity).replace(/<\/div>$/, `${varBindButton(prop)}</div>`);
-}
 function section(title, body, action = '', extra = '') { return `<section class="inspector-section ${extra}"><div class="section-heading"><span>${title}</span>${action}</div>${body}</section>`; }
-function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
-function renderInspector() {
-    // Tab Behavior ada untuk layer apa pun yang dipilih: desainer mengatur perilaku di elemen mana saja.
-    const sel = activeNode();
-    const relevant = !!sel;
-    const tabBtn = document.getElementById('inspector-tab-behavior');
-    if (tabBtn) tabBtn.style.display = relevant ? '' : 'none';
-    if (!relevant && state.inspectorTab === 'prototype') {
-        state.inspectorTab = 'design';
-        $$('[data-inspector-tab]').forEach(el => el.classList.toggle('active', el.dataset.inspectorTab === 'design'));
-    }
-    // Behavior-only spacing CSS is scoped to this class, so it can not shift the Design inspector.
-    $('#inspector').classList.toggle('bh-tab', state.inspectorTab === 'prototype');
-    if (state.inspectorTab !== 'prototype' || !relevant) bhwHide();
-    if (state.inspectorTab === 'prototype' && !state.editing) {
-        $('#inspector').innerHTML = prototypeHtml();
-        renderBhWindow();
+// ----- Behavior tab (stage 5): the panel is drawn from the template schema. Edits go through the binding model and the instance store. -----
+function behaviorTabHtml(n) {
+    const collections = varStore().collections || [];
+    if (n?.component) return behaviorPanelHtml({ kind: 'master', panel: masterPanel(n, collections), esc });
+    if (n?.isInstance) return behaviorPanelHtml({ kind: 'instance', panel: instancePanel(n, componentById(n.sourceId), collections), esc });
+    return behaviorPanelHtml({ kind: 'none', esc });
+}
+/** Waits until every page of the file is here. False when a page did not come, or another file was opened meanwhile. */
+async function waitForAllPages() {
+    if (!lazyPages.size) return true;
+    const fileId = lib.fileId;
+    try { await Promise.all([...lazyPages].map(id => fillPage(fileId, id))); }
+    catch (err) { toast(`A page could not be loaded (${err?.message || err}).`); return false; }
+    if (lib.fileId !== fileId || lazyPages.size) return false;
+    doc.revision++;
+    doc.structure++;
+    return true;
+}
+/** Runs a change to behavior data only once every page of the file is here: it must not apply to some pages and not to others. */
+async function whenAllPagesLoaded(fn) {
+    if (!lazyPages.size) {
+        fn();
         return;
     }
+    if (await waitForAllPages()) fn();
+}
+/** Writes a plan (see planTemplateChange and planCollectionChange) as one undoable change, and marks what it touched. */
+function commitPlan(label, master, plan) {
+    let reason = null;
+    transaction(label, () => {
+        applyPlan(master, plan);
+        doc.touch(master);
+        for (const u of plan.updates) doc.touch(u.node);
+        for (const inst of instancesOf(master.id)) reason ??= syncAnatomy(inst);
+    });
+    if (reason) toast(`Managed layers were not updated: ${reason}.`);
+}
+/** Runs fn with a page as the current one: layer edits work on the current page only. */
+function onPage(pageId, fn) {
+    if (!pageId || pageId === doc.data.pageId)
+        return fn();
+    const old = doc.data.pageId;
+    doc.data.pageId = pageId;
+    doc.refresh();
+    try {
+        return fn();
+    }
+    finally {
+        doc.data.pageId = old;
+        doc.refresh();
+    }
+}
+/** The layers under a node, depth first (the label rule reads the master's first text layer). */
+function depthFirstOf(id) { return doc.children(id).flatMap(c => [c, ...depthFirstOf(c.id)]); }
+/** What an instance's managed layers should be now: from its master's binding and label and its own values (see planInstanceAnatomy). */
+function anatomyPlanOf(inst) {
+    return onPage(pageOfNode(inst.id)?.id, () => {
+        const master = componentById(inst.sourceId);
+        const masterTree = master ? onPage(pageOfNode(master.id)?.id, () => depthFirstOf(master.id)) : [];
+        return planInstanceAnatomy({
+            binding: master?.behavior,
+            masterRoot: { isAutoLayout: isAutoLayout(master) },
+            masterTree,
+            stored: inst.behavior?.props,
+            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null })),
+        });
+    });
+}
+/** A layer goes to `index` among its parent's children. The layer is already in the node list; this only moves it. */
+function placeAmongChildren(parent, n, index) {
+    const others = doc.children(parent.id).filter(c => c !== n);
+    doc.nodes.splice(doc.nodes.indexOf(n), 1);
+    const next = others[index];
+    const at = next ? doc.nodes.indexOf(next) : others.length ? doc.nodes.indexOf(others.at(-1)) + 1 : doc.nodes.length;
+    doc.nodes.splice(at, 0, n);
+    doc.refresh();
+}
+/**
+ * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
+ * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
+ */
+function syncAnatomy(inst) {
+    const { ops, reason } = anatomyPlanOf(inst);
+    onPage(pageOfNode(inst.id)?.id, () => {
+        for (const op of ops) {
+            if (op.op === 'remove') doc.remove([op.id]);
+            else if (op.op === 'move') placeAmongChildren(inst, doc.get(op.id), op.index);
+            else {
+                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, fill: '#8c8297', clip: false, behavior: managedBehavior(op.slot) }));
+                placeAmongChildren(inst, n, op.index);
+            }
+        }
+        if (ops.length) {
+            doc.refresh();
+            doc.touch(inst);
+        }
+    });
+    return reason ?? null;
+}
+/** A master changes its template. The plan clears the instance values through the instance store. */
+function bindTemplateTo(master, templateId) {
+    let plan;
+    try { plan = planTemplateChange(master, instancesOf(master.id), templateId, varStore().collections || []); }
+    catch (err) { toast(err.message); return; }
+    if (plan.changed) commitPlan('Bind template', master, plan);
+}
+/** A variable prop gets another collection (or none). The plan clears only the modes the collection does not have. */
+function bindCollectionTo(master, prop, collectionId) {
+    let plan;
+    try { plan = planCollectionChange(master, instancesOf(master.id), prop, collectionId, varStore().collections || []); }
+    catch (err) { toast(err.message); return; }
+    commitPlan('Bind collection', master, plan);
+}
+/** An instance's prop changes. Returns false (and says why) when the value is refused. */
+function setInstanceValueTo(inst, prop, value) {
+    let next;
+    try { next = setInstanceValue(inst, componentById(inst.sourceId), varStore().collections || [], prop, value); }
+    catch (err) { toast(err.message); return false; }
+    let reason = null;
+    transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncAnatomy(inst); });
+    if (reason) toast(`Managed layers were not updated: ${reason}.`);
+    return true;
+}
+/** The Variables window's delete actions: the behavior data that names the collection goes with it (see forgetCollection). */
+function deleteWhenLoaded(label, fn) {
+    whenAllPagesLoaded(() => vwTx(label, fn));
+}
+function onBehaviorChange(e) {
+    const t = e.target, kind = t.dataset?.bp;
+    if (!kind) return;
+    const n = activeNode();
+    if (!n) return;
+    whenAllPagesLoaded(() => {
+        if (kind === 'template') bindTemplateTo(n, t.value || null);
+        else if (kind === 'collection') bindCollectionTo(n, t.dataset.bpProp, t.value || null);
+        else if (kind === 'value') {
+            const value = t.dataset.bpType === 'boolean' ? t.checked : t.dataset.bpKind === 'variable' && t.value === '' ? null : t.value;
+            if (!setInstanceValueTo(n, t.dataset.bpProp, value)) renderInspector();
+        }
+    });
+}
+function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
     doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
+    if (state.inspectorTab === 'behavior') {
+        $('#inspector').innerHTML = behaviorTabHtml(n);
+        return;
+    }
     let html = '';
     if (!n && state.tool === 'frame') {
         html += framePresetPanel();
@@ -9792,9 +9293,6 @@ function renderInspector() {
     // In an auto layout the layout decides where a layer sits: X / Y can not be typed.
     if (ns.length >= 1 && ns.every(x => { const p = doc.get(x.parentId); return p?.type === 'frame' && isAutoLayout(p) && x.layoutPositioning !== 'absolute'; }))
         $('#inspector').querySelectorAll('input[data-prop="x"], input[data-prop="y"]').forEach(el => { el.disabled = true; el.closest('.field')?.classList.add('inst-locked'); });
-    // Overlay portal root: placement and size are controlled from its trigger's Interaction settings in the Behavior tab.
-    if (ns.some(isOverlayRoot))
-        $('#inspector').querySelectorAll('input[data-prop="x"], input[data-prop="y"], input[data-prop="w"], input[data-prop="h"], input[data-prop="rotation"], [data-align], [data-flip], [data-rotate90], [data-ly-mode], [data-ly-wrap]').forEach(el => { el.disabled = true; (el.closest('.field') || el).classList.add('inst-locked'); });
     // Inside an instance, position and layout belong to the main component: only the sizing mode (Fixed / Fill / Hug) stays editable.
     if (ns.length === 1 && n.isInstance && !insideInstance(n))
         $('#inspector').querySelectorAll('[data-ly-mode],[data-ly-wrap]').forEach(el => { el.disabled = true; el.classList.add('inst-locked'); });
@@ -10067,9 +9565,7 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
                 copy.isInstance = src.id === root.id || !!src.isInstance;
                 delete copy.swapOf; // the copy's slot is the layer it was copied from
                 copy.overrides = {};
-                // The instance follows the component's interactions until it gets interactions of its own.
-                if (src.id === root.id)
-                    delete copy.interactions;
+                withInstanceBehavior(copy, src); // the binding stays on the master; an instance keeps only its own props
             }
             doc.add(copy);
         }
@@ -10212,6 +9708,14 @@ function pasteNodes(data, payload, target) {
     const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
     const rootParent = target.kind === 'into' ? target.parent.id : target.kind === 'canvas' ? null : target.anchor.parentId || null;
     const startLen = doc.nodes.length;
+    // Inside an instance (in the payload, or where it is pasted) when some ancestor is an instance.
+    const pastedInInstance = src => {
+        for (let cur = src; cur; cur = byId.get(cur.parentId))
+            if (cur.isInstance)
+                return true;
+        const p = doc.get(rootParent);
+        return !!p && (p.isInstance || doc.ancestors(p).some(a => a.isInstance));
+    };
     // A copied main component (or a single variant) is pasted as an instance of it, like Figma.
     const instRootOf = id => { let cur = byId.get(id); while (cur) {
         if (payload.rootIds.includes(cur.id))
@@ -10222,6 +9726,9 @@ function pasteNodes(data, payload, target) {
         const n = structuredClone(src);
         n.id = map.get(src.id);
         n.parentId = map.get(src.parentId) || null;
+        // A managed layer belongs to its instance: pasted anywhere else it is a plain layer.
+        if (n.behavior && 'slot' in n.behavior && !pastedInInstance(src))
+            delete n.behavior;
         const instRoot = instRootOf(src.id);
         if (instRoot) {
             const isRoot = src.id === instRoot, vset = isRoot && parentSetOf(componentById(src.id));
@@ -10231,6 +9738,7 @@ function pasteNodes(data, payload, target) {
             n.overrides = {};
             delete n.variant;
             delete n.componentSet;
+            withInstanceBehavior(n, { behavior: n.behavior }); // the binding stays on the master; an instance keeps only its own props
             if (vset)
                 n.name = vset.name;
         }
@@ -10270,6 +9778,9 @@ function pasteNodes(data, payload, target) {
         at = doc.nodes.indexOf(target.anchor) + (flipped ? 0 : 1);
     doc.nodes.splice(at, 0, ...added);
     doc.refresh();
+    // The instances the pasted layers land in (or are) match their values: a managed layer pasted into the wrong instance is removed again.
+    for (const inst of new Set(added.flatMap(n => [n, ...doc.ancestors(n)]).filter(a => a.isInstance)))
+        syncAnatomy(inst);
     if (target.kind === 'replace')
         doc.remove([target.anchor.id]);
     return roots;
@@ -10292,7 +9803,6 @@ function groupSelection(asFrame = false, autoLayout = false) {
         const gi = inverse(doc.world(g.id).matrix);
         for (const n of roots) {
             const m = multiply(gi, worldBefore.get(n.id));
-            if (!canReparentOverlay(n, g, id => doc.get(id))) continue;
             setFromMatrix(n, m);
             n.parentId = g.id;
             doc.touch(n);
@@ -10491,9 +10001,7 @@ function instantiate(id, at = null, parent = null, opts = {}) {
                 n.isInstance = src === id || !!n.isInstance;
                 delete n.swapOf;
                 n.overrides = {};
-                // The root instance reads the component's interactions until it sets its own.
-                if (src === id)
-                    delete n.interactions;
+                withInstanceBehavior(n, { behavior: n.behavior }); // the binding stays on the master; an instance keeps only its own props
                 doc.add(n);
                 if (src === id)
                     root = n;
@@ -10523,14 +10031,9 @@ function instantiate(id, at = null, parent = null, opts = {}) {
             root.x = Math.round(c.x - root.w / 2);
             root.y = Math.round(c.y - root.h / 2);
         }
-        if (opts.isOverlay) {
-            root.isOverlay = true;
-            if (opts.overlayTrigger) root.overlayTrigger = opts.overlayTrigger;
-            // Made by Midas for an interaction: it is removed again when the last interaction asking for it goes.
-            if (opts.autoCreated) { root.autoCreated = true; if (opts.ownerId) root.ownerId = opts.ownerId; }
-        }
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
+        syncAnatomy(root);
         opts.onCreated?.(root);
         if (!opts.keepSelection)
             select([root.id]);
@@ -10734,7 +10237,20 @@ function selectionGeometry() {
         return null;
     return { matrix: [1, 0, 0, 1, b.x, b.y], w: b.w, h: b.h, node: null };
 }
-function handlesFor(g) { if (selectedRoots().some(isOverlayRoot)) return []; if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['n', .5, 0], ['ne', 1, 0], ['e', 1, .5], ['se', 1, 1], ['s', .5, 1], ['sw', 0, 1], ['w', 0, .5]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
+function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
+// Within 4 px of a side of the selection box: that side's resize handle. Corners are handlesFor's; lines have none.
+function edgeHandleAt(g, p) {
+    if (g.node?.type === 'line')
+        return null;
+    const c = Object.fromEntries(handlesFor(g).map(h => [h.name, h]));
+    for (const [name, from, to] of [['n', 'nw', 'ne'], ['e', 'ne', 'se'], ['s', 'se', 'sw'], ['w', 'sw', 'nw']]) {
+        const a = c[from], b = c[to], dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
+        const t = len2 ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / len2, 0, 1) : 0;
+        if (Math.hypot(a.x + dx * t - p.x, a.y + dy * t - p.y) < 4)
+            return { name };
+    }
+    return null;
+}
 function outline(ctx, g, color = '#5b9cf0', width = 1) { const p = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]].map(([x, y]) => { const w = point(g.matrix, x, y); return worldToScreen(w.x, w.y); }); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y)); ctx.closePath(); ctx.stroke(); return p; }
 // Components, variant sets, instances and everything inside them are selected in Figma's purple.
 const compPurple = () => '#9747FF'; // bounding box: same in light and dark
@@ -10813,10 +10329,10 @@ function drawSlots(c) {
     state.slotBadges = [];
     if (state.tool !== 'select' || state.gesture)
         return;
-    const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean), peek = overlayPeek();
+    const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean);
     for (const s of doc.scene()) {
         const n = s.node;
-        if (!n.propBind?.slot || !n.sourceId || n.visible === false || !overlayShown(n.id, peek))
+        if (!n.propBind?.slot || !n.sourceId || n.visible === false)
             continue;
         const empty = !doc.children(n.id).length;
         const active = state.selection.has(n.id) || state.hover === n.id || selNodes.some(x => doc.ancestors(x).some(a => a.id === n.id));
@@ -10919,7 +10435,8 @@ function drawOverlay() {
     c.scale(dpr, dpr);
     const z = state.camera.zoom, blue = options.theme === 'dark' ? '#7aa6dc' : '#0058CA';
     const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
-    const accent = selNodes.length && selNodes.every(inComponentTree) ? compPurple() : blue;
+    // The bounding box is the same blue in light and dark mode.
+    const accent = selNodes.length && selNodes.every(inComponentTree) ? compPurple() : '#0058CA';
     // Pixel grid: from 800% up every 1px is outlined with a thin grey line, like Figma.
     if (z >= 8) {
         const W = area.clientWidth, H = area.clientHeight, x0 = Math.floor(-state.camera.x / z), x1 = Math.ceil((W - state.camera.x) / z), y0 = Math.floor(-state.camera.y / z), y1 = Math.ceil((H - state.camera.y) / z);
@@ -10933,9 +10450,8 @@ function drawOverlay() {
         c.restore();
     }
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-    const peek = overlayPeek();
     for (const s of doc.scene()) {
-        if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection || !overlayShown(s.node.id, peek))
+        if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
             continue;
         const p = worldToScreen(s.box.x, s.box.y);
         c.font = `${s.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
@@ -10945,7 +10461,7 @@ function drawOverlay() {
         c.fillStyle = kind ? purple : state.selection.has(s.node.id) ? (inComponentTree(s.node) ? purple : blue) : options.theme === 'dark' ? '#8d839a' : '#8c8297';
         // The name never runs wider than the node itself: longer names are truncated with an ellipsis.
         const maxW = Math.max(0, s.box.w * z - (s.node.isSection ? 12 : 0) - (kind ? LABEL_ICON_W : 0));
-        let label = overlayTag(s.node) || s.node.name;
+        let label = s.node.name;
         if (c.measureText(label).width > maxW) {
             while (label.length > 1 && c.measureText(label + '…').width > maxW)
                 label = label.slice(0, -1);
@@ -11005,11 +10521,12 @@ function drawOverlay() {
         if (!state.gesture || !['move', 'marquee'].includes(state.gesture.kind)) {
             const handles = handlesFor(g);
             c.strokeStyle = accent;
-            c.fillStyle = options.theme === 'dark' ? '#242426' : '#ffffff';
-            const top = handles.find(h => h.name === 'n'), rot = handles.find(h => h.name === 'rotate');
-            if (top && rot) {
+            c.fillStyle = '#ffffff';
+            const rot = handles.find(h => h.name === 'rotate');
+            if (rot) {
+                const top = point(g.matrix, g.w / 2, 0), t = worldToScreen(top.x, top.y);
                 c.beginPath();
-                c.moveTo(top.x, top.y);
+                c.moveTo(t.x, t.y);
                 c.lineTo(rot.x, rot.y);
                 c.stroke();
             }
@@ -11206,10 +10723,10 @@ function resolveSetTarget(t, w) {
     return best || t;
 }
 function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {}) {
-    const scene = doc.scene(), tol = 4 / state.camera.zoom, peek = overlayPeek();
+    const scene = doc.scene(), tol = 4 / state.camera.zoom;
     for (let i = scene.length - 1; i >= 0; i--) {
         const s = scene[i], n = s.node;
-        if (s.locked || n.id === state.editing || n.type === 'group' || exclude?.has(n.id) || !overlayShown(s.node.id, peek) || framesOnly && n.type !== 'frame')
+        if (s.locked || n.id === state.editing || n.type === 'group' || exclude?.has(n.id) || framesOnly && n.type !== 'frame')
             continue;
         if (world.x < s.box.x - tol || world.x > s.box.x + s.box.w + tol ||
             world.y < s.box.y - tol || world.y > s.box.y + s.box.h + tol)
@@ -11245,30 +10762,30 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
                 const anc = doc.ancestors(n), variantOf = [n, ...anc].find(a => a.component && doc.get(a.parentId)?.componentSet);
                 if (variantOf)
                     return variantOf;
-                // A click picks the outermost container above the layer, but never across a slot boundary:
-                // what sits in a slot belongs to the instance and is picked directly, so deleting it
-                // removes only the selection. Ctrl/Cmd reaches the smallest node.
-                // An empty slot of an instance is picked directly (its "+" placeholder).
-                return clickPick(n, anc, doc.children(n.id).length);
+                return n;
             }
             return n;
         }
     }
     return null;
 }
-// With layers selected that share a parent, any sibling of theirs under the cursor is picked directly (hover, click, Shift-click),
-// however deep it sits and wherever the parent's own hit rules would stop, like Figma's sibling selection.
-function siblingHit(w) {
-    if (state.tool !== 'select' || !state.selection.size)
-        return null;
-    const sel = [...state.selection].map(id => doc.get(id)).filter(Boolean), parentId = sel[0]?.parentId;
-    if (!parentId || sel.some(n => n.parentId !== parentId))
-        return null;
-    const inner = hitTest(w, { deep: true });
-    if (!inner)
-        return null;
-    const sib = [inner, ...doc.ancestors(inner)].find(a => a.parentId === parentId);
-    return sib && !state.selection.has(sib.id) && !doc.world(sib.id)?.locked ? sib : null;
+// A layer as the selection rules read it (see resolveSelectTarget in builder-core).
+function layerRecord(n) {
+    return {
+        id: n.id, parentId: n.parentId || null, type: n.type, isSection: !!n.isSection, isInstance: !!n.isInstance,
+        isAutoLayout: isAutoLayout(n), componentSet: !!n.componentSet, parentIsSection: !!doc.get(n.parentId)?.isSection, childCount: doc.children(n.id).length,
+    };
+}
+// The layers under the cursor, root first, down to the deepest one.
+function hitPathAt(w) {
+    const deepest = hitTest(w, { deep: true });
+    return deepest ? [...doc.ancestors(deepest).reverse(), deepest].map(layerRecord) : [];
+}
+// The layer a click, hover or (with drill) a double-click at w picks: see resolveSelectTarget.
+function selectTargetAt(w, { deep = false, drill = false } = {}) {
+    const selection = [...state.selection].map(id => doc.get(id)).filter(Boolean).map(layerRecord);
+    const id = resolveSelectTarget({ path: hitPathAt(w), selection, deep, drill });
+    return id ? doc.get(id) : null;
 }
 function pathHandleAt(screen) {
     const n = doc.get(state.pathEdit);
@@ -11303,9 +10820,8 @@ function saveOriginals(roots) {
 }
 function frameLabelHit(p) {
     octx.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-    const peek = overlayPeek();
     for (const sc of doc.scene()) {
-        if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked || !overlayShown(sc.node.id, peek))
+        if (sc.node.type !== 'frame' || sc.node.parentId && !doc.get(sc.node.parentId)?.isSection || sc.locked)
             continue;
         octx.font = `${sc.node.isSection ? '600 ' : ''}10px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
         const q = worldToScreen(sc.box.x, sc.box.y), w = octx.measureText(sc.node.name).width + (labelKind(sc.node) ? LABEL_ICON_W : 0);
@@ -11446,7 +10962,7 @@ function pointerDown(e) {
     }
     const geo = selectionGeometry();
     if (geo) {
-        const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
+        const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p);
         if (handle && (handle.name === 'p1' || handle.name === 'p2')) {
             const n = geo.node, other = point(doc.world(n.id).matrix, handle.name === 'p1' ? n.w : 0, n.h / 2), inv = n.parentId ? doc.world(n.parentId).inverse : identity();
             history.begin('Move line point');
@@ -11460,7 +10976,11 @@ function pointerDown(e) {
         }
     }
     const labelHit = state.tool === 'select' ? frameLabelHit(p) : null;
-    let hit = labelHit || (!e.altKey && !e.ctrlKey && !e.metaKey && siblingHit(w)) || hitTest(w, { deep: e.metaKey || e.ctrlKey });
+    let hit = labelHit || selectTargetAt(w, { deep: e.metaKey || e.ctrlKey });
+    // The first press of a double-click (a press more than 500 ms after the last one): a layer already selected then is the one a double-click edits.
+    if (!state.lastPressAt || e.timeStamp - state.lastPressAt > 500)
+        state.pressedSelection = hit && state.selection.has(hit.id) ? hit.id : null;
+    state.lastPressAt = e.timeStamp;
     // Ctrl / Cmd pressed on a component or instance starts a marquee that reaches the layers inside; a plain Ctrl-click still picks the one under the cursor.
     let ctrlClickId = null;
     if (hit && (e.ctrlKey || e.metaKey) && !e.shiftKey && state.tool === 'select') {
@@ -11469,12 +10989,6 @@ function pointerDown(e) {
             ctrlClickId = inner.id;
             hit = null;
         }
-    }
-    // A single selected layer that sits deeper inside the hit stays selected when pressed again (multi-click descent, like Figma).
-    if (hit && !e.shiftKey && !e.altKey && !(e.metaKey || e.ctrlKey) && state.selection.size === 1 && !state.selection.has(hit.id)) {
-        const inner0 = hitTest(w, { deep: true }), selId = [...state.selection][0];
-        if (inner0 && [inner0, ...doc.ancestors(inner0)].some(a => a.id === selId) && doc.ancestors(doc.get(selId)).some(a => a.id === hit.id))
-            hit = doc.get(selId);
     }
     // With several layers selected, pressing on any of them (or inside one) drags the whole selection instead of picking another layer.
     if (hit && !e.shiftKey && state.selection.size > 1 && !state.selection.has(hit.id)) {
@@ -11512,7 +11026,7 @@ function pointerDown(e) {
             history.begin('Duplicate and move');
             select(altDuplicate(selectedRoots()).map(n => n.id));
         }
-        const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked && !isOverlayRoot(n));
+        const roots = selectedRoots().filter(n => !doc.world(n.id)?.locked);
         if (roots.length)
             state.gesture = { kind: 'move', pendingPick: pendingPick?.id || null, altDone: !!e.altKey, start: w, originals: saveOriginals(roots), roots: roots.map(n => n.id), bounds: doc.bounds(roots.map(n => n.id)), parentMatrices: new Map(roots.map(n => [n.id, n.parentId ? (doc.world(n.parentId)?.inverse || identity()) : identity()])), moved: false };
     }
@@ -11646,10 +11160,10 @@ function pointerMove(e) {
                 state.badgeHover = onBadge?.id || null;
                 invalidate();
             }
-            const hit = (!e.ctrlKey && !e.metaKey && !e.altKey && siblingHit(w)) || hitTest(w, { deep: e.ctrlKey || e.metaKey || e.altKey });
+            const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || selectTargetAt(w, { deep: e.ctrlKey || e.metaKey });
             const hover = hit?.id || null;
-            const geo = selectionGeometry(), h = geo && handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
-            overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', n: 'ns-resize', ne: 'nesw-resize', e: 'ew-resize', se: 'nwse-resize', s: 'ns-resize', sw: 'nesw-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
+            const geo = selectionGeometry(), h = geo && (handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p));
+            overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', ne: 'nesw-resize', se: 'nwse-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
             if (onBadge)
                 overlay.style.cursor = 'pointer';
             if (hover !== state.hover) {
@@ -11706,11 +11220,10 @@ function pointerMove(e) {
         // Figma-style: a frame the marquee fully encloses is selected as one; a frame it only overlaps is entered, so its
         // children can be picked whether the drag started inside or outside that frame. Other layers are picked on touch.
         const boxes = new Map(doc.scene().map(s => [s.node.id, s]));
-        const peek = overlayPeek();
         const visit = parent => {
             for (const n of doc.children(parent)) {
                 const s = boxes.get(n.id);
-                if (!s || s.locked || !n.visible || !overlayShown(n.id, peek))
+                if (!s || s.locked || !n.visible)
                     continue;
                 const hit = s.box.x < b.x + b.w && s.box.x + s.box.w > b.x && s.box.y < b.y + b.h && s.box.y + s.box.h > b.y;
                 if (!hit)
@@ -11899,7 +11412,7 @@ function pointerMove(e) {
         if (g.handle.includes('s'))
             bottom = Math.max(local.y, top + .1);
         const locked = g.roots.some(id => !!doc.get(id)?.lockRatio);
-        const imgLike = g.roots.every(id => isImageLike(doc.get(id))), corner = g.handle.length === 2;
+        const corner = g.handle.length === 2;
         const keepRatio = locked || e.shiftKey;
         if (keepRatio && !corner) {
             const ratio = origW / (origH || 1);
@@ -12111,7 +11624,7 @@ function pointerUp(e) {
                     delete m._drag;
             }
             if (g.moved) {
-                applyDrop(g); commitOverlayDrag(g);
+                applyDrop(g);
                 doc.touch();
                 doc.scene();
             }
@@ -12346,78 +11859,6 @@ function finishText(cancel = false) {
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
 let lastMenuAt = { x: 0, y: 0 };
-// Dragging a peeked overlay writes the move back into its trigger action's offset ({x, y}),
-// not into world x/y: the peek position stays derived from placeOverlayPos (spec).
-function overlayActionOf(instanceId) {
-    const ov = nodeIndex().get(instanceId);
-    if (ov?.overlayTrigger) {
-        const trig = nodeIndex().get(ov.overlayTrigger);
-        if (trig) {
-            const src = trig.isInstance ? chainComponent(trig) : null, set = src && parentSetOf(src);
-            for (const it of interactionsForNode(trig, src, set).list) {
-                for (const a of it.actions || []) {
-                    if (/^open-/.test(a.type) && (a.overlayInstanceId === instanceId || overlayTargetId(a) === ov.sourceId))
-                        return { trig, action: a };
-                }
-            }
-        }
-    }
-    for (const t of allNodes()) {
-        for (const it of t.interactions || []) {
-            for (const a of it.actions || []) {
-                if ((a.type === 'open-dropdown' || a.type === 'open-overlay' || a.type === 'open-popover') && a.overlayInstanceId === instanceId)
-                    return { trig: t, action: a };
-            }
-        }
-    }
-    return null;
-}
-function syncOverlaySizes(d) {
-    for (const ov of d.nodes) {
-        if (!isOverlayRoot(ov)) continue;
-        const found = overlayActionOf(ov.id);
-        if (!found) continue;
-        const { trig, action } = found;
-        const master = ov.sourceId ? (d.get(ov.sourceId) || componentById(ov.sourceId)) : null;
-        if (action.type === 'open-dropdown' && action.width === 'parent' && trig.w > 0) {
-            const tw = Math.round(trig.w);
-            if (ov.w !== tw || ov.layoutSizingH !== 'fixed' || !ov._matchParentW) {
-                ov.w = tw;
-                ov.layoutSizingH = 'fixed';
-                ov._matchParentW = true;
-                d.revision++;
-            }
-        }
-        else if (ov._matchParentW) {
-            delete ov._matchParentW;
-            if (master) {
-                ov.w = master.w;
-                ov.layoutSizingH = master.layoutSizingH || 'fixed';
-                d.revision++;
-            }
-        }
-        if (action.type === 'open-dropdown' && action.height === 'parent' && trig.h > 0) {
-            const th = Math.round(trig.h);
-            if (ov.h !== th || ov.layoutSizingV !== 'fixed' || !ov._matchParentH) {
-                ov.h = th;
-                ov.layoutSizingV = 'fixed';
-                ov._matchParentH = true;
-                d.revision++;
-            }
-        }
-        else if (ov._matchParentH) {
-            delete ov._matchParentH;
-            if (master) {
-                ov.h = master.h;
-                ov.layoutSizingV = master.layoutSizingV || 'fixed';
-                d.revision++;
-            }
-        }
-    }
-}
-function commitOverlayDrag(_g) {
-    // Overlay portal position is locked on canvas and driven strictly by the trigger's Interaction settings.
-}
 function showMenu(items, x, y) { lastMenuAt = { x, y }; const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item ${item.icon ? 'has-icon' : ''}" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}>${item.icon ? `<span class="menu-icon">${MENU_ICONS[item.icon] || ''}</span>` : ''}<span class="menu-label">${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
 // A layer inside an instance (not the instance's own root).
 function insideInstance(n) { return !!n && doc.ancestors(n).some(a => a.isInstance); }
@@ -12947,27 +12388,6 @@ async function deletePage(id) {
         fit();
     });
 }
-function editTokens() {
-    modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
-    $('#save-tokens').onclick = () => {
-        const next = doc.data.tokens.colors.map((c, i) => ({ name: $(`[data-token-name="${i}"]`).value || c.name, value: $(`[data-token-color="${i}"]`).value }));
-        closeModal();
-        transaction('Update design tokens', () => {
-            const replacements = new Map(doc.data.tokens.colors.map((c, i) => [c.value.toLowerCase(), next[i].value]));
-            for (const page of doc.data.pages)
-                for (const n of page.nodes)
-                    for (const k of ['fill', 'fill2', 'stroke', 'shadowColor']) {
-                        if (replacements.has(n[k]?.toLowerCase())) {
-                            n[k] = replacements.get(n[k].toLowerCase());
-                            n.version++;
-                        }
-                    }
-            doc.data.tokens.colors = next;
-        });
-        toast('Tokens updated across all pages');
-    };
-    $('#export-tokens').onclick = () => download(new Blob([JSON.stringify(doc.data.tokens, null, 2)], { type: 'application/json' }), 'midas-tokens.json');
-}
 function inspectCSS() {
     const n = activeNode();
     if (!n)
@@ -13219,12 +12639,17 @@ function exportVariablesJSON(onlyId = null) {
     download(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }), safeName(doc.data.name + ' variables') + '.json');
     toast(onlyId ? 'Collection exported.' : `Exported ${store.collections.length} collection${store.collections.length === 1 ? '' : 's'} and ${store.items.length} variables.`);
 }
+/** Behavior data that names a collection (or one mode of it) goes with it: see forgetCollection in @midas/builder-core. */
+function dropBehaviorRefs(collectionId, modeId = null) {
+    forgetCollection(allNodes(), collectionId, modeId);
+}
 function vwDeleteCollection(id) {
     const s = varStore(), c = varColl(id);
     if (!c)
         return;
     toast(`Deleted “${c.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
-    vwTx('Delete collection', () => {
+    deleteWhenLoaded('Delete collection', () => {
+        dropBehaviorRefs(id);
         s.collections = s.collections.filter(x => x.id !== id);
         const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
         s.items = s.items.filter(i => i.collectionId !== id);
@@ -13584,6 +13009,7 @@ function detachNodeTree(page, rootId) {
     const root = page.nodes.find(n => n.id === rootId);
     if (!root)
         return;
+    detachBehavior([root, ...pageTree(page, rootId)]);
     for (const n of [root, ...pageTree(page, rootId)]) {
         delete n.sourceId;
         delete n.isInstance;
@@ -13594,7 +13020,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'stateMapping', 'stateModes', 'interactions', 'inputBehavior', 'repeat', 'stateBind', 'behaviors', 'behaviorOverrides'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'behavior'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -13616,7 +13042,7 @@ function markSelectedOverrides() {
         if (!src)
             continue;
         const omit = new Set([...SYNC_OMIT, ...(n.isInstance ? ['x', 'y', 'rotation'] : [])]);
-        const page = doc.page, controlled = propControlled(n, src, doc._map, sources);
+        const controlled = propControlled(n, src, doc._map, sources);
         for (const [k, v] of Object.entries(n)) {
             if (omit.has(k) || Object.hasOwn(n.overrides || {}, k) || Object.hasOwn(controlled, k) && controlled[k] === v)
                 continue;
@@ -14001,8 +13427,6 @@ async function snapshotAssets(components) {
             used[id] = doc.data.assets[id];
     return assetsAsDataUrls(lib.fileId, used);
 }
-// Busy indicator: a pill with a spinner, a label and (when the progress is known) a bar, so long work never looks like a freeze.
-const nextPaint = () => new Promise(r => setTimeout(r, 30));
 function startBusy(label, pct = null) {
     let el = document.getElementById('busy-pill');
     if (!el) {
@@ -14238,9 +13662,11 @@ function libSyncVariables(snap) {
         store.collections.push({ ...structuredClone(c), libId: snap.id });
     for (const i of snap.variables?.items || [])
         store.items.push({ ...structuredClone(i), libId: snap.id });
+    pruneBehaviorData(allNodes(), store.collections);
 }
 async function libUse(id, on) {
     await libsLoad(true);
+    if (on && !(await waitForAllPages())) return;
     if (on) {
         const snap = await libSnap(id, true);
         if (!snap) {
@@ -14291,7 +13717,7 @@ function libImportComponents(snap, onlyIds = null) {
             const ref = `${snap.id}:${src.id}`, existing = byRef.get(ref), n = structuredClone(src);
             n.id = map(src.id);
             n.parentId = src.parentId ? map(src.parentId) : null;
-            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+            for (const k of ['sourceId', 'swapOf'])
                 if (n[k] != null)
                     n[k] = map(n[k]);
             if (Array.isArray(n.exposedNested))
@@ -14377,6 +13803,7 @@ async function libInstantiate(libId, compId, at = null, parent = null) {
         instantiate(main.id, at, parent);
 }
 async function libUpdate(libId) {
+    if (!(await waitForAllPages())) return;
     const snap = await libSnap(libId, true);
     if (!snap)
         return;
@@ -14453,7 +13880,7 @@ function renderLibThumb(snap, c) {
             const n = structuredClone(src);
             n.id = idFor.get(src.id);
             n.parentId = src.id === base.id ? null : idFor.get(src.parentId);
-            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+            for (const k of ['sourceId', 'swapOf'])
                 if (n[k] != null && idFor.has(n[k]))
                     n[k] = idFor.get(n[k]);
             if (src.id === base.id) {
@@ -16055,24 +15482,6 @@ function openSwapPicker(anchor, { current = null, onPick }) {
 function swapButtonHtml(attrs, compId) {
     const c = compId && allNodes().find(n => n.id === compId), set = c && parentSetOf(c), label = c ? (set ? `${set.name} / ${c.name}` : c.name) : 'Choose component';
     return `<button class="swap-btn" ${attrs} title="${esc(label)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(label)}</span>${CHEV_SVG}</button>`;
-}
-function swappableComponents() {
-    // One entry per component (a component set counts once, represented by its first variant); variants are picked on the instance itself.
-    const out = [], seenSets = new Set();
-    for (const p of doc.data.pages) {
-        for (const c of p.nodes) {
-            if (c.component && !isSoftDeletedComp(c)) {
-                const set = parentSetOf(c);
-                if (set) {
-                    if (seenSets.has(set.id))
-                        continue;
-                    seenSets.add(set.id);
-                }
-                out.push({ id: c.id, label: set ? set.name : c.name });
-            }
-        }
-    }
-    return out;
 }
 // Replace a nested instance with an instance of another component, in place. Runs inside a transaction.
 function swapNestedNode(y, targetId) {
@@ -18484,7 +17893,6 @@ async function figToMidas(file, onProgress, abortSignal) {
 // ===== Google Fonts (all families) =====
 const GF_RAW = "ABeeZee~0~8~8|ADLaM Display~2~8~0|AR One Sans~0~120~0|Abel~0~8~0|Abhaya Libre~1~248~0|Aboreto~2~8~0|Abril Fatface~2~8~0|Abyssinica SIL~1~8~0|Aclonica~0~8~0|Acme~0~8~0|Actor~0~8~0|Adamina~1~8~0|Advent Pro~0~511~511|Afacad~0~120~120|Afacad Flux~0~511~0|Agbalumo~2~8~0|Agdasima~0~72~0|Agu Display~2~8~0|Aguafina Script~3~8~0|Akatab~0~504~0|Akaya Kanadaka~2~8~0|Akaya Telivigala~2~8~0|Akronim~2~8~0|Akshar~0~124~0|Aladin~2~8~0|Alan Sans~0~508~0|Alata~0~8~0|Alatsi~0~8~0|Albert Sans~0~511~511|Aldrich~0~8~0|Alef~0~72~0|Alegreya~1~504~504|Alegreya SC~1~472~472|Alegreya Sans~0~477~477|Alegreya Sans SC~0~477~477|Aleo~1~511~511|Alex Brush~3~8~0|Alexandria~0~511~0|Alfa Slab One~2~8~0|Alice~1~8~0|Alike~1~8~0|Alike Angular~1~8~0|Alkalami~1~8~0|Alkatra~2~120~0|Allan~2~72~0|Allerta~0~8~0|Allerta Stencil~0~8~0|Allison~3~8~0|Allura~3~8~0|Almarai~0~204~0|Almendra~1~72~72|Almendra Display~2~8~0|Almendra SC~1~8~0|Alumni Sans~0~511~511|Alumni Sans Collegiate One~0~8~8|Alumni Sans Inline One~2~8~8|Alumni Sans Pinstripe~0~8~8|Alumni Sans SC~0~511~511|Amarante~2~8~0|Amaranth~0~72~72|Amarna~0~127~127|Amatic SC~3~72~0|Amethysta~1~8~0|Amiko~0~104~0|Amiri~1~72~72|Amiri Quran~1~8~0|Amita~3~72~0|Anaheim~0~248~0|Ancizar Sans~0~511~511|Ancizar Serif~1~508~508|Andada Pro~1~248~248|Andika~0~72~72|Anek Bangla~0~255~0|Anek Devanagari~0~255~0|Anek Gujarati~0~255~0|Anek Gurmukhi~0~255~0|Anek Kannada~0~255~0|Anek Latin~0~255~0|Anek Malayalam~0~255~0|Anek Odia~0~255~0|Anek Tamil~0~255~0|Anek Telugu~0~255~0|Angkor~2~8~0|Annapurna SIL~1~72~0|Annie Use Your Telescope~3~8~0|Anonymous Pro~4~72~72|Anta~0~8~0|Antic~0~8~0|Antic Didone~1~8~0|Antic Slab~1~8~0|Anton~0~8~0|Anton SC~0~8~0|Antonio~0~127~0|Anuphan~0~127~0|Anybody~2~511~511|Aoboshi One~1~8~0|Arapey~1~8~8|Arbutus~1~8~0|Arbutus Slab~1~8~0|Architects Daughter~3~8~0|Archivo~0~511~511|Archivo Black~0~8~0|Archivo Narrow~0~120~120|Are You Serious~3~8~0|Aref Ruqaa~1~72~0|Aref Ruqaa Ink~1~72~0|Arima~2~127~0|Arimo~0~120~120|Arizonia~3~8~0|Armata~0~8~0|Arsenal~0~72~72|Arsenal SC~0~72~72|Artifika~1~8~0|Arvo~1~72~72|Arya~0~72~0|Asap~0~511~511|Asap Condensed~0~510~510|Asar~1~8~0|Asimovian~0~8~0|Asset~2~8~0|Assistant~0~254~0|Asta Sans~0~252~0|Astloch~2~72~0|Asul~1~72~0|Athiti~0~126~0|Atkinson Hyperlegible~0~72~72|Atkinson Hyperlegible Mono~0~254~254|Atkinson Hyperlegible Next~0~254~254|Atma~2~124~0|Atomic Age~2~8~0|Aubrey~2~8~0|Audiowide~2~8~0|Autour One~2~8~0|Average~1~8~0|Average Sans~0~8~0|Averia Gruesa Libre~2~8~0|Averia Libre~2~76~76|Averia Sans Libre~2~76~76|Averia Serif Libre~2~76~76|Azeret Mono~4~511~511|B612~0~72~72|B612 Mono~4~72~72|BBH Bartle~0~8~0|BBH Bogle~0~8~0|BBH Hegarty~0~8~0|BIZ UDGothic~0~72~0|BIZ UDMincho~1~72~0|BIZ UDPGothic~0~72~0|BIZ UDPMincho~1~72~0|Babylonica~3~8~0|Bacasime Antique~1~8~0|Bad Script~3~8~0|Badeen Display~2~8~0|Bagel Fat One~2~8~0|Bahiana~2~8~0|Bahianita~2~8~0|Bai Jamjuree~0~126~126|Bakbak One~2~8~0|Ballet~3~8~0|Baloo 2~2~248~0|Baloo Bhai 2~2~248~0|Baloo Bhaijaan 2~2~248~0|Baloo Bhaina 2~2~248~0|Baloo Chettan 2~2~248~0|Baloo Da 2~2~248~0|Baloo Paaji 2~2~248~0|Baloo Tamma 2~2~248~0|Baloo Tammudu 2~2~248~0|Baloo Thambi 2~2~248~0|Balsamiq Sans~2~72~72|Balthazar~1~8~0|Bangers~2~8~0|Barlow~0~511~511|Barlow Condensed~0~511~511|Barlow Semi Condensed~0~511~511|Barriecito~2~8~0|Barrio~2~8~0|Basic~0~8~0|Baskervville~1~120~120|Baskervville SC~1~120~0|Battambang~2~333~0|Baumans~2~8~0|Bayon~0~8~0|Be Vietnam Pro~0~511~511|Beau Rivage~3~8~0|Bebas Neue~0~8~0|Beiruti~0~510~0|Belanosima~0~104~0|Belgrano~1~8~0|Bellefair~1~8~0|Belleza~0~8~0|Bellota~2~76~76|Bellota Text~2~76~76|BenchNine~0~76~0|Benne~1~8~0|Bentham~1~8~0|Berkshire Swash~3~8~0|Besley~1~504~504|Beth Ellen~3~8~0|Bevan~1~8~8|BhuTuka Expanded One~1~8~0|Big Shoulders~2~511~0|Big Shoulders Inline~2~511~0|Big Shoulders Stencil~2~511~0|Bigelow Rules~2~8~0|Bigshot One~2~8~0|Bilbo~3~8~0|Bilbo Swash Caps~3~8~0|BioRhyme~1~254~0|BioRhyme Expanded~1~206~0|Birthstone~3~8~0|Birthstone Bounce~3~24~0|Biryani~0~494~0|Bitcount~2~511~0|Bitcount Grid Double~2~511~0|Bitcount Grid Double Ink~2~511~0|Bitcount Grid Single~2~511~0|Bitcount Grid Single Ink~2~511~0|Bitcount Ink~2~511~0|Bitcount Prop Double~2~511~0|Bitcount Prop Double Ink~2~511~0|Bitcount Prop Single~2~511~0|Bitcount Prop Single Ink~2~511~0|Bitcount Single~2~511~0|Bitcount Single Ink~2~511~0|Bitter~1~511~511|Black And White Picture~2~8~0|Black Han Sans~0~8~0|Black Ops One~2~8~0|Blaka~2~8~0|Blaka Hollow~2~8~0|Blaka Ink~2~8~0|Blinker~0~495~0|Bodoni Moda~1~504~504|Bodoni Moda SC~1~504~504|Bokor~2~8~0|Boldonse~2~8~0|Bona Nova~1~72~8|Bona Nova SC~1~72~8|Bonbon~3~8~0|Bonheur Royale~3~8~0|Boogaloo~2~8~0|Borel~3~8~0|Bowlby One~2~8~0|Bowlby One SC~2~8~0|Braah One~0~8~0|Brawler~1~72~0|Bree Serif~1~8~0|Bricolage Grotesque~0~254~0|Bruno Ace~2~8~0|Bruno Ace SC~2~8~0|Brygada 1918~1~120~120|Bubblegum Sans~2~8~0|Bubbler One~0~8~0|Buda~2~4~0|Buenard~1~120~0|Bungee~2~8~0|Bungee Hairline~2~8~0|Bungee Inline~2~8~0|Bungee Outline~2~8~0|Bungee Shade~2~8~0|Bungee Spice~2~8~0|Bungee Tint~2~8~0|Butcherman~2~8~0|Butterfly Kids~3~8~0|Bytesized~0~8~0|Cabin~0~120~120|Cabin Condensed~0~120~0|Cabin Sketch~2~72~0|Cactus Classical Serif~1~8~0|Caesar Dressing~2~8~0|Cagliostro~0~8~0|Cairo~0~510~0|Cairo Play~0~510~0|Cal Sans~0~8~0|Caladea~1~72~72|Calistoga~2~8~0|Calligraffitti~3~8~0|Cambay~0~72~72|Cambo~1~8~0|Candal~0~8~0|Cantarell~0~72~72|Cantata One~1~8~0|Cantora One~0~8~0|Caprasimo~2~8~0|Capriola~0~8~0|Caramel~3~8~0|Carattere~3~8~0|Cardo~1~72~8|Carlito~0~72~72|Carme~0~8~0|Carrois Gothic~0~8~0|Carrois Gothic SC~0~8~0|Carter One~2~8~0|Cascadia Code~0~126~126|Cascadia Mono~0~126~126|Castoro~1~8~8|Castoro Titling~2~8~0|Catamaran~0~511~0|Caudex~1~72~72|Cause~3~511~0|Caveat~3~120~0|Caveat Brush~3~8~0|Cedarville Cursive~3~8~0|Ceviche One~2~8~0|Chakra Petch~0~124~124|Changa~0~254~0|Changa One~2~8~8|Chango~2~8~0|Charis SIL~1~72~72|Charm~3~72~0|Charmonman~3~72~0|Chathura~0~205~0|Chau Philomene One~0~8~8|Chela One~2~8~0|Chelsea Market~2~8~0|Chenla~2~8~0|Cherish~3~8~0|Cherry Bomb One~2~8~0|Cherry Cream Soda~2~8~0|Cherry Swash~2~72~0|Chewy~2~8~0|Chicle~2~8~0|Chilanka~3~8~0|Chiron GoRound TC~0~510~0|Chiron Hei HK~0~510~510|Chiron Sung HK~1~510~510|Chivo~0~511~511|Chivo Mono~4~511~511|Chocolate Classical Sans~0~8~0|Chokokutai~2~8~0|Chonburi~2~8~0|Cinzel~1~504~0|Cinzel Decorative~2~328~0|Clicker Script~3~8~0|Climate Crisis~2~8~0|Coda~2~136~0|Codystar~2~12~0|Coiny~2~8~0|Combo~2~8~0|Comfortaa~2~124~0|Comforter~3~8~0|Comforter Brush~3~8~0|Comic Neue~3~76~76|Comic Relief~2~72~0|Coming Soon~3~8~0|Comme~0~511~0|Commissioner~0~511~0|Concert One~2~8~0|Condiment~3~8~0|Content~2~72~0|Contrail One~2~8~0|Convergence~0~8~0|Cookie~3~8~0|Copse~1~8~0|Coral Pixels~2~8~0|Corben~2~72~0|Corinthia~3~72~0|Cormorant~1~124~124|Cormorant Garamond~1~124~124|Cormorant Infant~1~124~124|Cormorant SC~1~124~0|Cormorant Unicase~1~124~0|Cormorant Upright~1~124~0|Cossette Texte~0~72~0|Cossette Titre~0~72~0|Courgette~3~8~0|Courier Prime~4~72~72|Cousine~4~72~72|Coustard~1~264~0|Covered By Your Grace~3~8~0|Crafty Girls~3~8~0|Creepster~2~8~0|Crete Round~1~8~8|Crimson Pro~1~510~510|Crimson Text~1~104~104|Croissant One~2~8~0|Crushed~2~8~0|Cuprum~0~120~120|Cute Font~2~8~0|Cutive~1~8~0|Cutive Mono~4~8~0|DM Mono~4~28~28|DM Sans~0~511~511|DM Serif Display~1~8~8|DM Serif Text~1~8~8|Dai Banna SIL~1~124~124|Damion~3~8~0|Dancing Script~3~120~0|Danfo~1~8~0|Dangrek~2~8~0|Darker Grotesque~0~508~0|Darumadrop One~2~8~0|David Libre~1~88~0|Dawning of a New Day~3~8~0|Days One~0~8~0|Dekko~3~8~0|Dela Gothic One~2~8~0|Delicious Handrawn~3~8~0|Delius~3~8~0|Delius Swash Caps~3~8~0|Delius Unicase~3~72~0|Della Respira~1~8~0|Denk One~0~8~0|Devonshire~3~8~0|Dhurjati~0~8~0|Didact Gothic~0~8~0|Diphylleia~1~8~0|Diplomata~2~8~0|Diplomata SC~2~8~0|Do Hyeon~0~8~0|Dokdo~2~8~0|Domine~1~120~0|Donegal One~1~8~0|Dongle~0~76~0|Doppio One~0~8~0|Dorsa~0~8~0|Dosis~0~254~0|DotGothic16~0~8~0|Doto~0~511~0|Dr Sugiyama~3~8~0|Duru Sans~0~8~0|DynaPuff~2~120~0|Dynalight~2~8~0|EB Garamond~1~248~248|Eagle Lake~3~8~0|East Sea Dokdo~3~8~0|Eater~2~8~0|Economica~0~72~72|Eczar~1~248~0|Edu AU VIC WA NT Arrows~3~120~0|Edu AU VIC WA NT Dots~3~120~0|Edu AU VIC WA NT Guides~3~120~0|Edu AU VIC WA NT Hand~3~120~0|Edu AU VIC WA NT Pre~3~120~0|Edu NSW ACT Cursive~3~120~0|Edu NSW ACT Foundation~3~120~0|Edu NSW ACT Hand Pre~3~120~0|Edu QLD Beginner~3~120~0|Edu QLD Hand~3~120~0|Edu SA Beginner~3~120~0|Edu SA Hand~3~120~0|Edu TAS Beginner~3~120~0|Edu VIC WA NT Beginner~3~120~0|Edu VIC WA NT Hand~3~120~0|Edu VIC WA NT Hand Pre~3~120~0|El Messiri~0~120~0|Electrolize~0~8~0|Elms Sans~0~511~511|Elsie~2~264~0|Elsie Swash Caps~2~264~0|Emblema One~2~8~0|Emilys Candy~2~8~0|Encode Sans~0~511~0|Encode Sans Condensed~0~511~0|Encode Sans Expanded~0~511~0|Encode Sans SC~0~511~0|Encode Sans Semi Condensed~0~511~0|Encode Sans Semi Expanded~0~511~0|Engagement~3~8~0|Englebert~0~8~0|Enriqueta~1~120~0|Ephesis~3~8~0|Epilogue~0~511~511|Epunda Sans~0~508~508|Epunda Slab~1~508~508|Erica One~2~8~0|Esteban~1~8~0|Estonia~3~8~0|Euphoria Script~3~8~0|Ewert~2~8~0|Exile~2~8~0|Exo~0~511~511|Exo 2~0~511~511|Expletus Sans~2~120~120|Explora~3~8~0|Faculty Glyphic~0~8~0|Fahkwang~0~126~126|Familjen Grotesk~0~120~120|Fanwood Text~1~8~8|Farro~0~92~0|Farsan~2~8~0|Fascinate~2~8~0|Fascinate Inline~2~8~0|Faster One~2~8~0|Fasthand~2~8~0|Fauna One~1~8~0|Faustina~1~252~252|Federant~2~8~0|Federo~0~8~0|Felipa~3~8~0|Fenix~1~8~0|Festive~3~8~0|Figtree~0~508~508|Finger Paint~2~8~0|Finlandica~0~120~120|Fira Code~4~124~0|Fira Mono~4~88~0|Fira Sans~0~511~511|Fira Sans Condensed~0~511~511|Fira Sans Extra Condensed~0~511~511|Fjalla One~0~8~0|Fjord One~1~8~0|Flamenco~2~12~0|Flavors~2~8~0|Fleur De Leah~3~8~0|Flow Block~2~8~0|Flow Circular~2~8~0|Flow Rounded~2~8~0|Foldit~2~511~0|Fondamento~3~8~8|Fontdiner Swanky~2~8~0|Forum~2~8~0|Fragment Mono~4~8~8|Francois One~0~8~0|Frank Ruhl Libre~1~508~0|Fraunces~1~511~511|Freckle Face~2~8~0|Fredericka the Great~2~8~0|Fredoka~0~124~0|Freehand~2~8~0|Freeman~2~8~0|Fresca~0~8~0|Frijole~2~8~0|Fruktur~2~8~8|Fugaz One~2~8~0|Fuggles~3~8~0|Funnel Display~2~252~0|Funnel Sans~0~252~252|Fustat~0~254~0|Fuzzy Bubbles~3~72~0|GFS Didot~1~8~0|GFS Neohellenic~0~72~72|Ga Maamli~2~8~0|Gabarito~2~504~0|Gabriela~1~8~0|Gaegu~3~76~0|Gafata~0~8~0|Gajraj One~2~8~0|Galada~2~8~0|Galdeano~0~8~0|Galindo~2~8~0|Gamja Flower~3~8~0|Gantari~0~511~511|Gasoek One~0~8~0|Gayathri~0~73~0|Geist~0~511~0|Geist Mono~4~511~0|Gelasio~1~120~120|Gemunu Libre~0~254~0|Genos~0~511~511|Gentium Book Plus~1~72~72|Gentium Plus~1~72~72|Geo~0~8~8|Geologica~0~511~0|Geom~0~508~508|Georama~0~511~511|Geostar~2~8~0|Geostar Fill~2~8~0|Germania One~2~8~0|Gideon Roman~2~8~0|Gidole~0~8~0|Gidugu~0~8~0|Gilda Display~1~8~0|Girassol~2~8~0|Give You Glory~3~8~0|Glass Antiqua~2~8~0|Glegoo~1~72~0|Gloock~1~8~0|Gloria Hallelujah~3~8~0|Glory~0~255~255|Gluten~2~511~0|Goblin One~2~8~0|Gochi Hand~3~8~0|Goldman~2~72~0|Golos Text~0~504~0|Google Sans~0~120~120|Google Sans Code~4~252~252|Google Sans Flex~0~511~0|Gorditas~2~72~0|Gothic A1~0~511~0|Gotu~0~8~0|Goudy Bookletter 1911~1~8~0|Gowun Batang~1~72~0|Gowun Dodum~0~8~0|Graduate~1~8~0|Grand Hotel~3~8~0|Grandiflora One~1~8~0|Grandstander~2~511~511|Grape Nuts~3~8~0|Gravitas One~2~8~0|Great Vibes~3~8~0|Grechen Fuemen~3~8~0|Grenze~1~511~511|Grenze Gotisch~2~511~0|Grey Qo~3~8~0|Griffy~2~8~0|Gruppo~0~8~0|Gudea~0~72~8|Gugi~2~8~0|Gulzar~1~8~0|Gupter~1~88~0|Gurajada~0~8~0|Gwendolyn~3~72~0|Habibi~1~8~0|Hachi Maru Pop~3~8~0|Hahmlet~1~511~0|Halant~1~124~0|Hammersmith One~0~8~0|Hanalei~2~8~0|Hanalei Fill~2~8~0|Handjet~2~511~0|Handlee~3~8~0|Hanken Grotesk~0~511~511|Hanuman~1~511~0|Happy Monkey~2~8~0|Harmattan~0~120~0|Headland One~1~8~0|Hedvig Letters Sans~0~8~0|Hedvig Letters Serif~1~8~0|Heebo~0~511~0|Henny Penny~2~8~0|Hepta Slab~1~511~0|Herr Von Muellerhoff~3~8~0|Hi Melody~3~8~0|Hina Mincho~1~8~0|Hind~0~124~0|Hind Guntur~0~124~0|Hind Madurai~0~124~0|Hind Mysuru~0~124~0|Hind Siliguri~0~124~0|Hind Vadodara~0~124~0|Holtwood One SC~1~8~0|Homemade Apple~3~8~0|Homenaje~0~8~0|Honk~2~8~0|Host Grotesk~0~252~252|Hubballi~0~8~0|Hubot Sans~0~510~510|Huninn~0~8~0|Hurricane~3~8~0|IBM Plex Mono~4~127~127|IBM Plex Sans~0~127~127|IBM Plex Sans Arabic~0~127~0|IBM Plex Sans Condensed~0~127~127|IBM Plex Sans Devanagari~0~127~0|IBM Plex Sans Hebrew~0~127~0|IBM Plex Sans JP~0~127~0|IBM Plex Sans KR~0~127~0|IBM Plex Sans Thai~0~127~0|IBM Plex Sans Thai Looped~0~127~0|IBM Plex Serif~1~127~127|IM Fell DW Pica~1~8~8|IM Fell DW Pica SC~1~8~0|IM Fell Double Pica~1~8~8|IM Fell Double Pica SC~1~8~0|IM Fell English~1~8~8|IM Fell English SC~1~8~0|IM Fell French Canon~1~8~8|IM Fell French Canon SC~1~8~0|IM Fell Great Primer~1~8~8|IM Fell Great Primer SC~1~8~0|Iansui~3~8~0|Ibarra Real Nova~1~120~120|Iceberg~2~8~0|Iceland~2~8~0|Imbue~1~511~0|Imperial Script~3~8~0|Imprima~0~8~0|Inclusive Sans~0~124~124|Inconsolata~4~510~0|Inder~0~8~0|Indie Flower~3~8~0|Ingrid Darling~3~8~0|Inika~1~72~0|Inknut Antiqua~1~508~0|Inria Sans~0~76~76|Inria Serif~1~76~76|Inspiration~3~8~0|Instrument Sans~0~120~120|Instrument Serif~1~8~8|Intel One Mono~4~124~124|Inter~0~511~511|Inter Tight~0~511~511|Irish Grover~2~8~0|Island Moments~3~8~0|Istok Web~0~72~72|Italiana~0~8~0|Italianno~3~8~0|Itim~3~8~0|Jacquard 12~2~8~0|Jacquard 12 Charted~2~8~0|Jacquard 24~2~8~0|Jacquard 24 Charted~2~8~0|Jacquarda Bastarda 9~2~8~0|Jacquarda Bastarda 9 Charted~2~8~0|Jacques Francois~1~8~0|Jacques Francois Shadow~2~8~0|Jaini~2~8~0|Jaini Purva~2~8~0|Jaldi~0~72~0|Jaro~0~8~0|Jersey 10~2~8~0|Jersey 10 Charted~2~8~0|Jersey 15~2~8~0|Jersey 15 Charted~2~8~0|Jersey 20~2~8~0|Jersey 20 Charted~2~8~0|Jersey 25~2~8~0|Jersey 25 Charted~2~8~0|JetBrains Mono~4~255~255|Jim Nightshade~3~8~0|Joan~1~8~0|Jockey One~0~8~0|Jolly Lodger~2~8~0|Jomhuria~2~8~0|Jomolhari~1~8~0|Josefin Sans~0~127~127|Josefin Slab~1~127~127|Jost~0~511~511|Joti One~2~8~0|Jua~0~8~0|Judson~1~72~8|Julee~3~8~0|Julius Sans One~0~8~0|Junge~1~8~0|Jura~0~124~0|Just Another Hand~3~8~0|Just Me Again Down Here~3~8~0|K2D~0~255~255|Kablammo~2~8~0|Kadwa~1~72~0|Kaisei Decol~1~88~0|Kaisei HarunoUmi~1~88~0|Kaisei Opti~1~88~0|Kaisei Tokumin~1~216~0|Kalam~3~76~0|Kalnia~1~127~0|Kalnia Glaze~2~127~0|Kameron~1~120~0|Kanchenjunga~0~120~0|Kanit~0~511~511|Kantumruy Pro~0~127~127|Kapakana~3~12~0|Karantina~2~76~0|Karla~0~254~254|Karla Tamil Inclined~0~72~0|Karla Tamil Upright~0~72~0|Karma~1~124~0|Katibeh~2~8~0|Kaushan Script~3~8~0|Kavivanar~3~8~0|Kavoon~2~8~0|Kay Pho Du~1~120~0|Kdam Thmor Pro~0~8~0|Keania One~2~8~0|Kedebideri~0~504~0|Kelly Slab~2~8~0|Kenia~2~8~0|Khand~0~124~0|Khmer~0~8~0|Khula~0~236~0|Kings~3~8~0|Kirang Haerang~2~8~0|Kite One~0~8~0|Kiwi Maru~1~28~0|Klee One~3~40~0|Knewave~2~8~0|KoHo~0~126~126|Kodchasan~0~126~126|Kode Mono~4~120~0|Koh Santepheap~1~333~0|Kolker Brush~3~8~0|Konkhmer Sleokchher~2~8~0|Kosugi~0~8~0|Kosugi Maru~0~8~0|Kotta One~1~8~0|Koulen~2~8~0|Kranky~2~8~0|Kreon~1~124~0|Kristi~3~8~0|Krona One~0~8~0|Krub~0~126~126|Kufam~0~504~504|Kulim Park~0~110~110|Kumar One~2~8~0|Kumar One Outline~2~8~0|Kumbh Sans~0~511~0|Kurale~1~8~0|LXGW Marker Gothic~0~8~0|LXGW WenKai Mono TC~4~76~0|LXGW WenKai TC~3~76~0|La Belle Aurore~3~8~0|Labrada~1~511~511|Lacquer~2~8~0|Laila~1~124~0|Lakki Reddy~3~8~0|Lalezar~0~8~0|Lancelot~2~8~0|Langar~2~8~0|Lateef~1~254~0|Lato~0~333~333|Lavishly Yours~3~8~0|League Gothic~0~8~0|League Script~3~8~0|League Spartan~0~511~0|Leckerli One~3~8~0|Ledger~1~8~0|Lekton~4~72~8|Lemon~2~8~0|Lemonada~2~124~0|Lexend~0~511~0|Lexend Deca~0~511~0|Lexend Exa~0~511~0|Lexend Giga~0~511~0|Lexend Mega~0~511~0|Lexend Peta~0~511~0|Lexend Tera~0~511~0|Lexend Zetta~0~511~0|Libertinus Keyboard~2~8~0|Libertinus Math~2~8~0|Libertinus Mono~4~8~0|Libertinus Sans~0~72~8|Libertinus Serif~1~104~104|Libertinus Serif Display~2~8~0|Libre Barcode 128~2~8~0|Libre Barcode 128 Text~2~8~0|Libre Barcode 39~2~8~0|Libre Barcode 39 Extended~2~8~0|Libre Barcode 39 Extended Text~2~8~0|Libre Barcode 39 Text~2~8~0|Libre Barcode EAN13 Text~2~8~0|Libre Baskerville~1~120~120|Libre Bodoni~1~120~120|Libre Caslon Display~1~8~0|Libre Caslon Text~1~72~8|Libre Franklin~0~511~511|Licorice~3~8~0|Life Savers~2~200~0|Lilex~4~127~127|Lilita One~2~8~0|Lily Script One~2~8~0|Limelight~2~8~0|Linden Hill~1~8~8|Linefont~2~511~0|Lisu Bosa~1~510~510|Liter~0~8~0|Literata~1~510~510|Liu Jian Mao Cao~3~8~0|Livvic~0~383~383|Lobster~2~8~0|Lobster Two~2~72~72|Londrina Outline~2~8~0|Londrina Shadow~2~8~0|Londrina Sketch~2~8~0|Londrina Solid~2~269~0|Long Cang~3~8~0|Lora~1~120~120|Love Light~3~8~0|Love Ya Like A Sister~2~8~0|Loved by the King~3~8~0|Lovers Quarrel~3~8~0|Luckiest Guy~2~8~0|Lugrasimo~3~8~0|Lumanosimo~3~8~0|Lunasima~0~72~0|Lusitana~1~72~0|Lustria~1~8~0|Luxurious Roman~2~8~0|Luxurious Script~3~8~0|M PLUS 1~0~511~0|M PLUS 1 Code~4~127~0|M PLUS 1p~0~477~0|M PLUS 2~0~511~0|M PLUS Code Latin~0~127~0|M PLUS Rounded 1c~0~477~0|Ma Shan Zheng~3~8~0|Macondo~2~8~0|Macondo Swash Caps~2~8~0|Mada~0~510~0|Madimi One~0~8~0|Magra~0~72~0|Maiden Orange~1~8~0|Maitree~1~126~0|Major Mono Display~4~8~0|Mako~0~8~0|Mali~3~126~126|Mallanna~0~8~0|Maname~1~8~0|Mandali~0~8~0|Manjari~0~73~0|Manrope~0~254~0|Mansalva~3~8~0|Manuale~1~252~252|Manufacturing Consent~2~8~0|Marcellus~1~8~0|Marcellus SC~1~8~0|Marck Script~3~8~0|Margarine~2~8~0|Marhey~2~124~0|Markazi Text~1~120~0|Marko One~1~8~0|Marmelad~0~8~0|Martel~1~494~0|Martel Sans~0~494~0|Martian Mono~4~255~0|Marvel~0~72~72|Matangi~0~508~0|Mate~1~8~8|Mate SC~1~8~0|Matemasie~0~8~0|Material Symbols~4~127~0|Maven Pro~0~504~0|McLaren~2~8~0|Mea Culpa~3~8~0|Meddon~3~8~0|MedievalSharp~2~8~0|Medula One~2~8~0|Meera Inimai~0~8~0|Megrim~2~8~0|Meie Script~3~8~0|Menbere~0~127~0|Meow Script~3~8~0|Merienda~3~508~0|Merriweather~1~508~508|Merriweather Sans~0~252~252|Metal~2~8~0|Metal Mania~2~8~0|Metamorphous~2~8~0|Metrophobic~0~8~0|Michroma~0~8~0|Micro 5~2~8~0|Micro 5 Charted~2~8~0|Milonga~2~8~0|Miltonian~2~8~0|Miltonian Tattoo~2~8~0|Mina~0~72~0|Mingzat~0~8~0|Miniver~2~8~0|Miriam Libre~0~120~0|Mirza~1~120~0|Miss Fajardose~3~8~0|Mitr~0~126~0|Mochiy Pop One~0~8~0|Mochiy Pop P One~0~8~0|Modak~2~8~0|Modern Antiqua~2~8~0|Moderustic~0~252~0|Mogra~2~8~0|Mohave~0~124~124|Moirai One~2~8~0|Molengo~0~8~0|Molle~3~0~8|Momo Signature~0~8~0|Momo Trust Display~0~8~0|Momo Trust Sans~0~254~0|Mona Sans~0~510~510|Monda~0~120~0|Monofett~4~8~0|Monomakh~2~8~0|Monomaniac One~0~8~0|Monoton~2~8~0|Monsieur La Doulaise~3~8~0|Montaga~1~8~0|Montagu Slab~1~127~0|MonteCarlo~3~8~0|Montez~3~8~0|Montserrat~0~511~511|Montserrat Alternates~0~511~511|Montserrat Underline~0~511~511|Moo Lah Lah~2~8~0|Mooli~0~8~0|Moon Dance~3~8~0|Moul~2~8~0|Moulpali~0~8~0|Mountains of Christmas~2~72~0|Mouse Memoirs~0~8~0|Mozilla Headline~0~126~0|Mozilla Text~0~126~0|Mr Bedfort~3~8~0|Mr Dafoe~3~8~0|Mr De Haviland~3~8~0|Mrs Saint Delafield~3~8~0|Mrs Sheppards~3~8~0|Ms Madi~3~8~0|Mukta~0~254~0|Mukta Mahee~0~254~0|Mukta Malar~0~254~0|Mukta Vaani~0~254~0|Mulish~0~510~510|Murecho~0~511~0|MuseoModerno~2~511~511|My Soul~3~8~0|Mynerve~3~8~0|Mystery Quest~2~8~0|NTR~0~8~0|Nabla~2~8~0|Namdhinggo~1~248~0|Nanum Brush Script~3~8~0|Nanum Gothic~0~200~0|Nanum Gothic Coding~3~72~0|Nanum Myeongjo~1~200~0|Nanum Pen Script~3~8~0|Narnoor~0~248~0|Nata Sans~0~511~0|National Park~0~254~0|Neonderthaw~3~8~0|Nerko One~3~8~0|Neucha~3~8~0|Neuton~1~206~8|New Amsterdam~0~8~0|New Rocker~2~8~0|New Tegomin~1~8~0|News Cycle~0~72~0|Newsreader~1~254~254|Niconne~3~8~0|Niramit~0~126~126|Nixie One~2~8~0|Nobile~0~88~88|Nokora~0~511~0|Norican~3~8~0|Nosifer~2~8~0|Notable~0~8~0|Nothing You Could Do~3~8~0|Noticia Text~1~72~72|Noto Color Emoji~0~8~0|Noto Emoji~0~124~0|Noto Kufi Arabic~0~511~0|Noto Music~0~8~0|Noto Naskh Arabic~1~120~0|Noto Nastaliq Urdu~1~120~0|Noto Rashi Hebrew~1~511~0|Noto Sans~0~511~511|Noto Sans Adlam~0~120~0|Noto Sans Adlam Unjoined~0~120~0|Noto Sans Anatolian Hieroglyphs~0~8~0|Noto Sans Arabic~0~511~0|Noto Sans Armenian~0~511~0|Noto Sans Avestan~0~8~0|Noto Sans Balinese~0~120~0|Noto Sans Bamum~0~120~0|Noto Sans Bassa Vah~0~120~0|Noto Sans Batak~0~8~0|Noto Sans Bengali~0~511~0|Noto Sans Bhaiksuki~0~8~0|Noto Sans Brahmi~0~8~0|Noto Sans Buginese~0~8~0|Noto Sans Buhid~0~8~0|Noto Sans Canadian Aboriginal~0~511~0|Noto Sans Carian~0~8~0|Noto Sans Caucasian Albanian~0~8~0|Noto Sans Chakma~0~8~0|Noto Sans Cham~0~511~0|Noto Sans Cherokee~0~511~0|Noto Sans Chorasmian~0~8~0|Noto Sans Coptic~0~8~0|Noto Sans Cuneiform~0~8~0|Noto Sans Cypriot~0~8~0|Noto Sans Cypro Minoan~0~8~0|Noto Sans Deseret~0~8~0|Noto Sans Devanagari~0~511~0|Noto Sans Display~0~511~511|Noto Sans Duployan~0~72~0|Noto Sans Egyptian Hieroglyphs~0~8~0|Noto Sans Elbasan~0~8~0|Noto Sans Elymaic~0~8~0|Noto Sans Ethiopic~0~511~0|Noto Sans Georgian~0~511~0|Noto Sans Glagolitic~0~8~0|Noto Sans Gothic~0~8~0|Noto Sans Grantha~0~8~0|Noto Sans Gujarati~0~511~0|Noto Sans Gunjala Gondi~0~120~0|Noto Sans Gurmukhi~0~511~0|Noto Sans HK~0~511~0|Noto Sans Hanifi Rohingya~0~120~0|Noto Sans Hanunoo~0~8~0|Noto Sans Hatran~0~8~0|Noto Sans Hebrew~0~511~0|Noto Sans Imperial Aramaic~0~8~0|Noto Sans Indic Siyaq Numbers~0~8~0|Noto Sans Inscriptional Pahlavi~0~8~0|Noto Sans Inscriptional Parthian~0~8~0|Noto Sans JP~0~511~0|Noto Sans Javanese~0~120~0|Noto Sans KR~0~511~0|Noto Sans Kaithi~0~8~0|Noto Sans Kannada~0~511~0|Noto Sans Kawi~0~120~0|Noto Sans Kayah Li~0~120~0|Noto Sans Kharoshthi~0~8~0|Noto Sans Khmer~0~511~0|Noto Sans Khojki~0~8~0|Noto Sans Khudawadi~0~8~0|Noto Sans Lao~0~511~0|Noto Sans Lao Looped~0~511~0|Noto Sans Lepcha~0~8~0|Noto Sans Limbu~0~8~0|Noto Sans Linear A~0~8~0|Noto Sans Linear B~0~8~0|Noto Sans Lisu~0~120~0|Noto Sans Lycian~0~8~0|Noto Sans Lydian~0~8~0|Noto Sans Mahajani~0~8~0|Noto Sans Malayalam~0~511~0|Noto Sans Mandaic~0~8~0|Noto Sans Manichaean~0~8~0|Noto Sans Marchen~0~8~0|Noto Sans Masaram Gondi~0~8~0|Noto Sans Math~0~8~0|Noto Sans Mayan Numerals~0~8~0|Noto Sans Medefaidrin~0~120~0|Noto Sans Meetei Mayek~0~511~0|Noto Sans Mende Kikakui~0~8~0|Noto Sans Meroitic~0~8~0|Noto Sans Miao~0~8~0|Noto Sans Modi~0~8~0|Noto Sans Mongolian~0~8~0|Noto Sans Mono~0~511~0|Noto Sans Mro~0~8~0|Noto Sans Multani~0~8~0|Noto Sans Myanmar~0~511~0|Noto Sans NKo~0~8~0|Noto Sans NKo Unjoined~0~120~0|Noto Sans Nabataean~0~8~0|Noto Sans Nag Mundari~0~120~0|Noto Sans Nandinagari~0~8~0|Noto Sans New Tai Lue~0~120~0|Noto Sans Newa~0~8~0|Noto Sans Nushu~0~8~0|Noto Sans Ogham~0~8~0|Noto Sans Ol Chiki~0~120~0|Noto Sans Old Hungarian~0~8~0|Noto Sans Old Italic~0~8~0|Noto Sans Old North Arabian~0~8~0|Noto Sans Old Permic~0~8~0|Noto Sans Old Persian~0~8~0|Noto Sans Old Sogdian~0~8~0|Noto Sans Old South Arabian~0~8~0|Noto Sans Old Turkic~0~8~0|Noto Sans Oriya~0~511~0|Noto Sans Osage~0~8~0|Noto Sans Osmanya~0~8~0|Noto Sans Pahawh Hmong~0~8~0|Noto Sans Palmyrene~0~8~0|Noto Sans Pau Cin Hau~0~8~0|Noto Sans PhagsPa~0~8~0|Noto Sans Phoenician~0~8~0|Noto Sans Psalter Pahlavi~0~8~0|Noto Sans Rejang~0~8~0|Noto Sans Runic~0~8~0|Noto Sans SC~0~511~0|Noto Sans Samaritan~0~8~0|Noto Sans Saurashtra~0~8~0|Noto Sans Sharada~0~8~0|Noto Sans Shavian~0~8~0|Noto Sans Siddham~0~8~0|Noto Sans SignWriting~0~8~0|Noto Sans Sinhala~0~511~0|Noto Sans Sogdian~0~8~0|Noto Sans Sora Sompeng~0~120~0|Noto Sans Soyombo~0~8~0|Noto Sans Sundanese~0~120~0|Noto Sans Sunuwar~0~8~0|Noto Sans Syloti Nagri~0~8~0|Noto Sans Symbols~0~511~0|Noto Sans Symbols 2~0~8~0|Noto Sans Syriac~0~511~0|Noto Sans Syriac Eastern~0~511~0|Noto Sans Syriac Western~0~511~0|Noto Sans TC~0~511~0|Noto Sans Tagalog~0~8~0|Noto Sans Tagbanwa~0~8~0|Noto Sans Tai Le~0~8~0|Noto Sans Tai Tham~0~120~0|Noto Sans Tai Viet~0~8~0|Noto Sans Takri~0~8~0|Noto Sans Tamil~0~511~0|Noto Sans Tamil Supplement~0~8~0|Noto Sans Tangsa~0~120~0|Noto Sans Telugu~0~511~0|Noto Sans Thaana~0~511~0|Noto Sans Thai~0~511~0|Noto Sans Thai Looped~0~511~0|Noto Sans Tifinagh~0~8~0|Noto Sans Tirhuta~0~8~0|Noto Sans Ugaritic~0~8~0|Noto Sans Vai~0~8~0|Noto Sans Vithkuqi~0~120~0|Noto Sans Wancho~0~8~0|Noto Sans Warang Citi~0~8~0|Noto Sans Yi~0~8~0|Noto Sans Zanabazar Square~0~8~0|Noto Serif~1~511~511|Noto Serif Ahom~1~8~0|Noto Serif Armenian~1~511~0|Noto Serif Balinese~1~8~0|Noto Serif Bengali~1~511~0|Noto Serif Devanagari~1~511~0|Noto Serif Display~1~511~511|Noto Serif Dives Akuru~1~8~0|Noto Serif Dogra~1~8~0|Noto Serif Ethiopic~1~511~0|Noto Serif Georgian~1~511~0|Noto Serif Grantha~1~8~0|Noto Serif Gujarati~1~511~0|Noto Serif Gurmukhi~1~511~0|Noto Serif HK~1~510~0|Noto Serif Hebrew~1~511~0|Noto Serif Hentaigana~1~510~0|Noto Serif JP~1~510~0|Noto Serif KR~1~510~0|Noto Serif Kannada~1~511~0|Noto Serif Khitan Small Script~1~8~0|Noto Serif Khmer~1~511~0|Noto Serif Khojki~1~120~0|Noto Serif Lao~1~511~0|Noto Serif Makasar~1~8~0|Noto Serif Malayalam~1~511~0|Noto Serif Myanmar~1~511~0|Noto Serif NP Hmong~1~120~0|Noto Serif Old Uyghur~1~8~0|Noto Serif Oriya~1~120~0|Noto Serif Ottoman Siyaq~1~8~0|Noto Serif SC~1~510~0|Noto Serif Sinhala~1~511~0|Noto Serif TC~1~510~0|Noto Serif Tamil~1~511~511|Noto Serif Tangut~1~8~0|Noto Serif Telugu~1~511~0|Noto Serif Thai~1~511~0|Noto Serif Tibetan~1~511~0|Noto Serif Todhri~1~8~0|Noto Serif Toto~1~120~0|Noto Serif Vithkuqi~1~120~0|Noto Serif Yezidi~1~120~0|Noto Traditional Nushu~0~124~0|Noto Znamenny Musical Notation~0~8~0|Nova Cut~2~8~0|Nova Flat~2~8~0|Nova Mono~4~8~0|Nova Oval~2~8~0|Nova Round~2~8~0|Nova Script~2~8~0|Nova Slim~2~8~0|Nova Square~2~8~0|Numans~0~8~0|Nunito~0~510~510|Nunito Sans~0~510~510|Nuosu SIL~0~8~0|Odibee Sans~2~8~0|Odor Mean Chey~1~8~0|Offside~2~8~0|Oi~2~8~0|Ojuju~0~254~0|Old Standard TT~1~72~8|Oldenburg~2~8~0|Ole~3~8~0|Oleo Script~2~72~0|Oleo Script Swash Caps~2~72~0|Onest~0~511~0|Oooh Baby~3~8~0|Open Sans~0~252~252|Oranienbaum~1~8~0|Orbit~0~8~0|Orbitron~0~504~0|Oregano~2~8~8|Orelega One~2~8~0|Orienta~0~8~0|Original Surfer~2~8~0|Oswald~0~126~0|Outfit~0~511~0|Over the Rainbow~3~8~0|Overlock~2~328~328|Overlock SC~2~8~0|Overpass~0~511~511|Overpass Mono~4~124~0|Ovo~1~8~0|Oxanium~2~254~0|Oxygen~0~76~0|Oxygen Mono~4~8~0|PT Mono~4~8~0|PT Sans~0~72~72|PT Sans Caption~0~72~0|PT Sans Narrow~0~72~0|PT Serif~1~72~72|PT Serif Caption~1~8~8|Pacifico~3~8~0|Padauk~0~72~0|Padyakke Expanded One~1~8~0|Palanquin~0~127~0|Palanquin Dark~0~120~0|Palette Mosaic~2~8~0|Pangolin~3~8~0|Paprika~2~8~0|Parastoo~1~120~0|Parisienne~3~8~0|Parkinsans~0~252~0|Passero One~2~8~0|Passion One~2~328~0|Passions Conflict~3~8~0|Pathway Extreme~0~511~511|Pathway Gothic One~0~8~0|Patrick Hand~3~8~0|Patrick Hand SC~3~8~0|Pattaya~0~8~0|Patua One~2~8~0|Pavanam~0~8~0|Paytone One~0~8~0|Peddana~1~8~0|Peralta~1~8~0|Permanent Marker~3~8~0|Petemoss~3~8~0|Petit Formal Script~3~8~0|Petrona~1~511~511|Phetsarath~0~72~0|Philosopher~0~72~72|Phudu~2~508~0|Piazzolla~1~511~511|Piedra~2~8~0|Pinyon Script~3~8~0|Pirata One~2~8~0|Pixelify Sans~2~120~0|Plaster~2~8~0|Platypi~1~252~252|Play~0~72~0|Playball~2~8~0|Playfair~1~508~508|Playfair Display~1~504~504|Playfair Display SC~1~328~328|Playpen Sans~3~255~0|Playpen Sans Arabic~3~255~0|Playpen Sans Deva~3~255~0|Playpen Sans Hebrew~3~255~0|Playpen Sans Thai~3~255~0|Playwrite AR~3~15~0|Playwrite AR Guides~3~8~0|Playwrite AT~3~15~15|Playwrite AT Guides~3~8~8|Playwrite AU NSW~3~15~0|Playwrite AU NSW Guides~3~8~0|Playwrite AU QLD~3~15~0|Playwrite AU QLD Guides~3~8~0|Playwrite AU SA~3~15~0|Playwrite AU SA Guides~3~8~0|Playwrite AU TAS~3~15~0|Playwrite AU TAS Guides~3~8~0|Playwrite AU VIC~3~15~0|Playwrite AU VIC Guides~3~8~0|Playwrite BE VLG~3~15~0|Playwrite BE VLG Guides~3~8~0|Playwrite BE WAL~3~15~0|Playwrite BE WAL Guides~3~8~0|Playwrite BR~3~15~0|Playwrite BR Guides~3~8~0|Playwrite CA~3~15~0|Playwrite CA Guides~3~8~0|Playwrite CL~3~15~0|Playwrite CL Guides~3~8~0|Playwrite CO~3~15~0|Playwrite CO Guides~3~8~0|Playwrite CU~3~15~0|Playwrite CU Guides~3~8~0|Playwrite CZ~3~15~0|Playwrite CZ Guides~3~8~0|Playwrite DE Grund~3~15~0|Playwrite DE Grund Guides~3~8~0|Playwrite DE LA~3~15~0|Playwrite DE LA Guides~3~8~0|Playwrite DE SAS~3~15~0|Playwrite DE SAS Guides~3~8~0|Playwrite DE VA~3~15~0|Playwrite DE VA Guides~3~8~0|Playwrite DK Loopet~3~15~0|Playwrite DK Loopet Guides~3~8~0|Playwrite DK Uloopet~3~15~0|Playwrite DK Uloopet Guides~3~8~0|Playwrite ES~3~15~0|Playwrite ES Deco~3~15~0|Playwrite ES Deco Guides~3~8~0|Playwrite ES Guides~3~8~0|Playwrite FR Moderne~3~15~0|Playwrite FR Moderne Guides~3~8~0|Playwrite FR Trad~3~15~0|Playwrite FR Trad Guides~3~8~0|Playwrite GB J~3~15~15|Playwrite GB J Guides~3~8~8|Playwrite GB S~3~15~15|Playwrite GB S Guides~3~8~8|Playwrite HR~3~15~0|Playwrite HR Guides~3~8~0|Playwrite HR Lijeva~3~15~0|Playwrite HR Lijeva Guides~3~8~0|Playwrite HU~3~15~0|Playwrite HU Guides~3~8~0|Playwrite ID~3~15~0|Playwrite ID Guides~3~8~0|Playwrite IE~3~15~0|Playwrite IE Guides~3~8~0|Playwrite IN~3~15~0|Playwrite IN Guides~3~8~0|Playwrite IS~3~15~0|Playwrite IS Guides~3~8~0|Playwrite IT Moderna~3~15~0|Playwrite IT Moderna Guides~3~8~0|Playwrite IT Trad~3~15~0|Playwrite IT Trad Guides~3~8~0|Playwrite MX~3~15~0|Playwrite MX Guides~3~8~0|Playwrite NG Modern~3~15~0|Playwrite NG Modern Guides~3~8~0|Playwrite NL~3~15~0|Playwrite NL Guides~3~8~0|Playwrite NO~3~15~0|Playwrite NO Guides~3~8~0|Playwrite NZ~3~15~0|Playwrite NZ Guides~3~8~0|Playwrite PE~3~15~0|Playwrite PE Guides~3~8~0|Playwrite PL~3~15~0|Playwrite PL Guides~3~8~0|Playwrite PT~3~15~0|Playwrite PT Guides~3~8~0|Playwrite RO~3~15~0|Playwrite RO Guides~3~8~0|Playwrite SK~3~15~0|Playwrite SK Guides~3~8~0|Playwrite TZ~3~15~0|Playwrite TZ Guides~3~8~0|Playwrite US Modern~3~15~0|Playwrite US Modern Guides~3~8~0|Playwrite US Trad~3~15~0|Playwrite US Trad Guides~3~8~0|Playwrite VN~3~15~0|Playwrite VN Guides~3~8~0|Playwrite ZA~3~15~0|Playwrite ZA Guides~3~8~0|Plus Jakarta Sans~0~254~254|Pochaevsk~2~8~0|Podkova~1~248~0|Poetsen One~2~8~0|Poiret One~2~8~0|Poller One~2~8~0|Poltawski Nowy~1~120~120|Poly~1~8~8|Pompiere~2~8~0|Ponnala~2~8~0|Ponomar~2~8~0|Pontano Sans~0~124~0|Poor Story~2~8~0|Poppins~0~511~511|Port Lligat Sans~0~8~0|Port Lligat Slab~1~8~0|Potta One~2~8~0|Pragati Narrow~0~72~0|Praise~3~8~0|Prata~1~8~0|Preahvihear~0~8~0|Press Start 2P~2~8~0|Pridi~1~126~0|Princess Sofia~3~8~0|Prociono~1~8~0|Prompt~0~511~511|Prosto One~2~8~0|Protest Guerrilla~2~8~0|Protest Revolution~2~8~0|Protest Riot~2~8~0|Protest Strike~2~8~0|Proza Libre~0~248~248|Public Sans~0~511~511|Puppies Play~3~8~0|Puritan~0~72~72|Purple Purse~2~8~0|Qahiri~0~8~0|Quando~1~8~0|Quantico~0~72~72|Quattrocento~1~72~0|Quattrocento Sans~0~72~72|Questrial~0~8~0|Quicksand~0~124~0|Quintessential~3~8~0|Qwigley~3~8~0|Qwitcher Grypen~3~72~0|REM~0~511~511|Racing Sans One~2~8~0|Radio Canada~0~124~124|Radio Canada Big~0~120~120|Radley~1~8~8|Rajdhani~0~124~0|Rakkas~2~8~0|Raleway~0~511~511|Raleway Dots~2~8~0|Ramabhadra~0~8~0|Ramaraja~1~8~0|Rambla~0~72~72|Rammetto One~2~8~0|Rampart One~2~8~0|Ranchers~2~8~0|Rancho~3~8~0|Ranga~2~72~0|Rasa~1~124~124|Rationale~0~8~0|Ravi Prakash~2~8~0|Readex Pro~0~126~0|Recursive~0~508~0|Red Hat Display~0~508~508|Red Hat Mono~4~124~124|Red Hat Text~0~124~124|Red Rose~2~124~0|Redacted~2~8~0|Redacted Script~2~76~0|Reddit Mono~4~510~0|Reddit Sans~0~510~510|Reddit Sans Condensed~0~510~0|Redressed~3~8~0|Reem Kufi~0~120~0|Reem Kufi Fun~0~120~0|Reem Kufi Ink~0~8~0|Reenie Beanie~3~8~0|Reggae One~2~8~0|Rethink Sans~0~248~248|Revalia~2~8~0|Rhodium Libre~1~8~0|Ribeye~2~8~0|Ribeye Marrow~2~8~0|Righteous~2~8~0|Risque~2~8~0|Road Rage~2~8~0|Roboto~0~511~511|Roboto Condensed~0~511~511|Roboto Flex~0~8~0|Roboto Mono~4~127~127|Roboto Serif~1~511~511|Roboto Slab~1~511~0|Rochester~3~8~0|Rock 3D~2~8~0|Rock Salt~3~8~0|RocknRoll One~0~8~0|Rokkitt~1~511~511|Romanesco~3~8~0|Ropa Sans~0~8~8|Rosario~0~124~124|Rosarivo~1~8~8|Rouge Script~3~8~0|Rowdies~2~76~0|Rozha One~1~8~0|Rubik~0~508~508|Rubik 80s Fade~2~8~0|Rubik Beastly~2~8~0|Rubik Broken Fax~2~8~0|Rubik Bubbles~2~8~0|Rubik Burned~2~8~0|Rubik Dirt~2~8~0|Rubik Distressed~2~8~0|Rubik Doodle Shadow~2~8~0|Rubik Doodle Triangles~2~8~0|Rubik Gemstones~2~8~0|Rubik Glitch~2~8~0|Rubik Glitch Pop~2~8~0|Rubik Iso~2~8~0|Rubik Lines~2~8~0|Rubik Maps~2~8~0|Rubik Marker Hatch~2~8~0|Rubik Maze~2~8~0|Rubik Microbe~2~8~0|Rubik Mono One~0~8~0|Rubik Moonrocks~2~8~0|Rubik Pixels~2~8~0|Rubik Puddles~2~8~0|Rubik Scribble~2~8~0|Rubik Spray Paint~2~8~0|Rubik Storm~2~8~0|Rubik Vinyl~2~8~0|Rubik Wet Paint~2~8~0|Ruda~0~504~0|Rufina~1~72~0|Ruge Boogie~3~8~0|Ruluko~0~8~0|Rum Raisin~0~8~0|Ruslan Display~2~8~0|Russo One~0~8~0|Ruthie~3~8~0|Ruwudu~1~120~0|Rye~2~8~0|STIX Two Text~1~120~120|SUSE~0~511~511|SUSE Mono~0~255~255|Sacramento~3~8~0|Sahitya~1~72~0|Sail~2~8~0|Saira~0~511~511|Saira Condensed~0~511~0|Saira Extra Condensed~0~511~0|Saira Semi Condensed~0~511~0|Saira Stencil One~2~8~0|Salsa~2~8~0|Sanchez~1~8~8|Sancreek~2~8~0|Sankofa Display~0~8~0|Sansation~0~76~76|Sansita~0~456~456|Sansita Swashed~2~508~0|Sarabun~0~255~255|Sarala~0~72~0|Sarina~2~8~0|Sarpanch~0~504~0|Sassy Frass~3~8~0|Satisfy~3~8~0|Savate~0~510~510|Sawarabi Gothic~0~8~0|Sawarabi Mincho~1~8~0|Scada~0~72~72|Scheherazade New~1~120~0|Schibsted Grotesk~0~504~504|Schoolbell~3~8~0|Science Gothic~0~511~0|Scope One~1~8~0|Seaweed Script~2~8~0|Secular One~0~8~0|Sedan~1~8~8|Sedan SC~1~8~0|Sedgwick Ave~3~8~0|Sedgwick Ave Display~3~8~0|Sekuya~2~8~0|Sen~0~248~0|Send Flowers~3~8~0|Sevillana~2~8~0|Seymour One~0~8~0|Shadows Into Light~3~8~0|Shadows Into Light Two~3~8~0|Shafarik~2~8~0|Shalimar~3~8~0|Shantell Sans~2~252~252|Shanti~0~8~0|Share~0~72~72|Share Tech~0~8~0|Share Tech Mono~4~8~0|Shippori Antique~0~8~0|Shippori Antique B1~0~8~0|Shippori Mincho~1~248~0|Shippori Mincho B1~1~248~0|Shizuru~2~8~0|Shojumaru~2~8~0|Short Stack~3~8~0|Shrikhand~2~8~0|Siemreap~0~8~0|Sigmar~2~8~0|Sigmar One~2~8~0|Signika~0~124~0|Signika Negative~0~124~0|Silkscreen~2~72~0|Simonetta~2~264~264|Single Day~2~8~0|Sintony~0~72~0|Sirin Stencil~2~8~0|Sirivennela~0~8~0|Six Caps~0~8~0|Sixtyfour~4~8~0|Sixtyfour Convergence~4~8~0|Skranji~2~72~0|Slabo 13px~1~8~0|Slabo 27px~1~8~0|Slackey~2~8~0|Slackside One~3~8~0|Smokum~2~8~0|Smooch~3~8~0|Smooch Sans~0~511~0|Smythe~2~8~0|Sniglet~2~136~0|Snippet~0~8~0|Snowburst One~2~8~0|Sofadi One~2~8~0|Sofia~3~8~0|Sofia Sans~0~511~511|Sofia Sans Condensed~0~511~511|Sofia Sans Extra Condensed~0~511~511|Sofia Sans Semi Condensed~0~511~511|Solitreo~3~8~0|Solway~1~220~0|Sometype Mono~4~120~120|Song Myung~1~8~0|Sono~0~254~0|Sonsie One~2~8~0|Sora~0~255~0|Sorts Mill Goudy~1~8~8|Sour Gummy~0~511~511|Source Code Pro~4~510~510|Source Sans 3~0~510~510|Source Serif 4~1~510~510|Space Grotesk~0~124~0|Space Mono~4~72~72|Special Elite~2~8~0|Special Gothic~0~120~0|Special Gothic Condensed One~0~8~0|Special Gothic Expanded One~0~8~0|Spectral~1~254~254|Spectral SC~1~254~254|Spicy Rice~2~8~0|Spinnaker~0~8~0|Spirax~2~8~0|Splash~3~8~0|Spline Sans~0~124~0|Spline Sans Mono~4~124~124|Squada One~2~8~0|Square Peg~3~8~0|Sree Krushnadevaraya~1~8~0|Sriracha~3~8~0|Srisakdi~2~72~0|Staatliches~2~8~0|Stack Sans Headline~0~126~0|Stack Sans Notch~0~126~0|Stack Sans Text~0~126~0|Stalemate~3~8~0|Stalinist One~2~8~0|Stardos Stencil~2~72~0|Stick~0~8~0|Stick No Bills~0~254~0|Stint Ultra Condensed~1~8~0|Stint Ultra Expanded~1~8~0|Stoke~1~12~0|Story Script~0~8~0|Strait~0~8~0|Style Script~3~8~0|Stylish~0~8~0|Sue Ellen Francisco~3~8~0|Suez One~1~8~0|Sulphur Point~0~76~0|Sumana~1~72~0|Sunflower~0~84~0|Sunshiney~3~8~0|Supermercado One~2~8~0|Sura~1~72~0|Suranna~1~8~0|Suravaram~1~8~0|Suwannaphum~1~333~0|Swanky and Moo Moo~3~8~0|Syncopate~0~72~0|Syne~0~248~0|Syne Mono~4~8~0|Syne Tactile~2~8~0|TASA Explorer~0~248~0|TASA Orbiter~0~248~0|Tac One~0~8~0|Tagesschrift~2~8~0|Tai Heritage Pro~1~72~0|Tajawal~0~478~0|Tangerine~3~72~0|Tapestry~3~8~0|Taprom~2~8~0|Tauri~0~8~0|Taviraj~1~511~511|Teachers~0~248~248|Teko~0~124~0|Tektur~2~504~0|Telex~0~8~0|Tenali Ramakrishna~0~8~0|Tenor Sans~0~8~0|Text Me One~0~8~0|Texturina~1~511~511|Thasadith~0~72~72|The Girl Next Door~3~8~0|The Nautigal~3~72~0|Tienne~1~328~0|TikTok Sans~0~508~0|Tillana~2~248~0|Tilt Neon~2~8~0|Tilt Prism~2~8~0|Tilt Warp~2~8~0|Timmana~0~8~0|Tinos~1~72~72|Tiny5~0~8~0|Tiro Bangla~1~8~8|Tiro Devanagari Hindi~1~8~8|Tiro Devanagari Marathi~1~8~8|Tiro Devanagari Sanskrit~1~8~8|Tiro Gurmukhi~1~8~8|Tiro Kannada~1~8~8|Tiro Tamil~1~8~8|Tiro Telugu~1~8~8|Tirra~0~504~0|Titan One~2~8~0|Titillium Web~0~366~110|Tomorrow~0~511~511|Tourney~2~511~511|Trade Winds~2~8~0|Train One~2~8~0|Triodion~2~8~0|Trirong~1~511~511|Trispace~0~255~0|Trocchi~1~8~0|Trochut~2~72~8|Truculenta~0~511~0|Trykker~1~8~0|Tsukimi Rounded~0~124~0|Tuffy~0~72~72|Tulpen One~2~8~0|Turret Road~2~222~0|Twinkle Star~3~8~0|Ubuntu~0~92~92|Ubuntu Condensed~0~8~0|Ubuntu Mono~4~72~72|Ubuntu Sans~0~255~255|Ubuntu Sans Mono~4~120~120|Uchen~1~8~0|Ultra~1~8~0|Unbounded~0~510~0|Uncial Antiqua~2~8~0|Underdog~2~8~0|Unica One~2~8~0|UnifrakturCook~2~64~0|UnifrakturMaguntia~2~8~0|Unkempt~2~72~0|Unlock~2~8~0|Unna~1~72~72|UoqMunThenKhung~1~8~0|Updock~3~8~0|Urbanist~0~511~511|VT323~4~8~0|Vampiro One~2~8~0|Varela~0~8~0|Varela Round~0~8~0|Varta~0~124~0|Vast Shadow~1~8~0|Vazirmatn~0~511~0|Vend Sans~0~124~124|Vesper Libre~1~344~0|Viaoda Libre~2~8~0|Vibes~2~8~0|Vibur~3~8~0|Victor Mono~4~127~127|Vidaloka~1~8~0|Viga~0~8~0|Vina Sans~2~8~0|Voces~0~8~0|Volkhov~1~72~72|Vollkorn~1~504~504|Vollkorn SC~1~360~0|Voltaire~0~8~0|Vujahday Script~3~8~0|WDXL Lubrifont JP N~0~8~0|WDXL Lubrifont SC~0~8~0|WDXL Lubrifont TC~0~8~0|Waiting for the Sunrise~3~8~0|Wallpoet~2~8~0|Walter Turncoat~3~8~0|Warnes~2~8~0|Water Brush~3~8~0|Waterfall~3~8~0|Wavefont~2~511~0|Wellfleet~1~8~0|Wendy One~0~8~0|Whisper~3~8~0|WindSong~3~24~0|Winky Rough~0~508~508|Winky Sans~0~508~508|Wire One~0~8~0|Wittgenstein~1~504~504|Wix Madefor Display~0~248~0|Wix Madefor Text~0~248~248|Work Sans~0~511~511|Workbench~4~8~0|Xanh Mono~4~8~8|Yaldevi~0~126~0|Yanone Kaffeesatz~0~126~0|Yantramanav~0~349~0|Yarndings 12~2~8~0|Yarndings 12 Charted~2~8~0|Yarndings 20~2~8~0|Yarndings 20 Charted~2~8~0|Yatra One~2~8~0|Yellowtail~3~8~0|Yeon Sung~2~8~0|Yeseva One~2~8~0|Yesteryear~3~8~0|Yomogi~3~8~0|Young Serif~1~8~0|Yrsa~1~124~124|Ysabeau~0~511~511|Ysabeau Infant~0~511~511|Ysabeau Office~0~511~511|Ysabeau SC~0~511~0|Yuji Boku~1~8~0|Yuji Hentaigana Akari~3~8~0|Yuji Hentaigana Akebono~3~8~0|Yuji Mai~1~8~0|Yuji Syuku~1~8~0|Yusei Magic~0~8~0|ZCOOL KuaiLe~0~8~0|ZCOOL QingKe HuangYou~0~8~0|ZCOOL XiaoWei~0~8~0|Zain~0~462~12|Zalando Sans~0~510~510|Zalando Sans Expanded~0~510~510|Zalando Sans SemiExpanded~0~510~510|Zen Antique~1~8~0|Zen Antique Soft~1~8~0|Zen Dots~2~8~0|Zen Kaku Gothic Antique~0~348~0|Zen Kaku Gothic New~0~348~0|Zen Kurenaido~0~8~0|Zen Loop~2~8~8|Zen Maru Gothic~0~348~0|Zen Old Mincho~1~376~0|Zen Tokyo Zoo~2~8~0|Zeyada~3~8~0|Zhi Mang Xing~3~8~0|Zilla Slab~1~124~124|Zilla Slab Highlight~1~72~0";
 
-const GF_CATS = ['sans-serif', 'serif', 'display', 'handwriting', 'monospace'];
 const GF_CAT_LABEL = ['Sans', 'Serif', 'Display', 'Handwriting', 'Mono'];
 const GF_POPULAR = ['Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Noto Sans', 'Source Sans 3', 'Raleway', 'Nunito', 'DM Sans', 'Work Sans', 'Manrope', 'Rubik', 'Plus Jakarta Sans', 'Space Grotesk', 'IBM Plex Sans', 'Playfair Display', 'Merriweather', 'Lora', 'Roboto Mono', 'JetBrains Mono', 'Fira Code', 'Oswald', 'Bebas Neue', 'Pacifico', 'Caveat'];
 const GF_SYSTEM = ['Arial', 'Helvetica Neue', 'Georgia', 'Times New Roman', 'Verdana', 'Courier New', 'monospace', 'serif', 'sans-serif'];
@@ -19081,1954 +18489,6 @@ function savePlugins() {
         toast('Could not save plugins to the data folder.');
     }
 }
-// ===== Live preview (Design | Preview) =====
-// Draws the selected frame as real DOM (preview/live.js): inputs are typeable, buttons follow their component's
-// state variants (hover / pressed / focused / disabled / error) and "Go to page" moves to another frame.
-let livePreview = null;
-const cssName = s => String(s || 'var').trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
-const FIELD_NAME = /input|field|textbox/i;
-const looksLikeField = n => FIELD_NAME.test(n.name + " " + (parentSetOf(chainComponent(n) || n)?.name || ""));
-/** The states the preview can show for an instance. */
-const LIVE_STATE_IDS = STATE_ORDER;
-/** The text a person types into: the visible text inside the field's content row (its placeholder), and the room it has. */
-function liveField(inst, kids) {
-    const walk = (id, path) => kids(id).flatMap(k => k.visible === false ? [] : k.type === 'text' ? [{ t: k, path }] : walk(k.id, [...path, k]));
-    const texts = walk(inst.id, []), inRow = x => x.path.some(p => /^(content|text input|input|text wrap)$/i.test(p.name)), pick = texts.find(inRow) || texts[0];
-    if (!pick)
-        return null;
-    const row = pick.path.find(p => /^(content|text input)$/i.test(p.name)) || pick.path.at(-1);
-    return { id: pick.t.id, name: pick.t.name, width: row ? Math.max(pick.t.w, row.w - pick.t.x) : pick.t.w };
-}
-const LIVE_STATES = ['default', 'hover', 'hovered', 'pressed', 'active', 'focused', 'focus', 'selected', 'typing', 'filled', 'disabled', 'error'];
-/** The variant property that holds the states: one named State / Status, or any whose values are state names. */
-function liveStateKey(set, src) {
-    const keys = Object.keys(src.variant || {});
-    return keys.find(k => /^(state|status)$/i.test(k)) || keys.find(k => variantValues(set, k).some(v => v && LIVE_STATES.includes(String(v).toLowerCase()) && String(v).toLowerCase() !== 'default'));
-}
-function liveContext() {
-    doc.scene();
-    ensureGlobalIndexes();
-    const store = varStore(), items = new Map(store.items.map(i => [i.id, i]));
-    const kids = id => (_kidsMap.get(id) || []).filter(n => !n.softDeleted);
-    const descendants = id => kids(id).flatMap(k => [k, ...descendants(k.id)]);
-    const multiPage = doc.data.pages.filter(p => !isPageDivider(p) && p.nodes.some(n => n.type === 'frame' && !n.parentId)).length > 1;
-    const frames = doc.data.pages.filter(p => !isPageDivider(p) && !p.internal).flatMap(p => p.nodes.filter(n => n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false).map(n => ({ id: n.id, name: n.name, page: p.name, pageId: p.id, label: multiPage ? `${p.name} / ${n.name}` : n.name })));
-    const active = activeNode(), top = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
-    // Preview follows what is being edited: inside placed overlay contents (or a component),
-    // open the trigger's frame instead of falling back to the first frame.
-    const topFrame = n => n && n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance && !n.isSection && n.visible !== false ? n : null;
-    let home = topFrame(top);
-    if (!home && top?.overlayTrigger) {
-        const trig = doc.get(top.overlayTrigger);
-        home = topFrame(trig && (trig.parentId ? doc.ancestors(trig).at(-1) : trig));
-    }
-    /** What the component's properties are for, by their names: whether the hint shows, the helper / error text, the placeholder. */
-    const rolesOf = inst => {
-        const src = chainComponent(inst), set = src && parentSetOf(src), cps = [...cpropsOf(set), ...cpropsOf(src)];
-        const find = (type, re) => cps.find(p => p.type === type && re.test(p.name))?.id;
-        return { showHint: find('boolean', /hint|helper|error/i), hintText: find('text', /helper|hint|error/i), fieldText: find('text', /placeholder|value/i) };
-    };
-    /** The text a person types into: the one bound to the placeholder property, else the first visible text of the field row. */
-    const fieldOf = inst => {
-        const rl = rolesOf(inst), base = liveField(inst, kids);
-        const hit = rl.fieldText && descendants(inst.id).find(x => x.type === 'text' && x.visible !== false && x.propBind?.text === rl.fieldText);
-        return hit ? { id: hit.id, name: hit.name, width: base?.width ?? hit.w } : base;
-    };
-    return {
-        node: id => _nodeMap.get(id) || null,
-        kids,
-        descendants,
-        /** Lays a copy of a frame out with the same auto layout engine the canvas uses. */
-        layout(nodes) {
-            const byId = new Map(nodes.map(n => [n.id, n]));
-            runLayout({ nodes, get: id => byId.get(id), touch() { } });
-        },
-        frames,
-        start: (deepLink?.preview && frames.some(f => f.id === deepLink.preview) && deepLink.preview) || (home && frames.some(f => f.id === home.id) && home.id) || frames.find(f => f.id === top?.id)?.id || frames[0]?.id,
-        vars: store.items.filter(i => ['color', 'number', 'string'].includes(i.type) && store.collections.find(c => c.id === i.collectionId)?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1).map(i => {
-            const v = varValue(doc, i, null);
-            return { name: cssName(i.name), value: i.type === 'number' ? `${v}px` : String(v) };
-        }).filter(v => v.value !== 'undefined' && v.value !== 'undefinedpx'),
-        // Only a variable with one mode and a name of its own can be a plain CSS variable; the rest are read per mode when drawn.
-        varName: id => { const i = items.get(id), c = i && store.collections.find(x => x.id === i.collectionId); return i && c?.modes.length === 1 && store.items.filter(x => cssName(x.name) === cssName(i.name)).length === 1 ? cssName(i.name) : null; },
-        /** Nilai variable sebagai teks (mode pertama) — dipakai state mapping dan pesan error. */
-        varValueOf: id => { const i = items.get(id); if (!i) return undefined; const v = varValue(doc, i, null); return v === undefined || v === null ? undefined : v; },
-        /** State mapping sebuah instance: miliknya dulu, lalu milik component set / komponen. */
-        mappingFor: inst => {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            return inst?.stateMapping || set?.stateMapping || src?.stateMapping || null;
-        },
-        /** Interaction sebuah instance (tab Behavior): miliknya sendiri, atau milik komponennya. */
-        interactionsFor: inst => {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            return interactionsForNode(inst, src, set).list;
-        },
-        /**
-         * State yang sedang ditampilkan canvas untuk sebuah instance, dari mode variable collection yang
-         * dipilih di panel Variables. Preview memulai dari state ini, bukan memaksakan Default.
-         */
-        canvasState: inst => {
-            for (const coll of store.collections) {
-                if (!isStateCollection(coll))
-                    continue;
-                const st = stateOfModeId(coll, nodeMode(doc, inst, coll));
-                if (st)
-                    return st;
-            }
-            return null;
-        },
-        /** Perilaku input sebuah instance (label, area typeable, error). */
-        inputFor: inst => {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            return inst?.inputBehavior || set?.inputBehavior || src?.inputBehavior || null;
-        },
-        typeable: n => !!n.isInstance && (n.typeable ?? looksLikeField(n)) && !!fieldOf(n),
-        field: fieldOf,
-        roles: rolesOf,
-        /** The instance's states held in a variable collection (Button states, Input states…): state → { collection id: mode id }. */
-        modes(inst) {
-            const byState = {};
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            // Collections connected on the instance, else on its component set / main component.
-            const connected = { ...src?.varModes, ...set?.varModes, ...inst.varModes };
-            const picks = inst.stateModes || set?.stateModes || src?.stateModes;
-            for (const cid of Object.keys(connected)) {
-                const c = store.collections.find(x => x.id === cid);
-                // Collection state: namanya menyebut state, atau punya beberapa mode yang berarti state.
-                if (!c || !isStateCollection(c))
-                    continue;
-                // The mode each state reads: the one picked in the Behavior tab, else the one its name suggests.
-                for (const state of LIVE_STATE_IDS) {
-                    const m = modeForState(c, state, pickedModeId(picks, cid, state)) || (c.modes.find(x => x.id === suggestStates(c.modes, conventionOf())[state]) || null);
-                    if (m)
-                        byState[state] = { ...byState[state], [cid]: m.id };
-                }
-                // The mode chosen in the canvas (Variables panel) wins for the state it stands for, so the
-                // preview starts from exactly what the designer sees — the state is never forced to Default.
-                const canvasMode = nodeMode(doc, inst, c), canvasState = stateOfModeId(c, canvasMode);
-                if (canvasState)
-                    byState[canvasState] = { ...byState[canvasState], [cid]: canvasMode };
-            }
-            return Object.keys(byState).length ? { byState } : null;
-        },
-        /** A layer drawn with its variable bindings read in another mode (the hover mode of Button states, say). */
-        resolved(n, inst, ov) {
-            if (!n.vars)
-                return n;
-            const saved = inst.varModes, c = { ...n, fills: Array.isArray(n.fills) ? structuredClone(n.fills) : n.fills, radii: n.radii && [...n.radii] };
-            inst.varModes = { ...saved, ...ov };
-            try {
-                for (const [prop, id] of Object.entries(n.vars)) {
-                    const item = items.get(id), val = item && !prop.includes(':') && bindType(prop) ? varValue(doc, item, n) : undefined;
-                    if (val !== undefined && val !== null)
-                        writeBound(c, prop, val, item.type);
-                }
-            }
-            finally {
-                inst.varModes = saved;
-            }
-            c.resolvedInMode = true;
-            return c;
-        },
-        /** The type of a variable ('color', 'number', 'string', 'boolean'). */
-        varType: id => items.get(id)?.type,
-        /** What Preview reads State bindings from: the cleaned State of the file. */
-        state: cleanState(stateStore()),
-        /** The file's Convention (slot names, state names, the component that draws each kind of feedback). */
-        convention: conventionOf(),
-        /** The behaviors of a component or instance, with the instance's overrides applied and every slot a layer of that node. */
-        behaviorsFor: behaviorsOf,
-        /** The look a feedback component takes for a level (success / error / warning / info): { node, modes, how }. */
-        feedbackStyle: feedbackStyleOf,
-        /** The Appearance rows of a feedback component: its type dimension and its variant properties, with their values. */
-        appearanceOptions: appearanceOptionsOf,
-        /** The component that draws a kind of feedback: the action's own pick, else the Convention's; null = Preview's built-in one. */
-        feedbackComponent(kind, own) { const id = own || conventionOf().feedback[kind]; return id && componentById(id) ? id : null; },
-        /** Does any layer run a Simulated request? Then Preview offers the scenario switcher. */
-        hasRequests: allNodes().some(x => x.interactions && JSON.stringify(x.interactions).includes('"type":"request"')),
-        /** The State bindings of a layer: its own, else those of its main component. { self: { visible, mode }, layers: { [layer id]: { text, visible } } } */
-        stateBindFor(n) { return n.stateBind || (n.sourceId ? chainComponent(n)?.stateBind : null) || null; },
-        /** The rows of a State list, plus the repeat settings a frame carries (own, else its main component's). */
-        repeatOf(n, env) {
-            const cfg = n.repeat || (n.sourceId && componentById(n.sourceId)?.repeat);
-            const v = cfg?.variableId && stateStore().variables.find(x => x.id === cfg.variableId);
-            if (!v || v.type !== 'list') return null;
-            // Preview passes its evaluation context (the live values); the editor shows the initial rows.
-            const value = env ? env.get(v.id) : v.initial;
-            const rows = fitRows(v, Array.isArray(value) ? value : []), objects = (v.itemType || 'object') === 'object';
-            return { rows: objects ? rows : rows.map(x => ({ value: x })), bind: cfg.bind || {}, schema: objects ? schemaOf(v) : [{ key: 'value', type: v.itemType }] };
-        },
-        /** What Preview has set for a variable: its own value, else the value in the mode its collection was switched to. */
-        overrideOf(item, over, modes) {
-            if (over.has(item.id))
-                return over.get(item.id);
-            if (modes?.size && modes.has(item.collectionId))
-                return variableValueInMode(item, store.collections.find(x => x.id === item.collectionId), modes.get(item.collectionId), store.items, store.collections);
-            return undefined;
-        },
-        /** The variant an instance should show once Preview changed the variables bound to its variant properties (else null). */
-        variantFor(inst, over, modes) {
-            if (!inst.vars || (!over.size && !modes?.size))
-                return null;
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            if (!set)
-                return null;
-            const want = { ...(src.variant || {}) };
-            let changed = false;
-            for (const [prop, id] of Object.entries(inst.vars)) {
-                const item = prop.startsWith('vprop:') && items.get(id);
-                if (!item)
-                    continue;
-                const val = this.overrideOf(item, over, modes);
-                if (val === undefined || val === null)
-                    continue;
-                const name = prop.slice(6), vals = variantValues(set, name);
-                let w;
-                if (item.type === 'boolean') {
-                    const bp = binaryPair(vals);
-                    if (!bp)
-                        continue;
-                    w = val ? bp.t : bp.f;
-                }
-                else
-                    w = vals.find(v => String(v).toLowerCase() === String(val).toLowerCase());
-                if (w === undefined || want[name] === w)
-                    continue;
-                want[name] = w;
-                changed = true;
-            }
-            return changed ? (setVariants(set).find(x => Object.entries(want).every(([k, v]) => x.variant?.[k] === v))?.id ?? null) : null;
-        },
-        /** The variant a Change variant action switched an instance to: its current variant with `picks` (property → value) applied, else null. */
-        variantByProps(inst, picks) {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            if (!set || !picks) return null;
-            const want = { ...(src.variant || {}), ...picks };
-            return setVariants(set).find(x => Object.entries(want).every(([k, v]) => String(x.variant?.[k]) === String(v)))?.id ?? null;
-        },
-        /** Component property values (text / boolean) Preview changed through variables, as Map(property id → value), else null. */
-        cpropOverrides(inst, over, modes) {
-            if (!inst.vars || (!over.size && !modes?.size))
-                return null;
-            let out = null;
-            for (const [prop, id] of Object.entries(inst.vars)) {
-                const item = prop.startsWith('cprop:') && items.get(id);
-                if (!item)
-                    continue;
-                const val = this.overrideOf(item, over, modes);
-                if (val === undefined || val === null)
-                    continue;
-                (out ||= new Map()).set(prop.slice(6), item.type === 'boolean' ? !!val : String(val));
-            }
-            return out;
-        },
-        /** Variables the previewed frame uses, by collection, for the Preview variables panel (try a value, see the design follow). */
-        controls(frameId) {
-            const used = new Set(), scope = frameId && _nodeMap.get(frameId) ? [_nodeMap.get(frameId), ...descendants(frameId)] : allNodes();
-            for (const n of scope)
-                if (n.vars && !n.softDeleted)
-                    for (const id of Object.values(n.vars))
-                        used.add(id);
-            const out = [];
-            for (const c of store.collections) {
-                const all = store.items.filter(i => i.collectionId === c.id && !i.hidden);
-                // A collection the design uses shows all its variables (a prop with no visual yet is still worth trying); the rest are marked unused.
-                if (!all.some(i => used.has(i.id)))
-                    continue;
-                const list = all;
-                const multi = c.modes.length > 1;
-                out.push({ id: c.id, name: c.name, modes: multi ? c.modes.map(m => ({ id: m.id, name: m.name })) : [], items: multi ? [] : list.filter(i => ['color', 'number', 'string', 'boolean'].includes(i.type)).map(i => ({ id: i.id, name: i.name, type: i.type, value: varValue(doc, i, null), ...(used.has(i.id) ? {} : { unused: true }), ...(i.options ? { options: i.options } : {}), ...(i.range ? { range: i.range } : {}) })) });
-            }
-            return out.filter(c => c.items.length || c.modes.length);
-        },
-        /** A layer drawn with what Preview changed: Set variable values, or a collection switched to another mode. */
-        overridden(n, over, modes) {
-            if (!n.vars || (!over.size && !modes?.size))
-                return n;
-            // The mode of a collection for this layer: a pick (Show feedback, Preview's switch) first, else the nearest layer above
-            // that the instance set (its variable modes). Aliases read their target with this, so a pick in one collection reaches the
-            // collection the design aliases to.
-            const modeFor = cid => modes?.get(cid) ?? modeInChain(n, cid, store.collections, id => this.node(id));
-            let c = null;
-            for (const [prop, id] of Object.entries(n.vars)) {
-                if (prop.includes(':') || !bindType(prop))
-                    continue;
-                const item = items.get(id);
-                if (!item)
-                    continue;
-                let val;
-                if (over.has(id))
-                    val = over.get(id);
-                else if (modes?.size && aliasCollectionIds(item, store.items).some(cid => modes.has(cid) || modeInChain(n, cid, store.collections, id2 => this.node(id2)))) {
-                    const coll = store.collections.find(x => x.id === item.collectionId);
-                    val = variableValueInMode(item, coll, modeFor(item.collectionId), store.items, store.collections, modeFor);
-                }
-                if (val === undefined || val === null)
-                    continue;
-                c ||= { ...n, fills: Array.isArray(n.fills) ? structuredClone(n.fills) : n.fills, radii: n.radii && [...n.radii] };
-                writeBound(c, prop, val, item.type);
-            }
-            return c || n;
-        },
-        /** The ids that stand for an instance's component: its main component and its component set. */
-        componentIdsOf(inst) {
-            const src = chainComponent(inst), set = src && parentSetOf(src);
-            return [src?.id, set?.id].filter(Boolean);
-        },
-        /** The component to draw for a picked id: a set stands for the variant that matches `like`, else its default. */
-        componentTarget(id, like) {
-            const n = _nodeMap.get(id);
-            if (!n || n.softDeleted) return null;
-            if (!n.componentSet) return n.component ? n : null;
-            const vs = setVariants(n), want = like?.variant;
-            return (want && vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x))) || defaultVariantOf(n) || vs[0] || null;
-        },
-        /** The `like` for componentTarget that pins variant properties on top of a set's default variant (partial pins stay valid). */
-        appearanceLike(id, variants) {
-            const n = _nodeMap.get(id);
-            if (!n || n.softDeleted || !n.componentSet) return null;
-            const base = defaultVariantOf(n) || setVariants(n)[0];
-            return { variant: { ...(base?.variant || {}), ...(variants || {}) } };
-        },
-        /** The instance's component set as { state value → variant component id }, when the set has a `state` property. */
-        variants(inst, like) {
-            const src = (like && _nodeMap.get(like)) || chainComponent(inst), set = src && parentSetOf(src);
-            const key = set && liveStateKey(set, src);
-            if (!key)
-                return null;
-            const byState = {};
-            for (const v of setVariants(set))
-                if (Object.entries(src.variant).every(([k, x]) => k === key || v.variant?.[k] === x))
-                    byState[String(v.variant[key]).toLowerCase()] = v.id;
-            return { byState, current: src.id };
-        },
-    };
-}
-/** Preview tab (new browser tab): read-only live preview. Refresh reloads the saved file,
-so canvas edits appear after autosave. No exit function: just close the tab. */
-/** Route /preview/ yang filenya tidak ketemu di server: jangan buka file lain, jangan tulis URL. */
-function showPreviewMissing() {
-    state.previewTab = true;
-    document.body.classList.add('preview-tab');
-    document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;background:#fff;color:#666;font:14px Inter,system-ui,sans-serif">This preview could not load its file. Save it in the design tab, then refresh this tab.</div>');
-}
-async function startPreviewTab() {
-    state.previewTab = true;
-    document.body.classList.add('preview-tab');
-    const ctx = liveContext();
-    if (!ctx.frames.length) {
-        // Nothing to show is a state, not a stuck start: the same message box as a failed start, with a way out.
-        showStartError('Create a frame to preview your design, then retry.');
-        return;
-    }
-    const m = await import('../preview/live.js');
-    reloadPreviewContext.fontSig = JSON.stringify(Object.entries(doc.data.fonts || {}).map(([k, v]) => [k, typeof v === 'string' ? v.length : 0]));
-    livePreview = m.openLivePreview(ctx, document.body, { surface: 'tab', onRefresh: reloadPreviewContext, scale: ['fill', 'actual', 'fit'].includes(deepLink?.scale) ? deepLink.scale : 'fill' });
-}
-/** Restart in the preview tab: read the saved file again (what the design tab autosaved) and rebuild the live context from it. */
-async function reloadPreviewContext() {
-    if (!lib.fileId)
-        return null;
-    const data = await projectStorage.loadProject(lib.fileId);
-    if (!data)
-        return null;
-    const parsed = migrateBehavior(DocumentModel.parse(data));
-    parsed.variables = cleanVariables(parsed.variables);
-    doc.data = parsed;
-    doc.refresh();
-    syncComponents(true);
-    resetRasterCaches();
-    // Re-decoding embedded fonts is the slow part: only do it when the file's fonts actually changed.
-    const fontSig = JSON.stringify(Object.entries(parsed.fonts || {}).map(([k, v]) => [k, typeof v === 'string' ? v.length : 0]));
-    if (fontSig !== reloadPreviewContext.fontSig) {
-        reloadPreviewContext.fontSig = fontSig;
-        try {
-            await loadStoredFonts();
-        }
-        catch { }
-    }
-    return liveContext();
-}
-/** The Preview button opens a new tab instead of an overlay (Figma-style). */
-function openPreviewTab() {
-    finishText();
-    const ctx = liveContext();
-    if (!ctx.frames.length) {
-        toast('Create a frame to preview your design.');
-        return;
-    }
-    import('../preview/live.js').then(m => {
-        window.open(m.previewUrl(lib.fileId, doc.page?.id, ctx.start, 'fill'), '_blank');
-    });
-}
-// ===== Behavior tab: what a layer does in Preview =====
-// Isi tab kontekstual: mengikuti tipe komponen yang dipilih. Tombol → state mapping + interaction,
-// input → label + area typeable + error + interaction. State tidak pernah memakai nilai hardcoded dari
-// kit ui-standard: setiap state membaca nilainya dari variable collection, atau dari nilai manual.
-const bhSlug = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const bhCollections = () => varStore().collections || [];
-const bhItemsOf = id => (varStore().items || []).filter(i => i.collectionId === id);
-function bhOpts(list, value) {
-    return list.map(o => {
-        const [v, l] = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o.id, o.label ?? o.id] : [o, o]);
-        return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`;
-    }).join('');
-}
-function bhSelect(path, kind, value, options, attrs = '') {
-    return `<select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="${kind}" ${attrs}>${bhOpts(options, value)}</select>`;
-}
-function bhCheck(path, checked, label) {
-    return `<label class="checkbox-row"><input type="checkbox" data-bh-path="${esc(path)}" data-bh-kind="bool" ${checked ? 'checked' : ''}> ${esc(label)}</label>`;
-}
-/** Pemilih nilai gaya: variable (collection + variable) atau nilai manual. */
-function bhStyleValue(path, value, label = '', names = {}, variableOnly = false) {
-    const key = { collection: 'collectionId', variable: 'variableId', manual: 'value', ...names };
-    const collId = value?.[key.collection] || '', varId = value?.[key.variable] || '', manual = value?.[key.manual] ?? '';
-    const items = collId ? bhItemsOf(collId) : [];
-    const second = variableOnly
-        ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— none —'], ...items.map(i => [i.id, i.name])])
-        : collId
-            ? bhSelect(`${path}.${key.variable}`, 'variable', varId, [['', '— choose a variable —'], ...items.map(i => [i.id, i.name])])
-            : `<input class="full-width" data-bh-path="${esc(path)}.${key.manual}" data-bh-kind="manual" placeholder="#4338CA or 12" value="${esc(manual)}">`;
-    return `<div class="bh-value">${label ? `<div class="small-label">${esc(label)}</div>` : ''}<div class="bh-value-row">
-        ${bhCollectionButton(`${path}.${key.collection}`, collId, '')}
-        ${second}
-    </div></div>`;
-}
-/** Lapisan di dalam sebuah komponen/instance yang bisa dipilih (label, typeable frame, error frame). */
-function bhLayers(n) {
-    const out = [];
-    const walk = id => {
-        for (const c of doc.children(id)) {
-            if (c.visible === false) continue;
-            out.push({ id: c.id, name: c.name || c.type, type: c.type });
-            walk(c.id);
-        }
-    };
-    walk(n.id);
-    return out;
-}
-/** Pratinjau mini komponen target (open dropdown/overlay/popover) sebagai SVG, dalam koordinat lokal master. */
-function componentThumbSVG(id, maxNodes = 200) {
-    const byId = new Map(allNodes().map(n => [n.id, n]));
-    const root = byId.get(id);
-    if (!root || !(root.w > 0) || !(root.h > 0)) return '';
-    const kids = new Map();
-    for (const n of byId.values()) {
-        if (!kids.has(n.parentId)) kids.set(n.parentId, []);
-        kids.get(n.parentId).push(n);
-    }
-    let count = 0, body = '';
-    const walk = (nid, dx, dy) => {
-        if (count >= maxNodes) return;
-        for (const n of kids.get(nid) || []) {
-            if (count >= maxNodes) return;
-            if (n.visible === false || n.isMask) continue;
-            const x = dx + (n.x || 0), y = dy + (n.y || 0);
-            count++;
-            if (n.type === 'text') {
-                let base = n.fontSize || 12;
-                try { base = layoutText(n).baseline || base; } catch { /* fallback ke fontSize */ }
-                body += `<text x="${f(x)}" y="${f(y + base)}" font-family="${e(n.fontFamily || 'Inter')}, sans-serif" font-size="${f(n.fontSize || 12)}" font-weight="${e(n.fontWeight || 400)}" fill="${e(n.fill && n.fill !== 'none' ? n.fill : '#111111')}" opacity="${f(n.opacity ?? 1)}">${e(String(n.text || '').split('\n')[0])}</text>`;
-            }
-            else if (n.type === 'image') {
-                body += `<rect x="${f(x)}" y="${f(y)}" width="${f(n.w)}" height="${f(n.h)}" fill="none" stroke="#999999" stroke-width="1" stroke-dasharray="3 3"/>`;
-            }
-            else {
-                body += `<g transform="translate(${f(x)} ${f(y)})" opacity="${f(n.opacity ?? 1)}">${svgShapeEl(n, f, `fill="${e(n.fill || 'none')}" fill-opacity="${f(n.fillOpacity ?? 1)}" ${svgStrokeAttrs(n, f, e)}`)}</g>`;
-            }
-            walk(n.id, x, y);
-        }
-    };
-    walk(id, 0, 0);
-    if (!body) return '';
-    return `<svg viewBox="0 0 ${f(root.w)} ${f(root.h)}" role="img" aria-label="${e(root.name || 'component')}">${body}</svg>`;
-}
-/** Pratinjau + info target open: apa yang akan terbuka, di halaman mana, sebesar apa, dan tombol menuju kanvas. */
-function bhTargetPreview(a) {
-    const master = a.targetComponentId && componentById(a.targetComponentId);
-    if (!master) return '';
-    const variant = a.targetVariantId && allNodes().find(x => x.id === a.targetVariantId);
-    const shown = variant || master, page = pageOfNode(shown.id);
-    let thumb = '';
-    try { thumb = componentThumbSVG(shown.id); } catch { thumb = ''; }
-    return `<div class="bh-target">${thumb ? `<div class="bh-thumb">${thumb}</div>` : ''}<div class="bh-target-meta"><span class="bh-target-name" title="${esc(shown.name)}">${esc(variant ? `${master.name} · ${variant.name}` : master.name)}</span><small>${esc(page?.name || '')} · ${Math.round(shown.w)}×${Math.round(shown.h)}</small><button type="button" class="swap-btn" data-bh-locate="${esc(shown.id)}">Show on canvas</button><button type="button" class="swap-btn" data-bh-edit-contents="${esc(shown.id)}">Edit contents</button><button type="button" class="swap-btn" data-bh-place-overlay="${esc(shown.id)}" data-bh-place-comp="${esc(a.targetComponentId || '')}" data-bh-place-var="${esc(a.targetVariantId || '')}" data-bh-place-pos="${esc(a.position || '')}" data-bh-place-off="${esc(offsetXY(a.offset, a.position, a.type).x + ',' + offsetXY(a.offset, a.position, a.type).y)}">Place on canvas</button></div></div>`;
-}
-/** Frame yang bisa jadi target sebuah action, beserta perannya. */
-function bhFrames() {
-    const out = [];
-    for (const p of doc.data.pages) {
-        for (const f of p.nodes) {
-            if (f.type !== 'frame' || f.parentId || f.component || f.componentSet || f.isInstance || f.isSection) continue;
-            out.push({ id: f.id, label: doc.data.pages.length > 1 ? `${p.name} / ${f.name}` : f.name, role: f.frameRole || 'page' });
-        }
-    }
-    return out;
-}
-/** Tipe komponen dari namanya (Midas tidak menyimpan tipe komponen terpisah). */
-function bhTypeOf(n) {
-    const src = n.isInstance ? chainComponent(n) : n;
-    const set = src && parentSetOf(src);
-    for (const nm of [src?.name, set?.name, n.name]) {
-        const t = componentTypeOf(nm);
-        if (t !== 'generic') return t;
-    }
-    return 'generic';
-}
-/**
- * A component a behavior points at (an icon, a dropdown's content…): a button that opens the same grouped, searchable picker as
- * "Swap instance". A component set is stored by its own id, so any of its variants counts.
- */
-/** Whether a component already defines motion of its own (Smart animate or Change variant, in it or below it). */
-/** Play requests for an open Preview (see live.js). */
-const feedbackPlay = typeof BroadcastChannel === 'function' ? new BroadcastChannel('midas:feedback-play') : null;
-function componentHasMotion(id) {
-    const top = id ? doc.get(id) : null;
-    if (!top) return false;
-    return [top, ...doc.descendants(top.id)].some(n => (bhCfg(n).interactions || []).some(it => (it.actions || []).some(a => a.transition === 'smart-animate' || a.type === 'change-variant')));
-}
-function bhComponentButton(path, value, label) {
-    const c = value && allNodes().find(n => n.id === value);
-    const text = c ? c.name : value ? '(missing component)' : 'Choose component';
-    return `<div class="field bh-pickrow"><span>${esc(label)}</span><button type="button" class="swap-btn" data-bh-pick="${esc(path)}" data-bh-value="${esc(value || '')}" title="${esc(text)}" aria-haspopup="listbox"><i>${CPROP_ICON.instance}</i><span>${esc(text)}</span>${CHEV_SVG}</button>${value ? `<button type="button" class="icon-button small" data-bh-pick-clear="${esc(path)}" title="Clear" aria-label="Clear ${esc(label)}">${icon('close', 12)}</button>` : ''}</div>`;
-}
-/**
- * A variable collection: a button that opens the same searchable window as picking a variable in Design
- * (search, library filter, one row per collection). Used by state mapping and Set variable.
- */
-function bhCollectionButton(path, value, label = '') {
-    const c = value && varColl(value);
-    const text = c ? c.name : value ? '(missing collection)' : 'Choose a collection';
-    return `<div class="field bh-pickrow">${label ? `<span>${esc(label)}</span>` : ''}<button type="button" class="swap-btn" data-bh-coll-btn="${esc(path)}" data-bh-coll-value="${esc(value || '')}" title="${esc(text)}" aria-haspopup="listbox"><i>${VAR_ICON}</i><span>${esc(text)}</span>${CHEV_SVG}</button>${value ? `<button type="button" class="icon-button small" data-bh-coll-clear="${esc(path)}" title="Clear" aria-label="Clear collection">${icon('close', 12)}</button>` : ''}</div>`;
-}
-document.addEventListener('click', e => {
-    const clear = e.target.closest?.('[data-bh-coll-clear]'), pick = e.target.closest?.('[data-bh-coll-btn]');
-    if (!clear && !pick) return;
-    const n = activeNode();
-    if (!n) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const path = clear ? clear.dataset.bhCollClear : pick.dataset.bhCollBtn;
-    const write = id => { transaction('Behavior', () => { bhWriteCollection(n, path, id); doc.touch(n); }); };
-    if (clear) return write(null);
-    // The State mapping "connect a collection" button: connecting is not a path write, it sets varModes.
-    if (path === '__connect__') {
-        openCollectionPicker(pick, {
-            only: bhCollections().filter(isStateCollection),
-            onPick: id => { transaction('Behavior', () => { bhConnectCollection(n, id); doc.touch(n); }); },
-        });
-        return;
-    }
-    openCollectionPicker(pick, {
-        current: pick.dataset.bhCollValue || null,
-        onPick: write,
-        onClear: () => write(null),
-        clearLabel: path.startsWith('state.') ? 'Use a manual value' : 'Remove collection',
-    });
-});
-document.addEventListener('click', e => {
-    const clear = e.target.closest?.('[data-bh-pick-clear]'), pick = e.target.closest?.('[data-bh-pick]');
-    if (!clear && !pick) return;
-    const n = activeNode();
-    if (!n) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
-    const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
-    const actAt = p => (/\.(targetComponentId|componentId)$/.test(p) ? getPath(n, p.replace(/\.(targetComponentId|componentId)$/, '')) : null);
-    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); };
-    if (clear) return write(null);
-    const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
-    openSwapPicker(pick, {
-        current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); const ac = actAt(path); if (ac && (ac.type === 'open-dropdown' || ac.type === 'open-popover' || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
-    });
-});
-document.addEventListener('click', e => {
-    const pl = e.target.closest?.('[data-bh-place-overlay]');
-    if (pl) {
-        e.preventDefault();
-        e.stopPropagation();
-        const n = activeNode();
-        if (n) placeOverlayOnCanvas(n.id, { targetComponentId: pl.dataset.bhPlaceComp || undefined, targetVariantId: pl.dataset.bhPlaceVar || undefined, position: pl.dataset.bhPlacePos || undefined, offset: bhParseOff(pl.dataset.bhPlaceOff) });
-        return;
-    }
-    const eb = e.target.closest?.('[data-bh-edit-contents]');
-    if (eb) {
-        e.preventDefault();
-        e.stopPropagation();
-        state.targetExpanded.add(eb.dataset.bhEditContents);
-        renderTargetPanel();
-        requestAnimationFrame(() => document.querySelector(`#target-panel [data-tlayer="${eb.dataset.bhEditContents}"]`)?.scrollIntoView({ block: 'nearest' }));
-        return;
-    }
-    const btn = e.target.closest?.('[data-bh-locate]');
-    if (!btn) return;
-    const n = activeNode();
-    e.preventDefault();
-    e.stopPropagation();
-    goToMainComponent(btn.dataset.bhLocate, n?.id);
-});
-document.addEventListener('click', e => {
-    const ex = e.target.closest?.('[data-texpand]');
-    if (ex) {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = ex.dataset.texpand;
-        if (state.targetExpanded.has(id)) state.targetExpanded.delete(id);
-        else state.targetExpanded.add(id);
-        renderTargetPanel();
-        return;
-    }
-    const loc = e.target.closest?.('[data-tlocate]');
-    if (loc) {
-        e.preventDefault();
-        e.stopPropagation();
-        revealOnCanvas(loc.dataset.tlocate);
-        return;
-    }
-    const row = e.target.closest?.('[data-tlayer]');
-    if (row) {
-        const id = row.dataset.tlayer;
-        if (doc.get(id)) select([id]);
-        else revealOnCanvas(id);
-    }
-});
-function bhFrameSelect(path, value, frames, action, label) {
-    const roles = TARGET_ROLES[action] || ['page'];
-    const list = frames.filter(f => roles.includes(f.role || 'page'));
-    return `<label class="field"><span>${esc(label)}</span><select class="full-width" data-bh-path="${esc(path)}" data-bh-kind="plain"><option value="">— none —</option>${list.map(f => `<option value="${f.id}" ${f.id === value ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>`;
-}
-/** Ringkasan interaction milik komponen yang dipakai instance (tidak bisa diedit dari instance). */
-function bhInheritedInteractions(list, source, frames) {
-    const actionText = a => bhActionText(a, frames);
-    return `<p class="small-label bh-inherited-note">Applied from <b>${esc(source)}</b>. Add an interaction here to give this instance its own.</p>`
-        + list.map((it, i) => `<div class="bh-card is-inherited"><div class="bh-card-head"><b>Interaction ${i + 1} · ${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b></div>${it.actions.map(a => `<div class="small-label bh-inherited-action">${esc(actionText(a))}</div>`).join('')}</div>`).join('');
-}
-/** Daftar interaction: a trigger and the actions it runs in order, each with the fields its kind needs. */
-function bhInteractionRows(n, frames, opts = {}) {
-    const list = normalizeInteractions(n.interactions);
-    if (!list.length) return '<div class="bh-empty"><b>No interaction yet</b><span>Pick a trigger below, then what it should do, so this component reacts in Preview.</span></div>';
-    // Dropdowns and popovers sit on a side of the component (top-start … left-end), a number of pixels away from it.
-    const placementRows = (p, a, fallback, list = PLACEMENTS) => `<label class="field"><span>Placement</span>${bhSelect(`${p}.position`, 'plain', list.includes(a.position) ? a.position : list === PLACEMENTS ? normalizePlacement(a.position, fallback) : fallback, list.map(x => [x, x]))}</label><label class="field"><span>Offset X</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="x" value="${offsetXY(a.offset, a.position, a.type).x || ''}" placeholder="0" aria-label="Offset X in px"><i class="unit">px</i></label><label class="field"><span>Offset Y</span><input type="number" data-bh-path="${p}.offset" data-bh-kind="offset" data-bh-axis="y" value="${offsetXY(a.offset, a.position, a.type).y || ''}" placeholder="0" aria-label="Offset Y in px"><i class="unit">px</i></label>`;
-    // Gerakan standar preview: transisi, durasi (ms), dan easing. Kosong = mengikuti default standar.
-    const motionRows = (p, a, kind) => {
-        const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
-        // Motion is a detail most designs leave at its default: it stays folded until a value is set.
-        const touched = !!(a.transition || a.duration !== undefined || a.easing);
-        return `<details class="bh-motion-fold" ${touched ? 'open' : ''}><summary class="small-label">Animation</summary><label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', (kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...(kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label></details>`;
-    };
-    // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
-    const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
-        + (a.targetFrameId && !a.targetComponentId ? `<p class="small-label">Still opens the frame “${esc(frames.find(f => f.id === a.targetFrameId)?.label || 'missing frame')}”. Pick a component to replace it.</p>` : '')
-        // Appearance sits right under the picker: the modes and variants this action pins on the component it opens.
-        + appearanceRows({ esc, bhSelect, appearanceOptions: appearanceOptionsOf }, p, a, a.targetComponentId);
-    const dropdownSizeRows = (p, a) => `<label class="field"><span>W</span>${bhSelect(`${p}.width`, 'plain', a.width === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label><label class="field"><span>H</span>${bhSelect(`${p}.height`, 'plain', a.height === 'parent' ? 'parent' : 'self', DROPDOWN_SIZES.map(x => [x.id, x.label]))}</label>`;
-    // Set variable: switch a variable collection to one of its modes. Every variable in the collection then reads
-    // that mode's value, so one action changes a whole theme / state at once.
-    const variableRows = (p, a) => {
-        const coll = a.collectionId && varColl(a.collectionId);
-        const pick = bhCollectionButton(`${p}.collectionId`, a.collectionId, 'Collection');
-        if (!coll) return pick;
-        const modes = coll.modes || [];
-        const mode = `<label class="field"><span>Mode</span><select class="full-width" data-bh-path="${p}.modeId" data-bh-kind="plain"><option value="">— choose a mode —</option>${modes.map(m => `<option value="${esc(m.id)}" ${m.id === a.modeId ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>`;
-        return pick + mode;
-    };
-    const selectRows = (p, a) => {
-        const mode = SELECT_MODES.find(m => m.id === (a.mode || 'toggle')) || SELECT_MODES[0];
-        return `<label class="field"><span>Selection</span>${bhSelect(`${p}.mode`, 'plain', mode.id, SELECT_MODES.map(m => [m.id, m.label]))}</label><p class="small-label">${esc(mode.hint || '')}</p>`;
-    };
-    // Change variant: like Figma's "Change to": pick, for each variant property of the component, the value it switches to.
-    const variantRows = (p, a, it) => {
-        const src = n.isInstance ? chainComponent(n) : n.componentSet ? setVariants(n)[0] : n;
-        const set = n.componentSet ? n : src && parentSetOf(src);
-        if (!set) return '<p class="small-label">This component has no variants. Put it in a component set with variant properties (State, Size…) to change between them.</p>';
-        const props = variantProps(set), picks = a.variants || {};
-        if (!props.length) return '<p class="small-label">The component set has no variant properties yet.</p>';
-        const rows = props.map(k => `<label class="field"><span title="${esc(k)}">${esc(k)}</span>${bhSelect(`${p}.variants`, 'variant', picks[k] || '', [['', 'Keep current'], ...variantValues(set, k).map(v => [String(v), String(v)])], `data-bh-vprop="${esc(k)}"`)}</label>`).join('');
-        const hint = Object.keys(picks).length ? '' : '<p class="small-label">Pick at least one value. Properties left on “Keep current” stay as they are.</p>';
-        const hover = /^(onHover|onMouseEnter|onFocus)$/.test(it.trigger) ? '<p class="small-label">It goes back when the pointer leaves (or focus is lost).</p>' : '';
-        return rows + hint + hover + motionRows(p, a, 'change-variant') + (a.transition === 'instant' ? '' : '<p class="small-label">Smart animate moves, resizes and recolors layers that share a name in both variants.</p>');
-    };
-    const fields = (p, a, it) => {
-        if (STATE_ACTION_IDS.has(a.type)) return stateActionFields(ctx2, p, a, it);
-        if (a.type === 'change-variant') return variantRows(p, a, it);
-        if (a.type === 'navigate') return bhFrameSelect(`${p}.targetFrameId`, a.targetFrameId, frames, 'navigate', 'Go to page') + motionRows(p, a, 'navigate');
-        if (a.type === 'open-dropdown') return openPick(p, a, 'Open') + placementRows(p, a, 'bottom-start') + dropdownSizeRows(p, a) + motionRows(p, a, 'open-dropdown');
-        if (a.type === 'open-overlay') return openPick(p, a, 'Open') + anchorRow({ esc, bhSelect, pageFrames: pageFramesOf }, p, a) + placementRows(p, a, 'center', ['center', ...PLACEMENTS]) + bhCheck(`${p}.backdrop`, a.backdrop !== false, 'Backdrop') + bhCheck(`${p}.closeOnBackdrop`, !!a.closeOnBackdrop, 'Close when the backdrop is clicked') + motionRows(p, a, 'open-overlay');
-        if (a.type === 'open-popover') return openPick(p, a, 'Open') + bhSelect(`${p}.anchor`, 'plain', a.anchor || 'self', [['self', 'This component']]) + placementRows(p, a, 'top') + motionRows(p, a, 'open-popover');
-        if (a.type === 'close-overlay') return bhSelect(`${p}.close`, 'plain', a.close || 'current', [['current', 'Current overlay'], ['all', 'All overlays']]) + motionRows(p, a, 'close-overlay');
-        if (a.type === 'set-variable') return variableRows(p, a);
-        if (a.type === 'set-selected') return selectRows(p, a);
-        return '';
-    };
-    const summary = it => it.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ');
-    const stateNow = stateStore(), fieldsList = bhFieldList(n);
-    const addActionAt = listPath => `<select class="wide-button bh-addsel" data-bh-act="add-action-at" data-bh-list="${esc(listPath)}" aria-label="Add action"><option value="">＋ Add action…</option>${ACTIONS.map(x => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select>`;
-    // One action, wherever it lives: the interaction itself, a rule, an "otherwise", or what a confirmation runs.
-    const actionRow = (p, a, it, listPath, j) => {
-        const main = /^interactions\.\d+\.actions$/.test(listPath);
-        const removable = main ? (it.actions.length > 1 || !!it.rules) : true;
-        const label = main && it.actions.length > 1 ? `Then ${j + 1}` : 'Do';
-        return `<div class="bh-action"><div class="bh-action-head"><label class="field"><span>${label}</span>${bhSelect(`${p}.type`, 'plain', a.type, ACTIONS.map(x => [x.id, x.label]))}</label>${removable ? `<button type="button" class="icon-button small" data-bh-act="del-action-at" data-bh-list="${esc(listPath)}" data-bh-index="${j}" title="Remove this action" aria-label="Remove action ${j + 1}">×</button>` : ''}</div>${fields(p, a, it)}</div>`;
-    };
-    const ctx2 = { esc, state: stateNow, fields: fieldsList, bhSelect, renderAction: actionRow, addActionAt, convention: conventionOf(), componentButton: bhComponentButton, componentHasMotion, feedbackTypes: feedbackTypeInfo };
-    // In the window one interaction is shown on its own (opts.only = its id); its Rules open as a view of their own (opts.rulesOnly).
-    const rulesCount = it => (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
-    const drill = it => `<button type="button" class="bh-drill" data-bhw-sub="rules"><span><b>Rules</b><small>${rulesCount(it) ? `${rulesCount(it)} · first match wins` : 'none yet'}</small></span>${icon('chevronRight', 12)}</button>`;
-    const card = (it, i) => {
-        if (opts.rulesOnly) return rulesHtml(ctx2, it, i, new Set([...BH_SECTIONS, `rules:${it.id}`]));
-        const head = opts.flat ? '' : `<div class="bh-card-head"><span class="bh-num">${i + 1}</span><div class="bh-card-title"><b>${esc(TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger)}</b><small>${esc(summary(it))}</small></div><button type="button" class="icon-button small" data-bh-act="del-interaction" data-bh-index="${i}" title="Delete interaction" aria-label="Delete interaction ${i + 1}">${icon('close', 12)}</button></div>`;
-        return `<div class="bh-card ${opts.flat ? 'flat' : ''}">${head}
-        <label class="field"><span>When</span>${bhSelect(`interactions.${i}.trigger`, 'plain', it.trigger, TRIGGERS.map(t => [t.id, t.label]))}</label>
-        ${conditionHtml({ esc, state: stateNow, fields: fieldsList, owner: `interactions.${i}.if`, expr: it.if })}
-        ${it.actions.map((a, j) => actionRow(`interactions.${i}.actions.${j}`, a, it, `interactions.${i}.actions`, j)).join('')}
-        ${addActionAt(`interactions.${i}.actions`)}
-        ${opts.flat ? drill(it) : rulesHtml(ctx2, it, i, BH_SECTIONS)}</div>`;
-    };
-    return list.map((it, i) => opts.only !== undefined && it.id !== opts.only ? '' : card(it, i)).join('');
-}
-/** The input fields of the screen this layer is on: [[layer id, name]], for "Field is valid" and "Check field". */
-function bhFieldList(n) {
-    let top = n;
-    for (let g = 0; top.parentId && doc.get(top.parentId) && g < 500; g++) top = doc.get(top.parentId);
-    return subtreeInOrder(top.id).filter(x => x.isInstance && !x.softDeleted && (x.typeable === true || looksLikeField(x) || x.inputBehavior?.typeable?.frameId)).map(x => [x.id, x.name]);
-}
-/** The behavior config a path like "interactions.0.if" or "stateBind.self.when" points into. */
-const bhCfg = n => ({ interactions: normalizeInteractions(n.interactions), stateBind: n.stateBind || {} });
-const bhFirstRef = () => stateStore().variables[0]?.id || '';
-function bhEditExpr(n, tgt, value) {
-    const root = getPath(bhCfg(n), tgt.owner) || { op: 'value', value: '' };
-    bhWrite(n, tgt.owner, editExpr(root, tgt, value, bhFirstRef()));
-}
-
-/** Bagian khusus input field: the typing layer, what it accepts, and when it is checked. */
-function bhInputHtml(n, layers) {
-    const ib = normalizeInputBehavior(n.inputBehavior) || { typeable: {}, validation: {} };
-    const texts = layers.filter(l => l.type === 'text');
-    const opt = (list, value) => `<option value="">— none —</option>${list.map(l => `<option value="${l.id}" ${l.id === value ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}`;
-    let html = '';
-    // Typeable area
-    const typeParts = [];
-    typeParts.push(`<p class="small-label">Which layer receives the typing? The rest of the component stays read-only.</p>`);
-    typeParts.push(`<label class="field"><span>Typeable layer</span><select class="full-width" data-bh-path="input.typeable.frameId" data-bh-kind="plain">${opt(texts, ib.typeable.frameId)}</select></label>`);
-    typeParts.push(`<label class="field"><span>Input type</span>${bhSelect('input.typeable.inputType', 'plain', ib.typeable.inputType || 'text', INPUT_TYPES.map(t => [t.id, t.label]))}</label>`);
-    if (ib.typeable.inputType === 'password') {
-        typeParts.push(`<p class="small-label">Clicking the icon in the field swaps it between these two components.</p>`);
-        typeParts.push(bhComponentButton('input.typeable.showIconId', ib.typeable.showIconId, 'Icon while hidden'));
-        typeParts.push(bhComponentButton('input.typeable.hideIconId', ib.typeable.hideIconId, 'Icon while shown'));
-    }
-    typeParts.push(bhCheck('input.validation.required', ib.validation.required, 'Required'));
-    typeParts.push(`<label class="field"><span>Validate</span>${bhSelect('input.validation.trigger', 'plain', ib.validation.trigger || 'blur', VALIDATION_TRIGGERS.map(t => [t.id, t.label]))}</label>`);
-    html += section('Typeable area', typeParts.join(''));
-    return html;
-}
-/** Baris override state: nilai lain per state (di atas nilai dari variable collection). */
-function bhOverrideRow(state, prop, value) {
-    return `<div class="bh-row">
-        ${bhSelect(`state.${state}.${prop}`, 'prop', prop, [['', '— property —'], ...STATE_PROPS.map(p => [p.id, p.label])], `data-bh-prop="${esc(prop)}"`)}
-        ${bhStyleValue(`state.${state}.${prop}`, value)}
-        <button type="button" class="icon-button small" data-bh-act="remove-prop" data-bh-state="${esc(state)}" data-bh-prop="${esc(prop)}" title="Remove this property">×</button>
-    </div>`;
-}
-/** Nilai variable dalam sebuah mode (alias ikut diselesaikan). */
-function bhVarValue(item, modeId) {
-    const store = varStore();
-    return variableValueInMode(item, varColl(item?.collectionId), modeId, store.items || [], store.collections || []);
-}
-/** Nilai yang terbaca untuk sebuah state: property yang terikat ke variable di collection itu. */
-function bhStateValues(n, coll, mode) {
-    // The layer itself plus everything inside it (an instance falls back to its main component's layers).
-    const src = n.isInstance ? chainComponent(n) : null;
-    const nodes = subtreeInOrder(n.id);
-    if (nodes.length === 1 && src) nodes.push(...subtreeInOrder(src.id));
-    const seen = new Set(), out = [];
-    for (const l of nodes) {
-        for (const [prop, id] of Object.entries(l.vars || {})) {
-            const item = varItem(id), key = `${l.id === n.id ? '' : l.name}\u0000${prop}\u0000${id}`;
-            if (!item || item.collectionId !== coll.id || seen.has(key)) continue;
-            seen.add(key);
-            out.push({ prop, layer: l.id === n.id || l.id === src?.id ? '' : l.name, item, value: bhVarValue(item, mode.id) });
-        }
-    }
-    return out;
-}
-/** Label properti yang enak dibaca (fill → Fill, strokeWidth → Stroke width). */
-const bhPropLabel = p => String(p || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
-/** Nilai sebuah variable (swart + teks). */function bhValueChip(item, value) {
-    if (value === undefined || value === null || value === '') return '<span class="bh-chip muted">—</span>';
-    const text = String(value);
-    const color = item?.type === 'color' && /^#[0-9a-f]{3,8}$/i.test(text);
-    return `<span class="bh-chip">${color ? `<i style="background:${esc(text)}"></i>` : ''}${esc(text)}</span>`;
-}
-/** State collections connected to the node. */
-function bhStateCollections(n) {
-    const out = [];
-    for (const collId of Object.keys(n.varModes || {})) {
-        const coll = varColl(collId);
-        if (isStateCollection(coll)) out.push({ coll });
-    }
-    return out;
-}
-/**
- * Section State mapping: state dibaca dari variable collection yang disambungkan ke layer
- * (terisi otomatis), plus override per state kalau sebuah state perlu nilai lain.
- */
-// Collapsible sections of the Behavior tab that are open (State mapping starts closed, like Selection colors).
-const BH_SECTIONS = new Set();
-document.addEventListener('click', e => {
-    const b = e.target.closest?.('[data-bh-section]');
-    if (!b) return;
-    const k = b.dataset.bhSection;
-    if (BH_SECTIONS.has(k)) BH_SECTIONS.delete(k);
-    else BH_SECTIONS.add(k);
-    renderInspector();
-});
-const bhPlain = (_title, body) => body;
-function bhStateBody(n) {
-    const colls = bhStateCollections(n);
-    const stateColls = bhCollections().filter(isStateCollection);
-    const mapping = normalizeStateMapping(n.stateMapping);
-    const connect = stateColls.length
-        ? `<div class="field bh-pickrow"><span>Collection</span><button type="button" class="swap-btn" data-bh-coll-btn="__connect__" aria-haspopup="listbox" title="Connect a state collection"><i>${VAR_ICON}</i><span>Connect a collection</span>${CHEV_SVG}</button></div>`
-        : '<p class="small-label">No variable collection with state modes yet. Create one in the Variables window (e.g. <b>Button states</b> with modes Default / Hover / Pressed).</p>';
-    if (!colls.length)
-        return bhPlain('State mapping', `<p class="small-label">States are read from a <b>variable collection</b>: connect a collection with state modes, and the bound variables change value as the state changes.</p>${connect}`);
-    const type = bhTypeOf(n);
-    const bodies = colls.map(sc => {
-        const states = statesIn(sc.coll, type);
-        const rows = states.map(state => {
-            const picked = pickedModeId(n.stateModes, sc.coll.id, state);
-            const auto = modeForState(sc.coll, state), mode = modeForState(sc.coll, state, picked);
-            const values = mode ? bhStateValues(n, sc.coll, mode) : [];
-            const overrides = mapping[state] || {};
-            const used = Object.keys(overrides);
-            const free = STATE_PROPS.map(p => p.id).filter(p => !used.includes(p));
-            const options = [`<option value="">${esc(auto ? `Automatic · ${auto.name}` : 'Not set · uses the fallback state')}</option>`, ...sc.coll.modes.map(m => `<option value="${esc(m.id)}" ${m.id === picked ? 'selected' : ''}>${esc(m.name)}</option>`)].join('');
-            return `<div class="bh-state">
-                <b class="bh-state-label">${esc(stateLabel(state))}</b>
-                <select class="full-width" data-bh-act="state-mode" data-bh-coll="${esc(sc.coll.id)}" data-bh-state="${esc(state)}" aria-label="Mode used for ${esc(stateLabel(state))}">${options}</select>
-                ${values.length
-                    ? `<details class="bh-values"><summary class="small-label">${values.length} bound value${values.length === 1 ? '' : 's'} in mode ${esc(mode.name)}</summary>${values.map(v => `<div class="bh-value-line"><span class="small-label">${esc(v.layer ? `${v.layer} · ${bhPropLabel(v.prop)}` : bhPropLabel(v.prop))}</span>${bhValueChip(v.item, v.value)}<span class="small-label">${esc(v.item.name)}</span></div>`).join('')}</details>`
-                    : (mode ? '<p class="small-label">No variable from this collection is bound to this layer.</p>' : '')}
-                ${used.map(prop => bhOverrideRow(state, prop, overrides[prop])).join('')}
-                ${free.length ? bhSelect(`state.${state}.__prop`, 'add-prop', '', [['', '＋ Override a property'], ...free.map(p => [p, STATE_PROP_MAP[p].label])]) : ''}
-            </div>`;
-        }).join('');
-        return `<div class="bh-coll"><div class="bh-coll-head"><b>${esc(sc.coll.name)}</b><button type="button" class="icon-button small" data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}" title="Disconnect this collection">×</button></div>${rows}</div>`;
-    }).join('');
-    return bhPlain('State mapping', `<p class="small-label">Pick the mode of the connected collection that each state should look like. Automatic guesses from the mode name; choose a mode to decide it yourself.</p>${bodies}${stateColls.length > colls.length ? `<div class="bh-add">${connect}</div>` : ''}`);
-}
-/** Section Scroll Behavior: Overflow di setiap frame; Position bila node adalah child. */
-function scrollBehaviorHtml(n) {
-    const s = normalizeScroll(n), rows = [];
-    if (n.type === 'frame') rows.push(`<label class="field"><span>Overflow</span>${bhSelect('scroll.overflow', 'plain', s.overflow || 'none', SCROLL_OVERFLOWS.map(o => [o.id, o.label]))}</label>`);
-    if (n.parentId) rows.push(`<label class="field"><span>Position</span>${bhSelect('scroll.position', 'plain', s.scroll || 'scroll', SCROLL_POSITIONS.map(o => [o.id, o.label]))}</label>`);
-    return rows.length ? section('Scroll Behavior', rows.join('')) : '';
-}
-/**
- * Section Repeat: bind a frame to a List variable. The frame's first child is the template, drawn once per row in Preview;
- * each layer of the template can read a field of the row (text, fill or visibility).
- */
-function repeatBody(n) {
-    const lists = stateStore().variables.filter(v => v.type === 'list');
-    const cfg = n.repeat || {}, item = cfg.variableId && lists.find(v => v.id === cfg.variableId);
-    const picker = `<label class="field"><span>List</span>${bhSelect('repeat.variableId', 'plain', cfg.variableId || '', [['', lists.length ? '— not repeated —' : 'No List state yet'], ...lists.map(v => [v.id, `${v.name} (${v.scope})`])])}</label>`;
-    let body = lists.length ? picker : '<div class="bh-empty"><b>No List state yet</b><span>Create one in Variables → State (Create state → List), then bind a frame to it here.</span></div>';
-    if (cfg.variableId && !item) body += '<p class="small-label bh-warn">The List this frame used no longer exists.</p>';
-    if (item) {
-        const objects = (item.itemType || 'object') === 'object', schema = objects ? schemaOf(item) : [{ key: 'value', type: item.itemType }], kids = doc.children(n.id), tpl = kids[0];
-        if (!tpl) body += '<p class="small-label bh-warn">Add a layer inside this frame: the first child becomes the row template.</p>';
-        else {
-            const rows = fitRows(item, item.initial).length;
-            body += `<p class="small-label">Draws <b>${esc(tpl.name || tpl.type)}</b> once for each of the ${rows} initial ${rows === 1 ? 'row' : 'rows'} (Preview follows the live list). Other children stay as they are.</p>`;
-            const layers = [], walk = l => { layers.push(l); for (const c of doc.children(l.id)) walk(c); };
-            walk(tpl);
-            const fieldsOf = types => [['', '—'], ...(types.includes('string') ? [['#', '# (row number)']] : []), ...schema.filter(f => types.includes(f.type)).map(f => [f.key, f.key])];
-            const rowsHtml = layers.map(l => {
-                const b = cfg.bind?.[l.id] || {}, sel = (prop, types, label) => { const opts = fieldsOf(types); return opts.length > 1 ? `<label class="bh-bind-cell"><small>${label}</small>${bhSelect(`repeat.bind.${l.id}.${prop}`, 'plain', b[prop] || '', opts)}</label>` : ''; };
-                const cells = (l.type === 'text' ? sel('text', ['string', 'number', 'date'], 'Text') : (l.type === 'frame' || l.type === 'ellipse' || l.type === 'rect' ? sel('fill', ['color'], 'Fill') : '')) + sel('visible', ['boolean'], 'Visible');
-                return cells ? `<div class="bh-bind"><div class="bh-bind-name" title="${esc(l.name)}">${esc(l.name || l.type)}</div><div class="bh-bind-cells">${cells}</div></div>` : '';
-            }).join('');
-            body += rowsHtml ? `<div class="bh-binds">${rowsHtml}</div>` : '<p class="small-label">Nothing in the template can read a field yet: add text, color or true/false fields to the List.</p>';
-        }
-    }
-    return body;
-}
-/** Section Bind to State: layers read a state variable (text, visible) and an Option variable can drive the state mode. */
-function stateBindBody(n) {
-    const state = stateStore(), layers = [], walk = l => { for (const c of doc.children(l.id)) { if (layers.length < 60) layers.push(c); walk(c); } };
-    walk(n);
-    return stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) });
-}
-// ===== Capabilities (Add Behavior): Can type, Has validation, Has options, Opens popup, On click, Has loading, Show feedback =====
-const BH_UI = { addOpen: false, advOpen: false, pick: null };       // the Add Behavior panel is open / the slot waiting for a click on a layer ({ nodeId, path })
-/** The layers a slot can be mapped to: inside the component (a set: inside its first variant). */
-function bhLayerList(n) {
-    const root = n.componentSet ? (defaultVariantOf(n) || setVariants(n)[0] || n) : n;
-    return subtreeInOrder(root.id).filter(x => x.id !== root.id && !x.softDeleted).slice(0, 400).map(x => ({ id: x.id, name: x.name, type: x.type, isInstance: !!x.isInstance }));
-}
-/**
- * The behaviors of a component or an instance (Has options, Opens popup…): the master's, with the instance's overrides on top,
- * and every slot named by a layer of THIS node: the layer itself, else the one made from it, else the one with the same name.
- */
-function behaviorsOf(n, own = false) {
-    if (!n) return [];
-    const src = n.isInstance ? chainComponent(n) : n, set = src && parentSetOf(src);
-    // A variant without behaviors of its own follows its component set (Preview); the editor shows only what the selected node holds.
-    if (!n.isInstance) return resolveBehaviors(n.behaviors?.length || own ? n.behaviors : set?.behaviors, undefined);
-    const base = set?.behaviors?.length ? set.behaviors : src?.behaviors;
-    const list = resolveBehaviors(base, n.behaviorOverrides), kids = subtreeInOrder(n.id).filter(k => k.id !== n.id);
-    const find = lid => {
-        if (kids.some(k => k.id === lid)) return lid;
-        const made = kids.find(k => k.sourceId === lid);
-        if (made) return made.id;
-        const m = doc.get(lid) || nodeIndex().get(lid);
-        return m ? (kids.find(k => k.name === m.name && k.type === m.type)?.id ?? null) : null;
-    };
-    return list.map(b => ({ ...b, slots: Object.fromEntries(Object.entries(b.slots).map(([r, id]) => [r, r === 'popup' ? id : find(id)]).filter(([, v]) => v)) }));
-}
-/** The modes of the * states collections connected to a component, for "does it have a loading state?". */
-function bhStateModes(n) {
-    const src = n.isInstance ? chainComponent(n) : (n.componentSet ? (defaultVariantOf(n) || setVariants(n)[0]) : n), set = src && parentSetOf(src);
-    const out = [];
-    for (const cid of Object.keys({ ...src?.varModes, ...set?.varModes, ...n.varModes })) { const c = varColl(cid); if (c && isStateCollection(c)) out.push(...c.modes); }
-    return out;
-}
-function bhCapContext(n) {
-    const isInstance = !!n.isInstance, conv = conventionOf(), layers = bhLayerList(n), behaviors = behaviorsOf(n, true);
-    const ib = normalizeInputBehavior(n.inputBehavior);
-    const type = bhTypeOf(n), typeable = isInstance ? (n.typeable ?? looksLikeField(n)) : (n.typeable ?? type === 'input');
-    const hasClick = normalizeInteractions(isInstance ? interactionsForNode(n, chainComponent(n), parentSetOf(chainComponent(n) || n) || null).list : n.interactions).some(i => i.trigger === 'onClick');
-    const clickIt = normalizeInteractions(n.interactions).find(i => i.trigger === 'onClick');
-    const hasValidation = !!(ib?.validation && (ib.validation.required || ib.validation.rules || ib.validation.trigger));
-    const modes = bhStateModes(n), loadingMode = !!suggestStates(modes, conv).loading;
-    const has = k => k === 'can-type' ? !!(typeable || ib?.typeable?.inputType || ib?.typeable?.frameId) : k === 'has-validation' ? hasValidation : k === 'on-click' ? hasClick : behaviors.some(b => b.kind === k);
-    const inputKinds = new Set(['can-type', 'has-validation', 'on-click']);
-    const c = {
-        esc, bhSelect, node: n, isInstance, behaviors, layers, ib, typeable: typeable && (n.typeable !== undefined || ib?.typeable?.frameId || ib?.typeable?.inputType || isInstance), hasValidation, hasClick,
-        clickSummary: clickIt ? clickIt.actions.map(a => ACTIONS.find(x => x.id === a.type)?.label || a.type).join(' → ') : (hasClick ? 'Follows the main component' : ''),
-        nameOf: id => (layers.find(l => l.id === id)?.name || doc.get(id)?.name || componentById(id)?.name || stateStore().variables.find(v => v.id === id)?.name || stateStore().derived.find(v => v.id === id)?.name || id),
-        subLayers: id => (id ? subtreeInOrder(id).filter(x => x.id !== id && !x.softDeleted).slice(0, 200).map(x => ({ id: x.id, name: x.name, type: x.type, isInstance: !!x.isInstance })) : layers),
-        state: stateStore(), convention: conv, open: BH_SECTIONS, addOpen: BH_UI.addOpen, pick: BH_UI.pick?.nodeId === n.id ? BH_UI.pick.path : null,
-        componentButton: bhComponentButton,
-        guess: n.isInstance && n.typeable === undefined && looksLikeField(n) ? 'its name' : '',
-        applies: k => (isInstance && !inputKinds.has(k)) ? { ok: false, reason: 'Set on the main component.' } : applicability(k, { layers, has, hasList: stateStore().variables.some(v => v.type === 'list' && (v.itemType || 'object') === 'object'), hasState: s => s === 'loading' ? loadingMode : modes.some(m => suggestStates([m], conv)[s]) }),
-        suggestedPreset: suggestPreset(isInstance ? (parentSetOf(chainComponent(n) || n)?.name || chainComponent(n)?.name || n.name) : n.name, PRESETS),
-        feedbackNote: b => bhFeedbackNote(b, n),
-        feedbackHasType: () => feedbackTypeInfo(feedbackComponentId(n))?.hasType ?? null,
-    };
-    c.suggestions = bhSuggestions(n, c);
-    c.feedbackTypes = feedbackTypeInfo;
-    c.appearanceOptions = appearanceOptionsOf;
-    c.pageFrames = pageFramesOf;
-    return c;
-}
-/**
- * The type mapping of a feedback component: the names its type values can take (variant values and the modes of its type
- * collections), and what each of the four levels resolves to (explicit mapping, one clear name, ambiguous, or none).
- */
-function typeGroupsOf(target) {
-    const set = target.componentSet ? target : parentSetOf(target), first = target.componentSet ? (defaultVariantOf(target) || setVariants(target)[0] || target) : target;
-    const groups = [];
-    if (set) for (const prop of variantProps(set)) groups.push({ values: variantValues(set, prop).map(String), prop });
-    const colls = new Set(Object.keys({ ...first.varModes, ...set?.varModes }));
-    for (const x of subtreeInOrder(first.id)) for (const vid of Object.values(x.vars || {})) { const it = varItem(vid); if (it) colls.add(it.collectionId); }
-    for (const cid of colls) { const coll = varColl(cid); if (coll) groups.push({ values: coll.modes.map(x => x.name), coll, cid }); }
-    // The type dimensions: the groups whose values cover at least two levels (a single "Default" or "Size" value list is not a type).
-    return { set, first, groups: groups.filter(g => isTypeDimension(g.values)) };
-}
-/**
- * The type mapping of a feedback component: the names its type values can take (from its type dimensions only), and what each
- * of the four levels resolves to (explicit mapping, one clear name, ambiguous, or none). hasType = it has a type dimension at all.
- */
-function feedbackTypeInfo(id) {
-    const target = id && componentById(id);
-    if (!target) return null;
-    const { groups } = typeGroupsOf(target), list = [...new Set(groups.flatMap(g => g.values))];
-    const idx = (target.behaviors || []).findIndex(b => b.kind === 'show-feedback');
-    const explicit = idx >= 0 ? (target.behaviors[idx].config?.types || {}) : {};
-    const levels = Object.fromEntries(['success', 'error', 'warning', 'info'].map(l => [l, levelStatus(list, l, explicit)]));
-    return { id: target.id, name: target.name, values: list, levels, explicit, hasType: groups.length > 0, hasBehavior: idx >= 0, index: idx };
-}
-/** The component whose feedback look a node stands for: its chain's main component, its default variant, or itself. */
-function feedbackComponentId(n) {
-    return n.isInstance ? (chainComponent(n)?.id) : (n.componentSet ? (defaultVariantOf(n)?.id || n.id) : n.id);
-}
-function bhFeedbackNote(b, n) {
-    const info = feedbackTypeInfo(feedbackComponentId(n));
-    if (!info) return 'No component is set for this feedback kind.';
-    if (!info.hasType) return 'No type: it always draws its own look.';
-    const bad = ['success', 'error', 'warning', 'info'].filter(l => info.levels[l].source !== 'explicit' && info.levels[l].source !== 'name');
-    if (!bad.length) return 'Type mapping: all 4 levels mapped.';
-    const found = 4 - bad.length, label = mappingWarns(b.config?.kind, info.levels) ? 'Type mapping' : 'Type (optional)';
-    return `${label}: ${found} of 4 levels mapped. ${bad.map(l => `${l}: ${info.levels[l].source === 'ambiguous' ? 'ambiguous (' + info.levels[l].options.join(', ') + ')' : 'no match'}`).join('; ')}. Fix it in Feedback → Type mapping.`;
-}
-/** The look a feedback component takes for a level, then what the action pinned on top of it. → { node, modes, how } */
-function feedbackStyleOf(id, level, types, pin) {
-    const s = feedbackStyleBase(id, level, types);
-    if (!s || s.unmapped || !s.node || !pin) return s;
-    // Pinned on the action beats Type mapping and the instance's own modes; a value that no longer exists falls back to the look above.
-    const modes = { ...s.modes, ...(pin.modes || {}) };
-    const set = s.node.componentSet ? s.node : parentSetOf(s.node);
-    const want = { ...(s.node.variant || {}), ...(pin.variants || {}) };
-    const found = pin.variants && set && Object.keys(pin.variants).length ? setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val)) : null;
-    return { ...s, node: found || s.node, modes, pinned: !!(pin.modes || pin.variants) };
-}
-/**
- * The rows of the shared Appearance section for a component: one per type dimension (a mode or a variant property) and one per
- * other variant property of its set. → [{ key, kind: 'mode' | 'variant', label, type, options: [[value, label]] }]
- */
-function appearanceOptionsOf(id) {
-    const target = id && componentById(id);
-    if (!target) return [];
-    const { set, groups } = typeGroupsOf(target);
-    const rows = [];
-    for (const g of groups) {
-        if (g.prop) rows.push({ key: g.prop, kind: 'variant', label: g.prop, type: true, options: variantValues(set, g.prop).map(v => [String(v), String(v)]) });
-        else rows.push({ key: g.cid, kind: 'mode', label: g.coll.name, type: true, options: g.coll.modes.map(m => [m.id, m.name]) });
-    }
-    if (set) for (const k of variantProps(set)) if (!rows.some(r => r.kind === 'variant' && r.key === k)) rows.push({ key: k, kind: 'variant', label: k, type: false, options: variantValues(set, k).map(v => [String(v), String(v)]) });
-    return rows;
-}
-/** The look a feedback component takes for a level: a variant (its `type` property) or modes of a collection. → { node, modes, how } */
-function feedbackStyleBase(id, level, types) {
-    const target = id && componentById(id);
-    if (!target) return null;
-    const { set, first, groups } = typeGroupsOf(target);
-    for (const g of groups) {
-        const v = matchLevel(g.values, level, types);
-        if (v == null) continue;
-        if (g.prop) {
-            const want = { ...(first.variant || {}), [g.prop]: v }, found = setVariants(set).find(x => Object.entries(want).every(([k, val]) => x.variant?.[k] === val));
-            if (found) return { node: found, modes: {}, how: `variant “${g.prop}”` };
-        }
-        else return { node: first, modes: { [g.cid]: g.coll.modes.find(x => x.name === v).id }, how: `mode of “${g.coll.name}”` };
-    }
-    // Typed component, no value for this level: say so (the caller shows it) instead of drawing the first look under the wrong type.
-    if (groups.length) return { node: null, modes: {}, how: null, unmapped: true };
-    // No type dimension: the Type setting is ignored (an old action keeps its value, it just has no effect).
-    return { node: first, modes: {}, how: null };
-}
-/** One-click proposals from the file's Convention: the layer for each empty slot. → [{ section, role, layerId, name, path }] */
-function bhSuggestions(n, c) {
-    const out = [], conv = c.convention, layers = c.layers;
-    const roles = kind => (CAPABILITIES[kind]?.slots || []).filter(s => SLOT_ROLES[s.role].kind !== 'component').map(s => ({ role: s.role, kind: SLOT_ROLES[s.role].kind, required: !!s.required }));
-    if ((c.typeable || c.ib?.typeable?.inputType) && !c.ib?.typeable?.frameId)
-        for (const g of suggestSlots([{ role: 'value', kind: 'text', required: true }], layers, conv)) out.push({ section: 'Can type', role: g.role, layerId: g.layerId, name: g.name, path: 'input.typeable.frameId' });
-    c.behaviors.forEach((b, i) => {
-        const base = c.isInstance ? `behaviorOverrides.${b.id}` : `behaviors.${i}`;
-        for (const g of suggestSlots(roles(b.kind), layers, conv, b.slots)) out.push({ section: CAPABILITIES[b.kind].label, role: g.role, layerId: g.layerId, name: g.name, path: `${base}.slots.${g.role}` });
-    });
-    // The layer of the row template / of the header row for each column, by the column's name.
-    c.behaviors.forEach((b, i) => {
-        if (b.kind !== 'has-rows' || c.isInstance) return;
-        const list = stateStore().variables.find(v => v.id === b.config.source);
-        if (!list) return;
-        const cols = schemaOf(list).map(f => ({ key: f.key, label: columnLabel(f) }));
-        for (const [prefix, root] of [['cell', b.slots.row], ['head', b.slots.header]]) {
-            if (!root) continue;
-            const taken = new Set(Object.entries(b.slots).filter(([k]) => k.startsWith(prefix + ':')).map(([, v]) => v));
-            const todo = cols.filter(col => !b.slots[prefix + ':' + col.key]);
-            for (const g of suggestColumnSlots(todo, c.subLayers(root), taken)) out.push({ section: CAPABILITIES[b.kind].label, role: prefix, label: (prefix === 'cell' ? 'Cell · ' : 'Header · ') + (cols.find(x => x.key === g.key)?.label || g.key), layerId: g.layerId, name: g.name, path: `behaviors.${i}.slots.${prefix}:${g.key}` });
-        }
-    });
-    return out;
-}
-/** Add what a preset (or one capability) brings to a component. Only adds: what is there is kept. */
-function bhApplyPlan(n, plan) {
-    if (plan.input?.typeable) { n.typeable = true; const ib = { ...(n.inputBehavior || {}) }; ib.typeable = { ...(ib.typeable || {}), ...plan.input.typeable }; n.inputBehavior = normalizeInputBehavior(ib); }
-    if (plan.input?.validation) { const ib = { ...(n.inputBehavior || {}) }; ib.validation = { ...(plan.input.validation), ...(ib.validation && (ib.validation.required || ib.validation.rules) ? ib.validation : {}) }; n.inputBehavior = normalizeInputBehavior(ib); }
-    if (!n.isInstance && plan.behaviors.length) {
-        const list = [...(n.behaviors || [])];
-        for (const b of plan.behaviors) if (!list.some(x => x.kind === b.kind)) list.push({ id: `b${Date.now().toString(36)}${list.length}`, kind: b.kind, enabled: true, slots: {}, config: b.config, preset: b.preset });
-        n.behaviors = normalizeBehaviors(list);
-    }
-    if (plan.interactions?.length) {
-        const have = normalizeInteractions(n.interactions);
-        const add = plan.interactions.filter(i => !have.some(h => h.trigger === i.trigger));
-        if (add.length) n.interactions = normalizeInteractions([...have, ...add.map((i, k) => ({ ...i, id: `i${Date.now().toString(36)}${k}` }))]);
-    }
-}
-/** Click a layer (canvas or Layers panel) while a slot is waiting for it: map the slot and go back to the component. */
-function bhPickLayer(id) {
-    const p = BH_UI.pick;
-    if (!p) return false;
-    const n = doc.get(p.nodeId);
-    if (!n || id === n.id || !bhLayerList(n).some(l => l.id === id)) { if (!n || id !== n.id) BH_UI.pick = null; return false; }
-    BH_UI.pick = null;
-    transaction('Behavior', () => { bhWrite(n, p.path, id); doc.touch(n); });
-    select([n.id]);
-    return true;
-}
-// Esc: first cancels picking a layer, then goes back from a drilled-in view, then closes the window.
-document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || e.target.closest?.('[data-bhs-new]')) return;
-    // What Esc closes here must not also clear the selection.
-    const used = BH_UI.pick || BHW.kind;
-    if (BH_UI.pick) { BH_UI.pick = null; renderInspector(); }
-    else if (BHW.kind && BHW.sub) { BHW.sub = ''; renderBhWindow(); }
-    else if (BHW.kind) { bhwHide(); renderInspector(); }
-    if (used) e.stopImmediatePropagation();
-}, true);
-// ===== Behavior tab: compact lists in the panel, editing in one floating window =====
-// The panel only lists (a header with "+", one row per item). A row, or "+", opens the item in #bh-window (the Variables window's
-// shell, 320px wide, left of the inspector). Changes apply live; closing the window returns to the list.
-const BHW = { kind: null, key: '', sub: '', nodeId: null, y: 0, next: null, tab: 'slots', q: '', adding: '', expanded: new Set() };
-const bhwIs = (kind, key) => BHW.kind === kind && BHW.key === key;
-/** What an action does, in words ("Navigate → Home"). */
-function bhActionText(a, frames) {
-    const label = ACTIONS.find(x => x.id === a.type)?.label || a.type;
-    const target = a.type === 'navigate'
-        ? frames.find(f => f.id === a.targetFrameId)?.label
-        : /^open-/.test(a.type)
-            ? (a.targetComponentId ? componentById(a.targetComponentId)?.name : frames.find(f => f.id === a.targetFrameId)?.label)
-            : '';
-    return target ? `${label} → ${target}` : label;
-}
-const bhTriggerLabel = it => TRIGGERS.find(t => t.id === it.trigger)?.label || it.trigger;
-/** Why an interaction row has a warning: an action that needs a place to go and has none. */
-function bhInteractionWarn(it) {
-    const bad = it.actions.find(a => (a.type === 'navigate' && !a.targetFrameId) || (/^open-(dropdown|overlay|popover)$/.test(a.type) && !a.targetComponentId && !a.targetFrameId));
-    return bad ? `${ACTIONS.find(x => x.id === bad.type)?.label || bad.type} has no target yet: choose one in the window.` : '';
-}
-/** One line for an interaction row: "Navigate → Home · if … · 2 rules". */
-function bhInteractionLine(it, frames) {
-    const parts = [it.actions.map(a => bhActionText(a, frames)).join(', then ')];
-    if (it.if) parts.push('with a condition');
-    const rules = (it.rules?.items?.length || 0) + (it.rules?.otherwise ? 1 : 0);
-    if (rules) parts.push(`${rules} ${rules === 1 ? 'rule' : 'rules'}`);
-    return parts.filter(Boolean).join(' · ');
-}
-const bhRemoveBtn = (attrs, label) => `<button type="button" class="icon-button small" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${icon('close', 12)}</button>`;
-const bhRow = o => itemRow({ esc, icon, active: bhwIs(...Object.values(splitOpen(o.open))), ...o });
-function bhInteractionsSection(n, frames) {
-    const own = normalizeInteractions(n.interactions);
-    const src = n.isInstance ? chainComponent(n) : null, set = src && parentSetOf(src);
-    const inherited = n.isInstance && !own.length ? interactionsForNode(n, src, set) : null;
-    const owner = inherited?.list.length ? (normalizeInteractions(set?.interactions).length ? set?.name : src?.name) : '';
-    let rows = own.map((it, i) => bhRow({ ic: 'interaction', name: bhTriggerLabel(it), summary: bhInteractionLine(it, frames), warn: bhInteractionWarn(it), open: `interaction:${it.id}`, remove: bhRemoveBtn(`data-bh-act="del-interaction" data-bh-index="${i}"`, 'Remove interaction') }));
-    let tail = '';
-    if (inherited?.list.length) {
-        rows = inherited.list.map(it => itemRow({ esc, icon, ic: 'interaction', name: bhTriggerLabel(it), summary: bhInteractionLine(it, frames), on: true }));
-        tail = `<p class="bh-item-note">From ${esc(owner || 'the main component')}. <button type="button" class="vw-btn ghost" data-bh-act="override-interactions">Edit on this instance</button></p>`;
-    }
-    const unused = bhUnusedOverlays(n);
-    if (unused.length) tail += `<p class="bh-item-note bh-unused">⚠ ${unused.length} unused overlay ${unused.length === 1 ? 'layer' : 'layers'} (${esc(unused.map(o => o.name).slice(0, 2).join(', '))}) on this page: no interaction opens ${unused.length === 1 ? 'it' : 'them'}. <button type="button" class="vw-btn ghost" data-bh-act="remove-unused-overlays">Remove ${unused.length} unused overlay ${unused.length === 1 ? 'layer' : 'layers'}</button></p>`;
-    return sectionBlock({ esc, icon, title: 'Interactions', add: 'new-interaction:', addTitle: 'Add interaction', rows, empty: 'No interaction yet. Add one so this reacts in Preview.' }).replace(/<\/section>$/, `${tail}</section>`);
-}
-function bhBehaviorSection(n) {
-    const c = bhCapContext(n), secs = capabilitySections(c).filter(s => s.kind !== 'on-click');
-    const rows = secs.map(s => {
-        const toggle = s.toggle ? (s.toggle.kind === 'proto' ? { proto: s.toggle.key } : { path: s.toggle.path, invert: true }) : (s.index !== undefined ? { path: `${s.path}.enabled` } : null);
-        const removable = s.index !== undefined ? !c.isInstance : (s.fixed && !s.noActions);
-        const remove = removable ? bhRemoveBtn(s.index !== undefined ? `data-bh-act="del-cap" data-bh-index="${s.index}"` : `data-bh-act="del-cap" data-bh-kind="${s.kind}"`, `Remove ${s.title}`) : '';
-        return bhRow({ ic: ROW_ICON[s.kind] || 'sliders', name: s.title, summary: s.summary || '—', warn: s.issues.map(i => i.why).join(' '), open: `cap:${s.id}`, on: s.enabled, toggle, remove });
-    });
-    const gear = `<button type="button" class="icon-button small" data-bhw-open="settings:" title="Behavior settings (convention, feedback components)" aria-label="Behavior settings">${icon('sliders', 14)}</button>`;
-    const note = c.isInstance && secs.some(s => s.index !== undefined) ? '<p class="bh-item-note">Set on the main component. Here you can turn each on or off and re-map its layers for this instance. <button type="button" class="vw-btn ghost" data-bh-act="go-main">Go to main component</button></p>' : '';
-    return sectionBlock({ esc, icon, title: 'Behavior', add: 'add:', addTitle: 'Add behavior', extra: gear, rows, empty: 'Nothing yet. Add a behavior, or start from a preset.' }).replace(/<\/section>$/, `${note}</section>`);
-}
-function bhStateRows(n) {
-    const type = bhTypeOf(n);
-    return bhStateCollections(n).map(sc => {
-        const states = statesIn(sc.coll, type);
-        const parts = states.map(st => ({ st, mode: modeForState(sc.coll, st, pickedModeId(n.stateModes, sc.coll.id, st)) }));
-        const missing = parts.filter(p => !p.mode).map(p => stateLabel(p.st).toLowerCase());
-        return bhRow({ ic: 'state', name: sc.coll.name, summary: parts.filter(p => p.mode).map(p => `${stateLabel(p.st).toLowerCase()} → ${p.mode.name}`).join(', ') || 'No mode set yet', warn: missing.length ? `No mode for: ${missing.join(', ')}. They use the fallback state.` : '', open: `state:${sc.coll.id}`, remove: bhRemoveBtn(`data-bh-act="disconnect-collection" data-bh-coll="${esc(sc.coll.id)}"`, 'Disconnect this collection') });
-    });
-}
-function bhStateSection(n) { return sectionBlock({ esc, icon, title: 'State mapping', add: 'state:', addTitle: 'Map states', rows: bhStateRows(n), empty: 'No collection connected. States are read from a variable collection with state modes.' }); }
-function bhRepeatSection(n) {
-    const cfg = n.repeat || {}, item = cfg.variableId && stateStore().variables.find(v => v.id === cfg.variableId);
-    const rows = cfg.variableId ? [bhRow({ ic: 'repeat', name: 'Repeat', summary: item ? `List “${item.name}”, first child is the row template` : 'The List it used no longer exists', warn: item ? '' : 'The List this frame used no longer exists.', open: 'repeat:', remove: bhRemoveBtn('data-bh-act="clear-repeat"', 'Stop repeating') })] : [];
-    return sectionBlock({ esc, icon, title: 'Repeat', add: 'repeat:', addTitle: 'Repeat from a List', rows, empty: 'Draws its first child once for each row of a List.' });
-}
-function bhBindSection(n) {
-    const b = n.stateBind || {}, count = Object.keys(b.self || {}).length + Object.values(b.layers || {}).reduce((a, x) => a + Object.keys(x || {}).length, 0);
-    const rows = count ? [bhRow({ ic: 'bind', name: 'Bind to State', summary: `${count} ${count === 1 ? 'binding' : 'bindings'}`, open: 'bind:', remove: bhRemoveBtn('data-bh-act="clear-bind"', 'Remove all bindings') })] : [];
-    return sectionBlock({ esc, icon, title: 'Bind to State', add: 'bind:', addTitle: 'Bind to State', rows, empty: 'Layers show a State value, or appear only when a condition holds.' });
-}
-/**
- * The row references a layer can use: only inside the row template of a table (Has rows, row slot). Walks up from the layer: the first
- * instance with an enabled Has rows whose row slot is one of the layers on the way up decides the List.
- */
-function bhRowRefs(n) {
-    const chainIds = new Set();
-    for (let c = n; c; c = doc.get(c.parentId)) {
-        chainIds.add(c.id);
-        if (c.sourceId) chainIds.add(c.sourceId);
-        if (!c.isInstance && !c.component) continue;
-        const rows = behaviorsOf(c).find(b => b.kind === 'has-rows' && b.enabled);
-        if (rows && chainIds.has(rows.slots?.row) && rows.config?.source) {
-            const list = stateStore().variables.find(v => v.id === rows.config.source);
-            return list ? rowRefsOf(list) : [];
-        }
-    }
-    return [];
-}
-function prototypeHtml() {
-    const n = activeNode();
-    if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
-    const isFrame = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
-    const isChildFrame = n.type === 'frame' && n.parentId && !n.component && !n.componentSet && !n.isInstance;
-    const plain = !n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame;
-    const frames = bhFrames();
-    setRowRefs(bhRowRefs(n));
-    let html = '';
-    if (isFrame)
-        html += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p><label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
-    if (!isFrame && !isChildFrame && !plain) {
-        const type = bhTypeOf(n), src = n.isInstance ? chainComponent(n) : n, set = src && parentSetOf(src);
-        const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
-        const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
-        html += `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div>${n.isInstance ? `<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>` : ''}</section>`;
-    }
-    html += bhQuickHtml(n);
-    html += bhInteractionsSection(n, frames);
-    // Components always list their capabilities. A plain layer lists them once it has one (Can type, Has validation…).
-    if (!isFrame && !isChildFrame && !plain) html += bhBehaviorSection(n);
-    else if (!isFrame && capabilitySections(bhCapContext(n)).some(s => s.kind !== 'on-click')) html += bhBehaviorSection(n);
-    // Variables, state modes, repeat and bind-to-state stay one fold away: most designs never need them.
-    if (!plain) {
-        const adv = (!isFrame && !isChildFrame ? bhStateSection(n) : '') + (n.type === 'frame' ? bhRepeatSection(n) + bhBindSection(n) : '');
-        if (adv) html += `<div class="bh-adv"><button type="button" class="bh-adv-btn" data-bh-act="toggle-adv" aria-expanded="${BH_UI.advOpen}">${BH_UI.advOpen ? '▾' : '▸'} Advanced</button>${BH_UI.advOpen ? `<div class="bh-adv-body">${adv}</div>` : ''}</div>`;
-    }
-    return html + scrollBehaviorHtml(n);
-}
-/** "What should happen here?": plain-language starting points for any layer. Each one adds the real interaction or capability and opens it. */
-function bhQuickHtml(n) {
-    const isPage = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
-    const field = !isPage && (n.type === 'frame' || n.isInstance || n.component || n.componentSet);
-    const chip = (q, label, hint) => `<button type="button" class="bh-chip-btn" data-bh-act="quick" data-bh-quick="${q}" title="${esc(hint)}">${esc(label)}</button>`;
-    const click = [chip('navigate', 'Go to a page', 'Opens another page or frame'), chip('overlay', 'Open a dialog', 'Opens an overlay on top of this page'), chip('message', 'Show a message', 'Shows an alert, message or notification')].join('');
-    const input = field ? `<div class="bh-preset-row"><small>If it is a text field</small><div class="bh-chips">${chip('type', 'Let people type here', 'The layer takes typing in Preview')}${chip('validate', 'Check what is typed', 'Required, email, length… with your own error message')}</div></div>` : '';
-    const list = n.type === 'frame' && !isPage && !n.repeat?.variableId && doc.children(n.id).length ? `<div class="bh-preset-row"><small>If it holds items</small><div class="bh-chips">${chip('list', 'Show a list of items', 'Repeats its first layer for each row of a sample list')}</div></div>` : '';
-    return `<section class="inspector-section bh-quick"><div class="section-heading"><span>What should happen here?</span></div><p class="small-label">Pick one, then press Preview to try it.</p><div class="bh-preset-row"><small>When clicked</small><div class="bh-chips">${click}</div></div>${input}${list}</section>`;
-}
-// ----- the window
-/** The window for BHW, or null when what it shows is gone (then it closes). → { title, body, back } */
-function bhwContent(n) {
-    const frames = bhFrames();
-    switch (BHW.kind) {
-        case 'interaction': {
-            const list = normalizeInteractions(n.interactions), i = list.findIndex(x => x.id === BHW.key);
-            if (i < 0) return null;
-            const it = list[i], name = bhTriggerLabel(it);
-            if (BHW.sub === 'rules') return { title: `${name} · Rules`, back: true, body: bhInteractionRows(n, frames, { only: it.id, rulesOnly: true }) };
-            return { title: name, body: bhInteractionRows(n, frames, { only: it.id, flat: true }) + `<button type="button" class="vw-btn ghost bh-win-del" data-bh-act="del-interaction" data-bh-index="${i}">Delete interaction</button>` };
-        }
-        case 'cap': {
-            const c = bhCapContext(n), s = capabilitySections(c).find(x => x.id === BHW.key);
-            if (!s) return null;
-            return { title: s.title, body: suggestionsHtml(c, s.title) + capabilityBodyHtml(c, s) };
-        }
-        case 'add': return { title: 'Add behavior', body: addPanelHtml(bhCapContext(n)) };
-        case 'settings': return { title: 'Behavior settings', body: settingsWindowHtml(bhCapContext(n), BHW) };
-        case 'state': return { title: 'State mapping', body: bhStateBody(n) };
-        case 'repeat': return { title: 'Repeat', body: repeatBody(n) };
-        case 'bind': return { title: 'Bind to State', body: stateBindBody(n) };
-    }
-    return null;
-}
-function bhwHide() {
-    const was = BHW.kind;
-    BHW.kind = null; BHW.sub = '';
-    if (was) invalidate();
-    $('#bh-window')?.classList.add('hidden');
-}
-/** Draw (or redraw) the window. Called whenever the inspector redraws, so edits show at once. A render error shows a message and Retry. */
-function renderBhWindow(place) {
-    const n = activeNode();
-    let win = $('#bh-window');
-    if (!BHW.kind || !n || n.id !== BHW.nodeId || state.inspectorTab !== 'prototype') { if (BHW.kind && (!n || n.id !== BHW.nodeId)) BHW.kind = null; win?.classList.add('hidden'); return; }
-    if (!win) {
-        win = document.createElement('section');
-        win.id = 'bh-window';
-        win.className = 'vars-window bh-window hidden';
-        win.setAttribute('role', 'dialog');
-        document.body.appendChild(win);
-        win.addEventListener('change', bhOnChange);
-        wireWindowDrag(win, () => false);
-    }
-    const scroll = win.querySelector('.bh-win-body')?.scrollTop || 0;
-    let content = null;
-    const ok = guarded(() => { content = bhwContent(n); }, err => { content = { title: 'Behavior', body: errorBoundaryHtml('This', err) }; });
-    if (!content) { bhwHide(); return; }
-    win.setAttribute('aria-label', content.title);
-    win.innerHTML = windowHtml({ esc, icon, title: content.title, back: !!content.back, body: content.body });
-    win.querySelector('[data-eb-retry]')?.addEventListener('click', () => renderBhWindow());
-    win.classList.remove('hidden');
-    if (place || !win.style.left) {
-        const r = $('#inspector').getBoundingClientRect(), h = Math.min(win.offsetHeight || 360, innerHeight - 80);
-        win.style.left = Math.max(8, r.left - 328) + 'px';
-        win.style.top = clamp((BHW.y || r.top + 60) - 24, 56, Math.max(56, innerHeight - h - 16)) + 'px';
-    }
-    win.querySelector('.bh-win-body').scrollTop = scroll;
-    win.querySelector('[data-bhs-new]')?.focus();
-    void ok;
-}
-function bhwOpen(kind, key = '', y = 0) {
-    const n = activeNode();
-    if (!n) return;
-    Object.assign(BHW, { kind, key, sub: '', nodeId: n.id, y: y || BHW.y });
-    if (kind === 'settings') Object.assign(BHW, { tab: BHW.tab || 'slots', q: '', adding: '', expanded: new Set() });
-    invalidate();
-    renderInspector();
-    renderBhWindow(true);
-}
-document.addEventListener('click', e => {
-    const t = e.target.closest?.('[data-bhw-open],[data-bhw-close],[data-bhw-back],[data-bhw-sub]');
-    if (!t || e.target.closest('.bh-item-acts')) return;
-    e.preventDefault();
-    if (t.dataset.bhwClose !== undefined) { bhwHide(); renderInspector(); return; }
-    if (t.dataset.bhwBack !== undefined) { BHW.sub = ''; renderBhWindow(); return; }
-    if (t.dataset.bhwSub) { BHW.sub = t.dataset.bhwSub; renderBhWindow(); return; }
-    const { kind, key } = splitOpen(t.dataset.bhwOpen), n = activeNode();
-    if (!n) return;
-    // "+" on Interactions adds one (like Figma) and opens it.
-    if (kind === 'new-interaction') {
-        let id = '';
-        transaction('Add interaction', () => {
-            let list = normalizeInteractions(n.interactions);
-            if (!list.length && n.isInstance) { const src = chainComponent(n), set = src && parentSetOf(src); list = structuredClone(interactionsForNode(n, src, set).list); }
-            id = `i${Date.now().toString(36)}`;
-            list.push({ id, trigger: 'onClick', actions: [{ type: 'navigate' }] });
-            n.interactions = normalizeInteractions(list);
-            doc.touch(n);
-        });
-        bhwOpen('interaction', id, e.clientY);
-        return;
-    }
-    bhwOpen(kind, key, e.clientY);
-});
-// ----- Behavior settings: tabs, tokens, search
-function bhsEdit(edit) {
-    const n = activeNode();
-    if (!n) return;
-    transaction('Convention', () => { doc.data.convention = editConvention(conventionOf(), edit); doc.touch(n); });
-    renderBhWindow();
-}
-document.addEventListener('click', e => {
-    const win = $('#bh-window');
-    if (!win || !win.contains(e.target) || BHW.kind !== 'settings') return;
-    const t = e.target.closest('[data-bhs-tab],[data-bhs-rm],[data-bhs-add],[data-bhs-more]');
-    if (!t) return;
-    e.preventDefault();
-    if (t.dataset.bhsTab) { Object.assign(BHW, { tab: t.dataset.bhsTab, q: '', adding: '' }); renderBhWindow(); }
-    else if (t.dataset.bhsAdd) { BHW.adding = t.dataset.bhsAdd; renderBhWindow(); }
-    else if (t.dataset.bhsMore) { const id = t.dataset.bhsMore; BHW.expanded.has(id) ? BHW.expanded.delete(id) : BHW.expanded.add(id); renderBhWindow(); }
-    else if (t.dataset.bhsRm) { const [id, word] = t.dataset.bhsRm.split('|'), [group, key] = id.split('.'); bhsEdit({ op: 'remove', group, key, word }); }
-});
-document.addEventListener('input', e => {
-    if (e.target.dataset?.bhsQ === undefined || BHW.kind !== 'settings') return;
-    BHW.q = e.target.value;
-    const rows = $('#bh-window [data-bhs-rows]');
-    if (rows) rows.innerHTML = tokenTableHtml(bhCapContext(activeNode()), BHW);
-});
-document.addEventListener('keydown', e => {
-    const inp = e.target.closest?.('[data-bhs-new]');
-    if (!inp) return;
-    if (e.key === 'Enter') { e.preventDefault(); const [group, key] = inp.dataset.bhsNew.split('.'), word = inp.value; BHW.adding = ''; if (word.trim()) bhsEdit({ op: 'add', group, key, word }); else renderBhWindow(); }
-    else if (e.key === 'Escape') { e.stopPropagation(); BHW.adding = ''; renderBhWindow(); }
-}, true);
-document.addEventListener('keydown', e => {
-    const row = e.target.closest?.('.bh-item[data-bhw-open]');
-    if (row && (e.key === 'Enter' || e.key === ' ') && e.target === row) { e.preventDefault(); row.click(); }
-});
-/** Tulis nilai perilaku ke node mengikuti path bertitik (`state.hover.fill.variableId`). */
-function bhWrite(n, path, value) {
-    // The file's Convention is not a layer property.
-    if (path.startsWith('convention.')) {
-        const conv = conventionOf();
-        setPath(conv, path.slice('convention.'.length), value ?? '');
-        doc.data.convention = cleanConvention(conv);
-        return;
-    }
-    // Capabilities kept on the component (behaviors) or what an instance changes (behaviorOverrides).
-    if (path.startsWith('behaviors.') || path.startsWith('behaviorOverrides.')) {
-        const cfg = { behaviors: structuredClone(n.behaviors || []), behaviorOverrides: structuredClone(n.behaviorOverrides || {}) };
-        setPath(cfg, path, value);
-        const list = normalizeBehaviors(cfg.behaviors), ov = normalizeOverrides(cfg.behaviorOverrides);
-        if (list.length) n.behaviors = list; else delete n.behaviors;
-        if (Object.keys(ov).length) n.behaviorOverrides = ov; else delete n.behaviorOverrides;
-        return;
-    }
-    if (path.startsWith('frame.')) {
-        n.frameRole = value || 'page';
-        return;
-    }
-    if (path.startsWith('repeat.')) {
-        const cfg = { repeat: structuredClone(n.repeat || {}) };
-        setPath(cfg, path, value);
-        const r = cfg.repeat;
-        // Changing the List drops the old field bindings: another List has other fields.
-        if (path === 'repeat.variableId') r.bind = undefined;
-        for (const [lid, b] of Object.entries(r.bind || {})) {
-            for (const k of Object.keys(b)) if (!b[k]) delete b[k];
-            if (!Object.keys(b).length) delete r.bind[lid];
-        }
-        if (r.bind && !Object.keys(r.bind).length) delete r.bind;
-        if (!r.variableId) delete n.repeat; else n.repeat = { variableId: r.variableId, ...(r.bind ? { bind: r.bind } : {}) };
-        return;
-    }
-    if (path.startsWith('stateBind.')) {
-        const cfg = { stateBind: structuredClone(n.stateBind || {}) };
-        setPath(cfg, path, value);
-        const sb = cfg.stateBind, prune = o => { for (const k of Object.keys(o || {})) if (!o[k]) delete o[k]; return o && Object.keys(o).length ? o : undefined; };
-        const self = prune(sb.self), lays = {};
-        for (const [id, b] of Object.entries(sb.layers || {})) { const p = prune(b); if (p) lays[id] = p; }
-        if (!self && !Object.keys(lays).length) delete n.stateBind;
-        else n.stateBind = { ...(self ? { self } : {}), ...(Object.keys(lays).length ? { layers: lays } : {}) };
-        return;
-    }
-    if (path.startsWith('scroll.')) {
-        const s = normalizeScroll({ overflow: path === 'scroll.overflow' ? value : n.overflow, scroll: path === 'scroll.position' ? value : n.scroll });
-        if (s.overflow) n.overflow = s.overflow; else delete n.overflow;
-        if (s.scroll) n.scroll = s.scroll; else delete n.scroll;
-        return;
-    }
-    const cfg = { state: n.stateMapping || {}, interactions: n.interactions || [], input: n.inputBehavior || {} };
-    setPath(cfg, path, value);
-    // The Required box of Has validation is one rule now; an older file's own flag must not keep it on.
-    if (path === 'input.validation.rules.required') setPath(cfg, 'input.validation.required', false);
-    if (path.startsWith('state.') || n.stateMapping) n.stateMapping = normalizeStateMapping(cfg.state);
-    if (path.startsWith('interactions.') || n.interactions) n.interactions = normalizeInteractions(cfg.interactions);
-    if (path.startsWith('input.') || n.inputBehavior) n.inputBehavior = normalizeInputBehavior(cfg.input);
-}
-/**
- * Pilih sebuah collection. Variable / nilai / mode lama dibuang supaya tidak mencampur dua sumber; untuk
- * action Set variable, mode pertama langsung dipakai agar action-nya sudah jalan tanpa memilih mode lagi.
- */
-function bhWriteCollection(n, path, id) {
-    bhWrite(n, path, id || undefined);
-    if (!id) return;
-    const parent = path.split('.').slice(0, -1).join('.');
-    bhWrite(n, `${parent}.variableId`, undefined);
-    bhWrite(n, `${parent}.value`, undefined);
-    bhWrite(n, `${parent}.modeId`, undefined);
-    if (path.startsWith('interactions.')) {
-        const first = varColl(id)?.modes?.[0]?.id;
-        if (first) bhWrite(n, `${parent}.modeId`, first);
-    }
-}
-/** Sambungkan collection state: mode awal = mode "default" kalau ada. */
-function bhConnectCollection(n, id) {
-    const coll = varColl(id);
-    if (!coll) return;
-    const mode = coll.modes.find(m => /default/i.test(m.name)) || coll.modes[0];
-    if (!mode) return;
-    n.varModes = { ...(n.varModes || {}), [coll.id]: mode.id };
-}
-/**
- * A Show feedback copy on the canvas follows its Position and Offset: when either changes, the copy is removed and placed again
- * from the new values (the placement is only made when the action's component is picked, so a change would not move it).
- */
-function replaceFeedbackCopy(n, path) {
-    const base = path.replace(/.(position|offset|anchorFrameId)$/, '');
-    if (base === path) return;
-    const act = getPath(n, base);
-    if (!act || act.type !== 'show-feedback' || !act.overlayInstanceId) return;
-    const copy = doc.get(act.overlayInstanceId);
-    if (copy) { state.selection.delete(copy.id); doc.remove([copy.id]); }
-    bhWrite(n, `${base}.overlayInstanceId`, undefined);
-    const pid = ensureOverlayPlaced(n.id, getPath(n, base), { keepSelection: true });
-    if (pid) bhWrite(n, `${base}.overlayInstanceId`, pid);
-    doc.touch(n);
-    renderTargetPanel();
-    invalidate();
-}
-/** The top-level frames of the page, for Relative to: the frames a framed action can sit against. */
-function pageFramesOf() {
-    return doc.nodes.filter(n => !n.parentId && n.type === 'frame' && !n.isOverlay && !n.softDeleted && !n.component && !n.componentSet).map(n => ({ id: n.id, name: n.name || 'Frame' }));
-}
-function bhSet(n, t) {
-    const path = t.dataset.bhPath, kind = t.dataset.bhKind || 'plain';
-    let value = t.type === 'checkbox' ? t.checked : (kind === 'bool' ? t.value === 'true' : t.value);
-    if (t.dataset.bhInvert) value = !value;
-    if (kind === 'options') { bhWrite(n, path, parseOptions(value)); return; }
-    if (kind === 'formexclude') { bhWrite(n, path, String(value).split(',').map(x => x.trim()).filter(Boolean)); return; }
-    // Search in: the columns the search looks at. They live in the Has rows config and in the three derived values that use them.
-    if (kind === 'searchcols') {
-        const cols = String(value).split(',').map(x => x.trim()).filter(Boolean), base = path.replace(/\.config\.searchColumns$/, ''), b = getPath({ behaviors: n.behaviors || [] }, base);
-        bhWrite(n, path, cols);
-        const vars = b?.config?.vars || {}, st = stateStore();
-        for (const id of [vars.visible, vars.total, vars.pages]) { const d = st.derived.find(x => x.id === id); if (d?.expr?.op === 'collection') d.expr.columns = cols; }
-        return;
-    }
-    if (kind === 'prop') {
-        // Ganti properti yang dipetakan (nama kuncinya berubah, nilainya ikut).
-        const state = path.split('.')[1], oldProp = t.dataset.bhProp || '', newProp = value;
-        const map = normalizeStateMapping(n.stateMapping);
-        const row = map[state] || {};
-        const val = oldProp ? row[oldProp] : undefined;
-        if (oldProp) delete row[oldProp];
-        if (newProp) row[newProp] = val || {};
-        map[state] = row;
-        n.stateMapping = map;
-        return;
-    }
-    const parent = path.split('.').slice(0, -1).join('.');
-    if (kind === 'offset') {
-        const act = getPath(n, path.replace(/\.offset$/, ''));
-        const base = act ? offsetXY(act.offset, act.position, act.type) : { x: 0, y: 0 };
-        base[t.dataset.bhAxis === 'y' ? 'y' : 'x'] = value === '' ? 0 : Number(value) || 0;
-        bhWrite(n, path, !base.x && !base.y ? undefined : base);
-        return;
-    }
-    if (kind === 'collection') {
-        bhWriteCollection(n, path, value);
-        return;
-    }
-    if (kind === 'variant') {
-        // Change variant: one select per variant property; "Keep current" drops that property from the pick.
-        const am = path.match(/^interactions\.(\d+)\.actions\.(\d+)\.variants$/);
-        const act = am && n.interactions?.[+am[1]]?.actions?.[+am[2]], prop = t.dataset.bhVprop;
-        if (!act || !prop) return;
-        const picks = { ...(act.variants || {}) };
-        if (value) picks[prop] = value; else delete picks[prop];
-        bhWrite(n, path, Object.keys(picks).length ? picks : undefined);
-        return;
-    }
-    if (kind === 'variable') {
-        bhWrite(n, path, value || undefined);
-        if (value) bhWrite(n, `${parent}.value`, undefined);
-        return;
-    }
-    if (kind === 'manual') {
-        bhWrite(n, path, value === '' ? undefined : value);
-        bhWrite(n, `${parent}.collectionId`, undefined);
-        bhWrite(n, `${parent}.variableId`, undefined);
-        return;
-    }
-    bhWrite(n, path, value === '' ? undefined : value);
-}
-/**
- * Creates the State a table works with (search, sort, page, pageSize, selectedIds, visibleRows, total, pageCount, selectedCount) for the
- * Has rows behavior of `n` and keeps their ids in its config. The first List with columns is the source unless one is set.
- */
-function bhTableSetup(n) {
-    const list = [...stateStore().variables].find(v => v.id === (n.behaviors || []).find(b => b.kind === 'has-rows')?.config?.source) || stateStore().variables.find(v => v.type === 'list' && (v.itemType || 'object') === 'object');
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-rows');
-    if (!list || i < 0) return false;
-    const b = n.behaviors[i], plan = planTableState(stateStore(), list, uid, { pageSize: b.config?.pageSize || 10, searchColumns: b.config?.searchColumns || [] });
-    const st = stateStore();
-    st.variables.push(...plan.variables);
-    st.derived.push(...plan.derived);
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k) => (k === i ? { ...x, config: { ...x.config, source: list.id, vars: plan.ids } } : x)));
-    return true;
-}
-/** Has tabs: a State that holds the active tab; its options are the names of the layers in the tab bar. */
-function bhTabsSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-tabs');
-    if (i < 0) return false;
-    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
-    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
-    const names = [...new Set(doc.children(n.behaviors[i].slots?.tab).map(c => c.name.trim()).filter(Boolean))];
-    const st = stateStore();
-    let name = 'activeTab', k = 2;
-    while (st.variables.some(v => v.name === name)) name = 'activeTab' + k++;
-    const id = uid();
-    st.variables.push({ id, name, type: 'option', scope: 'page', options: names, initial: names[0] || '' });
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
-    return true;
-}
-/** Has pager: three number States (page, page size, total) for the pager to read; the total starts at 95 to try it out. */
-function bhPagerSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-pager');
-    if (i < 0) return false;
-    // Already set up: the three States exist, so a second click changes nothing (no duplicate States).
-    if (['page', 'pageSize', 'total'].every(k => n.behaviors[i].config?.vars?.[k] && stateStore().variables.some(v => v.id === n.behaviors[i].config.vars[k]))) return false;
-    const st = stateStore(), size = n.behaviors[i].config?.pageSize || 10, vars = {};
-    for (const [key, label, initial] of [['page', 'pagerPage', 1], ['pageSize', 'pagerPageSize', size], ['total', 'pagerTotal', 95]]) {
-        let name = label, k = 2;
-        while (st.variables.some(v => v.name === name)) name = label + k++;
-        vars[key] = uid();
-        st.variables.push({ id: vars[key], name, type: 'number', scope: 'page', initial });
-    }
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, vars } } : x)));
-    return true;
-}
-/** Has steps: a number State for the current step (0 = the first); its own, when the steps have none. */
-function bhStepsSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-steps');
-    if (i < 0) return false;
-    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
-    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
-    const st = stateStore();
-    let name = 'currentStep', k = 2;
-    while (st.variables.some(v => v.name === name)) name = 'currentStep' + k++;
-    const id = uid();
-    st.variables.push({ id, name, type: 'number', scope: 'page', initial: 0 });
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
-    return true;
-}
-/** Has collapse: a string State that holds the open section (one name, or several separated by commas). Starts with nothing open. */
-function bhCollapseSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-collapse');
-    if (i < 0) return false;
-    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
-    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
-    const st = stateStore();
-    let name = 'openSection', k = 2;
-    while (st.variables.some(v => v.name === name)) name = 'openSection' + k++;
-    const id = uid();
-    st.variables.push({ id, name, type: 'string', scope: 'page', initial: '' });
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
-    return true;
-}
-/** Has menu: a string State that holds the selected item (its name). Starts with nothing selected. */
-function bhMenuSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-menu');
-    if (i < 0) return false;
-    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
-    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
-    const st = stateStore();
-    let name = 'selectedKey', k = 2;
-    while (st.variables.some(v => v.name === name)) name = 'selectedKey' + k++;
-    const id = uid();
-    st.variables.push({ id, name, type: 'string', scope: 'page', initial: '' });
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
-    return true;
-}
-/** Has carousel: a number State for the current slide (0 = the first); its own, when the carousel has none. */
-function bhCarouselSetup(n) {
-    const i = (n.behaviors || []).findIndex(b => b.kind === 'has-carousel');
-    if (i < 0) return false;
-    // Already set up: the State exists, so a second click changes nothing (no duplicate State).
-    if (n.behaviors[i].config?.state && stateStore().variables.some(v => v.id === n.behaviors[i].config.state)) return false;
-    const st = stateStore();
-    let name = 'currentSlide', k = 2;
-    while (st.variables.some(v => v.name === name)) name = 'currentSlide' + k++;
-    const id = uid();
-    st.variables.push({ id, name, type: 'number', scope: 'page', initial: 0 });
-    const clean = cleanState(st);
-    st.variables = clean.variables;
-    st.derived = clean.derived;
-    n.behaviors = normalizeBehaviors(n.behaviors.map((x, k2) => (k2 === i ? { ...x, config: { ...x.config, state: id } } : x)));
-    return true;
-}
-/** After adding something: the window to open on it. */
-function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
-    if (input) return { kind: 'cap', key: input };
-    const b = behaviorsOf(n, true).find(x => !beforeBehaviors.has(x.id));
-    if (b) return { kind: 'cap', key: b.id };
-    const it = normalizeInteractions(n.interactions).find(i => !beforeInteractions.includes(i.id));
-    return it ? { kind: 'interaction', key: it.id } : null;
-}
-function bhAction(n, t) {
-    const act = t.dataset.bhAct;
-    if (act === 'toggle-add') { BH_UI.addOpen = !BH_UI.addOpen; return; }
-    if (act === 'toggle-adv') { BH_UI.advOpen = !BH_UI.advOpen; return; }
-    if (act === 'quick') {
-        const q = t.dataset.bhQuick;
-        if (q === 'type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'can-type' }; return; }
-        if (q === 'validate') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'has-validation' }; return; }
-        if (q === 'list') {
-            // A List State with three sample rows, and this frame repeating its first child for each of them.
-            const tpl = doc.children(n.id)[0];
-            if (!tpl) return;
-            const texts = [], walk = l => { if (l.type === 'text') texts.push(l); for (const c of doc.children(l.id)) walk(c); };
-            walk(tpl);
-            const schema = (texts.length ? texts.slice(0, 4) : [{ name: 'label' }]).map((t, i) => ({ key: i === 0 ? 'title' : `field${i + 1}`, type: 'string', label: t.name }));
-            const initial = [1, 2, 3].map(r => Object.fromEntries(schema.map((f, i) => [f.key, `${texts[i]?.text || f.label || 'Item'} ${r}`])));
-            const st = stateStore();
-            let name = `${n.name || 'Items'} list`, k = 2;
-            while (st.variables.some(v => v.name === name)) name = `${n.name || 'Items'} list ${k++}`;
-            const id = uid();
-            st.variables.push({ id, name, type: 'list', itemType: 'object', scope: 'page', schema, initial });
-            const clean = cleanState(st);
-            st.variables = clean.variables;
-            n.repeat = { variableId: id, bind: Object.fromEntries(texts.slice(0, 4).map((t, i) => [t.id, { text: schema[i].key }])) };
-            BHW.next = { kind: 'repeat', key: '' };
-            return;
-        }
-        const type = { navigate: 'navigate', overlay: 'open-overlay', message: 'show-feedback' }[q];
-        if (!type) return;
-        let list = normalizeInteractions(n.interactions);
-        if (!list.length && n.isInstance) { const src = chainComponent(n), set = src && parentSetOf(src); list = structuredClone(interactionsForNode(n, src, set).list); }
-        const id = `i${Date.now().toString(36)}`;
-        list.push({ id, trigger: 'onClick', actions: [{ type }] });
-        n.interactions = normalizeInteractions(list);
-        BHW.next = { kind: 'interaction', key: id };
-        return;
-    }
-    if (act === 'pick-slot') { BH_UI.pick = BH_UI.pick?.path === t.dataset.bhPath ? null : { nodeId: n.id, path: t.dataset.bhPath }; return; }
-    if (act === 'go-main') { const src = chainComponent(n); if (src) goToMainComponent((parentSetOf(src) || src).id, n.id); return; }
-    if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { const before = new Set(behaviorsOf(n, true).map(b => b.id)), had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, plan); if (plan.behaviors.some(x => x.kind === 'has-rows') && !n.isInstance) bhTableSetup(n); BHW.next = bhFirstNew(n, before, had, plan.input?.typeable ? 'can-type' : plan.input?.validation ? 'has-validation' : ''); } return; }
-    if (act === 'add-cap') {
-        const kind = t.dataset.bhKind;
-        if (kind === 'can-type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'can-type' }; }
-        else if (kind === 'has-validation') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'has-validation' }; }
-        else if (kind === 'on-click') { const had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, { behaviors: [], input: null, interactions: [{ trigger: 'onClick', actions: [{ type: 'navigate' }] }] }); BHW.next = bhFirstNew(n, new Set(behaviorsOf(n, true).map(b => b.id)), had, ''); }
-        else { bhApplyPlan(n, { behaviors: [{ kind, config: normalizeConfig(kind, {}) }], input: null, interactions: [] }); const b = behaviorsOf(n, true).find(x => x.kind === kind); if (b) BHW.next = { kind: 'cap', key: b.id }; }
-        return;
-    }
-    if (act === 'del-cap') {
-        const kind = t.dataset.bhKind;
-        if (kind === 'can-type') { n.typeable = false; const ib = { ...(n.inputBehavior || {}) }; ib.typeable = {}; n.inputBehavior = normalizeInputBehavior(ib); }
-        else if (kind === 'has-validation') { const ib = { ...(n.inputBehavior || {}) }; ib.validation = {}; n.inputBehavior = normalizeInputBehavior(ib); }
-        else { const list = [...(n.behaviors || [])]; list.splice(Number(t.dataset.bhIndex), 1); if (list.length) n.behaviors = normalizeBehaviors(list); else delete n.behaviors; }
-        return;
-    }
-    if (act === 'move-cap') {
-        const list = [...(n.behaviors || [])], from = Number(t.dataset.bhIndex), to = from + Number(t.dataset.bhDir);
-        if (to < 0 || to >= list.length) return;
-        [list[from], list[to]] = [list[to], list[from]];
-        n.behaviors = list;
-        return;
-    }
-    if (act === 'accept-slot' || act === 'accept-all') {
-        const all = bhCapContext(n).suggestions, only = t.dataset.bhOnly, pick = act === 'accept-all' ? all.filter(g => !only || g.section === only) : [all[Number(t.dataset.bhIndex)]].filter(Boolean);
-        for (const g of pick) bhWrite(n, g.path, g.layerId);
-        return;
-    }
-    if (act === 'type-map' || act === 'type-map-accept') {
-        const comp = componentById(t.dataset.typeComp), info = comp ? feedbackTypeInfo(comp.id) : null;
-        if (!info || !info.hasBehavior) return;
-        const base = `behaviors.${info.index}.config.types`;
-        transaction('Behavior', () => {
-            if (act === 'type-map-accept') {
-                const sug = suggestLevelMap(info.values);
-                bhWrite(comp, base, Object.keys(sug).length ? { ...info.explicit, ...sug } : info.explicit);
-            }
-            else bhWrite(comp, `${base}.${t.dataset.typeLevel}`, t.value || undefined);
-            doc.touch(comp);
-        });
-        return;
-    }
-    if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }
-    if (act === 'remove-unused-overlays') { const ids = bhUnusedOverlays(n).map(o => o.id); for (const id of ids) state.selection.delete(id); if (ids.length) doc.remove(ids); return; }
-    if (act === 'table-setup') { bhTableSetup(n); return; }
-    if (act === 'tabs-setup') { bhTabsSetup(n); return; }
-    if (act === 'pager-setup') { bhPagerSetup(n); return; }
-    if (act === 'steps-setup') { bhStepsSetup(n); return; }
-    if (act === 'collapse-setup') { bhCollapseSetup(n); return; }
-    if (act === 'menu-setup') { bhMenuSetup(n); return; }
-    if (act === 'carousel-setup') { bhCarouselSetup(n); return; }
-    if (act === 'clear-repeat') { delete n.repeat; return; }
-    if (act === 'clear-bind') { delete n.stateBind; return; }
-    const listAt = path => structuredClone(getPath(bhCfg(n), path) || []);
-    if (act === 'play-feedback') {
-        const detail = JSON.parse(t.dataset.feedbackJson || '{}');
-        let answered = false;
-        const onAck = e => { if (e.data?.type === 'ack') answered = true; };
-        feedbackPlay?.addEventListener('message', onAck);
-        feedbackPlay?.postMessage({ type: 'play', detail });
-        setTimeout(() => { feedbackPlay?.removeEventListener('message', onAck); if (!answered) toast('Open Preview to play this feedback.'); }, 400);
-        return;
-    }
-    if (act === 'add-action-at') {
-        if (!t.value) return;
-        bhWrite(n, t.dataset.bhList, [...listAt(t.dataset.bhList), { type: t.value }]);
-        return;
-    }
-    if (act === 'del-action-at') {
-        const list = listAt(t.dataset.bhList); list.splice(Number(t.dataset.bhIndex), 1);
-        bhWrite(n, t.dataset.bhList, list);
-        return;
-    }
-    if (act === 'add-cond') { bhWrite(n, t.dataset.bhPath, defaultExpr('compare', bhFirstRef())); return; }
-    if (act === 'add-where') { bhWrite(n, t.dataset.bhPath, { field: t.dataset.bhFirst || '', cmp: 'eq', value: { op: 'value', value: '' } }); return; }
-    if (act === 'del-cond' || act === 'del-where') { bhWrite(n, t.dataset.bhPath, undefined); return; }
-    if (act === 'add-rule' || act === 'del-rule' || act === 'move-rule' || act === 'add-otherwise' || act === 'del-otherwise') {
-        const i = Number(t.dataset.bhIndex), base = `interactions.${i}.rules`, it = bhCfg(n).interactions[i];
-        if (!it) return;
-        const rules = structuredClone(it.rules || { items: [] });
-        if (act === 'add-rule') {
-            const id = `r${Date.now().toString(36)}${rules.items.length}`;
-            rules.items.push({ id, name: `Rule ${rules.items.length + 1}`, enabled: true, actions: [{ type: 'show-feedback' }] });
-            BH_SECTIONS.add(`rules:${it.id}`); BH_SECTIONS.add(`rule:${it.id}:${id}`);
-        }
-        else if (act === 'del-rule') rules.items.splice(Number(t.dataset.bhRule), 1);
-        else if (act === 'move-rule') {
-            const from = Number(t.dataset.bhRule), to = from + Number(t.dataset.bhDir);
-            if (to < 0 || to >= rules.items.length) return;
-            [rules.items[from], rules.items[to]] = [rules.items[to], rules.items[from]];
-        }
-        else if (act === 'add-otherwise') { rules.otherwise = { actions: [{ type: 'show-feedback' }] }; BH_SECTIONS.add(`rules:${it.id}`); BH_SECTIONS.add(`rule:${it.id}:otherwise`); }
-        else delete rules.otherwise;
-        bhWrite(n, base, rules.items.length || rules.otherwise ? rules : undefined);
-        return;
-    }
-    if (act === 'add-interaction') {
-        if (!t.value) return;
-        // An instance that only inherits starts from a copy, so adding one action keeps the component's.
-        let list = normalizeInteractions(n.interactions);
-        if (!list.length && n.isInstance) {
-            const src = chainComponent(n), set = src && parentSetOf(src);
-            list = structuredClone(interactionsForNode(n, src, set).list);
-        }
-        list.push({ id: `i${Date.now().toString(36)}`, trigger: 'onClick', actions: [{ type: t.value }] });
-        n.interactions = list;
-        return;
-    }
-    if (act === 'override-interactions') {
-        const src = chainComponent(n), set = src && parentSetOf(src);
-        const inherited = interactionsForNode(n, src, set).list;
-        if (inherited.length)
-            n.interactions = structuredClone(inherited);
-        return;
-    }
-    if (act === 'add-action') {
-        if (!t.value) return;
-        const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
-        if (!it) return;
-        it.actions.push({ type: t.value });
-        n.interactions = normalizeInteractions(list);
-        return;
-    }
-    if (act === 'del-action') {
-        const list = normalizeInteractions(n.interactions), it = list[Number(t.dataset.bhIndex)];
-        if (!it || it.actions.length < 2) return;
-        it.actions.splice(Number(t.dataset.bhAction), 1);
-        n.interactions = list;
-        return;
-    }
-    if (act === 'del-interaction') {
-        const i = Number(t.dataset.bhIndex);
-        const list = normalizeInteractions(n.interactions);
-        n.interactions = list.filter((_, k) => k !== i);
-        return;
-    }
-    if (act === 'add-state') {
-        const input = $('#inspector [data-bh-act="new-state"]');
-        const name = bhSlug(input?.value || '');
-        if (!name) return;
-        const map = normalizeStateMapping(n.stateMapping);
-        map[name] = map[name] || {};
-        n.stateMapping = map;
-        if (input) input.value = '';
-        return;
-    }
-    if (act === 'del-state') {
-        const map = normalizeStateMapping(n.stateMapping);
-        delete map[t.dataset.bhState];
-        n.stateMapping = map;
-        return;
-    }
-    if (act === 'remove-prop') {
-        const map = normalizeStateMapping(n.stateMapping);
-        const row = map[t.dataset.bhState];
-        if (row) {
-            delete row[t.dataset.bhProp];
-            if (!Object.keys(row).length) delete map[t.dataset.bhState];
-        }
-        n.stateMapping = map;
-        return;
-    }
-    if (act === 'add-prop') {
-        if (!t.value) return;
-        const map = normalizeStateMapping(n.stateMapping);
-        const row = map[t.dataset.bhState] || (map[t.dataset.bhState] = {});
-        row[t.value] = row[t.value] || {};
-        n.stateMapping = map;
-        return;
-    }
-    if (act === 'state-mode') {
-        const collId = t.dataset.bhColl, state = t.dataset.bhState;
-        if (!collId || !state) return;
-        const all = { ...(n.stateModes || {}) }, row = { ...(all[collId] || {}) };
-        if (t.value) row[state] = t.value;
-        else delete row[state];
-        if (Object.keys(row).length) all[collId] = row;
-        else delete all[collId];
-        if (Object.keys(all).length) n.stateModes = all;
-        else delete n.stateModes;
-        return;
-    }
-    if (act === 'connect-collection') {
-        bhConnectCollection(n, t.value);
-        return;
-    }
-    if (act === 'disconnect-collection') {
-        const collId = t.dataset.bhColl;
-        if (!collId || !n.varModes) return;
-        const modes = { ...n.varModes };
-        delete modes[collId];
-        if (Object.keys(modes).length) n.varModes = modes;
-        else delete n.varModes;
-        if (n.stateModes?.[collId]) {
-            const picks = { ...n.stateModes };
-            delete picks[collId];
-            if (Object.keys(picks).length) n.stateModes = picks;
-            else delete n.stateModes;
-        }
-        return;
-    }
-}
-function bhOnChange(e) {
-    const n = activeNode(), t = e.target;
-    if (!n) return;
-    // "Edit convention…" at the end of a slot's list opens the file's Behavior settings instead of mapping a layer.
-    if (t.value === '__convention__') { bhwOpen('settings', '', BHW.y); return; }
-    // A name of the file's Convention was edited ("slots.value" / "states.loading": comma separated words).
-    if (t.dataset.conv) {
-        const [group, key] = t.dataset.conv.split('.');
-        transaction('Convention', () => { const conv = conventionOf(); conv[group][key] = t.value.split(',').map(x => x.trim()).filter(Boolean); doc.data.convention = cleanConvention(conv); doc.touch(n); });
-        return;
-    }
-    // A condition (a sentence of dropdowns) was edited.
-    const tgt = exprTarget(t.dataset);
-    if (tgt) { transaction('Behavior', () => { bhEditExpr(n, tgt, t.value); doc.touch(n); }); return; }
-    const isBh = t.dataset.bhPath || (t.dataset.bhAct && t.tagName === 'SELECT');
-    if (!(t.id === 'proto-target' || t.dataset.proto || isBh)) return;
-    transaction('Behavior', () => {
-        if (t.id === 'proto-target')
-            n.prototypeTarget = t.value || undefined;
-        else if (t.dataset.proto)
-            n[t.dataset.proto] = t.type === 'checkbox' ? t.checked : t.value;
-        else if (t.dataset.bhAct)
-            bhAction(n, t);
-        else if (t.dataset.bhPath) {
-            bhSet(n, t);
-            replaceFeedbackCopy(n, t.dataset.bhPath);
-        }
-        doc.touch(n);
-    });
-}
-$('#inspector').addEventListener('change', bhOnChange);
-document.addEventListener('click', e => {
-    const b = e.target.closest?.('[data-ex-act]');
-    if (!b || !($('#inspector').contains(b) || $('#bh-window')?.contains(b))) return;
-    const n = activeNode();
-    if (!n) return;
-    const at = b.dataset.exAt, i = at.indexOf('|'), owner = at.slice(0, i), path = at.slice(i + 1);
-    if (owner.startsWith('d:')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    transaction('Behavior', () => { bhWrite(n, owner, editArgs(getPath(bhCfg(n), owner), path, b.dataset.exAct, Number(b.dataset.exI), bhFirstRef())); doc.touch(n); });
-});
-document.addEventListener('click', e => {
-    const t = e.target.closest?.('[data-bh-act]');
-    if (!t || t.tagName !== 'BUTTON') return;
-    const n = activeNode();
-    if (!n) return;
-    e.preventDefault();
-    e.stopPropagation();
-    BHW.next = null;
-    transaction('Behavior', () => { bhAction(n, t); doc.touch(n); });
-    if (BHW.next) { const nx = BHW.next; BHW.next = null; bhwOpen(nx.kind, nx.key, BHW.y); }
-});
-
 function renderPlugins() {
     const list = loadPlugins();
     $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
@@ -21488,8 +18948,8 @@ const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: (
             removeAutoLayout();
         else
             addAutoLayout();
-    }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
-const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['Remove auto layout (Alt+Shift+A)', 'removeAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Unframe selection', 'unframe'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Preview app', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+    }, stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
+const commands = [['Open variables', 'variables'], ['Add auto layout (Shift+A)', 'addAutoLayout'], ['Remove auto layout (Alt+Shift+A)', 'removeAutoLayout'], ['New document', 'newFile'], ['Open .midas document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Unframe selection', 'unframe'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
 function commandPalette() {
     modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
     let selectedIndex = 0, filtered = [];
@@ -21511,35 +18971,6 @@ function commandPalette() {
     };
     render();
 }
-async function present() { openPreviewTab(); }
-async function showPreview() {
-    const n = state.previewFrames[state.previewIndex];
-    if (!n)
-        return;
-    $('#presentation-title').textContent = n.name;
-    $('#presentation-count').textContent = `${state.previewIndex + 1} / ${state.previewFrames.length}`;
-    try {
-        const canvas = await renderer.exportCanvas([n.id], Math.min(2, Math.max(1, 1000 / Math.max(n.w, n.h))));
-        const target = $('#presentation-canvas');
-        target.width = canvas.width;
-        target.height = canvas.height;
-        target.getContext('2d').drawImage(canvas, 0, 0);
-        target.style.aspectRatio = `${canvas.width}/${canvas.height}`;
-        const stage = $('#presentation-stage'), scale = Math.min((stage.clientWidth - 72) / canvas.width, (stage.clientHeight - 72) / canvas.height, 1);
-        target.style.width = canvas.width * scale + 'px';
-        target.style.height = canvas.height * scale + 'px';
-    }
-    catch (e) {
-        toast(e.message);
-    }
-}
-function stepPreview(delta) {
-    if (!state.previewFrames.length)
-        return;
-    state.previewIndex = (state.previewIndex + delta + state.previewFrames.length) % state.previewFrames.length;
-    showPreview();
-}
-function closePreview() { $('#presentation').classList.add('hidden'); overlay.focus({ preventScroll: true }); }
 // Event delegation keeps the chrome inexpensive even with a large scene tree.
 document.addEventListener('click', e => {
     const action = e.target.closest('[data-action]');
@@ -22059,8 +19490,6 @@ $('#layer-tree').addEventListener('drop', e => {
         const target = d.target, parentId = d.pos === 'inside' ? target.id : target.parentId, parentMatrix = parentId ? doc.world(parentId).matrix : identity();
         let anchor = target;
         for (const source of sources) {
-            const _np = d.pos === 'inside' ? d.target : (parentId ? doc.get(parentId) : null);
-            if (!canReparentOverlay(source, _np, id => doc.get(id))) continue;
             const world = doc.world(source.id).matrix;
             source.parentId = parentId;
             setFromMatrix(source, multiply(inverse(parentMatrix), world));
@@ -22144,7 +19573,6 @@ $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
 $('#help').onclick = help;
 $('#share').onclick = openExport;
-$('#present').onclick = () => openPreviewTab();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#asset-picker-button').onclick = () => AP.el ? closeAssetPicker() : openAssetPicker();
 Object.assign(actions, {
@@ -22593,28 +20021,26 @@ overlay.addEventListener('dblclick', e => {
         renameOnCanvas(labelHit);
         return;
     }
-    const w0 = eventWorld(e);
-    let hit = hitTest(w0, { deep: true });
-    // In auto layout (and inside components) a double-click goes one level deeper, toward the cursor, instead of jumping to the leaf.
-    if (hit && state.tool === 'select') {
-        const chain = [hit, ...doc.ancestors(hit)];
-        if (chain.some(a => isAutoLayout(a) || a.component || a.isInstance)) {
-            const only = state.selection.size === 1 ? [...state.selection][0] : null, i = only ? chain.findIndex(a => a.id === only) : -1;
-            if (i > 0)
-                hit = chain[i - 1];
-            else if (i < 0) {
-                const base = hitTest(w0), j = base ? chain.findIndex(a => a.id === base.id) : -1;
-                hit = j > 0 ? chain[j - 1] : hit;
-            }
-        }
-    }
     if (state.tool === 'pen') {
         finishPen(false);
         return;
     }
+    const w0 = eventWorld(e);
+    // Ctrl / Cmd + double-click picks the text under the cursor, however deep, and edits it.
+    const under = hitTest(w0, { deep: true });
+    if ((e.ctrlKey || e.metaKey) && state.tool === 'select' && under?.type === 'text') {
+        select([under.id]);
+        startText(under, true);
+        return;
+    }
+    // Where nothing drills further, a text or vector layer under the cursor keeps its own editing.
+    const ownEdit = under && (under.type === 'text' || under.type === 'path') ? under : null;
+    const hit = (state.tool === 'select' ? selectTargetAt(w0, { drill: true }) : hitTest(w0, { deep: true })) || ownEdit;
+    // Text in an auto layout frame is only selected by a double-click; once it is selected, a double-click edits it.
     if (hit?.type === 'text') {
         select([hit.id]);
-        startText(hit, true);
+        if (!isAutoLayout(doc.get(hit.parentId)) || state.pressedSelection === hit.id)
+            startText(hit, true);
     }
     else if (hit?.type === 'path') {
         select([hit.id]);
@@ -22631,17 +20057,18 @@ overlay.addEventListener('dblclick', e => {
 overlay.addEventListener('click', e => {
     if (e.detail < 3 || state.tool !== 'select' || state.selection.size !== 1)
         return;
-    const w0 = eventWorld(e), deepHit = hitTest(w0, { deep: true });
-    if (!deepHit)
+    const w = eventWorld(e), target = selectTargetAt(w, { drill: true });
+    // The selected text under the cursor goes into editing (it has nothing to drill into).
+    if (!target) {
+        const sel = doc.get([...state.selection][0]);
+        if (sel?.type === 'text' && state.editing !== sel.id && hitTest(w, { deep: true })?.id === sel.id)
+            startText(sel, true);
         return;
-    const chain = [deepHit, ...doc.ancestors(deepHit)], i = chain.findIndex(a => a.id === [...state.selection][0]);
-    if (i > 0) {
-        const target = chain[i - 1];
-        select([target.id]);
-        // Reaching a text layer goes straight into editing with everything selected.
-        if (target.type === 'text')
-            startText(target, true);
     }
+    select([target.id]);
+    // Reaching a text layer goes straight into editing with everything selected.
+    if (target.type === 'text')
+        startText(target, true);
 });
 overlay.addEventListener('contextmenu', e => {
     e.preventDefault();
@@ -22945,7 +20372,7 @@ async function pasteFromFigma(html) {
             const n = structuredClone(src);
             n.id = ids.get(src.id);
             n.parentId = src.parentId && ids.has(src.parentId) ? ids.get(src.parentId) : null;
-            for (const k of ['sourceId', 'swapOf', 'prototypeTarget'])
+            for (const k of ['sourceId', 'swapOf'])
                 if (n[k] && ids.has(n[k]))
                     n[k] = ids.get(n[k]);
             if (!n.parentId) {
@@ -23120,34 +20547,10 @@ $('#text-editor').addEventListener('blur', () => setTimeout(() => {
         });
     }
 })();
-$('#close-presentation').onclick = closePreview;
-$('#prev-frame').onclick = () => stepPreview(-1);
-$('#next-frame').onclick = () => stepPreview(1);
-$('#presentation-canvas').onclick = e => {
-    const frame = state.previewFrames[state.previewIndex], b = e.target.getBoundingClientRect(), box = doc.world(frame.id).box, w = { x: box.x + (e.clientX - b.left) / b.width * box.w, y: box.y + (e.clientY - b.top) / b.height * box.h };
-    const hit = hitTest(w, { deep: true });
-    const target = hit && [hit, ...doc.ancestors(hit)].find(n => n.prototypeTarget);
-    if (target) {
-        const index = state.previewFrames.findIndex(n => n.id === target.prototypeTarget);
-        if (index >= 0) {
-            state.previewIndex = index;
-            showPreview();
-        }
-    }
-};
 document.addEventListener('keydown', e => {
     if (lib.open) {
         if (e.key === 'Escape' && !isInput(document.activeElement) && lib.index.some(m => m.id === lib.fileId && !m.trashed))
             hideHome();
-        return;
-    }
-    if (!$('#presentation').classList.contains('hidden')) {
-        if (e.key === 'Escape')
-            closePreview();
-        if (e.key === 'ArrowRight')
-            stepPreview(1);
-        if (e.key === 'ArrowLeft')
-            stepPreview(-1);
         return;
     }
     if (!$('#modal-backdrop').classList.contains('hidden')) {
@@ -23401,7 +20804,7 @@ document.addEventListener('keydown', e => {
             transaction('Nudge layers', () => {
                 const d = e.shiftKey ? options.bigNudge : options.nudge;
                 for (const n of selectedRoots()) {
-                    if (n.locked || isOverlayRoot(n))
+                    if (n.locked)
                         continue;
                     n.x += e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0;
                     n.y += e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
@@ -23481,7 +20884,7 @@ window.addEventListener('beforeunload', e => {
         e.returnValue = '';
     }
 });
-const resize = new ResizeObserver(() => { if (state.previewTab) return; const width = area.clientWidth, height = area.clientHeight; renderer.resize(width, height); overlay.width = Math.round(width * renderer.dpr); overlay.height = Math.round(height * renderer.dpr); invalidate(); });
+const resize = new ResizeObserver(() => { const width = area.clientWidth, height = area.clientHeight; renderer.resize(width, height); overlay.width = Math.round(width * renderer.dpr); overlay.height = Math.round(height * renderer.dpr); invalidate(); });
 resize.observe(area);
 // Optional user-supplied fonts. No font binaries are bundled or fetched by this application.
 const fontInput = document.createElement('input');
@@ -23534,20 +20937,6 @@ fontInput.onchange = async () => {
 };
 await boot.step(84, 'Loading fonts');
 await loadStoredFonts();
-const previewOnly = !!(deepLink?.tab && deepLink.used);
-if (previewOnly) {
-    // A preview tab never shows the editor: no renderer / GPU, no canvas fit, no panels. Only the document, its fonts and Preview.
-    state.previewTab = true;
-    await boot.step(95, 'Opening preview');
-    try {
-        await startPreviewTab();
-    }
-    catch (e) {
-        console.error('[boot] preview', e);
-        showStartError('Preview could not start: ' + (e?.message || e));
-    }
-}
-if (!previewOnly) {
 await boot.step(90, 'Starting renderer');
 // The renderer start is guarded: a GPU start that never answers shows an error with Retry instead of a stuck screen.
 await withTimeout(renderer.initialize(), 15000, 'The graphics renderer did not start within 15 s.').catch(e => { console.error('[boot] renderer', e); showStartError(e.message || String(e)); });
@@ -23571,7 +20960,6 @@ if (initial)
     markPagesSaved(); // everything on disk matches what was just loaded
 refreshUI();
 invalidate();
-}
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
@@ -23579,13 +20967,9 @@ window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, re
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
+$('#inspector').addEventListener('change', onBehaviorChange);
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
-if (deepLink?.tab) {
-    if (deepLink.used) { /* the preview tab was already started before the editor's renderer */ }
-    else showPreviewMissing();
-}
-else if (deepLink?.used && deepLink.preview !== null) startPreviewTab();
-else if (deepLink?.used) {
+if (deepLink?.used) {
     lib.open = false;
     const ids = deepLink.nodes.filter(id => doc.get(id));
     if (ids.length) {

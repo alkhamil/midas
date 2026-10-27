@@ -1767,60 +1767,19 @@ kbd {
   padding: 11px
 }
 
-.presentation {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  background: #151518;
-  display: flex;
-  flex-direction: column
-}
 
-.presentation-toolbar {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 23px;
-  border-bottom: 1px solid #ffffff12;
-  color: #eceaf1
-}
 
-.presentation-toolbar>span:first-child {
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -.6px
-}
 
-.presentation-toolbar>span:first-child .muted {
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0;
-  margin-left: 10px
-}
 
-.presentation-toolbar>div {
-  display: flex;
-  align-items: center;
-  gap: 12px
-}
 
-.presentation-stage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 36px
-}
 
-.presentation-stage canvas {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  box-shadow: 0 10px 65px #0005;
-  cursor: pointer
-}
+
+
+
+
+
+
+
 
 .form-input {
   width: 100%;
@@ -1905,7 +1864,7 @@ body.left-hidden .left-panel {
   visibility: hidden
 }
 
-@keyframes tip-in {
+@keyframes tip-in{
 
   from {
     opacity: 0;
@@ -1918,7 +1877,7 @@ body.left-hidden .left-panel {
   }
 }
 
-@media(min-width:1550px) {
+@media(min-width:1550px){
 
   :root {
     --left: 250px;
@@ -1931,7 +1890,7 @@ body.left-hidden .left-panel {
   }
 }
 
-@media(max-width:1180px) {
+@media(max-width:1180px){
 
   :root {
     --left: 210px;
@@ -1997,7 +1956,7 @@ body.left-hidden .left-panel {
   }
 }
 
-@media(max-width:900px) {
+@media(max-width:900px){
 
   :root {
     --left: 190px;
@@ -2042,7 +2001,7 @@ body.left-hidden .left-panel {
   }
 }
 
-@media(max-width:720px) {
+@media(max-width:720px){
 
   :root {
     --left: 0px;
@@ -2067,7 +2026,7 @@ body.left-hidden .left-panel {
     display: none
   }
 
-  .top-actions .avatar,.top-actions #present {
+  .top-actions .avatar{
     display: none
   }
 
@@ -2109,7 +2068,7 @@ body.left-hidden .left-panel {
   }
 }
 
-@media(prefers-reduced-motion:reduce) {
+@media(prefers-reduced-motion:reduce){
 
   * {
     animation: none!important;
@@ -2161,11 +2120,11 @@ body.left-hidden .left-panel {
 /* ===== corners + stroke ===== */
 .rad-grid { display: grid; grid-template-columns: 1fr 1fr 30px; gap: 8px; align-items: center }
 .rad-sub { margin-top: 8px }
-.fr2 .st-sw { position: relative; overflow: hidden; display: block; cursor: pointer }
-.st-sw input { position: absolute; inset: -8px; width: 44px; height: 44px; opacity: 0; cursor: pointer; padding: 0 }
-.st-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px 30px; gap: 6px; align-items: center; margin-top: 6px }
-.st-row select { height: 30px }
-.st-custom { margin-top: 6px }
+
+
+
+
+
 .stp { position: fixed; z-index: 410; width: 284px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px }
 .stp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px }
 .stp-row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary) }
@@ -2261,8 +2220,8 @@ body.vw-reordering, body.vw-reordering * { cursor: grabbing !important; user-sel
 .vd-check { display: flex; gap: 8px; align-items: center; height: 28px; cursor: pointer }
 .vd-check.indent { padding-left: 22px }
 
-.fr-field .st-var { width: 22px; height: 22px; flex: none; margin-right: 3px; color: var(--muted) }
-.fr-field .st-var:hover { color: var(--accent) }
+
+
 
 /* ===== variables ===== */
 .field { position: relative }
@@ -2443,7 +2402,7 @@ select.vw-text { cursor: pointer }
 .home-menu button { height: 32px; border: 0; background: transparent; color: var(--text); text-align: left; padding: 0 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px }
 .home-menu button:hover { background: var(--accent-bg) }
 .home-menu button.danger { color: var(--danger) }
-@media (max-width: 760px) { .home-side { width: 64px } .home-side span:not(.home-avatar), .home-ws div, .home-new, .home-side em { display: none } .home-brand span { display: none } }
+@media (max-width: 760px){ .home-side { width: 64px } .home-side span:not(.home-avatar), .home-ws div, .home-new, .home-side em { display: none } .home-brand span { display: none } }
 
 /* ===== effects / fill reorder ===== */
 .fx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-left: 34px; margin-bottom: 6px }
@@ -2700,7 +2659,7 @@ select.vw-text { cursor: pointer }
 #page-loading.on { display: flex }
 #page-loading .pl-box { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; box-shadow: 0 8px 28px rgba(0, 0, 0, .25) }
 #page-loading .pl-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: pl-rot .7s linear infinite }
-@keyframes pl-rot { to { transform: rotate(360deg) } }
+@keyframes pl-rot{ to { transform: rotate(360deg) } }
 
 .tx-set-row { display: flex; justify-content: flex-end }
 .tp-pop .segmented button { min-width: 32px }
@@ -2865,21 +2824,21 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .busy-bar { display: none; width: 120px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden }
 .busy-bar.on { display: block }
 .busy-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s }
-@keyframes busy-rot { to { transform: rotate(360deg) } }
+@keyframes busy-rot{ to { transform: rotate(360deg) } }
 .wide-button.primary { background: var(--accent-strong); color: #fff; border-color: var(--accent-strong) }
-/* Live DOM Renderer: menutupi canvas selama screen dibuka. */
 
-/* Code Builder · workspace screen: layer (kiri), pratinjau (tengah), Properties Inspector (kanan). */
 
-/* ---- Code Builder · rapikan bar workspace & Properties Inspector ---- */
+
+
+
 
 
 /* Tab Validasi */
 /* The switch itself is the global input[type=checkbox][role=switch] style; it only must not shrink inside the rule row. */
 
-/* Dropdown kustom Code Builder */
 
-/* Preview app (interactive live preview) */
+
+
 
 /* Confirmation dialog (confirm.js) */
 .mc-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(0,0,0,.45) }
@@ -2933,8 +2892,8 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .busy-bar { width: 100%; height: 5px; border-radius: 99px; background: var(--panel-3); overflow: hidden; margin-top: 4px }
 .busy-bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .25s ease }
 .busy-bar.indeterminate > i { width: 35%; animation: busy-slide 1.1s ease-in-out infinite }
-@keyframes busy-rot { to { transform: rotate(360deg) } }
-@keyframes busy-slide { 0% { margin-left: -35% } 100% { margin-left: 100% } }
+@keyframes busy-rot{ to { transform: rotate(360deg) } }
+@keyframes busy-slide{ 0% { margin-left: -35% } 100% { margin-left: 100% } }
 
 /* File title with options chevron and folder name (left panel heading) */
 .left-heading { height: auto; min-height: 56px; padding: 10px 14px 8px 18px }
@@ -3099,7 +3058,7 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .sc-list { grid-template-columns: minmax(0, 1fr) }
 .sc-row { min-width: 0 }
 
-/* ---- Code Builder module list ---- */
+
 /* Row actions float over the right edge on hover, so names keep the full width. */
 
 
@@ -3138,7 +3097,7 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .ap-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; padding-top: 6px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted) }
 .ap-actions { display: flex; gap: 8px }
 .ap-actions .wide-button { width: auto; padding: 0 14px; height: 32px }
-@media (max-width: 640px) { .ap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+@media (max-width: 640px){ .ap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
 
 .ap-prev img { pointer-events: none; -webkit-user-drag: none }
 .asset-picker.dragging { opacity: 0; pointer-events: none }
@@ -3231,125 +3190,114 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .pp-val.fr-over { box-shadow: 0 -2px 0 0 var(--accent) }
 .pp-val.fr-over-after { box-shadow: 0 2px 0 0 var(--accent) }
 
-/* ===== Behavior tab (state mapping, interaction, input) ===== */
-.bh-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.bh-card{display:flex;flex-direction:column;gap:7px;padding:9px;border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
-.bh-card-head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:550}
-.bh-card-head .icon-button{margin:-3px -3px -3px 0}
-.bh-row{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
-.bh-row>select{grid-column:1;grid-row:1}
-.bh-row>.bh-value{grid-column:1 / -1;grid-row:2}
-.bh-row>button{grid-column:2;grid-row:1}
-.bh-value{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
-.bh-value-row{display:flex;gap:5px;min-width:0}
-.bh-value-row>.bh-pickrow{flex:1;min-width:0}
-.bh-value-row>select,.bh-value-row>input{flex:1;min-width:0}
-.bh-value-row>input{height:28px;border-radius:6px;background:var(--canvas);color:var(--text);padding:0 8px;font-size:12px;border:1px solid var(--border-soft)}
-.bh-add{display:flex;align-items:center;gap:6px;margin-top:8px}
-.bh-add>input{height:28px;border-radius:6px;background:var(--canvas);color:var(--text);padding:0 8px;font-size:12px;border:1px solid var(--border-soft)}
-.bh-card>select{margin-top:2px}
 
-/* ===== Code Builder: tab Behavior (state mapping, interaction, input) ===== */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .cb-bh-state{display:flex;flex-direction:column;gap:8px;padding:10px;margin-bottom:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
 .cb-bh-state-head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600}
 .cb-bh-value>span.cb-prop-control{display:flex;flex-direction:column;gap:6px}
 .cb-bh-value input{height:28px;border-radius:6px;border:1px solid var(--border);background:var(--canvas);color:var(--text);padding:0 8px;font:12px var(--ui-font)}
 .cb-bh-add{display:flex;align-items:center;gap:8px}
 
-/* Dialog yang dibuka interaction (preview app) */
-.cb-preview-modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:rgba(15,23,42,.45)}
-.cb-preview-modal-card{max-width:min(92vw,640px);max-height:86vh;overflow:auto;border-radius:12px;background:var(--canvas);box-shadow:0 24px 64px rgba(0,0,0,.4)}
-.bh-coll{display:flex;flex-direction:column}
-.bh-state{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid var(--border-soft)}
-.bh-state-label{font-size:11px;font-weight:600}
-.bh-section-body{padding-top:4px}
-.bh-action{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed var(--border-soft)}
-.bh-action-head{display:flex;align-items:center;gap:4px}
-.bh-action-head .field{flex:1;min-width:0}
-.bh-coll-head{display:flex;align-items:center;justify-content:space-between;padding:2px 0 6px;font-size:11px;font-weight:600}
-.bh-coll-head .icon-button{margin:-3px -3px -3px 0}
-.bh-target{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
-.bh-thumb{flex:0 0 96px;width:96px;max-height:120px;overflow:hidden;border-radius:6px;background:var(--canvas);border:1px solid var(--border-soft)}
-.bh-thumb svg{display:block;width:100%;height:auto}
-.bh-target-meta{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
-.bh-target-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-target-meta small{font-size:11px;opacity:.65}
-.target-panel{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border-soft);max-height:42%;overflow-y:auto}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .target-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:600}
 .target-note{font-size:11px;opacity:.65}
-.bh-value-line{display:flex;align-items:center;gap:6px}
-.bh-pickrow>span{cursor:default}
-.bh-pickrow .swap-btn{background:transparent;height:29px}
-.bh-pickrow .icon-button{flex:none;margin-right:2px}
-.bh-values{display:flex;flex-direction:column;gap:6px}
-.bh-values>summary{cursor:pointer;margin-bottom:4px}
-.bh-values[open]>summary{margin-bottom:6px}
-.bh-value-line .small-label:first-child{min-width:52px}
-.bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:10px;color:var(--text)}
-.bh-chip i{width:10px;height:10px;border-radius:3px;border:1px solid rgba(0,0,0,.18)}
-.bh-chip.muted{color:var(--muted)}
+
+
+
+
+
+
+
+
+
+
+
 .cb-bh-value-line{display:flex;align-items:center;gap:6px}
 .cb-bh-value-line .small-label:first-child{min-width:52px}
 .cb-bh-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--field);font-size:11px}
 .cb-bh-override{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
-/* ===== Behavior tab: hierarchy & spacing =====
-   Scoped to the Behavior tab (#inspector.bh-tab). These generic descendant rules used to hit
-   every section, adding margin-top to the second field of Position's/Appearance's grids and
-   pushing Y, H and the radius field down by 4-8px. */
-#inspector.bh-tab .inspector-section .small-label{display:block;margin:0}
-#inspector.bh-tab .inspector-section .small-label + .small-label{margin-top:5px}
-#inspector.bh-tab .inspector-section .small-label + .field,
-#inspector.bh-tab .inspector-section .field + .field,
-#inspector.bh-tab .inspector-section .field + .checkbox-row,
-#inspector.bh-tab .inspector-section .checkbox-row + .field,
-#inspector.bh-tab .inspector-section .field + select.full-width,
-#inspector.bh-tab .inspector-section select.full-width + .field{margin-top:8px}
-#inspector.bh-tab .inspector-section label.checkbox-row + label.checkbox-row{margin-top:8px}
-#inspector.bh-tab .inspector-section select.full-width{margin-top:8px}
+
+
+
+
+
+
 /* Selects inside a row sit beside a label or input: the standalone margin above
    would push them (and only them) down, out of vertical alignment. */
-#inspector.bh-tab .inspector-section .field select.full-width,
-#inspector.bh-tab .inspector-section .bh-value-row select.full-width,
-#inspector.bh-tab .inspector-section .bh-row>select.full-width{margin-top:0}
-#inspector.bh-tab .inspector-section .bh-section-body{display:flex;flex-direction:column;gap:10px;padding-top:8px}
-#inspector.bh-tab .inspector-section .bh-coll{display:flex;flex-direction:column;gap:8px}
-#inspector.bh-tab .inspector-section .bh-coll + .bh-coll{margin-top:10px}
-#inspector.bh-tab .inspector-section .bh-state{gap:8px;padding:10px 0}
-#inspector.bh-tab .inspector-section .bh-state .full-width{margin-top:6px}
-#inspector.bh-tab .inspector-section .bh-list{gap:8px;margin-top:10px}
-#inspector.bh-tab .inspector-section .bh-add{margin-top:10px}
-#inspector.bh-tab .inspector-section .section-heading + .small-label{margin-top:0}
 
-/* Behavior tab: interactions inherited from the main component (read-only on the instance) */
-.bh-inherited-note{margin:0 0 8px}
-.bh-card.is-inherited{border-style:dashed;opacity:.9}
-.bh-inherited-action{margin:0}
-.bh-card.is-inherited .bh-card-head{margin-bottom:4px}
 
-/* ===== Behavior tab: summary header, interaction cards, Repeat bindings ===== */
-.bh-summary{display:flex;flex-direction:column;gap:6px}
-.bh-summary-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-pills{display:flex;gap:6px;flex-wrap:wrap}
-.bh-pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:550;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
-.bh-pill.muted{background:var(--field);color:var(--muted)}
-.bh-card-head{gap:8px}
-.bh-num{flex:none;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600}
-.bh-card-title{display:flex;flex-direction:column;min-width:0;flex:1}
-.bh-card-title b{font-size:12px;font-weight:600}
-.bh-card-title small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-action{position:relative;margin-left:9px;padding-left:12px;border-left:2px solid color-mix(in srgb,var(--accent) 35%,transparent)}
-.bh-empty{display:flex;flex-direction:column;gap:3px;padding:14px 12px;border:1px dashed var(--border);border-radius:8px;text-align:center;font-size:11px;color:var(--muted)}
-.bh-empty b{font-size:12px;font-weight:600;color:var(--text)}
-select.bh-addsel{border:1px dashed var(--border);background:transparent;color:var(--accent);font-weight:550;height:30px}
-select.bh-addsel:hover{background:var(--hover)}
-.bh-binds{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.bh-bind{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
-.bh-bind-name{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-bind-cells{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
-.bh-bind-cell{display:flex;flex-direction:column;gap:2px;min-width:0}
-.bh-bind-cell small{font-size:10px;color:var(--muted)}
-#inspector.bh-tab .inspector-section .bh-bind-cell select.full-width{margin-top:0}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ===== List variable editor ===== */
 .vd-pop.vd-wide{width:460px}
@@ -3371,132 +3319,132 @@ select.bh-addsel:hover{background:var(--hover)}
 .vw-tabs{display:inline-flex;gap:2px;margin-left:12px;padding:2px;border-radius:8px;background:var(--field)}
 .vw-tabs button{border:0;background:transparent;color:var(--text-secondary);font:inherit;font-size:12px;padding:3px 12px;border-radius:6px;cursor:pointer}
 .vw-tabs button.on{background:var(--panel);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.st-pane{flex:1;min-width:0;overflow:auto}
-.st-wrap{display:flex;flex-direction:column;gap:10px;padding:12px 14px}
-.st-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.st-note{font-size:11px;color:var(--muted)}
-.vw-btn.ghost{background:transparent;border:1px dashed var(--border);color:var(--accent)}
-.st-table{display:flex;flex-direction:column;gap:6px}
-.st-row{border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
-.st-main-row,.st-row>.st-main{display:grid;grid-template-columns:22px minmax(120px,1.2fr) 64px minmax(160px,2fr) 110px auto;gap:8px;align-items:center;padding:6px 8px}
-.st-row input:not([type=color]),.st-row select{height:28px;border:1px solid transparent;border-radius:6px;background:var(--canvas);color:var(--text);padding:0 8px;font-size:12px;min-width:0;width:100%}
-.st-row input:focus,.st-row select:focus{border-color:var(--accent);outline:0}
-.st-type{font-size:11px;color:var(--muted)}
-.st-initial{min-width:0;font-size:12px}
-.st-initial .vw-fx{width:100%}
-.st-muted{color:var(--muted);font-size:12px}
-.st-acts{display:inline-flex;gap:2px}
-.st-details{display:flex;flex-direction:column;gap:8px;padding:8px 10px 10px 38px;border-top:1px solid var(--border-soft)}
-.st-drow{display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;font-size:12px;color:var(--text-secondary)}
-.st-rows{display:flex;flex-direction:column;gap:6px;overflow-x:auto}
-.st-rows table{border-collapse:collapse;width:100%}
-.st-rows th{font-size:10px;font-weight:600;color:var(--muted);text-align:left;padding:0 4px 4px}
-.st-rows td{padding:2px}
-.st-rows td.st-n,.st-rows th:first-child{width:24px;text-align:center;color:var(--muted)}
-.st-rows input[type=color]{width:100%;height:26px;padding:0;border:0;background:none}
-.st-section{margin-top:10px;font-size:12px;font-weight:600}
-.st-section small{font-weight:400;color:var(--muted);margin-left:6px}
-.st-derived .st-expr{padding:4px 10px 10px 38px;border-top:1px solid var(--border-soft)}
-.st-error{color:#e5484d}
-.st-node{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 0}
-.st-node select,.st-node input{height:26px;border:1px solid var(--border-soft);border-radius:6px;background:var(--canvas);color:var(--text);padding:0 6px;font-size:12px;width:auto;max-width:200px}
-.st-node select.st-op{font-weight:600}
-.st-node .st-warn{border-color:#e5484d}
-.st-child{padding:2px 8px;border-left:2px solid color-mix(in srgb,var(--accent) 35%,transparent);margin-left:2px}
-.st-arg{display:flex;align-items:center;gap:4px}
-.st-word{font-size:12px;color:var(--muted)}
 
-.bh-warn{color:#e5484d}
-small.bh-warn{display:block;font-size:10px}
+
+
+
+.vw-btn.ghost{background:transparent;border:1px dashed var(--border);color:var(--accent)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ===== Phase 2: conditions, rules, actions, scenarios ===== */
-.bh-cond{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border-soft);border-radius:8px;background:var(--canvas)}
-.bh-cond-head{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600}
-.bh-cond-head .icon-button{margin:-3px -3px -3px 0}
-.bh-addcond{align-self:flex-start;height:26px;font-size:11px}
-.bh-inline{display:flex;gap:6px;flex-wrap:wrap}
-.bh-fields{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px dashed var(--border-soft);border-radius:8px}
-.bh-fieldrow{display:flex;flex-direction:column;gap:3px}
-.bh-fieldrow>small{font-size:10px;color:var(--muted)}
-.bh-rules{display:flex;flex-direction:column;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-soft)}
-.bh-rules-head{display:flex;align-items:center;gap:8px}
-.bh-rules-head small{font-size:11px;color:var(--muted)}
-.bh-caret{display:inline-block;width:12px}
-.bh-rules-body{display:flex;flex-direction:column;gap:6px}
-.bh-rule{border:1px solid var(--border-soft);border-radius:8px;background:var(--canvas)}
-.bh-rule.off{opacity:.55}
-.bh-rule-head{display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:center;padding:6px 8px}
-.bh-rule-title{display:flex;flex-direction:column;align-items:flex-start;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;text-align:left}
-.bh-rule-title b{font-size:12px;font-weight:600}
-.bh-rule-title small{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-rule-acts{display:inline-flex;gap:2px}
-.bh-rule-body{display:flex;flex-direction:column;gap:8px;padding:8px;border-top:1px solid var(--border-soft)}
-.bh-rules-add{display:flex;gap:6px;flex-wrap:wrap}
-.st-scen{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;padding:6px 8px}
-.bh-rule-title b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-rule-head{grid-template-columns:18px minmax(0,1fr) auto}
-.bh-rule-title{width:100%}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Conditions in the 300px inspector: the operation takes a line of its own, children indent a little, controls shrink to fit */
-.bh-cond{padding:6px;gap:4px}
-.bh-cond .st-node{gap:4px;padding:2px 0;align-items:stretch}
-.bh-cond .st-node select,.bh-cond .st-node input{max-width:100%;min-width:0;flex:1 1 84px;height:24px;font-size:11px;padding:0 4px}
-.bh-cond .st-node select.st-op{flex:1 1 100%;font-weight:600}
-.bh-cond .st-child{flex:1 1 100%;padding:1px 0 1px 6px;margin-left:0;min-width:0}
-.bh-cond .st-arg{align-items:flex-start}
-.bh-cond .st-arg>.st-node{flex:1;min-width:0}
-.bh-cond .st-word{font-size:10px;flex:0 0 auto;align-self:center}
-.bh-cond .vw-btn.ghost{height:22px;font-size:11px}
-.bh-rule-body{padding:6px}
-.bh-cond .st-node.st-leaf{flex-wrap:nowrap}
-.bh-cond .st-node.st-leaf select.st-op{flex:0 0 74px;width:74px}
-.bh-cond .st-node.st-leaf>:not(.st-op){flex:1 1 0}
-.bh-cond .st-child{padding-left:4px}
-.bh-cond .st-node.st-leaf{flex-wrap:wrap}
-.bh-cond .st-node.st-leaf>:not(.st-op){flex:1 1 84px;min-width:84px}
 
-/* ===== Phase 3: Add Behavior, capability sections, slots, suggestions, Convention ===== */
-.bh-empty-add{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border:1px dashed var(--border);border-radius:8px;font-size:12px;color:var(--muted)}
-.bh-empty-add p{margin:0}
-.bh-add-btn{height:28px}
-.bh-caps{display:flex;flex-direction:column;gap:8px}
-.bh-caps-head{display:flex;align-items:center;justify-content:space-between}
-.bh-add-panel{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
-.bh-add-title{font-size:11px;font-weight:600}
-.bh-add-title small{font-weight:400;color:var(--muted);margin-left:4px}
-.bh-preset-row{display:flex;flex-direction:column;gap:4px}
-.bh-preset-row>small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.bh-chips{display:flex;flex-wrap:wrap;gap:4px}
-.bh-chip-btn{height:24px;padding:0 9px;border:1px solid var(--border-soft);border-radius:999px;background:var(--field);color:var(--text);font:inherit;font-size:11px;cursor:pointer}
-.bh-chip-btn:hover{background:var(--hover)}
-.bh-chip-btn.suggested{border-color:var(--accent);color:var(--accent)}
-.bh-cap{border:1px solid var(--border-soft);border-radius:8px;background:var(--field)}
-.bh-cap.off{opacity:.6}
-.bh-cap-head{display:grid;grid-template-columns:18px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:6px 8px}
-.bh-cap-title{display:flex;flex-direction:column;align-items:flex-start;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;text-align:left;width:100%}
-.bh-cap-title b{font-size:12px;font-weight:600}
-.bh-cap-title small{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bh-cap-warn{color:#e5a000;font-size:13px}
-.bh-cap-body{display:flex;flex-direction:column;gap:8px;padding:8px;border-top:1px solid var(--border-soft)}
-.bh-wide{display:flex;flex-direction:column;gap:3px}
-.bh-wide>span{font-size:11px;color:var(--muted)}
-.bh-slot{display:grid;grid-template-columns:1fr auto;gap:4px 6px;align-items:center}
-.bh-slot-name{grid-column:1 / -1;font-size:11px;color:var(--muted)}
-.bh-slot-name i{font-style:normal;font-size:10px;margin-left:4px;color:#e5484d}
-.bh-slot small{grid-column:1 / -1}
-.bh-slot.is-missing select{border-color:#e5a000}
-.bh-pick.on{background:var(--accent);color:#fff}
-.bh-inline3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.bh-inline3 .field{display:flex;flex-direction:column;gap:3px}
-.bh-adv-btn{border:0;background:transparent;color:var(--muted);font:inherit;font-size:11px;cursor:pointer;padding:0}
-.bh-adv-body{display:flex;flex-direction:column;gap:8px;padding-top:6px}
-.bh-suggest{display:flex;flex-direction:column;gap:4px;padding:8px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:8px;background:color-mix(in srgb,var(--accent) 8%,transparent)}
-.bh-suggest-head{display:flex;align-items:center;gap:6px;font-size:12px}
-.bh-suggest-head small{color:var(--muted);flex:1}
-.bh-suggest-row{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px}
-.bh-suggest-row small{display:block;color:var(--muted)}
-.bh-conv-body{display:flex;flex-direction:column;gap:6px;padding-top:6px}
-.bh-conv-body input{height:26px;font-size:11px}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ===== error boundary of floating windows ===== */
 .eb { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; flex: 1; min-width: 0; }
@@ -3504,56 +3452,56 @@ small.bh-warn{display:block;font-size:10px}
 .eb-msg { font-family: ui-monospace, monospace; font-size: 11px; color: #b4232a; overflow-wrap: anywhere; user-select: text; }
 
 /* Create state menu opens under its button (the Tokens one is right-aligned, this button sits on the left) */
-.st-tools .vw-create { position: relative }
-.st-tools .vw-menu { left: 0; right: auto; top: 34px }
 
-/* ===== Behavior tab: compact lists + the editing window ===== */
-.bh-sec-acts { display: flex; align-items: center; gap: 2px }
-.bh-items { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px }
-.bh-item { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 6px; border-radius: 6px; cursor: pointer; min-width: 0 }
-.bh-item:hover { background: var(--field) }
-.bh-item.active { background: var(--accent-bg) }
-.bh-item.static { cursor: default }
-.bh-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px }
-.bh-item-ic { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: var(--field); color: var(--muted) }
-.bh-item.active .bh-item-ic { background: transparent; color: var(--accent) }
-.bh-item-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px }
-.bh-item-txt b { font-size: 12px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.bh-item-txt small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.bh-item.off .bh-item-txt, .bh-item.off .bh-item-ic { opacity: .5 }
-.bh-item-warn { flex: none; color: #e5a000; font-size: 13px }
-.bh-item-acts { display: none; flex: none; align-items: center; gap: 2px }
-.bh-item:hover .bh-item-acts, .bh-item:focus-within .bh-item-acts { display: flex }
-.bh-item-acts input[type=checkbox] { margin: 0 4px }
-.bh-item-acts .icon-button { margin: 0 }
-.bh-item-note { margin: 6px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4 }
-.bh-sec-empty { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.45 }
-.bh-window { width: 320px; height: auto; min-width: 0; min-height: 0; max-height: min(660px, calc(100vh - 80px)); resize: none }
-.bh-win-title > span:first-child { min-width: 0; flex: 1 }
-.bh-win-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px }
-.bh-win-body { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Labels get their own column (they used to be squeezed into a 28px box and overlapped) */
-.bh-window .field { height: auto; min-height: 30px; overflow: visible }
-.bh-window .field > span { min-width: 84px; max-width: 84px; padding: 0 8px; text-align: left; cursor: default; white-space: normal; line-height: 1.25; font-size: 11px }
-.bh-window .field select.full-width, .bh-window .field input { margin-top: 0; min-width: 0 }
-.bh-window .field input { height: 30px; font-size: 11px; padding-right: 8px }
-.bh-window .field.bh-wide { flex-direction: column; align-items: stretch; background: transparent; gap: 3px }
-.bh-window .field.bh-wide > span { min-width: 0; max-width: none; padding: 0 }
-.bh-window .field.bh-wide input, .bh-window .field.bh-wide select { background: var(--field); border-radius: 6px; padding: 0 8px; height: 30px }
-.bh-window .field:hover { border-color: var(--border) }
-.bh-window .bh-card.flat { border: 0; padding: 0; background: none }
-.bh-window .bh-rules-head { display: none }
-.bh-window .bh-rules { margin-top: 0 }
-.bh-window .bh-pickrow > span { min-width: 84px; max-width: 84px }
-.bh-drill { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--field); color: inherit; font: inherit; cursor: pointer; text-align: left }
-.bh-drill > span { display: flex; flex-direction: column; gap: 1px }
-.bh-drill b { font-size: 12px; font-weight: 600 }
-.bh-drill small { font-size: 11px; color: var(--muted) }
-.bh-win-del { align-self: flex-start; color: #e5484d }
-.bh-set-title { font-weight: 600; font-size: 12px; margin-top: 6px }
-.bh-window .bh-win-del, .bh-window .vw-btn.bh-win-del { color: #e5484d }
 
-/* ===== Behavior settings window ===== */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .bhs { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
 .bhs-tabs { display: flex; gap: 2px; padding: 2px; background: var(--field); border-radius: 8px }
 .bhs-tabs button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 550; cursor: pointer }
@@ -3577,48 +3525,48 @@ small.bh-warn{display:block;font-size:10px}
 .bhs-fb { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--border-soft) }
 .bhs-fb-head { display: flex; align-items: center; gap: 6px; font-size: 12px }
 .bhs-badge { font-size: 9.5px; padding: 1px 6px; border-radius: 8px; background: #fff4db; color: #8a5a00 }
-.bhs-fb .bh-pickrow > span { min-width: 70px; max-width: 70px }
+
 .bhs-fb .swap-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .bhs-foot { display: flex; justify-content: flex-end; padding-top: 4px }
 
 /* ===== Data window ===== */
 .data-window { width: 760px; height: 480px; min-width: 420px }
-.dw-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px }
-.dw-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
-.dw-gen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px }
-.dw-gen input { width: 56px; height: 26px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font: inherit; font-size: 11px; padding: 0 6px }
-.dw-grid { overflow: auto; border: 1px solid var(--border-soft); border-radius: 8px; flex: 1; min-height: 120px }
-.dw-grid table { border-collapse: separate; border-spacing: 0; font-size: 11px; min-width: 100% }
-.dw-grid th, .dw-grid td { border-bottom: 1px solid var(--border-soft); border-right: 1px solid var(--border-soft); padding: 3px 4px; vertical-align: top; text-align: left; background: var(--panel) }
-.dw-grid thead th { position: sticky; top: 0; z-index: 2; min-width: 130px }
-.dw-grid thead th.dw-n, .dw-grid thead th.dw-x { min-width: 0 }
-.dw-grid th.dw-col { display: table-cell }
-.dw-grid input, .dw-grid select { width: 100%; box-sizing: border-box; height: 24px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text); font: inherit; font-size: 11px; padding: 0 4px }
-.dw-grid input:hover, .dw-grid select:hover { border-color: var(--border) }
-.dw-grid input:focus, .dw-grid select:focus { border-color: var(--accent); outline: 0; background: var(--field) }
-.dw-grid input[type=checkbox] { width: 14px; height: 14px; margin: 5px }
-.dw-grid thead select, .dw-grid thead input { background: var(--field) }
-.dw-grid thead th > * + * { margin-top: 3px }
-.dw-name { display: flex; align-items: center; gap: 2px }
-.dw-name input { font-weight: 600; flex: 1; min-width: 0 }
-.dw-move { display: inline-flex }
-.dw-move button, .dw-x button { border: 0; background: transparent; color: var(--muted); cursor: pointer; width: 18px; height: 22px; font-size: 13px; padding: 0 }
-.dw-move button:hover:not(:disabled), .dw-x button:hover { color: #e5484d }
-.dw-move button:disabled { opacity: .25; cursor: default }
-.dw-n { width: 28px; text-align: center !important; color: var(--muted); font-size: 10px }
-.dw-x { width: 22px }
-.dw-empty { padding: 18px !important; color: var(--muted); text-align: center !important }
-.dw-foot { font-size: 10.5px; color: var(--muted) }
-.dw-import { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--field) }
-.dw-import textarea { width: 100%; box-sizing: border-box; background: var(--panel); color: var(--text); border: 1px solid var(--border-soft); border-radius: 6px; font: 11px ui-monospace, monospace; padding: 6px; resize: vertical }
-.dw-tabs { display: flex; gap: 4px; align-items: center }
-.dw-tabs button { border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer }
-.dw-tabs button.on { background: var(--panel); color: var(--text) }
-.dw-sp { flex: 1 }
-.dw-file { font-size: 11px; color: var(--accent); cursor: pointer }
-.dw-opts { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px }
-.dw-opts label { display: inline-flex; gap: 4px; align-items: center }
-.dw-note { margin: 0; font-size: 11px; color: #30a46c }
-.dw-note.bad { color: #e5484d }
-.dw-importbar { display: flex; gap: 6px }
-.st-data { margin-right: 6px }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

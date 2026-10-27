@@ -38,3 +38,10 @@ test('an enum default must be one of its options', () => {
     bad.props.iconPlacement.default = 'top';
     assert.match(validateTemplateSchema(bad).join('\n'), /iconPlacement.*default "top"/);
 });
+
+test('a token group must draw from a variable prop of the same name', () => {
+    const bad = clone(BUTTON);
+    bad.tokens.fromWidth = bad.tokens.fromSize;
+    delete bad.tokens.fromSize;
+    assert.match(validateTemplateSchema(bad).join('\n'), /tokens group "fromWidth" has no variable prop "Width"/);
+});

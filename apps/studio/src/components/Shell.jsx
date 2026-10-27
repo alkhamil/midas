@@ -33,7 +33,6 @@ export function Topbar({ user }) {
             </div>
             <div className="top-actions">
                 <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
-                <button className="icon-button" id="present" title="Preview" aria-label="Preview" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>
@@ -92,7 +91,6 @@ export function LeftPanel() {
             <div id="layer-tree" className="layer-tree" role="tree" aria-label="Layers"></div>
             <div id="assets-panel" className="assets-panel hidden"></div>
             <div id="plugins-panel" className="assets-panel plugins-panel hidden"></div>
-            <div id="target-panel" className="target-panel hidden" aria-label="Interaction target layers"></div>
             <div className="left-footer">
                 <div className="engine-dot"></div>
                 <span id="engine-label">Starting renderer</span>
@@ -156,7 +154,7 @@ export function RightPanel() {
         <aside className="right-panel" id="right-panel" aria-label="Properties inspector">
             <div className="inspector-tabs">
                 <button className="active" data-inspector-tab="design">Design</button>
-                <button data-inspector-tab="prototype" id="inspector-tab-behavior">Behavior</button>
+                <button data-inspector-tab="behavior" id="inspector-tab-behavior">Behavior</button>
                 <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>
@@ -176,19 +174,6 @@ export function Overlays() {
             <div id="context-menu" className="context-menu hidden" role="menu"></div>
             <div id="toast" className="toast hidden" role="status" aria-live="polite"></div>
             <div id="modal-backdrop" className="modal-backdrop hidden"><section id="modal" className="modal" role="dialog" aria-modal="true" aria-label="Editor dialog"></section></div>
-            <div id="presentation" className="presentation hidden">
-                <div className="presentation-toolbar">
-                    <span>midas <span className="muted">/ Preview</span></span>
-                    <span id="presentation-title"></span>
-                    <div>
-                        <button id="prev-frame" className="icon-button" aria-label="Previous frame" data-icon="arrowLeft"></button>
-                        <span id="presentation-count"></span>
-                        <button id="next-frame" className="icon-button" aria-label="Next frame" data-icon="arrowRight"></button>
-                        <button id="close-presentation" className="icon-button" aria-label="Close preview" data-icon="close"></button>
-                    </div>
-                </div>
-                <div className="presentation-stage" id="presentation-stage"><canvas id="presentation-canvas"></canvas></div>
-            </div>
             <input type="file" id="file-input" accept=".midas,.vellum,.fig,.json,application/json" hidden />
             <input type="file" id="fill-image-input" accept={IMAGE_TYPES} hidden />
             <input type="file" id="image-input" accept={IMAGE_TYPES} multiple hidden />

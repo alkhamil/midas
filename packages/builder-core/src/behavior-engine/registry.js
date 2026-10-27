@@ -20,3 +20,15 @@ function createTemplateRegistry(schemas) {
 /** Every template the engine ships. Button is the only one until the pipeline works end to end. */
 export const TEMPLATES = createTemplateRegistry([BUTTON]);
 
+/**
+ * [propName, def] for every variable prop of a template (the dimensions a binding may name).
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {[string, import('../templates/schema.js').VariableProp][]}
+ */
+export function variableProps(template) {
+    /** @type {[string, import('../templates/schema.js').VariableProp][]} */
+    const out = [];
+    for (const [name, def] of Object.entries(template.props)) if (def.source === 'variable') out.push([name, def]);
+    return out;
+}
+

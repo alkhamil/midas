@@ -7,7 +7,7 @@ instance, or a nested instance shows its own Behavior. An instance uses its own 
 No state is hardcoded. Every state value is read from a variable collection where **mode = state**. Collection names and
 modes below are the ones of the token file (`token_2.json`).
 
-Canonical model: `packages/builder-core/src/behavior.js`. How the tab works in detail: [behavior-tab.md](behavior-tab.md).
+Behavior engine: `packages/builder-core/src/behavior-engine/`. Spec and decisions: [behavior-spec.md](../behavior-spec.md).
 
 ## A. Already there (reuse, do not rebuild)
 

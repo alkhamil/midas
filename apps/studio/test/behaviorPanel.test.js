@@ -1,77 +1,68 @@
-// Behavior tab panel: rows, section headers and the window shell (only the HTML they draw).
-import test from 'node:test';
+// Behavior tab renderer (stage 5): the markup for a master and for an instance, built from the builder-core panel models.
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import { itemRow, sectionBlock, windowHtml, splitOpen, ROW_ICON } from '../src/engine/behaviorPanelUi.js';
+import { behaviorPanelHtml } from '../src/engine/behaviorPanel.js';
+import { masterPanel, instancePanel, createBinding, TEMPLATES } from '@midas/builder-core';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const icon = name => `<i data-i="${name}"></i>`;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const button = TEMPLATES.get('button');
+const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
+const master = (collections = [variant]) => ({ id: 'btn', name: 'Button', component: true, behavior: createBinding(button, collections) });
+const instance = (behavior = { version: 1, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
+const masterHtml = (node, collections) => behaviorPanelHtml({ kind: 'master', panel: masterPanel(node, collections), esc });
+const instanceHtml = (node, mast, collections) => behaviorPanelHtml({ kind: 'instance', panel: instancePanel(node, mast, collections), esc });
 
-test('splitOpen: "kind:key" (the key may hold colons)', () => {
-    assert.deepEqual(splitOpen('interaction:i1'), { kind: 'interaction', key: 'i1' });
-    assert.deepEqual(splitOpen('add:'), { kind: 'add', key: '' });
-    assert.deepEqual(splitOpen('state:a:b'), { kind: 'state', key: 'a:b' });
-    assert.deepEqual(splitOpen(''), { kind: '', key: '' });
+test('a master bound to Button shows the template and each variable prop with its collection', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /data-bp="template"/);
+    assert.match(html, /<option value="button" selected>Button<\/option>/);
+    assert.match(html, /data-bp="collection" data-bp-prop="variant"/);
+    assert.match(html, /<option value="c-variant" selected>Variant<\/option>/);
+    assert.match(html, /Auto-matched/);
 });
 
-test('an item row is one line: icon, name, summary; it opens its window', () => {
-    const h = itemRow({ esc, icon, ic: 'play', name: 'On click', summary: 'Navigate → Home', open: 'interaction:i1' });
-    assert.match(h, /data-bhw-open="interaction:i1"/);
-    assert.match(h, /On click/);
-    assert.match(h, /Navigate → Home/);
-    assert.match(h, /data-i="play"/);
-    assert.doesNotMatch(h, /bh-item-warn/);
-    assert.doesNotMatch(h, /<form|<select|<input type="text"/);          // no forms inline
+test('a variable prop with no matching collection shows the miss and offers the picker', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /data-bp-prop="size"/);
+    assert.match(html, /No "Size" collection matched/);
 });
 
-test('a warning shows as a mark with the reason; a toggle and a remove button live in the hover actions', () => {
-    const h = itemRow({ esc, icon, ic: 'text', name: 'Can type', summary: 'Text', warn: 'Value is not set.', open: 'cap:can-type', toggle: { path: 'behaviors.0.enabled' }, remove: '<button data-bh-act="del-cap">x</button>' });
-    assert.match(h, /class="bh-item-warn" title="Value is not set\."/);
-    assert.match(h, /<span class="bh-item-acts"><input type="checkbox" data-bh-path="behaviors\.0\.enabled" data-bh-kind="bool" checked/);
-    assert.match(h, /data-bh-act="del-cap"/);
+test('the master shows the contract read-only, and no icon control', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /label · string · default Button/);
+    assert.match(html, /Events: onClick \(trigger\), onHover \(trigger\), onFocus, onBlur/);
+    assert.doesNotMatch(html, /data-bp-prop="icon"|data-bp-prop="hasIcon"|data-bp-prop="iconPlacement"/);
 });
 
-test('an off item is dimmed, an inverted toggle (validation "off") is marked, a row without a window is static', () => {
-    const off = itemRow({ esc, icon, ic: 'checkSquare', name: 'Has validation', summary: 'Required', on: false, toggle: { path: 'input.validation.off', invert: true } });
-    assert.match(off, /class="bh-item off static /);
-    assert.match(off, /data-bh-invert="1"/);
-    assert.doesNotMatch(off, /checked/);
+test('an unbound master shows the template picker and no collection rows', () => {
+    const html = masterHtml({ id: 'btn', component: true }, [variant]);
+    assert.match(html, /data-bp="template"/);
+    assert.match(html, /<option value="">None<\/option>/);
+    assert.doesNotMatch(html, /data-bp="collection"/);
+    assert.match(html, /Choose a template/);
 });
 
-test('names and summaries are escaped', () => {
-    const h = itemRow({ esc, icon, ic: 'play', name: '<b>x</b>', summary: 'a "q" & b', open: 'interaction:1' });
-    assert.doesNotMatch(h, /<b>x<\/b>/);
-    assert.match(h, /a &quot;q&quot; &amp; b/);
+test('an instance shows its variable props with the bound modes and its literal props', () => {
+    const html = instanceHtml(instance(), master([variant]), [variant]);
+    assert.match(html, /data-bp="value" data-bp-kind="variable" data-bp-prop="variant"/);
+    assert.match(html, /<option value="danger"\s*>Danger<\/option>/);
+    assert.match(html, /data-bp-kind="literal" data-bp-type="string" data-bp-prop="label" value="Button"/);
+    assert.match(html, /data-bp-type="boolean" data-bp-prop="loading"/);
 });
 
-test('a section has a header with +, rows, or an empty hint', () => {
-    const rows = [itemRow({ esc, icon, ic: 'play', name: 'A', summary: 'a', open: 'interaction:1' })];
-    const s = sectionBlock({ esc, icon, title: 'Interactions', add: 'new-interaction:', addTitle: 'Add interaction', rows });
-    assert.match(s, /section-heading"><span>Interactions<\/span>/);
-    assert.match(s, /data-bhw-open="new-interaction:"/);
-    assert.match(s, /bh-items/);
-    const e = sectionBlock({ esc, icon, title: 'Behavior', add: 'add:', empty: 'Nothing yet.' });
-    assert.match(e, /Nothing yet\./);
-    assert.doesNotMatch(e, /bh-items/);
+test('visibleIf: the icon placement is rendered only while hasIcon is on', () => {
+    const off = instanceHtml(instance(), master([variant]), [variant]);
+    assert.doesNotMatch(off, /data-bp-prop="iconPlacement"/);
+    const on = instanceHtml(instance({ version: 1, props: { hasIcon: true } }), master([variant]), [variant]);
+    assert.match(on, /data-bp-type="enum" data-bp-prop="iconPlacement"/);
 });
 
-test('the window has a title bar with close (and back when drilled in) over a scrolling body', () => {
-    const w = windowHtml({ esc, icon, title: 'On click', body: '<p>x</p>' });
-    assert.match(w, /data-vw-drag/);
-    assert.match(w, /data-bhw-close/);
-    assert.doesNotMatch(w, /data-bhw-back/);
-    assert.match(w, /<div class="bh-win-body"><p>x<\/p><\/div>/);
-    assert.match(windowHtml({ esc, icon, title: 'Rules', back: true, body: '' }), /data-bhw-back/);
+test('a variable prop whose collection is not bound is disabled, with a hint', () => {
+    const html = instanceHtml(instance(), master([]), []);
+    assert.match(html, /data-bp-prop="variant" aria-label="variant" disabled/);
+    assert.match(html, /Bind a &quot;Variant&quot; collection/);
 });
 
-test('every kind of row has an icon', () => {
-    for (const k of ['interaction', 'can-type', 'has-validation', 'has-options', 'opens-popup', 'shows-items', 'has-loading', 'show-feedback', 'state', 'repeat', 'bind']) assert.ok(ROW_ICON[k], k);
-});
-
-test('the Behavior tab no longer draws forms inline: Convention and feedback components moved into Behavior settings', () => {
-    const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8');
-    const start = src.indexOf('function prototypeHtml()'), end = src.indexOf('// ----- the window', start);
-    const panel = src.slice(start, end);
-    assert.ok(start > 0 && end > start);
-    assert.doesNotMatch(panel, /conventionHtml|settingsHtml|componentButton|bhInteractionRows/);
+test('a node with no behavior gets a plain message', () => {
+    assert.match(behaviorPanelHtml({ kind: 'none', esc }), /Select a component/);
 });

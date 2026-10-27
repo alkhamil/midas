@@ -8,7 +8,7 @@
 // → ConflictError (409).
 
 import { boot } from './boot.js';
-import { assertBehaviorData } from '@midas/builder-core';
+import { assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -158,10 +158,7 @@ function metaFor(fileId, docData) {
         pageMeta: pages.map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null })),
         tokens: docData.tokens,
         variables: docData.variables,
-        // State (behavior model 2) lives beside the tokens; the server keeps unknown meta fields as they are.
-        state: docData.state,
-        convention: docData.convention,
-        behaviorVersion: docData.behaviorVersion,
+        // The server keeps unknown meta fields as they are.
         thumbnailId: docData.thumbnailId ?? null,
         guideStyles: docData.guideStyles ?? [],
         created: docData.created,
@@ -296,7 +293,8 @@ export const projectStorage = {
         try {
             const r = (await api('GET', `${fileUrl(fileId)}/pages/${enc(pageId)}`)).page;
             if (!r) return null;
-            assertBehaviorData({ pages: [r.data] });
+            // One page at a time: an instance's master may be on a page that is not in memory yet, so only phase 1 runs here.
+            assertBehaviorShape({ pages: [r.data] });
             pagesOf(fileId).set(r.pageId, r.version);
             return r.data;
         } catch (e) {
@@ -381,15 +379,14 @@ export const projectStorage = {
             pages,
             tokens: meta.tokens,
             variables: meta.variables,
-            state: meta.state,
-            convention: meta.convention,
-            behaviorVersion: meta.behaviorVersion,
             thumbnailId: meta.thumbnailId,
             guideStyles: meta.guideStyles ?? [],
             created: meta.created ?? file.created,
             assets
         };
-        assertBehaviorData(doc);
+        // A lazy open holds only the first page; the masters of its instances may be on the pages still queued.
+        if (lazyQueues.get(fileId)?.length) assertBehaviorShape(doc);
+        else assertBehaviorData(doc);
         return doc;
     },
 
