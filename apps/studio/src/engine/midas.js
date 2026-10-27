@@ -6844,7 +6844,7 @@ function xyForTopLeft(n, tl) {
 const lazyPages = new Set();
 class DocumentModel {
     // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
-    constructor(data, { lazy = false } = {}) { this.data = migrateBehavior(data || makeStarter()); if (!lazy) dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data, { lazy = false } = {}) { this.data = migrateBehavior(data || makeStarter()); if (!lazy) dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6862,15 +6862,20 @@ class DocumentModel {
             list.push(n);
         }
         this.revision++;
+        this.structure++;
         this._sceneRevision = -1;
         if (this.page) {
             this._pageSnapshots.delete(this.page.id);
         }
     }
-    touch(n) {
+    // `structure` counts the changes that can move ids, parents, components or instance sources: the whole-file indexes
+    // (nodeIndex, ensureGlobalIndexes, overlayIndex) are rebuilt only then. Every touch is one unless the caller knows better.
+    touch(n, { structure = true } = {}) {
         if (n)
             n.version = (n.version || 0) + 1;
         this.revision++;
+        if (structure)
+            this.structure++;
         this._sceneRevision = -1;
         if (this.page) {
             this._pageSnapshots.delete(this.page.id);
@@ -8685,6 +8690,7 @@ async function streamPages(fileId, ids) {
         doc.refresh();
     syncComponents(true);
     doc.revision++;
+    doc.structure++;
     if (getSignedInUser()?.role !== 'viewer')
         document.body.classList.remove('view-only');
     setLoadingIndicator(0, 0);
@@ -8898,17 +8904,27 @@ function syncComponents(activeOnly = true) {
 function constrainInstanceLayers(pages) {
     let all = null;
     for (const page of pages) {
+        // Built once per page (visit below only moves geometry, never parents or overrides): one scan of the page per root
+        // instance made this O(instances × layers), 650 ms per edit on a page of 9k layers.
+        let kidsOf = null, resizedKids = null;
         for (const root of page.nodes) {
             if (!root.isInstance || !root.sourceId)
                 continue;
-            all ||= new Map(doc.data.pages.flatMap(p => p.nodes).map(n => [n.id, n]));
-            const rootSrc = all.get(root.sourceId);
-            if (!rootSrc || (root.w === rootSrc.w && root.h === rootSrc.h && !page.nodes.some(n => n.parentId === root.id && n.sourceId && all.get(n.sourceId) && (n.overrides?.w != null || n.overrides?.h != null))))
-                continue;
-            const kidsOf = new Map();
-            for (const n of page.nodes)
-                if (n.parentId)
+            all ||= nodeIndex();
+            if (!kidsOf) {
+                kidsOf = new Map();
+                resizedKids = new Set();
+                for (const n of page.nodes) {
+                    if (!n.parentId)
+                        continue;
                     (kidsOf.get(n.parentId) || kidsOf.set(n.parentId, []).get(n.parentId)).push(n);
+                    if (n.sourceId && all.get(n.sourceId) && (n.overrides?.w != null || n.overrides?.h != null))
+                        resizedKids.add(n.parentId);
+                }
+            }
+            const rootSrc = all.get(root.sourceId);
+            if (!rootSrc || (root.w === rootSrc.w && root.h === rootSrc.h && !resizedKids.has(root.id)))
+                continue;
             const visit = (p, depth) => {
                 const ps = all.get(p.sourceId);
                 if (!ps || depth > 50)
@@ -9028,12 +9044,25 @@ function viewOnlyNotice() {
         toast(lazyPages.size ? 'Still loading the pages of this file: you can look around now and edit when it is done.' : 'View only: you can look around, but this account cannot change files.');
     }
 }
-function changed({ ui = true, commit = false } = {}) {
+function changed({ ui = true, commit = false, behaviorOnly = false } = {}) {
     if (commit && viewOnly()) {
         history.cancel();
         doc.refresh();
         viewOnlyNotice();
         refreshUI();
+        return;
+    }
+    // Only Behavior fields changed (see behaviorProbe): nothing to lay out, no instance to sync, no layer row or page to redraw.
+    if (commit && behaviorOnly) {
+        doc.touch(null, { structure: false });
+        const hadPending = !!history.pending;
+        if (history.commit() || !hadPending)
+            saveSoon();
+        if (ui) {
+            renderTargetPanel();
+            renderInspector();
+        }
+        invalidate();
         return;
     }
     refreshBooleans();
@@ -9064,7 +9093,50 @@ function changed({ ui = true, commit = false } = {}) {
     }
     invalidate();
 }
-function transaction(label, fn) { finishText(); history.begin(label); fn(); if (label === 'Behavior' || label === 'Add interaction') pruneOverlays(); changed({ commit: true }); }
+// The fields only the Behavior tab writes. The canvas never reads them and syncComponents / markSelectedOverrides skip them
+// (all are in SYNC_OMIT), so an edit that changes nothing else needs no layout, no instance sync and no index rebuild.
+const BEHAVIOR_KEYS = new Set(['interactions', 'behaviors', 'behaviorOverrides', 'stateMapping', 'stateModes', 'inputBehavior', 'repeat', 'stateBind', 'prototypeTarget', 'typeable', 'required', 'errorMessage', 'disabled', 'version']);
+const BEHAVIOR_LABELS = new Set(['Behavior', 'Add interaction', 'Convention']);
+/** Before an edit: → () => true when, since then, the page has the same layers and only BEHAVIOR_KEYS changed on them. */
+function behaviorProbe() {
+    const page = doc.page, nodes = page.nodes, copies = nodes.map(n => ({ ...n })), vars = JSON.stringify(doc.data.variables ?? null), tokens = doc.data.tokens;
+    return () => {
+        if (doc.page !== page || page.nodes !== nodes || nodes.length !== copies.length || doc.data.tokens !== tokens)
+            return false;
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i], c = copies[i];
+            if (n.id !== c.id)
+                return false;
+            for (const k in n)
+                if (n[k] !== c[k] && !BEHAVIOR_KEYS.has(k))
+                    return false;
+            for (const k in c)
+                if (!(k in n) && !BEHAVIOR_KEYS.has(k))
+                    return false;
+        }
+        return JSON.stringify(doc.data.variables ?? null) === vars;
+    };
+}
+function transaction(label, fn) {
+    finishText();
+    history.begin(label);
+    if (!BEHAVIOR_LABELS.has(label)) {
+        fn();
+        changed({ commit: true });
+        return;
+    }
+    const unchanged = behaviorProbe(), structure = doc.structure;
+    fn();
+    let light = unchanged();
+    // Ids, parents, components and sources are as they were: the whole-file indexes stay valid.
+    if (light)
+        doc.structure = structure;
+    if (label !== 'Convention' && pruneOverlays())
+        light = false; // overlay layers were removed
+    else if (light)
+        doc.structure = structure; // re-owning an overlay only changes its ownerId
+    changed({ commit: true, behaviorOnly: light });
+}
 function select(ids, { reveal = true } = {}) {
     if (BH_UI.pick && ids.length === 1 && bhPickLayer(ids[0])) return;
     varOwnerId = null;
@@ -9327,7 +9399,7 @@ let _ovIndex = null, _ovIndexRev = -1;
 let _ovByTrigger = new Map();
 /** id node → id frame overlay teratas yang menaunginya (null kalau bukan isi overlay). */
 function overlayIndex() {
-    if (_ovIndex && _ovIndexRev === doc.revision) return _ovIndex;
+    if (_ovIndex && _ovIndexRev === doc.structure) return _ovIndex;
     _ovIndex = new Map();
     _ovByTrigger = new Map();
     const kids = new Map(), ids = new Set();
@@ -9350,7 +9422,7 @@ function overlayIndex() {
         }
         walk(n.id, overlayRoleOf(n) || n.isOverlay ? n.id : null);
     }
-    _ovIndexRev = doc.revision;
+    _ovIndexRev = doc.structure;
     return _ovIndex;
 }
 /** The small tag on an overlay layer: whose it is. */
@@ -13427,23 +13499,23 @@ document.addEventListener('click', e => {
 // ===== components + instances =====
 let _cachedAllNodes = null, _cachedAllNodesRev = -1;
 function allNodes() {
-    if (_cachedAllNodes && _cachedAllNodesRev === doc.revision)
+    if (_cachedAllNodes && _cachedAllNodesRev === doc.structure)
         return _cachedAllNodes;
     _cachedAllNodes = doc.data.pages.flatMap(p => p.nodes);
-    _cachedAllNodesRev = doc.revision;
+    _cachedAllNodesRev = doc.structure;
     return _cachedAllNodes;
 }
 let _cachedNodeIndex = null, _cachedNodeIndexRev = -1;
 function nodeIndex() {
-    if (_cachedNodeIndex && _cachedNodeIndexRev === doc.revision)
+    if (_cachedNodeIndex && _cachedNodeIndexRev === doc.structure)
         return _cachedNodeIndex;
     _cachedNodeIndex = new Map(allNodes().map(n => [n.id, n]));
-    _cachedNodeIndexRev = doc.revision;
+    _cachedNodeIndexRev = doc.structure;
     return _cachedNodeIndex;
 }
 let _compMap = null, _instMap = null, _pageMap = null, _nodeMap = null, _kidsMap = null, _globalRev = -1;
 function ensureGlobalIndexes() {
-    if (_compMap && _globalRev === doc.revision)
+    if (_compMap && _globalRev === doc.structure)
         return;
     _compMap = new Map();
     _instMap = new Map();
@@ -13467,7 +13539,7 @@ function ensureGlobalIndexes() {
             }
         }
     }
-    _globalRev = doc.revision;
+    _globalRev = doc.structure;
 }
 
 function componentById(id) {
@@ -19535,13 +19607,13 @@ document.addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
     const path = clear ? clear.dataset.bhCollClear : pick.dataset.bhCollBtn;
-    const write = id => { transaction('Behavior', () => { bhWriteCollection(n, path, id); doc.touch(n); }); renderInspector(); };
+    const write = id => { transaction('Behavior', () => { bhWriteCollection(n, path, id); doc.touch(n); }); };
     if (clear) return write(null);
     // The State mapping "connect a collection" button: connecting is not a path write, it sets varModes.
     if (path === '__connect__') {
         openCollectionPicker(pick, {
             only: bhCollections().filter(isStateCollection),
-            onPick: id => { transaction('Behavior', () => { bhConnectCollection(n, id); doc.touch(n); }); renderInspector(); },
+            onPick: id => { transaction('Behavior', () => { bhConnectCollection(n, id); doc.touch(n); }); },
         });
         return;
     }
@@ -19562,12 +19634,12 @@ document.addEventListener('click', e => {
     const path = clear ? clear.dataset.bhPickClear : pick.dataset.bhPick;
     const sibVariant = p => p.endsWith('.targetComponentId') ? p.replace(/\.targetComponentId$/, '.targetVariantId') : null;
     const actAt = p => (/\.(targetComponentId|componentId)$/.test(p) ? getPath(n, p.replace(/\.(targetComponentId|componentId)$/, '')) : null);
-    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); };
+    const write = id => { transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, id || undefined); const sib = sibVariant(path); if (sib) bhWrite(n, sib, undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); };
     if (clear) return write(null);
     const have = pick.dataset.bhValue && allNodes().find(x => x.id === pick.dataset.bhValue);
     openSwapPicker(pick, {
         current: have ? (have.componentSet ? setVariants(have)[0]?.id : have.id) : null,
-        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); renderInspector(); renderTargetPanel(); const ac = actAt(path); if (ac && (ac.type === 'open-dropdown' || ac.type === 'open-popover' || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
+        onPick: id => { const c = componentById(id), set = c && parentSetOf(c); transaction('Behavior', () => { const prev = actAt(path); bhWrite(n, path, set ? set.id : (id || undefined)); const sib = sibVariant(path); if (sib) bhWrite(n, sib, set && id !== set.id ? id : undefined); if (/\.(targetComponentId|componentId)$/.test(path)) bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), undefined); doc.touch(n); }); const ac = actAt(path); if (ac && (ac.type === 'open-dropdown' || ac.type === 'open-popover' || ac.type === 'show-feedback')) { const pid = ensureOverlayPlaced(n.id, ac, { keepSelection: true }); if (pid) { bhWrite(n, path.replace(/\.(targetComponentId|componentId)$/, '.overlayInstanceId'), pid); doc.touch(n); } renderTargetPanel(); invalidate(); } },
     });
 });
 document.addEventListener('click', e => {
@@ -20739,7 +20811,6 @@ function bhAction(n, t) {
             else bhWrite(comp, `${base}.${t.dataset.typeLevel}`, t.value || undefined);
             doc.touch(comp);
         });
-        renderInspector();
         return;
     }
     if (act === 'reset-convention') { doc.data.convention = resetConvention(conventionOf(), t.dataset.bhScope); return; }
@@ -20911,12 +20982,11 @@ function bhOnChange(e) {
     if (t.dataset.conv) {
         const [group, key] = t.dataset.conv.split('.');
         transaction('Convention', () => { const conv = conventionOf(); conv[group][key] = t.value.split(',').map(x => x.trim()).filter(Boolean); doc.data.convention = cleanConvention(conv); doc.touch(n); });
-        renderInspector();
         return;
     }
     // A condition (a sentence of dropdowns) was edited.
     const tgt = exprTarget(t.dataset);
-    if (tgt) { transaction('Behavior', () => { bhEditExpr(n, tgt, t.value); doc.touch(n); }); renderInspector(); return; }
+    if (tgt) { transaction('Behavior', () => { bhEditExpr(n, tgt, t.value); doc.touch(n); }); return; }
     const isBh = t.dataset.bhPath || (t.dataset.bhAct && t.tagName === 'SELECT');
     if (!(t.id === 'proto-target' || t.dataset.proto || isBh)) return;
     transaction('Behavior', () => {
@@ -20932,7 +21002,6 @@ function bhOnChange(e) {
         }
         doc.touch(n);
     });
-    renderInspector();
 }
 $('#inspector').addEventListener('change', bhOnChange);
 document.addEventListener('click', e => {
@@ -20945,7 +21014,6 @@ document.addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
     transaction('Behavior', () => { bhWrite(n, owner, editArgs(getPath(bhCfg(n), owner), path, b.dataset.exAct, Number(b.dataset.exI), bhFirstRef())); doc.touch(n); });
-    renderInspector();
 });
 document.addEventListener('click', e => {
     const t = e.target.closest?.('[data-bh-act]');
@@ -20956,8 +21024,7 @@ document.addEventListener('click', e => {
     e.stopPropagation();
     BHW.next = null;
     transaction('Behavior', () => { bhAction(n, t); doc.touch(n); });
-    if (BHW.next) { const nx = BHW.next; BHW.next = null; bhwOpen(nx.kind, nx.key, BHW.y); return; }
-    renderInspector();
+    if (BHW.next) { const nx = BHW.next; BHW.next = null; bhwOpen(nx.kind, nx.key, BHW.y); }
 });
 
 function renderPlugins() {
