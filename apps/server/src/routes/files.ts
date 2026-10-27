@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/index.js';
+import { compactPage } from '../lib/compact.js';
 import { assets, designFilePages, designFiles, designFolders, libraries } from '../db/schema.js';
 import { canSeeFile, requireUser } from '../lib/auth.js';
 import { assetKey, deletePrefix, getObject, putObject } from '../lib/s3.js';
@@ -283,7 +284,8 @@ export async function fileRoutes(app: FastifyInstance) {
         const f = await fileOr404(req, reply, req.params.id);
         if (!f)
             return;
-        const { data, baseVersion } = body.data;
+        const { baseVersion } = body.data;
+        const data = compactPage(body.data.data);
         const pageId = req.params.pageId;
         const values = { name: data.name, parentId: data.parentId ?? null, data, updatedBy: req.user!.id, updatedAt: new Date() };
         let version: number | undefined;
@@ -390,7 +392,7 @@ export async function fileRoutes(app: FastifyInstance) {
                 createdAt: data.created ? new Date(data.created) : new Date(), openedAt: new Date(),
             });
             for (const p of data.pages) {
-                await tx.insert(designFilePages).values({ fileId: id, pageId: p.id, name: p.name, parentId: p.parentId ?? null, data: p, updatedBy: req.user!.id });
+                await tx.insert(designFilePages).values({ fileId: id, pageId: p.id, name: p.name, parentId: p.parentId ?? null, data: compactPage(p), updatedBy: req.user!.id });
                 pageVersions[p.id] = 1;
             }
         });

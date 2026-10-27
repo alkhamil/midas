@@ -3563,7 +3563,9 @@ async function libBoot() {
     // Projects are stored page by page (file:<id>:meta + pages); the oldest ones as a single file:<id> blob.
     const hasStored = async id => !!(await kvGet('file:' + id + ':meta') || await kvGet('file:' + id));
     const loadStored = async id => { try {
-        return await projectStorage.loadProject(id);
+        // The editor opens on one page; the rest streams in afterwards (a preview tab needs every page at once).
+        const lazy = !isPreviewRoute && !(deepLink && (deepLink.tab || deepLink.preview != null));
+        return await projectStorage.loadProject(id, { lazy, firstPage: deepLink && deepLink.id === id ? deepLink.page : null });
     }
     catch {
         return null;
@@ -3725,7 +3727,7 @@ async function libOpen(id) {
     if (id !== lib.fileId) {
         if (state.dirty)
             await save();
-        let data = await projectStorage.loadProject(id);
+        let data = await projectStorage.loadProject(id, { lazy: true });
         if (!data) {
             toast('This file could not be found.');
             return;
@@ -3737,7 +3739,14 @@ async function libOpen(id) {
             toast('This file could not be opened: ' + e.message);
             return;
         }
+        lazyPages.clear();
+        failedPages.clear();
+        if (getSignedInUser()?.role !== 'viewer')
+            document.body.classList.remove('view-only');
+        const lazyIds = claimLazyPages(id);
         await loadIntoEditor(data, id);
+        if (lazyIds.length)
+            streamPages(id, lazyIds).catch(e => console.warn('Streaming pages failed', e));
     }
     meta.opened = Date.now();
     delete meta.hiddenRecent;
@@ -6526,8 +6535,11 @@ function xyForTopLeft(n, tl) {
     return { x: tl.x - cx + (c * fx * cx - s * fy * cy), y: tl.y - cy + (s * fx * cx + c * fy * cy) };
 }
 
+// Pages of the open file that are still being streamed in (see streamPages): empty stubs until their data arrives.
+const lazyPages = new Set();
 class DocumentModel {
-    constructor(data) { this.data = migrateBehavior(data || makeStarter()); dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
+    constructor(data, { lazy = false } = {}) { this.data = migrateBehavior(data || makeStarter()); if (!lazy) dropDanglingOverlays(this.data); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6793,6 +6805,9 @@ class DocumentModel {
                     throw new Error('Invalid or duplicate layer.');
                 all.add(n.id);
                 for (const k of ['x', 'y', 'w', 'h', 'rotation', 'opacity']) {
+                    // rotation / opacity at their default are left out of stored pages (server/lib/compact.ts); node() fills them in below.
+                    if (n[k] === undefined && (k === 'rotation' || k === 'opacity'))
+                        continue;
                     if (typeof n[k] !== 'number' || !Number.isFinite(n[k]) || Math.abs(n[k]) > 1e7)
                         throw new Error(`Invalid ${k} in layer.`);
                 }
@@ -8162,7 +8177,8 @@ catch (e) {
 if (initial && deepLink?.used && deepLink.page && initial.pages?.some(p => p.id === deepLink.page))
     initial.pageId = deepLink.page;
 await boot.step(80, 'Preparing document');
-const doc = new DocumentModel(initial), history = new History(doc);
+const bootLazyPages = initial ? claimLazyPages(lib.fileId) : [];
+const doc = new DocumentModel(initial, { lazy: bootLazyPages.length > 0 }), history = new History(doc);
 document.body.classList.toggle('view-only', getSignedInUser()?.role === 'viewer');
 const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], targetExpanded: new Set(), selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
@@ -8189,6 +8205,79 @@ function markPagesSaved() {
     for (const p of doc.data.pages)
         savedPageSigs.set(p.id, pageSig(p));
 }
+// ----- big files: the editor opens on one page and the other pages stream in -----
+// While pages are missing the file is view-only: saving, clean-ups and exports would otherwise see the empty stubs as the truth.
+const pageFills = new Map(); // page id → promise of the fill in progress
+function setLoadingIndicator(done, total) {
+    const el = $('#save-indicator');
+    if (el) el.innerHTML = total ? `<i class="spin"></i> Loading pages ${done}/${total}` : '<i></i> Saved';
+}
+/** Fetches one stub page and fills it in place (same object, so everything holding the page keeps working). */
+function fillPage(fileId, id) {
+    if (!lazyPages.has(id))
+        return Promise.resolve();
+    if (pageFills.has(id))
+        return pageFills.get(id);
+    const run = (async () => {
+        const data = await projectStorage.loadPage(fileId, id);
+        if (lib.fileId !== fileId || !lazyPages.has(id))
+            return; // another file was opened meanwhile
+        const stub = doc.data.pages.find(p => p.id === id);
+        if (stub && data) {
+            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: { collections: [], items: [] }, tokens: { colors: [], typography: [] }, assets: {} }).pages[0];
+            Object.assign(stub, parsed);
+            doc._pageSnapshots.delete(id);
+            savedPageSigs.set(id, pageSig(stub));
+        }
+        lazyPages.delete(id);
+    })().finally(() => pageFills.delete(id));
+    pageFills.set(id, run);
+    return run;
+}
+/** Takes the pages `loadProject({ lazy: true })` left out and marks them as stubs right away (before anything can run on them). */
+function claimLazyPages(fileId) {
+    const ids = projectStorage.pendingPages(fileId);
+    ids.forEach(id => lazyPages.add(id));
+    return ids;
+}
+/** Loads the claimed pages in the background, four at a time. */
+async function streamPages(fileId, ids) {
+    if (!ids.length)
+        return;
+    document.body.classList.add('view-only');
+    const total = ids.length, queue = [...ids];
+    let done = 0;
+    setLoadingIndicator(0, total);
+    const worker = async () => {
+        for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+            try {
+                await fillPage(fileId, id);
+            }
+            catch (e) {
+                console.warn('Page could not be loaded', id, e);
+                lazyPages.delete(id); // leave it empty rather than blocking the whole file; it is not written back (see save)
+                failedPages.add(id);
+            }
+            if (lib.fileId !== fileId)
+                return;
+            setLoadingIndicator(++done, total);
+        }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    if (lib.fileId !== fileId)
+        return; // another file was opened: it owns lazyPages now
+    // Everything is here: the clean-ups that need the whole file run now.
+    if (dropDanglingOverlays(doc.data))
+        doc.refresh();
+    syncComponents(true);
+    doc.revision++;
+    if (getSignedInUser()?.role !== 'viewer')
+        document.body.classList.remove('view-only');
+    setLoadingIndicator(0, 0);
+    refreshUI();
+    invalidate();
+}
+const failedPages = new Set(); // pages that could not be fetched: never saved, so the stored page is not overwritten with an empty one
 // Autosave ke server: ditahan ±1,5 detik setelah perubahan terakhir, lalu hanya page yang berubah yang dikirim.
 function saveSoon() { state.dirty = true; if (!conflictOpen) $('#save-indicator').innerHTML = '<i></i> Unsaved changes'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); }
 let savingInProgress = false;
@@ -8203,6 +8292,10 @@ async function save() {
     // View-only accounts never write: the server would refuse, so edits stay on this screen only.
     if (getSignedInUser()?.role === 'viewer') {
         state.dirty = false;
+        return;
+    }
+    if (lazyPages.size) {
+        retryTimer = setTimeout(save, 1500); // pages are still arriving: nothing is written until the whole file is here
         return;
     }
     if (savingInProgress) {
@@ -8220,7 +8313,7 @@ async function save() {
             m = { id: lib.fileId, name: doc.data.name, created: now, updated: now, opened: now, thumb: null };
             lib.index.unshift(m);
         }
-        const changedPages = doc.data.pages.filter(p => p === doc.page || savedPageSigs.get(p.id) !== pageSig(p));
+        const changedPages = doc.data.pages.filter(p => !failedPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
         for (const p of changedPages)
             await projectStorage.saveActivePage(lib.fileId, doc.data, p);
         for (const p of changedPages)
@@ -8318,6 +8411,8 @@ function refreshUI() { renderPages(); renderLayers(); renderInspector(); if (FXW
     renderFillPicker(); if (vw.open && !document.getElementById('vars-window')?.contains(document.activeElement))
     renderVarsWindow(); $('#file-name').textContent = doc.data.name; const t = $('#left-heading-title'); if (t && !t.querySelector('input')) t.textContent = doc.data.name; updateDocFolderLabel(); $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); gfScanSoon(); }
 function syncComponents(activeOnly = true) {
+    if (lazyPages.size)
+        return; // instances may point at components on pages that have not arrived yet: they would be detached as orphans
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
     const targetPages = activeOnly ? [doc.page] : doc.data.pages;
@@ -8511,12 +8606,12 @@ function normalizeSetChildren() {
     return moved;
 }
 // View-only accounts can look around (select, pan, zoom, inspect) but nothing they do is kept: every edit is rolled back.
-const viewOnly = () => getSignedInUser()?.role === 'viewer';
+const viewOnly = () => getSignedInUser()?.role === 'viewer' || lazyPages.size > 0; // also while the pages of a big file are still arriving
 let viewOnlyToastAt = 0;
 function viewOnlyNotice() {
     if (Date.now() - viewOnlyToastAt > 4000) {
         viewOnlyToastAt = Date.now();
-        toast('View only: you can look around, but this account cannot change files.');
+        toast(lazyPages.size ? 'Still loading the pages of this file: you can look around now and edit when it is done.' : 'View only: you can look around, but this account cannot change files.');
     }
 }
 function changed({ ui = true, commit = false } = {}) {
@@ -8650,12 +8745,17 @@ function switchPageWithLoading(id) {
         if (done)
             return;
         done = true;
-        try {
+        const open = () => { try {
             switchPage(id);
         }
         finally {
             hidePageLoading();
-        }
+        } };
+        // A page that is still streaming in is fetched first (ahead of the queue), then opened.
+        if (lazyPages.has(id))
+            fillPage(lib.fileId, id).then(open, e => { hidePageLoading(); toast(`This page could not be loaded (${e?.message || e}).`); });
+        else
+            open();
     };
     requestAnimationFrame(() => setTimeout(go, 0)); // after the overlay has been painted
     setTimeout(go, 80); // a throttled (background) tab never runs animation frames
@@ -9141,9 +9241,9 @@ function section(title, body, action = '', extra = '') { return `<section class=
 function colorFieldBase(prop, value, opacityProp = null, opacity = 1) { return `<div class="fill-row"><div class="hex-field"><input type="color" value="${safeColor(value)}" data-prop="${prop}" aria-label="${prop} color"><input type="text" data-hex="${prop}" value="${esc(value === 'none' ? 'None' : (value || '#000000').replace('#', '').toUpperCase())}" aria-label="${prop} hex color" spellcheck="false"></div>${opacityProp ? field('', opacityProp, opacity * 100, { unit: '%', min: 0, max: 100 }) : ''}</div>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
 function renderInspector() {
-    // Tab Behavior hanya ada kalau yang dipilih memang komponen, instance, atau frame.
+    // Tab Behavior ada untuk layer apa pun yang dipilih: desainer mengatur perilaku di elemen mana saja.
     const sel = activeNode();
-    const relevant = !!sel && (sel.isInstance || sel.component || sel.componentSet || ((sel.type === 'frame' && !sel.parentId && !sel.component && !sel.componentSet && !sel.isInstance) || (sel.type === 'frame' && !!sel.parentId && !sel.isInstance && inComponentTree(sel))));
+    const relevant = !!sel;
     const tabBtn = document.getElementById('inspector-tab-behavior');
     if (tabBtn) tabBtn.style.display = relevant ? '' : 'none';
     if (!relevant && state.inspectorTab === 'prototype') {
@@ -19128,7 +19228,9 @@ function bhInteractionRows(n, frames, opts = {}) {
     // Gerakan standar preview: transisi, durasi (ms), dan easing. Kosong = mengikuti default standar.
     const motionRows = (p, a, kind) => {
         const d = MOTION_DEFAULTS[kind] || MOTION_DEFAULTS.navigate;
-        return `<label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', (kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...(kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label>`;
+        // Motion is a detail most designs leave at its default: it stays folded until a value is set.
+        const touched = !!(a.transition || a.duration !== undefined || a.easing);
+        return `<details class="bh-motion-fold" ${touched ? 'open' : ''}><summary class="small-label">Animation</summary><label class="field"><span>Motion</span>${bhSelect(`${p}.transition`, 'plain', (kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).some(t => t.id === a.transition) ? a.transition : '', [['', `Default (${d.transition})`], ...(kind === 'change-variant' ? VARIANT_TRANSITIONS : TRANSITIONS).map(t => [t.id, t.label])])}</label><label class="field"><span>Duration</span><input type="number" min="0" max="2000" data-bh-path="${p}.duration" data-bh-kind="plain" value="${a.duration ?? ''}" placeholder="${d.duration}" aria-label="Duration in ms"><i class="unit">ms</i></label><label class="field"><span>Easing</span>${bhSelect(`${p}.easing`, 'plain', MOTION_EASING_MAP[a.easing] ? a.easing : '', [['', `Default (${d.easing})`], ...MOTION_EASINGS.map(e => [e.id, e.label])])}</label></details>`;
     };
     // Dropdown, overlay and popover open a component. A frame chosen earlier keeps working until a component replaces it.
     const openPick = (p, a, label) => bhComponentButton(`${p}.targetComponentId`, a.targetComponentId, label)
@@ -19374,7 +19476,7 @@ function stateBindBody(n) {
     return stateBindHtml({ n, state, layers, esc, bhSelect, fields: bhFieldList(n), canMode: !!(n.isInstance || n.component || n.componentSet) });
 }
 // ===== Capabilities (Add Behavior): Can type, Has validation, Has options, Opens popup, On click, Has loading, Show feedback =====
-const BH_UI = { addOpen: false, pick: null };       // the Add Behavior panel is open / the slot waiting for a click on a layer ({ nodeId, path })
+const BH_UI = { addOpen: false, advOpen: false, pick: null };       // the Add Behavior panel is open / the slot waiting for a click on a layer ({ nodeId, path })
 /** The layers a slot can be mapped to: inside the component (a set: inside its first variant). */
 function bhLayerList(n) {
     const root = n.componentSet ? (defaultVariantOf(n) || setVariants(n)[0] || n) : n;
@@ -19684,23 +19786,39 @@ function prototypeHtml() {
     if (!n) return section('Behavior', '<p class="small-label">Select a component, an instance or a frame to set its behavior.</p>');
     const isFrame = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
     const isChildFrame = n.type === 'frame' && n.parentId && !n.component && !n.componentSet && !n.isInstance;
-    if (!n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame)
-        return section('Behavior', '<p class="small-label">Behavior is set on components and their instances. Select a component or an instance of one.</p>');
+    const plain = !n.isInstance && !n.component && !n.componentSet && !isFrame && !isChildFrame;
     const frames = bhFrames();
     setRowRefs(bhRowRefs(n));
     let html = '';
     if (isFrame)
         html += section('Frame role', `<p class="small-label">The role decides what an interaction can open this frame as.</p><label class="field"><span>Role</span>${bhSelect('frame.role', 'plain', n.frameRole || 'page', FRAME_ROLES.map(r => [r.id, r.label]))}</label>`);
-    if (!isFrame && !isChildFrame) {
+    if (!isFrame && !isChildFrame && !plain) {
         const type = bhTypeOf(n), src = n.isInstance ? chainComponent(n) : n, set = src && parentSetOf(src);
         const compName = (n.isInstance ? (set?.name || src?.name) : n.name) || n.name;
         const kind = n.isInstance ? 'Instance of a component' : (n.componentSet ? 'Component set' : 'Main component');
         html += `<section class="inspector-section bh-summary"><div class="bh-summary-name" title="${esc(compName)}">${esc(compName)}</div><div class="bh-pills"><span class="bh-pill">${esc(TYPE_LABEL[type] || type)}</span><span class="bh-pill muted">${esc(kind)}</span></div>${n.isInstance ? `<label class="checkbox-row"><input type="checkbox" data-proto="disabled" ${n.disabled ? 'checked' : ''}> Disabled</label>` : ''}</section>`;
     }
+    html += bhQuickHtml(n);
     html += bhInteractionsSection(n, frames);
-    if (!isFrame && !isChildFrame) html += bhBehaviorSection(n) + bhStateSection(n);
-    if (n.type === 'frame') html += bhRepeatSection(n) + bhBindSection(n);
+    // Components always list their capabilities. A plain layer lists them once it has one (Can type, Has validation…).
+    if (!isFrame && !isChildFrame && !plain) html += bhBehaviorSection(n);
+    else if (!isFrame && capabilitySections(bhCapContext(n)).some(s => s.kind !== 'on-click')) html += bhBehaviorSection(n);
+    // Variables, state modes, repeat and bind-to-state stay one fold away: most designs never need them.
+    if (!plain) {
+        const adv = (!isFrame && !isChildFrame ? bhStateSection(n) : '') + (n.type === 'frame' ? bhRepeatSection(n) + bhBindSection(n) : '');
+        if (adv) html += `<div class="bh-adv"><button type="button" class="bh-adv-btn" data-bh-act="toggle-adv" aria-expanded="${BH_UI.advOpen}">${BH_UI.advOpen ? '▾' : '▸'} Advanced</button>${BH_UI.advOpen ? `<div class="bh-adv-body">${adv}</div>` : ''}</div>`;
+    }
     return html + scrollBehaviorHtml(n);
+}
+/** "What should happen here?": plain-language starting points for any layer. Each one adds the real interaction or capability and opens it. */
+function bhQuickHtml(n) {
+    const isPage = n.type === 'frame' && !n.parentId && !n.component && !n.componentSet && !n.isInstance;
+    const field = !isPage && (n.type === 'frame' || n.isInstance || n.component || n.componentSet);
+    const chip = (q, label, hint) => `<button type="button" class="bh-chip-btn" data-bh-act="quick" data-bh-quick="${q}" title="${esc(hint)}">${esc(label)}</button>`;
+    const click = [chip('navigate', 'Go to a page', 'Opens another page or frame'), chip('overlay', 'Open a dialog', 'Opens an overlay on top of this page'), chip('message', 'Show a message', 'Shows an alert, message or notification')].join('');
+    const input = field ? `<div class="bh-preset-row"><small>If it is a text field</small><div class="bh-chips">${chip('type', 'Let people type here', 'The layer takes typing in Preview')}${chip('validate', 'Check what is typed', 'Required, email, length… with your own error message')}</div></div>` : '';
+    const list = n.type === 'frame' && !isPage && !n.repeat?.variableId && doc.children(n.id).length ? `<div class="bh-preset-row"><small>If it holds items</small><div class="bh-chips">${chip('list', 'Show a list of items', 'Repeats its first layer for each row of a sample list')}</div></div>` : '';
+    return `<section class="inspector-section bh-quick"><div class="section-heading"><span>What should happen here?</span></div><p class="small-label">Pick one, then press Preview to try it.</p><div class="bh-preset-row"><small>When clicked</small><div class="bh-chips">${click}</div></div>${input}${list}</section>`;
 }
 // ----- the window
 /** The window for BHW, or null when what it shows is gone (then it closes). → { title, body, back } */
@@ -20133,6 +20251,40 @@ function bhFirstNew(n, beforeBehaviors, beforeInteractions, input) {
 function bhAction(n, t) {
     const act = t.dataset.bhAct;
     if (act === 'toggle-add') { BH_UI.addOpen = !BH_UI.addOpen; return; }
+    if (act === 'toggle-adv') { BH_UI.advOpen = !BH_UI.advOpen; return; }
+    if (act === 'quick') {
+        const q = t.dataset.bhQuick;
+        if (q === 'type') { bhApplyPlan(n, { behaviors: [], input: { typeable: { inputType: 'text' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'can-type' }; return; }
+        if (q === 'validate') { bhApplyPlan(n, { behaviors: [], input: { validation: { rules: {}, trigger: 'blur' } }, interactions: [] }); BHW.next = { kind: 'cap', key: 'has-validation' }; return; }
+        if (q === 'list') {
+            // A List State with three sample rows, and this frame repeating its first child for each of them.
+            const tpl = doc.children(n.id)[0];
+            if (!tpl) return;
+            const texts = [], walk = l => { if (l.type === 'text') texts.push(l); for (const c of doc.children(l.id)) walk(c); };
+            walk(tpl);
+            const schema = (texts.length ? texts.slice(0, 4) : [{ name: 'label' }]).map((t, i) => ({ key: i === 0 ? 'title' : `field${i + 1}`, type: 'string', label: t.name }));
+            const initial = [1, 2, 3].map(r => Object.fromEntries(schema.map((f, i) => [f.key, `${texts[i]?.text || f.label || 'Item'} ${r}`])));
+            const st = stateStore();
+            let name = `${n.name || 'Items'} list`, k = 2;
+            while (st.variables.some(v => v.name === name)) name = `${n.name || 'Items'} list ${k++}`;
+            const id = uid();
+            st.variables.push({ id, name, type: 'list', itemType: 'object', scope: 'page', schema, initial });
+            const clean = cleanState(st);
+            st.variables = clean.variables;
+            n.repeat = { variableId: id, bind: Object.fromEntries(texts.slice(0, 4).map((t, i) => [t.id, { text: schema[i].key }])) };
+            BHW.next = { kind: 'repeat', key: '' };
+            return;
+        }
+        const type = { navigate: 'navigate', overlay: 'open-overlay', message: 'show-feedback' }[q];
+        if (!type) return;
+        let list = normalizeInteractions(n.interactions);
+        if (!list.length && n.isInstance) { const src = chainComponent(n), set = src && parentSetOf(src); list = structuredClone(interactionsForNode(n, src, set).list); }
+        const id = `i${Date.now().toString(36)}`;
+        list.push({ id, trigger: 'onClick', actions: [{ type }] });
+        n.interactions = normalizeInteractions(list);
+        BHW.next = { kind: 'interaction', key: id };
+        return;
+    }
     if (act === 'pick-slot') { BH_UI.pick = BH_UI.pick?.path === t.dataset.bhPath ? null : { nodeId: n.id, path: t.dataset.bhPath }; return; }
     if (act === 'go-main') { const src = chainComponent(n); if (src) goToMainComponent((parentSetOf(src) || src).id, n.id); return; }
     if (act === 'add-preset') { const plan = planPreset(t.dataset.bhPreset); if (plan) { const before = new Set(behaviorsOf(n, true).map(b => b.id)), had = normalizeInteractions(n.interactions).map(i => i.id); bhApplyPlan(n, plan); if (plan.behaviors.some(x => x.kind === 'has-rows') && !n.isInstance) bhTableSetup(n); BHW.next = bhFirstNew(n, before, had, plan.input?.typeable ? 'can-type' : plan.input?.validation ? 'has-validation' : ''); } return; }
@@ -22960,4 +23112,5 @@ else if (deepLink?.used) {
         fit(ids);
     }
     syncUrl();
-}else    showHome({ thumb: false });setTimeout(() => ensureGlobalIndexes(), 50);// The engine owns the canvas and a GPU device; a hot-swapped second instance would reconfigure the same canvas with another device ("TextureView ... cannot be used with Device"). Reload fully instead.if (import.meta.hot) import.meta.hot.decline();
+}else    showHome({ thumb: false });if (bootLazyPages.length) streamPages(lib.fileId, bootLazyPages).catch(e => console.warn('Streaming pages failed', e));
+setTimeout(() => ensureGlobalIndexes(), 50);// The engine owns the canvas and a GPU device; a hot-swapped second instance would reconfigure the same canvas with another device ("TextureView ... cannot be used with Device"). Reload fully instead.if (import.meta.hot) import.meta.hot.decline();

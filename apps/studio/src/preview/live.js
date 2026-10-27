@@ -32,7 +32,8 @@ const rgba = (hex, a = 1) => {
 const isAuto = n => n && n.type === 'frame' && n.layout && n.layout !== 'none';
 
 function fillsOf(n) {
-    if (Array.isArray(n.fills)) return n.fills.filter(f => f.visible !== false);
+    // An empty list with a fill colour is how files written by scripts describe a plain solid fill; the editor itself sets fill 'none' then.
+    if (Array.isArray(n.fills) && (n.fills.length || !n.fill)) return n.fills.filter(f => f.visible !== false);
     if (!n.fill || n.fill === 'none') return [];
     if (n.fillType === 'linear') return [{ type: 'linear', color: n.fill, color2: n.fill2 || '#ffffff', angle: n.gradientAngle ?? 90, opacity: n.fillOpacity ?? 1 }];
     return [{ type: 'solid', color: n.fill, opacity: n.fillOpacity ?? 1 }];
@@ -553,8 +554,21 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
                 }
             }
             else if (n.prototypeTarget || hasOwnInteractions(n)) wire = { inst: n };
+            // A plain layer (not a component instance) the designer made typeable: the text layer they picked takes the typing.
+            if (!n.isInstance && n.typeable === true) {
+                const pib = ctx.inputFor?.(n), fl = pib?.typeable?.frameId ? ctx.node(pib.typeable.frameId) : null;
+                if (fl) {
+                    const prt = runtime.get(rowRuntimeKey(n.id, n.__row));
+                    const field = { id: fl.id, name: fl.name, width: fl.w };
+                    inner = { ...(o || {}), inst: n, field, input: pib, state: prt?.state || 'default', err: !!prt?.error };
+                    inner.form = inner;
+                    wire = { ...(wire || {}), inst: n, field };
+                }
+            }
             if (varOver.size || modeOver.size) base = ctx.overridden(base, varOver, modeOver);
             const c = { ...base, id: `s${seq++}`, parentId, visible: true, _wire: wire };
+            // A plain field has no error look of its own to switch to: a failed check outlines it in red.
+            if (!n.isInstance && inner?.field && inner.inst === n && inner.err) { c.stroke = '#d92d20'; c.strokeWidth = Math.max(1.5, c.strokeWidth || 0); if (c.vars) delete c.vars.stroke; }
             // Smart animate matches layers across two drawings by their name path ("Button/Label"), repeated names by their order.
             const up = copies.get(parentId)?._key || '', nm = `${up}/${n.name || n.type}`, used = keyUse.get(nm) || 0;
             keyUse.set(nm, used + 1);
@@ -758,7 +772,7 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
     /** The field's text is the placeholder: an input takes its place, wide enough for what is typed. */
     function renderField(c, parent, off, extra) {
         const o = c._field, inst = o.inst, cur = runtime.get(rowRuntimeKey(inst.id, inst.__row)) || {};
-        const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0', flexShrink: '1' }, parent);
+        const input = el('input', { ...nodeToStyle(c, c._pn, off), ...textStyle(ctx, c), width: px(Math.max(c.w, o.field.width, inst.isInstance ? 0 : (inst.w || 0) - (c.x || 0) - 14)), ...(extra || {}), border: '0', borderRadius: '0', outline: '0', boxShadow: 'none', background: 'transparent', padding: '0', margin: '0', minWidth: '0', flexShrink: '1' }, parent);
         for (let p = parent, i = 0; p && i < 3 && p !== stage; p = p.parentElement, i++) p.style.overflow = 'visible';
         input.dataset.field = inst.id;
         input.placeholder = c.text ?? '';
@@ -766,6 +780,13 @@ export function openLivePreview(ctx, host, { onExit, onRefresh, surface = 'overl
         const boundTo = o.input?.typeable?.bindTo;
         input.value = boundTo && evalCtx.has(boundTo) ? formatValue(evalCtx.get(boundTo)) : (cur.value || '');
         input.disabled = !!inst.disabled;
+        // A plain field shows why it failed right under itself (a component field shows it in its own hint layer).
+        if (!inst.isInstance && cur.error && parent.style) {
+            const why = validateInput({ inputType: o.input?.typeable?.inputType || 'text', required: requiredOf(inst, o.input), rules: rulesOf(o.input), label: inst.name }, cur.value || '', { touched: true, strict: true });
+            const msg = cur.errorMessage || why.message || o.input?.validation?.rules?.message || 'This field is required';
+            const note = el('div', { position: 'absolute', left: '0', top: '100%', marginTop: '4px', color: '#d92d20', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap', pointerEvents: 'none' }, parent);
+            note.textContent = msg;
+        }
         // The type is the designer's choice (Behavior tab). Only a password hides its text, until its eye layer is clicked.
         const kind = o.input?.typeable?.inputType || 'text';
         input.type = kind === 'password' && !cur.reveal ? 'password' : 'text';

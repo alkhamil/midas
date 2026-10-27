@@ -1,8 +1,10 @@
+import fastifyCompress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import Fastify from 'fastify';
+import Fastify, { type FastifyError } from 'fastify';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { constants as zlibConstants } from 'node:zlib';
 import { config } from './config.js';
 import { loadUser } from './lib/auth.js';
 import { authRoutes } from './routes/auth.js';
@@ -17,8 +19,10 @@ export async function buildApp() {
     // trustProxy: behind a hosting proxy the request arrives over http; honour X-Forwarded-* so Secure cookies and URLs are right.
     const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: config.bodyLimit, trustProxy: true });
     await app.register(cookie);
+    // Pages of a big file are tens of MB of JSON that shrinks ~10x: gzip/br for every compressible response (images are skipped by content type).
+    await app.register(fastifyCompress, { threshold: 1024, encodings: ['br', 'gzip'], brotliOptions: { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 4 } }, zlibOptions: { level: 6 } });
     // Every 5xx is logged with its route and error (a bare 500 used to leave no trace on the server).
-    app.setErrorHandler((err, req, reply) => {
+    app.setErrorHandler((err: FastifyError, req, reply) => {
         const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
         req.log.error({ route: `${req.method} ${req.url.split('?')[0]}`, status, err: { message: err.message, stack: err.stack } }, 'request failed');
         if (reply.sent) return;

@@ -105,3 +105,16 @@ test('kv store', async () => {
     assert.equal((await call('GET', '/api/kv/missing')).status, 404);
 });
 
+
+test('stored pages leave out default layer fields and keep the ones the generator reads', async () => {
+    const { compactNode } = await import('../src/lib/compact.js');
+    const full = { id: 'a', type: 'frame', name: 'F', x: 1, y: 2, w: 3, h: 4, rotation: 0, opacity: 1, fill: '#fff', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000', strokeWidth: 0, radius: 0, locked: false, shadow: false, shadowColor: '#000000', shadowOpacity: 0.16, shadowBlur: 20, shadowX: 0, shadowY: 6, clip: true, visible: true, version: 3 };
+    assert.deepEqual(compactNode(full), { id: 'a', type: 'frame', name: 'F', x: 1, y: 2, w: 3, h: 4, fill: '#fff', clip: true, visible: true, version: 3 });
+    // A stroke or shadow that is on keeps its colour and numbers.
+    const on = compactNode({ ...full, strokeWidth: 2, shadow: true });
+    assert.equal(on.stroke, '#000000');
+    assert.equal(on.shadowY, 6);
+    assert.equal(on.strokeWidth, 2);
+    // Non-default values stay.
+    assert.equal(compactNode({ ...full, rotation: 15, opacity: 0.5 }).rotation, 15);
+});
