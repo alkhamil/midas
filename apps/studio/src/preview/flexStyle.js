@@ -68,6 +68,17 @@ export function strokeInset(n) {
     return { t: s.t * k, r: s.r * k, b: s.b * k, l: s.l * k };
 }
 
+/**
+ * Hug on one axis as the layout resolves it. Fill inside an auto layout parent that resolves to Hug on that axis has no space to
+ * share, so it resolves to Hug too (Figma). `up` is the node's parent; the parent's own parent comes from `up._pn` (live copies
+ * carry it), so a chain of Fill-in-Hug resolves all the way up.
+ */
+export function resolvesHug(n, axis, up = null) {
+    const s = sizingOf(n, axis, isAutoFrame(up));
+    if (s === 'hug') return true;
+    return s === 'fill' && isAutoFrame(up) && n.layoutPositioning !== 'absolute' && resolvesHug(up, axis, up._pn ?? null);
+}
+
 /** 'fixed' | 'hug' | 'fill' for one axis ('h' | 'v'). Hug only means something on text and on auto layout frames. */
 export function sizingOf(n, axis, parentIsAuto = false) {
     const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
@@ -90,6 +101,11 @@ function containerStyle(n) {
         if (finite(n.gapCross)) s.rowGap = px(n.gapCross);
         s.justifyItems = ALIGN[n.primaryAlign || 'start'];
         s.alignItems = ALIGN[n.counterAlign || n.layoutAlign || 'start'];
+        // Tracks are as wide / tall as their largest child and sit at the start: the canvas does not stretch them.
+        s.justifyContent = 'start';
+        s.alignContent = 'start';
+        const gp = n.padding ?? 16, I = n.strokesIncluded ? strokeInset(n) : { t: 0, r: 0, b: 0, l: 0 };
+        s.padding = [(n.padT ?? gp) + I.t, (n.padR ?? gp) + I.r, (n.padB ?? gp) + I.b, (n.padL ?? gp) + I.l].map(px).join(' ');
         return s;
     }
     const horiz = n.layout === 'horizontal';
@@ -110,8 +126,8 @@ function containerStyle(n) {
     }
     s.alignItems = horiz && n.alignBaseline ? 'baseline' : (ALIGN[n.counterAlign || n.layoutAlign || 'start'] || 'flex-start');
     if (n.layoutWrap) { s.flexWrap = 'wrap'; s.alignContent = 'flex-start'; }
-    const p = n.padding ?? 16;
-    s.padding = [n.padT ?? p, n.padR ?? p, n.padB ?? p, n.padL ?? p].map(px).join(' ');
+    const p = n.padding ?? 16, I = n.strokesIncluded ? strokeInset(n) : { t: 0, r: 0, b: 0, l: 0 };
+    s.padding = [(n.padT ?? p) + I.t, (n.padR ?? p) + I.r, (n.padB ?? p) + I.b, (n.padL ?? p) + I.l].map(px).join(' ');
     return s;
 }
 
@@ -126,6 +142,13 @@ export function nodeToStyle(node, parent, off) {
     const flow = isAutoFrame(owner) && node.layoutPositioning !== 'absolute';
     const absolute = !!off || (!!owner && !flow);
     const container = node.type === 'frame' || node.type === 'group';
+    // Fill inside a Hug parent has no space to share: the parent is as big as its children, so the child keeps its natural size
+    // (text and frames hug their content, other layers keep the size they have), as the canvas computes it.
+    const modeIn = axis => {
+        const mode = sizingOf(node, axis, isAutoFrame(owner));
+        if (mode !== 'fill' || !flow || !resolvesHug(node, axis, owner)) return mode;
+        return node.type === 'text' || node.type === 'frame' ? 'hug' : 'fixed';
+    };
 
     if (absolute) {
         s.position = 'absolute';
@@ -136,12 +159,14 @@ export function nodeToStyle(node, parent, off) {
 
     if (isAutoFrame(node)) Object.assign(s, containerStyle(node));
     if (node.type === 'frame' && (node.clip || node.overflow === 'none')) s.overflow = 'hidden';
+    // Strokes included in the parent's layout: the outer stroke takes room in the flow, as a margin around the box.
+    if (flow && owner.strokesIncluded && strokeOutset(node)) s.margin = px(strokeOutset(node));
     if (node.rotation) s.transform = `rotate(${node.rotation}deg)`;
 
     const horizMain = owner?.layout !== 'vertical';
     for (const axis of ['h', 'v']) {
         const dim = axis === 'h' ? 'width' : 'height', Dim = axis === 'h' ? 'Width' : 'Height', size = axis === 'h' ? node.w : node.h;
-        const mode = sizingOf(node, axis, isAutoFrame(owner));
+        const mode = modeIn(axis);
         let min = finite(axis === 'h' ? node.minW : node.minH) ? px(axis === 'h' ? node.minW : node.minH) : null;
         const max = finite(axis === 'h' ? node.maxW : node.maxH) ? px(axis === 'h' ? node.maxW : node.maxH) : null;
         if (flow && owner.layout !== 'grid') {
@@ -163,6 +188,8 @@ export function nodeToStyle(node, parent, off) {
         if (max) s['max' + Dim] = max;
     }
     // Text that hugs its width stays on one line (a hard line break is kept); Fixed and Fill widths may wrap.
-    if (node.type === 'text') s.whiteSpace = sizingOf(node, 'h', isAutoFrame(owner)) === 'hug' ? (/\n/.test(node.text || '') ? 'pre' : 'nowrap') : 'pre-wrap';
+    if (node.type === 'text') s.whiteSpace = modeIn('h') === 'hug' ? (/\n/.test(node.text || '') ? 'pre' : 'nowrap') : 'pre-wrap';
+    // A word wider than its box breaks inside, as the canvas does (it wraps per character).
+    if (node.type === 'text' && s.whiteSpace === 'pre-wrap') s.overflowWrap = 'anywhere';
     return s;
 }
