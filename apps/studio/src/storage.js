@@ -8,6 +8,7 @@
 // → ConflictError (409).
 
 import { boot } from './boot.js';
+import { assertBehaviorData } from '@midas/builder-core';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -295,6 +296,7 @@ export const projectStorage = {
         try {
             const r = (await api('GET', `${fileUrl(fileId)}/pages/${enc(pageId)}`)).page;
             if (!r) return null;
+            assertBehaviorData({ pages: [r.data] });
             pagesOf(fileId).set(r.pageId, r.version);
             return r.data;
         } catch (e) {
@@ -371,7 +373,7 @@ export const projectStorage = {
             assets[id] = assetUrl(fileId, id);
             done.add(id);
         }
-        return {
+        const doc = {
             format: 'midas',
             version: 1,
             name: file.name,
@@ -387,6 +389,8 @@ export const projectStorage = {
             created: meta.created ?? file.created,
             assets
         };
+        assertBehaviorData(doc);
+        return doc;
     },
 
     async exportProject(fileId, inMemoryDocData) {

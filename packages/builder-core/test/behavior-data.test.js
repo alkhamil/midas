@@ -1,0 +1,42 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assertBehaviorData, BehaviorDataError } from '../src/behavior-engine/data.js';
+
+const master = (behavior, extra = {}) => ({ id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior, ...extra });
+const instance = (behavior, extra = {}) => ({ id: 'i1', name: 'Button', type: 'frame', isInstance: true, behavior, ...extra });
+const docWith = (...nodes) => ({ pages: [{ id: 'p1', nodes }] });
+const validMaster = { version: 1, templateId: 'button', variables: { variant: 'c-variant', size: null } };
+
+test('a file without behavior data opens normally, even with components in it', () => {
+    assert.doesNotThrow(() => assertBehaviorData(docWith({ id: 'a', name: 'Card', type: 'frame', children: [{ id: 'b', type: 'text' }] })));
+});
+
+test('valid master and instance behavior data is accepted', () => {
+    const doc = docWith({ id: 'root', type: 'frame' }, master(validMaster), instance({ version: 1, props: { label: 'Save', hasIcon: true } }));
+    assert.doesNotThrow(() => assertBehaviorData(doc));
+});
+
+test('master variables must name variable props of its template', () => {
+    const doc = docWith(master({ ...validMaster, variables: { shape: 'c-variant' } }));
+    assert.throws(() => assertBehaviorData(doc), /"shape" is not a variable prop of button/);
+});
+
+test('a behavior version other than 1 fails with an explicit error naming the node', () => {
+    const doc = docWith(master({ ...validMaster, version: 2 }));
+    assert.throws(() => assertBehaviorData(doc), err => err instanceof BehaviorDataError && /"Button" \(btn\)/.test(err.message) && /version 2/.test(err.message));
+});
+
+test('an unknown key in behavior data fails; nothing is repaired or partially loaded', () => {
+    const doc = docWith(master({ ...validMaster, interactions: [] }));
+    assert.throws(() => assertBehaviorData(doc), BehaviorDataError);
+});
+
+test('master data for an unknown template fails', () => {
+    const doc = docWith(master({ ...validMaster, templateId: 'card' }));
+    assert.throws(() => assertBehaviorData(doc), /unknown template "card"/);
+});
+
+test('instance data on a node that is not an instance, and master data on an instance, both fail', () => {
+    assert.throws(() => assertBehaviorData(docWith(master({ version: 1, props: {} }))), BehaviorDataError);
+    assert.throws(() => assertBehaviorData(docWith(instance(validMaster))), BehaviorDataError);
+});

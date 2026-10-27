@@ -1,5 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
+import { assertBehaviorData } from '@midas/builder-core';
 import { overlaysToPrune, reowned, unusedOverlays, overlaysOfTriggers, ownerOfAction, dropDanglingOverlays, isOverlayLayer, overlayActionsOf } from './behavior.js';
 import { layoutOrder } from '../preview/flexStyle.js';
 import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
@@ -7101,6 +7102,7 @@ class DocumentModel {
         const d = typeof text === 'string' ? JSON.parse(text) : text;
         if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
             throw new Error('This is not a supported Midas document.');
+        assertBehaviorData(d);
         const all = new Set();
         let total = 0, donePages = 0;
         const valid = new Set(['rect', 'ellipse', 'text', 'frame', 'group', 'path', 'line', 'image']);

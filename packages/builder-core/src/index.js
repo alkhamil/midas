@@ -21,3 +21,8 @@ export * from './columns.js';
 export * from './table.js';
 export * from './form.js';
 export * from './feedbackMotion.js';
+export * from './behavior-engine/registry.js';
+export * from './behavior-engine/validate-schema.js';
+export * from './behavior-engine/data.js';
+export * from './behavior-engine/binding.js';
+export * from './behavior-engine/instance-props.js';
