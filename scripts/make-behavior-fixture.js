@@ -133,6 +133,8 @@ export function buildBehaviorFixture() {
         ...master('unbound', 'Unbound', 600, null, { root: {}, label: {} }, 0),
         ...master('legacy', 'Button (legacy)', 0, LEGACY, bindings('-b'), 240),
     ];
+    // The master's root has a stroke, so the Focus preview (border) is visible on the canvas; instances copy it.
+    page1[0].strokeWidth = 2;
     const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', label: 'Next' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, 'end', bindings('-v'));
     const pages = [
         { id: 'page-components', name: 'Components', nodes: page1 },

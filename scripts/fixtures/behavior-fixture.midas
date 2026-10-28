@@ -22,7 +22,7 @@
           "gradientAngle": 90,
           "fillOpacity": 1,
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 2,
           "radius": 8,
           "opacity": 1,
           "visible": true,
