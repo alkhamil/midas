@@ -1,0 +1,43 @@
+{
+  "format": "midas-clipboard",
+  "rootIds": [
+    "clip-icon-start"
+  ],
+  "nodes": [
+    {
+      "name": "iconStart",
+      "parentId": null,
+      "x": 0,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "rotation": 0,
+      "fill": "#ffffff",
+      "fill2": "#cfe1fa",
+      "fillType": "solid",
+      "gradientAngle": 90,
+      "fillOpacity": 1,
+      "stroke": "#000000",
+      "strokeWidth": 0,
+      "radius": 0,
+      "opacity": 1,
+      "visible": true,
+      "locked": false,
+      "clip": false,
+      "shadow": false,
+      "shadowColor": "#000000",
+      "shadowOpacity": 0.16,
+      "shadowBlur": 20,
+      "shadowX": 0,
+      "shadowY": 6,
+      "version": 0,
+      "type": "frame",
+      "id": "clip-icon-start",
+      "behavior": {
+        "version": 1,
+        "slot": "iconStart"
+      }
+    }
+  ],
+  "assets": {}
+}

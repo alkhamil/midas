@@ -1,0 +1,139 @@
+// Builds the Behavior manual-test document: scripts/fixtures/behavior-fixture.midas. Run `node scripts/make-behavior-fixture.js`,
+// then open the file with Import file on the home screen (or import it into a workspace). A saved copy reopens lazily,
+// because it has more than three pages. The node defaults below mirror node() in apps/studio/src/engine/midas.js: keep them in step.
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
+export const FIXTURE_PATH = resolve(here, 'fixtures/behavior-fixture.midas');
+export const CLIPBOARD_PATH = resolve(here, 'fixtures/managed-layer-clipboard.json');
+
+const COMMON = {
+    rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000',
+    strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, shadow: false, shadowColor: '#000000',
+    shadowOpacity: 0.16, shadowBlur: 20, shadowX: 0, shadowY: 6, version: 0,
+};
+const TEXT = {
+    text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35,
+    letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44,
+};
+const FRAME = { fill: '#ffffff', w: 400, h: 300, clip: true };
+
+/** A node as the editor stores it: the node() defaults, then the given props. */
+function node(type, props) {
+    const name = type[0].toUpperCase() + type.slice(1);
+    return {
+        name, parentId: null, x: 0, y: 0, w: 160, h: 100, ...COMMON,
+        ...(type === 'text' ? TEXT : {}), ...(type === 'frame' ? FRAME : {}), type, ...props,
+    };
+}
+
+const ids = { variant: 'c-variant', variantLegacy: 'c-variant-b', size: 'c-size' };
+const modes = { primary: { id: 'primary', name: 'Primary' }, danger: { id: 'danger', name: 'Danger' }, sm: { id: 'sm', name: 'Small' }, lg: { id: 'lg', name: 'Large' } };
+
+/** A Button master: a root auto layout frame with its label, bound to the template, or unbound when `binding` is null. */
+function master(id, name, x, binding, y = 0) {
+    const root = node('frame', {
+        id, name, x, y, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug',
+        layoutSizingV: 'hug', fill: '#0058CA', radius: 8, ...(binding ? { behavior: { version: 1, ...binding } } : {}),
+    });
+    return [root, node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, fill: '#ffffff', fontSize: 14 })];
+}
+
+/** An instance of a master: its managed icon layer (when `icon` is 'start' or 'end'), and its label. */
+function instance(id, name, x, sourceId, props, icon) {
+    const root = node('frame', {
+        id, name, x, y: 120, w: 136, h: 48, isInstance: true, sourceId, layout: 'horizontal', gap: 6, padding: 12,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fill: '#0058CA', radius: 8, behavior: { version: 1, props },
+    });
+    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, fill: '#ffffff', fontSize: 14 });
+    const iconLayer = icon ? node('frame', {
+        id: `${id}-icon-${icon}`, name: `icon${icon[0].toUpperCase()}${icon.slice(1)}`, parentId: id, w: 16, h: 16, fill: '#8c8297', clip: false,
+        behavior: { version: 1, slot: `icon${icon[0].toUpperCase()}${icon.slice(1)}` },
+    }) : null;
+    const kids = !iconLayer ? [label] : icon === 'start' ? [iconLayer, label] : [label, iconLayer];
+    return [root, ...kids];
+}
+
+const collection = (id, name, modeList) => ({ id, name, modes: modeList });
+const color = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
+const number = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
+
+/** The variables: Variant and Size (bound to the main master), Variant B (bound to the legacy master, missing one state token). */
+function variables() {
+    const variantTokens = (vals) => [
+        color('i-bg', 'bg', ids.variant, vals.bg), color('i-bg-hover', 'bg-hover', ids.variant, vals.bgHover),
+        color('i-bg-active', 'bg-active', ids.variant, vals.bgActive), color('i-bg-disabled', 'bg-disabled', ids.variant, vals.bgDisabled),
+        color('i-fg', 'fg', ids.variant, vals.fg), color('i-border', 'border', ids.variant, vals.border),
+    ];
+    const sizeTokens = [
+        number('i-fs', 'fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'lineHeight', ids.size, { sm: 1.4, lg: 1.5 }),
+        number('i-px', 'paddingX', ids.size, { sm: 12, lg: 16 }), number('i-py', 'paddingY', ids.size, { sm: 6, lg: 8 }),
+        number('i-gap', 'gap', ids.size, { sm: 6, lg: 8 }), number('i-radius', 'radius', ids.size, { sm: 6, lg: 8 }),
+        number('i-icon', 'iconSize', ids.size, { sm: 14, lg: 16 }),
+    ];
+    const variantFull = variantTokens({
+        bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3', danger: '#b91c1c' },
+        bgActive: { primary: '#312e81', danger: '#991b1b' }, bgDisabled: { primary: '#a5b4fc', danger: '#fca5a5' },
+        fg: { primary: '#ffffff', danger: '#ffffff' }, border: { primary: '#4338ca', danger: '#dc2626' },
+    }).map(item => ({ ...item, id: `${item.id}-v` }));
+    // Variant B: no bg-hover value in Danger, so the legacy master's hover state is missing a token.
+    const legacy = variantTokens({
+        bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3' },
+        bgActive: { primary: '#312e81', danger: '#991b1b' }, bgDisabled: { primary: '#a5b4fc', danger: '#fca5a5' },
+        fg: { primary: '#ffffff', danger: '#ffffff' }, border: { primary: '#4338ca', danger: '#dc2626' },
+    }).map(item => ({ ...item, id: `${item.id}-b`, collectionId: ids.variantLegacy }));
+    return {
+        collections: [
+            collection(ids.variant, 'Variant', [modes.primary, modes.danger]),
+            collection(ids.variantLegacy, 'Variant B', [modes.primary, modes.danger]),
+            collection(ids.size, 'Size', [modes.sm, modes.lg]),
+        ],
+        items: [...variantFull, ...legacy, ...sizeTokens],
+    };
+}
+
+const BOUND = { templateId: 'button', variables: { variant: ids.variant, size: ids.size } };
+const LEGACY = { templateId: 'button', variables: { variant: ids.variantLegacy, size: ids.size } };
+
+/** The fixture document. Five pages, so a lazy open applies (more than three pages). */
+export function buildBehaviorFixture() {
+    const page1 = [
+        ...master('main', 'Button', 0, BOUND),
+        ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', label: 'Save', variant: 'primary', size: 'sm' }, 'start'),
+        ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel', variant: 'danger', size: 'lg' }, null),
+        ...master('unbound', 'Unbound', 600, null, 0),
+        ...master('legacy', 'Button (legacy)', 0, LEGACY, 240),
+    ];
+    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', label: 'Next', variant: 'primary', size: 'sm' }, 'end');
+    const pages = [
+        { id: 'page-components', name: 'Components', nodes: page1 },
+        { id: 'page-screens', name: 'Screens', nodes: page2 },
+        { id: 'page-empty-3', name: 'Empty 3', nodes: [] },
+        { id: 'page-empty-4', name: 'Empty 4', nodes: [] },
+        { id: 'page-empty-5', name: 'Empty 5', nodes: [] },
+    ];
+    return {
+        format: 'midas', version: 1, name: 'Behavior fixture', pageId: 'page-components', pages,
+        tokens: { colors: [], typography: [] }, assets: {}, variables: variables(),
+    };
+}
+
+/**
+ * A clipboard payload holding one managed icon layer and no instance, in the editor's clipboard format. Pasting it is refused.
+ * Copy the file's text to the system clipboard, then paste on the canvas.
+ */
+export function buildManagedLayerClipboard() {
+    const layer = node('frame', { id: 'clip-icon-start', name: 'iconStart', parentId: null, x: 0, y: 0, w: 16, h: 16, clip: false, behavior: { version: 1, slot: 'iconStart' } });
+    return { format: 'midas-clipboard', rootIds: [layer.id], nodes: [layer], assets: {} };
+}
+
+// Run directly: write the fixture and the clipboard payload (the directory is created if missing).
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+    mkdirSync(dirname(FIXTURE_PATH), { recursive: true });
+    writeFileSync(FIXTURE_PATH, JSON.stringify(buildBehaviorFixture(), null, 2) + '\n');
+    writeFileSync(CLIPBOARD_PATH, JSON.stringify(buildManagedLayerClipboard(), null, 2) + '\n');
+    console.log(`Wrote ${FIXTURE_PATH}`);
+    console.log(`Wrote ${CLIPBOARD_PATH}`);
+}

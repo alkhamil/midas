@@ -1,0 +1,855 @@
+{
+  "format": "midas",
+  "version": 1,
+  "name": "Behavior fixture",
+  "pageId": "page-components",
+  "pages": [
+    {
+      "id": "page-components",
+      "name": "Components",
+      "nodes": [
+        {
+          "name": "Button",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "main",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 1,
+            "templateId": "button",
+            "variables": {
+              "variant": "c-variant",
+              "size": "c-size"
+            }
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "main",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "main-label"
+        },
+        {
+          "name": "Save",
+          "parentId": null,
+          "x": 200,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-start",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 1,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "label": "Save",
+              "variant": "primary",
+              "size": "sm"
+            }
+          }
+        },
+        {
+          "name": "iconStart",
+          "parentId": "inst-start",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fill": "#8c8297",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-start-icon-start",
+          "behavior": {
+            "version": 1,
+            "slot": "iconStart"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-start",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Save",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-start-label"
+        },
+        {
+          "name": "Cancel",
+          "parentId": null,
+          "x": 400,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-plain",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 1,
+            "props": {
+              "hasIcon": false,
+              "label": "Cancel",
+              "variant": "danger",
+              "size": "lg"
+            }
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-plain",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Cancel",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-plain-label"
+        },
+        {
+          "name": "Unbound",
+          "parentId": null,
+          "x": 600,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "unbound",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug"
+        },
+        {
+          "name": "Label",
+          "parentId": "unbound",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "unbound-label"
+        },
+        {
+          "name": "Button (legacy)",
+          "parentId": null,
+          "x": 0,
+          "y": 240,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "legacy",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 1,
+            "templateId": "button",
+            "variables": {
+              "variant": "c-variant-b",
+              "size": "c-size"
+            }
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "legacy",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "legacy-label"
+        }
+      ]
+    },
+    {
+      "id": "page-screens",
+      "name": "Screens",
+      "nodes": [
+        {
+          "name": "Next",
+          "parentId": null,
+          "x": 0,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-cross",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 1,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "end",
+              "label": "Next",
+              "variant": "primary",
+              "size": "sm"
+            }
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-cross",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Next",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-cross-label"
+        },
+        {
+          "name": "iconEnd",
+          "parentId": "inst-cross",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fill": "#8c8297",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-cross-icon-end",
+          "behavior": {
+            "version": 1,
+            "slot": "iconEnd"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-empty-3",
+      "name": "Empty 3",
+      "nodes": []
+    },
+    {
+      "id": "page-empty-4",
+      "name": "Empty 4",
+      "nodes": []
+    },
+    {
+      "id": "page-empty-5",
+      "name": "Empty 5",
+      "nodes": []
+    }
+  ],
+  "tokens": {
+    "colors": [],
+    "typography": []
+  },
+  "assets": {},
+  "variables": {
+    "collections": [
+      {
+        "id": "c-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "primary",
+            "name": "Primary"
+          },
+          {
+            "id": "danger",
+            "name": "Danger"
+          }
+        ]
+      },
+      {
+        "id": "c-variant-b",
+        "name": "Variant B",
+        "modes": [
+          {
+            "id": "primary",
+            "name": "Primary"
+          },
+          {
+            "id": "danger",
+            "name": "Danger"
+          }
+        ]
+      },
+      {
+        "id": "c-size",
+        "name": "Size",
+        "modes": [
+          {
+            "id": "sm",
+            "name": "Small"
+          },
+          {
+            "id": "lg",
+            "name": "Large"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "i-bg-v",
+        "name": "bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-bg-hover-v",
+        "name": "bg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "i-bg-active-v",
+        "name": "bg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "i-bg-disabled-v",
+        "name": "bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "i-fg-v",
+        "name": "fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#ffffff"
+        }
+      },
+      {
+        "id": "i-border-v",
+        "name": "border",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-bg-b",
+        "name": "bg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-bg-hover-b",
+        "name": "bg-hover",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#3730a3"
+        }
+      },
+      {
+        "id": "i-bg-active-b",
+        "name": "bg-active",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "i-bg-disabled-b",
+        "name": "bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "i-fg-b",
+        "name": "fg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#ffffff"
+        }
+      },
+      {
+        "id": "i-border-b",
+        "name": "border",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-fs",
+        "name": "fontSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 18
+        }
+      },
+      {
+        "id": "i-lh",
+        "name": "lineHeight",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 1.4,
+          "lg": 1.5
+        }
+      },
+      {
+        "id": "i-px",
+        "name": "paddingX",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 12,
+          "lg": 16
+        }
+      },
+      {
+        "id": "i-py",
+        "name": "paddingY",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-gap",
+        "name": "gap",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-radius",
+        "name": "radius",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-icon",
+        "name": "iconSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 16
+        }
+      }
+    ]
+  }
+}
