@@ -39,7 +39,8 @@ export function makeContext({ nodes, variables, mappings = [], libraryId = null,
     return { byId, kids, vars, collections, mappings: new Map(mappings.map(m => [m.componentKey, m])), libraryId, fileId };
 }
 
-const childrenOf = (ctx, id) => (ctx.kids.get(id) || []).filter(n => n.visible !== false);
+/** Visible layers; in a component also the ones a boolean property turns on (hidden by default). */
+const childrenOf = (ctx, id, keepBound = false) => (ctx.kids.get(id) || []).filter(n => n.visible !== false || (keepBound && n.propBind?.visible));
 const isAutoLayout = n => n.type === 'frame' && !!n.layout && n.layout !== 'none';
 const round = v => Math.round(v * 100) / 100;
 
@@ -47,7 +48,8 @@ const round = v => Math.round(v * 100) / 100;
 function paint(ctx, n, prop) {
     const value = n[prop];
     if (!value || value === 'none') return null;
-    const v = n.vars?.[prop] && ctx.vars.get(n.vars[prop]);
+    const bound = n.vars?.[prop] ?? (prop === 'fill' ? n.vars?.['fills.0'] : undefined);
+    const v = bound && ctx.vars.get(bound);
     if (v) return { css: `var(${cssVarOf(v)}, ${value})`, raw: false };
     return { css: value, raw: true };
 }
@@ -140,8 +142,9 @@ function frameStyle(ctx, n, issues) {
         s.borderWidth = sides.map(x => `${x}px`).join(' ');
         if (stroke.raw) issues.push(issue(n, 'warning', `Stroke color ${n.stroke} does not use a Variable (theme token)`));
     }
-    const r = n.radius;
-    if (r) s.borderRadius = `${r >= 999 ? 9999 : r}px`;
+    const cap = r => `${r >= 999 ? 9999 : r}px`;
+    if (Array.isArray(n.radii) && n.radii.some(x => x > 0)) s.borderRadius = n.radii.every(x => x === n.radii[0]) ? cap(n.radii[0]) : n.radii.map(cap).join(' ');
+    else if (n.radius) s.borderRadius = cap(n.radius);
     if (n.clip) s.overflow = 'hidden';
     if (n.opacity != null && n.opacity < 1) s.opacity = n.opacity;
     if (n.shadow) s.boxShadow = `${n.shadowX ?? 0}px ${n.shadowY ?? 4}px ${n.shadowBlur ?? 8}px rgba(15,23,42,${n.shadowOpacity ?? 0.15})`;
@@ -206,7 +209,7 @@ export function screenTree(ctx, frameId, nodeCfg = {}, options = {}) {
         }
         if (n.type === 'text') return { kind: 'text', text: cfg.text ?? n.text ?? '', designText: n.text ?? '', cfg, style: { ...textStyle(ctx, n, issues), ...box }, nodeId: n.id, name: n.name };
         if (n.type === 'frame' || n.type === 'group' || n.type === 'section') {
-            let kids = childrenOf(ctx, n.id);
+            let kids = childrenOf(ctx, n.id, !!options.component);
             if (depth < LAYOUT_DEPTH && !options.component) {
                 const parts = kids.filter(isLayoutPart);
                 if (parts.length) {

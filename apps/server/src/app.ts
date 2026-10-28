@@ -12,6 +12,7 @@ import { fileRoutes } from './routes/files.js';
 import { kvRoutes } from './routes/kv.js';
 import { libraryRoutes } from './routes/libraries.js';
 import { mcpRoutes } from './routes/mcp.js';
+import { registryRoutes } from './routes/registry.js';
 import { tokenRoutes } from './routes/tokens.js';
 import { userRoutes } from './routes/users.js';
 
@@ -49,6 +50,7 @@ export async function buildApp() {
     await app.register(userRoutes);
     await app.register(tokenRoutes);
     await app.register(mcpRoutes);
+    await app.register(registryRoutes);
     // Studio (static build) on the same origin as the API: one service to host, and the session cookie just works.
     const studio = config.studioDist || fileURLToPath(new URL('../../studio/dist', import.meta.url));
     if (existsSync(studio)) {

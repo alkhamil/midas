@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { createHash } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { sql } from '../src/db/index.js';
@@ -89,6 +91,149 @@ test('legacy libraries are imported once', async () => {
     assert.deepEqual(orphan.body.missing, ['nope']);
     const lib = (await call('GET', '/api/libraries')).body.libraries.find((l: { id: string }) => l.id === legacyFile);
     assert.equal(lib.version, 3);
+});
+
+/** The files of a ustar tarball, by path. */
+function untar(buf: Buffer): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (let at = 0; at + 512 <= buf.length && buf[at] !== 0;) {
+        const name = buf.toString('utf8', at, at + 100).replace(/\0.*$/s, ''), prefix = buf.toString('utf8', at + 345, at + 500).replace(/\0.*$/s, '');
+        const size = parseInt(buf.toString('utf8', at + 124, at + 135), 8);
+        out[prefix ? `${prefix}/${name}` : name] = buf.toString('utf8', at + 512, at + 512 + size);
+        at += 512 + Math.ceil(size / 512) * 512;
+    }
+    return out;
+}
+
+test('a version has a React package: its info, and a tarball of generated and compiled files', async () => {
+    const design = {
+        components: [
+            { id: 'pbtn', name: 'Button', set: true, nodes: [
+                { id: 'pbtn', parentId: null, type: 'frame', componentSet: true, name: 'Button', cprops: [{ id: 'cp', name: 'Label', type: 'text', def: 'Button' }] },
+                { id: 'pb1', parentId: 'pbtn', type: 'frame', component: true, name: 'Type=Primary', variant: { Type: 'Primary' }, layout: 'horizontal', gap: 8, w: 80, h: 32, fill: '#2563EB', vars: { 'fills.0': 'pv1' } },
+                { id: 'pb1t', parentId: 'pb1', type: 'text', name: 'Label', text: 'Button', fontSize: 14, autoW: true, w: 40, h: 20, fill: '#FFFFFF', propBind: { text: 'cp' } },
+                { id: 'pb2', parentId: 'pbtn', type: 'frame', component: true, name: 'Type=Secondary', variant: { Type: 'Secondary' }, layout: 'horizontal', gap: 8, w: 80, h: 32, fill: '#F3F4F6' },
+                { id: 'pb2t', parentId: 'pb2', type: 'text', name: 'Label', text: 'Button', fontSize: 14, autoW: true, w: 40, h: 20, fill: '#111827', propBind: { text: 'cp' } },
+            ] },
+            { id: 'pplus', name: 'Outline / Essential / Plus', set: false, nodes: [
+                { id: 'pplus', parentId: null, type: 'frame', component: true, name: 'Plus', w: 24, h: 24 },
+                { id: 'pplus-v', parentId: 'pplus', type: 'path', name: 'Vector', x: 3, y: 3, w: 18, h: 18, pathW: 18, pathH: 18, closed: true, fill: '#1c274c', points: [{ x: 0, y: 8 }, { x: 18, y: 8 }, { x: 18, y: 10 }, { x: 0, y: 10 }] },
+            ] },
+        ],
+        variables: {
+            collections: [{ id: 'pc1', name: 'Semantic', modes: [{ id: 'pm1', name: 'Light' }, { id: 'pm2', name: 'Dark' }] }],
+            items: [{ id: 'pv1', name: 'color/primary', type: 'color', collectionId: 'pc1', values: { pm1: '#2563EB', pm2: '#3B82F6' } }],
+        },
+    };
+    const pub = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: design, componentKeys: ['pbtn'] });
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    const seq = pub.body.library.version;
+
+    const info = await call('GET', `/api/libraries/${dsFile}/package?seq=${seq}`);
+    assert.equal(info.status, 200, JSON.stringify(info.body));
+    const p = info.body.package;
+    assert.equal(p.packageName, '@midas/test-ds');
+    assert.equal(p.version, `1.0.${seq}`);
+    assert.deepEqual(p.components.map((c: { exportName: string }) => c.exportName), ['Button']);
+    assert.deepEqual(p.icons.map((i: { exportName: string }) => i.exportName), ['PlusIcon']);
+    assert.deepEqual(p.warnings, []);
+    assert.deepEqual(p.components[0].props.map((x: { name: string }) => x.name).sort(), ['label', 'type']);
+
+    const res = await app.inject({ method: 'GET', url: p.downloadUrl, headers: { cookie } });
+    assert.equal(res.statusCode, 200);
+    assert.match(String(res.headers['content-type']), /gzip/);
+    assert.equal(res.headers['content-disposition'], `attachment; filename="midas-test-ds-1.0.${seq}.tgz"`);
+    const files = untar(gunzipSync(res.rawPayload));
+    assert.equal(JSON.parse(files['package/package.json']).name, '@midas/test-ds');
+    for (const f of ['package/src/components/Button.tsx', 'package/src/icons/PlusIcon.ts', 'package/dist/index.js', 'package/dist/index.d.ts', 'package/dist/tokens.css', 'package/dist/styles.css', 'package/dist/tailwind.theme.css', 'package/README.md'])
+        assert.ok(f in files, `${f} is in the tarball`);
+    assert.match(files['package/dist/index.js'], /function Button\(/);               // compiled: no TSX left
+    assert.ok(!/<div/.test(files['package/dist/index.js']), 'the bundle is plain JavaScript');
+    assert.match(files['package/dist/index.js'], /PlusIcon/);
+    // The stylesheet is compiled by Tailwind for the classes the components use, so a project that installs the package needs no Tailwind
+    assert.match(files['package/dist/styles.css'], /@layer midas/);
+    assert.match(files['package/dist/styles.css'], /\.mds\\:flex\{display:flex\}/);
+    assert.ok(!/@tailwind|@import/.test(files['package/dist/styles.css']), 'compiled CSS, nothing left to compile');
+    assert.equal(JSON.parse(files['package/package.json']).exports['./styles.css'], './dist/styles.css');
+    assert.match(files['package/dist/tokens.css'], /\[data-theme="dark"\] \{\s*--theme-primary: #3B82F6;/);
+
+    // The second request is served from the stored build, byte for byte.
+    const again = await app.inject({ method: 'GET', url: p.downloadUrl, headers: { cookie } });
+    assert.ok(again.rawPayload.equals(res.rawPayload));
+    assert.equal((await call('GET', `/api/libraries/${dsFile}/package?seq=999`)).status, 404);
+    assert.equal((await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/package.tgz` })).statusCode, 401);
+});
+
+/** The events of a streamed package build (one JSON object per line). */
+const events = (body: string) => body.trim().split('\n').map(l => JSON.parse(l) as { type: string; id?: string; status?: string; step?: string; message?: string; fix?: string; issue?: { level: string; component: string; layer?: string; fix: string }; package?: { fileName: string; downloadUrl: string } });
+
+test('a package build tells every step as it happens, and what to fix when the design has problems', async () => {
+    const design = {
+        components: [{ id: 'sb', name: 'Panel', set: false, nodes: [
+            { id: 'sb', parentId: null, type: 'frame', component: true, name: 'Panel', layout: 'vertical', w: 100, h: 60, fill: '#FFFFFF' },
+            { id: 'sb-r', parentId: 'sb', type: 'line', name: 'Decor', w: 10, h: 10, stroke: '#FF0000' },
+        ] }],
+        variables: { collections: [], items: [{ id: 'sv', name: 'color/x', type: 'color', collectionId: 'sc', values: { sm: '#000' } }] },
+    };
+    const pub = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: design, componentKeys: ['sb'] });
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    const res = await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/package/build?seq=${pub.body.library.version}`, headers: { cookie } });
+    assert.equal(res.statusCode, 200);
+    assert.match(String(res.headers['content-type']), /x-ndjson/);
+    const ev = events(res.body);
+    const steps = ev.filter(e => e.type === 'step' && e.status === 'done').map(e => e.id);
+    assert.deepEqual(steps, ['load', 'read', 'components', 'tokens', 'bundle', 'styles', 'pack', 'save']);   // each step reports when it is done
+    assert.ok(ev.some(e => e.type === 'step' && e.id === 'components' && e.status === 'running'));
+    const loose = ev.find(e => e.type === 'issue' && /Decor/.test(e.issue?.layer ?? ''));
+    assert.equal(loose?.issue?.component, 'Panel');                                                 // which component and which layer
+    assert.match(loose?.issue?.fix ?? '', /component/);                                             // and what to do about it
+    assert.equal(ev.at(-1)?.type, 'done');
+    assert.match(ev.at(-1)?.package?.downloadUrl ?? '', /package\.tgz/);
+    // Built once: a second run answers from the stored package, still with the issues.
+    const again = events((await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/package/build?seq=${pub.body.library.version}`, headers: { cookie } })).body);
+    assert.ok(again.some(e => e.type === 'step' && e.id === 'load' && e.detail === 'already built'));
+    assert.ok(again.some(e => e.type === 'issue'));
+    assert.equal(again.at(-1)?.type, 'done');
+    assert.equal((await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/package/build?seq=999`, headers: { cookie } })).statusCode, 404);
+});
+
+test('a build that cannot finish ends with an error event: which step, what happened, what to do', async () => {
+    // The component's root layer is missing from its nodes: the design cannot be read as a component.
+    const broken = { components: [{ id: 'ghost', name: 'Ghost', set: false, nodes: [{ id: 'other', parentId: null, type: 'frame', name: 'Other' }] }], variables: { collections: [], items: [] } };
+    const pub = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: broken, componentKeys: ['ghost'] });
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    const ev = events((await app.inject({ method: 'GET', url: `/api/libraries/${dsFile}/package/build?seq=${pub.body.library.version}`, headers: { cookie } })).body);
+    const last = ev.at(-1)!;
+    assert.equal(last.type, 'error');
+    assert.ok(last.step && last.message && last.fix, JSON.stringify(last));
+    assert.match(last.message ?? '', /could not be turned into code/);
+    assert.ok(!ev.some(e => e.type === 'done'));
+});
+
+test('the server is an npm registry for its packages: packument, tarball, and a token to read them', async () => {
+    const design = { components: [button()], variables: { collections: [], items: [{ id: 'v1' }] } };
+    const pub = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Registry DS', snapshot: design, componentKeys: ['btn'] });
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    const seq = pub.body.library.version;
+    const token = (await call('POST', '/api/tokens', { name: 'npm' })).body.token as string;
+    const get = (url: string, auth?: string) => app.inject({ method: 'GET', url, headers: auth ? { authorization: auth } : {}, });
+    assert.equal((await get('/api/registry/@midas%2fregistry-ds')).statusCode, 401);                               // no token, no package
+    assert.equal((await get('/api/registry/@midas%2fregistry-ds', 'Bearer mdt_wrong')).statusCode, 401);
+    const doc = await get('/api/registry/@midas%2fregistry-ds', `Bearer ${token}`);                                // the way npm asks
+    assert.equal(doc.statusCode, 200, doc.body);
+    const packument = doc.json();
+    assert.equal(packument.name, '@midas/registry-ds');
+    assert.equal(packument['dist-tags'].latest, `1.0.${seq}`);
+    const v = packument.versions[`1.0.${seq}`];
+    assert.match(v.dist.tarball, new RegExp(`/api/registry/@midas/registry-ds/-/midas-registry-ds-1\\.0\\.${seq}\\.tgz$`));
+    assert.match(v.dist.integrity, /^sha512-/);
+    assert.deepEqual(v.peerDependencies, { react: '>=18', 'react-dom': '>=18' });                                  // so npm installs the peers right
+    const tar = await get(new URL(v.dist.tarball).pathname, `Bearer ${token}`);                                   // and the tarball it points to
+    assert.equal(tar.statusCode, 200);
+    assert.equal(createHash('sha1').update(tar.rawPayload).digest('hex'), v.dist.shasum);
+    assert.equal((await get('/api/registry/@midas/registry-ds', `Bearer ${token}`)).statusCode, 200);             // unencoded path works too
+    assert.equal((await get('/api/registry/@midas%2fnope', `Bearer ${token}`)).statusCode, 404);
+    assert.equal((await get(`/api/registry/@midas/registry-ds/-/midas-registry-ds-1.0.999.tgz`, `Bearer ${token}`)).statusCode, 404);
 });
 
 test('unpublish removes the library but not the file', async () => {

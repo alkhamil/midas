@@ -2753,6 +2753,50 @@ select.vw-text { cursor: pointer }
 .lp-input:focus { outline: 2px solid var(--accent); outline-offset: -1px }
 .lp-input:disabled { opacity: .7 }
 .lp-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px }
+.pkg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 12px; color: var(--text-secondary) }
+.pkg-meta b { color: var(--text); font-size: 13px }
+.pkg-code { margin: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--field); color: var(--text); font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; user-select: all }
+.pkg-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto }
+.pkg-comp { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px }
+.pkg-comp b { font-size: 12px; color: var(--text) }
+.pkg-props { display: flex; flex-wrap: wrap; gap: 4px }
+.pkg-props code { padding: 2px 6px; border-radius: 5px; background: var(--field); color: var(--text-secondary); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace }
+a.wide-button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none }
+.pp-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 8px }
+.pp-headline { margin: 0; font-size: 13px; font-weight: 600 }
+.pp-headline.ok { color: var(--text) }
+.pp-headline.bad { color: var(--danger) }
+.pp-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px }
+.pp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px }
+.pp-step { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--text-secondary) }
+.pp-step.running, .pp-step.done, .pp-step.error { color: var(--text) }
+.pp-step-main { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; min-width: 0; flex: 1 }
+.pp-detail { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100% }
+.pp-bar { flex-basis: 100%; height: 3px; border-radius: 2px; background: var(--field); overflow: hidden }
+.pp-bar i { display: block; height: 100%; background: var(--accent); transition: width .15s }
+.pp-ico { flex: none; width: 14px; height: 14px; margin-top: 1px; border-radius: 50%; border: 1.5px solid var(--border); box-sizing: border-box; position: relative }
+.pp-step.running .pp-ico { border-color: var(--accent) transparent var(--accent) var(--accent); animation: pp-spin .7s linear infinite }
+.pp-step.done .pp-ico { border-color: #2fa66a; background: #2fa66a }
+.pp-step.done .pp-ico::after { content: ''; position: absolute; left: 3.5px; top: 1.5px; width: 3px; height: 6px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg) }
+.pp-step.error .pp-ico { border-color: var(--danger); background: var(--danger) }
+.pp-step.error .pp-ico::before, .pp-step.error .pp-ico::after { content: ''; position: absolute; left: 5px; top: 2px; width: 1.5px; height: 7px; background: #fff; transform: rotate(45deg) }
+.pp-step.error .pp-ico::after { transform: rotate(-45deg) }
+@keyframes pp-spin { to { transform: rotate(360deg) } }
+.pp-error { display: flex; flex-direction: column; gap: 6px }
+.pp-error b { display: inline-block; min-width: 108px; color: var(--text-secondary); font-weight: 600 }
+.pp-issues { display: flex; flex-direction: column; gap: 8px }
+.pp-issues-title { display: flex; gap: 10px; align-items: baseline; font-size: 12px }
+.pp-bad { color: var(--danger); font-size: 11px }
+.pp-issues ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto }
+.pp-issue { padding: 8px 10px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 7px; font-size: 11px; line-height: 1.5 }
+.pp-issue.error { border-left-color: var(--danger) }
+.pp-issue.warning { border-left-color: #d9a441 }
+.pp-issue p { margin: 2px 0 0; color: var(--text-secondary) }
+.pp-issue .pp-fix { color: var(--text) }
+.pp-issue-head { display: flex; gap: 6px; align-items: baseline; font-size: 12px }
+.pp-issue-head span { color: var(--muted) }
+.pp-issue-head em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--muted) }
+.pp-issues details summary { cursor: pointer; font-size: 11px; color: var(--text-secondary); margin: 4px 0 }
 .lp-warn, .lp-errors { padding: 10px 12px; border-radius: 8px; font-size: 11px; line-height: 1.5; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--text) }
 .lp-warn ul, .lp-errors ul { margin: 4px 0 0; padding-left: 18px }
 .lp-errors.hidden { display: none }
@@ -3151,6 +3195,11 @@ select:focus, select:focus-visible { outline: 0 !important; box-shadow: inset 0 
 .vw-readonly .vw-main { opacity: .8 }
 .vw-readonly .vw-main input:disabled, .vw-readonly .vw-main select:disabled { cursor: not-allowed }
 /* ---- Publish library: what to publish ---- */
+.lp-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-soft) }
+.lp-tabs button { padding: 7px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-secondary); font: 500 12px var(--ui-font); cursor: pointer; display: flex; align-items: baseline; gap: 6px }
+.lp-tabs button small { font-size: 10px; color: var(--muted); font-weight: 400 }
+.lp-tabs button:hover { color: var(--text) }
+.lp-tabs button.active { color: var(--text); border-bottom-color: var(--accent) }
 .lp-toolbar { display: flex; gap: 8px; align-items: center; position: sticky; top: -1px; z-index: 2; padding: 6px 0; background: var(--panel) }
 .lp-toolbar .lp-search { flex: 1; min-width: 0 }
 .lp-toolbar .wide-button { width: auto; padding: 0 10px; height: 28px; white-space: nowrap }
