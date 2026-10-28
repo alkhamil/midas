@@ -98,6 +98,8 @@ Round 6 (prototype phase 1 leftovers): a prototype edit that breaks the prototyp
 
 Round 7 (prototype phase 2, step 1: Conditional action): the model, validator, copy and delete, Play and the Prototype panel, decisions 12 to 14. Browser-checked on the prototype fixture, which has a boolean variable `Flag` (modes On and Off) bound to a plain layer inside Home. The Next button of Home is a conditional: if Flag is true it navigates to Details, else to Confirm. Play goes to Details with Home's Flag mode On (the first mode, by default), and to Confirm after Home's Flag mode is set to Off from the Appearance section. An edit that empties a branch is refused by the validator and rolled back with "Not applied". Not browser-checked: copy, paste and delete of a conditional (covered by the planner tests).
 
+Round 8 (Play fidelity from a Figma import): the auto layout alignment, padding and gaps, the child order, the even-odd fill rule, the positioned vector box, and the boolean results are now the canvas's in Play. The shared values live in `geometry/autolayout.js`, `geometry/boolean.js` and `layoutOrder`, and the canvas reads the same ones. Booleans are drawn from their stored result; the polygon clipping is a builder-core dependency, and the vendored browser global is gone. Reproduced and checked on `scripts/make-login-fixture.js` (a login page with the importer's layout fields), and on the fidelity fixture. Not done: masks inside an auto layout, grid layouts, and the dashed border reported on the real Figma file, which the repro does not show.
+
 Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fixture was stepped through in Play and looked at. The canvas was checked by thumbnail only, for the rows that changed (booleans, mask, frame strokes, drop shadow). No pixel comparison exists: the test file is named as a generator check.
 
 | Row | Status | Notes |
@@ -131,6 +133,15 @@ Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fix
 | Effect: glass | not drawn, flagged | reported as unsupported |
 | Blend mode | not applicable | the canvas has no per-layer blend mode field, so there is nothing to draw or report |
 | Legacy shadow flag | removed | the canvas reads the effects list only (see below) |
+| Auto layout: primary and counter alignment, space between, evenly and around, padding and gap defaults | browser-verified (Play) | Login repro: the CTA row centres its Done button (offset 0 in a 327 px row). The values come from `geometry/autolayout.js`, the same as the canvas. |
+| Auto layout: imported child order (layoutFlip) and paint order (layoutReverseZ) | browser-verified (Play) | Login repro: logo first, Done last, as on the canvas. |
+| Frame centred stroke: drawn whole, no CSS outline | code-read | The old outline was 0.5 px and the browser drew it 1 px. The dashed border reported on the Figma file was not reproduced on the repro, so it is not confirmed. |
+| Vector path: even-odd fill rule | browser-verified (Play) | Login eye icon: the outer contour and the pupil. Nonzero filled the whole square. The canvas shows the same small shape at this size. |
+| Vector layer in a flow: positioned box | browser-verified (Play) | Login icon row: the three icons are 64 px apart, not on top of each other. |
+| Dashed closed path, dashed open path, dotted round cap | browser-verified (Play) at 1x; dash lengths code-read | Fidelity features and the login icon row. Compared by eye, not pixel by pixel. |
+| Boolean group: stored result drawn, operands not drawn | browser-verified (Play) | Fidelity "Boolean: union": Play and the canvas show the same union. A boolean with no stored result is reported. |
+| Mask inside an auto layout | code-read | Still reported (`mask in an auto layout`). The mask is not drawn and its siblings are not clipped, so a shape in that layout can draw unclipped. |
+| Grid layout | code-read | Not covered: the DOM lays it out as a flex row. |
 
 Not verified: a pixel comparison of the canvas and Play at 1:1 (not built, see the test name); the child-layer click case (no fixture has a clickable frame with a child layer that has its own interaction); the glass badge was seen, and the mask badge too.
 
