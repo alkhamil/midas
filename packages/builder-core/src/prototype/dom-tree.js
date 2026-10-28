@@ -1,19 +1,28 @@
 // DOM descriptor (pure). `toDomTree` turns one top-level frame into a tree of element descriptors that a runtime mounts as real DOM.
 // Frames with auto layout are flex containers, their absolutely positioned children and everything in a plain frame are placed at
-// their x and y. Text, rectangles and ellipses map to styled elements. A Button instance (a component bound to the Button template)
-// is the same `<button>` the codegen exports, styled by the codegen stylesheet, so Play and export agree.
+// their x and y. A Button instance (a component bound to the Button template) is the same `<button>` the codegen exports, styled by the
+// codegen stylesheet, so Play and export agree.
 //
-// Layers the DOM does not draw yet (path, line, image, vector and others) are not drawn; they are listed in `unsupported`.
+// Geometry and fills come from the shared modules (geometry/shapes.js, geometry/fills.js), the same ones the canvas and the SVG export
+// read. A layer's fill, border radius and shadows are CSS. Outlines the CSS cannot draw (an arc, a line, a vector path, a stroke that is
+// centred on the outline, a dash) are an `html` string of SVG, placed in the element.
+//
+// Layers the DOM does not draw yet (image, boolean results, masks) are listed in `unsupported`, and so are effects the DOM has no form for.
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
+import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { getFills } from '../geometry/fills.js';
 
 /**
- * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, children: Element[] }} Element
+ * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
  */
 
-const DRAWN = ['frame', 'group', 'rect', 'ellipse', 'text'];
+/** Layer kinds the DOM draws. Image, boolean results and masks are not drawn yet. */
+const DRAWN = ['frame', 'group', 'rect', 'ellipse', 'text', 'line', 'path'];
+/** Kinds whose outline is drawn as an SVG path, not a CSS box. */
+const VECTOR = ['line', 'path'];
 
 /**
  * The tree for one top-level frame.
@@ -52,41 +61,24 @@ function renderNode(n, parent, cx) {
         cx.unsupported.push({ nodeId: n.id, type: n.type });
         return null;
     }
-    if (n.type === 'text') return textElement(n, { ...placement(n, parent, cx.responsive), ...opacityOf(n), ...textStyle(n) });
-    const style = { ...placement(n, parent, cx.responsive), ...paint(n), ...(n.type === 'ellipse' ? { borderRadius: '50%' } : {}) };
-    if (n.type === 'frame' && isAutoLayout(n)) Object.assign(style, flexOf(n));
-    if (n.type === 'frame') Object.assign(style, overflowOf(n));
+    const base = { ...placement(n, parent, cx.responsive), ...opacityOf(n) };
+    if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, cx, true) });
+    if (VECTOR.includes(n.type) || arcActive(n)) {
+        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, ...effectStyle(n, cx, true) }, html: vectorMarkup(n, cx), children: [] };
+    }
+    const style = { ...base, ...fillStyle(n, cx), ...radiusStyle(n), ...effectStyle(n, cx, false) };
+    if (n.type === 'ellipse') style.borderRadius = '50%';
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
+    if (n.type === 'frame') {
+        if (isAutoLayout(n)) Object.assign(style, flexOf(n));
+        Object.assign(style, overflowOf(n));
+    }
+    if (n.type === 'group' && n.clip) style.overflow = 'hidden';
+    if (n.type === 'frame') Object.assign(style, borderOf(n));
+    const html = n.type === 'rect' || n.type === 'ellipse' ? strokeOverlay(n) : undefined;
+    if (html !== undefined) style.position = style.position ?? 'relative';
     const children = cx.childrenOf(n.id).map(c => renderNode(c, n, cx)).filter(Boolean);
-    return { tag: 'div', nodeId: n.id, attrs: {}, style, children };
-}
-
-/**
- * A text layer: a span with its characters, or one span per style run when it has several (rich text).
- * @param {any} n
- * @param {Record<string, string>} style
- * @returns {Element}
- */
-function textElement(n, style) {
-    if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s, n)) };
-    return { tag: 'span', nodeId: n.id, attrs: {}, style, text: n.text ?? '', children: [] };
-}
-
-/**
- * One style run of a rich text layer. It sets only the properties it has; the rest come from the layer.
- * @param {any} s
- * @param {any} n
- * @returns {Element}
- */
-function spanElement(s, n) {
-    /** @type {Record<string, string>} */
-    const style = { color: s.fill && s.fill !== 'none' ? withAlpha(s.fill, s.fillOpacity ?? n.fillOpacity) : 'transparent' };
-    if (s.fontFamily) style.fontFamily = s.fontFamily;
-    if (s.fontSize) style.fontSize = `${s.fontSize}px`;
-    if (s.fontWeight) style.fontWeight = String(s.fontWeight);
-    if (s.fontStyle) style.fontStyle = s.fontStyle;
-    if (s.textDecoration && s.textDecoration !== 'none') style.textDecoration = s.textDecoration;
-    return { tag: 'span', attrs: {}, style, text: s.text ?? '', children: [] };
+    return { tag: 'div', nodeId: n.id, attrs: {}, style, ...(html !== undefined ? { html } : {}), children };
 }
 
 /**
@@ -168,8 +160,23 @@ function placement(n, parent, responsive) {
         if (n.layoutSizingH !== 'hug') style.width = `${n.w}px`;
         if (n.layoutSizingV !== 'hug') style.height = `${n.h}px`;
     }
-    if (n.rotation) style.transform = `rotate(${n.rotation}deg)`;
+    const transform = transformOf(n);
+    if (transform) style.transform = transform;
     return style;
+}
+
+/**
+ * The transform of a layer: its flip about its centre, then its rotation. The canvas applies the flip first, so the CSS list is the
+ * rotation first (it is applied last).
+ * @param {any} n
+ * @returns {string}
+ */
+function transformOf(n) {
+    const parts = [];
+    if (n.rotation) parts.push(`rotate(${n.rotation}deg)`);
+    if (n.flipX) parts.push('scaleX(-1)');
+    if (n.flipY) parts.push('scaleY(-1)');
+    return parts.join(' ');
 }
 
 /**
@@ -207,12 +214,12 @@ function flowSizing(n, parent) {
 }
 
 /**
- * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips.
+ * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips. A template instance has no scroll behaviour:
+ * the validator refuses one, and Play ignores any it finds.
  * @param {any} n
  * @returns {Record<string, string>}
  */
 function overflowOf(n) {
-    // A template instance has no scroll behaviour: the validator refuses one, and Play ignores any it finds.
     const mode = n.isInstance ? 'none' : (n.prototype?.overflow ?? 'none');
     return {
         overflowX: mode === 'horizontal' || mode === 'both' ? 'auto' : 'hidden',
@@ -239,23 +246,143 @@ function flexOf(n) {
 }
 
 /**
- * Fill, stroke, radius, shadow and opacity of a rect, ellipse, frame or group.
+ * The fill of a box as CSS. Each visible fill is one layer, the first on top, as the canvas stacks them. A solid fill is the background
+ * colour; a gradient is a gradient layer. An image fill is not drawn yet: it is reported.
  * @param {any} n
+ * @param {any} cx
+ * @returns {Record<string, string>}
  */
-function paint(n) {
+function fillStyle(n, cx) {
+    const layers = [];
+    for (const f of getFills(n).filter(x => x.visible !== false)) {
+        const layer = fillLayer(f);
+        if (layer === null) cx.unsupported.push({ nodeId: n.id, type: `${f.type} fill` });
+        else if (layer) layers.push(layer);
+    }
+    if (!layers.length) return {};
+    if (layers.length === 1 && layers[0].solid) return { background: layers[0].css };
+    return { background: layers.map(l => (l.solid ? `linear-gradient(${l.css}, ${l.css})` : l.css)).join(', ') };
+}
+
+/**
+ * One fill as a CSS layer. A linear fill's angle is measured from the x axis on the canvas, and from the top in CSS: CSS is the canvas
+ * angle plus 90 degrees. Null for a fill the DOM cannot draw; undefined for a fill that draws nothing.
+ * @param {any} f
+ * @returns {{ css: string, solid: boolean } | null | undefined}
+ */
+function fillLayer(f) {
+    const o = f.opacity;
+    if (f.type === 'solid') return f.color && f.color !== 'none' ? { css: colorWithAlpha(f.color, o), solid: true } : undefined;
+    if (f.type === 'linear') return { css: `linear-gradient(${(f.angle ?? 90) + 90}deg, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
+    if (f.type === 'radial') return { css: `radial-gradient(circle, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
+    if (f.type === 'angular') return { css: `conic-gradient(from 0deg, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
+    return null;
+}
+
+/**
+ * The border radius of a box: one radius, or the four corners in order (top-left, top-right, bottom-right, bottom-left).
+ * @param {any} n
+ * @returns {Record<string, string>}
+ */
+function radiusStyle(n) {
+    if (!n.radius && !hasRadii(n)) return {};
+    const r = cornerRadii(n);
+    return { borderRadius: r.every(v => v === r[0]) ? `${r[0]}px` : r.map(v => `${v}px`).join(' ') };
+}
+
+/**
+ * The border of a frame or group, from its stroke. Rectangles and ellipses draw their stroke as an SVG overlay, centred on the outline.
+ * @param {any} n
+ * @returns {Record<string, string>}
+ */
+function borderOf(n) {
+    if (!strokeIsOn(n)) return {};
+    return { border: `${strokeSideWidths(n).t}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, boxSizing: 'border-box' };
+}
+
+/**
+ * The stroke of a rectangle or an ellipse as an SVG overlay, over its CSS fill. Undefined when it has no stroke.
+ * @param {any} n
+ * @returns {string | undefined}
+ */
+function strokeOverlay(n) {
+    if (!strokeIsOn(n)) return undefined;
+    return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, fmt, escAttr)}`);
+}
+
+/**
+ * An outline drawn as SVG: an arc, a line or a vector path, with its fill and its stroke.
+ * @param {any} n
+ * @param {any} cx
+ * @returns {string}
+ */
+function vectorMarkup(n, cx) {
+    const fill = n.type === 'line' ? 'fill="none"' : fillAttrs(n, cx);
+    return svgMarkup(n, `${fill} ${svgStrokeAttrs(n, fmt, escAttr)}`);
+}
+
+/**
+ * The SVG of one shape with its attributes, and the clip or mask an inside or outside stroke needs.
+ * @param {any} n
+ * @param {string} attrs
+ * @returns {string}
+ */
+function svgMarkup(n, attrs) {
+    const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
+    const extra = svgStrokeExtra(n, fmt, escAttr, prefix);
+    const body = svgShapeEl(n, fmt, attrs) + extra.el;
+    return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${extra.defs}${body}</svg>`;
+}
+
+/**
+ * The fill attributes of an SVG outline: its first visible fill when it is solid. A gradient or an image on an SVG outline is not drawn
+ * yet, and a second fill is not drawn; both are reported.
+ * @param {any} n
+ * @param {any} cx
+ */
+function fillAttrs(n, cx) {
+    const fills = getFills(n).filter(f => f.visible !== false);
+    if (fills.length > 1) cx.unsupported.push({ nodeId: n.id, type: 'multiple fills on a vector layer' });
+    const [first] = fills;
+    if (!first) return 'fill="none"';
+    if (first.type !== 'solid' || !first.color || first.color === 'none') {
+        cx.unsupported.push({ nodeId: n.id, type: `${first.type} fill on a vector layer` });
+        return 'fill="none"';
+    }
+    return `fill="${escAttr(first.color)}" fill-opacity="${fmt(first.opacity ?? 1)}"`;
+}
+
+/**
+ * The effects of a layer as CSS. Drop and inner shadows are box shadows; on a text or vector layer a drop shadow is a filter, because the
+ * shadow follows the glyphs or the outline. Layer blur is a filter; background blur is a backdrop filter. Effects the DOM has no form for
+ * (glass, an inner shadow on text) are reported. Only the effects list is read.
+ * @param {any} n
+ * @param {any} cx
+ * @param {boolean} onOutline true for text and vector layers
+ * @returns {Record<string, string>}
+ */
+function effectStyle(n, cx, onOutline) {
+    const shadows = [], filters = [], backdrops = [];
+    for (const e of (Array.isArray(n.effects) ? n.effects : []).filter(x => x.visible !== false)) {
+        const shadow = `${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${e.spread || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)}`;
+        if (e.type === 'drop') {
+            if (onOutline) filters.push(`drop-shadow(${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)})`);
+            else shadows.push(shadow);
+        }
+        else if (e.type === 'inner') {
+            if (onOutline) cx.unsupported.push({ nodeId: n.id, type: 'inner shadow on a text or vector layer' });
+            else shadows.push(`inset ${shadow}`);
+        }
+        else if (e.type === 'layerBlur') filters.push(`blur(${(e.radius || 0) / 2}px)`);
+        else if (e.type === 'bgBlur') backdrops.push(`blur(${(e.radius || 0) / 2}px)`);
+        else cx.unsupported.push({ nodeId: n.id, type: e.type });
+    }
     /** @type {Record<string, string>} */
     const style = {};
-    if (n.fill && n.fill !== 'none') {
-        if (n.fillType === 'linear' && n.fill2) style.background = `linear-gradient(${n.gradientAngle ?? 90}deg, ${n.fill}, ${n.fill2})`;
-        else style.background = withAlpha(n.fill, n.fillOpacity);
-    }
-    if (n.stroke && n.stroke !== 'none' && n.strokeWidth > 0 && n.strokeVisible !== false) {
-        style.border = `${n.strokeWidth}px solid ${withAlpha(n.stroke, n.strokeOpacity)}`;
-        style.boxSizing = 'border-box';
-    }
-    if (n.radius) style.borderRadius = `${n.radius}px`;
-    if (n.shadow) style.boxShadow = `${n.shadowX ?? 0}px ${n.shadowY ?? 0}px ${n.shadowBlur ?? 20}px ${withAlpha(n.shadowColor ?? '#000000', n.shadowOpacity ?? 0.16)}`;
-    return { ...style, ...opacityOf(n) };
+    if (shadows.length) style.boxShadow = shadows.join(', ');
+    if (filters.length) style.filter = filters.join(' ');
+    if (backdrops.length) style.backdropFilter = backdrops.join(' ');
+    return style;
 }
 
 /**
@@ -268,18 +395,54 @@ function opacityOf(n) {
 }
 
 /**
- * A colour with an opacity applied, for a six digit hex colour. Any other colour is returned as it is.
+ * A colour with an opacity applied. A six digit hex takes the alpha as a byte; any other colour is mixed with transparent.
  * @param {string} color
  * @param {number | undefined} opacity
  */
-function withAlpha(color, opacity) {
-    if (opacity === undefined || opacity >= 1 || !/^#[0-9a-f]{6}$/i.test(color)) return color;
-    const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
-    return `${color}${alpha}`;
+function colorWithAlpha(color, opacity) {
+    if (opacity === undefined || opacity >= 1) return color;
+    const o = Math.max(0, opacity);
+    if (/^#[0-9a-f]{6}$/i.test(color)) return `${color}${Math.round(o * 255).toString(16).padStart(2, '0')}`;
+    return `color-mix(in srgb, ${color} ${Math.round(o * 100)}%, transparent)`;
+}
+
+/** A number for an SVG attribute: at most three decimals. */
+const fmt = v => +(+v).toFixed(3);
+
+/** Escapes a value for an SVG attribute. */
+const escAttr = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * A text layer: a span with its characters, or one span per style run when it has several (rich text).
+ * @param {any} n
+ * @param {Record<string, string>} style
+ * @returns {Element}
+ */
+function textElement(n, style) {
+    if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s, n)) };
+    return { tag: 'span', nodeId: n.id, attrs: {}, style, text: n.text ?? '', children: [] };
 }
 
 /**
- * Font, colour, size and alignment of a text layer. The fill is the text colour; a layer with no fill draws no colour, as on the canvas.
+ * One style run of a rich text layer. It sets only the properties it has; the rest come from the layer.
+ * @param {any} s
+ * @param {any} n
+ * @returns {Element}
+ */
+function spanElement(s, n) {
+    /** @type {Record<string, string>} */
+    const style = { color: s.fill && s.fill !== 'none' ? colorWithAlpha(s.fill, s.fillOpacity ?? n.fillOpacity) : 'transparent' };
+    if (s.fontFamily) style.fontFamily = s.fontFamily;
+    if (s.fontSize) style.fontSize = `${s.fontSize}px`;
+    if (s.fontWeight) style.fontWeight = String(s.fontWeight);
+    if (s.fontStyle) style.fontStyle = s.fontStyle;
+    if (s.textDecoration && s.textDecoration !== 'none') style.textDecoration = s.textDecoration;
+    return { tag: 'span', attrs: {}, style, text: s.text ?? '', children: [] };
+}
+
+/**
+ * Font, colour, size, alignment, stroke, truncation and wrap of a text layer. The fill is the text colour; a layer with no fill draws no
+ * colour, as on the canvas. A stroke is a text stroke centred on the glyphs.
  * @param {any} n
  */
 function textStyle(n) {
@@ -289,15 +452,20 @@ function textStyle(n) {
         fontSize: `${n.fontSize ?? 14}px`,
         fontWeight: String(n.fontWeight ?? 400),
         fontStyle: n.fontStyle ?? 'normal',
-        color: n.fill && n.fill !== 'none' ? withAlpha(n.fill, n.fillOpacity) : 'transparent',
+        color: n.fill && n.fill !== 'none' ? colorWithAlpha(n.fill, n.fillOpacity) : 'transparent',
         lineHeight: String(n.lineHeight ?? 1.2),
         textAlign: n.textAlign ?? 'left',
         whiteSpace: 'pre-wrap',
     };
+    if (strokeIsOn(n)) style.WebkitTextStroke = `${n.strokeWidth}px ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
     if (n.letterSpacing) style.letterSpacing = `${n.letterSpacing}px`;
     if (n.textDecoration && n.textDecoration !== 'none') style.textDecoration = n.textDecoration;
     if (n.textCase === 'upper') style.textTransform = 'uppercase';
     else if (n.textCase === 'lower') style.textTransform = 'lowercase';
     else if (n.textCase === 'title') style.textTransform = 'capitalize';
+    if (n.textTruncate) {
+        Object.assign(style, { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: String(Math.max(1, Math.floor(+n.maxLines) || 1)), overflow: 'hidden' });
+    }
+    if (n.textWrap === 'balance' || n.textWrap === 'pretty') style.textWrap = n.textWrap;
     return style;
 }

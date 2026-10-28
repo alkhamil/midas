@@ -29,3 +29,4 @@ export * from './prototype/play.js';
 export * from './prototype/events.js';
 export * from './prototype/viewport.js';
 export * from './geometry/shapes.js';
+export * from './geometry/fills.js';

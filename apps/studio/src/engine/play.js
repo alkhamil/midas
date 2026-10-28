@@ -156,6 +156,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         }
         Object.assign(el.style, desc.style ?? {});
         if (desc.text !== undefined) el.textContent = desc.text;
+        if (desc.html !== undefined) el.innerHTML = desc.html;
         if (desc.nodeId) {
             el.dataset.nodeId = desc.nodeId;
             if (ctx.interactionsOf(desc.nodeId).length) el.classList.add('play-hotspot');

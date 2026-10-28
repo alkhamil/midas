@@ -59,13 +59,14 @@ test('a child of a frame that is not auto layout is placed absolutely at its x a
     assert.deepEqual([root.children[0].style.position, root.children[0].style.left, root.children[0].style.top], ['absolute', '10px', '20px']);
 });
 
-test('a rectangle draws its fill, radius, opacity, and a border from its stroke', () => {
-    const { root } = toDomTree(doc([frame('A'), child('r', 'A', { fill: '#112233', radius: 6, opacity: 0.5, stroke: '#000000', strokeWidth: 2, strokeAlign: 'inside' })]), 'A');
+test('a rectangle draws its fill, radius and opacity, and its stroke as an SVG stroke centred on the outline', () => {
+    const { root } = toDomTree(doc([frame('A'), child('r', 'A', { fill: '#112233', radius: 6, opacity: 0.5, stroke: '#000000', strokeWidth: 2 })]), 'A');
     const style = root.children[0].style;
     assert.equal(style.background, '#112233');
     assert.equal(style.borderRadius, '6px');
     assert.equal(style.opacity, '0.5');
-    assert.equal(style.border, '2px solid #000000');
+    assert.equal(style.border, undefined);
+    assert.match(root.children[0].html, /stroke-width="2"/);
 });
 
 test('no stroke width or a hidden stroke draws no border', () => {
@@ -95,9 +96,9 @@ test('a text layer is a span with its characters, font, colour and line height a
 });
 
 test('the root frame is reported with its node id, and unknown types are listed rather than drawn silently', () => {
-    const result = toDomTree(doc([frame('A'), child('p', 'A', { type: 'path' })]), 'A');
+    const result = toDomTree(doc([frame('A'), child('p', 'A', { type: 'image' })]), 'A');
     assert.equal(result.root.nodeId, 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'p', type: 'path' }]);
+    assert.deepEqual(result.unsupported, [{ nodeId: 'p', type: 'image' }]);
 });
 
 test('a frame id that is not a top-level frame is refused', () => {
