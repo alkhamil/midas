@@ -1,7 +1,7 @@
 // Prototype validator (pure). Returns every problem in a document as { code, page, node, interaction, message }, in document order.
 // Nothing is repaired. A problem names the page and the node by name, and the interaction by id when there is one.
 // `complete` false (a lazily opened file, pages still arriving): a reference that cannot be resolved yet is deferred, not refused.
-import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS } from './data.js';
+import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS } from './data.js';
 
 export class PrototypeDataError extends Error {
     /** @param {string} message @param {Problem | null} [problem] */
@@ -55,10 +55,14 @@ export function validatePrototype(doc, { complete = true } = {}) {
         return n.type === 'frame' && (!n.parentId || !!parent?.isSection) ? n : false;
     };
 
+    /** The document variable a condition names, `undefined` when there is none. */
+    const variableOf = id => (doc.variables?.items ?? []).find(v => v.id === id);
+    const refs = { topLevelFrame, variableOf };
+
     for (const page of pages) {
         if (page.prototype !== undefined) checkPage(page, add, topLevelFrame);
         for (const node of page.nodes || []) {
-            if (node.prototype !== undefined) checkNode(node, page, add, topLevelFrame);
+            if (node.prototype !== undefined) checkNode(node, page, add, refs);
         }
     }
     return out;
@@ -91,9 +95,9 @@ function checkPage(page, add, topLevelFrame) {
  * @param {any} node
  * @param {any} page
  * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
- * @param {(id: string) => any} topLevelFrame
+ * @param {{ topLevelFrame: (id: string) => any, variableOf: (id: string) => any }} refs
  */
-function checkNode(node, page, add, topLevelFrame) {
+function checkNode(node, page, add, refs) {
     const where = [page.name, node.name];
     if (node.behavior && typeof node.behavior === 'object' && 'slot' in node.behavior) {
         return add(...where, null, 'managed-layer-interaction', 'a managed layer cannot own interactions');
@@ -116,10 +120,9 @@ function checkNode(node, page, add, topLevelFrame) {
         if (seen.has(id)) add(...where, id, 'interaction-duplicate-id', `interaction "${id}" appears twice on this node`);
         seen.add(id);
         checkTrigger(interaction.trigger, where, id, add);
-        checkAction(interaction.action, where, id, add, topLevelFrame);
-        if (CONTINUOUS.includes(interaction.trigger?.type) && NAVIGATING.includes(interaction.action?.type)) {
-            add(...where, id, 'trigger-action-mismatch', `${interaction.trigger.type} can only run open-link, not ${interaction.action.type}`);
-        }
+        checkAction(interaction.action, where, id, add, refs, false);
+        const navigating = CONTINUOUS.includes(interaction.trigger?.type) ? actionsOf(interaction.action).find(a => NAVIGATING.includes(a?.type)) : undefined;
+        if (navigating) add(...where, id, 'trigger-action-mismatch', `${interaction.trigger.type} can only run open-link, not ${navigating.type}`);
     }
 }
 
@@ -138,10 +141,88 @@ function checkTrigger(trigger, where, id, add) {
  * @param {string[]} where
  * @param {string} id
  * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
+ * @param {{ topLevelFrame: (id: string) => any, variableOf: (id: string) => any }} refs
+ * @param {boolean} nested the action sits in a conditional's branch
+ */
+function checkAction(action, where, id, add, refs, nested) {
+    if (!isObject(action) || !ACTION_TYPES.includes(action.type)) return add(...where, id, 'action-unknown', `action must be one of ${ACTION_TYPES.join(', ')}`);
+    if (action.type === 'conditional') {
+        if (nested) return add(...where, id, 'conditional-nested', 'a conditional cannot sit inside a conditional');
+        return checkConditional(action, where, id, add, refs);
+    }
+    checkPlainAction(action, where, id, add, refs.topLevelFrame);
+}
+
+/**
+ * The actions a node's action runs, the conditional's nested ones included, in order.
+ * @param {any} action
+ * @returns {any[]}
+ */
+function actionsOf(action) {
+    if (action?.type !== 'conditional') return [action];
+    return [...(action.branches ?? []).flatMap(b => b?.actions ?? []), ...(action.else ?? [])];
+}
+
+/**
+ * A conditional: its branches in order, then an optional else. It needs a branch or an else; every branch and the else hold at least one
+ * action, and each condition names a variable of the document.
+ * @param {any} action
+ * @param {string[]} where
+ * @param {string} id
+ * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
+ * @param {{ topLevelFrame: (id: string) => any, variableOf: (id: string) => any }} refs
+ */
+function checkConditional(action, where, id, add, refs) {
+    if (!onlyKeys(action, ['type', 'branches', 'else']) || !Array.isArray(action.branches)) return add(...where, id, 'action-shape', 'conditional holds type, branches and an optional else');
+    if (!action.branches.length && action.else === undefined) add(...where, id, 'conditional-empty', 'a conditional needs a branch or an else');
+    if (action.else !== undefined && !isActionList(action.else)) add(...where, id, 'conditional-empty-branch', 'an else holds at least one action');
+    for (const branch of action.branches) {
+        if (!isObject(branch) || !onlyKeys(branch, ['condition', 'actions'])) {
+            add(...where, id, 'action-shape', 'a branch holds a condition and actions');
+            continue;
+        }
+        checkCondition(branch.condition, where, id, add, refs.variableOf);
+        if (!isActionList(branch.actions)) add(...where, id, 'conditional-empty-branch', 'a branch holds at least one action');
+    }
+    for (const nested of [...action.branches.flatMap(b => (isObject(b) && Array.isArray(b.actions) ? b.actions : [])), ...(Array.isArray(action.else) ? action.else : [])]) {
+        checkAction(nested, where, id, add, refs, true);
+    }
+}
+
+/** @param {unknown} list a non-empty array */
+const isActionList = list => Array.isArray(list) && list.length > 0;
+
+/**
+ * A condition: a variable, an operator the variable's type allows, and a literal of the variable's type.
+ * @param {any} condition
+ * @param {string[]} where
+ * @param {string} id
+ * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
+ * @param {(id: string) => any} variableOf
+ */
+function checkCondition(condition, where, id, add, variableOf) {
+    if (!isObject(condition) || !onlyKeys(condition, ['variableId', 'operator', 'value'])) return add(...where, id, 'condition-shape', 'a condition holds variableId, operator and value');
+    const variable = isNonEmptyString(condition.variableId) ? variableOf(condition.variableId) : undefined;
+    if (!variable) return add(...where, id, 'condition-variable-missing', `variable "${condition.variableId}" does not exist`);
+    const operators = CONDITION_OPERATORS[variable.type];
+    if (!operators) return add(...where, id, 'condition-variable-type', `variable "${variable.name}" is a ${variable.type}; a condition compares booleans, numbers and strings`);
+    if (!operators.includes(condition.operator)) add(...where, id, 'condition-operator', `${variable.type} takes ${operators.join(' ')}, not ${condition.operator}`);
+    if (!valueMatches(variable.type, condition.value)) add(...where, id, 'condition-value-type', `the value must be a ${variable.type}`);
+}
+
+/** @param {string} type @param {unknown} value */
+const valueMatches = (type, value) => (type === 'number' ? Number.isFinite(value) : typeof value === type);
+
+/**
+ * A plain action: navigate-to, back or open-link.
+ * @param {any} action
+ * @param {string[]} where
+ * @param {string} id
+ * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
  * @param {(id: string) => any} topLevelFrame
  */
-function checkAction(action, where, id, add, topLevelFrame) {
-    if (!isObject(action) || !ACTION_TYPES.includes(action.type)) return add(...where, id, 'action-unknown', `action must be one of ${ACTION_TYPES.join(', ')}`);
+function checkPlainAction(action, where, id, add, topLevelFrame) {
+    if (!PLAIN_ACTION_TYPES.includes(action.type)) return add(...where, id, 'action-unknown', `action must be one of ${ACTION_TYPES.join(', ')}`);
     if (action.type === 'back') {
         if (!onlyKeys(action, ['type'])) add(...where, id, 'action-shape', 'back takes no fields');
         return;

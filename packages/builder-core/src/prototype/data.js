@@ -7,7 +7,16 @@ export const PROTOTYPE_VERSION = 1;
 /** The events an interaction starts on. `after-delay` also needs a delay (`trigger.delayMs`, above zero). */
 export const TRIGGERS = ['on-click', 'mouse-enter', 'mouse-leave', 'mouse-down', 'mouse-up', 'while-hovering', 'while-pressing', 'after-delay'];
 
-export const ACTION_TYPES = ['navigate-to', 'back', 'open-link'];
+/** The actions a conditional's branches can hold. A conditional cannot hold another conditional. */
+export const PLAIN_ACTION_TYPES = ['navigate-to', 'back', 'open-link'];
+export const ACTION_TYPES = [...PLAIN_ACTION_TYPES, 'conditional'];
+
+/** The variable types a condition can compare, and the operators each allows. Booleans have no order. */
+export const CONDITION_OPERATORS = {
+    boolean: ['==', '!='],
+    number: ['==', '!=', '>', '<', '>=', '<='],
+    string: ['==', '!=', '>', '<', '>=', '<='],
+};
 
 /** Figma's transitions. `slide-in` and `push` move in a direction; `instant` and `dissolve` do not. */
 export const TRANSITIONS = ['instant', 'dissolve', 'slide-in', 'push'];

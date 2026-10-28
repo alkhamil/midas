@@ -145,3 +145,76 @@ test('moving a link target out of the top level is an introduced problem, with t
     assert.equal(problem.page, 'Screens');
     assert.equal(problem.node, 'A');
 });
+
+// Conditional: a variable, an operator its type allows, a literal of its type; branches of plain actions and an optional else.
+const variable = (id, type, name = id) => ({ id, name, type, collectionId: 'c', values: {} });
+const withItems = (pages, items) => ({ pages, variables: { collections: [], items } });
+const go = destinationId => ({ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } });
+const condition = (variableId, operator, value) => ({ variableId, operator, value });
+const branch = (cond, actions) => ({ condition: cond, actions });
+const conditional = (branches, elseActions) => ({ type: 'conditional', branches, ...(elseActions ? { else: elseActions } : {}) });
+const onClick = (id, action, trigger = { type: 'on-click' }) => ({ id: `i-${id}`, trigger, action });
+const flowWith = (action, trigger) => withItems([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([onClick('c', action, trigger)]) }), frame('B'), frame('C')] }], [variable('v-bool', 'boolean'), variable('v-num', 'number'), variable('v-str', 'string'), variable('v-col', 'color')]);
+
+test('a conditional with a boolean branch and an else is valid', () => {
+    assert.deepEqual(validatePrototype(flowWith(conditional([branch(condition('v-bool', '==', true), [go('B')])], [go('C')]))), []);
+});
+
+test('a conditional with only an else is valid', () => {
+    assert.deepEqual(validatePrototype(flowWith(conditional([], [go('B')]))), []);
+});
+
+test('a condition on a variable that does not exist is refused', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-none', '==', true), [go('B')])]))), ['condition-variable-missing']);
+});
+
+test('a condition on a variable of a type a condition cannot compare is refused', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-col', '==', '#fff'), [go('B')])]))), ['condition-variable-type']);
+});
+
+test('a literal of the wrong type is refused', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-num', '==', '3'), [go('B')])]))), ['condition-value-type']);
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', 1), [go('B')])]))), ['condition-value-type']);
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-str', '==', 5), [go('B')])]))), ['condition-value-type']);
+});
+
+test('an operator the type does not allow is refused: booleans have no order', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '>', true), [go('B')])]))), ['condition-operator']);
+});
+
+test('every number and string operator is valid', () => {
+    for (const op of ['==', '!=', '>', '<', '>=', '<=']) {
+        assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-num', op, 3), [go('B')])]))), [], op);
+        assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-str', op, 'x'), [go('B')])]))), [], op);
+    }
+});
+
+test('a branch with no actions is refused, and so is an empty else', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [])]))), ['conditional-empty-branch']);
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [go('B')])], []))), ['conditional-empty-branch']);
+});
+
+test('a conditional with no branch and no else is refused', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([]))), ['conditional-empty']);
+});
+
+test('a conditional inside a conditional is refused', () => {
+    const inner = conditional([branch(condition('v-bool', '==', true), [go('B')])]);
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [inner])]))), ['conditional-nested']);
+});
+
+test('a nested navigate-to to a missing frame is refused like a plain one', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [go('X')])]))), ['destination-missing']);
+});
+
+test('a nested navigate-to cannot run on while hovering, and a nested open-link can', () => {
+    const hover = { type: 'while-hovering' };
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [go('B')])]), hover)), ['trigger-action-mismatch']);
+    const link = { type: 'open-link', url: 'https://example.com' };
+    assert.deepEqual(codesOf(flowWith(conditional([branch(condition('v-bool', '==', true), [link])]), hover)), []);
+});
+
+test('an unknown field on a branch or a condition is refused', () => {
+    assert.deepEqual(codesOf(flowWith(conditional([{ condition: condition('v-bool', '==', true), actions: [go('B')], extra: 1 }]))), ['action-shape']);
+    assert.deepEqual(codesOf(flowWith(conditional([branch({ ...condition('v-bool', '==', true), extra: 1 }, [go('B')])]))), ['condition-shape']);
+});
