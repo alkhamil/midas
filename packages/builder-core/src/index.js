@@ -8,3 +8,5 @@ export * from './behavior-engine/panel.js';
 export * from './behavior-engine/tokens.js';
 export * from './selection.js';
 export * from './behavior-engine/anatomy.js';
+export * from './behavior-engine/managed-layers.js';
+export * from './behavior-engine/child-order.js';

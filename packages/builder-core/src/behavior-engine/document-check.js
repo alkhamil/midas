@@ -1,7 +1,7 @@
 // Phase 2 of the load rules: needs the whole document. Each instance's props are checked against its master's template
 // and binding. Only the master holds the binding; an instance never names a template.
 import { TEMPLATES } from './registry.js';
-import { assertBehaviorShape, behaviorError } from './data.js';
+import { assertBehaviorShape, behaviorError, BehaviorDataError } from './data.js';
 import { isPropVisible, resolveProps, valueProblem } from './instance-props.js';
 import { planInstanceAnatomy } from './anatomy.js';
 
@@ -19,6 +19,23 @@ export function assertBehaviorData(doc) {
         if (n.isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections);
         if (n.isInstance) checkAnatomy(n, nodes, children);
         if (n.behavior && 'slot' in n.behavior && !nodes.get(n.parentId)?.isInstance) throw behaviorError(n, 'a managed layer sits outside an instance');
+    }
+}
+
+/**
+ * The first behavior problem of a document as { name, problem } (the node's name and the reason), or null when it is valid.
+ * The editor uses it as a backstop after each change, so it can say what is wrong instead of failing to open.
+ * @param {{ variables?: { collections?: any[] }, pages?: { nodes?: any[] }[] } | null | undefined} doc
+ * @returns {{ name: string, problem: string } | null}
+ */
+export function behaviorProblem(doc) {
+    try {
+        assertBehaviorData(doc);
+        return null;
+    }
+    catch (err) {
+        if (err instanceof BehaviorDataError && err.detail) return err.detail;
+        throw err;
     }
 }
 

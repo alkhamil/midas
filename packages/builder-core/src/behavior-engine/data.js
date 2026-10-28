@@ -7,10 +7,14 @@ import { isPlainObject } from './validate-schema.js';
 export const BEHAVIOR_DATA_VERSION = 1;
 
 export class BehaviorDataError extends Error {
-    /** @param {string} message */
-    constructor(message) {
+    /**
+     * @param {string} message
+     * @param {{ name: string, problem: string } | null} [detail] the node's name and the problem, for the editor
+     */
+    constructor(message, detail = null) {
         super(message);
         this.name = 'BehaviorDataError';
+        this.detail = detail;
     }
 }
 
@@ -20,7 +24,7 @@ export class BehaviorDataError extends Error {
  * @param {string} problem
  */
 export function behaviorError(node, problem) {
-    return new BehaviorDataError(`Cannot open this file: behavior data on "${node.name}" (${node.id}) is invalid: ${problem}. This build reads behavior version ${BEHAVIOR_DATA_VERSION}.`);
+    return new BehaviorDataError(`Cannot open this file: behavior data on "${node.name}" (${node.id}) is invalid: ${problem}. This build reads behavior version ${BEHAVIOR_DATA_VERSION}.`, { name: String(node.name), problem });
 }
 
 /** @param {unknown} v */
