@@ -8074,7 +8074,7 @@ function fillPage(fileId, id) {
             return; // another file was opened meanwhile
         const stub = doc.data.pages.find(p => p.id === id);
         if (stub && data) {
-            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: { collections: [], items: [] }, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
+            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: doc.data.variables, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
             // The page is checked against the document as it would be with it, before it becomes editable. A failure throws and the page stays a stub.
             const withPage = { ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) };
             assertPagesBehavior(withPage, [id]);
@@ -8090,7 +8090,7 @@ function fillPage(fileId, id) {
 }
 /** Takes the pages `loadProject({ lazy: true })` left out and marks them as stubs right away (before anything can run on them). */
 function claimLazyPages(fileId) {
-    const ids = projectStorage.pendingPages(fileId);
+    const ids = projectStorage.handOverPendingPages(fileId);
     ids.forEach(id => lazyPages.add(id));
     return ids;
 }

@@ -281,9 +281,14 @@ export const projectStorage = {
     },
 
     // Simpan satu page yang berubah + metadata dokumen.
-    /** Ids of the pages `loadProject(…, { lazy: true })` left out; handing them over empties the queue. */
+    /** Ids of the pages `loadProject(…, { lazy: true })` left out. Reading them does not take them: see handOverPendingPages. */
     pendingPages(fileId) {
-        const ids = lazyQueues.get(fileId) || [];
+        return [...(lazyQueues.get(fileId) || [])];
+    },
+
+    /** The pending page ids, handed to the editor to stream in; the queue is empty afterwards. */
+    handOverPendingPages(fileId) {
+        const ids = this.pendingPages(fileId);
         lazyQueues.delete(fileId);
         return ids;
     },
