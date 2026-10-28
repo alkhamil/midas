@@ -1289,6 +1289,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-lg"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -1296,11 +1300,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-lg",
               "label": "Sign In to Kopi Kita",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -1357,6 +1367,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -1397,7 +1412,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -1452,6 +1467,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -1459,11 +1478,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-md",
               "label": "Continue with Passkey",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -1511,7 +1536,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -1562,6 +1587,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -3169,6 +3199,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -3176,11 +3210,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-sm",
               "label": "Order Now",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -3228,7 +3268,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -3279,6 +3319,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -3376,6 +3421,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -3383,11 +3432,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-md",
               "label": "Redeem Voucher",
               "hasIcon": false,
               "loading": false,
@@ -3443,6 +3498,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -3496,6 +3556,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -3503,11 +3567,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-md",
               "label": "Repeat Last Order",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -3564,6 +3634,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -3604,7 +3679,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -5213,6 +5288,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -5220,11 +5299,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-sm",
               "label": "Add",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -5272,7 +5357,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -5323,6 +5408,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -5681,6 +5771,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -5688,11 +5782,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-sm",
               "label": "Add",
               "hasIcon": false,
               "loading": false,
@@ -5748,6 +5848,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -6106,6 +6211,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -6113,11 +6222,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-sm",
               "label": "Customize",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -6174,6 +6289,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -6214,7 +6334,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -6574,6 +6694,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -6581,11 +6705,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-sm",
               "label": "Add",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -6633,7 +6763,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -6684,6 +6814,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -7042,6 +7177,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -7049,11 +7188,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-sm",
               "label": "Add",
               "hasIcon": false,
               "loading": false,
@@ -7109,6 +7254,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -7467,6 +7617,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -7474,11 +7628,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-sm",
               "label": "Sold Out",
               "hasIcon": false,
               "loading": false,
@@ -7534,6 +7694,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -9236,6 +9401,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-lg"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -9243,11 +9412,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-lg",
               "label": "Pay Now · Rp 68.000",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -9304,6 +9479,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -9344,7 +9524,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -9399,6 +9579,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -9406,11 +9590,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-md",
               "label": "Verifying Voucher...",
               "hasIcon": false,
               "loading": true,
@@ -9466,6 +9656,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -9519,6 +9714,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-danger",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -9526,11 +9725,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-danger",
-              "size": "mode-sm",
               "label": "Remove All Items",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -9578,7 +9783,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -9629,6 +9834,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -11154,6 +11364,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -11161,11 +11375,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-md",
               "label": "Edit Taste Profile",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -11213,7 +11433,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -11264,6 +11484,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -11317,6 +11542,10 @@
           "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-danger",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -11324,11 +11553,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-danger",
-              "size": "mode-md",
               "label": "Sign Out of Device",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -11385,6 +11620,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -11425,7 +11665,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -11890,8 +12130,16 @@
           "layoutSizingV": "hug",
           "component": true,
           "isInstance": false,
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "templateId": "button",
             "variables": {
               "variant": "col-variant",
@@ -11939,7 +12187,12 @@
           "x": 16,
           "y": 10,
           "w": 51,
-          "h": 20
+          "h": 20,
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
+          }
         },
         {
           "rotation": 0,
@@ -12918,6 +13171,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-sm"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -12925,11 +13182,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-sm",
               "label": "Primary S",
               "hasIcon": false,
               "loading": false,
@@ -12985,6 +13248,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -13038,6 +13306,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-secondary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -13045,11 +13317,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-secondary",
-              "size": "mode-md",
               "label": "Secondary M",
               "hasIcon": true,
               "iconPlacement": "start",
@@ -13097,7 +13375,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -13148,6 +13426,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -13201,6 +13484,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-danger",
+            "col-size": "mode-lg"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -13208,11 +13495,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-danger",
-              "size": "mode-lg",
               "label": "Danger L",
               "hasIcon": true,
               "iconPlacement": "end",
@@ -13269,6 +13562,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -13309,7 +13607,7 @@
             }
           ],
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         },
@@ -13408,6 +13706,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-primary",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -13415,11 +13717,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-primary",
-              "size": "mode-md",
               "label": "Brewing...",
               "hasIcon": false,
               "loading": true,
@@ -13475,6 +13783,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -13528,6 +13841,10 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "isInstance": true,
+          "varModes": {
+            "col-variant": "mode-danger",
+            "col-size": "mode-md"
+          },
           "sourceId": "comp-button",
           "overrides": {
             "fill": true,
@@ -13535,11 +13852,17 @@
             "w": true,
             "h": true
           },
+          "vars": {
+            "fill": "var-btn-bg",
+            "stroke": "var-btn-border",
+            "radius": "var-btn-radius",
+            "padH": "var-btn-px",
+            "padV": "var-btn-py",
+            "gap": "var-btn-gap"
+          },
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
-              "variant": "mode-danger",
-              "size": "mode-md",
               "label": "Unavailable",
               "hasIcon": false,
               "loading": false,
@@ -13595,6 +13918,11 @@
             "fill": true,
             "fontSize": true,
             "w": true
+          },
+          "vars": {
+            "fill": "var-btn-fg",
+            "fontSize": "var-btn-fs",
+            "lineHeight": "var-btn-lh"
           }
         },
         {
@@ -14145,6 +14473,32 @@
         "hidden": false
       },
       {
+        "id": "var-btn-fg-disabled",
+        "collectionId": "col-variant",
+        "name": "Button/fg-disabled",
+        "type": "color",
+        "values": {
+          "mode-primary": "#E8DCD0",
+          "mode-secondary": "#A8968A",
+          "mode-danger": "#FEE2E2"
+        },
+        "description": "Button disabled label color",
+        "hidden": false
+      },
+      {
+        "id": "var-btn-border-focus",
+        "collectionId": "col-variant",
+        "name": "Button/border-focus",
+        "type": "color",
+        "values": {
+          "mode-primary": "#8B6B4E",
+          "mode-secondary": "#B89A7E",
+          "mode-danger": "#F87171"
+        },
+        "description": "Button focus ring color",
+        "hidden": false
+      },
+      {
         "id": "var-btn-fs",
         "collectionId": "col-size",
         "name": "Button/fontSize",
@@ -14163,11 +14517,11 @@
         "name": "Button/lineHeight",
         "type": "number",
         "values": {
-          "mode-sm": 1.35,
-          "mode-md": 1.4,
-          "mode-lg": 1.45
+          "mode-sm": 16,
+          "mode-md": 20,
+          "mode-lg": 24
         },
-        "description": "Button line height ratio",
+        "description": "Button line height in px",
         "hidden": false
       },
       {

@@ -9,25 +9,27 @@ const variantColl = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary',
 const num = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
 const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
 const baseItems = () => [
-    num('i-fs', 'fontSize', 'c-size', { sm: 14, lg: 18 }),
-    num('i-lh', 'lineHeight', 'c-size', { sm: 1.4, lg: 1.5 }),
-    num('i-px', 'paddingX', 'c-size', { sm: 12, lg: 16 }),
-    num('i-py', 'paddingY', 'c-size', { sm: 6, lg: 8 }),
-    num('i-gap', 'gap', 'c-size', { sm: 6, lg: 8 }),
-    num('i-radius', 'radius', 'c-size', { sm: 6, lg: 8 }),
-    num('i-icon', 'iconSize', 'c-size', { sm: 14, lg: 16 }),
-    col('i-bg', 'bg', 'c-variant', { primary: '#4338ca', danger: '#dc2626' }),
-    col('i-fg', 'fg', 'c-variant', { primary: '#ffffff', danger: '#ffffff' }),
-    col('i-border', 'border', 'c-variant', { primary: { alias: 'i-bg' }, danger: '#dc2626' }),
-    col('i-bg-hover', 'bg-hover', 'c-variant', { primary: '#3730a3', danger: '#b91c1c' }),
-    col('i-bg-active', 'bg-active', 'c-variant', { primary: '#312e81', danger: '#991b1b' }),
-    col('i-bg-disabled', 'bg-disabled', 'c-variant', { primary: '#a5b4fc', danger: '#fca5a5' }),
+    num('i-fs', 'button/fontSize', 'c-size', { sm: 14, lg: 18 }),
+    num('i-lh', 'button/lineHeight', 'c-size', { sm: 20, lg: 27 }),
+    num('i-px', 'button/paddingX', 'c-size', { sm: 12, lg: 16 }),
+    num('i-py', 'button/paddingY', 'c-size', { sm: 6, lg: 8 }),
+    num('i-gap', 'button/gap', 'c-size', { sm: 6, lg: 8 }),
+    num('i-radius', 'button/radius', 'c-size', { sm: 6, lg: 8 }),
+    num('i-icon', 'button/iconSize', 'c-size', { sm: 14, lg: 16 }),
+    col('i-bg', 'button/bg', 'c-variant', { primary: '#4338ca', danger: '#dc2626' }),
+    col('i-fg', 'button/fg', 'c-variant', { primary: '#ffffff', danger: '#ffffff' }),
+    col('i-border', 'button/border', 'c-variant', { primary: { alias: 'i-bg' }, danger: '#dc2626' }),
+    col('i-bg-hover', 'button/bg-hover', 'c-variant', { primary: '#3730a3', danger: '#b91c1c' }),
+    col('i-bg-active', 'button/bg-active', 'c-variant', { primary: '#312e81', danger: '#991b1b' }),
+    col('i-bg-disabled', 'button/bg-disabled', 'c-variant', { primary: '#a5b4fc', danger: '#fca5a5' }),
+    col('i-fg-disabled', 'button/fg-disabled', 'c-variant', { primary: '#e0e7ff', danger: '#fee2e2' }),
+    col('i-border-focus', 'button/border-focus', 'c-variant', { primary: '#818cf8', danger: '#f87171' }),
 ];
 const variables = (items = baseItems(), extraModes = []) => ({
     collections: [{ ...sizeColl, modes: [...sizeColl.modes, ...extraModes] }, variantColl],
     items,
 });
-const binding = (over = {}) => ({ version: 1, templateId: 'button', variables: { size: 'c-size', variant: 'c-variant', ...over } });
+const binding = (over = {}) => ({ version: 2, templateId: 'button', variables: { size: 'c-size', variant: 'c-variant', ...over } });
 const modes = (over = {}) => ({ size: 'sm', variant: 'primary', ...over });
 const reasonsOf = result => Object.fromEntries(result.unresolved.map(u => [u.token, u.reason]));
 
@@ -35,7 +37,7 @@ test('size and variant tokens resolve to CSS custom properties, with the stored 
     const { vars, unresolved } = resolveTokens(button, binding(), modes(), variables());
     assert.deepEqual(vars, {
         '--button-font-size': '14px',
-        '--button-line-height': '1.4',
+        '--button-line-height': '20px',
         '--button-padding-x': '12px',
         '--button-padding-y': '6px',
         '--button-gap': '6px',
@@ -47,6 +49,8 @@ test('size and variant tokens resolve to CSS custom properties, with the stored 
         '--button-bg-hover': '#3730a3',
         '--button-bg-active': '#312e81',
         '--button-bg-disabled': '#a5b4fc',
+        '--button-fg-disabled': '#e0e7ff',
+        '--button-border-focus': '#818cf8',
     });
     assert.deepEqual(unresolved, []);
 });
@@ -71,17 +75,17 @@ test('a dimension with no bound collection reports every token of that dimension
 });
 
 test('each unresolved reason is reported for its token', () => {
-    const without = name => baseItems().filter(i => i.name !== name);
+    const without = name => baseItems().filter(i => i.name !== `button/${name}`);
     const cases = [
         ['collection-missing', resolveTokens(button, binding({ size: 'c-gone' }), modes(), variables()), 'fontSize'],
         ['no-mode-selected', resolveTokens(button, binding(), modes({ size: undefined }), variables()), 'fontSize'],
         ['mode-missing', resolveTokens(button, binding(), modes({ size: 'nope' }), variables()), 'fontSize'],
         ['no-variable', resolveTokens(button, binding(), modes(), variables(without('gap'))), 'gap'],
-        ['no-value-in-mode', resolveTokens(button, binding(), modes({ size: 'lg' }), variables(baseItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: 14 } } : i)))), 'fontSize'],
-        ['ambiguous', resolveTokens(button, binding(), modes(), variables([...baseItems(), num('i-gap2', 'gap', 'c-size', { sm: 1 })])), 'gap'],
-        ['type-mismatch', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'fontSize' ? { ...i, type: 'color' } : i)))), 'fontSize'],
-        ['alias-missing', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'border' ? { ...i, values: { primary: { alias: 'nope' }, danger: '#dc2626' } } : i)))), 'border'],
-        ['alias-cycle', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'bg' ? { ...i, values: { primary: { alias: 'i-border' }, danger: '#dc2626' } } : i)))), 'border'],
+        ['no-value-in-mode', resolveTokens(button, binding(), modes({ size: 'lg' }), variables(baseItems().map(i => (i.name === 'button/fontSize' ? { ...i, values: { sm: 14 } } : i)))), 'fontSize'],
+        ['ambiguous', resolveTokens(button, binding(), modes(), variables([...baseItems(), num('i-gap2', 'button/gap', 'c-size', { sm: 1 })])), 'gap'],
+        ['type-mismatch', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'button/fontSize' ? { ...i, type: 'color' } : i)))), 'fontSize'],
+        ['alias-missing', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'button/border' ? { ...i, values: { primary: { alias: 'nope' }, danger: '#dc2626' } } : i)))), 'border'],
+        ['alias-cycle', resolveTokens(button, binding(), modes(), variables(baseItems().map(i => (i.name === 'button/bg' ? { ...i, values: { primary: { alias: 'i-border' }, danger: '#dc2626' } } : i)))), 'border'],
     ];
     for (const [reason, result, token] of cases) {
         assert.equal(reasonsOf(result)[token], reason, `${token} should be ${reason}`);
@@ -102,7 +106,7 @@ test('the same inputs give the same output, in token order', () => {
     assert.deepEqual(Object.keys(first.vars), [
         '--button-font-size', '--button-line-height', '--button-padding-x', '--button-padding-y', '--button-gap',
         '--button-radius', '--button-icon-size', '--button-bg', '--button-fg', '--button-border',
-        '--button-bg-hover', '--button-bg-active', '--button-bg-disabled',
+        '--button-bg-hover', '--button-bg-active', '--button-bg-disabled', '--button-fg-disabled', '--button-border-focus',
     ]);
 });
 
@@ -112,7 +116,7 @@ test('a colour alias with its own opacity fades the aliased colour, the way the 
 });
 
 test('a value of the wrong form for its kind is reported as invalid, not written', () => {
-    const items = baseItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: 'big', lg: 18 } } : i.name === 'bg' ? { ...i, values: { primary: 12, danger: '#dc2626' } } : i));
+    const items = baseItems().map(i => (i.name === 'button/fontSize' ? { ...i, values: { sm: 'big', lg: 18 } } : i.name === 'button/bg' ? { ...i, values: { primary: 12, danger: '#dc2626' } } : i));
     const result = resolveTokens(button, binding(), modes(), variables(items));
     assert.equal(reasonsOf(result).fontSize, 'invalid-value');
     assert.equal(reasonsOf(result).bg, 'invalid-value');

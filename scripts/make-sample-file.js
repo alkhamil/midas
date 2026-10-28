@@ -252,10 +252,12 @@ function buildVariables() {
         { id: 'var-btn-bg-hover', collectionId: COL_VARIANT_ID, name: 'Button/bg-hover', type: 'color', values: vMode('#5C3E2A', '#EADACA', '#B91C1C'), description: 'Button hover background', hidden: false },
         { id: 'var-btn-bg-active', collectionId: COL_VARIANT_ID, name: 'Button/bg-active', type: 'color', values: vMode('#4A3121', '#DEC8B4', '#991B1B'), description: 'Button active background', hidden: false },
         { id: 'var-btn-bg-disabled', collectionId: COL_VARIANT_ID, name: 'Button/bg-disabled', type: 'color', values: vMode('#C8B7A6', '#EFEAE4', '#FCA5A5'), description: 'Button disabled background', hidden: false },
+        { id: 'var-btn-fg-disabled', collectionId: COL_VARIANT_ID, name: 'Button/fg-disabled', type: 'color', values: vMode('#E8DCD0', '#A8968A', '#FEE2E2'), description: 'Button disabled label color', hidden: false },
+        { id: 'var-btn-border-focus', collectionId: COL_VARIANT_ID, name: 'Button/border-focus', type: 'color', values: vMode('#8B6B4E', '#B89A7E', '#F87171'), description: 'Button focus ring color', hidden: false },
 
         // Size tokens (all required Button size tokens)
         { id: 'var-btn-fs', collectionId: COL_SIZE_ID, name: 'Button/fontSize', type: 'number', values: sMode(12, 14, 16), description: 'Button font size', hidden: false },
-        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode(1.35, 1.4, 1.45), description: 'Button line height ratio', hidden: false },
+        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode(16, 20, 24), description: 'Button line height in px', hidden: false },
         { id: 'var-btn-px', collectionId: COL_SIZE_ID, name: 'Button/paddingX', type: 'number', values: sMode(12, 16, 20), description: 'Button horizontal padding', hidden: false },
         { id: 'var-btn-py', collectionId: COL_SIZE_ID, name: 'Button/paddingY', type: 'number', values: sMode(6, 10, 14), description: 'Button vertical padding', hidden: false },
         { id: 'var-btn-gap', collectionId: COL_SIZE_ID, name: 'Button/gap', type: 'number', values: sMode(6, 8, 10), description: 'Button icon-label gap', hidden: false },
@@ -284,6 +286,10 @@ function buildVariables() {
 const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
+// The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
+const BUTTON_ROOT_VARS = { fill: 'var-btn-bg', stroke: 'var-btn-border', radius: 'var-btn-radius', padH: 'var-btn-px', padV: 'var-btn-py', gap: 'var-btn-gap' };
+const BUTTON_LABEL_VARS = { fill: 'var-btn-fg', fontSize: 'var-btn-fs', lineHeight: 'var-btn-lh' };
+
 function buildButtonMaster(x = 440, y = 40) {
     const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
         x,
@@ -304,8 +310,9 @@ function buildButtonMaster(x = 440, y = 40) {
         layoutSizingV: 'hug',
         component: true,
         isInstance: false,
+        vars: BUTTON_ROOT_VARS,
         behavior: {
-            version: 1,
+            version: 2,
             templateId: 'button',
             variables: {
                 variant: COL_VARIANT_ID,
@@ -322,6 +329,7 @@ function buildButtonMaster(x = 440, y = 40) {
         lineHeight: 1.4,
         fill: '#FFFFFF',
     });
+    label.vars = BUTTON_LABEL_VARS;
     return [master, label];
 }
 
@@ -353,8 +361,6 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
     const metrics = SIZE_METRICS[size] || SIZE_METRICS[MODES.size.md];
 
     const behaviorProps = {
-        variant,
-        size,
         label: labelText,
         hasIcon,
         ...(hasIcon ? { iconPlacement: placement } : {}),
@@ -387,10 +393,12 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         layoutSizingH: fullWidth ? 'fill' : 'hug',
         layoutSizingV: 'hug',
         isInstance: true,
+        varModes: { [COL_VARIANT_ID]: variant, [COL_SIZE_ID]: size },
         sourceId: MASTER_BUTTON_ID,
         overrides: { fill: true, radius: true, w: true, h: true },
+        vars: BUTTON_ROOT_VARS,
         behavior: {
-            version: 1,
+            version: 2,
             props: behaviorProps,
         },
     });
@@ -408,6 +416,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         fill: colors.fg,
         overrides: { text: true, fill: true, fontSize: true, w: true },
     });
+    labelNode.vars = BUTTON_LABEL_VARS;
 
     if (!hasIcon) return [inst, labelNode];
 

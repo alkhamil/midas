@@ -34,7 +34,7 @@
       "type": "frame",
       "id": "clip-icon-start",
       "behavior": {
-        "version": 1,
+        "version": 2,
         "slot": "iconStart"
       }
     }

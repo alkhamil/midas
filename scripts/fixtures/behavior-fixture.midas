@@ -44,12 +44,20 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "templateId": "button",
             "variables": {
               "variant": "c-variant",
               "size": "c-size"
             }
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
           }
         },
         {
@@ -91,7 +99,12 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "main-label"
+          "id": "main-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          }
         },
         {
           "name": "Save",
@@ -130,14 +143,24 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
               "hasIcon": true,
               "iconPlacement": "start",
-              "label": "Save",
-              "variant": "primary",
-              "size": "sm"
+              "label": "Save"
             }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
           }
         },
         {
@@ -170,7 +193,7 @@
           "type": "frame",
           "id": "inst-start-icon-start",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconStart"
           }
         },
@@ -213,7 +236,13 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "inst-start-label"
+          "id": "inst-start-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
         },
         {
           "name": "Cancel",
@@ -252,13 +281,23 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
               "hasIcon": false,
-              "label": "Cancel",
-              "variant": "danger",
-              "size": "lg"
+              "label": "Cancel"
             }
+          },
+          "varModes": {
+            "c-variant": "danger",
+            "c-size": "lg"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
           }
         },
         {
@@ -300,7 +339,13 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "inst-plain-label"
+          "id": "inst-plain-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
         },
         {
           "name": "Unbound",
@@ -415,12 +460,20 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "templateId": "button",
             "variables": {
               "variant": "c-variant-b",
               "size": "c-size"
             }
+          },
+          "vars": {
+            "fill": "i-bg-b",
+            "stroke": "i-border-b",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
           }
         },
         {
@@ -462,7 +515,12 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "legacy-label"
+          "id": "legacy-label",
+          "vars": {
+            "fill": "i-fg-b",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          }
         }
       ]
     },
@@ -507,14 +565,24 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "props": {
               "hasIcon": true,
               "iconPlacement": "end",
-              "label": "Next",
-              "variant": "primary",
-              "size": "sm"
+              "label": "Next"
             }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
           }
         },
         {
@@ -556,7 +624,13 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "inst-cross-label"
+          "id": "inst-cross-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
         },
         {
           "name": "iconEnd",
@@ -588,7 +662,7 @@
           "type": "frame",
           "id": "inst-cross-icon-end",
           "behavior": {
-            "version": 1,
+            "version": 2,
             "slot": "iconEnd"
           }
         }
@@ -663,7 +737,7 @@
     "items": [
       {
         "id": "i-bg-v",
-        "name": "bg",
+        "name": "button/bg",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -673,7 +747,7 @@
       },
       {
         "id": "i-bg-hover-v",
-        "name": "bg-hover",
+        "name": "button/bg-hover",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -683,7 +757,7 @@
       },
       {
         "id": "i-bg-active-v",
-        "name": "bg-active",
+        "name": "button/bg-active",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -693,7 +767,7 @@
       },
       {
         "id": "i-bg-disabled-v",
-        "name": "bg-disabled",
+        "name": "button/bg-disabled",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -703,7 +777,7 @@
       },
       {
         "id": "i-fg-v",
-        "name": "fg",
+        "name": "button/fg",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -712,8 +786,18 @@
         }
       },
       {
+        "id": "i-fg-disabled-v",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
         "id": "i-border-v",
-        "name": "border",
+        "name": "button/border",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -722,8 +806,18 @@
         }
       },
       {
+        "id": "i-border-focus-v",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#818cf8",
+          "danger": "#f87171"
+        }
+      },
+      {
         "id": "i-bg-b",
-        "name": "bg",
+        "name": "button/bg",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -733,7 +827,7 @@
       },
       {
         "id": "i-bg-hover-b",
-        "name": "bg-hover",
+        "name": "button/bg-hover",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -742,7 +836,7 @@
       },
       {
         "id": "i-bg-active-b",
-        "name": "bg-active",
+        "name": "button/bg-active",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -752,7 +846,7 @@
       },
       {
         "id": "i-bg-disabled-b",
-        "name": "bg-disabled",
+        "name": "button/bg-disabled",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -762,7 +856,7 @@
       },
       {
         "id": "i-fg-b",
-        "name": "fg",
+        "name": "button/fg",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -771,8 +865,18 @@
         }
       },
       {
+        "id": "i-fg-disabled-b",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
         "id": "i-border-b",
-        "name": "border",
+        "name": "button/border",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
@@ -781,8 +885,38 @@
         }
       },
       {
+        "id": "i-border-focus-b",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#818cf8",
+          "danger": "#f87171"
+        }
+      },
+      {
+        "id": "i-card-bg-v",
+        "name": "card/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#fff1f1"
+        }
+      },
+      {
+        "id": "i-card-fg-v",
+        "name": "card/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#20202a",
+          "danger": "#20202a"
+        }
+      },
+      {
         "id": "i-fs",
-        "name": "fontSize",
+        "name": "button/fontSize",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -792,17 +926,17 @@
       },
       {
         "id": "i-lh",
-        "name": "lineHeight",
+        "name": "button/lineHeight",
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 1.4,
-          "lg": 1.5
+          "sm": 20,
+          "lg": 27
         }
       },
       {
         "id": "i-px",
-        "name": "paddingX",
+        "name": "button/paddingX",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -812,7 +946,7 @@
       },
       {
         "id": "i-py",
-        "name": "paddingY",
+        "name": "button/paddingY",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -822,7 +956,7 @@
       },
       {
         "id": "i-gap",
-        "name": "gap",
+        "name": "button/gap",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -832,7 +966,7 @@
       },
       {
         "id": "i-radius",
-        "name": "radius",
+        "name": "button/radius",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -842,7 +976,7 @@
       },
       {
         "id": "i-icon",
-        "name": "iconSize",
+        "name": "button/iconSize",
         "type": "number",
         "collectionId": "c-size",
         "values": {

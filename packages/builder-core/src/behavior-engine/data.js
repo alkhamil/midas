@@ -4,7 +4,7 @@
 import { TEMPLATES, variableProps } from './registry.js';
 import { isPlainObject } from './validate-schema.js';
 
-export const BEHAVIOR_DATA_VERSION = 1;
+export const BEHAVIOR_DATA_VERSION = 2;
 
 export class BehaviorDataError extends Error {
     /**

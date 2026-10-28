@@ -4,13 +4,13 @@ import { variableProps } from './registry.js';
 import { dimensionOfGroup } from './validate-schema.js';
 
 /**
- * The kind of value each known token holds. `length` is a number in px, `ratio` is a unitless number (line height is stored
- * as a ratio of the font size), `color` is a CSS colour string. A token not listed here has no kind and is reported.
+ * The kind of value each known token holds. `length` is a number in px (line height included: it is px, not a ratio), `ratio` is a
+ * unitless number, `color` is a CSS colour string. A token not listed here has no kind and is reported.
  * @type {Record<string, 'length' | 'ratio' | 'color'>}
  */
 const TOKEN_KIND = {
     fontSize: 'length',
-    lineHeight: 'ratio',
+    lineHeight: 'length',
     paddingX: 'length',
     paddingY: 'length',
     gap: 'length',
@@ -22,10 +22,12 @@ const TOKEN_KIND = {
     'bg-hover': 'color',
     'bg-active': 'color',
     'bg-disabled': 'color',
+    'fg-disabled': 'color',
+    'border-focus': 'color',
 };
 
-/** The last segment of a variable name: `Button/fontSize` matches the token `fontSize`. */
-const leaf = (/** @type {unknown} */ name) => String(name ?? '').split('/').pop()?.trim().toLowerCase() ?? '';
+/** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
+const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase();
 
 /** `fontSize` -> `font-size`, `paddingX` -> `padding-x`. */
 const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
@@ -145,7 +147,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             const mode = selectedModes[dimension] ?? null;
             if (mode === null) { miss('no-mode-selected'); continue; }
             if (!collection.modes?.some((/** @type {{ id: string }} */ m) => m.id === mode)) { miss('mode-missing'); continue; }
-            const named = items.filter(i => i.collectionId === collection.id && leaf(i.name) === token.toLowerCase());
+            const named = items.filter(i => i.collectionId === collection.id && nameKey(i.name) === `${template.group}/${token}`.toLowerCase());
             if (named.length === 0) { miss('no-variable'); continue; }
             if (named.length > 1) { miss('ambiguous'); continue; }
             const found = valueIn(named[0], mode, items);

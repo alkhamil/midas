@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planInstanceAnatomy } from '../src/behavior-engine/anatomy.js';
 
-const binding = { version: 1, templateId: 'button', variables: { variant: null, size: null } };
+const binding = { version: 2, templateId: 'button', variables: { variant: null, size: null } };
 const masterRoot = { isAutoLayout: true };
 const masterTree = [{ id: 'mLabel', type: 'text' }, { id: 'mIcon', type: 'vector' }];
 const child = (id, slot = null) => ({ id, slot });

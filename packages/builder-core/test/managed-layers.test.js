@@ -4,9 +4,9 @@ import { isManagedLayer, managedRefusal, managedPasteRefusal } from '../src/beha
 import { behaviorProblem } from '../src/behavior-engine/document-check.js';
 import { detachBehavior } from '../src/behavior-engine/data.js';
 
-const managed = (slot, extra = {}) => ({ id: `icon-${slot}`, name: slot, type: 'frame', behavior: { version: 1, slot }, ...extra });
+const managed = (slot, extra = {}) => ({ id: `icon-${slot}`, name: slot, type: 'frame', behavior: { version: 2, slot }, ...extra });
 const plain = { id: 'label', name: 'Label', type: 'text' };
-const instance = { id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 1, props: { hasIcon: true } } };
+const instance = { id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { hasIcon: true } } };
 
 test('a managed layer is a layer with a slot marker; instances and plain layers are not', () => {
     assert.equal(isManagedLayer(managed('iconStart')), true);
@@ -33,7 +33,7 @@ test('a selection that mixes a managed layer with others is refused as a whole, 
 });
 
 test('a valid document has no behavior problem', () => {
-    const doc = { variables: { collections: [] }, pages: [{ id: 'p', nodes: [{ id: 'btn', name: 'Button', type: 'frame', layout: 'horizontal', behavior: { version: 1, templateId: 'button', variables: { variant: null, size: null } } }, { id: 'btn-label', name: 'Label', type: 'text', parentId: 'btn' }, instance, managed('iconStart', { parentId: 'i1' }), { id: 'i1-label', name: 'Label', type: 'text', parentId: 'i1' }] }] };
+    const doc = { variables: { collections: [] }, pages: [{ id: 'p', nodes: [{ id: 'btn', name: 'Button', type: 'frame', layout: 'horizontal', behavior: { version: 2, templateId: 'button', variables: { variant: null, size: null } } }, { id: 'btn-label', name: 'Label', type: 'text', parentId: 'btn' }, instance, managed('iconStart', { parentId: 'i1' }), { id: 'i1-label', name: 'Label', type: 'text', parentId: 'i1' }] }] };
     assert.equal(behaviorProblem(doc), null);
 });
 
@@ -54,13 +54,13 @@ test('detaching an instance leaves no behavior data or managed marker in its tre
 });
 
 test('a payload with a managed layer but not its instance is refused, naming the layer', () => {
-    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } };
+    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 2, slot: 'iconStart' } };
     assert.match(managedPasteRefusal([layer]), /"iconStart" is managed by its instance: pasting it without that instance is not allowed\./);
 });
 
 test('a payload with the instance and its managed layers is allowed', () => {
-    const instance = { id: 'i1', parentId: null, isInstance: true, behavior: { version: 1, props: { hasIcon: true } } };
-    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } };
+    const instance = { id: 'i1', parentId: null, isInstance: true, behavior: { version: 2, props: { hasIcon: true } } };
+    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 2, slot: 'iconStart' } };
     assert.equal(managedPasteRefusal([instance, layer]), null);
 });
 

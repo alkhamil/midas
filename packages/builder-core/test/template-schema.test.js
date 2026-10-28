@@ -46,17 +46,35 @@ test('a token group must draw from a variable prop of the same name', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /tokens group "fromWidth" has no variable prop "Width"/);
 });
 
-test('a state token map must name only states of the template', () => {
+test('a preview-only state may change colours only: a size, padding or radius change is refused', () => {
     const bad = clone(BUTTON);
-    bad.stateTokens = { pressed: { bg: 'bg-hover' } };
-    assert.match(validateTemplateSchema(bad).join('\n'), /stateTokens names unknown state "pressed"/);
+    bad.previewStates = { hover: { bg: 'bg-hover', radius: 'radius' } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /preview state "hover" changes "radius", but preview states change colours only/);
 });
 
-test('a state token map must override a token of the template, and name a token of the template', () => {
+test('a preview-only state must map to a token of the template', () => {
     const bad = clone(BUTTON);
-    bad.stateTokens = { hover: { width: 'bg-hover' } };
-    assert.match(validateTemplateSchema(bad).join('\n'), /stateTokens overrides "width", which is not a token/);
-    const missing = clone(BUTTON);
-    missing.stateTokens = { hover: { bg: 'bg-nope' } };
-    assert.match(validateTemplateSchema(missing).join('\n'), /stateTokens maps "bg" to "bg-nope", which is not a token/);
+    bad.previewStates = { hover: { bg: 'bg-nope' } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /preview state "hover" maps "bg" to "bg-nope", which is not a token/);
+});
+
+test('a persistent state needs a boolean literal prop, and tokens of the template', () => {
+    const notBoolean = clone(BUTTON);
+    notBoolean.persistentStates = { disabled: { prop: 'label', tokens: { bg: 'bg-disabled' } } };
+    assert.match(validateTemplateSchema(notBoolean).join('\n'), /persistent state "disabled" needs a boolean prop, not "label"/);
+    const unknownToken = clone(BUTTON);
+    unknownToken.persistentStates = { disabled: { prop: 'disabled', tokens: { bg: 'bg-nope' } } };
+    assert.match(validateTemplateSchema(unknownToken).join('\n'), /persistent state "disabled" maps "bg" to "bg-nope", which is not a token/);
+});
+
+test('a state is persistent or preview-only, not both', () => {
+    const bad = clone(BUTTON);
+    bad.previewStates = { disabled: { bg: 'bg-hover' } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /state "disabled" is declared as both persistent and preview-only/);
+});
+
+test('a template must name its variable group', () => {
+    const bad = clone(BUTTON);
+    delete bad.group;
+    assert.match(validateTemplateSchema(bad).join('\n'), /schema has no group/);
 });

@@ -6,8 +6,12 @@
 /** The props that drive the managed icon slots. They are grouped under Slots. The icon picker is deferred, so `icon` has no row. */
 const SLOT_PROPS = new Set(['hasIcon', 'iconPlacement']);
 
-/** The preview states the instance can be shown in, as [state, label]. Preview only; it never changes the document. */
-export const PREVIEW_STATES = [['default', 'Default'], ['hover', 'Hover'], ['active', 'Active'], ['disabled', 'Disabled']];
+/** The preview-only states the instance can be shown in, as [state, label]. Preview only; it never changes the document.
+ * Disabled is a persistent state (a prop), so it is not listed here: it is shown on the canvas and wins over these. */
+export const PREVIEW_STATES = [['default', 'Default'], ['hover', 'Hover'], ['active', 'Active'], ['focus', 'Focus']];
+
+/** The label of a state the preview shows: a preview-only state from PREVIEW_STATES, or a persistent one (disabled) by its name. */
+const labelOfState = state => PREVIEW_STATES.find(([id]) => id === state)?.[1] ?? state.replace(/^./, c => c.toUpperCase());
 
 /**
  * Markup for a master, an instance, or a node that has no behavior. `esc` escapes text for HTML.
@@ -63,12 +67,13 @@ function masterHtml(panel, esc, findings, code) {
     }).join('');
     const contract = [
         ...panel.contract.props.map(p => row(labelOf(p.name), `<span class="small-label">${esc(p.type)} · default ${esc(String(p.default))}</span>`, esc, p.name)),
-        row('States', `<span class="small-label">${panel.contract.states.map(s => esc(s)).join(', ')}</span>`, esc),
+        row('Persistent states', `<span class="small-label">${panel.contract.persistentStates.map(s => esc(s)).join(', ') || 'None'}</span>`, esc),
+        row('Preview states', `<span class="small-label">${panel.contract.previewStates.map(s => esc(s)).join(', ') || 'None'}</span>`, esc),
         row('Events', `<span class="small-label">${panel.contract.events.map(e => esc(e.name) + (e.exposeAsTrigger ? ' (trigger)' : '')).join(', ')}</span>`, esc),
     ].join('');
     const generate = `<button class="wide-button full-width" data-bp-action="generate" ${code?.problems.length ? 'disabled' : ''}>Generate code</button>`;
     return section('Template and binding', templateRow, esc)
-        + block('Collections', collections, esc)
+        + block('Collections', collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
         + diagnosticsSection(findings, code?.problems ?? [], esc);
@@ -90,7 +95,7 @@ function instanceHtml(panel, esc, findings, preview) {
     return block('Collections', variable, esc)
         + block('Props', props, esc)
         + block('Slots', slots, esc)
-        + (preview ? section('Preview', row('State', state, esc) + previewRows(preview.vars, preview.templateId, esc), esc) : '')
+        + (preview ? section('Preview', row('State', state, esc) + (preview.state === 'default' ? '' : `<div class="badge">Previewing: ${esc(labelOfState(preview.state))}</div>`) + previewRows(preview.vars, preview.templateId, esc, preview.state !== 'default'), esc) : '')
         + diagnosticsSection(findings, [], esc, preview);
 }
 
@@ -102,6 +107,13 @@ function diagnosticsSection(findings, problems, esc, preview = null) {
     if (findings === null) return section('Diagnostics', empty('Diagnostics appear when all pages are loaded.'), esc);
     const all = [...findings, ...codeFindings(problems), ...(preview ? stateFindings(preview.unresolved, preview.stateTokens) : [])];
     return section('Diagnostics', all.length ? findingRows(all, esc) : empty('No issues'), esc);
+}
+
+/** The Bind tokens action: enabled while a master layer has a mapped property that is not bound to its token (unbound-token). */
+function bindTokensRow(findings, esc) {
+    const unbound = (findings ?? []).filter(f => f.code === 'unbound-token').length;
+    const label = unbound ? `Bind tokens (${unbound} unbound)` : 'Bind tokens (all bound)';
+    return `<button class="wide-button full-width" data-bp-action="bind-tokens" ${unbound ? '' : 'disabled'}>${esc(label)}</button>`;
 }
 
 /** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs). */
@@ -120,7 +132,7 @@ function literalRow(r, esc) {
 
 /** One row per finding: its severity badge, then its one-line message (the only part that may wrap). */
 export function findingRows(findings, esc) {
-    return findings.map(f => `<div class="cmp-prop2"><span><span class="badge">${f.severity === 'error' ? 'Error' : 'Warning'}</span></span><div class="cmp-ctl"><span class="small-label">${esc(f.message)}</span></div></div>`).join('');
+    return findings.map(f => `<div class="cmp-prop2"><span><span class="badge">${f.severity === 'error' ? 'Error' : f.severity === 'info' ? 'Note' : 'Warning'}</span></span><div class="cmp-ctl"><span class="small-label">${esc(f.message)}</span></div></div>`).join('');
 }
 
 /** The generator's reasons as error findings, one per refused token, naming the modes it was refused in. */
@@ -143,8 +155,9 @@ export function codeDownloads(result) {
 }
 
 /** The resolved tokens of the previewed state as read-only rows, named without the template prefix. */
-export function previewRows(vars, templateId, esc) {
+export function previewRows(vars, templateId, esc, previewing) {
     const entries = Object.entries(vars);
     if (!entries.length) return empty('No resolved tokens');
-    return entries.map(([name, value]) => row(name.replace(`--${templateId}-`, ''), `<span class="small-label">${esc(value)}</span>`, esc, name)).join('');
+    // The canvas draws the root's background and border in a preview, never the text colour: the row says so.
+    return entries.map(([name, value]) => row(name.replace(`--${templateId}-`, ''), `<span class="small-label">${esc(value)}</span>` + (previewing && name === `--${templateId}-fg` ? '<span class="small-label">Text color preview not on canvas</span>' : ''), esc, name)).join('');
 }

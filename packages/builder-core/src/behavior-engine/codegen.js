@@ -3,12 +3,15 @@
 // give the same text. If any token is unresolved for any mode, nothing is written: the result has no files and lists the reasons.
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
+import { resolveProps } from './instance-props.js';
 import { SLOT_OF_PLACEMENT } from './anatomy.js';
+import { NODE_PROPERTIES, targetKindOf } from './display.js';
+import { cssVarOf } from './tokens.js';
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
 /** The CSS pseudo-class each state is written as. Only these states get a stylesheet block. */
-const PSEUDO = { hover: ':hover', active: ':active', disabled: ':disabled' };
+const PSEUDO = { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' };
 /** The placement each managed slot shows for: `iconStart` -> `start`. */
 const PLACEMENT_OF_SLOT = Object.fromEntries(Object.entries(SLOT_OF_PLACEMENT).map(([placement, slot]) => [slot, placement]));
 
@@ -62,6 +65,27 @@ function componentSource(template, name, problems) {
 }
 
 /**
+ * One rule per node the display mapping styles from a token: each mapped property is written to its CSS property, reading the
+ * token's custom property. Literal sources (width, text) are not CSS and are written by the component.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+function displayRules(template) {
+    const tokens = Object.values(template.tokens).flat();
+    return Object.entries(template.display).map(([key, props]) => {
+        const kind = targetKindOf(template, key);
+        const decls = [];
+        for (const [prop, source] of Object.entries(props)) {
+            const css = NODE_PROPERTIES[kind][prop].css;
+            if (!css || !tokens.includes(source)) continue;
+            for (const name of [css].flat()) decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`);
+        }
+        if (!decls.length) return '';
+        const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
+        return `${selector} {\n${decls.join('')}}\n`;
+    }).filter(Boolean);
+}
+
+/**
  * The stylesheet: one block per combination of variable modes with its base tokens, then one block per state holding only
  * the tokens that state changes. Problems are pushed onto `problems` with the modes they belong to.
  * @param {import('../templates/schema.js').TemplateSchema} template
@@ -82,15 +106,20 @@ function stylesheet(template, binding, variables, problems) {
         modes[dim] = (collection.modes || []).map(/** @param {{ id: string }} m */ m => m.id);
     }
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
-    const blocks = [];
+    const blocks = displayRules(template);
+    const defaults = resolveProps(template, {});
     for (const combo of combos) {
         const selector = `.${template.id}${dims.map(dim => `[data-${dim}="${combo[dim]}"]`).join('')}`;
-        const base = previewOf(template, binding, combo, variables, 'default');
+        const base = previewOf(template, binding, combo, variables, defaults, 'default');
         for (const u of base.unresolved) problems.push({ ...u, ...combo });
         if (Object.keys(base.vars).length) blocks.push(`${selector} {\n${declarations(base.vars)}}\n`);
-        for (const [state, pseudo] of Object.entries(PSEUDO)) {
-            if (!template.states.includes(state)) continue;
-            const changed = previewOf(template, binding, combo, variables, state).vars;
+        for (const state of [...Object.keys(template.persistentStates), ...Object.keys(template.previewStates)]) {
+            const pseudo = PSEUDO[state];
+            if (!pseudo) { problems.push({ state, reason: 'no-pseudo-class' }); continue; }
+            const persistent = template.persistentStates[state];
+            const changed = persistent
+                ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
+                : previewOf(template, binding, combo, variables, defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
             if (Object.keys(delta).length) blocks.push(`${selector}${pseudo} {\n${declarations(delta)}}\n`);
         }

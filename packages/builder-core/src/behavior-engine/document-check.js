@@ -1,6 +1,6 @@
 // Phase 2 of the load rules: needs the whole document. Each instance's props are checked against its master's template
 // and binding. Only the master holds the binding; an instance never names a template.
-import { TEMPLATES } from './registry.js';
+import { TEMPLATES, variableProps } from './registry.js';
 import { assertBehaviorShape, behaviorError, BehaviorDataError } from './data.js';
 import { isPropVisible, resolveProps, valueProblem } from './instance-props.js';
 import { planInstanceAnatomy } from './anatomy.js';
@@ -147,26 +147,19 @@ function checkInstance(n, nodes, collections, page) {
         const def = template.props[name];
         const problem = valueProblem(def, stored[name]);
         if (problem) fail(`prop "${name}": ${problem}`);
-        if (def.source === 'variable' && stored[name] !== null) checkMode(fail, name, stored[name], binding, collections);
     }
     const resolved = resolveProps(template, stored);
     for (const name of Object.keys(stored)) {
         if (!isPropVisible(template, name, resolved)) fail(`prop "${name}" is hidden by its visibleIf but holds a value`);
     }
+    // An Appearance mode the instance holds must be a mode of the collection its master binds: no silent fallback to another mode.
+    for (const [dim] of variableProps(template)) {
+        const collectionId = binding.variables[dim];
+        const mode = collectionId ? n.varModes?.[collectionId] : undefined;
+        if (mode === undefined) continue;
+        const collection = collections.find(c => c.id === collectionId);
+        if (!collection) fail(`collection "${collectionId}" is bound to ${dim}, but does not exist`);
+        if (!collection.modes?.some(m => m.id === mode)) fail(`mode "${mode}" is not in collection "${collection.name}"`);
+    }
 }
 
-/**
- * The mode a variable prop stores must be a mode of the collection the master binds to that prop.
- * @param {(problem: string) => never} fail
- * @param {string} name
- * @param {string} mode
- * @param {{ variables: Record<string, string | null> }} binding
- * @param {any[]} collections
- */
-function checkMode(fail, name, mode, binding, collections) {
-    const collectionId = binding.variables[name];
-    if (!collectionId) fail(`prop "${name}" holds a mode but no collection is bound to it`);
-    const collection = collections.find(c => c.id === collectionId);
-    if (!collection) fail(`prop "${name}" is bound to collection "${collectionId}", which does not exist`);
-    if (!collection.modes?.some((/** @type {{ id: string }} */ m) => m.id === mode)) fail(`mode "${mode}" is not in collection "${collection.name}"`);
-}

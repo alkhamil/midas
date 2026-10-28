@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, labelLayerOf, masterLayersOf, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1342,21 +1342,19 @@ function handleVarClick(e) {
 }
 // Variable-mode targets: the selected layers, or the page itself when nothing is selected.
 function modeTargets() { return selected().length ? selected() : doc.page ? [doc.page] : []; }
+/** Sets (or clears, with '') the mode a collection takes on each node. The one write path for Appearance and Behavior modes. */
+function writeVarMode(nodes, collectionId, modeId) {
+    for (const n of nodes) {
+        const varModes = varModesWith(n.varModes, collectionId, modeId);
+        if (varModes) n.varModes = varModes;
+        else delete n.varModes;
+        doc.touch(n);
+    }
+}
 document.addEventListener('change', e => {
     const el = e.target;
     if (el.matches?.('[data-var-mode]')) {
-        transaction('Set variable mode', () => {
-            for (const n of modeTargets()) {
-                n.varModes = { ...(n.varModes || {}) };
-                if (el.value)
-                    n.varModes[el.dataset.varMode] = el.value;
-                else
-                    delete n.varModes[el.dataset.varMode];
-                if (!Object.keys(n.varModes).length)
-                    delete n.varModes;
-                doc.touch(n);
-            }
-        });
+        transaction('Set variable mode', () => writeVarMode(modeTargets(), el.dataset.varMode, el.value));
     }
 });
 // ===== appearance: independent corners =====
@@ -2428,7 +2426,7 @@ function wireVarsWindow(win) {
             e.stopPropagation();
             const id = el.dataset.vwDelColl, s = varStore();
             deleteWhenLoaded('Delete collection', () => {
-                dropBehaviorRefs(id);
+                forgetCollection(allNodes(), id);
                 s.collections = s.collections.filter(c => c.id !== id);
                 const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
                 s.items = s.items.filter(i => i.collectionId !== id);
@@ -2547,7 +2545,6 @@ function wireVarsWindow(win) {
             if (coll.modes.length < 2)
                 return;
             deleteWhenLoaded('Delete mode', () => {
-                dropBehaviorRefs(coll.id, id);
                 coll.modes = coll.modes.filter(m => m.id !== id);
                 for (const i of varStore().items.filter(x => x.collectionId === coll.id))
                     delete i.values[id];
@@ -4764,6 +4761,7 @@ function passwordDialog() {
     };
 }
 async function showHome({ thumb = true } = {}) {
+    behaviorPreview = 'default'; // a preview is a view of the open file: it does not outlive it
     await homeLibsLoad(false); // which files are libraries decides what Recents and All files show
     finishText();
     closeMenu();
@@ -7771,11 +7769,13 @@ class Renderer {
         // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
         // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
         const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
+        // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
+        const preview = this.canvasPreview?.() ?? null;
         const push = (s, n, clipId, shadow = false) => {
-            const base = count++ * 32, d = this.instanceData, m = s.matrix;
+            const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
-            d.set(color(n.fill, n.fillOpacity), base + 8);
-            d.set(color(n.stroke, n.strokeOpacity ?? 1), base + 12);
+            d.set(color(sub?.fill ?? n.fill, n.fillOpacity), base + 8);
+            d.set(color(sub?.stroke ?? n.stroke, n.strokeOpacity ?? 1), base + 12);
             d.set([n.radius || 0, n.strokeVisible === false ? 0 : (n.strokeWidth || 0), n.type === 'ellipse' ? 1 : 0, s.opacity], base + 16);
             d.set([0, 0, 0, 0], base + 20);
             d.set(color(n.fill2, n.fillOpacity), base + 24);
@@ -8278,6 +8278,7 @@ const state = { selection: new Set(), expanded: new Set(), expandedPages: new Se
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
 let scheduled = false, lastInspector = 0, uiQueued = false;
 const renderer = new Renderer($('#scene'), doc, status => { $('#engine-label').textContent = status === 'WebGPU' ? 'WebGPU accelerated' : status === 'Canvas 2D' ? 'Canvas 2D fallback' : status; $('#engine-label').title = status === 'WebGPU' ? 'Shapes: instanced GPU quads. Text and paths: cached raster atlas.' : renderer?.gpuError || status; }, () => invalidate());
+renderer.canvasPreview = canvasPreviewOf;
 function saveOptions() {
     try {
         localStore.setItem('midas-options', JSON.stringify(options));
@@ -8509,8 +8510,9 @@ function syncComponents(activeOnly = true) {
     syncInstanceStructure(activeOnly);
     // Managed layers keep the place anatomy sync gave them; a child the component gained is placed around them.
     for (const inst of (activeOnly ? [doc.page] : doc.data.pages).flatMap(pg => pg.nodes).filter(n => n.isInstance && n.sourceId))
-        syncAnatomy(inst);
+        syncInstance(inst);
     const targetPages = activeOnly ? [doc.page] : doc.data.pages;
+    const labels = labelIdsOfComponents();
     const components = new Map(), everywhere = new Map();
     for (const page of doc.data.pages) {
         for (const n of page.nodes) {
@@ -8541,13 +8543,25 @@ function syncComponents(activeOnly = true) {
             }
             // Same list as SYNC_OMIT (spelled out: this can run before that const is initialised).
             // A swapped nested instance keeps the geometry of its slot, not that of the component swapped in.
-            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'behavior', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
+            const omitted = new Set(['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'behavior', 'varModes', ...(n.isInstance ? ['x', 'y', 'rotation'] : []), ...(n.swapOf ? ['w', 'h', 'constraintH', 'constraintV', 'layoutSizingH', 'layoutSizingV', 'layoutPositioning', 'vars'] : [])]);
             // Text / visibility driven by a component property value win over the main component.
             const controlled = propControlled(n, src, pmap, components);
-            for (const [k, v] of far ? [] : Object.entries(src)) {
-                if (omitted.has(k) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
+            const owned = ownedVarsOf(n, id => pmap.get(id), components, labels);
+            const ownedFields = ownedFieldsOf(n, id => pmap.get(id), components, labels);
+            for (const [k, v0] of far ? [] : Object.entries(src)) {
+                // A field bound through vars takes its value from its variable, so the master's value is not copied onto it.
+                if (omitted.has(k) || ownedFields.includes(k) || (k !== 'vars' && !isCopiedField(k, n.vars)) || isLayoutOwnedField(n, pmap.get(n.parentId), k) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
                     continue;
-                if (n[k] === v)
+                // The copy keeps the layer's own owned bindings (the derived disabled colour) and takes the rest from the master.
+                const v = k === 'vars' && owned.length ? mergeCopiedVars(v0, n.vars, owned) : v0;
+                if (k === 'vars' && owned.length && v === undefined) {
+                    if (n.vars !== undefined) {
+                        delete n.vars;
+                        n.version = (n.version || 0) + 1;
+                    }
+                    continue;
+                }
+                if (k === 'vars' && owned.length ? sameVars(n[k], v) : n[k] === v)
                     continue;
                 if (typeof v !== 'object' || v === null) {
                     n[k] = v;
@@ -8805,6 +8819,7 @@ function transaction(label, fn) {
 }
 function select(ids, { reveal = true } = {}) {
     varOwnerId = null;
+    behaviorPreview = 'default'; // the preview state is a studio-side view of the selection: it does not survive a selection change
     // Selecting anything other than the main component we jumped to ends the "Return to instance" shortcut.
     if (state.returnTo && !(ids.length === 1 && ids[0] === state.returnTo.target))
         hideReturnBar();
@@ -9150,6 +9165,16 @@ function selectField(prop, value, values) { return `<select class="full-width" d
 // ----- Behavior tab (stage 5): the panel is drawn from the template schema. Edits go through the binding model and the instance store. -----
 // The preview state the Behavior tab shows an instance in. A studio-side view only: it never writes to the document or history.
 let behaviorPreview = 'default';
+/** The root colours the canvas draws for the selected instance in its preview state. Read per draw, never stored in the document. */
+function canvasPreviewOf() {
+    const n = activeNode();
+    if (behaviorPreview === 'default' || !n?.isInstance || !n.sourceId) return null;
+    const binding = componentById(n.sourceId)?.behavior;
+    if (!binding || !('templateId' in binding)) return null;
+    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const colors = canvasColorsOf(template, binding, instanceModesOf(n, binding), varStore(), resolveProps(template, n.behavior?.props ?? {}), behaviorPreview);
+    return colors && { id: n.id, colors };
+}
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
     if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: 'none', esc });
@@ -9160,14 +9185,35 @@ function behaviorTabHtml(n) {
         const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name) : null;
         return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
     }
-    const master = componentById(n.sourceId), panel = instancePanel(n, master, collections), binding = master?.behavior;
+    const master = componentById(n.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
-    const shown = template ? previewOf(template, binding, n.behavior?.props ?? {}, varStore(), behaviorPreview) : null;
-    const preview = shown && { state: behaviorPreview, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(template.stateTokens?.[shown.state] ?? {}), templateId: template.id };
+    const modes = instanceModesOf(n, template ? binding : null);
+    const panel = instancePanel(n, master, collections, modes);
+    const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
+    const shown = template ? previewOf(template, binding, modes, varStore(), props, behaviorPreview) : null;
+    const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id };
     return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
+}
+/** Bind tokens: binds each unbound mapped property of a bound master's layers to its group variable. Existing bindings are kept. */
+function bindTokensTo(master) {
+    const binding = master?.component ? master.behavior : null;
+    if (!binding || !('templateId' in binding)) return;
+    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const layers = onPage(pageOfNode(master.id)?.id, () => masterLayersOf(master, id => doc.children(id)));
+    const { ops, problems } = planBindTokens({ template, binding, layers, variables: varStore() });
+    if (problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
+    if (!ops.length) return;
+    transaction('Bind tokens', () => {
+        for (const op of ops) {
+            const n = layers.find(l => l.key === op.key).node;
+            n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
+            doc.touch(n);
+        }
+    });
 }
 /** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
 function onBehaviorClick(e) {
+    if (e.target.closest?.('[data-bp-action="bind-tokens"]')) return bindTokensTo(activeNode());
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
@@ -9201,7 +9247,7 @@ function commitPlan(label, master, plan) {
         applyPlan(master, plan);
         doc.touch(master);
         for (const u of plan.updates) doc.touch(u.node);
-        for (const inst of instancesOf(master.id)) reason ??= syncAnatomy(inst);
+        for (const inst of instancesOf(master.id)) reason ??= syncInstance(inst);
     });
     if (reason) toast(`Managed layers were not updated: ${reason}.`);
 }
@@ -9249,7 +9295,7 @@ function placeAmongChildren(parent, n, index) {
  * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
  * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
  */
-function syncAnatomy(inst) {
+function syncInstance(inst) {
     const { ops, reason } = anatomyPlanOf(inst);
     onPage(pageOfNode(inst.id)?.id, () => {
         for (const op of ops) {
@@ -9264,8 +9310,90 @@ function syncAnatomy(inst) {
             doc.refresh();
             doc.touch(inst);
         }
+        applyStateBindings(inst, stateBindingsOf(inst));
+        applyLiteralFields(inst);
     });
     return reason ?? null;
+}
+/**
+ * The vars keys the behavior engine owns on a node: the instance root's, and a text layer's inside a bound instance (see ownedVarKeys).
+ * `getNode` reads a node by id on the page the node is on; `components` holds the masters.
+ */
+function ownedVarsOf(n, getNode, components, labels) {
+    const template = ownedTemplateOf(n, getNode, components, labels);
+    return template ? ownedVarKeys(template) : [];
+}
+/**
+ * The node fields the engine owns on a node: the root's width mode and a text layer's text, when the template's literal props write
+ * them (see literalFieldNames). The copy from the master never overwrites them.
+ */
+function ownedFieldsOf(n, getNode, components, labels) {
+    const template = ownedTemplateOf(n, getNode, components, labels);
+    const role = n.isInstance ? 'root' : 'label';
+    return template ? literalFieldNames(template).filter(f => f.key === role).map(f => f.field) : [];
+}
+/** The template of the bound instance a node belongs to (the instance root, or its label layer); null otherwise. */
+function ownedTemplateOf(n, getNode, components, labels) {
+    const inst = n.isInstance ? n : getNode(n.parentId);
+    if (!inst?.isInstance || (!n.isInstance && labels.get(inst.sourceId) !== n.sourceId)) return null;
+    const binding = components.get(inst.sourceId)?.behavior;
+    return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+}
+/** The label layer of every component (labelLayerOf: its first text layer, depth first), from one scan of the document. */
+function labelIdsOfComponents() {
+    const kids = new Map();
+    for (const page of doc.data.pages)
+        for (const n of page.nodes)
+            if (n.parentId)
+                (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
+    const out = new Map();
+    for (const page of doc.data.pages)
+        for (const n of page.nodes)
+            if (n.component)
+                out.set(n.id, labelLayerOf(n.id, id => kids.get(id) || [])?.id ?? null);
+    return out;
+}
+/** The master's label layer (its first text layer, depth first) and the instance's layer that copies it. */
+function instanceLabelOf(inst, master) {
+    const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id)));
+    return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
+}
+/** Literal props write their node fields: the label prop the label layer's text, fullWidth the root's width mode (see literalFields). */
+function applyLiteralFields(inst) {
+    const master = componentById(inst.sourceId), binding = master?.behavior;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template) return;
+    const { label } = instanceLabelOf(inst, master);
+    const target = { root: inst, label };
+    for (const { key, field, value } of literalFields(template, resolveProps(template, inst.behavior?.props ?? {}))) {
+        const n = target[key];
+        if (n && n[field] !== value) {
+            n[field] = value;
+            doc.touch(n);
+        }
+    }
+}
+/** The variable bindings an instance's persistent states need now (disabled -> bg-disabled and fg-disabled), from planStateBindings. */
+function stateBindingsOf(inst) {
+    const master = componentById(inst.sourceId);
+    const binding = master?.behavior;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template) return [];
+    const { masterLabel, label } = instanceLabelOf(inst, master);
+    const layers = [{ key: 'root', instance: { id: inst.id, vars: inst.vars }, master: { vars: master.vars } }];
+    if (label) layers.push({ key: 'label', instance: { id: label.id, vars: label.vars }, master: { vars: masterLabel.vars } });
+    return planStateBindings({ template, binding, props: resolveProps(template, inst.behavior?.props ?? {}), layers, variables: varStore() }).ops;
+}
+/** Writes the derived bindings. A layer whose value is null loses that binding; a layer left with none loses its vars. */
+function applyStateBindings(inst, ops) {
+    for (const op of ops) {
+        const n = doc.get(op.instanceId);
+        if (!n) continue;
+        const vars = varsWithOp(n.vars, op);
+        if (vars) n.vars = vars;
+        else delete n.vars;
+        doc.touch(n);
+    }
 }
 /** A master changes its template. The plan clears the instance values through the instance store. */
 function bindTemplateTo(master, templateId) {
@@ -9274,20 +9402,20 @@ function bindTemplateTo(master, templateId) {
     catch (err) { toast(err.message); return; }
     if (plan.changed) commitPlan('Bind template', master, plan);
 }
-/** A variable prop gets another collection (or none). The plan clears only the modes the collection does not have. */
+/** A variable prop gets another collection (or none). Only the binding changes; Appearance modes are untouched. */
 function bindCollectionTo(master, prop, collectionId) {
     let plan;
-    try { plan = planCollectionChange(master, instancesOf(master.id), prop, collectionId, varStore().collections || []); }
+    try { plan = planCollectionChange(master, prop, collectionId, varStore().collections || []); }
     catch (err) { toast(err.message); return; }
     commitPlan('Bind collection', master, plan);
 }
 /** An instance's prop changes. Returns false (and says why) when the value is refused. */
 function setInstanceValueTo(inst, prop, value) {
     let next;
-    try { next = setInstanceValue(inst, componentById(inst.sourceId), varStore().collections || [], prop, value); }
+    try { next = setInstanceValue(inst, componentById(inst.sourceId), prop, value); }
     catch (err) { toast(err.message); return false; }
     let reason = null;
-    transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncAnatomy(inst); });
+    transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncInstance(inst); });
     if (reason) toast(`Managed layers were not updated: ${reason}.`);
     return true;
 }
@@ -9302,17 +9430,38 @@ function onBehaviorChange(e) {
     if (!n) return;
     if (kind === 'preview') {
         behaviorPreview = t.value;
+        invalidate();
         renderInspector();
         return;
     }
     whenAllPagesLoaded(() => {
         if (kind === 'template') bindTemplateTo(n, t.value || null);
         else if (kind === 'collection') bindCollectionTo(n, t.dataset.bpProp, t.value || null);
+        else if (kind === 'value' && t.dataset.bpKind === 'variable') {
+            if (!setBehaviorMode(n, t.dataset.bpProp, t.value || null)) renderInspector();
+        }
         else if (kind === 'value') {
-            const value = t.dataset.bpType === 'boolean' ? t.checked : t.dataset.bpKind === 'variable' && t.value === '' ? null : t.value;
+            const value = t.dataset.bpType === 'boolean' ? t.checked : t.value;
             if (!setInstanceValueTo(n, t.dataset.bpProp, value)) renderInspector();
         }
     });
+}
+/** A Variant or Size control: writes the instance's Appearance mode for the collection its master binds to that prop (one step). */
+function setBehaviorMode(inst, prop, modeId) {
+    const collectionId = collectionOfProp(componentById(inst.sourceId)?.behavior, prop);
+    if (!collectionId) { toast(`"${prop}" has no bound collection`); return false; }
+    transaction('Set variable mode', () => writeVarMode([inst], collectionId, modeId ?? ''));
+    return true;
+}
+/** The Appearance modes of an instance per variable prop, read from the node (the same resolution Appearance uses). */
+function instanceModesOf(inst, binding) {
+    const collections = varStore().collections || [];
+    const pageModes = doc.page?.varModes;
+    const byId = { get: id => doc.get(id) };
+    return Object.fromEntries(Object.keys(binding ? binding.variables : {}).map(prop => {
+        const coll = collections.find(c => c.id === binding.variables[prop]);
+        return [prop, coll ? resolveMode(coll, inst, byId, pageModes) : null];
+    }));
 }
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
@@ -9859,7 +10008,7 @@ function pasteNodes(data, payload, target) {
     doc.refresh();
     // The instances the pasted layers land in (or are) match their values: a managed layer pasted into the wrong instance is removed again.
     for (const inst of new Set(added.flatMap(n => [n, ...doc.ancestors(n)]).filter(a => a.isInstance)))
-        syncAnatomy(inst);
+        syncInstance(inst);
     if (target.kind === 'replace')
         doc.remove([target.anchor.id]);
     return roots;
@@ -10112,7 +10261,7 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         }
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
-        syncAnatomy(root);
+        syncInstance(root);
         opts.onCreated?.(root);
         if (!opts.keepSelection)
             select([root.id]);
@@ -12724,17 +12873,13 @@ function exportVariablesJSON(onlyId = null) {
     download(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }), safeName(doc.data.name + ' variables') + '.json');
     toast(onlyId ? 'Collection exported.' : `Exported ${store.collections.length} collection${store.collections.length === 1 ? '' : 's'} and ${store.items.length} variables.`);
 }
-/** Behavior data that names a collection (or one mode of it) goes with it: see forgetCollection in @midas/builder-core. */
-function dropBehaviorRefs(collectionId, modeId = null) {
-    forgetCollection(allNodes(), collectionId, modeId);
-}
 function vwDeleteCollection(id) {
     const s = varStore(), c = varColl(id);
     if (!c)
         return;
     toast(`Deleted “${c.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
     deleteWhenLoaded('Delete collection', () => {
-        dropBehaviorRefs(id);
+        forgetCollection(allNodes(), id);
         s.collections = s.collections.filter(x => x.id !== id);
         const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
         s.items = s.items.filter(i => i.collectionId !== id);
@@ -13105,7 +13250,7 @@ function detachNodeTree(page, rootId) {
         n.version = (n.version || 0) + 1;
     }
 }
-const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'behavior'];
+const SYNC_OMIT = ['softDeleted', 'id', 'parentId', 'component', 'sourceId', 'isInstance', 'version', 'overrides', 'disabled', 'name', 'variant', 'componentSet', 'propValues', 'swapOf', 'cprops', 'exposedNested', 'valueOrder', 'behavior', 'varModes'];
 function markSelectedOverrides() {
     try {
         if (PL.noMark)
@@ -13120,6 +13265,7 @@ function markSelectedOverrides() {
         for (const n of p.nodes)
             if (n.component)
                 sources.set(n.id, n);
+    const labels = labelIdsOfComponents();
     for (const n of sel) {
         if (!n.sourceId)
             continue;
@@ -13128,9 +13274,22 @@ function markSelectedOverrides() {
             continue;
         const omit = new Set([...SYNC_OMIT, ...(n.isInstance ? ['x', 'y', 'rotation'] : [])]);
         const controlled = propControlled(n, src, doc._map, sources);
+        const owned = ownedVarsOf(n, id => doc.get(id), sources, labels);
+        const ownedFields = ownedFieldsOf(n, id => doc.get(id), sources, labels);
+        // A field bound through vars is written from its variable: its value is never an override (compare bindings, not values).
+        const bound = fieldsBoundBy(n.vars);
         for (const [k, v] of Object.entries(n)) {
-            if (omit.has(k) || Object.hasOwn(n.overrides || {}, k) || Object.hasOwn(controlled, k) && controlled[k] === v)
+            if (omit.has(k) || ownedFields.includes(k) || bound.has(k) || isLayoutOwnedField(n, doc.get(n.parentId), k) || Object.hasOwn(n.overrides || {}, k) || (Object.hasOwn(controlled, k) && controlled[k] === v))
                 continue;
+            // The owned bindings are the engine's, not an override: only the other bindings are compared with the master.
+            if (k === 'vars' && owned.length) {
+                const mine = withoutOwnedVars(v, owned), theirs = withoutOwnedVars(src.vars, owned);
+                if (!sameVars(mine, theirs)) {
+                    n.overrides ||= {};
+                    n.overrides.vars = structuredClone(mine);
+                }
+                continue;
+            }
             if (v === src[k])
                 continue;
             if (typeof v !== 'object' || JSON.stringify(v) !== JSON.stringify(src[k])) {

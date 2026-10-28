@@ -1,40 +1,77 @@
-// Preview renderer (stage 7). Pure: the template, the master's binding, an instance's stored props, the document's variables and
-// a state in; the props the component receives and the CSS custom properties it draws with out. A state's tokens replace the
-// base tokens they override (see stateTokens in the schema). A missing state token is left out and reported, never replaced
-// by the base token.
-import { variableProps } from './registry.js';
-import { resolveProps } from './instance-props.js';
+// Preview (pure): the CSS custom properties one instance draws with, for its modes and its state. Persistent states come from the
+// instance's props (disabled, ...) and win over a preview-only state (hover, active, focus), which is studio-side only. A state
+// token that does not resolve is reported by the resolver and left out: it is never replaced by the base token.
 import { resolveTokens, cssVarOf } from './tokens.js';
 
 /**
- * The effective state of an instance: a disabled instance is in the disabled state whatever state is asked for.
+ * The state an instance is in: every persistent state whose prop is true (their tokens merged), else the preview-only state asked
+ * for, else the default. Unknown preview-only states are refused.
  * @param {import('../templates/schema.js').TemplateSchema} template
- * @param {Record<string, unknown>} props the resolved props
- * @param {string} state the requested state
+ * @param {Record<string, unknown>} props the instance's resolved literal props
+ * @param {string} preview the preview-only state asked for, or 'default'
+ * @returns {{ state: string, overrides: Record<string, string> }}
  */
-function effectiveState(template, props, state) {
-    if (!template.states.includes(state)) throw new Error(`${template.id}: unknown state "${state}"`);
-    return props.disabled === true ? 'disabled' : state;
+export function activeStateOf(template, props, preview) {
+    /** @type {string[]} */
+    const names = [];
+    /** @type {Record<string, string>} */
+    const overrides = {};
+    for (const [name, def] of Object.entries(template.persistentStates)) {
+        if (props[def.prop] !== true) continue;
+        names.push(name);
+        Object.assign(overrides, def.tokens);
+    }
+    if (names.length) return { state: names.join('+'), overrides };
+    if (preview === 'default') return { state: 'default', overrides };
+    const def = template.previewStates[preview];
+    if (!def) throw new Error(`${template.id}: unknown preview state "${preview}"`);
+    return { state: preview, overrides: { ...def } };
 }
 
 /**
  * What an instance draws in one state.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {{ variables: Record<string, string | null> }} binding the master's binding
- * @param {Record<string, string | boolean | null>} stored the instance's stored props
+ * @param {Record<string, string | null>} modes the instance's mode per variable prop (its Appearance modes)
  * @param {{ collections?: any[], items?: any[] }} variables the document's variables
- * @param {string} state the requested state
- * @returns {{ state: string, props: Record<string, unknown>, vars: Record<string, string>, unresolved: { token: string, dimension: string | null, reason: string }[] }}
+ * @param {Record<string, unknown>} props the instance's resolved literal props
+ * @param {string} [preview] the preview-only state asked for, or 'default'
+ * @returns {{ state: string, vars: Record<string, string>, unresolved: { token: string, dimension: string | null, reason: string }[] }}
  */
-export function previewOf(template, binding, stored, variables, state) {
-    const props = resolveProps(template, stored);
-    const active = effectiveState(template, props, state);
-    const selected = Object.fromEntries(variableProps(template).map(([name]) => [name, /** @type {string | null} */ (stored[name] ?? null)]));
-    const { vars, unresolved } = resolveTokens(template, binding, selected, variables);
-    for (const [base, stateToken] of Object.entries(template.stateTokens?.[active] ?? {})) {
-        const target = cssVarOf(template.id, base);
-        if (cssVarOf(template.id, stateToken) in vars) vars[target] = vars[cssVarOf(template.id, stateToken)];
+export function previewOf(template, binding, modes, variables, props, preview = 'default') {
+    const { vars, unresolved } = resolveTokens(template, binding, modes, variables);
+    const { state, overrides } = activeStateOf(template, props, preview);
+    for (const [base, stateToken] of Object.entries(overrides)) {
+        const target = cssVarOf(template.id, base), source = cssVarOf(template.id, stateToken);
+        if (source in vars) vars[target] = vars[source];
         else delete vars[target];
     }
-    return { state: active, props, vars, unresolved };
+    return { state, vars, unresolved };
+}
+
+/**
+ * The colours the canvas draws for an instance's root in a preview-only state: the root fill and stroke whose base token the state
+ * overrides, and nothing else (text colour is read in the Preview section only). Null when the instance draws its own colours: the
+ * default state, a persistent state (a real disabled wins over a preview), or a state colour that does not resolve.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {{ variables: Record<string, string | null> }} binding the master's binding
+ * @param {Record<string, string | null>} modes the instance's mode per variable prop
+ * @param {{ collections?: any[], items?: any[] }} variables the document's variables
+ * @param {Record<string, unknown>} props the instance's resolved literal props
+ * @param {string} [preview] the preview-only state asked for, or 'default'
+ * @returns {{ fill?: string, stroke?: string } | null}
+ */
+export function canvasColorsOf(template, binding, modes, variables, props, preview = 'default') {
+    const { state, overrides } = activeStateOf(template, props, preview);
+    if (!Object.hasOwn(template.previewStates, state)) return null;
+    const { vars } = previewOf(template, binding, modes, variables, props, preview);
+    /** @type {{ fill?: string, stroke?: string }} */
+    const out = {};
+    for (const field of ['fill', 'stroke']) {
+        const token = template.display?.root?.[field];
+        if (token === undefined || !Object.hasOwn(overrides, token)) continue;
+        const value = vars[cssVarOf(template.id, token)];
+        if (value !== undefined) out[field] = value;
+    }
+    return Object.keys(out).length ? out : null;
 }

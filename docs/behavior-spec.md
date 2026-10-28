@@ -66,6 +66,8 @@ Execute in the order listed. The numbers are stage IDs, not the execution order.
 
 ## Status
 
+Behavior rework pass (latest): layout ownership (`isLayoutOwnedField`: x/y for flow children of auto-layout parents, hug and fill axes), canvas preview for bg and border (`canvasColorsOf`), shared label rule (`labelLayerOf`, `masterLayersOf`), edit helpers (`edits.js`). Open: Kopi Kita master resize, bind-tokens browser check, Focus preview on a fixture with a stroke width, Canvas 2D fallback preview.
+
 Load rules (AGENTS.md), implemented:
 
 - Phase 1, per node: version and shape of `behavior` data (`behavior-engine/data.js`).
@@ -94,6 +96,43 @@ Load rules (AGENTS.md), implemented:
 - [x] Stage 8: Code generator (`behavior-engine/codegen.js`, `generateComponent`). Engine only: `<Name>.jsx` from the schema (anatomy order, managed icons on `hasIcon` and `iconPlacement`, click blocked when disabled or loading) and `<Name>.css` (one block per variant and size mode, state blocks hold only the tokens they change). Refused with the reasons when anything is unresolved. Studio: a Generate code button on a bound master downloads `Button.jsx` and `Button.css` (two downloads); a refusal downloads nothing and its reasons show under Diagnostics.
 - [x] Stage 9: Diagnostics (`behavior-engine/diagnostics.js`, `diagnoseDocument`). Errors: `token-unresolved` per instance, `state-token-missing` per master and mode. Warning: `unused-collection`. Studio: the Behavior panel lists them in a Diagnostics section (master: its own and document-wide; instance: its own). Hidden while pages are still loading.
 
+## Behavior rework (superseding decisions, not yet implemented)
+
+Status: decisions 1-4 below are answered and being implemented. Where this section and the earlier Decisions or Stages disagree, this section wins.
+
+1. Variant, Size and persistent states are document data. The projection/clone renderer plan (`behavior-engine/projection.js`) is dropped. The "State as a collection" idea is dropped.
+2. Variables: one collection per dimension (`Variant`, `Size`). Variables are grouped per component with a `<component>/` prefix: `button/bg`, `button/fg`, `button/bg-hover`, `button/bg-active`, `button/bg-disabled`. Every component group has the same modes inside a collection. Schemas reference the group prefix (`button/`), never global names.
+3. Two kinds of state, declared in each template schema:
+   - Persistent (stored in the document, visible on the canvas): `disabled`, `current`, `selected`, `checked`.
+   - Preview-only (studio-side, colour only): `hover`, `active`, `focus`.
+4. Hover, active and focus change colours only (bg, fg, border). A preview-only state that declares a size, padding or radius change is a validator error.
+5. Variant and Size controls write the instance's mode for the bound collection through the same path the Appearance section uses (`varModes`, one history step). No `variant` or `size` prop is stored in behavior data. Default is the first mode.
+6. Persistent `disabled` writes real document state and selects the `<group>/bg-disabled` and `<group>/fg-disabled` variables. Persistent states are generic in the schema, so a future Breadcrumb Item `current` (tokens `breadcrumb/fg`, `breadcrumb/fg-current`) needs no engine change.
+7. Preview-only state is a studio-side view only: never written to the document or to history, reset on selection change or file close, and shown as a "Previewing: Hover" badge. A real `disabled` wins over any preview state.
+8. `label` writes the label layer's text, `fullWidth` writes the root width mode. `loading` has no node representation yet: it gets a diagnostics note, not a visual.
+
+### Audit (code as it is now)
+
+Appearance section:
+- A node stores an explicit mode per collection in `varModes` (`{ [collectionId]: modeId }`). `nodeMode` walks up parents, then the page, then the first mode (`apps/studio/src/engine/midas.js` ~783). Writes happen in three places: the `[data-var-mode]` change handler, the collection menu `pick`, and the `Connect variable collection` handler. Each is its own transaction.
+- A bound property stores `n.vars[prop] = variableId`. `applyVariables` (~930) writes the resolved value into the node field (`writeBound`) on each invalidate. So Appearance already materializes bound values into node data. Changing a mode re-resolves the canvas through this path.
+- Canvas draws with GPU shaders for simple fills (`midas.js` ~3013 onwards, 2D canvas path at ~3091–3139). A colour override at draw time would touch the draw path, not layout or hit testing.
+- Sync (`syncComponents`) copies master keys onto instances unless the instance has an override for that key. `varModes` is not in the omit list, so a master that has `varModes` overwrites its instance's `varModes`. The Behavior mode write on an instance is therefore unsafe until this is decided.
+
+Button schema and engine:
+- Schema fields: `stateTokens` (used by `preview.js` and codegen's `PSEUDO`), `display` (used by `display.js`, codegen `displayRules`, and `projection.js`), `props.variant` and `props.size` (variable props, stored in behavior data).
+- `previewOf` (`preview.js`): used by the Behavior panel preview and by codegen's stylesheet.
+- `projection.js` (`projectInstance`): tested, not wired into the studio. Superseded by decision 1.
+- `display.js` `displayProblems`: used by the validator. `codegen.js` `displayRules`: used by codegen. Both survive the rework only if the mapping stays.
+- Dead after the rework: `projection.js`; `stateTokens` once preview-only states move to the schema's `previewStates` list; `variant`/`size` props in behavior data.
+
+### Answers (decided)
+
+1. Instance modes vs sync: `varModes` joins the master-to-instance omit list, the same as `behavior`. An instance's own modes are never overwritten by sync.
+2. Persistent `disabled`: the instance stores the `disabled` prop. The engine derives the root fill (and fg, border where the schema says so) binding from the props, in the same instance sync and transaction: disabled on -> `<group>/bg-disabled`; off -> back to the master binding (`<group>/bg`). Derivation is idempotent, one history step. A binding the user set by hand on the instance is never overwritten; it is reported as a diagnostics warning. Appearance shows the same binding because it is the same `vars` binding.
+3. Preview colours: a draw-time colour lookup is allowed only as a narrow optional lookup (instance layer id -> substitute colours for bg, fg, border). It lives in studio state, never in the document or history, and is cleared before save, on selection change and on file close. `applyVariables` never writes preview values into node fields.
+4. Migration: behavior data is version 2. No migration. Version 1 data fails to open with the explicit error.
+
 ## Manual test checklist
 
 Everything the automated tests do not cover. Run once after stage 9, highest risk first.
@@ -110,3 +149,16 @@ Everything the automated tests do not cover. Run once after stage 9, highest ris
 10. Populated Preview: token rows were not visually checked (the test file has no Variant or Size collections). Check the rows and their values with collections bound.
 11. Lazy open: Diagnostics show the "appear when all pages are loaded" note until the queue drains, then the findings.
 12. Editor wiring of the auto-match triggers, the lazy page error toast and the paste refusal toast is not browser-checked. The rules themselves are covered by unit tests.
+
+## Decisions recorded later (supersede the rework section where they differ)
+
+1. lineHeight is px. A variable named Button/lineHeight holds the line height in px (for example 20 for a 14 px font). The engine resolves it to px, and codegen writes it as line-height in px. The node field lineHeight stays the editor's ratio (px / font size). A value under 4 is an error (line-height-looks-like-ratio), so a ratio cannot pass silently.
+2. Override detection compares bindings, not materialized values. A field bound through vars is never an override (fieldsBoundBy). The master copy does not overwrite a bound field either (isCopiedField): its variable decides its value.
+3. Canvas preview is scoped to the instance root background and border (bg and border). The preview is a per-instance colour lookup read in the GPU quad path, not stored in the document or history. Persistent disabled wins over any preview state. Text colour (fg) stays in the Preview section as read-only rows; the glyph atlas is not changed.
+
+Churn finding (write counts for one Disabled toggle on Save, measured with a temporary trace):
+- Before the copy fix, the copy loop in syncComponents rewrote Cancel's bound fields on every sync (10 writes on Cancel, 5 on its label). These were the master's values being copied onto bound fields and then re-applied by applyVariables.
+- After the copy fix: 2 writes on Cancel and 3 on its label, from unbound geometry fields copied from the master (x, y, w, h). The layout engine measures and rewrites these, so they still churn. Open: layout ownership of x, y, w and h on instance children.
+4. Layout ownership (implemented): the copy from master to instance, and the override check, skip the fields the layout engine writes: x and y of a flow child of an auto-layout parent, and the axis a hug or fill child takes from layout (`isLayoutOwnedField`, `instance-vars.js`). Absolutely positioned children and fixed sizes are still copied.
+5. Canvas preview (implemented, scoped): the studio's canvas draws the selected instance's root background and border in the Hover, Active and Focus preview (`canvasColorsOf`, read per draw in the GPU quad path). Text colour stays in the Preview section, with the note "Text color preview not on canvas". The Canvas 2D fallback does not draw it.
+6. The label is the first text layer, depth first (`labelLayerOf`, `layers.js`). Diagnostics and the studio's owned-field check share it.

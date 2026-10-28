@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertPagesBehavior, assertBehaviorData, behaviorProblem } from '../src/behavior-engine/document-check.js';
 
-const button = { id: 'm1', name: 'Button', type: 'frame', parentId: null, behavior: { version: 1, templateId: 'button', variables: { variant: null, size: null } } };
-const instance = (over = {}) => ({ id: 'i1', name: 'Save', type: 'frame', parentId: null, isInstance: true, sourceId: 'm1', behavior: { version: 1, props: {} }, ...over });
+const button = { id: 'm1', name: 'Button', type: 'frame', parentId: null, behavior: { version: 2, templateId: 'button', variables: { variant: null, size: null } } };
+const instance = (over = {}) => ({ id: 'i1', name: 'Save', type: 'frame', parentId: null, isInstance: true, sourceId: 'm1', behavior: { version: 2, props: {} }, ...over });
 const page = (id, name, nodes) => ({ id, name, nodes });
 const doc = pages => ({ variables: { collections: [], items: [] }, pages });
 
@@ -15,14 +15,14 @@ test('a valid lazy open passes: each page checks clean when it loads', () => {
 });
 
 test('a later page with a managed layer outside its instance errors, naming the page and the node', () => {
-    const stray = { id: 's1', name: 'iconStart', type: 'frame', parentId: null, behavior: { version: 1, slot: 'iconStart' } };
+    const stray = { id: 's1', name: 'iconStart', type: 'frame', parentId: null, behavior: { version: 2, slot: 'iconStart' } };
     const d = doc([page('a', 'Components', [button]), page('b', 'Screens', [stray])]);
     assert.throws(() => assertPagesBehavior(d, ['b']), /on page "Screens"/);
     assert.throws(() => assertPagesBehavior(d, ['b']), /"iconStart" \(s1\)/);
 });
 
 test('a cross-page instance is deferred while its master page is missing, then checked when that page arrives', () => {
-    const bad = instance({ behavior: { version: 1, props: { hasIcon: 'yes' } } });
+    const bad = instance({ behavior: { version: 2, props: { hasIcon: 'yes' } } });
     const screens = page('b', 'Screens', [bad]);
     const withoutMaster = doc([screens]);
     assert.doesNotThrow(() => assertPagesBehavior(withoutMaster, ['b']));
@@ -31,7 +31,7 @@ test('a cross-page instance is deferred while its master page is missing, then c
 });
 
 test('the eager check still reports the page of a bad node', () => {
-    const bad = instance({ behavior: { version: 1, props: { nope: true } } });
+    const bad = instance({ behavior: { version: 2, props: { nope: true } } });
     assert.throws(() => assertBehaviorData(doc([page('a', 'Components', [button]), page('b', 'Screens', [bad])])), /on page "Screens"/);
 });
 

@@ -60,7 +60,8 @@ export function masterPanel(master, collections) {
     }
     const contract = {
         props: contractProps,
-        states: template.states,
+        persistentStates: Object.keys(template.persistentStates),
+        previewStates: Object.keys(template.previewStates),
         events: template.events.map(e => ({ name: e.name, exposeAsTrigger: e.exposeAsTrigger })),
     };
     return { templateId: template.id, templates, rows, contract };
@@ -72,8 +73,9 @@ export function masterPanel(master, collections) {
  * @param {{ behavior?: any }} instance
  * @param {{ behavior?: any }} master
  * @param {import('./binding.js').Collection[]} collections
+ * @param {Record<string, string | null>} modes the instance's Appearance mode per variable prop (see modes.js)
  */
-export function instancePanel(instance, master, collections) {
+export function instancePanel(instance, master, collections, modes) {
     const bound = boundTemplate(master);
     if (!bound) return { templateId: null, rows: [], deferred: [] };
     const { binding, template } = bound;
@@ -86,7 +88,7 @@ export function instancePanel(instance, master, collections) {
                 prop: name,
                 kind: 'variable',
                 label: def.collection,
-                value: values[name] ?? null,
+                value: modes[name] ?? null,
                 options: collection ? options(collection.modes ?? []) : [],
                 disabled: !collection,
                 hint: collection ? '' : `Bind a "${def.collection}" collection to the component to pick a mode.`,
@@ -135,25 +137,19 @@ function setMasterCollection(master, collections, prop, collectionId) {
 }
 
 /**
- * The instance's behavior data after one edit. A variable prop takes a mode of the collection the master binds to it;
- * a literal prop takes its value (undefined unsets it). Refused when the prop is hidden or the value does not fit.
+ * The instance's behavior data after one edit of a literal prop (undefined unsets it). Refused when the prop is a variable prop
+ * (its mode is an Appearance mode, written through varModes), hidden, or the value does not fit.
  * @param {{ behavior?: any }} instance
  * @param {{ behavior?: any }} master
  * @param {import('./binding.js').Collection[]} collections
  * @param {string} prop
  * @param {string | boolean | null | undefined} value
  */
-export function setInstanceValue(instance, master, collections, prop, value) {
+export function setInstanceValue(instance, master, prop, value) {
     const bound = boundTemplate(master);
     if (!bound) throw new Error('The component is not bound to a template');
-    const { binding, template } = bound;
-    const def = template.props[prop];
-    if (!def) throw new Error(`Unknown prop "${prop}" on ${template.id}`);
-    if (def.source === 'variable' && value !== null && value !== undefined) {
-        const collection = collections.find(c => c.id === binding.variables[prop]);
-        if (!collection) throw new Error(`"${prop}" has no bound collection`);
-        if (!collection.modes?.some(m => m.id === value)) throw new Error(`"${value}" is not a mode of the bound collection`);
-    }
+    const { template } = bound;
+    if (!template.props[prop]) throw new Error(`Unknown prop "${prop}" on ${template.id}`);
     return { version: BEHAVIOR_DATA_VERSION, props: setInstanceProp(template, instance?.behavior?.props ?? {}, prop, value) };
 }
 
@@ -191,28 +187,16 @@ export function planTemplateChange(master, instances, templateId, collections) {
 }
 
 /**
- * Plans one variable prop of a master getting another collection (or none). An instance keeps its mode only when the new
- * collection still has it; otherwise that value is cleared through the store.
+ * Plans one variable prop of a master getting another collection (or none). Instances hold no variable values (their modes are
+ * Appearance modes), so only the binding changes.
  * @param {{ behavior?: any }} master
- * @param {{ behavior?: any }[]} instances every instance of the master, on every page
  * @param {string} prop
  * @param {string | null} collectionId
  * @param {import('./binding.js').Collection[]} collections
  */
-export function planCollectionChange(master, instances, prop, collectionId, collections) {
-    const bound = boundTemplate(master);
-    if (!bound) throw new Error('The component is not bound to a template');
+export function planCollectionChange(master, prop, collectionId, collections) {
     const binding = setMasterCollection(master, collections, prop, collectionId);
-    const coll = collections.find(c => c.id === collectionId);
-    const updates = [];
-    for (const inst of instances) {
-        const props = inst.behavior?.props;
-        if (!props || !(prop in props)) continue;
-        const mode = props[prop];
-        if (mode === null || coll?.modes?.some(m => m.id === mode)) continue;
-        updates.push({ node: inst, behavior: afterClearing(bound.template, props, [prop]) });
-    }
-    return { changed: true, binding, updates };
+    return { changed: true, binding, updates: [] };
 }
 
 /**
@@ -231,24 +215,12 @@ export function applyPlan(master, plan) {
 }
 
 /**
- * Forgets a deleted collection (or one deleted mode of it) in the behavior data of the given nodes: instance values that used
- * it are cleared through the store, and a deleted collection is unbound from the masters that used it. Instances are read
- * before the bindings change. Mutates the nodes given (they are the document's nodes).
+ * Forgets a deleted collection in the behavior data of the given masters: each binding to it is unbound. Instance literal values
+ * are not touched. Mutates the nodes given (they are the document's nodes).
  * @param {any[]} nodes
  * @param {string} collectionId
- * @param {string | null} [modeId] set when one mode of the collection goes; null when the whole collection goes
  */
-export function forgetCollection(nodes, collectionId, modeId = null) {
-    const byId = new Map(nodes.map(n => [n.id, n]));
-    for (const n of nodes) {
-        if (!n.isInstance || !n.behavior?.props) continue;
-        const bound = boundTemplate(byId.get(n.sourceId));
-        if (!bound) continue;
-        const props = n.behavior.props;
-        const names = Object.keys(props).filter(prop => bound.binding.variables[prop] === collectionId && (modeId === null || props[prop] === modeId));
-        setInstanceBehavior(n, afterClearing(bound.template, props, names));
-    }
-    if (modeId !== null) return;
+export function forgetCollection(nodes, collectionId) {
     for (const n of nodes) {
         const b = n.behavior;
         if (!b || !('templateId' in b)) continue;
@@ -257,40 +229,17 @@ export function forgetCollection(nodes, collectionId, modeId = null) {
 }
 
 /**
- * Puts a computed instance behavior onto a node: undefined removes it.
- * @param {any} node
- * @param {{ version: number, props: Record<string, any> } | undefined} behavior
- */
-function setInstanceBehavior(node, behavior) {
-    if (behavior === undefined) delete node.behavior;
-    else node.behavior = behavior;
-}
-
-/**
- * After the collections of the file changed (a library update removed or replaced some): every binding to a collection that
- * is gone is unbound, and every instance value naming a mode its collection no longer has is cleared through the store.
- * Mutates the nodes given (they are the document's nodes, on every page).
+ * After the collections of the file changed (a library update removed some): every binding to a collection that is gone is
+ * unbound. Mutates the nodes given (they are the document's nodes, on every page).
  * @param {any[]} nodes
  * @param {import('./binding.js').Collection[]} collections
  */
 export function pruneBehaviorData(nodes, collections) {
-    const known = new Map(collections.map(c => [c.id, c]));
+    const known = new Set(collections.map(c => c.id));
     const gone = new Set();
     for (const n of nodes) {
         const b = n.behavior;
         if (b && 'templateId' in b) for (const id of Object.values(b.variables)) if (id !== null && !known.has(id)) gone.add(id);
     }
     for (const id of gone) forgetCollection(nodes, id);
-    const byId = new Map(nodes.map(n => [n.id, n]));
-    for (const n of nodes) {
-        if (!n.isInstance || !n.behavior?.props) continue;
-        const bound = boundTemplate(byId.get(n.sourceId));
-        if (!bound) continue;
-        const props = n.behavior.props;
-        const names = Object.keys(props).filter(prop => {
-            const id = bound.binding.variables[prop];
-            return props[prop] !== null && id != null && !known.get(id)?.modes?.some((/** @type {{ id: string }} */ m) => m.id === props[prop]);
-        });
-        if (names.length) setInstanceBehavior(n, afterClearing(bound.template, props, names));
-    }
 }

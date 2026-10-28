@@ -27,7 +27,7 @@ test('without managed children, ordering is the plain sort by rank', () => {
 
 // The main component reorders its children, and the instance syncs: anatomy's placement must still hold.
 test('after the non-managed children are re-ordered, the leading icon is still in its planned place (no plan)', () => {
-    const binding = { version: 1, templateId: 'button', variables: { variant: null, size: null } };
+    const binding = { version: 2, templateId: 'button', variables: { variant: null, size: null } };
     const masterRoot = { isAutoLayout: true };
     const masterTree = [{ id: 'mLabel', type: 'text' }];
     const kids = [{ id: 'icon', slot: 'iconStart' }, { id: 'a', slot: null }, { id: 'b', slot: null }];
@@ -37,20 +37,20 @@ test('after the non-managed children are re-ordered, the leading icon is still i
 });
 
 // A naive sort (managed layers ranked last) puts the icon behind the label: the backstop must see that and refuse.
-const master = { id: 'btn', name: 'Button', type: 'frame', layout: 'horizontal', behavior: { version: 1, templateId: 'button', variables: { variant: null, size: null } } };
-const instanceDoc = nodes => ({ pages: [{ id: 'p', nodes: [master, { id: 'mLabel', name: 'Label', type: 'text', parentId: 'btn' }, { id: 'i1', name: 'Save', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 1, props: { hasIcon: true, iconPlacement: 'start' } } }, ...nodes] }] });
+const master = { id: 'btn', name: 'Button', type: 'frame', layout: 'horizontal', behavior: { version: 2, templateId: 'button', variables: { variant: null, size: null } } };
+const instanceDoc = nodes => ({ pages: [{ id: 'p', nodes: [master, { id: 'mLabel', name: 'Label', type: 'text', parentId: 'btn' }, { id: 'i1', name: 'Save', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { hasIcon: true, iconPlacement: 'start' } } }, ...nodes] }] });
 
 test('the backstop sees a misplaced managed layer that a naive sort leaves behind', () => {
-    const naive = [{ id: 'label', name: 'Label', type: 'text', parentId: 'i1' }, { id: 'icon', name: 'iconStart', type: 'frame', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } }];
+    const naive = [{ id: 'label', name: 'Label', type: 'text', parentId: 'i1' }, { id: 'icon', name: 'iconStart', type: 'frame', parentId: 'i1', behavior: { version: 2, slot: 'iconStart' } }];
     assert.deepEqual(behaviorProblem(instanceDoc(naive)), { name: 'Save', problem: 'managed layer "iconStart" is at the wrong position' });
 });
 
 test('a leading icon before the label survives save and load', () => {
-    const doc = instanceDoc([{ id: 'icon', name: 'iconStart', type: 'frame', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } }, { id: 'label', name: 'Label', type: 'text', parentId: 'i1' }]);
+    const doc = instanceDoc([{ id: 'icon', name: 'iconStart', type: 'frame', parentId: 'i1', behavior: { version: 2, slot: 'iconStart' } }, { id: 'label', name: 'Label', type: 'text', parentId: 'i1' }]);
     assert.equal(behaviorProblem(JSON.parse(JSON.stringify(doc))), null);
 });
 
 test('a trailing icon after the label survives save and load', () => {
-    const doc = { pages: [{ id: 'p', nodes: [{ ...master, id: 'btn' }, { id: 'mLabel', name: 'Label', type: 'text', parentId: 'btn' }, { id: 'i1', name: 'Save', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 1, props: { hasIcon: true, iconPlacement: 'end' } } }, { id: 'label', name: 'Label', type: 'text', parentId: 'i1' }, { id: 'icon', name: 'iconEnd', type: 'frame', parentId: 'i1', behavior: { version: 1, slot: 'iconEnd' } }] }] };
+    const doc = { pages: [{ id: 'p', nodes: [{ ...master, id: 'btn' }, { id: 'mLabel', name: 'Label', type: 'text', parentId: 'btn' }, { id: 'i1', name: 'Save', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { hasIcon: true, iconPlacement: 'end' } } }, { id: 'label', name: 'Label', type: 'text', parentId: 'i1' }, { id: 'icon', name: 'iconEnd', type: 'frame', parentId: 'i1', behavior: { version: 2, slot: 'iconEnd' } }] }] };
     assert.equal(behaviorProblem(JSON.parse(JSON.stringify(doc))), null);
 });

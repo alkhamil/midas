@@ -89,3 +89,51 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
 - The studio has no zip export. Generate code downloads two files.
 - Deep links to a page that is still loading can fall back to a new empty file. Seen once: `?page=page-screens&node-id=inst-cross` opened an "Untitled" file. Open other pages by clicking them in the Pages list instead.
 - Smoke run (fixture opened by import and reopened from All files): the five pages, the named objects, and the legacy master's hover Error were all as described. The Save, Cancel, Next and main Button checks matched the step text.
+
+## Behavior rework: browser checks (run on the regenerated fixture)
+
+Run after `node scripts/make-behavior-fixture.js`, import the file, then check each line. Record what you see.
+
+1. Variant and Size on Save: the Behavior panel changes the mode, the canvas follows, and the Design panel shows the same mode for the same layer (the mode lives on the instance root, `varModes`).
+2. Disabled on Save: the root fill becomes `button/bg-disabled` and the label fill `button/fg-disabled`. Turn it off: both go back to `button/bg` and `button/fg`. One history step each. No `vars` override appears on the instance.
+3. Label on Save: the label layer text follows the prop (saved as `text`).
+4. Full Width on Save: the root width mode becomes Fill and goes back to Hug when off.
+5. Undo after Full Width: exactly one step is reverted, and the label change stays.
+6. Preview state Hover on Save: the badge reads "Previewing: Hover". The file is not changed (no history entry). Reload: no preview data is saved.
+7. Cancel and the Card group: Cancel is not changed by the Save edits (apart from the bindings its own modes give it). Button never reads `card/bg` or `card/fg`.
+8. Bind tokens on a master with unbound tokens: the button says how many are unbound, binds only the empty ones, and never overwrites an existing binding.
+9. Diagnostics: the legacy master shows "variable ... has no value in mode Danger" as an error. A layer set by hand while disabled shows a warning. Loading shows a Note.
+
+Known and fixed (decision 1): a bound lineHeight variable is px. The editor's field is still the ratio px / font size; a value under 4 is an error. Fixture values such as 1.4 therefore draw a 2 px label. See the open questions in the report.
+
+## Open items from the rework
+
+- WebGPU "TextureView ... cannot be used with [Device]" (console error, status bar "WebGPU validation error"). Not reproduced on a clean HEAD worktree (3 full reloads, same Disabled and Variant steps, fresh fixture import) or on the rework (3 clean runs). It appeared once in a tab whose modules had been hot-replaced (stack frames with `?t=` URLs), together with a TypeError in `DocumentModel.touch`. Treat it as a stale hot-reload state until it recurs in a fresh tab: reload the tab, and if it shows again, note the steps and the console output.
+- Override detection and copy skip layout-owned geometry: `isLayoutOwnedField` (`instance-vars.js`). A flow child of an auto-layout parent keeps its x and y from layout; a child sized hug (or fill in a frame) keeps that axis from layout. Absolutely positioned children and fixed sizes are still copied. Not covered by a browser check on a non-Button master resize (see the smoke results).
+- The canvas preview draws the root background and border only, in the GPU path. The Canvas 2D fallback does not draw the preview. The fixture's root has `strokeWidth: 0`, so Focus (border) shows no change on the canvas; set a stroke width on a copy to check it.
+- Bound lineHeight variables are px. Values under 4 raise the line-height-looks-like-ratio error.
+
+## Behavior rework: smoke results (fresh fixture, this pass)
+
+Fixture imported through the home import; each check reads the saved document through the file API. Write counts are the change in node `version` between saves (one count per touch).
+
+| Check | Result |
+| --- | --- |
+| Disabled on, Save (steady state, second cycle) | Save root +3, Save label +2, Cancel 0, no `overrides` |
+| Disabled off, Save (steady state) | Save root +3, Save label +2, Cancel 0, no `overrides` |
+| First Disabled toggle after import (includes the first full sync) | Save +5 and +4, Cancel +2 and +2 (a one-time sync of geometry); no `overrides` |
+| Copy writes to x, y, w, h on Cancel (instrumented copy loop, removed afterwards) | 0 per toggle (before the layout rule: 2 on Cancel, 4 on its label, 6 changed in total per toggle) |
+| hasIcon off, then on | Icon layer removed, then back at the start of the row |
+| iconPlacement start to end | Icon moves after the label; label keeps its place |
+| Variant change on Save (Appearance modes) | Save's mode changes to Primary; Cancel keeps Danger; no card variable changed; no node `vars` references `card/` items |
+| Preview Hover on Save | Canvas draws the darker root background; text stays white; badge "Previewing: Hover"; no preview data in the saved document |
+| Preview reset on selection change | Selecting Cancel shows "Default" in the Preview section; selecting Save again shows "Default" |
+| Save and reopen | Preview is Default after reopen; Variant Primary is kept |
+| Bind tokens on Button, all bound | The button reads "Bind tokens (all bound)"; no node's vars change |
+| Bind tokens on an unbound master, existing bindings kept | Not run in the browser. Covered by `bind-tokens.test.js` (never overwrites existing keys). |
+| Canvas Focus preview | Not visible on the fixture (stroke width 0). Covered by `canvasColorsOf` tests. |
+| Kopi Kita (sample) master resize, nested instances, non-auto children | Not run. The master width could not be set to a fixed value through the Design panel in the time available: the W control is a Hug toggle. The sample has no nested instances and no non-auto-layout children, so the case table is partly covered by the tests. |
+
+Kopi Kita was opened through a copy imported from `scripts/fixtures/sample-app.midas` (file id 464482ba-bb69-491e-a0fa-d50f6292df22), not the workspace file. Its Button master is on `page-components`; the 21 instances are spread over the pages. The workspace's own "Kopi Kita" file was not changed.
+
+Test copies of the fixture and the sample are in the workspace (named "Behavior fixture" and "Kopi Kita"). Delete them from All files when the checks are done.

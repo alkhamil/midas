@@ -9,27 +9,29 @@ const variantColl = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary',
 const num = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
 const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
 const sizeItems = () => [
-    num('i-fs', 'fontSize', 'c-size', { sm: 14 }),
-    num('i-lh', 'lineHeight', 'c-size', { sm: 1.4 }),
-    num('i-px', 'paddingX', 'c-size', { sm: 12 }),
-    num('i-py', 'paddingY', 'c-size', { sm: 6 }),
-    num('i-gap', 'gap', 'c-size', { sm: 6 }),
-    num('i-radius', 'radius', 'c-size', { sm: 6 }),
-    num('i-icon', 'iconSize', 'c-size', { sm: 14 }),
+    num('i-fs', 'button/fontSize', 'c-size', { sm: 14 }),
+    num('i-lh', 'button/lineHeight', 'c-size', { sm: 20 }),
+    num('i-px', 'button/paddingX', 'c-size', { sm: 12 }),
+    num('i-py', 'button/paddingY', 'c-size', { sm: 6 }),
+    num('i-gap', 'button/gap', 'c-size', { sm: 6 }),
+    num('i-radius', 'button/radius', 'c-size', { sm: 6 }),
+    num('i-icon', 'button/iconSize', 'c-size', { sm: 14 }),
 ];
 const variantItems = (skip = []) => [
     ['bg', { primary: '#4338ca', danger: '#dc2626' }],
     ['bg-hover', { primary: '#3730a3', danger: '#b91c1c' }],
     ['bg-active', { primary: '#312e81', danger: '#991b1b' }],
     ['bg-disabled', { primary: '#a5b4fc', danger: '#fca5a5' }],
+    ['fg-disabled', { primary: '#e0e7ff', danger: '#fee2e2' }],
+    ['border-focus', { primary: '#818cf8', danger: '#f87171' }],
     ['fg', { primary: '#ffffff', danger: '#ffffff' }],
     ['border', { primary: '#4338ca', danger: '#dc2626' }],
-].filter(([name]) => !skip.includes(name)).map(([name, values]) => col(`i-${name}`, name, 'c-variant', values));
+].filter(([name]) => !skip.includes(name)).map(([name, values]) => col(`i-${name}`, `button/${name}`, 'c-variant', values));
 const variables = (skip = []) => ({
     collections: [sizeColl, variantColl],
     items: [...sizeItems(), ...variantItems(skip)],
 });
-const binding = (over = {}) => ({ version: 1, templateId: 'button', variables: { size: 'c-size', variant: 'c-variant', ...over } });
+const binding = (over = {}) => ({ version: 2, templateId: 'button', variables: { size: 'c-size', variant: 'c-variant', ...over } });
 
 test('the component takes every prop of the schema, with the schema default', () => {
     const { files } = generateComponent(button, binding(), variables(), 'Button');
@@ -81,4 +83,12 @@ test('the same inputs give the same output', () => {
     const a = generateComponent(button, binding(), variables(), 'Button');
     const b = generateComponent(button, binding(), variables(), 'Button');
     assert.deepEqual(a, b);
+});
+
+test('the stylesheet applies each mapped token to its node, from the display mapping', () => {
+    const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
+    assert.match(css, /^\.button \{\n(?:.*\n)*?\s*background-color: var\(--button-bg\);/);
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-radius: var\(--button-radius\);/);
+    assert.match(css, /\.button-label \{\n\s*color: var\(--button-fg\);\n\s*font-size: var\(--button-font-size\);\n\s*line-height: var\(--button-line-height\);\n\}/);
+    assert.match(css, /\.button-iconStart \{\n\s*width: var\(--button-icon-size\);\n\s*height: var\(--button-icon-size\);\n\}/);
 });

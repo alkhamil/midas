@@ -1,3 +1,5 @@
+import { COLOUR_TOKENS, displayProblems } from './display.js';
+
 const LITERAL_TYPES = ['boolean', 'string', 'enum', 'iconComponent'];
 
 /** @param {unknown} v */
@@ -86,21 +88,47 @@ export function validateTemplateSchema(schema) {
         }
     }
 
-    if (!Array.isArray(schema.states) || !schema.states.length) out.push('states must be a non-empty list');
+    if (!isName(schema.group)) out.push('schema has no group (the variable name prefix, e.g. "button")');
     const allTokens = isPlainObject(tokens) ? Object.values(tokens).flat() : [];
-    if (schema.stateTokens !== undefined) {
-        if (!isPlainObject(schema.stateTokens)) out.push('stateTokens must be an object');
-        else for (const [state, overrides] of Object.entries(schema.stateTokens)) {
-            if (!(Array.isArray(schema.states) && schema.states.includes(state))) out.push(`stateTokens names unknown state "${state}"`);
-            if (!isPlainObject(overrides)) { out.push(`stateTokens for "${state}" must be an object`); continue; }
-            for (const [base, stateToken] of Object.entries(overrides)) {
-                if (!allTokens.includes(base)) out.push(`stateTokens overrides "${base}", which is not a token`);
-                if (!allTokens.includes(stateToken)) out.push(`stateTokens maps "${base}" to "${stateToken}", which is not a token`);
-            }
-        }
-    }
+    out.push(...stateProblems(schema, allTokens, props || {}));
+    out.push(...displayProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 
+    return out;
+}
+
+/**
+ * Problems in the state declarations: persistent states (a boolean prop and the tokens it replaces) and preview-only states
+ * (colour tokens only, replaced by tokens of the template).
+ * @param {any} schema
+ * @param {string[]} allTokens
+ * @param {Record<string, any>} props
+ * @returns {string[]}
+ */
+function stateProblems(schema, allTokens, props) {
+    const out = [];
+    const persistent = isPlainObject(schema.persistentStates) ? schema.persistentStates : null;
+    const preview = isPlainObject(schema.previewStates) ? schema.previewStates : null;
+    if (!persistent) out.push('persistentStates must be an object');
+    if (!preview) out.push('previewStates must be an object');
+    for (const [state, def] of Object.entries(persistent || {})) {
+        if (!isPlainObject(def)) { out.push(`persistent state "${state}" must be an object`); continue; }
+        const prop = props[def.prop];
+        if (!prop || prop.source !== 'literal' || prop.type !== 'boolean') out.push(`persistent state "${state}" needs a boolean prop, not "${def.prop}"`);
+        if (!isPlainObject(def.tokens)) { out.push(`persistent state "${state}" must name its tokens`); continue; }
+        for (const [base, stateToken] of Object.entries(def.tokens)) {
+            if (!allTokens.includes(base)) out.push(`persistent state "${state}" overrides "${base}", which is not a token`);
+            if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`persistent state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
+        }
+    }
+    for (const [state, overrides] of Object.entries(preview || {})) {
+        if (state in (persistent || {})) out.push(`state "${state}" is declared as both persistent and preview-only`);
+        if (!isPlainObject(overrides)) { out.push(`preview state "${state}" must be an object`); continue; }
+        for (const [base, stateToken] of Object.entries(overrides)) {
+            if (!COLOUR_TOKENS.includes(base)) out.push(`preview state "${state}" changes "${base}", but preview states change colours only (${COLOUR_TOKENS.join(', ')})`);
+            if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`preview state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
+        }
+    }
     return out;
 }

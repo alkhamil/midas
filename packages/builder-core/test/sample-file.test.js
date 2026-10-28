@@ -11,6 +11,7 @@ import {
     diagnoseDocument,
     generateComponent,
     previewOf,
+    resolveProps,
     resolveSelectTarget,
 } from '../src/index.js';
 
@@ -104,7 +105,7 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
     const master = componentsPage.nodes.find(n => n.component && n.name === 'Button');
     assert.ok(master, 'Button master exists on Components page');
     assert.deepEqual(master.behavior, {
-        version: 1,
+        version: 2,
         templateId: 'button',
         variables: { variant: variantColl.id, size: sizeColl.id },
     });
@@ -119,11 +120,13 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
 
     const buttonTemplate = TEMPLATES.get('button');
     for (const btn of buttons) {
-        const nodeFindings = findings.filter(f => f.nodeId === btn.id);
+        const nodeFindings = findings.filter(f => f.nodeId === btn.id && f.severity !== 'info');
         assert.deepEqual(nodeFindings, [], `Button "${btn.name}" (${btn.id}) should have no issues`);
         if (btn.isInstance) {
-            for (const state of ['default', 'hover', 'active', 'disabled']) {
-                const prev = previewOf(buttonTemplate, master.behavior, btn.behavior.props, doc.variables, state);
+            const modes = { variant: btn.varModes?.[master.behavior.variables.variant] ?? null, size: btn.varModes?.[master.behavior.variables.size] ?? null };
+            const props = resolveProps(buttonTemplate, btn.behavior.props);
+            for (const state of ['default', 'hover', 'active', 'focus', 'disabled']) {
+                const prev = state === 'disabled' ? previewOf(buttonTemplate, master.behavior, modes, doc.variables, { ...props, disabled: true }) : previewOf(buttonTemplate, master.behavior, modes, doc.variables, props, state);
                 assert.deepEqual(prev.unresolved, [], `Button "${btn.name}" state "${state}" should resolve all tokens`);
             }
         }
@@ -208,8 +211,8 @@ test('screens have 390x844 top-level auto-layout frames, 3-4 level nesting, non-
         .filter(n => n.isInstance && n.sourceId === master.id);
     assert.ok(nonComponentPageInstances.length >= 6, 'instances on pages other than master page');
 
-    const variantsUsed = new Set(instances.map(i => i.behavior.props.variant));
-    const sizesUsed = new Set(instances.map(i => i.behavior.props.size));
+    const variantsUsed = new Set(instances.map(i => i.varModes?.[master.behavior.variables.variant]));
+    const sizesUsed = new Set(instances.map(i => i.varModes?.[master.behavior.variables.size]));
     const labelsUsed = new Set(instances.map(i => i.behavior.props.label));
     assert.equal(variantsUsed.size, 3, 'all 3 Variant modes used');
     assert.equal(sizesUsed.size, 3, 'all 3 Size modes used');

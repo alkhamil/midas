@@ -1,21 +1,31 @@
-// Diagnostics (stage 9). Pure: a document in, a list of findings out, in document order. An error means preview or generated code
-// would be wrong (a token that cannot be resolved, a state token missing for a mode). A warning means something is left out
-// (a collection no component binds). Nothing is repaired; the editor shows the list.
+// Diagnostics (pure). A document in, a list of findings out, in document order. An error means preview or generated code would be
+// wrong (a variable missing from a collection or a mode, a token that cannot be resolved for an instance's modes). A warning means
+// something is left out or set by hand (a collection no component binds, a master token not bound, a layer rebound by hand). An
+// info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps } from './registry.js';
-import { previewOf } from './preview.js';
 import { resolveTokens } from './tokens.js';
+import { resolveProps } from './instance-props.js';
+import { resolveMode } from './modes.js';
+import { planStateBindings } from './state-bindings.js';
+import { VARIABLE_KEYS } from './display.js';
+import { dimensionOfGroup } from './validate-schema.js';
+import { masterLayersOf } from './layers.js';
 
 /**
  * Every finding in a document.
- * @param {{ variables?: { collections?: any[], items?: any[] }, pages?: { nodes?: any[] }[] }} doc
+ * @param {{ variables?: { collections?: any[], items?: any[] }, pages?: { varModes?: Record<string, string>, nodes?: any[] }[] }} doc
  * @returns {Record<string, unknown>[]}
  */
 export function diagnoseDocument(doc) {
-    const nodes = (doc.pages || []).flatMap(page => page.nodes || []);
+    const pages = doc.pages || [];
+    const nodes = pages.flatMap(page => page.nodes || []);
     const byId = new Map(nodes.map(n => [n.id, n]));
+    const pageOf = new Map(pages.flatMap(page => (page.nodes || []).map(n => [n.id, page])));
     const variables = doc.variables || {};
     const collections = variables.collections || [];
+    const items = variables.items || [];
     const masters = nodes.filter(n => n.behavior && 'templateId' in n.behavior);
+    const childrenOf = (/** @type {string} */ id) => nodes.filter(n => n.parentId === id);
     /** @type {Record<string, unknown>[]} */
     const out = [];
 
@@ -30,17 +40,22 @@ export function diagnoseDocument(doc) {
         for (const [dim] of variableProps(template)) {
             const collection = collections.find(c => c.id === m.behavior.variables[dim]);
             if (!collection) continue;
-            for (const mode of collection.modes || []) {
-                const selected = Object.fromEntries(variableProps(template).map(([d]) => [d, d === dim ? mode.id : null]));
-                const { unresolved } = resolveTokens(template, m.behavior, selected, variables);
-                for (const [state, overrides] of Object.entries(template.stateTokens || {})) {
-                    for (const stateToken of Object.values(overrides)) {
-                        for (const u of unresolved) {
-                            if (u.token !== stateToken || u.dimension !== dim) continue;
-                            out.push({
-                                severity: 'error', code: 'state-token-missing', node: m.name, nodeId: m.id, state, token: stateToken, mode: mode.name, reason: u.reason,
-                                message: `${m.name}: state "${state}" needs token "${stateToken}" in mode "${mode.name}" (${u.reason}).`,
-                            });
+            for (const [group, names] of Object.entries(template.tokens)) {
+                if (dimensionOfGroup(group, template.props) !== dim) continue;
+                for (const token of names) {
+                    const variable = `${template.group}/${token}`;
+                    const item = items.find(i => i.collectionId === collection.id && String(i.name ?? '').trim().toLowerCase() === variable.toLowerCase());
+                    if (!item) {
+                        out.push({ severity: 'error', code: 'variable-missing', node: m.name, nodeId: m.id, variable, collection: collection.name, message: `${m.name}: variable "${variable}" is missing from collection "${collection.name}".` });
+                        continue;
+                    }
+                    for (const mode of collection.modes || []) {
+                        const value = item.values?.[mode.id];
+                        if (value === undefined) {
+                            out.push({ severity: 'error', code: 'variable-missing-in-mode', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" has no value in mode "${mode.name}" of "${collection.name}".` });
+                        }
+                        else if (token === 'lineHeight' && typeof value === 'number' && value < 4) {
+                            out.push({ severity: 'error', code: 'line-height-looks-like-ratio', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" is ${value} in mode "${mode.name}". Line height is in px (for example 20), not a ratio.` });
                         }
                     }
                 }
@@ -48,19 +63,75 @@ export function diagnoseDocument(doc) {
         }
     }
 
-    const stateTokens = new Set(masters.flatMap(m => Object.values(TEMPLATES.get(m.behavior.templateId)?.stateTokens || {}).flatMap(Object.values)));
     for (const inst of nodes) {
         if (!inst.isInstance || !inst.behavior || !('props' in inst.behavior)) continue;
-        const binding = byId.get(inst.sourceId)?.behavior;
+        const master = byId.get(inst.sourceId);
+        const binding = master?.behavior;
         const template = binding && 'templateId' in binding ? TEMPLATES.get(binding.templateId) : undefined;
         if (!template) continue;
-        const { unresolved } = previewOf(template, binding, inst.behavior.props, variables, 'default');
+        const page = pageOf.get(inst.id);
+        /** @type {Record<string, string | null>} */
+        const modes = {};
+        for (const [dim] of variableProps(template)) {
+            const collection = collections.find(c => c.id === binding.variables[dim]);
+            modes[dim] = collection ? resolveMode(collection, inst, byId, page?.varModes) : null;
+        }
+        const { unresolved } = resolveTokens(template, binding, modes, variables);
         for (const u of unresolved) {
-            if (stateTokens.has(u.token)) continue;
-            out.push({
-                severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason,
-                message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).`,
-            });
+            // A missing variable or value is reported once, on the master.
+            if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode') continue;
+            out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
+        }
+        const props = resolveProps(template, inst.behavior.props);
+        if (props.loading === true) out.push({ severity: 'info', code: 'loading-not-drawn', node: inst.name, nodeId: inst.id, message: `${inst.name}: loading is stored and generated, but has no visual yet.` });
+        const { warnings } = planStateBindings({ template, binding, props, layers: instanceLayers(inst, master, childrenOf), variables });
+        for (const w of warnings) {
+            out.push({ severity: 'warning', code: 'rebound-by-hand', node: inst.name, nodeId: inst.id, layer: w.key, prop: w.prop, state: w.state, message: `${inst.name}: ${w.key} ${w.prop} was set by hand, so state "${w.state}" does not change it.` });
+        }
+    }
+
+    for (const m of masters) {
+        const template = TEMPLATES.get(m.behavior.templateId);
+        if (!template) continue;
+        for (const [layer, prop, token] of unboundTokens(template, m, childrenOf)) {
+            out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message: `${m.name}: ${layer} ${prop} is not bound to "${template.group}/${token}".` });
+        }
+    }
+    return out;
+}
+
+/**
+ * The instance's layers paired with their master layers, for the state binding plan.
+ * @param {any} inst
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ */
+function instanceLayers(inst, master, childrenOf) {
+    if (!master) return [];
+    const instChildren = childrenOf(inst.id);
+    return masterLayersOf(master, childrenOf).map(({ key, node }) => {
+        const instance = key === 'root' ? inst : instChildren.find(c => c.sourceId === node.id);
+        return instance ? { key, instance: { id: instance.id, vars: instance.vars }, master: { vars: node.vars } } : null;
+    }).filter(Boolean);
+}
+
+/**
+ * The master's mapped properties that are not bound to their token, as [layer, prop, token] triples.
+ * @param {any} template
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ */
+function unboundTokens(template, master, childrenOf) {
+    const tokens = Object.values(template.tokens).flat();
+    const layers = new Map(masterLayersOf(master, childrenOf).map(({ key, node }) => [key, node]));
+    /** @type {[string, string, string][]} */
+    const out = [];
+    for (const [key, props] of Object.entries(template.display)) {
+        const layer = layers.get(key);
+        if (!layer) continue;
+        for (const [prop, source] of Object.entries(props)) {
+            if (!tokens.includes(source)) continue;
+            for (const varKey of VARIABLE_KEYS[prop] || []) if (!layer.vars?.[varKey]) out.push([key, prop, source]);
         }
     }
     return out;

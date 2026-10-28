@@ -38,9 +38,9 @@ test('the fixture passes phase 2 on a lazy open when the cross-page instance\'s 
 test('the only error in the fixture is the legacy master\'s missing hover token in Danger', () => {
     const errors = diagnoseDocument(buildBehaviorFixture()).filter(f => f.severity === 'error');
     assert.equal(errors.length, 1);
-    assert.equal(errors[0].code, 'state-token-missing');
+    assert.equal(errors[0].code, 'variable-missing-in-mode');
     assert.equal(errors[0].node, 'Button (legacy)');
-    assert.equal(errors[0].token, 'bg-hover');
+    assert.equal(errors[0].variable, 'button/bg-hover');
     assert.equal(errors[0].mode, 'Danger');
 });
 

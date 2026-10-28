@@ -59,5 +59,7 @@ export interface TemplateSchema {
     tokens: TokenGroups;
     states: string[];
     stateTokens?: StateTokens;
+    /** Which token or literal prop drives which property of which node (root, or an anatomy slot). */
+    display: Record<string, Record<string, string>>;
     events: EventDef[];
 }

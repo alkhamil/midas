@@ -5,8 +5,8 @@ import { findingRows, codeFindings, stateFindings, codeDownloads, previewRows, P
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-test('the preview states are Default, Hover, Active and Disabled, in that order', () => {
-    assert.deepEqual(PREVIEW_STATES.map(([id]) => id), ['default', 'hover', 'active', 'disabled']);
+test('the preview-only states are Default, Hover, Active and Focus, in that order (Disabled is persistent, not a preview state)', () => {
+    assert.deepEqual(PREVIEW_STATES.map(([id]) => id), ['default', 'hover', 'active', 'focus']);
 });
 
 test('a finding is one row: its severity badge, then its message', () => {

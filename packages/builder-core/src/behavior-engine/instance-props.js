@@ -1,5 +1,5 @@
-// Instance props store (stage 3): an instance holds only its own prop values, stored sparsely as
-// `behavior: { version, props }`. A variable prop stores the selected mode id; a literal prop stores its value.
+// Instance props store (stage 3): an instance holds only its own literal prop values, stored sparsely as `behavior: { version, props }`.
+// Variable props (variant, size) are not stored here: an instance's mode is its Appearance mode for the bound collection (`varModes`).
 // Unset props fall back to the schema default. A prop hidden by visibleIf keeps no stored value.
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 /** @typedef {import('../templates/schema.js').PropDef} PropDef */
@@ -16,22 +16,21 @@ export function isPropVisible(template, name, values) {
     return !cond || values[cond.prop] === cond.is;
 }
 
-/** @param {PropDef} def */
-const defaultOf = def => (def.source === 'literal' ? def.default : null);
-
 /**
- * Every prop's value: the stored one when the prop is visible and set, else the schema default.
+ * Every literal prop's value: the stored one when the prop is visible and set, else the schema default. Variable props are not
+ * in the result.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {StoredProps} [stored]
  */
 export function resolveProps(template, stored = {}) {
+    const literal = Object.entries(template.props).filter(([, def]) => def.source === 'literal');
     /** @type {Record<string, unknown>} */
     const base = {};
-    for (const [name, def] of Object.entries(template.props)) base[name] = stored[name] !== undefined ? stored[name] : defaultOf(def);
+    for (const [name, def] of literal) base[name] = stored[name] !== undefined ? stored[name] : /** @type {any} */ (def).default;
     /** @type {Record<string, unknown>} */
     const out = {};
-    for (const [name, def] of Object.entries(template.props)) {
-        out[name] = isPropVisible(template, name, base) && stored[name] !== undefined ? stored[name] : defaultOf(def);
+    for (const [name, def] of literal) {
+        out[name] = isPropVisible(template, name, base) && stored[name] !== undefined ? stored[name] : /** @type {any} */ (def).default;
     }
     return out;
 }
@@ -53,14 +52,13 @@ function pruneHidden(template, stored) {
 }
 
 /**
- * Why a value cannot be stored for this prop, or null when it can. A variable prop stores a mode id or null; the
- * mode itself is checked against its collection elsewhere.
+ * Why a value cannot be stored for this prop, or null when it can.
  * @param {PropDef} def
  * @param {unknown} value
  * @returns {string | null}
  */
 export function valueProblem(def, value) {
-    if (def.source === 'variable') return value === null || typeof value === 'string' ? null : 'a variable prop stores a mode id or null';
+    if (def.source === 'variable') return 'variable props are not stored in behavior data: an instance\'s mode is its Appearance mode';
     if (def.type === 'boolean' && typeof value !== 'boolean') return 'expects a boolean';
     if (def.type === 'string' && typeof value !== 'string') return 'expects text';
     if (def.type === 'enum' && !def.options.includes(/** @type {string} */ (value))) return `expects one of ${def.options.join(', ')}`;
@@ -69,7 +67,7 @@ export function valueProblem(def, value) {
 }
 
 /**
- * Store one prop value. Refused when the prop is unknown, hidden right now, or the value has the wrong type.
+ * Store one prop value. Refused when the prop is unknown, a variable prop, hidden right now, or the value has the wrong type.
  * `value === undefined` unsets the prop, even when it is hidden. Returns a new stored object; the input is not changed.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {StoredProps} stored
@@ -84,6 +82,7 @@ export function setInstanceProp(template, stored, name, value) {
     const next = { ...stored };
     if (value === undefined) delete next[name];
     else {
+        if (def.source === 'variable') throw new Error(`Prop "${name}" is an Appearance mode, not a behavior prop`);
         if (!isPropVisible(template, name, resolveProps(template, stored))) throw new Error(`Prop "${name}" is hidden by visibleIf`);
         const problem = valueProblem(def, value);
         if (problem) throw new Error(`Prop "${name}" on ${template.id}: ${problem}`);

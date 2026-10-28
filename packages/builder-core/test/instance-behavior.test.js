@@ -4,11 +4,11 @@ import { withInstanceBehavior } from '../src/behavior-engine/instance-props.js';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 
 const collections = [{ id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }] }];
-const boundMaster = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 1, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
+const boundMaster = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
 
 test('instancing a bound master gives the instance props only, without the binding', () => {
     const copy = withInstanceBehavior({ id: 'i1', isInstance: true }, boundMaster);
-    assert.deepEqual(copy.behavior, { version: 1, props: {} });
+    assert.deepEqual(copy.behavior, { version: 2, props: {} });
 });
 
 test('a plain layer copied inside an instance keeps no behavior data', () => {

@@ -8,9 +8,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 const button = TEMPLATES.get('button');
 const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
 const master = (collections = [variant]) => ({ id: 'btn', name: 'Button', component: true, behavior: createBinding(button, collections) });
-const instance = (behavior = { version: 1, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
+const instance = (behavior = { version: 2, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
 const masterHtml = (node, collections) => behaviorPanelHtml({ kind: 'master', panel: masterPanel(node, collections), esc });
-const instanceHtml = (node, mast, collections) => behaviorPanelHtml({ kind: 'instance', panel: instancePanel(node, mast, collections), esc });
+const instanceHtml = (node, mast, collections, modes = { variant: 'primary', size: null }) => behaviorPanelHtml({ kind: 'instance', panel: instancePanel(node, mast, collections, modes), esc });
 
 test('a master bound to Button shows the template and each variable prop with its collection', () => {
     const html = masterHtml(master([variant]), [variant]);
@@ -54,7 +54,7 @@ test('an instance shows its variable props with the bound modes and its literal 
 test('visibleIf: the icon placement is rendered only while hasIcon is on', () => {
     const off = instanceHtml(instance(), master([variant]), [variant]);
     assert.doesNotMatch(off, /data-bp-prop="iconPlacement"/);
-    const on = instanceHtml(instance({ version: 1, props: { hasIcon: true } }), master([variant]), [variant]);
+    const on = instanceHtml(instance({ version: 2, props: { hasIcon: true } }), master([variant]), [variant]);
     assert.match(on, /data-bp-type="enum" data-bp-prop="iconPlacement"/);
 });
 

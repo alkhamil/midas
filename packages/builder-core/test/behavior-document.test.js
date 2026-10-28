@@ -4,12 +4,12 @@ import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 import { BehaviorDataError, detachBehavior } from '../src/behavior-engine/data.js';
 
 const collections = [{ id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] }];
-const master = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 1, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
-const instance = props => ({ id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 1, props } });
+const master = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
+const instance = (props, varModes) => ({ id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props }, varModes });
 const docWith = (...nodes) => ({ variables: { collections }, pages: [{ id: 'p1', nodes }] });
 
 test('a valid file with a bound master and a matching instance opens', () => {
-    const doc = docWith(master, instance({ variant: 'danger', label: 'Save', hasIcon: true, iconPlacement: 'end' }));
+    const doc = docWith(master, instance({ label: 'Save', hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'danger' }));
     assert.doesNotThrow(() => assertBehaviorData(doc));
 });
 
@@ -33,7 +33,7 @@ test('a stored value for a prop hidden by visibleIf fails, naming the prop', () 
 });
 
 test('a mode that the bound collection does not have fails, naming the mode and the collection', () => {
-    const doc = docWith(master, instance({ variant: 'nope' }));
+    const doc = docWith(master, instance({}, { 'c-variant': 'nope' }));
     assert.throws(() => assertBehaviorData(doc), /mode "nope" is not in collection "Variant"/);
 });
 
@@ -41,16 +41,16 @@ test('a mode that the bound collection does not have fails, naming the mode and 
 const autoMaster = { ...master, layout: 'horizontal' };
 const masterLabel = { id: 'mLabel', name: 'Label', type: 'text', parentId: 'btn' };
 const label = { id: 'label', name: 'Label', type: 'text', parentId: 'i1' };
-const icon = (slot, parentId = 'i1', id = `icon-${slot}`) => ({ id, name: slot, type: 'frame', parentId, behavior: { version: 1, slot } });
-const withIcon = props => instance(props);
+const icon = (slot, parentId = 'i1', id = `icon-${slot}`) => ({ id, name: slot, type: 'frame', parentId, behavior: { version: 2, slot } });
+const withIcon = (props, varModes) => instance(props, varModes);
 
 test('an instance whose managed layers match its values opens', () => {
-    const doc = docWith(autoMaster, masterLabel, withIcon({ variant: 'danger', hasIcon: true, iconPlacement: 'end' }), label, icon('iconEnd'));
+    const doc = docWith(autoMaster, masterLabel, withIcon({ hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'danger' }), label, icon('iconEnd'));
     assert.doesNotThrow(() => assertBehaviorData(doc));
 });
 
 test('a managed layer outside an instance fails, naming the layer', () => {
-    const doc = docWith(autoMaster, masterLabel, withIcon({ hasIcon: false }), label, { id: 'stray', name: 'iconStart', type: 'frame', parentId: 'other', behavior: { version: 1, slot: 'iconStart' } });
+    const doc = docWith(autoMaster, masterLabel, withIcon({ hasIcon: false }), label, { id: 'stray', name: 'iconStart', type: 'frame', parentId: 'other', behavior: { version: 2, slot: 'iconStart' } });
     assert.throws(() => assertBehaviorData(doc), err => err instanceof BehaviorDataError && /"iconStart" \(stray\)/.test(err.message) && /outside an instance/.test(err.message));
 });
 
