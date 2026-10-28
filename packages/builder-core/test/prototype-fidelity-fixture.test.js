@@ -7,7 +7,7 @@ import { buildFidelityFixture, FIDELITY_FIXTURE_PATH } from '../../../scripts/ma
 const doc = buildFidelityFixture();
 const frameIds = doc.pages[0].nodes.filter(n => n.type === 'frame').map(n => n.id);
 
-test('the fidelity fixture on disk is the one the generator builds', () => {
+test('generator check: the fidelity fixture file equals what the generator builds (not a pixel comparison)', () => {
     assert.deepEqual(JSON.parse(readFileSync(FIDELITY_FIXTURE_PATH, 'utf8')), doc);
 });
 

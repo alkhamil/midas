@@ -85,14 +85,41 @@ Decision: a text layer with no fill draws nothing, in Play as on the canvas (`co
 
 Round 4 (geometry and fidelity): the outline, stroke and fill code the canvas uses moved into `builder-core/src/geometry/` (`shapes.js`, `fills.js`). The canvas builds its Path2D from the shared commands, and the DOM preview emits SVG from the same commands, so one geometry serves both. Play now draws arcs, donuts, lines, vector paths, centred, inside, outside and dashed strokes, per-corner radii, flips, multiple fills, linear, radial and angular gradients, drop and inner shadows, layer and background blur, text stroke, glyph shadow and truncation. Fidelity fixture: `scripts/make-fidelity-fixture.js`, one frame per feature.
 
-Fidelity, checked in Play at Actual size (1280 wide). The canvas was not compared row by row at 1:1, so a row marked OK is OK in Play as a visual check against the expected look:
-- OK: solid, fill opacity, text in a plain frame (no box), rich spans, text stroke, text drop shadow, truncation, balanced wrap, short hex with alpha, linear 0 and 45 degrees, radial, angular, multiple fills (olive from yellow at 60% over blue), per-corner radius, centred, inside, outside and dashed strokes, full ellipse, 75% arc, donut, line, closed vector path, curved vector path, drop shadow, layer blur, flip and rotation, opacity, group with clip content.
-- Looks right but not checked closely: per-side stroke, inner shadow, background blur (the layer behind is one flat colour, so the blur barely shows), truncation line count.
-- WRONG: boolean union and subtract (both operands are drawn, not the result); mask (the mask shows as a solid shape instead of clipping the layer below it).
-- Flagged, not drawn: image layer, glass. Both are counted in the toolbar badge.
+Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fixture was stepped through in Play and looked at. The canvas was checked by thumbnail only, for the rows that changed (booleans, mask, frame strokes, drop shadow). No pixel comparison exists: the test file is named as a generator check.
 
-Known gap, not reproduced in the fixtures: a click on a child layer of a clickable parent (see Known limitations).
+| Row | Status | Notes |
+|---|---|---|
+| Text: solid, fill opacity, plain frame (no box), spans, stroke | browser-verified (Play) | |
+| Text: drop shadow | browser-verified (Play) | faint at thumbnail size |
+| Text: truncation (2 lines) | browser-verified (Play) | ellipsis at line 2 |
+| Text: wrap balance | browser-verified (Play) | |
+| Rect: solid, short hex with alpha | browser-verified (Play) | |
+| Rect: linear 0 and 45 degrees | browser-verified (Play) | |
+| Rect: radial, angular | browser-verified (Play) | canvas gradient shape not compared at 1:1 |
+| Rect: multiple fills | browser-verified (Play) | olive from yellow at 60% over blue |
+| Rect: per-corner radius | browser-verified (Play) | |
+| Rect: centred, inside, outside, dashed, per-side strokes | browser-verified (Play) | per-side checked at thumbnail size only |
+| Ellipse: full, 75% arc, donut | browser-verified (Play) | |
+| Line, vector path (closed, curves) | browser-verified (Play) | |
+| Frame: uniform, inside stroke | browser-verified (Play) | |
+| Frame: per-side stroke | browser-verified (Play) | top edge seen; left edge faint |
+| Frame: outside stroke | WRONG | the outer half is clipped by the frame, so it is not visible |
+| Effect: drop shadow (rect, GPU route on canvas) | browser-verified (Play); canvas by thumbnail | |
+| Effect: inner shadow | browser-verified (Play) | faint |
+| Effect: layer blur | browser-verified (Play) | |
+| Effect: background blur | browser-verified (Play) | the layer behind is one flat colour, so the blur barely shows |
+| Transform: flip and rotation | browser-verified (Play) | |
+| Opacity 40% | browser-verified (Play) | |
+| Group with clip content | browser-verified (Play) | |
+| Boolean union, subtract | not drawn, flagged | canvas draws the result; DOM reports each as unsupported and draws neither operand (thumbnail checked) |
+| Mask | WRONG, flagged | the mask is not drawn and is reported, but the layer under it draws unclipped |
+| Image layer, image fill | not drawn, flagged | reported as unsupported |
+| Effect: glass | not drawn, flagged | reported as unsupported |
+| Blend mode | not applicable | the canvas has no per-layer blend mode field, so there is nothing to draw or report |
+| Legacy shadow flag | removed | the canvas reads the effects list only (see below) |
 
-Legacy shadow: the canvas still reads `node.shadow` (the old flag) when a layer has no effects list (`getEffects` in midas.js). Play does not read it. A file that has only the old flag draws its shadow on the canvas and not in Play. Open question: remove the old flag from the canvas too.
+Not verified: a pixel comparison of the canvas and Play at 1:1 (not built, see the test name); the child-layer click case (no fixture has a clickable frame with a child layer that has its own interaction); the glass badge was seen, and the mask badge too.
+
+Legacy shadow: removed. The canvas reads the effects list only; a file that carried only the old flag draws no shadow now.
 
 Untitled file: a file opened on a page other than its master's page failed to open and was replaced by an Untitled file. The cause: the boot open parsed the saved file as complete, so a master on a page not yet loaded (a stub) was refused. The boot now parses with the partial check when pages are still pending, the same as the streamed open does. Fixed in `apps/studio/src/engine/midas.js`; the contract is pinned by `builder-core/test/behavior-lazy-open.test.js`.
