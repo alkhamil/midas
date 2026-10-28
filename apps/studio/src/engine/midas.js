@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -9897,9 +9897,7 @@ function applyPrototypeRemoval(plan) {
             const n = doc.get(e.nodeId);
             if (!n)
                 return;
-            let proto = n.prototype;
-            for (const id of e.removeInteractions)
-                proto = removeInteraction(proto, id);
+            const proto = withInteractions(n.prototype, e.interactions);
             if (proto) n.prototype = proto;
             else delete n.prototype;
             doc.touch(n);
@@ -9917,14 +9915,16 @@ function applyPrototypeRemoval(plan) {
 /** The toast after a copy: the links that pointed at layers which no longer exist were left out of the copies. */
 function prototypeCopyMessage(report) {
     const links = report.length;
-    return `Left out ${links} interaction${links === 1 ? '' : 's'} that pointed at layers that no longer exist.`;
+    return `Left out ${links} link${links === 1 ? '' : 's'} that pointed at layers that no longer exist.`;
 }
-/** The toast after a removal: how many interactions and flows pointed at the deleted layers, and the flows by name. */
+/** The toast after a removal: how many interactions, conditional actions and flows pointed at the deleted layers, and the flows by name. */
 function prototypeRemovalMessage(report) {
     const links = report.filter(r => r.code === 'interaction-removed').length;
+    const nested = report.filter(r => r.code === 'action-removed').length;
     const flows = report.filter(r => r.code === 'flow-start-removed').map(r => `“${r.flow}”`);
     const parts = [];
     if (links) parts.push(`${links} interaction${links === 1 ? '' : 's'}`);
+    if (nested) parts.push(`${nested} conditional action${nested === 1 ? '' : 's'}`);
     if (flows.length) parts.push(`the flow${flows.length === 1 ? '' : 's'} ${flows.join(', ')}`);
     return `Removed ${parts.join(' and ')} that pointed at the deleted layers.`;
 }

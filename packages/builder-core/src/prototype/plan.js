@@ -17,7 +17,7 @@ export function assertCanOwnInteractions(node) {
  * @param {{ version: number, interactions: any[], overflow?: string } | undefined} prototype
  * @param {any[]} interactions
  */
-function withInteractions(prototype, interactions) {
+export function withInteractions(prototype, interactions) {
     const next = { version: PROTOTYPE_VERSION, interactions };
     if (prototype?.overflow) next.overflow = prototype.overflow;
     return interactions.length || next.overflow ? next : undefined;
@@ -67,26 +67,72 @@ export function setOverflow(prototype, overflow) {
     return interactions.length || overflow !== 'none' ? next : undefined;
 }
 
-/** @param {any} interaction */
-const destinationOf = interaction => (interaction.action?.type === 'navigate-to' ? interaction.action.destinationId : null);
+/**
+ * An action with every navigate-to's destination passed through `rewrite`: a new id, or null to drop that navigation. A conditional keeps
+ * the branches that still hold an action and its else when that still holds one; a conditional left with no branch and no else is gone.
+ * Every dropped destination is pushed to `dropped`. Undefined when the action itself is gone.
+ * @param {any} action
+ * @param {(destination: string) => string | null} rewrite
+ * @param {string[]} dropped
+ * @returns {any}
+ */
+export function rewriteAction(action, rewrite, dropped) {
+    if (action?.type === 'navigate-to') {
+        const next = rewrite(action.destinationId);
+        if (next === null) {
+            dropped.push(action.destinationId);
+            return undefined;
+        }
+        return next === action.destinationId ? action : { ...action, destinationId: next };
+    }
+    if (action?.type !== 'conditional') return action;
+    const branches = [];
+    for (const b of action.branches) {
+        const actions = rewriteList(b.actions, rewrite, dropped);
+        if (actions.length) branches.push({ ...b, actions });
+    }
+    const elseActions = action.else === undefined ? [] : rewriteList(action.else, rewrite, dropped);
+    if (!branches.length && !elseActions.length) return undefined;
+    return { type: 'conditional', branches, ...(elseActions.length ? { else: elseActions } : {}) };
+}
+
+/** @param {any[]} actions @param {(destination: string) => string | null} rewrite @param {string[]} dropped */
+const rewriteList = (actions, rewrite, dropped) => actions.map(a => rewriteAction(a, rewrite, dropped)).filter(a => a !== undefined);
 
 /**
- * What deleting a set of nodes does to the prototype. Interactions that point at a deleted node are removed from the nodes that own
- * them. A flow that starts at a deleted frame is listed in `flows` for removal with the frame. A deleted node's own interactions go
- * with it. Each change is reported.
- * @param {{ name: string, nodes?: any[], prototype?: any }[]} pages
+ * What deleting a set of nodes does to the prototype. Navigations to a deleted node are dropped from the actions that hold them: a
+ * conditional loses the branch actions and the branches that are left empty, and an interaction whose action is gone is removed. A
+ * flow that starts at a deleted frame is listed in `flows` for removal with the frame. A deleted node's own interactions go with it.
+ * Each change is reported. `edits` hold each changed node's new interaction list.
+ * @param {{ id: string, name: string, nodes?: any[], prototype?: any }[]} pages
  * @param {Set<string>} removed the ids of the nodes being deleted, descendants included
  */
 export function planNodeRemoval(pages, removed) {
     const edits = [];
     const report = [];
+    const gone = id => (removed.has(id) ? null : id);
     for (const page of pages) {
         for (const node of page.nodes || []) {
             if (removed.has(node.id) || !node.prototype?.interactions) continue;
-            const gone = node.prototype.interactions.filter(i => removed.has(destinationOf(i)));
-            if (!gone.length) continue;
-            edits.push({ pageId: page.id, page: page.name, node: node.name, nodeId: node.id, removeInteractions: gone.map(i => i.id) });
-            for (const i of gone) report.push({ code: 'interaction-removed', page: page.name, node: node.name, interaction: i.id, destination: destinationOf(i) });
+            /** @type {any[]} */
+            const interactions = [];
+            let changed = false;
+            for (const i of node.prototype.interactions) {
+                const dropped = [];
+                const action = rewriteAction(i.action, gone, dropped);
+                if (!dropped.length) {
+                    interactions.push(i);
+                    continue;
+                }
+                changed = true;
+                if (action === undefined) {
+                    report.push({ code: 'interaction-removed', page: page.name, node: node.name, interaction: i.id, destination: dropped[0] });
+                    continue;
+                }
+                interactions.push({ ...i, action });
+                for (const destination of dropped) report.push({ code: 'action-removed', page: page.name, node: node.name, interaction: i.id, destination });
+            }
+            if (changed) edits.push({ pageId: page.id, page: page.name, node: node.name, nodeId: node.id, interactions });
         }
     }
     const flows = [];
@@ -126,7 +172,7 @@ export function planDetach(nodes, instanceId) {
         const master = !!n.sourceId;
         const managed = !!n.behavior && typeof n.behavior === 'object' && 'slot' in n.behavior;
         if (!master && !managed) continue;
-        edits.push({ nodeId: n.id, removeInteractions: n.prototype.interactions.map(i => i.id) });
+        edits.push({ nodeId: n.id, interactions: [] });
         for (const i of n.prototype.interactions) report.push({ code: 'interaction-dropped-on-detach', node: n.name, interaction: i.id });
     }
     return { edits, report };
@@ -148,13 +194,12 @@ export function planCopiedInteractions({ nodes, copyOf, exists }) {
         if (!p) continue;
         /** @type {any[]} */
         const interactions = [];
+        const target = d => (copyOf.has(d) ? copyOf.get(d) : exists(d) ? d : null);
         for (const i of p.interactions) {
-            const destination = destinationOf(i);
-            if (destination !== null && !copyOf.has(destination) && !exists(destination)) {
-                report.push({ code: 'interaction-dropped-on-copy', node: node.name, interaction: i.id, destination });
-                continue;
-            }
-            const action = destination !== null && copyOf.has(destination) ? { ...i.action, destinationId: copyOf.get(destination) } : i.action;
+            const dropped = [];
+            const action = rewriteAction(i.action, target, dropped);
+            for (const destination of dropped) report.push({ code: 'interaction-dropped-on-copy', node: node.name, interaction: i.id, destination });
+            if (action === undefined) continue;
             interactions.push({ ...i, id: nextInteractionId(interactions.map(x => x.id)), action });
         }
         if (interactions.length || p.overflow !== undefined) prototypes.set(node.id, { ...p, interactions });

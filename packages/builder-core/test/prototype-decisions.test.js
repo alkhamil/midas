@@ -58,8 +58,8 @@ const detachNodes = [
 test('detaching an instance keeps its own interactions, and drops those on master-owned or managed layers, reporting each', () => {
     const plan = planDetach(detachNodes, 'inst');
     assert.deepEqual(plan.edits, [
-        { nodeId: 'inst-label', removeInteractions: ['label-go'] },
-        { nodeId: 'inst-icon', removeInteractions: ['icon-go'] },
+        { nodeId: 'inst-label', interactions: [] },
+        { nodeId: 'inst-icon', interactions: [] },
     ]);
     assert.deepEqual(plan.report.map(r => [r.code, r.node]), [['interaction-dropped-on-detach', 'Label'], ['interaction-dropped-on-detach', 'iconStart']]);
 });
