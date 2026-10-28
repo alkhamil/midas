@@ -3745,9 +3745,10 @@ async function libNew(templateId = 'blank', { stay = false } = {}) {
     lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null, folder });
     await loadIntoEditor(data, id);
     savedPageSigs.clear(); // a new file: every page still has to be written
-    await save();
-    if (folder)
-        await libSaveIndex().catch(() => { }); // the file exists on the server now: record its folder
+    // An empty file is written on its first edit, like the starter document: opening a new file and leaving it must not leave an
+    // empty "Untitled" on the server. save() also records the file's folder.
+    if (data.pages[0].nodes.length)
+        await save();
     if (!stay)
         hideHome();
     return id;
