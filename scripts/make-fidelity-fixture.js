@@ -35,7 +35,7 @@ const text = (id, parentId, content, extra = {}) => layer(id, parentId, 'text', 
 const solid = (color, extra = {}) => ({ type: 'solid', color, opacity: 1, visible: true, ...extra });
 
 /**
- * The features, each a frame and the layers that draw it. `kids` gets the frame id.
+ * The features, each a frame and the layers that draw it. `layers` receives the frame id.
  * @type {{ name: string, layers: (frameId: string) => any[], frame?: Record<string, unknown> }[]}
  */
 const FEATURES = [

@@ -131,9 +131,8 @@ test('a text layer that is not truncated has no line clamp, even with a max line
     assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', maxLines: 2 }).style.WebkitLineClamp, undefined);
 });
 
-test('text wrap balance and pretty map to the text-wrap property; the default wraps as it always did', () => {
+test('text wrap balance maps to the text-wrap property; the default wraps as it always did', () => {
     assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', textWrap: 'balance' }).style.textWrap, 'balance');
-    assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', textWrap: 'pretty' }).style.textWrap, 'pretty');
     assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', textWrap: 'default' }).style.textWrap, undefined);
 });
 

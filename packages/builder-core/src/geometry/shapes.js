@@ -123,16 +123,38 @@ function vectorCommands(n) {
  * @param {(v: number) => string | number} f number formatter
  * @returns {string}
  */
+/**
+ * Replays commands on a sink. The canvas Path2D and the SVG path both read the outline through this one definition of the command set.
+ * @param {any[]} commands
+ * @param {{ moveTo: (x: number, y: number) => void, lineTo: (x: number, y: number) => void, curveTo: (x1: number, y1: number, x2: number, y2: number, x: number, y: number) => void, closePath: () => void, ellipse: (cx: number, cy: number, rx: number, ry: number, start: number, end: number, ccw: boolean) => void, roundRect: (w: number, h: number, radii: number[]) => void }} sink
+ */
+export function replayCommands(commands, sink) {
+    for (const c of commands) {
+        if (c.op === 'M') sink.moveTo(c.x, c.y);
+        else if (c.op === 'L') sink.lineTo(c.x, c.y);
+        else if (c.op === 'C') sink.curveTo(c.x1, c.y1, c.x2, c.y2, c.x, c.y);
+        else if (c.op === 'Z') sink.closePath();
+        else if (c.op === 'E') sink.ellipse(c.cx, c.cy, c.rx, c.ry, c.start, c.end, c.ccw);
+        else if (c.op === 'R') sink.roundRect(c.w, c.h, c.radii);
+    }
+}
+
+/**
+ * The SVG `d` of commands. An ellipse arc runs from the current point; a full ellipse is two half arcs, so it is never a degenerate arc.
+ * @param {any[]} commands
+ * @param {(v: number) => string | number} f number formatter
+ * @returns {string}
+ */
 export function svgPathD(commands, f) {
     let d = '';
-    for (const c of commands) {
-        if (c.op === 'M') d += `M${f(c.x)} ${f(c.y)}`;
-        else if (c.op === 'L') d += `L${f(c.x)} ${f(c.y)}`;
-        else if (c.op === 'C') d += `C${f(c.x1)} ${f(c.y1)} ${f(c.x2)} ${f(c.y2)} ${f(c.x)} ${f(c.y)}`;
-        else if (c.op === 'Z') d += 'Z';
-        else if (c.op === 'R') d += roundRectD(c.w, c.h, c.radii, f);
-        else if (c.op === 'E') d += ellipseArcD(c, f);
-    }
+    replayCommands(commands, {
+        moveTo: (x, y) => { d += `M${f(x)} ${f(y)}`; },
+        lineTo: (x, y) => { d += `L${f(x)} ${f(y)}`; },
+        curveTo: (x1, y1, x2, y2, x, y) => { d += `C${f(x1)} ${f(y1)} ${f(x2)} ${f(y2)} ${f(x)} ${f(y)}`; },
+        closePath: () => { d += 'Z'; },
+        ellipse: (cx, cy, rx, ry, start, end, ccw) => { d += ellipseArcD({ cx, cy, rx, ry, start, end, ccw }, f); },
+        roundRect: (w, h, radii) => { d += roundRectD(w, h, radii, f); },
+    });
     return d;
 }
 

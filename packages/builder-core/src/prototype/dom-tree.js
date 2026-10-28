@@ -15,6 +15,7 @@ import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { getFills } from '../geometry/fills.js';
+import { escapeAttr, svgNumber } from '../geometry/format.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -39,45 +40,45 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const parent = frame?.parentId ? byId.get(frame.parentId) : null;
     if (!frame || !(frame.type === 'frame' && (!frame.parentId || parent?.isSection))) throw new Error(`"${frameId}" is not a top-level frame`);
     const pageVarModes = pages.find(p => (p.nodes || []).includes(frame))?.varModes;
-    const cx = { byId, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => nodes.filter(n => n.parentId === id) };
-    const root = renderNode(frame, null, cx);
-    if (!root) return { root: null, styles: null, unsupported: cx.unsupported, problems: cx.problems };
-    const styles = [...cx.styles.values()].join('\n');
-    return { root, styles: styles || null, unsupported: cx.unsupported, problems: cx.problems };
+    const scope = { byId, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => nodes.filter(n => n.parentId === id) };
+    const root = renderNode(frame, null, scope);
+    if (!root) return { root: null, styles: null, unsupported: scope.unsupported, problems: scope.problems };
+    const styles = [...scope.styles.values()].join('\n');
+    return { root, styles: styles || null, unsupported: scope.unsupported, problems: scope.problems };
 }
 
 /**
  * One node as an element, or null when it is hidden or cannot be drawn (then its reason is recorded).
  * @param {any} n
  * @param {any} parent
- * @param {any} cx
+ * @param {any} scope
  * @returns {Element | null}
  */
-function renderNode(n, parent, cx) {
+function renderNode(n, parent, scope) {
     if (n.visible === false) return null;
-    const template = templateOf(n, cx);
+    const template = templateOf(n, scope);
     if (template === undefined) return null;
-    if (template) return renderButton(n, template, parent, cx);
+    if (template) return renderButton(n, template, parent, scope);
     // A boolean result is computed from its operands (polygon clipping), which the DOM does not have. Its operands are not drawn either.
     if (n.booleanOp) {
-        cx.unsupported.push({ nodeId: n.id, type: 'boolean' });
+        scope.unsupported.push({ nodeId: n.id, type: 'boolean' });
         return null;
     }
     // A mask clips the layers under it. The DOM does not clip yet, so the mask is not drawn and is reported.
     if (n.isMask) {
-        cx.unsupported.push({ nodeId: n.id, type: 'mask' });
+        scope.unsupported.push({ nodeId: n.id, type: 'mask' });
         return null;
     }
     if (!DRAWN.includes(n.type)) {
-        cx.unsupported.push({ nodeId: n.id, type: n.type });
+        scope.unsupported.push({ nodeId: n.id, type: n.type });
         return null;
     }
-    const base = { ...placement(n, parent, cx.responsive), ...opacityOf(n) };
-    if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, cx, true) });
+    const base = { ...placement(n, parent, scope.responsive), ...opacityOf(n) };
+    if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, scope, true) });
     if (VECTOR.includes(n.type) || arcActive(n)) {
-        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, ...effectStyle(n, cx, true) }, html: vectorMarkup(n, cx), children: [] };
+        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope), children: [] };
     }
-    const style = { ...base, ...fillStyle(n, cx), ...radiusStyle(n), ...effectStyle(n, cx, false) };
+    const style = { ...base, ...fillStyle(n, scope), ...radiusStyle(n), ...effectStyle(n, scope, false) };
     if (n.type === 'ellipse') style.borderRadius = '50%';
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
     if (n.type === 'frame') {
@@ -85,7 +86,7 @@ function renderNode(n, parent, cx) {
         Object.assign(style, overflowOf(n));
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
-    const children = cx.childrenOf(n.id).map(c => renderNode(c, n, cx)).filter(Boolean);
+    const children = scope.childrenOf(n.id).map(c => renderNode(c, n, scope)).filter(Boolean);
     const stroke = strokeOverlay(n);
     if (n.type === 'frame' && stroke !== undefined) {
         // A frame's stroke is a layer under its content, so the content draws over it. The isolation keeps that layer above the frame's fill.
@@ -99,24 +100,24 @@ function renderNode(n, parent, cx) {
 
 /**
  * The Button-style template a node is bound to, when it is an instance of a bound master: the template, or null for a plain node.
- * undefined when the binding cannot be drawn (the reason is in cx.problems).
+ * undefined when the binding cannot be drawn (the reason is in scope.problems).
  * @param {any} n
- * @param {any} cx
+ * @param {any} scope
  */
-function templateOf(n, cx) {
+function templateOf(n, scope) {
     if (!n.isInstance) return null;
-    const master = cx.byId.get(n.sourceId);
+    const master = scope.byId.get(n.sourceId);
     const binding = master?.behavior;
     if (!binding || !('templateId' in binding)) return null;
     const template = TEMPLATES.get(binding.templateId);
     if (!template) return null;
-    if (!cx.styles.has(template.id)) {
-        const generated = generateComponent(template, binding, cx.variables, template.name);
+    if (!scope.styles.has(template.id)) {
+        const generated = generateComponent(template, binding, scope.variables, template.name);
         if (!generated.files) {
-            cx.problems.push(...generated.problems.map(p => ({ ...p, nodeId: n.id })));
+            scope.problems.push(...generated.problems.map(p => ({ ...p, nodeId: n.id })));
             return undefined;
         }
-        cx.styles.set(template.id, generated.files[`${template.name}.css`]);
+        scope.styles.set(template.id, generated.files[`${template.name}.css`]);
     }
     return template;
 }
@@ -126,16 +127,16 @@ function templateOf(n, cx) {
  * @param {any} n
  * @param {any} template
  * @param {any} parent
- * @param {any} cx
+ * @param {any} scope
  * @returns {Element}
  */
-function renderButton(n, template, parent, cx) {
-    const master = cx.byId.get(n.sourceId);
+function renderButton(n, template, parent, scope) {
+    const master = scope.byId.get(n.sourceId);
     const binding = master.behavior;
     const attrs = { type: 'button', class: template.id };
     for (const [dim] of variableProps(template)) {
-        const collection = (cx.variables.collections || []).find(c => c.id === binding.variables[dim]);
-        attrs[`data-${dim}`] = collection ? resolveMode(collection, n, cx.byId, cx.pageVarModes) ?? '' : '';
+        const collection = (scope.variables.collections || []).find(c => c.id === binding.variables[dim]);
+        attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true' });
@@ -146,7 +147,7 @@ function renderButton(n, template, parent, cx) {
             children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props.icon ?? ''), children: [] });
         }
     }
-    return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, cx.responsive), children };
+    return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, scope.responsive), children };
 }
 
 /** `iconStart` -> `start`, the placement a managed slot shows for. */
@@ -265,14 +266,14 @@ function flexOf(n) {
  * The fill of a box as CSS. Each visible fill is one layer, the first on top, as the canvas stacks them. A solid fill is the background
  * colour; a gradient is a gradient layer. An image fill is not drawn yet: it is reported.
  * @param {any} n
- * @param {any} cx
+ * @param {any} scope
  * @returns {Record<string, string>}
  */
-function fillStyle(n, cx) {
+function fillStyle(n, scope) {
     const layers = [];
     for (const f of getFills(n).filter(x => x.visible !== false)) {
         const layer = fillLayer(f);
-        if (layer === null) cx.unsupported.push({ nodeId: n.id, type: `${f.type} fill` });
+        if (layer === null) scope.unsupported.push({ nodeId: n.id, type: `${f.type} fill` });
         else if (layer) layers.push(layer);
     }
     if (!layers.length) return {};
@@ -313,18 +314,18 @@ function radiusStyle(n) {
  */
 function strokeOverlay(n) {
     if (!strokeIsOn(n)) return undefined;
-    return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, fmt, escAttr)}`);
+    return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
 }
 
 /**
  * An outline drawn as SVG: an arc, a line or a vector path, with its fill and its stroke.
  * @param {any} n
- * @param {any} cx
+ * @param {any} scope
  * @returns {string}
  */
-function vectorMarkup(n, cx) {
-    const fill = n.type === 'line' ? 'fill="none"' : fillAttrs(n, cx);
-    return svgMarkup(n, `${fill} ${svgStrokeAttrs(n, fmt, escAttr)}`);
+function vectorMarkup(n, scope) {
+    const fill = n.type === 'line' ? 'fill="none"' : fillAttrs(n, scope);
+    return svgMarkup(n, `${fill} ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
 }
 
 /**
@@ -335,8 +336,8 @@ function vectorMarkup(n, cx) {
  */
 function svgMarkup(n, attrs) {
     const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
-    const extra = svgStrokeExtra(n, fmt, escAttr, prefix);
-    const body = svgShapeEl(n, fmt, attrs) + extra.el;
+    const extra = svgStrokeExtra(n, svgNumber, escapeAttr, prefix);
+    const body = svgShapeEl(n, svgNumber, attrs) + extra.el;
     return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${extra.defs}${body}</svg>`;
 }
 
@@ -344,18 +345,18 @@ function svgMarkup(n, attrs) {
  * The fill attributes of an SVG outline: its first visible fill when it is solid. A gradient or an image on an SVG outline is not drawn
  * yet, and a second fill is not drawn; both are reported.
  * @param {any} n
- * @param {any} cx
+ * @param {any} scope
  */
-function fillAttrs(n, cx) {
+function fillAttrs(n, scope) {
     const fills = getFills(n).filter(f => f.visible !== false);
-    if (fills.length > 1) cx.unsupported.push({ nodeId: n.id, type: 'multiple fills on a vector layer' });
+    if (fills.length > 1) scope.unsupported.push({ nodeId: n.id, type: 'multiple fills on a vector layer' });
     const [first] = fills;
     if (!first) return 'fill="none"';
     if (first.type !== 'solid' || !first.color || first.color === 'none') {
-        cx.unsupported.push({ nodeId: n.id, type: `${first.type} fill on a vector layer` });
+        scope.unsupported.push({ nodeId: n.id, type: `${first.type} fill on a vector layer` });
         return 'fill="none"';
     }
-    return `fill="${escAttr(first.color)}" fill-opacity="${fmt(first.opacity ?? 1)}"`;
+    return `fill="${escapeAttr(first.color)}" fill-opacity="${svgNumber(first.opacity ?? 1)}"`;
 }
 
 /**
@@ -363,11 +364,11 @@ function fillAttrs(n, cx) {
  * shadow follows the glyphs or the outline. Layer blur is a filter; background blur is a backdrop filter. Effects the DOM has no form for
  * (glass, an inner shadow on text) are reported. Only the effects list is read.
  * @param {any} n
- * @param {any} cx
+ * @param {any} scope
  * @param {boolean} onOutline true for text and vector layers
  * @returns {Record<string, string>}
  */
-function effectStyle(n, cx, onOutline) {
+function effectStyle(n, scope, onOutline) {
     const shadows = [], filters = [], backdrops = [];
     for (const e of (Array.isArray(n.effects) ? n.effects : []).filter(x => x.visible !== false)) {
         const shadow = `${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${e.spread || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)}`;
@@ -376,12 +377,12 @@ function effectStyle(n, cx, onOutline) {
             else shadows.push(shadow);
         }
         else if (e.type === 'inner') {
-            if (onOutline) cx.unsupported.push({ nodeId: n.id, type: 'inner shadow on a text or vector layer' });
+            if (onOutline) scope.unsupported.push({ nodeId: n.id, type: 'inner shadow on a text or vector layer' });
             else shadows.push(`inset ${shadow}`);
         }
         else if (e.type === 'layerBlur') filters.push(`blur(${(e.radius || 0) / 2}px)`);
         else if (e.type === 'bgBlur') backdrops.push(`blur(${(e.radius || 0) / 2}px)`);
-        else cx.unsupported.push({ nodeId: n.id, type: e.type });
+        else scope.unsupported.push({ nodeId: n.id, type: e.type });
     }
     /** @type {Record<string, string>} */
     const style = {};
@@ -412,11 +413,6 @@ function colorWithAlpha(color, opacity) {
     return `color-mix(in srgb, ${color} ${Math.round(o * 100)}%, transparent)`;
 }
 
-/** A number for an SVG attribute: at most three decimals. */
-const fmt = v => +(+v).toFixed(3);
-
-/** Escapes a value for an SVG attribute. */
-const escAttr = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /**
  * A text layer: a span with its characters, or one span per style run when it has several (rich text).
@@ -472,6 +468,6 @@ function textStyle(n) {
     if (n.textTruncate) {
         Object.assign(style, { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: String(Math.max(1, Math.floor(+n.maxLines) || 1)), overflow: 'hidden' });
     }
-    if (n.textWrap === 'balance' || n.textWrap === 'pretty') style.textWrap = n.textWrap;
+    if (n.textWrap === 'balance') style.textWrap = 'balance';
     return style;
 }
