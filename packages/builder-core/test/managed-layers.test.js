@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isManagedLayer, managedRefusal } from '../src/behavior-engine/managed-layers.js';
+import { isManagedLayer, managedRefusal, managedPasteRefusal } from '../src/behavior-engine/managed-layers.js';
 import { behaviorProblem } from '../src/behavior-engine/document-check.js';
 import { detachBehavior } from '../src/behavior-engine/data.js';
 
@@ -51,4 +51,19 @@ test('detaching an instance leaves no behavior data or managed marker in its tre
     const tree = [structuredClone(instance), managed('iconStart', { parentId: 'i1' }), { id: 'i1-label', name: 'Label', type: 'text', parentId: 'i1' }];
     detachBehavior(tree);
     assert.equal(tree.some(n => 'behavior' in n), false);
+});
+
+test('a payload with a managed layer but not its instance is refused, naming the layer', () => {
+    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } };
+    assert.match(managedPasteRefusal([layer]), /"iconStart" is managed by its instance: pasting it without that instance is not allowed\./);
+});
+
+test('a payload with the instance and its managed layers is allowed', () => {
+    const instance = { id: 'i1', parentId: null, isInstance: true, behavior: { version: 1, props: { hasIcon: true } } };
+    const layer = { id: 'l1', parentId: 'i1', behavior: { version: 1, slot: 'iconStart' } };
+    assert.equal(managedPasteRefusal([instance, layer]), null);
+});
+
+test('a payload of plain layers is allowed', () => {
+    assert.equal(managedPasteRefusal([{ id: 'a', parentId: null }, { id: 'b', parentId: 'a' }]), null);
 });

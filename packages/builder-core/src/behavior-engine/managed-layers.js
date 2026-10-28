@@ -35,3 +35,15 @@ export function managedRefusal(action, nodes) {
     if (!managed) return null;
     return `"${managed.behavior.slot}" is managed by its instance: ${WHAT[action]} on its own is not allowed.`;
 }
+
+/**
+ * Why pasting these nodes is refused, or null. A managed layer is pasted only together with its instance: its parent must be in
+ * the same payload. A whole instance (with its managed layers) is allowed; the layers then sync in the paste transaction.
+ * @param {{ id: string, parentId?: string | null, behavior?: any }[]} nodes the clipboard payload, every node in it
+ * @returns {string | null}
+ */
+export function managedPasteRefusal(nodes) {
+    const ids = new Set(nodes.map(n => n.id));
+    const orphan = nodes.find(n => isManagedLayer(n) && !ids.has(n.parentId));
+    return orphan ? `"${orphan.behavior.slot}" is managed by its instance: pasting it without that instance is not allowed.` : null;
+}
