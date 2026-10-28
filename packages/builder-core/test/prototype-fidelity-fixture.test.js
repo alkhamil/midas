@@ -11,14 +11,14 @@ test('generator check: the fidelity fixture file equals what the generator build
     assert.deepEqual(JSON.parse(readFileSync(FIDELITY_FIXTURE_PATH, 'utf8')), doc);
 });
 
-test('every feature frame draws, and exactly these are reported as not drawn: booleans, glass and a per-side frame stroke outside its box', () => {
+test('every feature frame draws, and exactly these are reported as not drawn: booleans and glass', () => {
     const reported = [];
     for (const id of frameIds) {
         const { root, unsupported } = toDomTree(doc, id);
         assert.ok(root, id);
         reported.push(...unsupported);
     }
-    assert.deepEqual(reported.map(u => [u.nodeId, u.type]), [['frame-1', 'frame outside stroke on some sides'], ['g1', 'boolean'], ['g2', 'boolean'], ['x5', 'glass']]);
+    assert.deepEqual(reported.map(u => [u.nodeId, u.type]), [['g1', 'boolean'], ['g2', 'boolean'], ['x5', 'glass']]);
 });
 
 test('building the tree does not change the document', () => {

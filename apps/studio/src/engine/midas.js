@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, strokeOutside, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -65,11 +65,8 @@ function parseColor(c, opacity = 1) {
 function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fills: paintOf('#0058CA'), stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fills: paintOf('#20202a'), w: 240, h: 44 } : {}), ...(type === 'frame' ? { fills: paintOf('#ffffff'), w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fills: [] } : {}), ...props }; }
 // ===== autolayout engine =====
 function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none'; }
-function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
-const lyPadsBase = lyPads;
-function lyGap(n) { return n.gap ?? 16; }
-// Gap between wrapped rows; a missing or non-numeric value (imported wrap layouts) follows the main gap instead of turning every size into NaN.
-function lyGapCross(n, gap) { return Number.isFinite(n.gapCross) ? n.gapCross : gap; }
+// The padding, gaps and the room a stroke takes in the flow come from the shared geometry module (the DOM renders the same values).
+const lyPads = layoutPads, lyGap = layoutGap, lyGapCross = layoutGapCross;
 function sizingOf(n, axis) {
     const v = axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
     if (v)
@@ -97,22 +94,7 @@ function runLayout(d) {
     const parentOf = n => d.get(n.parentId);
     // "Strokes: Included" (auto layout settings): children's outer stroke takes up room in the flow, and the
     // frame's own inner stroke pushes its content in, like Figma.
-    const strokeOut = c => !strokeIsOn(c) ? 0 : c.strokeAlign === 'inside' ? 0 : c.strokeAlign === 'outside' ? (c.strokeWidth || 0) : (c.strokeWidth || 0) / 2;
-    // Per side: a frame with a stroke on its left edge only takes room on that side only.
-    const strokeIn = n => {
-        if (!strokeIsOn(n) || n.strokeAlign === 'outside')
-            return { t: 0, r: 0, b: 0, l: 0 };
-        const k = n.strokeAlign === 'inside' ? 1 : .5, s = strokeSideWidths(n);
-        return { t: s.t * k, r: s.r * k, b: s.b * k, l: s.l * k };
-    };
-    const ext = c => parentOf(c)?.strokesIncluded ? strokeOut(c) : 0;
-    const lyPads = n => {
-        const P = lyPadsBase(n);
-        if (!n.strokesIncluded)
-            return P;
-        const s = strokeIn(n);
-        return { t: P.t + s.t, r: P.r + s.r, b: P.b + s.b, l: P.l + s.l };
-    };
+    const ext = c => strokeOutside(c, parentOf(c));
     // First-line baseline of a layer, measured from its top (non-text layers sit on their bottom edge).
     const baselineOf = c => c.type === 'text' ? ((c.fontSize || 16) * (c.lineHeight || 1.2) - (c.fontSize || 16)) / 2 + (c.fontSize || 16) * .8 : c.h;
     const inFlow = c => c.visible !== false && c.layoutPositioning !== 'absolute';

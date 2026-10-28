@@ -29,7 +29,7 @@ test('in a column, a fill width child stretches across the column', () => {
 
 test('in a column, a fixed width child keeps its width, does not stretch, and does not shrink', () => {
     const s = childStyle({ layout: 'vertical' }, { layoutSizingH: 'fixed', layoutSizingV: 'hug' });
-    assert.equal(s.alignSelf, 'flex-start');
+    assert.equal(s.alignSelf, undefined, 'the column aligns it, as on the canvas');
     assert.equal(s.width, '100px');
     assert.equal(s.flexShrink, '0');
 });
@@ -38,7 +38,7 @@ test('in a column, a hugging height child keeps its content height and does not 
     const s = childStyle({ layout: 'vertical' }, { layoutSizingH: 'hug', layoutSizingV: 'hug' });
     assert.equal(s.height, undefined);
     assert.equal(s.flexShrink, '0');
-    assert.equal(s.alignSelf, 'flex-start');
+    assert.equal(s.alignSelf, undefined, 'the column aligns it, as on the canvas');
 });
 
 test('in a row, the axes swap: a fill width child takes the free space, a fill height child stretches', () => {
@@ -106,10 +106,10 @@ test('nested auto layout: a hugging frame inside a column is a flex row whose fi
 test('a frame clips its content by default, on both axes', () => {
     const doc = docOf([frame('root', null, { layout: 'vertical' }), frame('box', 'root', { layoutSizingH: 'fixed', layoutSizingV: 'fixed' })]);
     const { root } = toDomTree(doc, 'root', { responsive: true });
-    assert.equal(root.style.overflowX, 'hidden');
-    assert.equal(root.style.overflowY, 'hidden');
-    assert.equal(root.children[0].style.overflowX, 'hidden');
-    assert.equal(root.children[0].style.overflowY, 'hidden');
+    assert.equal(root.style.overflowX, 'clip');
+    assert.equal(root.style.overflowY, 'clip');
+    assert.equal(root.children[0].style.overflowX, 'clip');
+    assert.equal(root.children[0].style.overflowY, 'clip');
 });
 
 test('a frame scroll behaviour opens the axes it names and keeps the others clipped', () => {
@@ -118,15 +118,15 @@ test('a frame scroll behaviour opens the axes it names and keeps the others clip
         const { root } = toDomTree(doc, 'root');
         return [root.style.overflowX, root.style.overflowY];
     };
-    assert.deepEqual(axes('none'), ['hidden', 'hidden']);
-    assert.deepEqual(axes('horizontal'), ['auto', 'hidden']);
-    assert.deepEqual(axes('vertical'), ['hidden', 'auto']);
+    assert.deepEqual(axes('none'), ['clip', 'clip']);
+    assert.deepEqual(axes('horizontal'), ['auto', 'clip']);
+    assert.deepEqual(axes('vertical'), ['clip', 'auto']);
     assert.deepEqual(axes('both'), ['auto', 'auto']);
 });
 
 test('the clip flag no longer decides the clipping: every frame clips unless its scroll behaviour opens an axis', () => {
     const doc = docOf([frame('root', null, { clip: false })]);
-    assert.equal(toDomTree(doc, 'root').root.style.overflowX, 'hidden');
+    assert.equal(toDomTree(doc, 'root').root.style.overflowX, 'clip');
 });
 
 test('in a row, a hugging width child keeps its content width and does not shrink, so it is clipped by a narrow frame', () => {
@@ -138,5 +138,5 @@ test('in a row, a hugging width child keeps its content width and does not shrin
 test('responsive: the frame clips a fixed child that runs past it on both axes, unless its scroll behaviour opens them', () => {
     const doc = docOf([frame('root', null, { prototype: { version: 1, interactions: [], overflow: 'horizontal' } }), rect('c', 'root', { x: 0, y: 0, w: 900, h: 900 })]);
     const { root } = toDomTree(doc, 'root', { responsive: true });
-    assert.deepEqual([root.style.width, root.style.height, root.style.overflowX, root.style.overflowY], ['100%', '100%', 'auto', 'hidden']);
+    assert.deepEqual([root.style.width, root.style.height, root.style.overflowX, root.style.overflowY], ['100%', '100%', 'auto', 'clip']);
 });

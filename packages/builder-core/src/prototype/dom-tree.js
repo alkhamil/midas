@@ -16,6 +16,7 @@ import { generateComponent } from '../behavior-engine/codegen.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
+import { layoutGap, layoutGapCross, layoutPads, strokeOutside } from '../geometry/autolayout.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -78,12 +79,14 @@ function renderNode(n, parent, scope) {
     const style = { ...base, ...fillStyle(n, scope), ...radiusStyle(n), ...effectStyle(n, scope, false) };
     if (n.type === 'ellipse') style.borderRadius = '50%';
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
+    const children = renderChildren(n, scope);
     if (n.type === 'frame') {
-        if (isAutoLayout(n)) Object.assign(style, flexOf(n));
+        // The flow is the children that are not absolutely positioned: a space-between with one of them starts it, as the canvas does.
+        const flowCount = children.filter(c => c.style.position !== 'absolute').length;
+        if (isAutoLayout(n)) Object.assign(style, flexOf(n, flowCount));
         Object.assign(style, overflowOf(n));
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
-    const children = renderChildren(n, scope);
     const outline = frameOutlineOf(n, scope);
     if (outline !== undefined) {
         style.outline = outline;
@@ -276,13 +279,15 @@ function flowSizing(n, parent) {
         style.flexShrink = '0';
         if (mainAxis.sizing !== 'hug' && n.type !== 'text') style[mainAxis.size] = `${mainAxis.length}px`;
     }
+    // A fixed or hug cross axis keeps its size and takes the parent's cross alignment (align-items), as on the canvas.
     if (crossAxis.sizing === 'fill') {
         style.alignSelf = 'stretch';
     }
-    else {
-        style.alignSelf = 'flex-start';
-        if (crossAxis.sizing !== 'hug' && n.type !== 'text') style[crossAxis.size] = `${crossAxis.length}px`;
+    else if (crossAxis.sizing !== 'hug' && n.type !== 'text') {
+        style[crossAxis.size] = `${crossAxis.length}px`;
     }
+    const outside = strokeOutside(n, parent);
+    if (outside) style.margin = `${outside}px`;
     return style;
 }
 
@@ -294,26 +299,49 @@ function flowSizing(n, parent) {
  */
 function overflowOf(n) {
     const mode = n.isInstance ? 'none' : (n.prototype?.overflow ?? 'none');
-    return {
-        overflowX: mode === 'horizontal' || mode === 'both' ? 'auto' : 'hidden',
-        overflowY: mode === 'vertical' || mode === 'both' ? 'auto' : 'hidden',
-    };
+    const scrollX = mode === 'horizontal' || mode === 'both', scrollY = mode === 'vertical' || mode === 'both';
+    // `clip` (not `hidden`) so a centred stroke's outer half, which lies outside the box, is not cut; the margin is that half.
+    const style = { overflowX: scrollX ? 'auto' : 'clip', overflowY: scrollY ? 'auto' : 'clip' };
+    const half = centredStrokeHalf(n);
+    if (half) style.overflowClipMargin = `${half}px`;
+    return style;
 }
 
 /**
- * The flex container style of an auto layout frame.
+ * Half of a frame's centred stroke, the part that lies outside its box: the widest side's half. Zero for no stroke, or one not centred.
  * @param {any} n
  */
-function flexOf(n) {
-    const pad = (p, fallback) => `${p ?? fallback ?? 0}px`;
+function centredStrokeHalf(n) {
+    if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'center') return 0;
+    const s = strokeSideWidths(n);
+    return Math.max(s.t, s.r, s.b, s.l) / 2;
+}
+
+/**
+ * The flex container style of an auto layout frame: the spacing and alignment the canvas layout engine uses (`layoutPads`, the gaps,
+ * `gapAuto` for space between, evenly or around, and the alignments). Grid layouts are laid out as a row here.
+ * @param {any} n
+ * @param {number} flowCount the children in the flow
+ */
+function flexOf(n, flowCount) {
+    const vertical = n.layout === 'vertical';
+    const P = layoutPads(n), gap = layoutGap(n), mainGap = n.gapAuto ? 0 : gap, crossGap = layoutGapCross(n, gap);
+    const edge = { start: 'flex-start', center: 'center', end: 'flex-end' };
+    const mode = n.gapMode || 'between';
+    let justify = edge[n.primaryAlign ?? 'start'] ?? 'flex-start';
+    if (n.gapAuto && mode === 'evenly') justify = 'space-evenly';
+    else if (n.gapAuto && mode === 'around') justify = 'space-around';
+    else if (n.gapAuto && flowCount > 1) justify = 'space-between';
     return {
         display: 'flex',
-        flexDirection: n.layout === 'vertical' ? 'column' : 'row',
+        flexDirection: vertical ? 'column' : 'row',
         flexWrap: n.layoutWrap ? 'wrap' : 'nowrap',
-        gap: `${n.gap ?? 0}px`,
-        padding: [n.padT, n.padR, n.padB, n.padL].every(v => v === undefined)
-            ? `${n.padding ?? 0}px`
-            : `${pad(n.padT, n.padding)} ${pad(n.padR, n.padding)} ${pad(n.padB, n.padding)} ${pad(n.padL, n.padding)}`,
+        columnGap: `${vertical ? crossGap : mainGap}px`,
+        rowGap: `${vertical ? mainGap : crossGap}px`,
+        padding: `${P.t}px ${P.r}px ${P.b}px ${P.l}px`,
+        justifyContent: justify,
+        alignItems: !vertical && n.alignBaseline ? 'baseline' : edge[n.counterAlign ?? n.layoutAlign ?? 'start'] ?? 'flex-start',
+        alignContent: 'flex-start',
         boxSizing: 'border-box',
     };
 }
@@ -360,15 +388,12 @@ function strokeOverlay(n) {
  * @returns {string | undefined}
  */
 function frameOutlineOf(n, scope) {
-    if (n.type !== 'frame' || !strokeIsOn(n)) return undefined;
-    const width = strokeSideWidths(n).t, align = n.strokeAlign ?? 'center';
-    const outside = align === 'outside' ? width : align === 'center' ? width / 2 : 0;
-    if (!outside) return undefined;
+    if (n.type !== 'frame' || !strokeIsOn(n) || n.strokeAlign !== 'outside') return undefined;
     if (!strokeSidesUniform(n)) {
         scope.unsupported.push({ nodeId: n.id, type: 'frame outside stroke on some sides' });
         return undefined;
     }
-    return `${outside}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
+    return `${strokeSideWidths(n).t}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
 }
 
 /**

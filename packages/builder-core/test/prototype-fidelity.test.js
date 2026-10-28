@@ -209,9 +209,10 @@ test('an outside frame stroke is the frame outline, which the frame clip does no
     assert.equal(root.children.length, 1);
 });
 
-test('a centred frame stroke is the inner half as an overlay and the outer half as an outline', () => {
+test('a centred frame stroke is drawn whole by its overlay; the frame clips with a margin of half the stroke', () => {
     const root = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b' }), layer()]), 'A').root;
-    assert.equal(root.style.outline, '3px solid #c0392b');
+    assert.equal(root.style.outline, undefined);
+    assert.equal(root.style.overflowClipMargin, '3px');
     assert.match(root.children[0].html, /stroke-width="6"/);
 });
 

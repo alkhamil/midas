@@ -36,8 +36,8 @@ test('an auto layout frame is a flex container with its direction, gap and paddi
     const { root } = toDomTree(d, 'A');
     assert.equal(root.style.display, 'flex');
     assert.equal(root.style.flexDirection, 'row');
-    assert.equal(root.style.gap, '8px');
-    assert.equal(root.style.padding, '4px');
+    assert.equal(root.style.columnGap, '8px');
+    assert.equal(root.style.padding, '4px 4px 4px 4px');
     assert.equal(root.children[0].style.position, undefined);
     assert.equal(root.children[0].style.left, undefined);
 });
@@ -156,9 +156,10 @@ test('a Button instance whose master has no variable binding is refused with its
     assert.ok(result.problems.length > 0);
 });
 
-test('a hugging child of an auto layout column is not stretched across the column (align-self flex-start)', () => {
+test('a hugging child of an auto layout column is not stretched across the column, and takes the column\'s alignment', () => {
     const { root } = toDomTree(doc([frame('A', { layout: 'vertical' }), child('hug', 'A', { layoutSizingH: 'hug', layoutSizingV: 'hug' }), child('fill', 'A', { layoutSizingH: 'fill' })]), 'A');
-    assert.equal(root.children[0].style.alignSelf, 'flex-start');
+    assert.equal(root.style.alignItems, 'flex-start');
+    assert.equal(root.children[0].style.alignSelf, undefined);
     assert.equal(root.children[1].style.alignSelf, 'stretch', 'a fill child stretches across the column');
 });
 
@@ -167,7 +168,7 @@ test('a Button instance inside an auto layout frame keeps its place in the flow,
     const d = { pages: [{ id: 'p', name: 'Screens', nodes: [frame('A', { layout: 'vertical' }), buttonMaster, instance] }], variables };
     const { root } = toDomTree(d, 'A');
     assert.equal(root.children[0].tag, 'button');
-    assert.equal(root.children[0].style.alignSelf, 'flex-start');
+    assert.equal(root.children[0].style.alignSelf, undefined);
     assert.equal(root.children[0].style.position, undefined);
 });
 
@@ -189,7 +190,7 @@ test('responsive: a child filling the column stretches across it, and a hugging 
     assert.equal(root.children[0].style.alignSelf, 'stretch');
     assert.equal(root.children[0].style.height, '20px');
     assert.equal(root.children[1].style.width, undefined);
-    assert.equal(root.children[1].style.alignSelf, 'flex-start');
+    assert.equal(root.children[1].style.alignSelf, undefined);
     assert.equal(root.children[2].style.width, '60px');
 });
 
@@ -243,7 +244,7 @@ test('Play ignores a scroll behaviour on a template instance: it clips on both a
     const master = { id: 'M', name: 'Card', type: 'frame', parentId: null };
     const instance = { id: 'I', name: 'Card copy', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', w: 200, h: 100, prototype: { version: 1, interactions: [], overflow: 'both' } };
     const { root } = toDomTree(doc([frame('A'), master, instance]), 'I');
-    assert.deepEqual([root.style.overflowX, root.style.overflowY], ['hidden', 'hidden']);
+    assert.deepEqual([root.style.overflowX, root.style.overflowY], ['clip', 'clip']);
 });
 
 test('a Button icon slot draws the icon its nested instance holds, not the icon id as text', () => {
