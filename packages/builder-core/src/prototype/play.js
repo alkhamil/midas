@@ -156,3 +156,13 @@ export function interactionPatch(interaction, field, value, { firstDestination }
             throw new Error(`Unknown field "${field}".`);
     }
 }
+
+/**
+ * How a destination is named in a picker: its name alone on the page the link is on, and "page / name" on another page, so two frames
+ * with one name stay apart.
+ * @param {{ name: string, page: string }} destination
+ * @param {string} currentPage the name of the page the link is on
+ */
+export function destinationLabel(destination, currentPage) {
+    return destination.page === currentPage ? destination.name : `${destination.page} / ${destination.name}`;
+}

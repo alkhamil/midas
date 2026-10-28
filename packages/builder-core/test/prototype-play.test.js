@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { playContext, destinationOptions, nextInteractionId, defaultNavigate, playStartOf, interactionPatch, transitionFieldsOf } from '../src/prototype/play.js';
+import { playContext, destinationOptions, destinationLabel, nextInteractionId, defaultNavigate, playStartOf, interactionPatch, transitionFieldsOf } from '../src/prototype/play.js';
 import { buildPrototypeFixture } from '../../../scripts/make-prototype-fixture.js';
 
 test('the player context reads interactions, frames and nodes from the document, without changing it', () => {
@@ -96,4 +96,9 @@ test('a delay or a duration that is not a whole number of zero or more is refuse
     assert.throws(() => interactionPatch(i, 'delay', '-5', {}), /whole number/);
     const n = { id: 'n', trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId: 'B', transition: { type: 'dissolve', durationMs: 200, easing: 'linear' } } };
     assert.throws(() => interactionPatch(n, 'duration', '', {}), /whole number/);
+});
+
+test('a destination on another page is named with its page, one on this page by its name alone', () => {
+    assert.equal(destinationLabel({ id: 'c', name: 'Checkout', page: 'Cart' }, 'Flow'), 'Cart / Checkout');
+    assert.equal(destinationLabel({ id: 'h', name: 'Home', page: 'Flow' }, 'Flow'), 'Home');
 });

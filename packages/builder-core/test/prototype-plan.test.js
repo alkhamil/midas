@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions } from '../src/prototype/plan.js';
+import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions, withFlowStart, flowStartOf } from '../src/prototype/plan.js';
 
 const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } });
 const proto = interactions => ({ version: 1, interactions });
@@ -96,4 +96,18 @@ test('an open-link needs no destination and is copied as it is', () => {
     const open = { id: 'o', trigger: { type: 'on-click' }, action: { type: 'open-link', url: 'https://example.com' } };
     const { prototypes } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([open]) }], copyOf, exists: () => false });
     assert.deepEqual(prototypes.get('A').interactions, [{ ...open, id: 'i1' }]);
+});
+
+test('a page has one flow start: setting it replaces the start, and clearing it leaves no prototype data', () => {
+    const first = withFlowStart(undefined, 'A', 'Flow');
+    assert.deepEqual(first, { version: 1, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'A' }] });
+    assert.deepEqual(withFlowStart(first, 'B', 'Flow'), { version: 1, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'B' }] });
+    assert.equal(withFlowStart(first, null, 'Flow'), undefined);
+    const kept = { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'A' }] };
+    assert.deepEqual(withFlowStart(kept, 'B', 'Flow'), { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'B' }] });
+});
+
+test('the flow start of a page is the start of its first flow, or null', () => {
+    assert.equal(flowStartOf({ version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'A' }] }), 'A');
+    assert.equal(flowStartOf(undefined), null);
 });

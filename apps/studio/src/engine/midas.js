@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -8561,7 +8561,8 @@ function rolledBackForPrototype() {
     history.cancel();
     doc.refresh();
     refreshUI();
-    toast(`Not applied: "${problem.node ?? problem.page}" on page "${problem.page}": ${problem.message}.`);
+    const where = problem.node ? `"${problem.node}" on page "${problem.page}"` : `page "${problem.page}"`;
+    toast(`Not applied: ${where}: ${problem.message}.`);
     return true;
 }
 function rolledBackForBehavior() {
@@ -9009,7 +9010,7 @@ function prototypeTabHtml(n) {
             select('trigger', 'Trigger', i.id, triggers, i.trigger.type),
             i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : '',
             select('action', 'Action', i.id, actions, a.type),
-            a.type === 'navigate-to' ? select('destination', 'Destination', i.id, destinations.map(d => [d.id, `${d.name} · ${d.page}`]), a.destinationId) : '',
+            a.type === 'navigate-to' ? select('destination', 'Destination', i.id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId) : '',
             a.type === 'navigate-to' ? select('transition', 'Transition', i.id, transitions, t?.type ?? 'instant') : '',
             a.type === 'navigate-to' && fields.direction ? select('direction', 'Direction', i.id, directions, t.direction) : '',
             a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', i.id, t.durationMs) : '',
@@ -9022,8 +9023,32 @@ function prototypeTabHtml(n) {
     const add = destinations.length
         ? '<button class="wide-button" data-pt-add>Add interaction</button>'
         : '<span class="small-label">Add a top-level frame to link to.</span>';
-    return `<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' && !n.isInstance ? scrollBehaviorHtml(n) : ''}`;
+    const flow = isTopLevelFrame(n) ? flowStartHtml(n) : '';
+    return `${flow}<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' && !n.isInstance ? scrollBehaviorHtml(n) : ''}`;
 }
+/** A top-level frame of the document (on any page): a frame with no parent, or inside a section. */
+function isTopLevelFrame(n) {
+    return n.type === 'frame' && (!n.parentId || !!doc.get(n.parentId)?.isSection);
+}
+/** The Flow section: a switch that makes the frame the flow start of its page (one per page). */
+function flowStartHtml(n) {
+    const page = pageOfNode(n.id);
+    const isStart = flowStartOf(page?.prototype) === n.id;
+    return `<div class="inspector-section"><div class="section-heading">Flow</div><div class="cmp-props"><div class="cmp-prop2"><label>Flow start</label><div class="cmp-ctl"><label class="vsw"><input type="checkbox" role="switch" data-pt-flow="${esc(n.id)}" aria-label="Flow start" ${isStart ? 'checked' : ''}></label><span class="vsw-spacer"></span></div></div></div></div>`;
+}
+/** The Flow switch changed: the frame becomes the page's flow start, or stops being it. One history step. */
+document.addEventListener('change', e => {
+    if (!e.target.matches?.('[data-pt-flow]')) return;
+    const n = doc.get(e.target.dataset.ptFlow);
+    const page = n && pageOfNode(n.id);
+    if (!page) return;
+    transaction('Set flow start', () => {
+        page.prototype = withFlowStart(page.prototype, e.target.checked ? n.id : null, page.name);
+        if (!page.prototype) delete page.prototype;
+        doc.touch(n);
+    });
+    renderInspector();
+});
 /** The Scroll behavior section of a frame: the axes its content may scroll on, with a warning when the content does not reach past the frame. */
 function scrollBehaviorHtml(n) {
     const overflow = n.prototype?.overflow ?? 'none';
@@ -10706,6 +10731,16 @@ function drawDotGrid() {
             c.fillRect(Math.round(x * dpr - d / 2), Math.round(y * dpr - d / 2), d, d);
 }
 // Components and instances carry a small purple marker in front of their canvas name: four diamonds for a component, one for an instance.
+/** The flow start marker: a small play triangle left of a frame's title, for the frame Play starts from. */
+function drawFlowMarker(c, x, y) {
+    c.fillStyle = options.theme === 'dark' ? '#7aa6dc' : '#5b9cf0';
+    c.beginPath();
+    c.moveTo(x - 14, y - 17);
+    c.lineTo(x - 14, y - 7);
+    c.lineTo(x - 6, y - 12);
+    c.closePath();
+    c.fill();
+}
 function labelKind(n) { return n.component || n.componentSet ? 'component' : n.isInstance ? 'instance' : null; }
 const LABEL_ICON_W = 14;
 function drawLabelIcon(c, kind, x, y) {
@@ -10746,6 +10781,7 @@ function drawOverlay() {
         c.restore();
     }
     c.font = '10px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    const flowStarts = new Set((doc.page?.prototype?.flows ?? []).map(f => f.startFrameId));
     for (const s of doc.scene()) {
         if (s.node.type !== 'frame' || s.node.parentId && !doc.get(s.node.parentId)?.isSection)
             continue;
@@ -10779,6 +10815,7 @@ function drawOverlay() {
         }
         else
             c.fillText(label, p.x, p.y - 12);
+        if (flowStarts.has(s.node.id)) drawFlowMarker(c, p.x, p.y);
     }
     drawLayoutGrids(c);
     drawSlots(c);

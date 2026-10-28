@@ -162,3 +162,25 @@ export function planCopiedInteractions({ nodes, copyOf, exists }) {
     }
     return { prototypes, report };
 }
+
+/**
+ * The flow start of a page: the start frame of its first flow, or null when the page has none.
+ * @param {{ flows?: { startFrameId: string }[] } | undefined} prototype the page's prototype data
+ * @returns {string | null}
+ */
+export function flowStartOf(prototype) {
+    return prototype?.flows?.[0]?.startFrameId ?? null;
+}
+
+/**
+ * The page's prototype data with its one flow starting at a frame. A page has one flow start: setting it replaces the start. `null`
+ * clears it, and then the page has no prototype data left. The flow is named after the page.
+ * @param {{ version: number, flows: any[] } | undefined} prototype the page's prototype data
+ * @param {string | null} frameId the top-level frame to start at, or null
+ * @param {string} pageName
+ */
+export function withFlowStart(prototype, frameId, pageName) {
+    if (frameId === null) return undefined;
+    const flow = prototype?.flows?.[0];
+    return { version: PROTOTYPE_VERSION, flows: [{ id: flow?.id ?? 'flow', name: flow?.name ?? pageName, startFrameId: frameId }] };
+}
