@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewportLayout, chromeVisibility, overflowWarning, flowFrames, stepFrame, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
+import { viewportLayout, chromeVisibility, overflowWarning, overflowWarnings, flowFrames, stepFrame, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
 
 const viewport = { width: 800, height: 600 };
 const tall = { width: 375, height: 2000 };
@@ -160,4 +160,17 @@ test('prev and next move through the frames, and are disabled at the ends', () =
 
 test('a frame that is not in the list counts as no position', () => {
     assert.deepEqual(stepFrame(['A', 'B'], 'Z', 'next'), { target: null, index: -1, total: 2, prevDisabled: true, nextDisabled: true });
+});
+
+test('overflow warning ignores hidden children: a hidden layer past the frame does not count as content', () => {
+    const frame = { width: 375, height: 667 };
+    assert.equal(overflowWarning(frame, 'vertical', [{ x: 0, y: 900, w: 40, h: 40, visible: false }]), true);
+});
+
+test('overflow warning for both axes is per axis, and only the selected axes are reported', () => {
+    const frame = { width: 375, height: 667 };
+    const wide = [{ x: 0, y: 0, w: 600, h: 40 }];
+    assert.deepEqual(overflowWarnings(frame, 'both', wide), { horizontal: false, vertical: true });
+    assert.deepEqual(overflowWarnings(frame, 'vertical', wide), { vertical: true });
+    assert.deepEqual(overflowWarnings(frame, 'none', wide), {});
 });

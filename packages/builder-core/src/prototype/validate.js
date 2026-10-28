@@ -103,6 +103,7 @@ function checkNode(node, page, add, topLevelFrame) {
     if (!onlyKeys(p, ['version', 'interactions', 'overflow']) || !Array.isArray(p.interactions)) return add(...where, null, 'node-prototype-shape', 'node prototype holds only version, interactions and overflow');
     if (p.overflow !== undefined) {
         if (node.type !== 'frame') add(...where, null, 'overflow-not-frame', 'only a frame can have a scroll behaviour');
+        else if (node.isInstance) add(...where, null, 'overflow-on-instance', 'a template instance cannot have a scroll behaviour');
         else if (!OVERFLOWS.includes(p.overflow)) add(...where, null, 'overflow-unknown', `scroll behaviour must be one of ${OVERFLOWS.join(', ')}`);
     }
     const seen = new Set();

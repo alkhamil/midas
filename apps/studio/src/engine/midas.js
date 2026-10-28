@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarning, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -9248,15 +9248,14 @@ function prototypeTabHtml(n) {
     const add = destinations.length
         ? '<button class="wide-button" data-pt-add>Add interaction</button>'
         : '<span class="small-label">Add a top-level frame to link to.</span>';
-    return `<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' ? scrollBehaviorHtml(n) : ''}`;
+    return `<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' && !n.isInstance ? scrollBehaviorHtml(n) : ''}`;
 }
 /** The Scroll behavior section of a frame: the axes its content may scroll on, with a warning when the content does not reach past the frame. */
 function scrollBehaviorHtml(n) {
     const overflow = n.prototype?.overflow ?? 'none';
-    const axes = { none: [], horizontal: ['horizontal'], vertical: ['vertical'], both: ['horizontal', 'vertical'] }[overflow];
     const children = doc.children(n.id);
     const size = { width: n.w, height: n.h };
-    const warn = axes.some(axis => overflowWarning(size, axis, children));
+    const warn = Object.values(overflowWarnings(size, overflow, children)).some(Boolean);
     const options = [['none', 'No scrolling'], ['horizontal', 'Horizontal'], ['vertical', 'Vertical'], ['both', 'Both']].map(([value, label]) => `<option value="${value}"${value === overflow ? ' selected' : ''}>${label}</option>`).join('');
     const warning = warn ? `<span class="warning-icon" title="For scrolling to work on this frame, the content needs to be bigger than the frame." aria-label="For scrolling to work on this frame, the content needs to be bigger than the frame.">${icon('warning')}</span>` : '';
     return `<div class="inspector-section"><div class="section-heading">Scroll behavior</div><div class="cmp-props"><div class="cmp-prop2"><label>Overflow</label><div class="cmp-ctl"><select class="cmp-input" data-pt-overflow="${esc(n.id)}">${options}</select>${warning}</div></div></div></div>`;

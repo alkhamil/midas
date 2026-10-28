@@ -52,12 +52,41 @@ function renderNode(n, parent, cx) {
         cx.unsupported.push({ nodeId: n.id, type: n.type });
         return null;
     }
-    const style = { ...placement(n, parent, cx.responsive), ...paint(n), ...(n.type === 'text' ? textStyle(n) : {}), ...(n.type === 'ellipse' ? { borderRadius: '50%' } : {}) };
+    if (n.type === 'text') return textElement(n, { ...placement(n, parent, cx.responsive), ...opacityOf(n), ...textStyle(n) });
+    const style = { ...placement(n, parent, cx.responsive), ...paint(n), ...(n.type === 'ellipse' ? { borderRadius: '50%' } : {}) };
     if (n.type === 'frame' && isAutoLayout(n)) Object.assign(style, flexOf(n));
     if (n.type === 'frame') Object.assign(style, overflowOf(n));
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
-    const children = n.type === 'text' ? [] : cx.childrenOf(n.id).map(c => renderNode(c, n, cx)).filter(Boolean);
-    return { tag: n.type === 'text' ? 'span' : 'div', nodeId: n.id, attrs: {}, style, ...(n.type === 'text' ? { text: n.text ?? '' } : {}), children };
+    const children = cx.childrenOf(n.id).map(c => renderNode(c, n, cx)).filter(Boolean);
+    return { tag: 'div', nodeId: n.id, attrs: {}, style, children };
+}
+
+/**
+ * A text layer: a span with its characters, or one span per style run when it has several (rich text).
+ * @param {any} n
+ * @param {Record<string, string>} style
+ * @returns {Element}
+ */
+function textElement(n, style) {
+    if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s, n)) };
+    return { tag: 'span', nodeId: n.id, attrs: {}, style, text: n.text ?? '', children: [] };
+}
+
+/**
+ * One style run of a rich text layer. It sets only the properties it has; the rest come from the layer.
+ * @param {any} s
+ * @param {any} n
+ * @returns {Element}
+ */
+function spanElement(s, n) {
+    /** @type {Record<string, string>} */
+    const style = { color: s.fill && s.fill !== 'none' ? withAlpha(s.fill, s.fillOpacity ?? n.fillOpacity) : 'transparent' };
+    if (s.fontFamily) style.fontFamily = s.fontFamily;
+    if (s.fontSize) style.fontSize = `${s.fontSize}px`;
+    if (s.fontWeight) style.fontWeight = String(s.fontWeight);
+    if (s.fontStyle) style.fontStyle = s.fontStyle;
+    if (s.textDecoration && s.textDecoration !== 'none') style.textDecoration = s.textDecoration;
+    return { tag: 'span', attrs: {}, style, text: s.text ?? '', children: [] };
 }
 
 /**
@@ -183,7 +212,8 @@ function flowSizing(n, parent) {
  * @returns {Record<string, string>}
  */
 function overflowOf(n) {
-    const mode = n.prototype?.overflow ?? 'none';
+    // A template instance has no scroll behaviour: the validator refuses one, and Play ignores any it finds.
+    const mode = n.isInstance ? 'none' : (n.prototype?.overflow ?? 'none');
     return {
         overflowX: mode === 'horizontal' || mode === 'both' ? 'auto' : 'hidden',
         overflowY: mode === 'vertical' || mode === 'both' ? 'auto' : 'hidden',
@@ -225,8 +255,16 @@ function paint(n) {
     }
     if (n.radius) style.borderRadius = `${n.radius}px`;
     if (n.shadow) style.boxShadow = `${n.shadowX ?? 0}px ${n.shadowY ?? 0}px ${n.shadowBlur ?? 20}px ${withAlpha(n.shadowColor ?? '#000000', n.shadowOpacity ?? 0.16)}`;
-    if (n.opacity !== undefined && n.opacity !== 1) style.opacity = String(n.opacity);
-    return style;
+    return { ...style, ...opacityOf(n) };
+}
+
+/**
+ * The opacity of a layer, when it is not fully opaque.
+ * @param {any} n
+ * @returns {Record<string, string>}
+ */
+function opacityOf(n) {
+    return n.opacity !== undefined && n.opacity !== 1 ? { opacity: String(n.opacity) } : {};
 }
 
 /**
@@ -241,7 +279,7 @@ function withAlpha(color, opacity) {
 }
 
 /**
- * Font, colour, size and alignment of a text layer.
+ * Font, colour, size and alignment of a text layer. The fill is the text colour; a layer with no fill draws no colour, as on the canvas.
  * @param {any} n
  */
 function textStyle(n) {
@@ -251,7 +289,7 @@ function textStyle(n) {
         fontSize: `${n.fontSize ?? 14}px`,
         fontWeight: String(n.fontWeight ?? 400),
         fontStyle: n.fontStyle ?? 'normal',
-        color: n.fill ?? '#000000',
+        color: n.fill && n.fill !== 'none' ? withAlpha(n.fill, n.fillOpacity) : 'transparent',
         lineHeight: String(n.lineHeight ?? 1.2),
         textAlign: n.textAlign ?? 'left',
         whiteSpace: 'pre-wrap',

@@ -102,15 +102,27 @@ export function chromeVisibility(state, event) {
 
 /**
  * Whether the content of a frame runs past the frame on an axis, so that scrolling on that axis would move something. The content is
- * the children's own extent: the furthest edge of any child on that axis.
+ * the extent of the visible children on that axis: the furthest edge of any of them.
  * @param {{ width: number, height: number }} frame
  * @param {'horizontal' | 'vertical'} axis
- * @param {{ x: number, y: number, w: number, h: number }[]} children the frame's direct children
+ * @param {{ x: number, y: number, w: number, h: number, visible?: boolean }[]} children the frame's direct children
  * @returns {boolean} true when the content is not bigger than the frame on that axis (the warning shows)
  */
 export function overflowWarning(frame, axis, children) {
-    const extent = children.reduce((max, c) => Math.max(max, axis === 'horizontal' ? c.x + c.w : c.y + c.h), 0);
+    const extent = children.reduce((max, c) => (c.visible === false ? max : Math.max(max, axis === 'horizontal' ? c.x + c.w : c.y + c.h)), 0);
     return extent <= (axis === 'horizontal' ? frame.width : frame.height);
+}
+
+/**
+ * The overflow warning of each axis a scroll behaviour opens. Only those axes appear: an axis the behaviour does not open has no warning.
+ * @param {{ width: number, height: number }} frame
+ * @param {'none' | 'horizontal' | 'vertical' | 'both'} mode
+ * @param {{ x: number, y: number, w: number, h: number, visible?: boolean }[]} children
+ * @returns {{ horizontal?: boolean, vertical?: boolean }}
+ */
+export function overflowWarnings(frame, mode, children) {
+    const axes = { none: [], horizontal: ['horizontal'], vertical: ['vertical'], both: ['horizontal', 'vertical'] }[mode] ?? [];
+    return Object.fromEntries(axes.map(axis => [axis, overflowWarning(frame, axis, children)]));
 }
 
 /**

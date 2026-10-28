@@ -1,21 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitScale, zoomStep, ZOOM_STEPS, playContext, destinationOptions, nextInteractionId, defaultNavigate, playStartOf, interactionPatch, transitionFieldsOf } from '../src/prototype/play.js';
+import { playContext, destinationOptions, nextInteractionId, defaultNavigate, playStartOf, interactionPatch, transitionFieldsOf } from '../src/prototype/play.js';
 import { buildPrototypeFixture } from '../../../scripts/make-prototype-fixture.js';
-
-test('fit scales a frame down to the viewport width, and never up', () => {
-    assert.equal(fitScale(800, 400), 0.5);
-    assert.equal(fitScale(375, 1000), 1);
-    assert.equal(fitScale(375, 0), 1);
-});
-
-test('zoom steps through the fixed levels and stops at the ends', () => {
-    assert.deepEqual(ZOOM_STEPS, [0.25, 0.5, 0.75, 1, 1.5, 2]);
-    assert.equal(zoomStep(1, 'in'), 1.5);
-    assert.equal(zoomStep(2, 'in'), 2);
-    assert.equal(zoomStep(0.25, 'out'), 0.25);
-    assert.equal(zoomStep(0.6, 'out'), 0.5);
-});
 
 test('the player context reads interactions, frames and nodes from the document, without changing it', () => {
     const doc = buildPrototypeFixture();

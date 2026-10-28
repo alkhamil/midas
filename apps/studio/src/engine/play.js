@@ -11,6 +11,8 @@ const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hot
 const TOAST_MS = 3000;
 const MODE_LABEL_MS = 1000;
 const MODE_LABELS = { 'actual-size': 'Actual size (100%)', responsive: 'Responsive', 'fit-width': 'Fit width', 'fit-width-and-height': 'Fit width and height' };
+/** Constraints are not in the data model yet, so Responsive only adapts auto layout frames. Said under the mode, not hidden. */
+const RESPONSIVE_NOTE = 'Auto layout frames adapt; plain frames keep fixed positions';
 const ICONS = {
     sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="16" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="2" fill="none" stroke="currentColor" stroke-width="2"/>',
     close: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -99,7 +101,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     overlay.style.background = prefs.background;
     overlay.innerHTML = `
         <header class="play-topbar">
-            <button type="button" class="play-flow-button" aria-haspopup="menu">${escapeText(name)} <span class="play-chevron">${'<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS.chevronDown + '</svg>'}</span></button>
+            <button type="button" class="play-flow-button" aria-haspopup="menu"><span class="play-flow-name">${escapeText(name)}</span> <span class="play-chevron">${'<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS.chevronDown + '</svg>'}</span></button>
             <span class="play-spacer"></span>
             ${iconButton('sliders', 'View options', 'aria-haspopup="menu"')}
             ${iconButton('fullscreen', 'Full screen')}
@@ -367,7 +369,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     }
 
     function renderViewMenu() {
-        const item = mode => `<button type="button" role="menuitemradio" aria-checked="${prefs.mode === mode}" data-mode="${mode}"><span class="play-check">${prefs.mode === mode ? '✓' : ''}</span>${MODE_LABELS[mode]}</button>`;
+        const item = mode => `<button type="button" role="menuitemradio" aria-checked="${prefs.mode === mode}" data-mode="${mode}"><span class="play-check">${prefs.mode === mode ? '✓' : ''}</span>${MODE_LABELS[mode]}</button>${mode === 'responsive' ? `<div class="play-menu-note">${RESPONSIVE_NOTE}</div>` : ''}`;
         viewMenu.innerHTML = `
             <div class="play-menu-heading">Scaling <span class="play-shortcut">Z</span></div>
             ${SCALING_MODES.map(item).join('')}

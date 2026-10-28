@@ -1,31 +1,6 @@
-// Play and editing helpers (pure). The Play overlay and the Prototype panel use these: the fit and zoom of a frame, the player context
-// read from a document, the destinations a navigate-to can name, and the default interaction a new one starts from.
+// Play and editing helpers (pure). The Play overlay and the Prototype panel use these: the player context read from a document, the
+// destinations a navigate-to can name, and the default interaction a new one starts from.
 import { MOVING_TRANSITIONS } from './data.js';
-
-/** The zoom levels the Play overlay steps through. */
-export const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2];
-
-/**
- * The scale that fits a frame's width to the viewport. Fit never enlarges: a frame narrower than the viewport keeps its size.
- * Frames taller than the viewport scroll vertically, so only the width decides.
-* @param {number} frameW
- * @param {number} viewW
- */
-export function fitScale(frameW, viewW) {
-    if (!(viewW > 0) || !(frameW > 0)) return 1;
-    return Math.min(1, viewW / frameW);
-}
-
-/**
- * The next zoom level in a direction, or the same level at either end.
- * @param {number} current
- * @param {'in' | 'out'} direction
- */
-export function zoomStep(current, direction) {
-    if (direction === 'in') return ZOOM_STEPS.find(z => z > current) ?? ZOOM_STEPS[ZOOM_STEPS.length - 1];
-    const below = ZOOM_STEPS.filter(z => z < current);
-    return below.length ? below[below.length - 1] : ZOOM_STEPS[0];
-}
 
 /**
  * What the player reads from a document: the interactions of a node, the frame a node sits in, and the nodes of a frame.
@@ -119,8 +94,6 @@ function wholeNumber(value, min, label) {
     if (String(value).trim() === '' || !Number.isInteger(n) || n < min) throw new Error(`${label} must be a whole number${min > 0 ? ' above zero' : ' of zero or more'}.`);
     return n;
 }
-
-/** The transition types that move the frame, and so take a direction. */
 
 /**
  * The fields the editor shows for a transition type. Instant takes none; dissolve takes duration and easing; the moving ones add direction.

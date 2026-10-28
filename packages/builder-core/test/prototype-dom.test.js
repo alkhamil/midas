@@ -178,3 +178,50 @@ test('responsive: an absolutely positioned child keeps its x and y and fixed siz
     const badge = toDomTree(d, 'A', { responsive: true }).root.children[0];
     assert.deepEqual([badge.style.position, badge.style.left, badge.style.top, badge.style.width], ['absolute', '150px', '4px', '16px']);
 });
+
+test('a text layer takes its fill as its text colour and never as a background', () => {
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', w: 80, h: 20 })]), 'A');
+    const span = root.children[0];
+    assert.equal(span.style.color, '#112233');
+    assert.equal(span.style.background, undefined);
+});
+
+test('a text layer gets no radius, border or shadow box, even when the node carries them', () => {
+    const text = child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', radius: 8, stroke: '#000000', strokeWidth: 2, shadow: true, shadowX: 0, shadowY: 4 });
+    const style = toDomTree(doc([frame('A'), text]), 'A').root.children[0].style;
+    assert.deepEqual([style.borderRadius, style.border, style.boxShadow], [undefined, undefined, undefined]);
+});
+
+test('a text fill opacity is the alpha of the text colour', () => {
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', fillOpacity: 0.5 })]), 'A');
+    assert.equal(root.children[0].style.color, '#11223380');
+});
+
+test('a text layer with no fill draws no colour, as the canvas does', () => {
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: 'none' })]), 'A');
+    assert.equal(root.children[0].style.color, 'transparent');
+});
+
+test('a text layer that hugs its width has no fixed width', () => {
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', layoutSizingH: 'hug', w: 80, h: 20 })]), 'A');
+    assert.equal(root.children[0].style.width, undefined);
+});
+
+test('a text layer with several styles draws one span per style, each with its own font and colour', () => {
+    const spans = [
+        { text: 'Bold ', fontWeight: 700, fill: '#ff0000', fillOpacity: 1 },
+        { text: 'plain', fill: '#112233', fillOpacity: 0.5, textDecoration: 'underline', fontStyle: 'italic', fontSize: 20 },
+    ];
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Bold plain', spans, fontSize: 14 })]), 'A');
+    const [first, second] = root.children[0].children;
+    assert.deepEqual([first.text, first.style.fontWeight, first.style.color], ['Bold ', '700', '#ff0000']);
+    assert.deepEqual([second.text, second.style.color, second.style.textDecoration, second.style.fontStyle, second.style.fontSize], ['plain', '#11223380', 'underline', 'italic', '20px']);
+    assert.equal(root.children[0].text, undefined);
+});
+
+test('Play ignores a scroll behaviour on a template instance: it clips on both axes', () => {
+    const master = { id: 'M', name: 'Card', type: 'frame', parentId: null };
+    const instance = { id: 'I', name: 'Card copy', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', w: 200, h: 100, prototype: { version: 1, interactions: [], overflow: 'both' } };
+    const { root } = toDomTree(doc([frame('A'), master, instance]), 'I');
+    assert.deepEqual([root.style.overflowX, root.style.overflowY], ['hidden', 'hidden']);
+});

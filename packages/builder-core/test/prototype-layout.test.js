@@ -128,3 +128,15 @@ test('the clip flag no longer decides the clipping: every frame clips unless its
     const doc = docOf([frame('root', null, { clip: false })]);
     assert.equal(toDomTree(doc, 'root').root.style.overflowX, 'hidden');
 });
+
+test('in a row, a hugging width child keeps its content width and does not shrink, so it is clipped by a narrow frame', () => {
+    const s = childStyle({ layout: 'horizontal', layoutSizingH: 'fixed', w: 200 }, { layoutSizingH: 'hug', layoutSizingV: 'fixed', w: 600 }, { responsive: true });
+    assert.equal(s.width, undefined);
+    assert.equal(s.flexShrink, '0');
+});
+
+test('responsive: the frame clips a fixed child that runs past it on both axes, unless its scroll behaviour opens them', () => {
+    const doc = docOf([frame('root', null, { prototype: { version: 1, interactions: [], overflow: 'horizontal' } }), rect('c', 'root', { x: 0, y: 0, w: 900, h: 900 })]);
+    const { root } = toDomTree(doc, 'root', { responsive: true });
+    assert.deepEqual([root.style.width, root.style.height, root.style.overflowX, root.style.overflowY], ['100%', '100%', 'auto', 'hidden']);
+});

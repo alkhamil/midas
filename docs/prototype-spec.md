@@ -27,6 +27,10 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 3. Deleting a node removes the interactions that point at it and the flows whose start is that node. Both are reported in a toast. No flow is left dangling.
 4. Detaching an instance keeps the instance's own interactions. Interactions on master-owned inner layers and on managed layers are dropped and reported.
 5. Play never writes to the document or its history. It reads the document, and its state lives only in the overlay.
+6. Scroll behaviour is rejected on template instances: the validator reports `overflow-on-instance`, naming the page and the node. The Prototype tab hides the Scroll behavior section for an instance, and Play ignores any overflow it finds on one (it clips on both axes).
+7. The `fill-screen` migration stays. It maps a value in the browser's `midas.play` preference (`resolveScalingMode`), not document data, so the no-legacy rule does not apply. The preference was written by an earlier build of Play, and a user who saved it should keep the view they chose.
+8. Constraints are not in the data model. Children of a plain frame stay absolutely positioned at their x and y and do not stretch in Responsive mode; only auto layout frames adapt. This is a known limitation, not a bug. The view menu says so under Responsive. Constraints are not implemented here.
+9. Fidelity rule: the canvas is the source of truth for what a layer looks like. Any geometry the DOM preview needs is computed by one shared module, never duplicated in the DOM renderer. A property the DOM cannot match is reported in the toolbar badge, never drawn silently.
 
 ## Play
 
@@ -35,7 +39,7 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 - Mouse events on a node go to the player (`eventFromDom`, then `respond`). `schedule` effects become timers; a timer is cleared on a frame change and on exit.
 - Transitions: `transitionCss` gives the duration, the easing, and the starting state of the entering frame.
 - Layers the DOM does not draw are counted in the toolbar, not dropped silently.
-- Fit scales the frame's width to the window, never up. Zoom steps are 25% to 200%. Taller frames scroll.
+- The frame is drawn at the scaling mode set in the view menu (see Play viewer). There is no zoom step.
 - Esc exits. Alt+Enter opens Play when no other Play is open (Alt+Enter was free).
 
 ## Play viewer (Figma-style)
@@ -75,3 +79,7 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 Phase 1 pure core and the editor wiring listed in `docs/manual-test.md` are in. The items under "Not in phase 1" are not built. Known debt from review: the top-level frame rule is still spelled in validate.js and dom-tree.js as well as play.js; the managed-layer check repeats the `slot` test in three places; the Play listener list is spelled in play.js and events.js.
 
 Round 2 (disabled layers, scaling modes, chrome visibility, Scroll behaviour) is built and checked in `docs/manual-test.md`. Known debt from review, still open: the top-level frame rule is spelled in validate.js and dom-tree.js as well as play.js; a click on a child layer does not reach its parent's on-click; the constraints model is missing.
+
+Round 3 (fidelity and chrome) is in: a text layer draws its fill as its text colour, with no box, and rich text draws one span per style run; a template instance is refused a scroll behaviour, and Play ignores one; the overflow warning ignores hidden children and reports each axis; the bottom bar pins the pill to the centre column and Restart to the right; the Responsive menu says what it adapts. Not done, and the DOM preview still lists these as not drawn or drawn wrong: lines, paths, polygons, stars, vectors, boolean results, masks, image layers, image fills, gradients other than linear, per-corner radius, inside and outside stroke alignment, dashes, text stroke, text shadow, text truncation, effects other than the legacy drop shadow, blend modes, and arc and donut ellipses. Their geometry is still inside `apps/studio/src/engine/midas.js` and needs a shared module first. A pixel parity pass between the canvas and Play has not been run.
+
+Decision: a text layer with no fill draws nothing, in Play as on the canvas (`colour: transparent`). The canvas is the source of truth; no default colour is used.

@@ -62,3 +62,14 @@ test('copying a frame copies its scroll behaviour, even when its interactions ar
     assert.deepEqual(copied.prototype, { version: 1, interactions: [], overflow: 'vertical' });
     assert.deepEqual(copied.dropped.map(d => d.code), ['interaction-dropped']);
 });
+
+test('a template instance cannot have a scroll behaviour: the validator names the page and the node', () => {
+    const instance = { id: 'I', name: 'Card', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', prototype: { version: 1, interactions: [], overflow: 'both' } };
+    const [problem] = validatePrototype({ pages: [{ id: 'p', name: 'Screens', nodes: [instance] }] });
+    assert.deepEqual([problem.code, problem.page, problem.node], ['overflow-on-instance', 'Screens', 'Card']);
+});
+
+test('an instance with no scroll behaviour is valid', () => {
+    const instance = { id: 'I', name: 'Card', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', prototype: { version: 1, interactions: [] } };
+    assert.deepEqual(validatePrototype({ pages: [{ id: 'p', name: 'Screens', nodes: [instance] }] }), []);
+});
