@@ -19,12 +19,13 @@ export class BehaviorDataError extends Error {
 }
 
 /**
- * The error for one node's behavior data, naming the node and the problem.
+ * The error for one node's behavior data, naming the node, its page and the problem.
  * @param {{ id: string, name?: string }} node
  * @param {string} problem
+ * @param {string} page the name of the page the node is on
  */
-export function behaviorError(node, problem) {
-    return new BehaviorDataError(`Cannot open this file: behavior data on "${node.name}" (${node.id}) is invalid: ${problem}. This build reads behavior version ${BEHAVIOR_DATA_VERSION}.`, { name: String(node.name), problem });
+export function behaviorError(node, problem, page) {
+    return new BehaviorDataError(`Cannot open this file: behavior data on "${node.name}" (${node.id}) on page "${page}" is invalid: ${problem}. This build reads behavior version ${BEHAVIOR_DATA_VERSION}.`, { name: String(node.name), problem });
 }
 
 /** @param {unknown} v */
@@ -88,7 +89,7 @@ export function assertBehaviorShape(doc) {
         for (const n of page.nodes || []) {
             if (n.behavior === undefined) continue;
             const problem = problemOf(n);
-            if (problem) throw behaviorError(n, problem);
+            if (problem) throw behaviorError(n, problem, page.name);
         }
     }
 }

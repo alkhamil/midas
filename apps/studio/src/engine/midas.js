@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -3756,7 +3756,7 @@ async function libOpen(id) {
             return;
         }
         try {
-            data = DocumentModel.parse(data);
+            data = DocumentModel.parse(data, { partial: projectStorage.pendingPages(id).length > 0 });
         }
         catch (e) {
             toast('This file could not be opened: ' + e.message);
@@ -6752,8 +6752,9 @@ class DocumentModel {
         this.refresh();
     }
     serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }); }
-    static parse(text) {
-        const g = DocumentModel.parseGen(text);
+    // `partial`: some pages are still to come (a lazy open); phase 2 then runs per page (see assertPagesBehavior).
+    static parse(text, { partial = false } = {}) {
+        const g = DocumentModel.parseGen(text, partial);
         let r;
         while (!(r = g.next()).done)
             ;
@@ -6770,11 +6771,12 @@ class DocumentModel {
             await new Promise(res => setTimeout(res, 0));
         }
     }
-    static *parseGen(text) {
+    static *parseGen(text, partial = false) {
         const d = typeof text === 'string' ? JSON.parse(text) : text;
         if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
             throw new Error('This is not a supported Midas document.');
-        assertBehaviorData(d);
+        if (partial) assertPagesBehavior(d, d.pages.map(p => p.id));
+        else assertBehaviorData(d);
         const all = new Set();
         let total = 0, donePages = 0;
         const valid = new Set(['rect', 'ellipse', 'text', 'frame', 'group', 'path', 'line', 'image']);
@@ -8316,7 +8318,9 @@ function fillPage(fileId, id) {
             return; // another file was opened meanwhile
         const stub = doc.data.pages.find(p => p.id === id);
         if (stub && data) {
-            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: { collections: [], items: [] }, tokens: { colors: [], typography: [] }, assets: {} }).pages[0];
+            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: { collections: [], items: [] }, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
+            // The page is checked against the document as it would be with it, before it becomes editable. A failure throws and the page stays a stub.
+            assertPagesBehavior({ ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) }, [id]);
             Object.assign(stub, parsed);
             doc._pageSnapshots.delete(id);
             savedPageSigs.set(id, pageSig(stub));
@@ -8347,6 +8351,7 @@ async function streamPages(fileId, ids) {
             }
             catch (e) {
                 console.warn('Page could not be loaded', id, e);
+                toast(e.name === 'BehaviorDataError' ? e.message : 'A page of this file could not be loaded.');
                 lazyPages.delete(id); // leave it empty rather than blocking the whole file; it is not written back (see save)
                 failedPages.add(id);
             }
@@ -8771,7 +8776,7 @@ function autoMatchUnbound() {
 // The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
 // to open is rolled back and the reason is shown. Not run while pages are still loading: the file is incomplete then.
 function rolledBackForBehavior() {
-    const problem = lazyPages.size ? null : behaviorProblem(doc.data);
+    const problem = lazyPages.size ? null : behaviorProblem(doc.data, { partial: failedPages.size > 0 });
     if (!problem)
         return false;
     history.cancel();

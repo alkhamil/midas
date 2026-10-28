@@ -6,19 +6,50 @@ import { isPropVisible, resolveProps, valueProblem } from './instance-props.js';
 import { planInstanceAnatomy } from './anatomy.js';
 
 /**
- * Phase 1 and phase 2 for a whole document. Throws BehaviorDataError naming the node and the prop, mode or layer at fault.
- * @param {{ variables?: { collections?: any[] }, pages?: { nodes?: any[] }[] } | null | undefined} doc
+ * Phase 1 and phase 2 for a whole document. Throws BehaviorDataError naming the page, the node and the prop, mode or layer at fault.
+ * @param {{ variables?: { collections?: any[] }, pages?: { id: string, name: string, nodes?: any[] }[] } | null | undefined} doc
  */
 export function assertBehaviorData(doc) {
     assertBehaviorShape(doc);
-    const all = [...allNodes(doc)];
+    checkPages(doc, null);
+}
+
+/**
+ * Phase 1 and phase 2 for the pages that have just arrived in a lazily opened file. Pages may still be missing: an instance
+ * whose master is not loaded yet is left alone until the master's page arrives. So the check covers the arrived pages, and
+ * every instance on a loaded page whose master is on an arrived page, which makes cross-page rules run when either page arrives.
+ * @param {{ variables?: { collections?: any[] }, pages?: { id: string, name: string, nodes?: any[] }[] } | null | undefined} doc the document as far as it is loaded
+ * @param {string[]} pageIds the pages that have just arrived
+ */
+export function assertPagesBehavior(doc, pageIds) {
+    assertBehaviorShape(doc);
+    checkPages(doc, new Set(pageIds));
+}
+
+/**
+ * Phase 2 over the pages of a document. `arrived` null checks every page; otherwise only the arrived pages and the instances
+ * that name a master on them. An instance whose master is missing is checked only when the document is complete.
+ * @param {{ variables?: { collections?: any[] }, pages?: { id: string, name: string, nodes?: any[] }[] } | null | undefined} doc
+ * @param {Set<string> | null} arrived
+ */
+function checkPages(doc, arrived) {
+    const pages = doc?.pages || [];
+    const all = pages.flatMap(p => p.nodes || []);
     const nodes = new Map(all.map(n => [n.id, n]));
     const children = childrenByParent(all);
     const collections = doc?.variables?.collections || [];
-    for (const n of all) {
-        if (n.isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections);
-        if (n.isInstance) checkAnatomy(n, nodes, children);
-        if (n.behavior && 'slot' in n.behavior && !nodes.get(n.parentId)?.isInstance) throw behaviorError(n, 'a managed layer sits outside an instance');
+    const arrivedNodes = new Set(pages.filter(p => !arrived || arrived.has(p.id)).flatMap(p => (p.nodes || []).map(n => n.id)));
+    for (const page of pages) {
+        const isArrived = !arrived || arrived.has(page.id);
+        for (const n of page.nodes || []) {
+            const isInstance = n.isInstance === true;
+            const masterMissing = isInstance && !nodes.has(n.sourceId);
+            if (!isArrived && !(isInstance && arrivedNodes.has(n.sourceId))) continue;
+            if (arrived && masterMissing) continue; // deferred until the master's page arrives
+            if (isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections, page.name);
+            if (isInstance) checkAnatomy(n, nodes, children, page.name);
+            if (isArrived && n.behavior && 'slot' in n.behavior && !nodes.get(n.parentId)?.isInstance) throw behaviorError(n, 'a managed layer sits outside an instance', page.name);
+        }
     }
 }
 
@@ -26,11 +57,14 @@ export function assertBehaviorData(doc) {
  * The first behavior problem of a document as { name, problem } (the node's name and the reason), or null when it is valid.
  * The editor uses it as a backstop after each change, so it can say what is wrong instead of failing to open.
  * @param {{ variables?: { collections?: any[] }, pages?: { nodes?: any[] }[] } | null | undefined} doc
+ * `partial` checks a document with pages still missing (see assertPagesBehavior).
+ * @param {{ partial?: boolean }} [options]
  * @returns {{ name: string, problem: string } | null}
  */
-export function behaviorProblem(doc) {
+export function behaviorProblem(doc, { partial = false } = {}) {
     try {
-        assertBehaviorData(doc);
+        if (partial) assertPagesBehavior(doc, (doc?.pages || []).map(p => p.id));
+        else assertBehaviorData(doc);
         return null;
     }
     catch (err) {
@@ -71,8 +105,9 @@ function descendantsOf(id, children) {
  * @param {any} n an instance
  * @param {Map<string, any>} nodes every node of the document by id
  * @param {Map<string | null, any[]>} children
+ * @param {string} page the name of the page the instance is on
  */
-function checkAnatomy(n, nodes, children) {
+function checkAnatomy(n, nodes, children, page) {
     const master = nodes.get(n.sourceId);
     const { ops, reason } = planInstanceAnatomy({
         binding: master?.behavior,
@@ -88,26 +123,19 @@ function checkAnatomy(n, nodes, children) {
     const problem = op.op === 'remove' ? `managed layer "${slotOf(op.id)}" is not expected for these values`
         : op.op === 'insert' ? `managed layer "${op.slot}" is missing`
             : `managed layer "${slotOf(op.id)}" is at the wrong position`;
-    throw behaviorError(n, problem);
-}
-
-/**
- * Every node of every page, in order.
- * @param {{ pages?: { nodes?: any[] }[] } | null | undefined} doc
- */
-function* allNodes(doc) {
-    for (const page of doc?.pages || []) yield* page.nodes || [];
+    throw behaviorError(n, problem, page);
 }
 
 /**
  * @param {any} n an instance with props
  * @param {Map<string, any>} nodes every node of the document by id
  * @param {any[]} collections the document's variable collections
+ * @param {string} page the name of the page the instance is on
  */
-function checkInstance(n, nodes, collections) {
+function checkInstance(n, nodes, collections, page) {
     /** @type {(problem: string) => never} */
     const fail = problem => {
-        throw behaviorError(n, problem);
+        throw behaviorError(n, problem, page);
     };
     const binding = nodes.get(n.sourceId)?.behavior;
     if (!binding || !('templateId' in binding)) fail('its master has no behavior binding');
