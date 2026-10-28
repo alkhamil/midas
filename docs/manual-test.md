@@ -84,7 +84,7 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
 
 ## Icon slot: swap, colour, size
 
-Open the newest **Behavior fixture** (import it again after `node scripts/make-behavior-fixture.js`). **Save** has Has Icon on, placement start, and the icon **Icon/check**. **Cancel** has Has Icon off. **Next** (Screens) has placement end and **Icon/arrow**. The Danger foreground is yellow, so a colour change is visible. Icon sizes: Small 16 px, Large 20 px.
+Open the newest **Behavior fixture** (import it again after `node scripts/make-behavior-fixture.js`). **Save** has Has Icon on, placement start, and the icon **Icon/check**. **Cancel** has Has Icon off. **Next** (Screens) has placement end and **Icon/arrow**. The Danger foreground is yellow, so a colour change is visible. Icon sizes equal the font size of the Size mode: Small 14 px, Large 18 px.
 
 1. **Chosen icon shows.** Select **Save**, Behavior tab, Slots.
    - Expected: the Icon row shows "Icon/check". The canvas draws a filled check in the Save button.
@@ -95,12 +95,12 @@ Open the newest **Behavior fixture** (import it again after `node scripts/make-b
 4. **Colour follows Variant.** On **Save**, set Variant to Danger.
    - Expected: the icon and the label turn yellow, the Danger foreground. Set Primary: both white again.
 5. **Size follows Size.** On **Save**, set Size to Large.
-   - Expected: the slot is 20 px. Small is 16 px. No manual size override.
+   - Expected: the slot is 18 px. Small is 14 px. No manual size override.
 6. **Colour follows disabled.** Turn Disabled on for **Save**.
    - Expected: the icon and the label take the disabled foreground. Turn it off: both return to the Variant foreground.
 7. **Creating an icon.** On **Cancel**, turn Has Icon on.
    - Expected: the Icon row reads "Choose icon", and the slot is already sized by the Size variable. Choose **arrow**.
-   - Expected: the arrow is a stroke in the Danger foreground (yellow), sized 20 px. The label keeps its colour.
+   - Expected: the arrow is a stroke in the Danger foreground (yellow), sized 18 px (Large). The label keeps its colour.
 8. **Managed layer stays locked.** Select the icon layer inside **Save** and press Delete.
    - Expected toast: `"iconStart" is managed by its instance: deleting it on its own is not allowed.` Nothing is removed.
 9. **Play.** Wrap **Save** in a frame on the Components page (Frame selection), select the frame and open Play.

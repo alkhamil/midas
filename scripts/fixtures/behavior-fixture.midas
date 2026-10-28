@@ -1208,8 +1208,8 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 16,
-          "lg": 20
+          "sm": 14,
+          "lg": 18
         }
       }
     ]

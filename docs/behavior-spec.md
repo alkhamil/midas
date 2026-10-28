@@ -170,3 +170,4 @@ Known debt (left as is after the review, see the review findings in this session
 - `constrainInstanceLayers` decides x/y for flow children inline instead of through `isLayoutOwnedField`.
 - The copy loop in `syncComponents` repeats a small `vars && owned.length` branch three times.
 - Cache of the preview lookup is keyed on `doc.revision`; a write that does not touch the document would leave it stale.
+- Icon colour and hover/active previews: the icon takes its colour from `button/fg` (and `button/fg-disabled` while disabled), but the hover and active previews change only the root background and border on the canvas. So the icon colour does not change in those previews. This ships with the canvas foreground preview, later.

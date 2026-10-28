@@ -123,7 +123,7 @@ const number = (id, name, collectionId, values) => ({ id, name, type: 'number', 
 /**
  * The variables. Variant and Size are bound to the main master. Variant B is bound to the legacy master, which has no
  * `button/bg-hover` value in Danger: that is the one deliberate error. The `card/` group sits in Variant too, to show that Button
- * never reads another component's variables. The icon size follows the font size of each Size mode (+2 px).
+ * never reads another component's variables. The icon size is the font size of each Size mode.
  */
 function variables() {
     const variantTokens = (suffix, vals) => [
@@ -136,7 +136,7 @@ function variables() {
         number('i-fs', 'button/fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'button/lineHeight', ids.size, { sm: 20, lg: 27 }),
         number('i-px', 'button/paddingX', ids.size, { sm: 12, lg: 16 }), number('i-py', 'button/paddingY', ids.size, { sm: 6, lg: 8 }),
         number('i-gap', 'button/gap', ids.size, { sm: 6, lg: 8 }), number('i-radius', 'button/radius', ids.size, { sm: 6, lg: 8 }),
-        number('i-icon', 'button/icon-size', ids.size, { sm: 16, lg: 20 }),
+        number('i-icon', 'button/icon-size', ids.size, { sm: 14, lg: 18 }),
     ];
     const full = variantTokens('-v', {
         bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3', danger: '#b91c1c' },
