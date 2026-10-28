@@ -138,6 +138,16 @@ test('a disabled Button instance is disabled, and the icon is shown only for its
     assert.deepEqual(root.children.map(c => c.attrs.class), ['button-label', 'button-iconEnd']);
 });
 
+test('a disabled Button in Play is not focusable and carries no state class: its look is the stylesheet\'s disabled block alone', () => {
+    const instance = { id: 'i5', name: 'Off', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Off', disabled: true, hasIcon: false } }, varModes: {} };
+    const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance] }], variables };
+    const { root } = toDomTree(d, 'i5');
+    assert.equal(root.attrs.disabled, true);
+    assert.equal(root.attrs.tabindex, '-1');
+    assert.equal(root.attrs.class, 'button');
+    assert.doesNotMatch(JSON.stringify(root), /hover|active|focus/);
+});
+
 test('a Button instance whose master has no variable binding is refused with its problems, not drawn', () => {
     const unbound = { ...buttonMaster, behavior: { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables: {} } };
     const instance = { id: 'i3', name: 'Broken', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Broken', disabled: false, hasIcon: false, iconPlacement: 'start' } } };

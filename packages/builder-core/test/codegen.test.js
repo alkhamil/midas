@@ -61,10 +61,19 @@ test('each variant and size mode gets its base tokens on its own selector', () =
 
 test('a state block holds only the tokens that state changes', () => {
     const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
-    const hover = /\.button\[data-variant="primary"\]\[data-size="sm"\]:hover \{\n([^}]*)\}/.exec(css);
+    const hover = /\.button\[data-variant="primary"\]\[data-size="sm"\]:hover:not\(:disabled\) \{\n([^}]*)\}/.exec(css);
     assert.ok(hover, 'expected a hover block');
     assert.match(hover[1], /--button-bg: #3730a3;/);
     assert.doesNotMatch(hover[1], /--button-fg/);
+});
+
+test('no interaction state applies to a disabled Button: hover, active and focus are guarded, and the disabled block is not', () => {
+    const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
+    assert.match(css, /:hover:not\(:disabled\) \{/);
+    assert.match(css, /:active:not\(:disabled\) \{/);
+    assert.match(css, /:focus:not\(:disabled\) \{/);
+    assert.doesNotMatch(css, /:(hover|active|focus) \{/);
+    assert.match(css, /\.button\[data-variant="primary"\]\[data-size="sm"\]:disabled \{/);
 });
 
 test('a missing state token refuses the output and names the mode and the reason', () => {

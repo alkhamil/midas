@@ -122,7 +122,9 @@ function stylesheet(template, binding, variables, problems) {
                 ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
                 : previewOf(template, binding, combo, variables, defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
-            if (Object.keys(delta).length) blocks.push(`${selector}${pseudo} {\n${declarations(delta)}}\n`);
+            // A disabled Button shows only its disabled style: the interaction states never apply to it.
+            const guard = state === 'disabled' ? '' : ':not(:disabled)';
+            if (Object.keys(delta).length) blocks.push(`${selector}${pseudo}${guard} {\n${declarations(delta)}}\n`);
         }
     }
     return blocks.join('\n');

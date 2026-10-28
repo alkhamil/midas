@@ -189,7 +189,7 @@ function renderButton(n, template, parent, scope) {
         attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
-    if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true' });
+    if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     const children = [];
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });

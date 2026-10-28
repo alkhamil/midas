@@ -310,3 +310,16 @@ Not verified or open:
 - Every frame clips by default now; the existing `clip` flag no longer decides clipping. Confirm this is the intent.
 - Button instances are frames, so they also show the Scroll behaviour section.
 - Files this pass created in the workspace: several "Untitled" files from deep-link redirects and test imports, plus "Behavior fixture" and "Behavior fixture (copy)". Delete them from All files when done.
+
+## Disabled: no interaction state (hover, press, focus)
+
+Setup: the prototype fixture, opened by import. Play from Home.
+
+| Check | Expected |
+| --- | --- |
+| Play: Unavailable (disabled) at rest | Background `#a5b4fc`, cursor `not-allowed`, `tabindex="-1"` |
+| Play: hover Unavailable | Background stays `#a5b4fc`, cursor `not-allowed` (control: hovering the enabled Next gives `#3730a3`) |
+| Play: press Unavailable | Frame unchanged (counter stays "1 / 4"); no pressed colour |
+| Play: programmatic focus on Unavailable | Refused (`document.activeElement` is not the button) |
+| Play: Tab from Delete | Focus skips Unavailable and lands on the next control |
+| Editor: Delete, Preview State Hover, then Disabled on | Preview State reads Default, "Previewing: Disabled"; no hover look |

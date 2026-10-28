@@ -109,7 +109,7 @@ Status: decisions 1-4 below are answered and being implemented. Where this secti
 4. Hover, active and focus change colours only (bg, fg, border). A preview-only state that declares a size, padding or radius change is a validator error.
 5. Variant and Size controls write the instance's mode for the bound collection through the same path the Appearance section uses (`varModes`, one history step). No `variant` or `size` prop is stored in behavior data. Default is the first mode.
 6. Persistent `disabled` writes real document state and selects the `<group>/bg-disabled` and `<group>/fg-disabled` variables. Persistent states are generic in the schema, so a future Breadcrumb Item `current` (tokens `breadcrumb/fg`, `breadcrumb/fg-current`) needs no engine change.
-7. Preview-only state is a studio-side view only: never written to the document or to history, reset on selection change or file close, and shown as a "Previewing: Hover" badge. A real `disabled` wins over any preview state.
+7. Preview-only state is a studio-side view only: never written to the document or to history, reset on selection change or file close, and shown as a "Previewing: Hover" badge. A real `disabled` wins over any preview state. A disabled Button shows only its disabled style: the generated CSS guards hover, active and focus with `:not(:disabled)`, so no interaction colour applies to it. The disabled state overrides `bg` and `fg` only; there is no `border-disabled` token, so the border stays the variant's. Turning Disabled on clears a preview state.
 8. `label` writes the label layer's text, `fullWidth` writes the root width mode. `loading` has no node representation yet: it gets a diagnostics note, not a visual.
 
 ### Audit (code as it is now)
