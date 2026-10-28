@@ -68,10 +68,10 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 
 - Connection handle, connector arrows and the flow-start marker on the canvas.
 - Flow creation from the panel (a flow exists only in the file for now).
-- Copy, paste and duplicate wiring to `planCopiedInteractions` (the planner exists and is tested; the editor does not call it yet).
+- Copy, paste and duplicate wiring to `planCopiedInteractions` (the planner exists and is tested; the editor does not call it yet). Unused: no caller outside its tests.
 - Rolling back a prototype problem with a "Not applied" message (the editor does not yet run the prototype check as a backstop).
 - Marking a flow start from the panel and showing the flow-start marker on the canvas.
-- The `while-end` effect has no consumer yet; Play ignores it.
+- The `while-end` effect has no consumer yet; Play ignores it. Unused: the player emits it and nothing reads it.
 - The canvas draws no Play state; the Canvas 2D fallback is not involved.
 
 ## Status
@@ -80,6 +80,20 @@ Phase 1 pure core and the editor wiring listed in `docs/manual-test.md` are in. 
 
 Round 2 (disabled layers, scaling modes, chrome visibility, Scroll behaviour) is built and checked in `docs/manual-test.md`. Known debt from review, still open: the top-level frame rule is spelled in validate.js and dom-tree.js as well as play.js; a click on a child layer does not reach its parent's on-click; the constraints model is missing.
 
-Round 3 (fidelity and chrome) is in: a text layer draws its fill as its text colour, with no box, and rich text draws one span per style run; a template instance is refused a scroll behaviour, and Play ignores one; the overflow warning ignores hidden children and reports each axis; the bottom bar pins the pill to the centre column and Restart to the right; the Responsive menu says what it adapts. Not done, and the DOM preview still lists these as not drawn or drawn wrong: lines, paths, polygons, stars, vectors, boolean results, masks, image layers, image fills, gradients other than linear, per-corner radius, inside and outside stroke alignment, dashes, text stroke, text shadow, text truncation, effects other than the legacy drop shadow, blend modes, and arc and donut ellipses. Their geometry is still inside `apps/studio/src/engine/midas.js` and needs a shared module first. A pixel parity pass between the canvas and Play has not been run.
+Round 3 (fidelity and chrome) is in: a text layer draws its fill as its text colour, with no box, and rich text draws one span per style run; a template instance is refused a scroll behaviour, and Play ignores one; the overflow warning ignores hidden children and reports each axis; the bottom bar pins the pill to the centre column and Restart to the right; the Responsive menu says what it adapts. Not done, and the DOM preview still lists these as not drawn or drawn wrong: lines, paths, polygons, stars, vectors, boolean results, masks, image layers, image fills, gradients other than linear, per-corner radius, inside and outside stroke alignment, dashes, text stroke, text shadow, text truncation, effects other than the legacy drop shadow, blend modes, and arc and donut ellipses. Round 4 moved the geometry into builder-core (see below). A pixel parity pass between the canvas and Play has not been run.
 
 Decision: a text layer with no fill draws nothing, in Play as on the canvas (`colour: transparent`). The canvas is the source of truth; no default colour is used.
+
+Round 4 (geometry and fidelity): the outline, stroke and fill code the canvas uses moved into `builder-core/src/geometry/` (`shapes.js`, `fills.js`). The canvas builds its Path2D from the shared commands, and the DOM preview emits SVG from the same commands, so one geometry serves both. Play now draws arcs, donuts, lines, vector paths, centred, inside, outside and dashed strokes, per-corner radii, flips, multiple fills, linear, radial and angular gradients, drop and inner shadows, layer and background blur, text stroke, glyph shadow and truncation. Fidelity fixture: `scripts/make-fidelity-fixture.js`, one frame per feature.
+
+Fidelity, checked in Play at Actual size (1280 wide). The canvas was not compared row by row at 1:1, so a row marked OK is OK in Play as a visual check against the expected look:
+- OK: solid, fill opacity, text in a plain frame (no box), rich spans, text stroke, text drop shadow, truncation, balanced wrap, short hex with alpha, linear 0 and 45 degrees, radial, angular, multiple fills (olive from yellow at 60% over blue), per-corner radius, centred, inside, outside and dashed strokes, full ellipse, 75% arc, donut, line, closed vector path, curved vector path, drop shadow, layer blur, flip and rotation, opacity, group with clip content.
+- Looks right but not checked closely: per-side stroke, inner shadow, background blur (the layer behind is one flat colour, so the blur barely shows), truncation line count.
+- WRONG: boolean union and subtract (both operands are drawn, not the result); mask (the mask shows as a solid shape instead of clipping the layer below it).
+- Flagged, not drawn: image layer, glass. Both are counted in the toolbar badge.
+
+Known gap, not reproduced in the fixtures: a click on a child layer of a clickable parent (see Known limitations).
+
+Legacy shadow: the canvas still reads `node.shadow` (the old flag) when a layer has no effects list (`getEffects` in midas.js). Play does not read it. A file that has only the old flag draws its shadow on the canvas and not in Play. Open question: remove the old flag from the canvas too.
+
+Untitled file: a file opened on a page other than its master's page failed to open and was replaced by an Untitled file. The cause: the boot open parsed the saved file as complete, so a master on a page not yet loaded (a stub) was refused. The boot now parses with the partial check when pages are still pending, the same as the streamed open does. Fixed in `apps/studio/src/engine/midas.js`; the contract is pinned by `builder-core/test/behavior-lazy-open.test.js`.
