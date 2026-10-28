@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { previewOf, canvasColorsOf } from '../src/behavior-engine/preview.js';
+import { previewOf, canvasColorsOf, textColorTokenOf } from '../src/behavior-engine/preview.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 
@@ -119,4 +119,12 @@ test('the canvas preview never carries a text colour', () => {
         const result = canvasDraw(preview);
         assert.ok(result === null || Object.keys(result).every(key => key === 'fill' || key === 'stroke'), preview);
     }
+});
+
+test('the text colour token is the one the label layer draws its fill with', () => {
+    assert.equal(textColorTokenOf(button), 'fg');
+});
+
+test('a template with no label fill has no text colour token', () => {
+    assert.equal(textColorTokenOf({ ...button, display: { ...button.display, label: {} } }), null);
 });

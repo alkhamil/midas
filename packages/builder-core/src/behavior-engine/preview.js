@@ -75,3 +75,13 @@ export function canvasColorsOf(template, binding, modes, variables, props, previ
     }
     return Object.keys(out).length ? out : null;
 }
+
+/**
+ * The state token that is the text colour of a template: the token the label layer's fill is driven by. The canvas never draws it
+ * in a preview; the Preview section shows it read-only with a note.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {string | null}
+ */
+export function textColorTokenOf(template) {
+    return template.display?.label?.fill ?? null;
+}
