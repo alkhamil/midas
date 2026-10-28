@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren } from '@midas/builder-core';
 import { behaviorPanelHtml } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -8502,6 +8502,9 @@ function syncComponents(activeOnly = true) {
         return; // instances may point at components on pages that have not arrived yet: they would be detached as orphans
     detachOrphans(activeOnly);
     syncInstanceStructure(activeOnly);
+    // Managed layers keep the place anatomy sync gave them; a child the component gained is placed around them.
+    for (const inst of (activeOnly ? [doc.page] : doc.data.pages).flatMap(pg => pg.nodes).filter(n => n.isInstance && n.sourceId))
+        syncAnatomy(inst);
     const targetPages = activeOnly ? [doc.page] : doc.data.pages;
     const components = new Map(), everywhere = new Map();
     for (const page of doc.data.pages) {
@@ -8727,6 +8730,8 @@ function changed({ ui = true, commit = false } = {}) {
         markSelectedOverrides();
         applyAllLayouts();
         syncComponents();
+        if (rolledBackForBehavior())
+            return;
         // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
         // a gesture that didn't move anything, setting a value to what it already was).
         const hadPending = !!history.pending;
@@ -8747,6 +8752,26 @@ function changed({ ui = true, commit = false } = {}) {
     }
     invalidate();
 }
+// The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
+// to open is rolled back and the reason is shown. Not run while pages are still loading: the file is incomplete then.
+function rolledBackForBehavior() {
+    const problem = lazyPages.size ? null : behaviorProblem(doc.data);
+    if (!problem)
+        return false;
+    history.cancel();
+    doc.refresh();
+    refreshUI();
+    toast(`Not applied: "${problem.name}" ${problem.problem}.`);
+    return true;
+}
+// Stops an action that would touch a managed layer on its own: says why (see managedRefusal) and returns true.
+function refusedManaged(action, nodes) {
+    const why = managedRefusal(action, nodes);
+    if (why)
+        toast(why);
+    return !!why;
+}
+// One change is one undo step (changed() checks that the change leaves the file able to open).
 function transaction(label, fn) {
     if (viewOnly()) {
         viewOnlyNotice();
@@ -9591,7 +9616,7 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
     return results;
 }
 function duplicate() {
-    if (!state.selection.size)
+    if (!state.selection.size || refusedManaged('duplicate', selectedRoots()))
         return;
     transaction('Duplicate layers', () => {
         const roots = selectedRoots();
@@ -9618,13 +9643,13 @@ function duplicate() {
     toast('Selection duplicated');
 }
 function removeSelection() {
-    if (!state.selection.size)
+    if (!state.selection.size || refusedManaged('delete', selectedRoots()))
         return;
     transaction('Delete layers', () => { doc.remove([...state.selection]); state.selection.clear(); });
 }
 function copySelection() {
     const roots = selectedRoots();
-    if (!roots.length)
+    if (!roots.length || refusedManaged('copy', roots))
         return;
     const all = roots.flatMap(n => [n, ...doc.descendants(n.id)]), rootIds = roots.map(n => n.id);
     const nodes = structuredClone(all);
@@ -9680,6 +9705,8 @@ async function pasteSelection(clipText, mode = 'canvas') {
     else
         for (const n of sel)
             targets.push({ kind: 'replace', anchor: n });
+    if (mode === 'replace' && refusedManaged('replace', sel))
+        return;
     if (mode === 'replace' && !anchor) {
         toast('Select the layer to replace first.');
         return;
@@ -9787,7 +9814,7 @@ function pasteNodes(data, payload, target) {
 }
 function groupSelection(asFrame = false, autoLayout = false) {
     const roots = selectedRoots();
-    if (!roots.length)
+    if (!roots.length || refusedManaged('group', roots))
         return;
     transaction(autoLayout ? 'Add auto layout' : asFrame ? 'Frame selection' : 'Group layers', () => {
         const commonParent = roots.every(n => n.parentId === roots[0].parentId) ? roots[0].parentId : null;
@@ -9890,7 +9917,7 @@ function unframeSelection() {
     });
 }
 function reorder(direction) {
-    if (!state.selection.size)
+    if (!state.selection.size || refusedManaged('reorder', selectedRoots()))
         return;
     transaction('Reorder layers', () => {
         const roots = selectedRoots();
@@ -9916,7 +9943,7 @@ function reorder(direction) {
 }
 function alignSelection(mode) {
     const roots = selectedRoots();
-    if (!roots.length)
+    if (!roots.length || refusedManaged('align', roots))
         return;
     transaction(`Align ${mode}`, () => {
         const b = roots.length === 1 && roots[0].parentId ? doc.world(roots[0].parentId).box : doc.bounds(roots.map(n => n.id));
@@ -11022,6 +11049,8 @@ function pointerDown(e) {
         }
         else if (!state.selection.has(hit.id))
             select([hit.id]);
+        if (!e.shiftKey && refusedManaged(e.altKey ? 'duplicate' : 'move', selectedRoots()))
+            return;
         if (e.altKey) {
             history.begin('Duplicate and move');
             select(altDuplicate(selectedRoots()).map(n => n.id));
@@ -11991,6 +12020,8 @@ function buildPathNode(res, first, name) {
 }
 function booleanOp(kind) {
     const roots = selectedRoots(), pc = window.polygonClipping;
+    if (refusedManaged('boolean', roots))
+        return;
     if (!roots.length) {
         toast('Select shapes first.');
         return;
@@ -12097,6 +12128,8 @@ function refreshBooleans() {
 }
 function flattenSelection() {
     const roots = selectedRoots(), pc = window.polygonClipping;
+    if (refusedManaged('flatten', roots))
+        return;
     if (!roots.length || !pc)
         return;
     const ids = [];
@@ -13174,7 +13207,7 @@ function syncInstanceStructure(activeOnly = true) {
                 if (kids.length < 2)
                     continue;
                 const rank = x => slotKey(x) && srcOrder.includes(slotKey(x)) ? srcOrder.indexOf(slotKey(x)) : 1e9;
-                const sorted = [...kids].sort((a, b) => rank(a) - rank(b));
+                const sorted = orderChildren(kids, rank, isManagedLayer);
                 if (sorted.some((x, i) => x !== kids[i])) {
                     idxs.forEach((idx, i) => { page.nodes[idx] = sorted[i]; });
                     dirty = true;
@@ -20775,6 +20808,8 @@ document.addEventListener('keydown', e => {
     }
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
         e.preventDefault();
+        if (state.selection.size && refusedManaged('move', selectedRoots()))
+            return;
         // Inside an auto layout the arrows swap the layer with its neighbour (vertical: up/down, horizontal: left/right, grid: all four).
         const only = state.selection.size === 1 ? selectedRoots()[0] : null, alp = only && doc.get(only.parentId);
         if (only && alp && isAutoLayout(alp) && only.layoutPositioning !== 'absolute' && !only.locked) {
