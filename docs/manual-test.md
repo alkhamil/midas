@@ -137,3 +137,36 @@ Fixture imported through the home import; each check reads the saved document th
 Kopi Kita was opened through a copy imported from `scripts/fixtures/sample-app.midas` (file id 464482ba-bb69-491e-a0fa-d50f6292df22), not the workspace file. Its Button master is on `page-components`; the 21 instances are spread over the pages. The workspace's own "Kopi Kita" file was not changed.
 
 Test copies of the fixture and the sample are in the workspace (named "Behavior fixture" and "Kopi Kita"). Delete them from All files when the checks are done.
+
+## Verification pass (after the code review)
+
+Fresh import of `scripts/fixtures/behavior-fixture.midas` (the master root now has `strokeWidth: 2`). Reads go through the file API.
+
+| Check | Result |
+| --- | --- |
+| Disabled on, Save, steady state | Save root +3, label +2; Cancel 0; no `overrides` |
+| Disabled off, Save, steady state | Save root +3, label +2; Cancel 0; no `overrides` |
+| Cancel copy writes to x/y/w/h | 0 (measured earlier with a removed copy-loop hook; not re-measured after the x-rule change) |
+| Focus preview, Save | Preview shows "Previewing: Focus" and the border token row. The canvas border was not confirmed visually: at the zoom levels tried the 2 px stroke was too small to read, and one zoom step went past the frame. Not verified on the canvas. |
+| Canvas 2D fallback | Not covered. The preview substitution is in the GPU `push()` only; `renderCanvas` does not read `canvasPreview`, so the fallback draws the instance's own colours. |
+| Bind tokens on an unbound master | Not run in the browser. Covered by `bind-tokens.test.js`, which checks that existing keys are never overwritten. |
+| Kopi Kita master resize (auto-layout children, fill children of a plain frame, absolute children, nested instances) | Not run. The sample has no nested instances and no non-auto-layout children, and the master width cannot be set to a fixed value from the Design panel without a further step. Covered by `isLayoutOwnedField` tests only. |
+
+Canvas preview cost (pure lookup, Node, 20,000 calls for the small set and 5,000 for the large sets, 8 token items plus the size tokens in the base case):
+
+| Variables in the document | Before the cache (per call) |
+| --- | --- |
+| 15 | 112 µs |
+| 515 | 1,556 µs |
+| 5,015 | 12,804 µs |
+
+`canvasPreviewOf` now caches its result on the document revision, the selected instance and the preview state. A draw reuses the cached value; a write recomputes it once. The per-draw cost is then a string key and two comparisons. The in-browser draw time was not measured.
+
+## Manual only (not covered by the automated suites)
+
+These cannot be checked in Node. Run them in the browser on a fresh import, and record the result here.
+
+- Focus border at high zoom: the stroke is 2 px on the fixture master; at 61% it is about 1 px, and the zoom steps tried either hid the frame or made the border too faint to read. Check at 200% or more with the Save instance in view.
+- Canvas 2D fallback preview: the Hover/Active/Focus substitution is drawn only by the GPU `push()`. The fallback draws the instance's own colours. Expected: no substitution. Force the fallback (no WebGPU) and confirm the canvas does not change while a preview is selected.
+- Bind tokens in the browser, on the Button master with unbound tokens: the button shows the unbound count, binds only the missing tokens, and never overwrites an existing binding. (`bind-tokens.test.js` covers the planner, not the editor.)
+- Kopi Kita master resize in the browser: resize the master, then check that auto-layout children, fill children of a plain frame, absolute children and nested instances follow the master. The copy decision is covered by `copy-decision.test.js`; the layout that writes x/y/w/h is in `midas.js` and is not importable in Node.

@@ -162,3 +162,10 @@ Churn finding (write counts for one Disabled toggle on Save, measured with a tem
 4. Layout ownership (implemented): the copy from master to instance, and the override check, skip the fields the layout engine writes: x and y of a flow child of an auto-layout parent, and the axis a hug or fill child takes from layout (`isLayoutOwnedField`, `instance-vars.js`). Absolutely positioned children and fixed sizes are still copied.
 5. Canvas preview (implemented, scoped): the studio's canvas draws the selected instance's root background and border in the Hover, Active and Focus preview (`canvasColorsOf`, read per draw in the GPU quad path). Text colour stays in the Preview section, with the note "Text color preview not on canvas". The Canvas 2D fallback does not draw it.
 6. The label is the first text layer, depth first (`labelLayerOf`, `layers.js`). Diagnostics and the studio's owned-field check share it.
+
+Known debt (left as is after the review, see the review findings in this session's report):
+- The layout rule in `isLayoutOwnedField` mirrors `runLayout` in midas.js; it is not shared with it.
+- `applyStateBindings`, `applyLiteralFields` and `writeVarMode` still mutate nodes in place. Their decisions are in `edits.js` and `layers.js`, but the writes are not.
+- `constrainInstanceLayers` decides x/y for flow children inline instead of through `isLayoutOwnedField`.
+- The copy loop in `syncComponents` repeats a small `vars && owned.length` branch three times.
+- Cache of the preview lookup is keyed on `doc.revision`; a write that does not touch the document would leave it stale.
