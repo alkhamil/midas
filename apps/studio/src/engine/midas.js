@@ -6747,8 +6747,8 @@ class DocumentModel {
         return r.value;
     }
     // Same, one page at a time: `onProgress(0..1)` after each page and the page gets to paint in between (start bar).
-    static async parseAsync(text, onProgress) {
-        const g = DocumentModel.parseGen(text);
+    static async parseAsync(text, onProgress, { partial = false } = {}) {
+        const g = DocumentModel.parseGen(text, partial);
         for (;;) {
             const r = g.next();
             if (r.done)
@@ -8049,7 +8049,7 @@ await boot.step(74, 'Preparing document');
 let initial;
 try {
     if (saved)
-        initial = await DocumentModel.parseAsync(saved, f => boot.set(74 + f * 6));
+        initial = await DocumentModel.parseAsync(saved, f => boot.set(74 + f * 6), { partial: projectStorage.pendingPages(lib.fileId).length > 0 });
 }
 catch (e) {
     console.warn('Saved file could not be restored', e);
