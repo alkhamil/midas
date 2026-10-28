@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, labelLayerOf, masterLayersOf, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -7533,6 +7533,12 @@ class Atlas {
     destroy() { this.texture.destroy(); }
 }
 class Renderer {
+    /**
+     * The Behavior preview's colours for the selected instance, read at each GPU draw (see canvasPreviewOf). Null when there is no
+     * preview: the layers draw their own colours.
+     * @type {(() => { id: string, colors: { fill?: string, stroke?: string } } | null) | null}
+     */
+    canvasPreview = null;
     constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; }
     async initialize() {
         try {
@@ -9166,14 +9172,21 @@ function selectField(prop, value, values) { return `<select class="full-width" d
 // The preview state the Behavior tab shows an instance in. A studio-side view only: it never writes to the document or history.
 let behaviorPreview = 'default';
 /** The root colours the canvas draws for the selected instance in its preview state. Read per draw, never stored in the document. */
+// The result is reused until the document changes (its revision counts every write) or the selection or preview state changes:
+// resolving tokens scans the variables, so it costs about 2.5 µs per variable and would otherwise run on every draw.
+let canvasPreviewCache = { key: null, vars: null, value: null };
 function canvasPreviewOf() {
     const n = activeNode();
     if (behaviorPreview === 'default' || !n?.isInstance || !n.sourceId) return null;
+    const key = `${n.id}|${behaviorPreview}|${doc.revision}`;
+    const vars = varStore();
+    if (canvasPreviewCache.key === key && canvasPreviewCache.vars === vars) return canvasPreviewCache.value;
     const binding = componentById(n.sourceId)?.behavior;
-    if (!binding || !('templateId' in binding)) return null;
-    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
-    const colors = canvasColorsOf(template, binding, instanceModesOf(n, binding), varStore(), resolveProps(template, n.behavior?.props ?? {}), behaviorPreview);
-    return colors && { id: n.id, colors };
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    const colors = template && canvasColorsOf(template, binding, instanceModesOf(n, binding), vars, resolveProps(template, n.behavior?.props ?? {}), behaviorPreview);
+    const value = colors ? { id: n.id, colors } : null;
+    canvasPreviewCache = { key, vars, value };
+    return value;
 }
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
@@ -9191,7 +9204,7 @@ function behaviorTabHtml(n) {
     const panel = instancePanel(n, master, collections, modes);
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     const shown = template ? previewOf(template, binding, modes, varStore(), props, behaviorPreview) : null;
-    const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id };
+    const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id, textVar: cssVarOf(template.id, textColorTokenOf(template)) };
     return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
 }
 /** Bind tokens: binds each unbound mapped property of a bound master's layers to its group variable. Existing bindings are kept. */

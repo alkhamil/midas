@@ -49,12 +49,20 @@ test('a refused generation has no download payload', () => {
 });
 
 test('resolved tokens are read-only rows, named without the template prefix', () => {
-    const html = previewRows({ '--button-bg': '#3730a3', '--button-font-size': '14px' }, 'button', esc);
+    const html = previewRows({ '--button-bg': '#3730a3', '--button-font-size': '14px' }, 'button', esc, {});
     assert.match(html, /<span title="--button-bg">bg<\/span>/);
     assert.match(html, /#3730a3/);
     assert.match(html, /font-size/);
 });
 
 test('no resolved tokens is an empty state, not an empty list', () => {
-    assert.match(previewRows({}, 'button', esc), /class="empty-state"/);
+    assert.match(previewRows({}, 'button', esc, {}), /class="empty-state"/);
+});
+
+test('the text colour row carries the canvas note only while a preview is shown', () => {
+    const vars = { '--button-bg': '#3730a3', '--button-fg': '#ffffff' };
+    const previewing = previewRows(vars, 'button', esc, { previewing: true, textVar: '--button-fg' });
+    assert.equal(previewing.match(/Text color preview not on canvas/g).length, 1);
+    assert.match(previewing, /title="--button-fg"[\s\S]*Text color preview not on canvas/);
+    assert.doesNotMatch(previewRows(vars, 'button', esc, { previewing: false, textVar: '--button-fg' }), /Text color preview not on canvas/);
 });

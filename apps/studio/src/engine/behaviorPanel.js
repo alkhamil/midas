@@ -95,7 +95,7 @@ function instanceHtml(panel, esc, findings, preview) {
     return block('Collections', variable, esc)
         + block('Props', props, esc)
         + block('Slots', slots, esc)
-        + (preview ? section('Preview', row('State', state, esc) + (preview.state === 'default' ? '' : `<div class="badge">Previewing: ${esc(labelOfState(preview.state))}</div>`) + previewRows(preview.vars, preview.templateId, esc, preview.state !== 'default'), esc) : '')
+        + (preview ? section('Preview', row('State', state, esc) + (preview.state === 'default' ? '' : `<div class="badge">Previewing: ${esc(labelOfState(preview.state))}</div>`) + previewRows(preview.vars, preview.templateId, esc, { previewing: preview.state !== 'default', textVar: preview.textVar }), esc) : '')
         + diagnosticsSection(findings, [], esc, preview);
 }
 
@@ -155,9 +155,9 @@ export function codeDownloads(result) {
 }
 
 /** The resolved tokens of the previewed state as read-only rows, named without the template prefix. */
-export function previewRows(vars, templateId, esc, previewing) {
+export function previewRows(vars, templateId, esc, { previewing, textVar }) {
     const entries = Object.entries(vars);
     if (!entries.length) return empty('No resolved tokens');
-    // The canvas draws the root's background and border in a preview, never the text colour: the row says so.
-    return entries.map(([name, value]) => row(name.replace(`--${templateId}-`, ''), `<span class="small-label">${esc(value)}</span>` + (previewing && name === `--${templateId}-fg` ? '<span class="small-label">Text color preview not on canvas</span>' : ''), esc, name)).join('');
+    // The canvas draws the root's background and border in a preview, never the text colour: the text colour row says so.
+    return entries.map(([name, value]) => row(name.replace(`--${templateId}-`, ''), `<span class="small-label">${esc(value)}</span>` + (previewing && name === textVar ? '<span class="small-label">Text color preview not on canvas</span>' : ''), esc, name)).join('');
 }
