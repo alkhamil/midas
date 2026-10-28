@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -891,18 +891,14 @@ function writeBound(n, prop, val, type) {
         return set('visible', !!val);
     // The bound fill colour and gradient end colour are the top fill's. A layer with no fill takes the bound colour as its fill.
     if (type === 'color' && prop === 'fill') {
-        const top = n.fills[0];
-        if (!top) {
-            n.fills = paintOf(String(val));
-            return true;
-        }
-        if (top.type === 'image' || top.color === String(val))
+        const top = topFillOf(getFills(n));
+        if (top?.type === 'image' || topColorOf(n) === String(val))
             return false;
-        top.color = String(val);
+        n.fills = withTopColor(getFills(n), String(val));
         return true;
     }
     if (type === 'color' && prop === 'fill2') {
-        const top = n.fills[0];
+        const top = topFillOf(getFills(n));
         if (!top || top.color2 === String(val))
             return false;
         top.color2 = String(val);
@@ -2996,15 +2992,14 @@ function needsRasterFill(n) {
 // colour of a gradient, `gradientAngle` and `fillOpacity` its angle and opacity, `fillType` its type.
 const PAINT_PROPS = ['fill', 'fill2', 'fillType', 'gradientAngle', 'fillOpacity'];
 function setPaint(n, prop, v) {
-    const top = n.fills[0];
-    if (prop === 'fill' && v === 'none') {
-        if (top) top.visible = false;
+    if (prop === 'fill') {
+        n.fills = withTopColor(getFills(n), v);
         return;
     }
+    const top = topFillOf(getFills(n));
     if (!top)
         return;
-    if (prop === 'fill') top.color = v;
-    else if (prop === 'fillType') setFillType(top, v);
+    if (prop === 'fillType') setFillType(top, v);
     else top[{ fill2: 'color2', gradientAngle: 'angle', fillOpacity: 'opacity' }[prop]] = v;
 }
 function containFit(img, w, h) { const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
@@ -12555,13 +12550,12 @@ function inspectCSS() {
     if (n.rotation)
         css += `\ntransform: rotate(${fmt(n.rotation)}deg);`;
     if (n.type === 'text') {
-        css += `\nfont-family: ${n.fontFamily}, sans-serif;\nfont-size: ${fmt(n.fontSize)}px;\nfont-weight: ${n.fontWeight};\nline-height: ${fmt(n.lineHeight)};\nletter-spacing: ${fmt(n.letterSpacing)}px;\ntext-align: ${n.textAlign};\ncolor: ${topColorOf(n) === 'none' ? 'transparent' : topColorOf(n)};`;
+        css += `\nfont-family: ${n.fontFamily}, sans-serif;\nfont-size: ${fmt(n.fontSize)}px;\nfont-weight: ${n.fontWeight};\nline-height: ${fmt(n.lineHeight)};\nletter-spacing: ${fmt(n.letterSpacing)}px;\ntext-align: ${n.textAlign};\ncolor: ${topColorOf(n) === 'none' ? 'transparent' : colorWithAlpha(topColorOf(n), topOpacityOf(n))};`;
         if (n.strokeWidth)
             css += `\n-webkit-text-stroke: ${fmt(n.strokeWidth)}px ${n.stroke};`;
     }
     else {
-        const top = getFills(n).find(x => x.visible !== false), fillColor = topColorOf(n);
-        css += `\nbackground: ${top?.type === 'linear' && fillColor !== 'none' ? `linear-gradient(${(top.angle ?? 90) + 90}deg, ${fillColor}, ${top.color2 ?? '#ffffff'})` : fillColor === 'none' ? 'transparent' : fillColor};`;
+        css += `\nbackground: ${cssBackgroundOf(getFills(n)).background || 'transparent'};`;
         if (hasRadii(n))
             css += `\nborder-radius: ${n.radii.map(v => fmt(v) + 'px').join(' ')};`;
         else if (n.radius)
@@ -18705,13 +18699,9 @@ class PluginNode {
     set visible(v) { this._set('visible', !!v); }
     get fill() { return topColorOf(this._n); }
     set fill(v) {
-        const hex = String(v);
         pluginBegin();
         const n = this._n;
-        if (n.fills.length)
-            n.fills = n.fills.map((f, i) => i === 0 ? { ...f, type: 'solid', color: hex } : f);
-        else
-            n.fills = paintOf(hex);
+        n.fills = withTopColor(getFills(n), String(v));
         pluginDirty(n);
     }
     get cornerRadius() { return this._n.radius || 0; }

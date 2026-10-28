@@ -14,8 +14,8 @@ import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
-import { getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
-import { escapeAttr, svgNumber } from '../geometry/format.js';
+import { cssBackgroundOf, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
+import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -276,30 +276,9 @@ function flexOf(n) {
  * @returns {Record<string, string>}
  */
 function fillStyle(n, scope) {
-    const layers = [];
-    for (const f of getFills(n).filter(x => x.visible !== false)) {
-        const layer = fillLayer(f);
-        if (layer === null) scope.unsupported.push({ nodeId: n.id, type: `${f.type} fill` });
-        else if (layer) layers.push(layer);
-    }
-    if (!layers.length) return {};
-    if (layers.length === 1 && layers[0].solid) return { background: layers[0].css };
-    return { background: layers.map(l => (l.solid ? `linear-gradient(${l.css}, ${l.css})` : l.css)).join(', ') };
-}
-
-/**
- * One fill as a CSS layer. A linear fill's angle is measured from the x axis on the canvas, and from the top in CSS: CSS is the canvas
- * angle plus 90 degrees. Null for a fill the DOM cannot draw; undefined for a fill that draws nothing.
- * @param {any} f
- * @returns {{ css: string, solid: boolean } | null | undefined}
- */
-function fillLayer(f) {
-    const o = f.opacity;
-    if (f.type === 'solid') return f.color && f.color !== 'none' ? { css: colorWithAlpha(f.color, o), solid: true } : undefined;
-    if (f.type === 'linear') return { css: `linear-gradient(${(f.angle ?? 90) + 90}deg, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
-    if (f.type === 'radial') return { css: `radial-gradient(circle, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
-    if (f.type === 'angular') return { css: `conic-gradient(from 0deg, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
-    return null;
+    const { background, unsupported } = cssBackgroundOf(getFills(n));
+    for (const type of unsupported) scope.unsupported.push({ nodeId: n.id, type: `${type} fill` });
+    return background ? { background } : {};
 }
 
 /**
@@ -424,18 +403,6 @@ function effectStyle(n, scope, onOutline) {
  */
 function opacityOf(n) {
     return n.opacity !== undefined && n.opacity !== 1 ? { opacity: String(n.opacity) } : {};
-}
-
-/**
- * A colour with an opacity applied. A six digit hex takes the alpha as a byte; any other colour is mixed with transparent.
- * @param {string} color
- * @param {number | undefined} opacity
- */
-function colorWithAlpha(color, opacity) {
-    if (opacity === undefined || opacity >= 1) return color;
-    const o = Math.max(0, opacity);
-    if (/^#[0-9a-f]{6}$/i.test(color)) return `${color}${Math.round(o * 255).toString(16).padStart(2, '0')}`;
-    return `color-mix(in srgb, ${color} ${Math.round(o * 100)}%, transparent)`;
 }
 
 
