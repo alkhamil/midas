@@ -1,24 +1,28 @@
 // Binding model (stage 2): a master component -> templateId, and each variable prop -> a variable collection.
 // Persisted on the master as `behavior: { version, templateId, variables }`. Unused collections are derived, never stored.
 import { BEHAVIOR_DATA_VERSION } from './data.js';
-import { variableProps } from './registry.js';
+import { TEMPLATES, variableProps } from './registry.js';
 
 /**
  * @typedef {{ id: string, name: string, modes?: { id: string, name: string }[] }} Collection
  * @typedef {{ templateId: string, version: number, variables: Record<string, string | null> }} Binding
  */
 
+/** The name a collection is matched by: case-insensitive, surrounding spaces ignored. */
+const nameKey = name => String(name ?? '').trim().toLowerCase();
+
 /**
- * Id of the collection whose name equals `name` (case-insensitive), or null when none does.
+ * Id of the one collection whose name equals `name` (case-insensitive, spaces ignored), or null when none or more than one
+ * does. Two collections with the same name are a guess, so neither is chosen.
  * @param {string | undefined} name
  * @param {Collection[]} collections
  * @returns {string | null}
  */
 export function autoMatchCollection(name, collections) {
-    const want = String(name ?? '').toLowerCase();
+    const want = nameKey(name);
     if (!want) return null;
-    const hit = collections.find(c => String(c.name ?? '').toLowerCase() === want);
-    return hit ? hit.id : null;
+    const hits = collections.filter(c => nameKey(c.name) === want);
+    return hits.length === 1 ? hits[0].id : null;
 }
 
 /**
@@ -49,3 +53,28 @@ export function setVariableBinding(binding, template, prop, collectionId, collec
     return { ...binding, variables: { ...binding.variables, [prop]: collectionId } };
 }
 
+/**
+ * The bindings auto-match would change now: every variable slot that has no collection (null) and whose collection name
+ * matches exactly one collection. A slot with a binding is never changed. Masters without a binding are skipped.
+ * @param {{ behavior?: any }[]} masters
+ * @param {Collection[]} collections
+ * @returns {{ node: { behavior?: any }, variables: Record<string, string> }[]}
+ */
+export function planAutoMatch(masters, collections) {
+    const out = [];
+    for (const node of masters) {
+        const binding = node.behavior;
+        if (!binding || !('templateId' in binding)) continue;
+        const template = TEMPLATES.get(binding.templateId);
+        if (!template) continue;
+        /** @type {Record<string, string>} */
+        const variables = {};
+        for (const [prop, def] of variableProps(template)) {
+            if (binding.variables[prop] !== null) continue;
+            const id = autoMatchCollection(def.collection, collections);
+            if (id !== null) variables[prop] = id;
+        }
+        if (Object.keys(variables).length) out.push({ node, variables });
+    }
+    return out;
+}

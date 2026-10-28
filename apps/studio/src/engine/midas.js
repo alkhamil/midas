@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -8730,6 +8730,7 @@ function changed({ ui = true, commit = false } = {}) {
         markSelectedOverrides();
         applyAllLayouts();
         syncComponents();
+        autoMatchUnbound();
         if (rolledBackForBehavior())
             return;
         // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
@@ -8751,6 +8752,21 @@ function changed({ ui = true, commit = false } = {}) {
         }, 80);
     }
     invalidate();
+}
+// Unbound variable slots are matched again when the collections change (created, renamed or removed) and when the last lazy
+// page arrives. The key is what matching reads: the collection ids and names, and how many pages are still loading.
+// A slot that already has a binding is never changed (see planAutoMatch).
+let autoMatchKey = null;
+function autoMatchUnbound() {
+    const collections = varStore().collections || [];
+    const key = JSON.stringify([collections.map(c => [c.id, c.name]), lazyPages.size]);
+    if (key === autoMatchKey) return;
+    autoMatchKey = key;
+    const masters = doc.data.pages.flatMap(p => p.nodes || []).filter(n => n.behavior && 'templateId' in n.behavior);
+    for (const { node, variables } of planAutoMatch(masters, collections)) {
+        applyPlan(node, { changed: true, binding: { ...node.behavior, variables: { ...node.behavior.variables, ...variables } }, updates: [] });
+        doc.touch(node);
+    }
 }
 // The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
 // to open is rolled back and the reason is shown. Not run while pages are still loading: the file is incomplete then.
