@@ -31,6 +31,8 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 7. The `fill-screen` migration stays. It maps a value in the browser's `midas.play` preference (`resolveScalingMode`), not document data, so the no-legacy rule does not apply. The preference was written by an earlier build of Play, and a user who saved it should keep the view they chose.
 8. Constraints are not in the data model. Children of a plain frame stay absolutely positioned at their x and y and do not stretch in Responsive mode; only auto layout frames adapt. This is a known limitation, not a bug. The view menu says so under Responsive. Constraints are not implemented here.
 9. Fidelity rule: the canvas is the source of truth for what a layer looks like. Any geometry the DOM preview needs is computed by one shared module, never duplicated in the DOM renderer. A property the DOM cannot match is reported in the toolbar badge, never drawn silently.
+10. A prototype edit that leaves a problem the document did not have is rolled back: the document and its history are as they were, and the validator's reason is shown in a "Not applied" toast. A problem the document already had does not block an edit. Undo and redo are unaffected.
+11. Copying, pasting and duplicating carry the links. A link to a layer copied with them points at the copy, with a new interaction id. A link to any other layer that still exists keeps pointing at it, on whatever page it is. A link to a layer that is gone is left out, and the toast says how many. Deleting a page removes the links into it, as deleting layers does.
 
 ## Play
 
@@ -63,14 +65,14 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 - A click on a child layer does not reach its parent's on-click (the innermost layer answers). Separate defect, not fixed in this pass.
 - The overflow warning uses the children's stored x, y, w and h. It does not model auto layout gaps or padding.
 - Every frame clips by default. The `clip` flag of a frame no longer decides clipping.
+- Connector arrows are intentionally not built. A Navigate to can cross pages, so an arrow between two frames would break or mislead when the target is on another page. The target is chosen in the Prototype panel, and the picker shows a target on another page as "Page / Frame".
+- Play on a frame outside the flow's page shows "– / n" as its counter: the counter counts the flow's page only.
+- A page has one flow start. A file that holds more flows on one page keeps its first flow's start, and Play starts there.
 
 ## Not in phase 1
 
-- Connection handle, connector arrows and the flow-start marker on the canvas.
-- Flow creation from the panel (a flow exists only in the file for now).
-- Copy, paste and duplicate wiring of interactions. The copy planner (`planCopiedInteractions`) was removed as unused; re-add it with the wiring.
-- Rolling back a prototype problem with a "Not applied" message (the editor does not yet run the prototype check as a backstop).
-- Marking a flow start from the panel and showing the flow-start marker on the canvas.
+- Connection handle and connector arrows: not built on purpose (see Known limitations).
+- Flow creation from the panel: a flow exists only in the file. The panel sets the start of the page's flow.
 - The canvas draws no Play state; the Canvas 2D fallback is not involved.
 
 ## Status
@@ -86,6 +88,8 @@ Decision: a text layer with no fill draws nothing, in Play as on the canvas (`co
 Round 4 (geometry and fidelity): the outline, stroke and fill code the canvas uses moved into `builder-core/src/geometry/` (`shapes.js`, `fills.js`). The canvas builds its Path2D from the shared commands, and the DOM preview emits SVG from the same commands, so one geometry serves both. Play now draws arcs, donuts, lines, vector paths, centred, inside, outside and dashed strokes, per-corner radii, flips, multiple fills, linear, radial and angular gradients, drop and inner shadows, layer and background blur, text stroke, glyph shadow and truncation. Fidelity fixture: `scripts/make-fidelity-fixture.js`, one frame per feature.
 
 Round 5 (paint and remaining fidelity): the fills checks were run in the browser (copy and paste, duplicate, plugin fill, Inspect CSS, text colour); the top visible fill is the one every edit writes, and Inspect CSS lists every fill. Image fills and image layers draw in Play. Masks clip the layers above them in Play. A new empty file is saved on its first edit, and it stays out of Recents until then. A missing image asset is drawn as the canvas placeholder and reported. Booleans are still not drawn in Play: the result needs polygon clipping in builder-core, and the operand geometry is still in `midas.js`. Not verified in the browser: Figma and SVG import, variable mode switching, and binding a fill to a variable through the picker.
+
+Round 6 (prototype phase 1 leftovers): a prototype edit that breaks the prototype is rolled back with a "Not applied" toast (decision 10). Copy, paste and duplicate carry the links (decision 11), and a paste no longer fails on a link that points outside the clipboard. The Flow switch sets the page's flow start, shown as a marker on the canvas; Play starts there. A target on another page is named "Page / Frame". Browser-checked on the prototype fixture (a Cart page with a Checkout frame, linked from Details): rollback of a trigger-only edit that the inspector refuses, and of a reparent that the validator refuses (the parent and the flow are unchanged, and the undo stack is unchanged); a valid edit and its undo and redo; duplicate and paste keep in-set links on the copies and cross-page links on the originals; a link to a deleted frame is left out of a paste with its toast; the flow marker and the Flow switch; Play starting at the flow start over a selected frame; the cross-page picker labels. Play of a cross-page Navigate to: checked (Details, Checkout to the Cart page, shows the Checkout frame). Not browser-checked: deleting a page with links into it (the same planner as deleting layers, covered by tests).
 
 Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fixture was stepped through in Play and looked at. The canvas was checked by thumbnail only, for the rows that changed (booleans, mask, frame strokes, drop shadow). No pixel comparison exists: the test file is named as a generator check.
 
