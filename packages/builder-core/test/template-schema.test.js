@@ -45,3 +45,18 @@ test('a token group must draw from a variable prop of the same name', () => {
     delete bad.tokens.fromSize;
     assert.match(validateTemplateSchema(bad).join('\n'), /tokens group "fromWidth" has no variable prop "Width"/);
 });
+
+test('a state token map must name only states of the template', () => {
+    const bad = clone(BUTTON);
+    bad.stateTokens = { pressed: { bg: 'bg-hover' } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /stateTokens names unknown state "pressed"/);
+});
+
+test('a state token map must override a token of the template, and name a token of the template', () => {
+    const bad = clone(BUTTON);
+    bad.stateTokens = { hover: { width: 'bg-hover' } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /stateTokens overrides "width", which is not a token/);
+    const missing = clone(BUTTON);
+    missing.stateTokens = { hover: { bg: 'bg-nope' } };
+    assert.match(validateTemplateSchema(missing).join('\n'), /stateTokens maps "bg" to "bg-nope", which is not a token/);
+});

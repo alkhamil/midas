@@ -19,6 +19,9 @@ const TOKEN_KIND = {
     bg: 'color',
     fg: 'color',
     border: 'color',
+    'bg-hover': 'color',
+    'bg-active': 'color',
+    'bg-disabled': 'color',
 };
 
 /** The last segment of a variable name: `Button/fontSize` matches the token `fontSize`. */
@@ -26,6 +29,13 @@ const leaf = (/** @type {unknown} */ name) => String(name ?? '').split('/').pop(
 
 /** `fontSize` -> `font-size`, `paddingX` -> `padding-x`. */
 const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
+/**
+ * The CSS custom property a token is written to: `--<templateId>-<token in kebab-case>`.
+ * @param {string} templateId
+ * @param {string} token
+ */
+export const cssVarOf = (templateId, token) => `--${templateId}-${kebab(token)}`;
 
 /**
  * A colour as its 6-digit form and its alpha in percent, the way the editor reads it (#rgb, #rgba, #rrggbb, #rrggbbaa).
@@ -143,7 +153,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             if (found.item.type !== (kind === 'color' ? 'color' : 'number')) { miss('type-mismatch'); continue; }
             const text = formatOf(kind, found.value, found.opacities);
             if (text === null) { miss('invalid-value'); continue; }
-            vars[`--${template.id}-${kebab(token)}`] = text;
+            vars[cssVarOf(template.id, token)] = text;
         }
     }
     return { vars, unresolved };

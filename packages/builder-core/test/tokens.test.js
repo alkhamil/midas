@@ -19,6 +19,9 @@ const baseItems = () => [
     col('i-bg', 'bg', 'c-variant', { primary: '#4338ca', danger: '#dc2626' }),
     col('i-fg', 'fg', 'c-variant', { primary: '#ffffff', danger: '#ffffff' }),
     col('i-border', 'border', 'c-variant', { primary: { alias: 'i-bg' }, danger: '#dc2626' }),
+    col('i-bg-hover', 'bg-hover', 'c-variant', { primary: '#3730a3', danger: '#b91c1c' }),
+    col('i-bg-active', 'bg-active', 'c-variant', { primary: '#312e81', danger: '#991b1b' }),
+    col('i-bg-disabled', 'bg-disabled', 'c-variant', { primary: '#a5b4fc', danger: '#fca5a5' }),
 ];
 const variables = (items = baseItems(), extraModes = []) => ({
     collections: [{ ...sizeColl, modes: [...sizeColl.modes, ...extraModes] }, variantColl],
@@ -41,6 +44,9 @@ test('size and variant tokens resolve to CSS custom properties, with the stored 
         '--button-bg': '#4338ca',
         '--button-fg': '#ffffff',
         '--button-border': '#4338ca',
+        '--button-bg-hover': '#3730a3',
+        '--button-bg-active': '#312e81',
+        '--button-bg-disabled': '#a5b4fc',
     });
     assert.deepEqual(unresolved, []);
 });
@@ -96,6 +102,7 @@ test('the same inputs give the same output, in token order', () => {
     assert.deepEqual(Object.keys(first.vars), [
         '--button-font-size', '--button-line-height', '--button-padding-x', '--button-padding-y', '--button-gap',
         '--button-radius', '--button-icon-size', '--button-bg', '--button-fg', '--button-border',
+        '--button-bg-hover', '--button-bg-active', '--button-bg-disabled',
     ]);
 });
 

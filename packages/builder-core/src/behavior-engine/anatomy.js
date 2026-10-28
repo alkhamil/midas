@@ -10,7 +10,7 @@ import { resolveProps } from './instance-props.js';
 /** @typedef {{ op: 'remove', id: string } | { op: 'move', id: string, index: number } | { op: 'insert', slot: string, index: number }} AnatomyOp */
 
 /** The managed slot each icon placement uses. Removals come first in a plan; moves and inserts give the final index in the child list. */
-const SLOT_OF_PLACEMENT = { start: 'iconStart', end: 'iconEnd' };
+export const SLOT_OF_PLACEMENT = { start: 'iconStart', end: 'iconEnd' };
 
 /** The behavior data of a managed layer: its slot name, under the `behavior` key. */
 /** @param {string} slot */

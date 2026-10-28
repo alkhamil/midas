@@ -40,6 +40,9 @@ export interface TokenGroups {
     fromVariant: string[];
 }
 
+/** Per state, the base tokens it overrides, each with the token that replaces it (`{ bg: 'bg-hover' }`). */
+export type StateTokens = Record<string, Record<string, string>>;
+
 export interface EventDef {
     name: string;
     /** Payload type name, when the event carries one. */
@@ -55,5 +58,6 @@ export interface TemplateSchema {
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     states: string[];
+    stateTokens?: StateTokens;
     events: EventDef[];
 }

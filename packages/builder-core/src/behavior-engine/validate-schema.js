@@ -87,6 +87,18 @@ export function validateTemplateSchema(schema) {
     }
 
     if (!Array.isArray(schema.states) || !schema.states.length) out.push('states must be a non-empty list');
+    const allTokens = isPlainObject(tokens) ? Object.values(tokens).flat() : [];
+    if (schema.stateTokens !== undefined) {
+        if (!isPlainObject(schema.stateTokens)) out.push('stateTokens must be an object');
+        else for (const [state, overrides] of Object.entries(schema.stateTokens)) {
+            if (!(Array.isArray(schema.states) && schema.states.includes(state))) out.push(`stateTokens names unknown state "${state}"`);
+            if (!isPlainObject(overrides)) { out.push(`stateTokens for "${state}" must be an object`); continue; }
+            for (const [base, stateToken] of Object.entries(overrides)) {
+                if (!allTokens.includes(base)) out.push(`stateTokens overrides "${base}", which is not a token`);
+                if (!allTokens.includes(stateToken)) out.push(`stateTokens maps "${base}" to "${stateToken}", which is not a token`);
+            }
+        }
+    }
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 

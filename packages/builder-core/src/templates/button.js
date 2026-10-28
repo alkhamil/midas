@@ -22,9 +22,14 @@ export const BUTTON = {
     },
     tokens: {
         fromSize: ['fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border'],
+        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'bg-active', 'bg-disabled'],
     },
     states: ['default', 'hover', 'active', 'focus', 'disabled', 'loading'],
+    stateTokens: {
+        hover: { bg: 'bg-hover' },
+        active: { bg: 'bg-active' },
+        disabled: { bg: 'bg-disabled' },
+    },
     events: [
         { name: 'onClick', exposeAsTrigger: true },
         { name: 'onHover', exposeAsTrigger: true },
