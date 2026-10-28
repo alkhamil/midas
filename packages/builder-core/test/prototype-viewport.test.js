@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewportLayout, chromeVisibility, overflowWarnings, flowFrames, stepFrame, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
+import { viewportLayout, chromeVisibility, overflowWarnings, flowFrames, stepFrame, counterText, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
 
 const viewport = { width: 800, height: 600 };
 const tall = { width: 375, height: 2000 };
@@ -162,6 +162,11 @@ test('prev and next move through the frames, and are disabled at the ends', () =
 
 test('a frame that is not in the list counts as no position', () => {
     assert.deepEqual(stepFrame(['A', 'B'], 'Z', 'next'), { target: null, index: -1, total: 2, prevDisabled: true, nextDisabled: true });
+});
+
+test('the counter reads n / total on the flow\'s page, and is empty for a frame outside it', () => {
+    assert.equal(counterText(['A', 'B', 'C'], 'B'), '2 / 3');
+    assert.equal(counterText(['A', 'B', 'C'], 'Z'), '');
 });
 
 test('overflow warning ignores hidden children: a hidden layer past the frame does not count as content', () => {

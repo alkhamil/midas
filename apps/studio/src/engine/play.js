@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, resolveScalingMode, nextScalingMode, SCALING_MODES } from '@midas/builder-core';
+import { toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES } from '@midas/builder-core';
 
 const PREFS_KEY = 'midas.play';
 const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
@@ -244,7 +244,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     /** Previous and next, and the counter, follow the frame on screen. */
     function updateControls() {
         const step = stepFrame(pageFrames, frameId, 'next');
-        counter.textContent = step.index < 0 ? `– / ${step.total}` : `${step.index + 1} / ${step.total}`;
+        counter.textContent = counterText(pageFrames, frameId);
+        counter.hidden = step.index < 0;
         overlay.querySelector('[data-step="prev"]').disabled = stepFrame(pageFrames, frameId, 'prev').prevDisabled;
         overlay.querySelector('[data-step="next"]').disabled = step.nextDisabled;
     }

@@ -153,3 +153,14 @@ export function stepFrame(frames, current, direction) {
     const target = index >= 0 && targetIndex >= 0 && targetIndex < total ? frames[targetIndex] : null;
     return { target, index, total, prevDisabled, nextDisabled };
 }
+
+/**
+ * The Play counter, "n / total", for a frame of the flow's page. Empty for a frame outside that page: the counter counts only the page.
+ * @param {string[]} frames
+ * @param {string} current
+ * @returns {string}
+ */
+export function counterText(frames, current) {
+    const { index, total } = stepFrame(frames, current, 'next');
+    return index < 0 ? '' : `${index + 1} / ${total}`;
+}
