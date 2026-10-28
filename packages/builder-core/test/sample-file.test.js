@@ -188,7 +188,7 @@ test('screens have 390x844 top-level auto-layout frames, 3-4 level nesting, non-
     const texts = allNodes.filter(n => n.type === 'text');
     assert.ok(new Set(texts.map(t => t.fontSize)).size >= 4, 'mixed text sizes');
     assert.ok(new Set(texts.map(t => t.fontWeight)).size >= 3, 'mixed text weights');
-    assert.ok(allNodes.some(n => n.type === 'rect' && n.fill && n.fill !== 'none' && n.radius > 0), 'rect with fill and corner radius');
+    assert.ok(allNodes.some(n => n.type === 'rect' && n.fills.some(f => f.visible !== false && f.color && f.color !== 'none') && n.radius > 0), 'rect with fill and corner radius');
     assert.ok(allNodes.some(n => n.type === 'group'), 'at least one group');
     assert.ok(allNodes.some(n => n.type === 'ellipse'), 'at least one ellipse (avatar)');
     assert.ok(

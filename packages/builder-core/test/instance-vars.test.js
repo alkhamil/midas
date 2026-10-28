@@ -1,17 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ownedVarKeys, derivedNodeProps } from '../src/behavior-engine/state-bindings.js';
+import { ownedVarKeys } from '../src/behavior-engine/state-bindings.js';
 import { withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField } from '../src/behavior-engine/instance-vars.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const button = TEMPLATES.get('button');
 
 test('the owned vars of Button are the fill of the root and the label (the persistent disabled colour)', () => {
     assert.deepEqual(ownedVarKeys(button), ['fill']);
-    assert.deepEqual(derivedNodeProps(button).map(d => [d.key, d.prop, d.stateToken]), [
-        ['root', 'fill', 'bg-disabled'],
-        ['label', 'fill', 'fg-disabled'],
-    ]);
 });
 
 test('withoutOwnedVars drops only the owned keys', () => {
@@ -125,6 +122,6 @@ test('a fill child of a frame that is not auto layout keeps its position: only t
 });
 
 test('a field that the layout never writes is copied (colours, names, sizes of fixed fields)', () => {
-    assert.equal(isLayoutOwnedField({ type: 'frame', fill: '#fff' }, autoRow, 'fill'), false);
+    assert.equal(isLayoutOwnedField({ type: 'frame', fills: solid('#fff') }, autoRow, 'fill'), false);
     assert.equal(isLayoutOwnedField({ type: 'text' }, autoRow, 'fontSize'), false);
 });

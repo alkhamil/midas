@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
 import { buildBehaviorFixture } from './make-behavior-fixture.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const PROTOTYPE_FIXTURE_PATH = resolve(here, 'fixtures/prototype-fixture.midas');
@@ -27,7 +28,7 @@ const instant = { type: 'instant', durationMs: 0 };
 function button(id, parentId, name, props, variant, interactions = []) {
     return {
         id, name, type: 'frame', parentId, x: 0, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'main', version: 0,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fill: '#0058CA', radius: 8,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: name, disabled: false, hasIcon: false, ...props } },
         varModes: { [variant.id]: variant.mode, [SIZE.id]: SIZE.mode },
         ...(interactions.length ? { prototype: { version: 1, interactions } } : {}),
@@ -36,7 +37,7 @@ function button(id, parentId, name, props, variant, interactions = []) {
 
 /** A top-level frame, as a node: an auto layout column that holds its buttons. */
 function screen(id, name, x) {
-    return { id, name, type: 'frame', parentId: null, x, y: 0, w: 375, h: 667, layout: 'vertical', gap: 16, padding: 24, fill: '#ffffff', clip: true, version: 0 };
+    return { id, name, type: 'frame', parentId: null, x, y: 0, w: 375, h: 667, layout: 'vertical', gap: 16, padding: 24, fills: solid('#ffffff'), clip: true, version: 0 };
 }
 
 /** A navigate-to interaction. */
@@ -58,7 +59,7 @@ export function buildPrototypeFixture({ broken = false } = {}) {
         button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
         button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),
         // A fixed-size layer wider than a phone frame: clipped by default, scrolled when the frame's Scroll behaviour opens the horizontal axis.
-        { id: 'details-bar', name: 'Wide bar', type: 'rect', parentId: 'frame-details', x: 0, y: 0, w: 600, h: 40, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fill: '#f59e0b', version: 0 },
+        { id: 'details-bar', name: 'Wide bar', type: 'rect', parentId: 'frame-details', x: 0, y: 0, w: 600, h: 40, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), version: 0 },
         screen('frame-confirm', 'Confirm', 960),
         button('confirm-done', 'frame-confirm', 'Done', {}, PRIMARY, [navigate('confirm-done-go', 'frame-done')]),
         button('confirm-cancel', 'frame-confirm', 'Cancel', {}, DANGER, [navigate('confirm-cancel-go', 'frame-home', { type: 'on-click' }, { type: 'dissolve', durationMs: 150, easing: 'linear' })]),

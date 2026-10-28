@@ -13,8 +13,8 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
-import { arcActive, cornerRadii, hasRadii, strokeIsOn, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
-import { getFills } from '../geometry/fills.js';
+import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { escapeAttr, svgNumber } from '../geometry/format.js';
 
 /**
@@ -87,7 +87,13 @@ function renderNode(n, parent, scope) {
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
     const children = scope.childrenOf(n.id).map(c => renderNode(c, n, scope)).filter(Boolean);
-    const stroke = strokeOverlay(n);
+    const outline = frameOutlineOf(n, scope);
+    if (outline !== undefined) {
+        style.outline = outline;
+        style.outlineOffset = '0px';
+    }
+    // An outside stroke of a frame is all outline: an overlay inside the frame would only draw the part the frame clips.
+    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n);
     if (n.type === 'frame' && stroke !== undefined) {
         // A frame's stroke is a layer under its content, so the content draws over it. The isolation keeps that layer above the frame's fill.
         style.isolation = 'isolate';
@@ -318,6 +324,25 @@ function strokeOverlay(n) {
 }
 
 /**
+ * The part of a frame's stroke that lies outside its box, as a CSS outline. A frame clips its content, so an overlay cannot draw this part;
+ * an outline is not cut by the frame's own clip. A stroke that is not uniform has no outline form, so its outside is reported.
+ * @param {any} n
+ * @param {any} scope
+ * @returns {string | undefined}
+ */
+function frameOutlineOf(n, scope) {
+    if (n.type !== 'frame' || !strokeIsOn(n)) return undefined;
+    const width = strokeSideWidths(n).t, align = n.strokeAlign ?? 'center';
+    const outside = align === 'outside' ? width : align === 'center' ? width / 2 : 0;
+    if (!outside) return undefined;
+    if (!strokeSidesUniform(n)) {
+        scope.unsupported.push({ nodeId: n.id, type: 'frame outside stroke on some sides' });
+        return undefined;
+    }
+    return `${outside}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
+}
+
+/**
  * An outline drawn as SVG: an arc, a line or a vector path, with its fill and its stroke.
  * @param {any} n
  * @param {any} scope
@@ -433,7 +458,8 @@ function textElement(n, style) {
  */
 function spanElement(s, n) {
     /** @type {Record<string, string>} */
-    const style = { color: s.fill && s.fill !== 'none' ? colorWithAlpha(s.fill, s.fillOpacity ?? n.fillOpacity) : 'transparent' };
+    const color = topColorOf(s);
+    const style = { color: color !== 'none' ? colorWithAlpha(color, topOpacityOf(s)) : 'transparent' };
     if (s.fontFamily) style.fontFamily = s.fontFamily;
     if (s.fontSize) style.fontSize = `${s.fontSize}px`;
     if (s.fontWeight) style.fontWeight = String(s.fontWeight);
@@ -454,7 +480,7 @@ function textStyle(n) {
         fontSize: `${n.fontSize ?? 14}px`,
         fontWeight: String(n.fontWeight ?? 400),
         fontStyle: n.fontStyle ?? 'normal',
-        color: n.fill && n.fill !== 'none' ? colorWithAlpha(n.fill, n.fillOpacity) : 'transparent',
+        color: topColorOf(n) !== 'none' ? colorWithAlpha(topColorOf(n), topOpacityOf(n)) : 'transparent',
         lineHeight: String(n.lineHeight ?? 1.2),
         textAlign: n.textAlign ?? 'left',
         whiteSpace: 'pre-wrap',

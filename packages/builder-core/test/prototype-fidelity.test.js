@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
-const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 200, fill: '#ffffff', ...extra });
-const layer = (extra = {}) => ({ id: 'L', name: 'L', type: 'rect', parentId: 'A', x: 10, y: 10, w: 80, h: 60, fill: '#112233', ...extra });
+const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 200, fills: solid('#ffffff'), ...extra });
+const layer = (extra = {}) => ({ id: 'L', name: 'L', type: 'rect', parentId: 'A', x: 10, y: 10, w: 80, h: 60, fills: solid('#112233'), ...extra });
 const docOf = nodes => ({ pages: [{ id: 'p', name: 'Screens', nodes }] });
 /** The descriptor of the one layer drawn inside frame A. */
 const drawn = extra => toDomTree(docOf([frame('A'), layer(extra)]), 'A').root.children[0];
@@ -18,13 +19,13 @@ test('a flipped layer mirrors about its centre, and then turns with its rotation
 });
 
 test('a six digit hex fill takes its opacity as an alpha byte; a short hex or a named colour takes it as color-mix', () => {
-    assert.equal(drawn({ fill: '#112233', fillOpacity: 0.5 }).style.background, '#11223380');
-    assert.equal(drawn({ fill: '#abc', fillOpacity: 0.5 }).style.background, 'color-mix(in srgb, #abc 50%, transparent)');
-    assert.equal(drawn({ fill: 'rgb(1, 2, 3)', fillOpacity: 0.5 }).style.background, 'color-mix(in srgb, rgb(1, 2, 3) 50%, transparent)');
+    assert.equal(drawn({ fills: solid('#112233', 0.5) }).style.background, '#11223380');
+    assert.equal(drawn({ fills: solid('#abc', 0.5) }).style.background, 'color-mix(in srgb, #abc 50%, transparent)');
+    assert.equal(drawn({ fills: solid('rgb(1, 2, 3)', 0.5) }).style.background, 'color-mix(in srgb, rgb(1, 2, 3) 50%, transparent)');
 });
 
 test('a linear gradient runs in the canvas direction: its CSS angle is the canvas angle plus 90', () => {
-    const style = drawn({ fillType: 'linear', fill: '#000000', fill2: '#ffffff', gradientAngle: 0 }).style;
+    const style = drawn({ fills: [{ type: 'linear', color: '#000000', color2: '#ffffff', angle: 0, opacity: 1, visible: true }] }).style;
     assert.equal(style.background, 'linear-gradient(90deg, #000000, #ffffff)');
 });
 
@@ -111,37 +112,37 @@ test('a group that clips its content hides what is outside it', () => {
 });
 
 test('a text layer with a stroke draws a text stroke of its width and colour, not a box border', () => {
-    const style = drawn({ type: 'text', text: 'Hi', fill: '#000000', stroke: '#ff0000', strokeWidth: 2, strokeOpacity: 1 }).style;
+    const style = drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), stroke: '#ff0000', strokeWidth: 2, strokeOpacity: 1 }).style;
     assert.equal(style.WebkitTextStroke, '2px #ff0000');
     assert.equal(style.border, undefined);
 });
 
 test('a text glyph shadow is a drop-shadow filter on the glyphs, not a box shadow', () => {
-    const style = drawn({ type: 'text', text: 'Hi', fill: '#000000', effects: [{ type: 'drop', visible: true, x: 2, y: 4, blur: 10, color: '#000000', opacity: 0.5 }] }).style;
+    const style = drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), effects: [{ type: 'drop', visible: true, x: 2, y: 4, blur: 10, color: '#000000', opacity: 0.5 }] }).style;
     assert.equal(style.filter, 'drop-shadow(2px 4px 10px #00000080)');
     assert.equal(style.boxShadow, undefined);
 });
 
 test('a truncated text layer clamps to its max lines with an ellipsis', () => {
-    const style = drawn({ type: 'text', text: 'Hi', fill: '#000000', textTruncate: true, maxLines: 2 }).style;
+    const style = drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), textTruncate: true, maxLines: 2 }).style;
     assert.deepEqual([style.display, style.WebkitLineClamp, style.WebkitBoxOrient, style.overflow], ['-webkit-box', '2', 'vertical', 'hidden']);
 });
 
 test('a text layer that is not truncated has no line clamp, even with a max lines value', () => {
-    assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', maxLines: 2 }).style.WebkitLineClamp, undefined);
+    assert.equal(drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), maxLines: 2 }).style.WebkitLineClamp, undefined);
 });
 
 test('text wrap balance maps to the text-wrap property; the default wraps as it always did', () => {
-    assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', textWrap: 'balance' }).style.textWrap, 'balance');
-    assert.equal(drawn({ type: 'text', text: 'Hi', fill: '#000000', textWrap: 'default' }).style.textWrap, undefined);
+    assert.equal(drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), textWrap: 'balance' }).style.textWrap, 'balance');
+    assert.equal(drawn({ type: 'text', text: 'Hi', fills: solid('#000000'), textWrap: 'default' }).style.textWrap, undefined);
 });
 
 test('a line draws no fill, however its fill is set', () => {
-    assert.equal(drawn({ type: 'line', fill: '#ff0000', stroke: '#000000', strokeWidth: 1 }).style.background, undefined);
+    assert.equal(drawn({ type: 'line', fills: solid('#ff0000'), stroke: '#000000', strokeWidth: 1 }).style.background, undefined);
 });
 
 test('a boolean result is reported and its operands are not drawn', () => {
-    const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ id: 'G', type: 'group', booleanOp: 'union', fill: 'none' }), layer({ id: 'K', parentId: 'G', type: 'rect' })]), 'A');
+    const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ id: 'G', type: 'group', booleanOp: 'union', fills: solid('none') }), layer({ id: 'K', parentId: 'G', type: 'rect' })]), 'A');
     assert.deepEqual(unsupported, [{ nodeId: 'G', type: 'boolean' }]);
     assert.deepEqual(root.children, []);
 });
@@ -171,4 +172,23 @@ test('an inside frame stroke is clipped to the frame, and a frame with no stroke
     assert.match(inside.children[0].html, /<clipPath/);
     const plain = toDomTree(docOf([frame('A'), layer()]), 'A').root;
     assert.equal(plain.children.length, 1);
+});
+
+test('an outside frame stroke is the frame outline, which the frame clip does not cut; no overlay is drawn', () => {
+    const root = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside' }), layer()]), 'A').root;
+    assert.equal(root.style.outline, '6px solid #c0392b');
+    assert.equal(root.style.outlineOffset, '0px');
+    assert.equal(root.children.length, 1);
+});
+
+test('a centred frame stroke is the inner half as an overlay and the outer half as an outline', () => {
+    const root = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b' }), layer()]), 'A').root;
+    assert.equal(root.style.outline, '3px solid #c0392b');
+    assert.match(root.children[0].html, /stroke-width="6"/);
+});
+
+test('an outside frame stroke on some sides only is reported: an outline cannot be per side', () => {
+    const { root, unsupported } = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside', strokeSides: 'top' }), layer()]), 'A');
+    assert.equal(root.style.outline, undefined);
+    assert.deepEqual(unsupported, [{ nodeId: 'A', type: 'frame outside stroke on some sides' }]);
 });

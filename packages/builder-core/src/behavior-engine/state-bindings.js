@@ -63,7 +63,7 @@ export function planStateBindings({ template, binding, props, layers, variables 
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {{ key: string, prop: string, base: string, state: string, stateToken: string }[]}
  */
-export function derivedNodeProps(template) {
+function derivedNodeProps(template) {
     /** @type {{ key: string, prop: string, base: string, state: string, stateToken: string }[]} */
     const out = [];
     for (const [state, def] of Object.entries(template.persistentStates)) {

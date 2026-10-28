@@ -108,7 +108,7 @@ export function chromeVisibility(state, event) {
  * @param {{ x: number, y: number, w: number, h: number, visible?: boolean }[]} children the frame's direct children
  * @returns {boolean} true when the content is not bigger than the frame on that axis (the warning shows)
  */
-export function overflowWarning(frame, axis, children) {
+function overflowWarning(frame, axis, children) {
     const extent = children.reduce((max, c) => (c.visible === false ? max : Math.max(max, axis === 'horizontal' ? c.x + c.w : c.y + c.h)), 0);
     return extent <= (axis === 'horizontal' ? frame.width : frame.height);
 }

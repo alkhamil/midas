@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathCommands, svgPathD, arcPoly, roundRectD, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeDashArray, strokeSideWidths, strokeSidesUniform } from '../src/geometry/shapes.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const f = v => +(+v).toFixed(2);
 const e = s => String(s);
-const shape = extra => ({ id: 's', type: 'rect', x: 0, y: 0, w: 100, h: 100, fill: '#000000', ...extra });
+const shape = extra => ({ id: 's', type: 'rect', x: 0, y: 0, w: 100, h: 100, fills: solid('#000000'), ...extra });
 
 test('a rectangle is one rounded-rectangle command with its four corner radii, clamped to half the short side', () => {
     assert.deepEqual(pathCommands(shape({ w: 100, h: 40, radius: 30 })), [{ op: 'R', w: 100, h: 40, radii: [20, 20, 20, 20] }]);

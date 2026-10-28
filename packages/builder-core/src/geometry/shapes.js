@@ -4,6 +4,8 @@
 // Commands: { op: 'M' | 'L', x, y }, { op: 'C', x1, y1, x2, y2, x, y }, { op: 'Z' }, { op: 'E', cx, cy, rx, ry, start, end, ccw } (an arc of an
 // ellipse from the current point), and { op: 'R', w, h, radii } (a rounded rectangle, a sub-path of its own).
 
+import { clamp } from './format.js';
+
 export const RECT_LIKE = ['rect', 'frame', 'image'];
 
 /** @param {any} n */
@@ -278,5 +280,3 @@ export function svgStrokeExtra(n, f, e, prefix) {
     return { defs, el };
 }
 
-/** @param {number} v @param {number} min @param {number} max */
-function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { TEMPLATES, BEHAVIOR_DATA_VERSION } from '../src/index.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const button = TEMPLATES.get('button');
 
@@ -25,10 +26,10 @@ function buttonVariables() {
 }
 
 const variables = buttonVariables();
-const buttonMaster = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fill: '#0058CA', radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } } };
+const buttonMaster = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } } };
 const doc = nodes => ({ pages: [{ id: 'p', name: 'Screens', nodes }], variables });
-const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 100, fill: '#ffffff', ...extra });
-const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rect', parentId, x: 0, y: 0, w: 40, h: 20, fill: '#ff0000', ...extra });
+const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 100, fills: solid('#ffffff'), ...extra });
+const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rect', parentId, x: 0, y: 0, w: 40, h: 20, fills: solid('#ff0000'), ...extra });
 
 test('an auto layout frame is a flex container with its direction, gap and padding; its children are flow items', () => {
     const d = doc([frame('A', { layout: 'horizontal', gap: 8, padding: 4 }), child('a', 'A')]);
@@ -60,7 +61,7 @@ test('a child of a frame that is not auto layout is placed absolutely at its x a
 });
 
 test('a rectangle draws its fill, radius and opacity, and its stroke as an SVG stroke centred on the outline', () => {
-    const { root } = toDomTree(doc([frame('A'), child('r', 'A', { fill: '#112233', radius: 6, opacity: 0.5, stroke: '#000000', strokeWidth: 2 })]), 'A');
+    const { root } = toDomTree(doc([frame('A'), child('r', 'A', { fills: solid('#112233'), radius: 6, opacity: 0.5, stroke: '#000000', strokeWidth: 2 })]), 'A');
     const style = root.children[0].style;
     assert.equal(style.background, '#112233');
     assert.equal(style.borderRadius, '6px');
@@ -82,7 +83,7 @@ test('an ellipse is a rectangle with a fully round radius', () => {
 });
 
 test('a text layer is a span with its characters, font, colour and line height as a ratio of the font size', () => {
-    const text = { id: 't', name: 'Title', type: 'text', parentId: 'A', x: 0, y: 0, w: 120, h: 30, text: 'Hello', fontFamily: 'Inter', fontSize: 16, fontWeight: 700, lineHeight: 1.5, fill: '#20202a', textAlign: 'center' };
+    const text = { id: 't', name: 'Title', type: 'text', parentId: 'A', x: 0, y: 0, w: 120, h: 30, text: 'Hello', fontFamily: 'Inter', fontSize: 16, fontWeight: 700, lineHeight: 1.5, fills: solid('#20202a'), textAlign: 'center' };
     const { root } = toDomTree(doc([frame('A'), text]), 'A');
     const span = root.children[0];
     assert.equal(span.tag, 'span');
@@ -181,25 +182,25 @@ test('responsive: an absolutely positioned child keeps its x and y and fixed siz
 });
 
 test('a text layer takes its fill as its text colour and never as a background', () => {
-    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', w: 80, h: 20 })]), 'A');
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fills: solid('#112233'), w: 80, h: 20 })]), 'A');
     const span = root.children[0];
     assert.equal(span.style.color, '#112233');
     assert.equal(span.style.background, undefined);
 });
 
 test('a text layer gets no radius, border or shadow box, even when the node carries them', () => {
-    const text = child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', radius: 8, stroke: '#000000', strokeWidth: 2 });
+    const text = child('t', 'A', { type: 'text', text: 'Hi', fills: solid('#112233'), radius: 8, stroke: '#000000', strokeWidth: 2 });
     const style = toDomTree(doc([frame('A'), text]), 'A').root.children[0].style;
     assert.deepEqual([style.borderRadius, style.border, style.boxShadow], [undefined, undefined, undefined]);
 });
 
 test('a text fill opacity is the alpha of the text colour', () => {
-    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', fillOpacity: 0.5 })]), 'A');
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fills: solid('#112233', 0.5) })]), 'A');
     assert.equal(root.children[0].style.color, '#11223380');
 });
 
 test('a text layer with no fill draws no colour, as the canvas does', () => {
-    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fill: 'none' })]), 'A');
+    const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Hi', fills: solid('none') })]), 'A');
     assert.equal(root.children[0].style.color, 'transparent');
 });
 
@@ -210,8 +211,8 @@ test('a text layer that hugs its width has no fixed width', () => {
 
 test('a text layer with several styles draws one span per style, each with its own font and colour', () => {
     const spans = [
-        { text: 'Bold ', fontWeight: 700, fill: '#ff0000', fillOpacity: 1 },
-        { text: 'plain', fill: '#112233', fillOpacity: 0.5, textDecoration: 'underline', fontStyle: 'italic', fontSize: 20 },
+        { text: 'Bold ', fontWeight: 700, fills: solid('#ff0000', 1) },
+        { text: 'plain', fills: solid('#112233', 0.5), textDecoration: 'underline', fontStyle: 'italic', fontSize: 20 },
     ];
     const { root } = toDomTree(doc([frame('A'), child('t', 'A', { type: 'text', text: 'Bold plain', spans, fontSize: 14 })]), 'A');
     const [first, second] = root.children[0].children;

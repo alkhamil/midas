@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewportLayout, chromeVisibility, overflowWarning, overflowWarnings, flowFrames, stepFrame, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
+import { viewportLayout, chromeVisibility, overflowWarnings, flowFrames, stepFrame, nextScalingMode, resolveScalingMode, SCALING_MODES } from '../src/prototype/viewport.js';
 
 const viewport = { width: 800, height: 600 };
 const tall = { width: 375, height: 2000 };
@@ -123,19 +123,21 @@ test('while pinned, the chrome never shows: not at the top edge, not on a click,
     assert.deepEqual(chromeVisibility(pinned, { type: 'menu', open: true }), { visible: false, pinnedHidden: true });
 });
 
+const warns = (frame, axis, children) => overflowWarnings(frame, axis, children)[axis];
+
 test('overflow warning: the content is not bigger than the frame on the axis, so scrolling would not move anything', () => {
     const frame = { width: 375, height: 667 };
     const buttons = [{ x: 24, y: 200, w: 327, h: 48 }, { x: 24, y: 264, w: 327, h: 48 }];
-    assert.equal(overflowWarning(frame, 'horizontal', buttons), true);
-    assert.equal(overflowWarning(frame, 'vertical', buttons), true);
-    assert.equal(overflowWarning(frame, 'horizontal', []), true);
+    assert.equal(warns(frame, 'horizontal', buttons), true);
+    assert.equal(warns(frame, 'vertical', buttons), true);
+    assert.equal(warns(frame, 'horizontal', []), true);
 });
 
 test('overflow warning: content that runs past the frame on the axis clears the warning', () => {
     const frame = { width: 375, height: 667 };
-    assert.equal(overflowWarning(frame, 'horizontal', [{ x: 0, y: 0, w: 600, h: 40 }]), false);
-    assert.equal(overflowWarning(frame, 'vertical', [{ x: 0, y: 900, w: 40, h: 40 }]), false);
-    assert.equal(overflowWarning(frame, 'vertical', [{ x: 0, y: 900, w: 600, h: 40 }]), false);
+    assert.equal(warns(frame, 'horizontal', [{ x: 0, y: 0, w: 600, h: 40 }]), false);
+    assert.equal(warns(frame, 'vertical', [{ x: 0, y: 900, w: 40, h: 40 }]), false);
+    assert.equal(warns(frame, 'vertical', [{ x: 0, y: 900, w: 600, h: 40 }]), false);
 });
 
 test('the frames of a flow are the top-level frames of its page, in order', () => {
@@ -164,7 +166,7 @@ test('a frame that is not in the list counts as no position', () => {
 
 test('overflow warning ignores hidden children: a hidden layer past the frame does not count as content', () => {
     const frame = { width: 375, height: 667 };
-    assert.equal(overflowWarning(frame, 'vertical', [{ x: 0, y: 900, w: 40, h: 40, visible: false }]), true);
+    assert.equal(warns(frame, 'vertical', [{ x: 0, y: 900, w: 40, h: 40, visible: false }]), true);
 });
 
 test('overflow warning for both axes is per axis, and only the selected axes are reported', () => {

@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -17,7 +17,6 @@ import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
 // ===== document.js =====
 /** Midas document model. Coordinates are local to the parent; affine transforms compose top-down. */
 const uid = () => globalThis.crypto?.randomUUID?.() || `v${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
-const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const identity = () => [1, 0, 0, 1, 0, 0];
 const multiply = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
 const inverse = m => {
@@ -63,7 +62,7 @@ function parseColor(c, opacity = 1) {
         hex = hex.split('').map(x => x + x).join('');
     return [parseInt(hex.slice(0, 2), 16) / 255 || 0, parseInt(hex.slice(2, 4), 16) / 255 || 0, parseInt(hex.slice(4, 6), 16) / 255 || 0, (hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1) * opacity];
 }
-function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44 } : {}), ...(type === 'frame' ? { fill: '#ffffff', w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fill: 'none' } : {}), ...props }; }
+function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fills: paintOf('#0058CA'), stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fills: paintOf('#20202a'), w: 240, h: 44 } : {}), ...(type === 'frame' ? { fills: paintOf('#ffffff'), w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fills: [] } : {}), ...props }; }
 // ===== autolayout engine =====
 function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none'; }
 function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
@@ -827,7 +826,6 @@ function writeBound(n, prop, val, type) {
         if (!fl || fl.type === 'image' || fl.color === String(val))
             return false;
         fl.color = String(val);
-        syncLegacyFill(n);
         return true;
     }
     const set = (k, v) => { if (n[k] === v)
@@ -891,6 +889,25 @@ function writeBound(n, prop, val, type) {
     }
     if (type === 'boolean')
         return set('visible', !!val);
+    // The bound fill colour and gradient end colour are the top fill's. A layer with no fill takes the bound colour as its fill.
+    if (type === 'color' && prop === 'fill') {
+        const top = n.fills[0];
+        if (!top) {
+            n.fills = paintOf(String(val));
+            return true;
+        }
+        if (top.type === 'image' || top.color === String(val))
+            return false;
+        top.color = String(val);
+        return true;
+    }
+    if (type === 'color' && prop === 'fill2') {
+        const top = n.fills[0];
+        if (!top || top.color2 === String(val))
+            return false;
+        top.color2 = String(val);
+        return true;
+    }
     if (type === 'string') {
         const changedText = set(prop, String(val));
         if (changedText && n.type === 'text' && n.autoW)
@@ -1027,8 +1044,6 @@ function varIdOf(n, prop) {
         return undefined;
     if (v[prop] !== undefined)
         return v[prop];
-    if (prop === 'fills.0' && !Array.isArray(n.fills))
-        return v.fill;
     if (prop === 'radius' && v.rTL && v.rTL === v.rTR && v.rTL === v.rBL && v.rTL === v.rBR)
         return v.rTL;
     if (prop === 'padH' && v.padL && v.padL === v.padR)
@@ -1233,7 +1248,7 @@ function bindVariable(prop, id) {
     transaction('Apply variable', () => {
         for (const n of varTargets()) {
             if (/^fills\./.test(prop))
-                materializeFills(n);
+                n.fills;
             n.vars = { ...(n.vars || {}), [prop]: id };
             // One variable for all corners / both sides replaces the per-corner / per-side ones.
             for (const k of prop === 'radius' ? ['rTL', 'rTR', 'rBL', 'rBR'] : prop === 'padH' ? ['padL', 'padR'] : prop === 'padV' ? ['padT', 'padB'] : [])
@@ -1253,8 +1268,6 @@ function detachVariable(prop) {
         for (const n of varTargets()) {
             if (n.vars) {
                 delete n.vars[prop];
-                if (prop === 'fills.0' && !Array.isArray(n.fills))
-                    delete n.vars.fill;
                 if (prop === 'radius' && n.vars.rTL && n.vars.rTL === n.vars.rTR && n.vars.rTL === n.vars.rBL && n.vars.rTL === n.vars.rBR)
                     for (const k of ['rTL', 'rTR', 'rBL', 'rBR'])
                         delete n.vars[k];
@@ -1314,10 +1327,8 @@ function openVarBind(prop, el) {
         openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: boundVarId(prop), props: po.props.map(p => ({ id: p.id, name: p.name, icon: CPROP_ICON[p.type], on: an0.propBind?.[CPROP_FIELD[p.type]] === p.id })), onPickProp: applyProp, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
         return;
     }
-    if (prop === 'fill') {
-        const an = activeNode();
-        prop = an && getFills(an).length ? 'fills.0' : 'fill';
-    }
+    if (prop === 'fill')
+        prop = 'fills.0';
     const cur = boundVarId(prop);
     openVarPicker(anchor, { type: bindType(prop), types: bindTypes(prop), prop, current: cur, onCreate: prop === 'effects' && !cur && activeNode() && getEffects(activeNode()).length ? createEffectVariableFromNode : null, onPick: id => bindVariable(prop, id), onDetach: () => detachVariable(prop) });
 }
@@ -2981,38 +2992,20 @@ function needsRasterFill(n) {
     const f = getFills(n).filter(x => x.visible !== false);
     return f.length > 1 || (f.length === 1 && (f[0].type === 'image' || isRichGradient(f[0])));
 }
-function materializeFills(n) {
-    if (!Array.isArray(n.fills)) {
-        n.fills = structuredClone(getFills(n));
-        if (n.type === 'image') {
-            n.type = 'frame';
-            n.clip = true;
-            delete n.assetId;
-        }
-    }
-    return n.fills;
-}
-// Simple single fills keep using the fast legacy fields, so variables and the GPU shape path still work.
-function syncLegacyFill(n) {
-    const vis = n.fills.filter(f => f.visible !== false);
-    if (!vis.length) {
-        n.fill = 'none';
-        n.fillType = 'solid';
+// A layer's paint is its `fills`. setPaint writes one paint prop of the top fill: `fill` is its colour ('none' hides it), `fill2` the second
+// colour of a gradient, `gradientAngle` and `fillOpacity` its angle and opacity, `fillType` its type.
+const PAINT_PROPS = ['fill', 'fill2', 'fillType', 'gradientAngle', 'fillOpacity'];
+function setPaint(n, prop, v) {
+    const top = n.fills[0];
+    if (prop === 'fill' && v === 'none') {
+        if (top) top.visible = false;
         return;
     }
-    if (vis.length === 1 && vis[0].type !== 'image') {
-        const f = vis[0];
-        n.fill = f.color || '#d9d9d9';
-        n.fillType = f.type;
-        n.fill2 = f.color2 || n.fill2 || '#ffffff';
-        n.gradientAngle = f.angle ?? n.gradientAngle ?? 90;
-        n.fillOpacity = f.opacity ?? 1;
+    if (!top)
         return;
-    }
-    const s = vis.find(f => f.type === 'solid') || vis.find(f => f.type === 'linear');
-    n.fillType = 'multi';
-    n.fillOpacity = 1;
-    n.fill = s?.color || '#ffffff';
+    if (prop === 'fill') top.color = v;
+    else if (prop === 'fillType') setFillType(top, v);
+    else top[{ fill2: 'color2', gradientAngle: 'angle', fillOpacity: 'opacity' }[prop]] = v;
 }
 function containFit(img, w, h) { const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
 function imageFillPattern(ctx, f, n) {
@@ -3172,13 +3165,11 @@ function fillsSection(n) {
 // Text color that reads on whatever sits behind it: black on light backgrounds, white on dark ones.
 function backdropColor(parentId) {
     for (let p = parentId && doc.get(parentId); p; p = doc.get(p.parentId)) {
-        if (p.type !== 'frame' || p.fill === 'none')
+        if (p.type !== 'frame')
             continue;
         const f = getFills(p).find(x => x.visible !== false && (x.opacity ?? 1) > .5 && (x.type === 'solid' || x.type === 'linear') && x.color);
         if (f)
             return hex6(f.color);
-        if (/^#[\da-f]{6}$/i.test(p.fill || '') && (p.fillOpacity ?? 1) > .5)
-            return p.fill;
     }
     return options.canvasColor || (options.theme === 'dark' ? '#1e1e1e' : '#e3e3e3');
 }
@@ -3192,10 +3183,9 @@ function addFill() {
         for (const n of selected()) {
             if (n.type === 'text' || n.type === 'group')
                 continue;
-            const fills = materializeFills(n), has = fills.length > 0;
+            const fills = n.fills, has = fills.length > 0;
             fills.unshift({ type: 'solid', color: has ? '#000000' : '#ffffff', opacity: has ? .5 : 1, visible: true });
             remapFillVars(n, 0, 1);
-            syncLegacyFill(n);
             doc.touch(n);
         }
     });
@@ -3207,7 +3197,7 @@ function editFill(i, key, v, live) {
     for (const n of selected()) {
         if (n.type === 'group')
             continue;
-        const fills = materializeFills(n), f = fills[i];
+        const fills = n.fills, f = fills[i];
         if (!f)
             continue;
         const normHex = s => { let h = String(s).trim(); if (!h.startsWith('#'))
@@ -3254,7 +3244,6 @@ function editFill(i, key, v, live) {
                     pick = true;
                 break;
         }
-        syncLegacyFill(n);
         doc.touch(n);
     }
     changed({ ui: !live, commit: !live });
@@ -3286,14 +3275,13 @@ async function applyFillImage(file) {
             for (const n of selected()) {
                 if (n.type === 'group' || n.type === 'text')
                     continue;
-                const fills = materializeFills(n);
+                const fills = n.fills;
                 if (!fills[idx])
                     fills.unshift({ type: 'image', image: id, mode: 'fill', scale: 1, opacity: 1, visible: true });
                 else {
                     setFillType(fills[idx], 'image');
                     fills[idx].image = id;
                 }
-                syncLegacyFill(n);
                 doc.touch(n);
             }
         });
@@ -3312,10 +3300,9 @@ document.addEventListener('click', e => {
     else if ((el = e.target.closest('[data-fill-toggle]'))) {
         const i = +el.dataset.fillToggle;
         transaction('Toggle fill', () => { for (const n of selected()) {
-            const f = materializeFills(n)[i];
+            const f = n.fills[i];
             if (f) {
                 f.visible = f.visible === false;
-                syncLegacyFill(n);
                 doc.touch(n);
             }
         } });
@@ -3324,11 +3311,10 @@ document.addEventListener('click', e => {
         const i = +el.dataset.fillRemove;
         closeFillPicker();
         transaction('Remove fill', () => { for (const n of selected()) {
-            const fills = materializeFills(n);
+            const fills = n.fills;
             if (fills[i]) {
                 fills.splice(i, 1);
                 remapFillVars(n, i + 1, -1, i);
-                syncLegacyFill(n);
                 doc.touch(n);
             }
         } });
@@ -3445,7 +3431,7 @@ function createPresetFrame(key) {
     const p = findPreset(key);
     if (!p)
         return;
-    const n = createAtCenter('frame', { name: p.name, w: p.w, h: p.h, fill: '#ffffff', clip: true });
+    const n = createAtCenter('frame', { name: p.name, w: p.w, h: p.h, fills: paintOf('#ffffff'), clip: true });
     setTool('select');
     fit([n.id]);
 }
@@ -3665,7 +3651,7 @@ async function libBoot() {
 function templateData(id) {
     const t = TEMPLATES.find(x => x.id === id) || TEMPLATES[0], p = { id: uid(), name: 'Page 1', nodes: [] };
     if (t.frame)
-        p.nodes.push(node('frame', { name: t.frame[0], x: 0, y: 0, w: t.frame[1], h: t.frame[2], fill: '#ffffff', clip: true }));
+        p.nodes.push(node('frame', { name: t.frame[0], x: 0, y: 0, w: t.frame[1], h: t.frame[2], fills: paintOf('#ffffff'), clip: true }));
     return { format: 'midas', version: 1, name: t.id === 'blank' ? 'Untitled' : t.name, pageId: p.id, pages: [p], tokens: defaultTokens(), assets: {}, variables: { collections: [], items: [] } };
 }
 async function makeThumb() {
@@ -5288,13 +5274,12 @@ function moveFill(from, to) {
     closeFillPicker();
     transaction('Reorder fills', () => {
         for (const n of selected()) {
-            const fills = materializeFills(n);
+            const fills = n.fills;
             if (!fills[from] || to < 0 || to >= fills.length)
                 continue;
             const [f] = fills.splice(from, 1);
             fills.splice(to, 0, f);
             reorderFillVars(n, from, to);
-            syncLegacyFill(n);
             doc.touch(n);
         }
     });
@@ -5991,7 +5976,7 @@ function scApply(g, fn) {
 function scSetColor(g, color, opacity) {
     scApply(g, (n, u) => {
         if (u.kind === 'fill') {
-            materializeFills(n);
+            n.fills;
             const fl = n.fills[u.i];
             if (!fl)
                 return;
@@ -5999,7 +5984,6 @@ function scSetColor(g, color, opacity) {
                 fl.color = color;
             if (opacity !== undefined)
                 fl.opacity = opacity;
-            syncLegacyFill(n);
         }
         else {
             if (color)
@@ -6013,7 +5997,7 @@ function scBind(g, id) {
     scApply(g, (n, u) => {
         const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
         if (u.kind === 'fill')
-            materializeFills(n);
+            n.fills;
         n.vars = { ...(n.vars || {}), [prop]: id };
         if (u.kind === 'fill' && u.i === 0)
             delete n.vars.fill;
@@ -6024,7 +6008,7 @@ function scDetach(g) {
         if (!n.vars)
             return;
         if (u.kind === 'fill') {
-            materializeFills(n);
+            n.fills;
             delete n.vars['fills.' + u.i];
             if (u.i === 0)
                 delete n.vars.fill;
@@ -7034,9 +7018,9 @@ function paintText(ctx, n) {
                 ctx.font = fontSpecSpan(s, n);
                 ctx.letterSpacing = `${s.letterSpacing || 0}px`;
                 const spanW = ctx.measureText(ls.text).width;
-                if (s.fill && s.fill !== 'none') {
-                    ctx.globalAlpha = baseAlpha * (s.fillOpacity ?? n.fillOpacity ?? 1);
-                    ctx.fillStyle = s.fill;
+                if (topColorOf(s) !== 'none') {
+                    ctx.globalAlpha = baseAlpha * topOpacityOf(s);
+                    ctx.fillStyle = topColorOf(s);
                     ctx.fillText(ls.text, curX, y);
                 }
                 if (stroked) {
@@ -7048,8 +7032,8 @@ function paintText(ctx, n) {
                     ctx.strokeText(ls.text, curX, y);
                 }
                 if (s.textDecoration === 'underline' || s.textDecoration === 'line-through') {
-                    ctx.globalAlpha = baseAlpha * (s.fillOpacity ?? 1);
-                    ctx.fillStyle = s.fill || n.fill;
+                    ctx.globalAlpha = baseAlpha * topOpacityOf(s);
+                    ctx.fillStyle = topColorOf(s) !== 'none' ? topColorOf(s) : topColorOf(n);
                     ctx.fillRect(curX, y + (s.textDecoration === 'underline' ? s.fontSize * .12 : -s.fontSize * .3), spanW, Math.max(1, s.fontSize * .055));
                 }
                 curX += spanW;
@@ -7066,8 +7050,8 @@ function paintText(ctx, n) {
         if (y - l.lineHeight > n.h)
             break;
         const line = l.lines[i];
-        if (n.fill && n.fill !== 'none') {
-            ctx.globalAlpha = baseAlpha * (n.fillOpacity ?? 1);
+        if (topColorOf(n) !== 'none') {
+            ctx.globalAlpha = baseAlpha * topOpacityOf(n);
             ctx.fillStyle = fillStyle(ctx, n);
             ctx.fillText(line, x, y);
         }
@@ -7081,7 +7065,7 @@ function paintText(ctx, n) {
         }
         if (n.textDecoration === 'underline' || n.textDecoration === 'line-through') {
             const width = ctx.measureText(line).width, start = x - (n.textAlign === 'center' ? width / 2 : n.textAlign === 'right' ? width : 0);
-            ctx.globalAlpha = baseAlpha * (n.fillOpacity ?? 1);
+            ctx.globalAlpha = baseAlpha * topOpacityOf(n);
             ctx.fillStyle = fillStyle(ctx, n);
             ctx.fillRect(start, y + (n.textDecoration === 'underline' ? n.fontSize * .12 : -n.fontSize * .3), width, Math.max(1, n.fontSize * .055));
         }
@@ -7169,14 +7153,15 @@ function toPath2D(commands) {
 }
 function pathFor(n) { return toPath2D(pathCommands(n)); }
 function fillStyle(ctx, n) {
-    if (!n.fill || n.fill === 'none')
+    const top = getFills(n).find(f => f.visible !== false);
+    if (!top?.color || top.color === 'none')
         return 'transparent';
-    if (n.fillType !== 'linear')
-        return n.fill === 'none' ? 'transparent' : n.fill;
-    const r = n.gradientAngle * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
+    if (top.type !== 'linear')
+        return top.color;
+    const r = (top.angle ?? 90) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
     const g = ctx.createLinearGradient(n.w / 2 - c * len / 2, n.h / 2 - s * len / 2, n.w / 2 + c * len / 2, n.h / 2 + s * len / 2);
-    g.addColorStop(0, n.fill);
-    g.addColorStop(1, n.fill2);
+    g.addColorStop(0, top.color);
+    g.addColorStop(1, top.color2 ?? '#ffffff');
     return g;
 }
 function imageFit(img, w, h) { const scale = Math.max(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
@@ -7571,13 +7556,14 @@ class Renderer {
         const preview = this.canvasPreview?.() ?? null;
         const push = (s, n, clipId, shadow = null) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null;
+            const top = getFills(n).find(f => f.visible !== false), linear = top?.type === 'linear' && topColorOf(n) !== 'none';
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
-            d.set(color(sub?.fill ?? n.fill, n.fillOpacity), base + 8);
+            d.set(color(sub?.fill ?? topColorOf(n), topOpacityOf(n)), base + 8);
             d.set(color(sub?.stroke ?? n.stroke, n.strokeOpacity ?? 1), base + 12);
             d.set([n.radius || 0, n.strokeVisible === false ? 0 : (n.strokeWidth || 0), n.type === 'ellipse' ? 1 : 0, s.opacity], base + 16);
             d.set([0, 0, 0, 0], base + 20);
-            d.set(color(n.fill2, n.fillOpacity), base + 24);
-            d.set([n.fillType === 'linear' && n.fill !== 'none' ? n.gradientAngle * Math.PI / 180 : -1000, 0, clipId, 0], base + 28);
+            d.set(color(top?.color2 ?? '#ffffff', topOpacityOf(n)), base + 24);
+            d.set([linear ? (top.angle ?? 90) * Math.PI / 180 : -1000, 0, clipId, 0], base + 28);
             if (s.mode === 'fill')
                 d[base + 17] = 0; // the stroke comes later, above the children
             else if (s.mode === 'stroke') {
@@ -7908,13 +7894,14 @@ function exportSVG(doc, ids) {
         if (!include.has(n.id) || n.type === 'group' || n.isMask || s.boolChild)
             continue;
         const prefix = 'v' + index++;
-        let fill = n.fill || 'none';
-        if (n.fillType === 'linear' && n.fill !== 'none') {
-            const r = n.gradientAngle * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
-            defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(n.fill)}"/><stop offset="1" stop-color="${e(n.fill2)}"/></linearGradient>`;
+        const top = getFills(n).find(x => x.visible !== false);
+        let fill = topColorOf(n);
+        if (top?.type === 'linear' && fill !== 'none') {
+            const r = (top.angle ?? 90) * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
+            defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(fill)}"/><stop offset="1" stop-color="${e(top.color2 ?? '#ffffff')}"/></linearGradient>`;
             fill = `url(#${prefix}g)`;
         }
-        let attrs = `fill="${e(fill)}" fill-opacity="${f(n.fillOpacity ?? 1)}" ${svgStrokeAttrs(n, f, e)}`;
+        let attrs = `fill="${e(fill)}" fill-opacity="${f(topOpacityOf(n))}" ${svgStrokeAttrs(n, f, e)}`;
         const sx = svgStrokeExtra(n, f, e, prefix);
         defs += sx.defs;
         let item = '';
@@ -7929,12 +7916,12 @@ function exportSVG(doc, ids) {
             const textStroke = strokeIsOn(n) ? ` stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(n.strokeWidth)}" stroke-linejoin="${e(n.strokeJoin || 'round')}" paint-order="stroke"` : '';
             if (n.spans && n.spans.length > 1) {
                 const tspans = n.spans.map(s => {
-                    const style = s.fontStyle || 'normal', weight = s.fontWeight || 400, size = s.fontSize || n.fontSize, fam = s.fontFamily || n.fontFamily, sfill = s.fill || n.fill, fillOp = s.fillOpacity ?? n.fillOpacity ?? 1, decor = s.textDecoration || 'none';
+                    const style = s.fontStyle || 'normal', weight = s.fontWeight || 400, size = s.fontSize || n.fontSize, fam = s.fontFamily || n.fontFamily, sfill = topColorOf(s) !== 'none' ? topColorOf(s) : topColorOf(n), fillOp = topOpacityOf(s), decor = s.textDecoration || 'none';
                     return `<tspan font-family="${e(fam)}, sans-serif" font-size="${f(size)}" font-weight="${e(weight)}" font-style="${e(style)}" fill="${e(sfill)}" fill-opacity="${f(fillOp)}" text-decoration="${e(decor)}">${e(s.text)}</tspan>`;
                 }).join('');
                 item = `<text clip-path="url(#${prefix}t)" text-anchor="${anchor}" direction="${n.direction === 'rtl' ? 'rtl' : 'ltr'}" x="${f(x)}" y="${f(l.baseline)}"${textStroke} xml:space="preserve">${tspans}</text>`;
             } else {
-                item = `<text clip-path="url(#${prefix}t)" font-family="${e(n.fontFamily)}, sans-serif" font-size="${f(n.fontSize)}" font-weight="${e(n.fontWeight)}" font-style="${e(n.fontStyle)}" letter-spacing="${f(n.letterSpacing || 0)}" text-anchor="${anchor}" text-decoration="${e(n.textDecoration || 'none')}" direction="${n.direction === 'rtl' ? 'rtl' : 'ltr'}" fill="${e(fill)}" fill-opacity="${f(n.fillOpacity ?? 1)}"${textStroke} xml:space="preserve">${l.lines.map((line, i) => `<tspan x="${f(x)}" y="${f(l.baseline + i * l.lineHeight)}">${e(line)}</tspan>`).join('')}</text>`;
+                item = `<text clip-path="url(#${prefix}t)" font-family="${e(n.fontFamily)}, sans-serif" font-size="${f(n.fontSize)}" font-weight="${e(n.fontWeight)}" font-style="${e(n.fontStyle)}" letter-spacing="${f(n.letterSpacing || 0)}" text-anchor="${anchor}" text-decoration="${e(n.textDecoration || 'none')}" direction="${n.direction === 'rtl' ? 'rtl' : 'ltr'}" fill="${e(fill)}" fill-opacity="${f(topOpacityOf(n))}"${textStroke} xml:space="preserve">${l.lines.map((line, i) => `<tspan x="${f(x)}" y="${f(l.baseline + i * l.lineHeight)}">${e(line)}</tspan>`).join('')}</text>`;
             }
         }
         else if (n.type === 'image') {
@@ -8846,7 +8833,7 @@ function vectorThumb(n) {
         }
     if (!d)
         return '';
-    const filled = n.type === 'path' && n.fill && n.fill !== 'none' && n.closed !== false;
+    const filled = n.type === 'path' && topColorOf(n) !== 'none' && n.closed !== false;
     // Vector-effect keeps hairline strokes visible however much the shape is shrunk.
     return `<svg class="vector-thumb" width="13" height="13" viewBox="0 0 ${num(W)} ${num(H)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="${d}" fill="${filled ? 'currentColor' : 'none'}" fill-rule="${n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'}" stroke="currentColor" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
@@ -9197,7 +9184,7 @@ function syncInstance(inst) {
             if (op.op === 'remove') doc.remove([op.id]);
             else if (op.op === 'move') placeAmongChildren(inst, doc.get(op.id), op.index);
             else {
-                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, fill: '#8c8297', clip: false, behavior: managedBehavior(op.slot) }));
+                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, fills: paintOf('#8c8297'), clip: false, behavior: managedBehavior(op.slot) }));
                 placeAmongChildren(inst, n, op.index);
             }
         }
@@ -9558,18 +9545,9 @@ function setProperty(prop, value, { live = false } = {}) {
             v = clamp(+v, 1, 512);
         if (typeof v === 'number' && !Number.isFinite(v))
             continue;
-        if (Array.isArray(n.fills) && (prop === 'fill' || prop === 'fill2' || prop === 'fillType' || prop === 'gradientAngle' || prop === 'fillOpacity')) {
-            const top = n.fills[0];
-            if (top) {
-                if (prop === 'fillType')
-                    setFillType(top, v);
-                else if (prop === 'fill' && v === 'none')
-                    top.visible = false;
-                else
-                    top[{ fill: 'color', fill2: 'color2', gradientAngle: 'angle', fillOpacity: 'opacity' }[prop]] = v;
-                syncLegacyFill(n);
-                doc.touch(n);
-            }
+        if (PAINT_PROPS.includes(prop)) {
+            setPaint(n, prop, v);
+            doc.touch(n);
             continue;
         }
         const ow = n.w, oh = n.h;
@@ -9960,7 +9938,7 @@ function groupSelection(asFrame = false, autoLayout = false) {
         const commonParent = roots.every(n => n.parentId === roots[0].parentId) ? roots[0].parentId : null;
         const pm = commonParent ? doc.world(commonParent).matrix : identity(), inv = inverse(pm);
         const rects = roots.map(n => boxOf(multiply(inv, doc.world(n.id).matrix), n.w, n.h));
-        const b = union(rects), g = node(asFrame ? 'frame' : 'group', { name: asFrame ? 'Frame' : 'Group', parentId: commonParent, x: b.x, y: b.y, w: b.w, h: b.h, fill: asFrame ? '#ffffff' : 'none', clip: asFrame });
+        const b = union(rects), g = node(asFrame ? 'frame' : 'group', { name: asFrame ? 'Frame' : 'Group', parentId: commonParent, x: b.x, y: b.y, w: b.w, h: b.h, fills: paintOf(asFrame ? '#ffffff' : 'none'), clip: asFrame });
         const worldBefore = new Map(roots.map(n => [n.id, doc.world(n.id).matrix]));
         const firstIndex = Math.min(...roots.map(n => doc.nodes.indexOf(n)));
         doc.add(g);
@@ -9976,7 +9954,7 @@ function groupSelection(asFrame = false, autoLayout = false) {
         }
         doc.refresh(); // re-index parents so children(g) sees the moved layers
         if (autoLayout) {
-            g.fill = 'none';
+            g.fills = [];
             g.clip = false;
             const nd = Math.max(0, Math.round(+options.bigNudge || 0));
             // Wrapping layers (Shift+A): big nudge becomes both padding and gap.
@@ -10207,29 +10185,29 @@ function instantiate(id, at = null, parent = null, opts = {}) {
     });
 }
 function createAtCenter(type, props = {}) { const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2); let n; transaction(`Insert ${type}`, () => { n = node(type, props); n.x = Math.round(c.x - n.w / 2); n.y = Math.round(c.y - n.h / 2); doc.add(n); select([n.id]); }); return n; }
-function createTextAtCenter(text) { const n = createAtCenter('text', { text, name: text.slice(0, 28), w: 360, h: 70, fontSize: 28, fill: contrastTextColor(null) }); n.h = layoutText(n).height; doc.touch(n); changed({ commit: true }); }
+function createTextAtCenter(text) { const n = createAtCenter('text', { text, name: text.slice(0, 28), w: 360, h: 70, fontSize: 28, fills: paintOf(contrastTextColor(null)) }); n.h = layoutText(n).height; doc.touch(n); changed({ commit: true }); }
 function insertAsset(type) {
     const center = screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
     transaction('Insert ' + type, () => {
         let f;
         if (type === 'button') {
-            f = doc.add(node('frame', { name: 'Button / Primary', x: center.x - 90, y: center.y - 24, w: 180, h: 48, fill: '#0058CA', radius: 9, clip: false, component: false }));
-            doc.add(node('text', { parentId: f.id, x: 20, y: 14, w: 140, h: 24, text: 'Get started   ↗', name: 'Label', fill: '#ffffff', fontSize: 14, fontWeight: 500, textAlign: 'center' }));
+            f = doc.add(node('frame', { name: 'Button / Primary', x: center.x - 90, y: center.y - 24, w: 180, h: 48, fills: paintOf('#0058CA'), radius: 9, clip: false, component: false }));
+            doc.add(node('text', { parentId: f.id, x: 20, y: 14, w: 140, h: 24, text: 'Get started   ↗', name: 'Label', fills: paintOf('#ffffff'), fontSize: 14, fontWeight: 500, textAlign: 'center' }));
         }
         else if (type === 'badge') {
-            f = doc.add(node('frame', { name: 'Badge / Status', x: center.x - 72, y: center.y - 17, w: 144, h: 34, fill: '#d4e8dc', radius: 17 }));
-            doc.add(node('text', { parentId: f.id, x: 14, y: 8, w: 120, h: 22, text: '●  In progress', name: 'Status', fontSize: 12, fill: '#537962' }));
+            f = doc.add(node('frame', { name: 'Badge / Status', x: center.x - 72, y: center.y - 17, w: 144, h: 34, fills: paintOf('#d4e8dc'), radius: 17 }));
+            doc.add(node('text', { parentId: f.id, x: 14, y: 8, w: 120, h: 22, text: '●  In progress', name: 'Status', fontSize: 12, fills: paintOf('#537962') }));
         }
         else {
-            f = doc.add(node('frame', { name: 'Card / Content', x: center.x - 150, y: center.y - 100, w: 300, h: 200, fill: '#e3edfb', radius: 16, shadow: true }));
-            doc.add(node('text', { parentId: f.id, x: 25, y: 29, w: 250, h: 80, text: 'A little\ninspiration.', name: 'Heading', fontSize: 30, fill: '#2c5a90', fontWeight: 600, lineHeight: 1.15 }));
-            doc.add(node('text', { parentId: f.id, x: 25, y: 139, w: 250, h: 42, text: 'Give your next big idea\na little room to grow.', name: 'Body', fontSize: 13, fill: '#6f8dab' }));
+            f = doc.add(node('frame', { name: 'Card / Content', x: center.x - 150, y: center.y - 100, w: 300, h: 200, fills: paintOf('#e3edfb'), radius: 16, shadow: true }));
+            doc.add(node('text', { parentId: f.id, x: 25, y: 29, w: 250, h: 80, text: 'A little\ninspiration.', name: 'Heading', fontSize: 30, fills: paintOf('#2c5a90'), fontWeight: 600, lineHeight: 1.15 }));
+            doc.add(node('text', { parentId: f.id, x: 25, y: 139, w: 250, h: 42, text: 'Give your next big idea\na little room to grow.', name: 'Body', fontSize: 13, fills: paintOf('#6f8dab') }));
         }
         select([f.id]);
         state.expanded.add(f.id);
     });
 }
-function preset(name) { const sizes = { desktop: [1440, 900], phone: [390, 844], tablet: [834, 1194], square: [1080, 1080] }; const [w, h] = sizes[name]; const n = createAtCenter('frame', { name: name[0].toUpperCase() + name.slice(1), w, h, fill: '#ffffff' }); fit([n.id]); }
+function preset(name) { const sizes = { desktop: [1440, 900], phone: [390, 844], tablet: [834, 1194], square: [1080, 1080] }; const [w, h] = sizes[name]; const n = createAtCenter('frame', { name: name[0].toUpperCase() + name.slice(1), w, h, fills: paintOf('#ffffff') }); fit([n.id]); }
 function resetRasterCaches() { renderer.images.images.clear(); renderer.images.pending.clear(); renderer.atlas?.reset(); renderer.cache.clear(); }
 function undo() {
     finishText();
@@ -10326,7 +10304,7 @@ async function importImage(file, location = null) {
         const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
         if (img.naturalWidth * img.naturalHeight > 64e6)
             throw new Error('Image exceeds the 64 megapixel limit.');
-        transaction('Place image', () => { const asset = uid(); doc.data.assets[asset] = url; const scale = Math.min(1, 800 / img.naturalWidth, 800 / img.naturalHeight), w = img.naturalWidth * scale, h = img.naturalHeight * scale, c = location || screenToWorld(area.clientWidth / 2, area.clientHeight / 2); const n = doc.add(node('image', { name: file.name, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), w: Math.round(w), h: Math.round(h), assetId: asset })); materializeFills(n); n.type = 'rect'; n.clip = false; n.radius = 0; n.lockRatio = true; syncLegacyFill(n); renderer.images.images.set(asset, img); select([n.id]); });
+        transaction('Place image', () => { const asset = uid(); doc.data.assets[asset] = url; const scale = Math.min(1, 800 / img.naturalWidth, 800 / img.naturalHeight), w = img.naturalWidth * scale, h = img.naturalHeight * scale, c = location || screenToWorld(area.clientWidth / 2, area.clientHeight / 2); const n = doc.add(node('image', { name: file.name, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), w: Math.round(w), h: Math.round(h), assetId: asset })); n.fills; n.type = 'rect'; n.clip = false; n.radius = 0; n.lockRatio = true; syncLegacyFill(n); renderer.images.images.set(asset, img); select([n.id]); });
         toast('Image placed. Original resolution preserved.');
     }
     catch (e) {
@@ -10920,7 +10898,7 @@ function hitTest(world, { deep = false, framesOnly = false, exclude = null } = {
             hit = ((p.x - n.w / 2) / (n.w / 2 + tol)) ** 2 + ((p.y - n.h / 2) / (n.h / 2 + tol)) ** 2 <= 1;
         else if (n.type === 'path' || n.type === 'line') {
             hitCtx.lineWidth = Math.max(n.strokeWidth, 8 / state.camera.zoom);
-            hit = n.fill !== 'none' && hitCtx.isPointInPath(pathFor(n), p.x, p.y, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero') || hitCtx.isPointInStroke(pathFor(n), p.x, p.y);
+            hit = topColorOf(n) !== 'none' && hitCtx.isPointInPath(pathFor(n), p.x, p.y, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero') || hitCtx.isPointInStroke(pathFor(n), p.x, p.y);
         }
         else
             hit = p.x >= -tol && p.y >= -tol && p.x <= n.w + tol && p.y <= n.h + tol;
@@ -11103,11 +11081,11 @@ function pointerDown(e) {
         const under = closeToSlot(resolveSetTarget(hitTest(w, { framesOnly: true }), w)),
             // A section can sit inside another section (the nearest one under the pointer), never inside a plain frame.
             parent = isSection ? [under, ...(under ? doc.ancestors(under) : [])].find(a => a?.isSection) || null : under, inv = parent ? doc.world(parent.id).inverse : identity(), local = (pt => ({ x: Math.round(pt.x), y: Math.round(pt.y) }))(point(inv, w.x, w.y)), type = isSection ? 'frame' : state.tool;
-        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fill: isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0', stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: 0 }));
+        const n = doc.add(node(type, { x: local.x, y: local.y, w: .1, h: .1, parentId: parent?.id || null, name: isSection ? 'Section' : type === 'frame' ? 'Frame' : type[0].toUpperCase() + type.slice(1), ...(isSection ? { isSection: true, clip: false } : {}), fills: paintOf(isSection ? '#f1f0f4' : type === 'frame' ? '#ffffff' : type === 'line' ? 'none' : '#8fbcf0'), stroke: type === 'line' ? '#0058CA' : '#000000', strokeWidth: type === 'line' ? 2 : 0, radius: 0 }));
         state.selection = new Set([n.id]);
         state.gesture = { kind: 'create', id: n.id, start: w, localStart: local, parentInverse: inv, type };
         // Frames/sections show only their bounding box while drawing; the background comes back on release.
-        if (type === 'frame') { state.gesture.origFill = n.fill; n.fill = 'none'; }
+        if (type === 'frame') { state.gesture.origFill = n.fills; n.fills = []; }
         refreshUI();
         invalidate();
         return;
@@ -11761,7 +11739,7 @@ function pointerUp(e) {
     }
     if (g.kind === 'create') {
         const n = doc.get(g.id);
-        if (n && g.origFill !== undefined) { n.fill = g.origFill; doc.touch(n); }
+        if (n && g.origFill !== undefined) { n.fills = g.origFill; doc.touch(n); }
         if (n && n.w < 3 && n.h < 3) {
             n.w = n.type === 'frame' ? 400 : 100;
             n.h = n.type === 'frame' ? 300 : n.type === 'line' ? 0.1 : 100;
@@ -11893,7 +11871,7 @@ function finishPen(closed = false) {
     const points = structuredClone(state.pen);
     state.pen = [];
     state.penHover = null;
-    transaction('Draw vector path', () => { const n = node('path', { name: 'Vector', x: 0, y: 0, w: 1, h: 1, pathW: 1, pathH: 1, points, closed, fill: closed ? '#8fbcf0' : 'none', stroke: '#0058CA', strokeWidth: 2 }); doc.add(n); normalizePath(n); select([n.id]); });
+    transaction('Draw vector path', () => { const n = node('path', { name: 'Vector', x: 0, y: 0, w: 1, h: 1, pathW: 1, pathH: 1, points, closed, fills: paintOf(closed ? '#8fbcf0' : 'none'), stroke: '#0058CA', strokeWidth: 2 }); doc.add(n); normalizePath(n); select([n.id]); });
     setTool('select');
 }
 // The browser moves focus to the canvas right after pointerdown, which used to blur the editor
@@ -11914,7 +11892,7 @@ function hugText(n) {
 function startPendingText(x, y, parentId, fill) {
     finishText();
     const proto = node('text', { x, y, parentId, fill, text: '', autoW: true });
-    state.pendingText = { x, y, parentId, fill, proto };
+    state.pendingText = { x, y, parentId, colour: fill, proto };
     const el = $('#text-editor');
     el.textContent = '';
     el.classList.remove('hidden');
@@ -11981,7 +11959,7 @@ function positionTextEditor() {
     el.style.textDecoration = n.textDecoration;
     el.style.textTransform = n.textCase === 'upper' ? 'uppercase' : n.textCase === 'lower' ? 'lowercase' : n.textCase === 'title' ? 'capitalize' : 'none';
     el.style.direction = n.direction === 'auto' ? 'inherit' : n.direction;
-    el.style.color = n.fill === 'none' ? '#0058CA' : n.fill;
+    el.style.color = topColorOf(n) === 'none' ? '#0058CA' : topColorOf(n);
     el.style.opacity = opacity;
     el.style.transform = `matrix(${m[0] * z},${m[1] * z},${m[2] * z},${m[3] * z},${tx * z + state.camera.x},${ty * z + state.camera.y})`;
 }
@@ -12163,11 +12141,7 @@ function buildPathNode(res, first, name) {
         props.contours = rings.slice(1).map(r => ({ points: rel(r), closed: true }));
         props.fillRule = 'evenodd';
     }
-    if (Array.isArray(first.fills))
-        props.fills = structuredClone(first.fills);
-    props.fill = first.fill && first.fill !== 'none' ? first.fill : '#8fbcf0';
-    if (first.fillType)
-        props.fillType = first.fillType;
+    props.fills = structuredClone(first.fills);
     return node('path', props);
 }
 function booleanOp(kind) {
@@ -12290,7 +12264,7 @@ function flattenSelection() {
             let nn;
             if (r.type === 'ellipse') {
                 const k = .5523, cx = r.w / 2, cy = r.h / 2;
-                nn = node('path', { name: r.name, x: r.x, y: r.y, w: r.w, h: r.h, pathW: r.w, pathH: r.h, rotation: r.rotation || 0, parentId: r.parentId || null, closed: true, fill: r.fill, fillType: r.fillType, stroke: r.stroke, strokeWidth: r.strokeWidth, opacity: r.opacity, points: [{ x: cx, y: 0, in: { x: cx - k * cx, y: 0 }, out: { x: cx + k * cx, y: 0 } }, { x: r.w, y: cy, in: { x: r.w, y: cy - k * cy }, out: { x: r.w, y: cy + k * cy } }, { x: cx, y: r.h, in: { x: cx + k * cx, y: r.h }, out: { x: cx - k * cx, y: r.h } }, { x: 0, y: cy, in: { x: 0, y: cy + k * cy }, out: { x: 0, y: cy - k * cy } }] });
+                nn = node('path', { name: r.name, x: r.x, y: r.y, w: r.w, h: r.h, pathW: r.w, pathH: r.h, rotation: r.rotation || 0, parentId: r.parentId || null, closed: true, fills: structuredClone(r.fills), stroke: r.stroke, strokeWidth: r.strokeWidth, opacity: r.opacity, points: [{ x: cx, y: 0, in: { x: cx - k * cx, y: 0 }, out: { x: cx + k * cx, y: 0 } }, { x: r.w, y: cy, in: { x: r.w, y: cy - k * cy }, out: { x: r.w, y: cy + k * cy } }, { x: cx, y: r.h, in: { x: cx + k * cx, y: r.h }, out: { x: cx - k * cx, y: r.h } }, { x: 0, y: cy, in: { x: 0, y: cy + k * cy }, out: { x: 0, y: cy - k * cy } }] });
                 if (Array.isArray(r.fills))
                     nn.fills = structuredClone(r.fills);
             }
@@ -12473,7 +12447,7 @@ function renameLayer() {
 }
 // Select matching layers: every layer of the page that shares fill, stroke, text style, effects, name, type or component with the selection.
 const matchSig = {
-    fill: n => n.fill && n.fill !== 'none' || n.fills?.length ? JSON.stringify([n.fill, n.fillType, n.fill2, n.fillOpacity, n.fills]) : null,
+    fill: n => n.fills?.length ? JSON.stringify(n.fills) : null,
     stroke: n => strokeIsOn(n) ? JSON.stringify([n.stroke, n.strokeWidth, n.strokeAlign, n.strokeStyle]) : null,
     text: n => n.type === 'text' ? JSON.stringify([n.fontFamily, n.fontSize, n.fontWeight, n.fontStyle, n.lineHeight, n.letterSpacing]) : null,
     effects: n => getEffects(n).length ? JSON.stringify(getEffects(n)) : null,
@@ -12581,12 +12555,13 @@ function inspectCSS() {
     if (n.rotation)
         css += `\ntransform: rotate(${fmt(n.rotation)}deg);`;
     if (n.type === 'text') {
-        css += `\nfont-family: ${n.fontFamily}, sans-serif;\nfont-size: ${fmt(n.fontSize)}px;\nfont-weight: ${n.fontWeight};\nline-height: ${fmt(n.lineHeight)};\nletter-spacing: ${fmt(n.letterSpacing)}px;\ntext-align: ${n.textAlign};\ncolor: ${n.fill};`;
+        css += `\nfont-family: ${n.fontFamily}, sans-serif;\nfont-size: ${fmt(n.fontSize)}px;\nfont-weight: ${n.fontWeight};\nline-height: ${fmt(n.lineHeight)};\nletter-spacing: ${fmt(n.letterSpacing)}px;\ntext-align: ${n.textAlign};\ncolor: ${topColorOf(n) === 'none' ? 'transparent' : topColorOf(n)};`;
         if (n.strokeWidth)
             css += `\n-webkit-text-stroke: ${fmt(n.strokeWidth)}px ${n.stroke};`;
     }
     else {
-        css += `\nbackground: ${n.fillType === 'linear' ? `linear-gradient(${n.gradientAngle + 90}deg, ${n.fill}, ${n.fill2})` : n.fill === 'none' ? 'transparent' : n.fill};`;
+        const top = getFills(n).find(x => x.visible !== false), fillColor = topColorOf(n);
+        css += `\nbackground: ${top?.type === 'linear' && fillColor !== 'none' ? `linear-gradient(${(top.angle ?? 90) + 90}deg, ${fillColor}, ${top.color2 ?? '#ffffff'})` : fillColor === 'none' ? 'transparent' : fillColor};`;
         if (hasRadii(n))
             css += `\nborder-radius: ${n.radii.map(v => fmt(v) + 'px').join(' ')};`;
         else if (n.radius)
@@ -12619,7 +12594,7 @@ function stressTest() {
         doc.refresh();
         for (let i = 0; i < 5000; i++) {
             const x = (i % 100) * 30, y = Math.floor(i / 100) * 30;
-            p.nodes.push(node(i % 3 === 0 ? 'ellipse' : 'rect', { x, y, w: 24, h: 24, radius: 5, fill: ['#5b9cf0', '#0058CA', '#9ec8f2', '#c8dcf5', '#9dbbb0', '#debea3'][i % 6], name: `Shape ${i + 1}` }));
+            p.nodes.push(node(i % 3 === 0 ? 'ellipse' : 'rect', { x, y, w: 24, h: 24, radius: 5, fills: paintOf(['#5b9cf0', '#0058CA', '#9ec8f2', '#c8dcf5', '#9dbbb0', '#debea3'][i % 6]), name: `Shape ${i + 1}` }));
         }
         doc.refresh();
         state.selection.clear();
@@ -14183,7 +14158,7 @@ function renderAssets() {
     const iconEntries = entries.filter(isIconEntry), compEntries = entries.filter(en => !isIconEntry(en));
     const card = en => {
         const n = en.comp, cached = thumbCache.get(n.id), page = pageOfNode(en.target), svg = svgThumbOf(n);
-        const prev = svg ? `<img src="${esc(svg)}" alt="" class="asset-svg">` : cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(n.fill)}">${esc(en.name)}</div>`;
+        const prev = svg ? `<img src="${esc(svg)}" alt="" class="asset-svg">` : cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(topColorOf(n))}">${esc(en.name)}</div>`;
         return `<div class="asset-card" data-component="${n.id}" draggable="true"><div class="asset-preview" data-thumb="${n.id}">${prev}</div><div class="asset-caption"><span class="asset-name">${esc(en.name)}</span><span class="asset-count" title="${en.variants ? 'Variants · instances' : 'Instances'}">${en.variants ? en.variants + ' variants · ' : ''}${en.instances} ◆</span><button class="icon-button small" data-cmp-goto="${en.target}" title="Go to main component${page && page.id !== doc.page.id ? ' (' + esc(page.name) + ')' : ''}" aria-label="Go to main component">${icon('search', 12)}</button></div></div>`;
     };
     const iconsOpen = state.assetIconsOpen === true;
@@ -14378,15 +14353,15 @@ function convertKind(kind) {
                 delete n.isSection;
                 n.type = 'group';
                 n.layout = 'none';
-                n.fill = 'none';
+                n.fills = [];
                 n.clip = false;
                 if (generic) n.name = 'Group';
             }
             else if (kind === 'frame') {
                 n.type = 'frame';
                 delete n.isSection;
-                if (was === 'group' || n.fill === 'none' || n.fill === '#f1f0f4')
-                    n.fill = '#ffffff';
+                if (was === 'group' || topColorOf(n) === 'none' || topColorOf(n) === '#f1f0f4')
+                    n.fills = paintOf('#ffffff');
                 n.clip = true;
                 if (generic) n.name = 'Frame';
             }
@@ -14395,7 +14370,7 @@ function convertKind(kind) {
                 n.isSection = true;
                 n.layout = 'none';
                 n.clip = false;
-                n.fill = '#f1f0f4';
+                n.fills = paintOf('#f1f0f4');
                 if (generic) n.name = 'Section';
             }
             doc.touch(n);
@@ -15125,7 +15100,7 @@ function combineAsVariants() {
         const parentId = roots.every(n => n.parentId === roots[0].parentId) ? roots[0].parentId : null;
         const pm = parentId ? doc.world(parentId).matrix : identity(), inv = inverse(pm);
         const rects = roots.map(n => boxOf(multiply(inv, doc.world(n.id).matrix), n.w, n.h)), b = union(rects);
-        const set = node('frame', { name: 'Component ' + (allNodes().filter(x => x.componentSet).length + 1), x: Math.round(b.x - 16), y: Math.round(b.y - 16), w: Math.round(b.w + 32), h: Math.round(b.h + 32), fill: 'none', clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
+        const set = node('frame', { name: 'Component ' + (allNodes().filter(x => x.componentSet).length + 1), x: Math.round(b.x - 16), y: Math.round(b.y - 16), w: Math.round(b.w + 32), h: Math.round(b.h + 32), fills: paintOf('none'), clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
         set.parentId = parentId;
         set.componentSet = true;
         doc.add(set);
@@ -15238,7 +15213,7 @@ function addVariant(comp) {
     transaction('Add variant', () => {
         let set = parentSetOf(comp);
         if (!set) {
-            set = node('frame', { name: comp.name, x: comp.x - 16, y: comp.y - 16, w: comp.w * 2 + 48, h: comp.h + 32, fill: 'none', clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
+            set = node('frame', { name: comp.name, x: comp.x - 16, y: comp.y - 16, w: comp.w * 2 + 48, h: comp.h + 32, fills: paintOf('none'), clip: false, radius: 6, stroke: '#9747ff', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeAlign: 'center', strokeCap: 'butt', layout: 'horizontal', layoutWrap: true, gap: 16, gapCross: 16, padding: 16, layoutSizingH: 'fixed', layoutSizingV: 'hug' });
             set.parentId = comp.parentId || null;
             set.componentSet = true;
             doc.add(set);
@@ -16617,8 +16592,7 @@ async function figToMidas(file, onProgress, abortSignal) {
         const fills = convertPaints(f.fillPaints, n.w, n.h);
         if (n.type === 'text') {
             const s = fills.find(x => x.type === 'solid' && x.visible !== false) || fills.find(x => x.type !== 'image');
-            n.fill = s ? s.color : '#000000';
-            n.fillOpacity = s ? s.opacity : 1;
+            n.fills = paintOf(s ? s.color : '#000000', s ? s.opacity : 1);
             if (s?.varId)
                 (n.vars ||= {}).fill = s.varId;
             return;
@@ -16629,7 +16603,6 @@ async function figToMidas(file, onProgress, abortSignal) {
             delete x.varId;
         });
         n.fills = fills;
-        syncLegacyFill(n);
     };
     const applyStroke = (n, f) => {
         const sp = (f.strokePaints || []).find(p => p.visible !== false && (p.type === 'SOLID' || /^GRADIENT_/.test(p.type)));
@@ -16688,7 +16661,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             ? (/thin|hairline/i.test(st) ? 100 : /extra.?light|ultra.?light/i.test(st) ? 200 : /light/i.test(st) ? 300 : /semi.?bold|demi/i.test(st) ? 600 : /extra.?bold|ultra.?bold/i.test(st) ? 800 : /black|heavy/i.test(st) ? 900 : /bold/i.test(st) ? 700 : /medium/i.test(st) ? 500 : 400)
             : base.fontWeight;
         const fs = ov.fontName?.style ? (/italic|oblique/i.test(st) ? 'italic' : 'normal') : base.fontStyle;
-        let fill = base.fill, fillOpacity = base.fillOpacity ?? 1;
+        let fill = topColorOf(base), fillOpacity = topOpacityOf(base);
         if (ov.fillPaints?.length) {
             const fp = ov.fillPaints.find(p => p.visible !== false && p.type === 'SOLID');
             if (fp) {
@@ -16702,8 +16675,7 @@ async function figToMidas(file, onProgress, abortSignal) {
             fontSize: ov.fontSize || base.fontSize,
             fontWeight: fw,
             fontStyle: fs,
-            fill,
-            fillOpacity,
+            fills: paintOf(fill, fillOpacity),
             letterSpacing: ov.letterSpacing ? (ov.letterSpacing.units === 'PERCENT' ? Math.round(ov.letterSpacing.value / 100 * (ov.fontSize || base.fontSize) * 100) / 100 : ov.letterSpacing.value || 0) : base.letterSpacing,
             lineHeight: ov.lineHeight ? (ov.lineHeight.units === 'PIXELS' ? Math.round(ov.lineHeight.value / (ov.fontSize || base.fontSize) * 1000) / 1000 : ov.lineHeight.units === 'PERCENT' ? ov.lineHeight.value / 100 : ov.lineHeight.value || 1.2) : base.lineHeight,
             textDecoration: ov.textDecoration ? ({ UNDERLINE: 'underline', STRIKETHROUGH: 'line-through' }[ov.textDecoration] || 'none') : base.textDecoration
@@ -16748,7 +16720,7 @@ async function figToMidas(file, onProgress, abortSignal) {
                 n.spans = spans;
             } else if (spans.length === 1 && spans[0]) {
                 const s = spans[0];
-                if (s.fill) n.fill = s.fill;
+                if (topColorOf(s) !== 'none') n.fills = paintOf(topColorOf(s), topOpacityOf(n));
                 if (s.fontSize) n.fontSize = s.fontSize;
                 if (s.fontFamily) n.fontFamily = s.fontFamily;
                 if (s.fontWeight) n.fontWeight = s.fontWeight;
@@ -17289,13 +17261,11 @@ async function figToMidas(file, onProgress, abortSignal) {
             n.layoutSizingV = f.textAutoResize === 'NONE' || f.textAutoResize === undefined && !n.autoW ? 'fixed' : 'hug';
         }
         else if (type === 'group')
-            n.fill = 'none';
+            n.fills = [];
         if (type !== 'group' && type !== 'text') {
             applyRadius(n, f);
-            if (type === 'line') {
-                n.fill = 'none';
+            if (type === 'line')
                 n.fills = [];
-            }
         }
         if (type !== 'group')
             applyStroke(n, f);
@@ -17409,7 +17379,8 @@ async function figToMidas(file, onProgress, abortSignal) {
                 note('a vector shape had no readable geometry');
                 n.type = 'rect';
                 applyFills(n, f);
-                n.fill = n.fill === 'none' ? '#d9d9d9' : n.fill;
+                if (topColorOf(n) === 'none')
+                    n.fills = paintOf('#d9d9d9');
                 applyStroke(n, f);
             }
             else {
@@ -17424,7 +17395,6 @@ async function figToMidas(file, onProgress, abortSignal) {
                     n.fills = sp ? [{ type: 'solid', color: hexOf(sp.color), opacity: Math.round((sp.opacity ?? 1) * (sp.color?.a ?? 1) * 1000) / 1000, visible: true }] : [];
                     if (sp && varFor(sp.colorVar))
                         (n.vars ||= {})['fills.0'] = varFor(sp.colorVar);
-                    syncLegacyFill(n);
                     n.strokeWidth = 0;
                 }
                 else {
@@ -17432,7 +17402,6 @@ async function figToMidas(file, onProgress, abortSignal) {
                     applyFills(n, f);
                     if (!geo.subs.some(s => s.closed)) {
                         n.fills = [];
-                        syncLegacyFill(n);
                     }
                     applyStroke(n, f);
                 }
@@ -18734,17 +18703,15 @@ class PluginNode {
     set opacity(v) { this._set('opacity', Math.max(0, Math.min(1, +v))); }
     get visible() { return this._n.visible !== false; }
     set visible(v) { this._set('visible', !!v); }
-    get fill() { return Array.isArray(this._n.fills) && this._n.fills[0]?.color || this._n.fill; }
+    get fill() { return topColorOf(this._n); }
     set fill(v) {
         const hex = String(v);
         pluginBegin();
         const n = this._n;
-        if (Array.isArray(n.fills) && n.fills.length)
+        if (n.fills.length)
             n.fills = n.fills.map((f, i) => i === 0 ? { ...f, type: 'solid', color: hex } : f);
-        else {
-            n.fill = hex;
-            n.fillType = 'solid';
-        }
+        else
+            n.fills = paintOf(hex);
         pluginDirty(n);
     }
     get cornerRadius() { return this._n.radius || 0; }
@@ -18830,9 +18797,9 @@ function buildPluginApi(run) {
         currentPage: page,
         createRectangle: () => make('rect', { w: 100, h: 100, name: 'Rectangle' }),
         createEllipse: () => make('ellipse', { w: 100, h: 100, name: 'Ellipse' }),
-        createFrame: () => make('frame', { w: 200, h: 200, name: 'Frame', fill: '#ffffff', clip: true }),
+        createFrame: () => make('frame', { w: 200, h: 200, name: 'Frame', fills: paintOf('#ffffff'), clip: true }),
         createLine: () => make('line', { w: 100, h: .1, name: 'Line' }),
-        createText: (chars = 'Text') => make('text', { text: String(chars), name: String(chars).slice(0, 28) || 'Text', w: 160, h: 24, fontSize: 16, fill: options.theme === 'dark' ? '#f0eaf8' : '#282431' }, n => { n.h = layoutText(n).height; }),
+        createText: (chars = 'Text') => make('text', { text: String(chars), name: String(chars).slice(0, 28) || 'Text', w: 160, h: 24, fontSize: 16, fills: paintOf(options.theme === 'dark' ? '#f0eaf8' : '#282431') }, n => { n.h = layoutText(n).height; }),
         getNodeById: id => { const n = doc.get(id); return n ? wrap(n) : null; },
         notify: msg => { run.notified = true; toast(String(msg)); },
         closePlugin: msg => { if (msg)
@@ -20627,7 +20594,7 @@ $('#text-editor').addEventListener('input', () => {
         if (!t)
             return;
         history.begin('Create text');
-        const n = doc.add(node('text', { x: p.x, y: p.y, parentId: p.parentId, fill: p.fill, text: t, name: t.slice(0, 28), autoW: true }));
+        const n = doc.add(node('text', { x: p.x, y: p.y, parentId: p.parentId, fills: paintOf(p.colour), text: t, name: t.slice(0, 28), autoW: true }));
         hugText(n);
         doc.touch(n);
         state.pendingText = null;

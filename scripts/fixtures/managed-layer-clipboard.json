@@ -12,11 +12,14 @@
       "w": 16,
       "h": 16,
       "rotation": 0,
-      "fill": "#ffffff",
-      "fill2": "#cfe1fa",
-      "fillType": "solid",
-      "gradientAngle": 90,
-      "fillOpacity": 1,
+      "fills": [
+        {
+          "type": "solid",
+          "color": "#ffffff",
+          "opacity": 1,
+          "visible": true
+        }
+      ],
       "stroke": "#000000",
       "strokeWidth": 0,
       "radius": 0,

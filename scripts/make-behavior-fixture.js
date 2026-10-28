@@ -5,20 +5,21 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_PATH = resolve(here, 'fixtures/behavior-fixture.midas');
 export const CLIPBOARD_PATH = resolve(here, 'fixtures/managed-layer-clipboard.json');
 
 const COMMON = {
-    rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000',
+    rotation: 0, fills: solid('#0058CA'), stroke: '#000000',
     strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0,
 };
 const TEXT = {
     text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35,
-    letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44,
+    letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fills: solid('#20202a'), w: 240, h: 44,
 };
-const FRAME = { fill: '#ffffff', w: 400, h: 300, clip: true };
+const FRAME = { fills: solid('#ffffff'), w: 400, h: 300, clip: true };
 
 /** A node as the editor stores it: the node() defaults, then the given props. */
 function node(type, props) {
@@ -45,9 +46,9 @@ const bindings = suffix => ({
 function master(id, name, x, binding, vars, y = 0) {
     const root = node('frame', {
         id, name, x, y, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug',
-        layoutSizingV: 'hug', fill: '#0058CA', radius: 8, ...(binding ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...binding }, vars: vars.root } : {}),
+        layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, ...(binding ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...binding }, vars: vars.root } : {}),
     });
-    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, fill: '#ffffff', fontSize: 14, ...(binding ? { vars: vars.label } : {}) });
+    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14, ...(binding ? { vars: vars.label } : {}) });
     return [root, label];
 }
 
@@ -58,13 +59,13 @@ function master(id, name, x, binding, vars, y = 0) {
 function instance(id, name, x, sourceId, props, varModes, icon, vars) {
     const root = node('frame', {
         id, name, x, y: 120, w: 136, h: 48, isInstance: true, sourceId, layout: 'horizontal', gap: 6, padding: 12,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fill: '#0058CA', radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, props },
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, props },
         varModes, vars: vars.root,
     });
-    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, fill: '#ffffff', fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
+    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
     const slot = icon ? `icon${icon[0].toUpperCase()}${icon.slice(1)}` : null;
     const iconLayer = icon ? node('frame', {
-        id: `${id}-icon-${icon}`, name: slot, parentId: id, w: 16, h: 16, fill: '#8c8297', clip: false,
+        id: `${id}-icon-${icon}`, name: slot, parentId: id, w: 16, h: 16, fills: solid('#8c8297'), clip: false,
         behavior: { version: BEHAVIOR_DATA_VERSION, slot },
     }) : null;
     const kids = !iconLayer ? [label] : icon === 'start' ? [iconLayer, label] : [label, iconLayer];
