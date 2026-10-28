@@ -37,6 +37,17 @@ Server Midas sendiri berfungsi sebagai registry npm (hanya baca), jadi project f
 
 Versi baru muncul setelah **Publish library** (`npm update` untuk mengambilnya). Di CI, taruh token sebagai secret dan tulis `.npmrc` saat build. Unduhan `.tgz` tetap tersedia sebagai cadangan.
 
+## Situs dokumentasi
+
+Setiap library yang di-publish punya situs dokumentasi di server Midas: `/docs/<nama library>` (misalnya `/docs/web-design-system`). Isinya dibuat otomatis dari versi yang di-publish:
+
+- **Getting started:** cara install (`.npmrc` dan `npm install`), cara memakai `tokens.css` dan `styles.css`, dan catatan untuk proyek ber-Tailwind.
+- **Versions & release notes:** semua versi dengan tanggal dan catatan rilis. Selektor **Version** di atas halaman membuka dokumentasi versi lama (`?v=<nomor>`).
+- **Halaman per komponen:** deskripsi, kategori dan status, tabel props, Do / Don't dan accessibility, diambil dari frame **Documentation** di halaman komponen pada desain (dikirim bersama snapshot saat publish), serta **preview langsung**: komponen dirender dari paket yang sama, dengan kontrol untuk tiap prop, tombol tema gelap, dan contoh kode JSX yang ikut berubah.
+- **Icons:** semua ikon dengan namanya.
+
+Siapa yang bisa membuka: anggota workspace yang sudah login selalu bisa. Di dialog **React package** ada pilihan *Anyone with the link can read it* untuk membukanya tanpa login (mati secara default). Paketnya sendiri tetap perlu API token.
+
 ## Memakai paket
 
 ```tsx
@@ -117,6 +128,8 @@ Semua komponen menerima `className`, `style`, `testId`, dan atribut `div` biasa.
 | Endpoint | Fungsi |
 | --- | --- |
 | `GET /api/libraries/:id/package?seq=N` | info paket versi `N` (default terbaru): nama, versi, ukuran, komponen + props, ikon, peringatan, `downloadUrl` |
+| `GET /docs/<nama>`, `/versions`, `/icons`, `/components/<komponen>` | situs dokumentasi (`?v=<nomor>` untuk versi lama); `/_/styles.css`, `/_/tokens.css`, `/_/preview.js` untuk isi paketnya |
+| `GET` / `PUT /api/libraries/:id/docs` | membaca dan mengubah apakah dokumentasi terbuka untuk siapa pun yang punya link (`{ "public": true }`) |
 | `GET /api/registry/@midas%2f<nama>` | registry npm: daftar versi paket (butuh token `Authorization: Bearer mdt_…`) |
 | `GET /api/registry/@midas/<nama>/-/<file>.tgz` | tarball satu versi, alamat yang diberikan daftar di atas |
 | `GET /api/libraries/:id/package.tgz?seq=N` | tarball (`npm install ./file.tgz`) |
@@ -131,6 +144,7 @@ Hasil build disimpan di S3 di samping snapshot (`libraries/<id>/<seq>.pkg<GENERA
 - `packages/builder-core/src/component-codegen.js` — satu komponen dari node desain.
 - `apps/server/src/routes/registry.ts` — registry npm bawaan.
 - `packages/builder-core/src/tailwind.js` — style → class Tailwind, tema dan preset dari token.
+- `apps/server/src/lib/docs-site.ts` dan `apps/server/src/routes/docs.ts` — situs dokumentasi.
 - `apps/server/src/lib/package.ts` — bundle esbuild (dari memori), kompilasi Tailwind (`@tailwindcss/node`) dan tarball.
 - `apps/studio/src/engine/midas.js` — `libPackageDialog`.
 

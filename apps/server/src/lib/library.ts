@@ -8,10 +8,20 @@ export interface SnapshotNode {
     componentSet?: boolean;
     [k: string]: unknown;
 }
+/** What the design's Documentation frame says about a component (the Studio reads it when publishing). */
+export interface ComponentDoc {
+    category?: string;
+    status?: string;
+    description?: string;
+    dos?: string[];
+    donts?: string[];
+    a11y?: string[];
+}
 export interface SnapshotComponent {
     id: string;
     name: string;
     set?: boolean;
+    doc?: ComponentDoc;
     nodes: SnapshotNode[];
 }
 export interface LibrarySnapshot {

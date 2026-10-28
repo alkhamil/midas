@@ -441,6 +441,9 @@ export const libraryApi = {
         }
     },
     history: id => api('GET', `/api/libraries/${enc(id)}`),
+    /** The documentation site of a library: its path and whether anyone with the link can read it. */
+    docs: id => api('GET', `/api/libraries/${enc(id)}/docs`),
+    setDocsPublic: (id, value) => api('PUT', `/api/libraries/${enc(id)}/docs`, { public: value }),
     /** The React package of a library version (default: latest): its contents and download URL. The server builds it on first use. */
     package: (id, seq) => api('GET', `/api/libraries/${enc(id)}/package${seq ? `?seq=${seq}` : ''}`).then(r => r.package),
     /**

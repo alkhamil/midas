@@ -1,0 +1,1 @@
+ALTER TABLE "libraries" ADD COLUMN "docs_public" boolean DEFAULT false NOT NULL;

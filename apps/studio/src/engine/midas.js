@@ -13503,12 +13503,47 @@ function snapshotNodesInOrder(c) {
     }
     return out.length === c.nodes.length ? out : c.nodes;
 }
+/**
+ * What the Documentation frame of a component page says (category and status tags, description, Do / Don't, accessibility), for every
+ * component on that page: it travels with the snapshot, so the library's documentation site can show it.
+ */
+function componentDocs() {
+    const out = new Map();
+    for (const pg of doc.data.pages) {
+        const frame = pg.nodes.find(n => !n.parentId && n.name === 'Documentation');
+        if (!frame)
+            continue;
+        const kids = new Map();
+        for (const n of pg.nodes)
+            if (n.parentId)
+                (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
+        const under = (id, f) => (kids.get(id) || []).filter(f);
+        const texts = (id) => under(id, n => n.type === 'text').map(n => String(n.text ?? '').trim()).filter(Boolean);
+        const section = name => (kids.get(frame.id) || []).find(n => n.name === name);
+        const tags = (kids.get(section('Meta')?.id) || []).map(t => texts(t.id)[0]).filter(Boolean);
+        const columns = (kids.get(section('Usage')?.id) || []).find(n => n.name === 'Usage columns');
+        const column = label => (kids.get(columns?.id) || []).find(n => (kids.get(n.id) || []).some(t => t.name === 'Heading' && t.text === label));
+        const items = col => (kids.get(col?.id) || []).filter(t => t.name === 'Item').map(t => String(t.text ?? '').trim()).filter(Boolean);
+        const list = (kids.get(section('Accessibility')?.id) || []).find(n => n.name === 'Accessibility list');
+        const d = {
+            category: tags[0], status: tags[1],
+            description: String((kids.get(frame.id) || []).find(n => n.name === 'Description')?.text ?? '').trim() || undefined,
+            dos: items(column('Do')), donts: items(column("Don't")),
+            a11y: (kids.get(list?.id) || []).map(t => String(t.text ?? '').replace(/^\s*[•\-*]\s*/, '').trim()).filter(Boolean),
+        };
+        for (const r of pg.nodes)
+            if (!r.parentId && (r.componentSet || r.component))
+                out.set(r.id, d);
+    }
+    return out;
+}
 function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
     vars.collections = vars.collections.filter(c => !c.libId);
     vars.items = vars.items.filter(i => !i.libId && vars.collections.some(c => c.id === i.collectionId));
-    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, ordered: true, hidden: isSoftDeletedComp(r) || undefined, nodes: subtreeInOrder(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
+    const docs = componentDocs();
+    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, ordered: true, hidden: isSoftDeletedComp(r) || undefined, doc: docs.get(r.id), nodes: subtreeInOrder(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
             c.parentId = null; return c; }) }));
     return { components, variables: vars };
 }
@@ -13554,6 +13589,10 @@ function startBusy(label, pct = null) {
     return api;
 }
 async function publishLibrary() {
+    if (lazyPages.size) {
+        toast('Some pages are still loading. Wait a moment, then publish.');
+        return;
+    }
     const snapshot = librarySnapshot();
     if (!snapshot.components.some(c => !c.hidden) && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
@@ -13760,17 +13799,19 @@ async function libPackageDialog(id, seq = null, preloaded = null) {
     }
     modal(`${modalHeader('React package', 'Components, icons and theme tokens generated from the published design.')}<div class="pkg-body"><p class="small-label">Loading…</p></div>`);
     versions = await libraryApi.history(id).then(h => h.versions).catch(() => []);
+    const docs = await libraryApi.docs(id).catch(() => null);
     if (!body())
         return; // the dialog was closed meanwhile
     const shown = info.components.filter(c => !c.internal), install = `npm install ${info.packageName}`, tgzInstall = `npm install ./${info.fileName}`;
     const host = location.host, registry = `${location.origin}/api/registry/`;
     const npmrc = `${info.packageName.split('/')[0]}:registry=${registry}\n//${host}/api/registry/:_authToken=<your API token>`;
-    const usage = `import '${info.packageName}/tokens.css';\nimport { ${shown[0]?.exportName || 'Button'} } from '${info.packageName}';`;
+    const usage = `import '${info.packageName}/tokens.css';\nimport '${info.packageName}/styles.css';\nimport { ${shown[0]?.exportName || 'Button'} } from '${info.packageName}';`;
     const kb = Math.max(1, Math.round(info.sizeBytes / 1024));
     body().innerHTML = `<div class="lp-form">
 <div class="pkg-meta"><b>${esc(info.packageName)}</b><span>version ${esc(info.version)}</span><span>${shown.length} component${shown.length === 1 ? '' : 's'}</span><span>${info.icons.length} icon${info.icons.length === 1 ? '' : 's'}</span><span>${kb} KB</span></div>
 ${versions.length > 1 ? `<label class="lp-field"><span>Published version</span><select class="lp-input" id="pkg-seq">${versions.map(v => `<option value="${v.seq}" ${v.seq === info.seq ? 'selected' : ''}>Version ${v.seq}${v.releaseNotes ? ` · ${esc(v.releaseNotes.slice(0, 48))}` : ''}</option>`).join('')}</select></label>` : ''}
 <div class="lp-field"><span>Install from this server</span><pre class="pkg-code">${esc(`# .npmrc in the project\n${npmrc}\n\n${install}`)}</pre><small>Create the token under <b>API tokens</b> (the same token as for MCP). It only reads packages. Without a registry: download the .tgz below and run <code>${esc(tgzInstall)}</code>.</small></div>
+${docs ? `<div class="lp-field"><span>Documentation site</span><div class="pkg-docs"><a id="pkg-docs-link" href="${esc(docs.path)}" target="_blank" rel="noopener">${esc(location.origin + docs.path)}</a><button type="button" class="wide-button" id="pkg-docs-copy">Copy link</button></div><label class="pkg-docs-switch"><input type="checkbox" id="pkg-docs-public" ${docs.public ? 'checked' : ''}> Anyone with the link can read it (without signing in)</label><small>Install steps, versions with release notes, and a page per component with a live preview. It is made from the version you publish. The package itself always needs an API token.</small></div>` : ''}
 <div class="lp-field"><span>Use</span><pre class="pkg-code">${esc(usage)}</pre><small>Set <code>data-theme="dark"</code> on an ancestor to switch to the dark theme.</small></div>
 ${issuesHtml(info.issues || info.warnings.map(w => ({ level: 'warning', kind: 'code', component: w.split(':')[0], message: w.split(':').slice(1).join(':').trim(), fix: '' })))}
 <div class="lp-field"><span>Components</span><div class="pkg-list">${shown.map(c => `<div class="pkg-comp"><b>${esc(c.exportName)}</b><div class="pkg-props">${c.props.map(p => `<code>${esc(propText(p))}</code>`).join('') || '<small>no props</small>'}</div></div>`).join('') || '<small>No components were published.</small>'}</div></div>
@@ -13778,6 +13819,11 @@ ${issuesHtml(info.issues || info.warnings.map(w => ({ level: 'warning', kind: 'c
 </div>`;
     $('#pkg-copy').onclick = async () => { try { await navigator.clipboard.writeText(`${npmrc}\n\n${install}`); toast('.npmrc lines and install command copied.'); } catch { toast('Could not copy: select the command and copy it.'); } };
     $('#pkg-seq')?.addEventListener('change', e => libPackageDialog(id, e.target.value));
+    $('#pkg-docs-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.origin + docs.path); toast('Link copied.'); } catch { toast('Could not copy: select the link and copy it.'); } });
+    $('#pkg-docs-public')?.addEventListener('change', async e => {
+        try { await libraryApi.setDocsPublic(id, e.target.checked); toast(e.target.checked ? 'Anyone with the link can read the documentation.' : 'Only members of the workspace can read the documentation.'); }
+        catch (err) { e.target.checked = !e.target.checked; toast(err?.body?.message || 'Could not change this setting.'); }
+    });
 }
 // ---- Publish progress: what is being worked on, what went wrong, and what to do about it.
 const PUBLISH_STEPS = { collect: 'Collecting components', upload: 'Publishing the version' };

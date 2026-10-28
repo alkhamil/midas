@@ -236,6 +236,46 @@ test('the server is an npm registry for its packages: packument, tarball, and a 
     assert.equal((await get(`/api/registry/@midas/registry-ds/-/midas-registry-ds-1.0.999.tgz`, `Bearer ${token}`)).statusCode, 404);
 });
 
+test('a published library has a documentation site: private to the workspace until it is made public', async () => {
+    const withDoc = { ...button(), doc: { category: 'Action', status: 'Stable', description: 'A button for actions.', dos: ['Use one primary button.'], donts: ['Do not nest buttons.'], a11y: ['Use a real button element.'] } };
+    const design = { components: [withDoc], variables: { collections: [], items: [{ id: 'v1' }] } };
+    const pub = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Docs DS', releaseNotes: 'Faster tables\n- New Stepper\n- <b>Fix</b>', snapshot: design, componentKeys: ['btn'] });
+    assert.equal(pub.status, 200, JSON.stringify(pub.body));
+    const seq = pub.body.library.version;
+    const get = (url: string, cookieHeader?: string) => app.inject({ method: 'GET', url, headers: cookieHeader ? { cookie: cookieHeader } : {} });
+    assert.equal((await get('/docs/docs-ds')).statusCode, 401);                                                   // private: an anonymous reader is turned away
+    assert.equal((await get('/docs/nope')).statusCode, 404);
+    const home = await get('/docs/docs-ds', cookie);
+    assert.equal(home.statusCode, 200, home.body);
+    assert.match(home.body, /npm install @midas\/docs-ds/);
+    assert.match(home.body, /api\/registry\//);
+    const comp = await get('/docs/docs-ds/components/button', cookie);
+    assert.equal(comp.statusCode, 200);
+    assert.match(comp.body, /A button for actions\./);                                                              // what the design's Documentation frame says
+    assert.match(comp.body, /Use one primary button\./);
+    assert.match(comp.body, /Do not nest buttons\./);
+    assert.match(comp.body, /<code>type<\/code>/);                                                                 // the props table
+    const versions = await get('/docs/docs-ds/versions', cookie);
+    assert.match(versions.body, /Faster tables/);
+    assert.match(versions.body, /<li>New Stepper<\/li>/);
+    assert.ok(!versions.body.includes('<b>Fix</b>'), 'release notes are escaped');
+    assert.equal((await get(`/docs/docs-ds?v=${seq}`, cookie)).statusCode, 200);
+    const preview = await get('/docs/docs-ds/_/preview.js', cookie);                                                // React and the package, to run the live preview
+    assert.equal(preview.statusCode, 200);
+    assert.match(String(preview.headers['content-type']), /javascript/);
+    assert.match(preview.body, /__midas/);
+    assert.match((await get('/docs/docs-ds/_/styles.css', cookie)).body, /@layer midas/);
+
+    const on = await call('PUT', `/api/libraries/${dsFile}/docs`, { public: true });
+    assert.equal(on.status, 200, JSON.stringify(on.body));
+    assert.equal((await get('/docs/docs-ds')).statusCode, 200);                                                   // public: no sign-in
+    assert.equal((await get('/docs/docs-ds/_/preview.js')).statusCode, 200);
+    assert.equal((await get('/api/registry/@midas%2fdocs-ds')).statusCode, 401);                                  // the package itself still needs a token
+    assert.equal((await call('PUT', `/api/libraries/${dsFile}/docs`, { public: false })).status, 200);
+    assert.equal((await get('/docs/docs-ds')).statusCode, 401);
+    assert.equal((await call('PUT', `/api/libraries/${dsFile}/docs`, { public: 'yes' })).status, 400);
+});
+
 test('unpublish removes the library but not the file', async () => {
     assert.equal((await call('DELETE', `/api/libraries/${dsFile}`)).status, 200);
     assert.equal((await call('GET', `/api/libraries/${dsFile}`)).status, 404);

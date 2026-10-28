@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { compile, optimize } from '@tailwindcss/node';
 import { build, type Plugin } from 'esbuild';
 import { kebabCase, libraryPackage, TAILWIND_PREFIX, type LibraryPackageIssue, type LibraryPackageResult } from '@midas/builder-core';
-import type { LibrarySnapshot } from './library.js';
+import type { ComponentDoc, LibrarySnapshot } from './library.js';
 
 /** Bump when the generated package changes, so packages cached for an older generator are built again. */
-export const GENERATOR_VERSION = 5;
+export const GENERATOR_VERSION = 6;
 
 export interface PackageInfo {
     libraryId: string;
@@ -19,7 +19,8 @@ export interface PackageInfo {
     sizeBytes: number;
     files: number;
     generator: number;
-    components: LibraryPackageResult['components'];
+    /** The components with what the design's Documentation frame says about each (shown on the documentation site). */
+    components: (LibraryPackageResult['components'][number] & { doc?: ComponentDoc })[];
     icons: LibraryPackageResult['icons'];
     warnings: string[];
     /** What the design needs or what could not become code: the component, the layer, and what to do about it. */
@@ -128,6 +129,20 @@ function tarEntry(name: string, data: Buffer, mtime: number): Buffer {
     return Buffer.concat([h, data, Buffer.alloc((512 - (data.length % 512)) % 512)]);
 }
 
+/** One file of a gzipped tarball made by `tarGz` (the path without the leading `package/`), or null. */
+export function untarFile(tgz: Buffer, name: string): Buffer | null {
+    const tar = gunzipSync(tgz);
+    for (let at = 0; at + 512 <= tar.length;) {
+        const h = tar.subarray(at, at + 512);
+        if (h.every(b => b === 0)) break;
+        const path = `${h.subarray(345, 500).toString().replace(/\0.*$/s, '')}${h.subarray(345, 500)[0] ? '/' : ''}${h.subarray(0, 100).toString().replace(/\0.*$/s, '')}`;
+        const size = parseInt(h.subarray(124, 135).toString(), 8);
+        if (path === `package/${name}`) return Buffer.from(tar.subarray(at + 512, at + 512 + size));
+        at += 512 + Math.ceil(size / 512) * 512;
+    }
+    return null;
+}
+
 /** A gzipped tarball with every file under `package/`, the layout `npm install` expects. Entries are sorted so the same files give the same bytes. */
 export function tarGz(files: Record<string, string>, mtime = 0): Buffer {
     const entries = Object.keys(files).sort().map(n => tarEntry(`package/${n}`, Buffer.from(files[n]), mtime));
@@ -175,7 +190,7 @@ export async function buildLibraryPackage(snapshot: LibrarySnapshot, meta: { lib
         tgz,
         info: {
             libraryId: meta.libraryId, libraryName: meta.libraryName, seq: meta.seq, packageName, version, fileName: tarballName(packageName, version),
-            sizeBytes: tgz.length, files: Object.keys(files).length, generator: GENERATOR_VERSION, components: out.components, icons: out.icons, warnings: out.warnings, issues: out.issues,
+            sizeBytes: tgz.length, files: Object.keys(files).length, generator: GENERATOR_VERSION, components: out.components.map(c => { const doc = snapshot.components.find(x => x.id === c.key)?.doc; return doc ? { ...c, doc } : c; }), icons: out.icons, warnings: out.warnings, issues: out.issues,
             manifest: JSON.parse(out.files['package.json']), shasum: createHash('sha1').update(tgz).digest('hex'), integrity: `sha512-${createHash('sha512').update(tgz).digest('base64')}`,
         },
     };
