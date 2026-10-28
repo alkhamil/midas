@@ -138,6 +138,7 @@
             "props": {
               "hasIcon": true,
               "iconPlacement": "start",
+              "icon": "icon-check",
               "label": "Save"
             }
           },
@@ -162,24 +163,27 @@
           "w": 16,
           "h": 16,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#8c8297",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
+          "clip": true,
           "version": 0,
           "type": "frame",
           "id": "inst-start-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "i-icon",
+            "h": "i-icon"
+          },
           "behavior": {
             "version": 2,
             "slot": "iconStart"
@@ -228,6 +232,83 @@
             "lineHeight": "i-lh"
           },
           "sourceId": "main-label"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "inst-start-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-start-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "inst-start-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "inst-start-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "i-fg-v"
+          }
         },
         {
           "name": "Cancel",
@@ -488,6 +569,125 @@
             "fontSize": "i-fs",
             "lineHeight": "i-lh"
           }
+        },
+        {
+          "name": "Icon/check",
+          "parentId": null,
+          "x": 800,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "icon-check",
+          "component": true
+        },
+        {
+          "name": "check",
+          "parentId": "icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ]
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": null,
+          "x": 1000,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "icon-arrow",
+          "component": true
+        },
+        {
+          "name": "arrow",
+          "parentId": "icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ]
         }
       ]
     },
@@ -533,6 +733,7 @@
             "props": {
               "hasIcon": true,
               "iconPlacement": "end",
+              "icon": "icon-arrow",
               "label": "Next"
             }
           },
@@ -601,14 +802,41 @@
           "w": 16,
           "h": 16,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#8c8297",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-cross-icon-end",
+          "layout": "horizontal",
+          "padding": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "i-icon",
+            "h": "i-icon"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          }
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": "inst-cross-icon-end",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -618,10 +846,52 @@
           "clip": false,
           "version": 0,
           "type": "frame",
-          "id": "inst-cross-icon-end",
-          "behavior": {
-            "version": 2,
-            "slot": "iconEnd"
+          "id": "inst-cross-icon-end-ic-icon-arrow",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-arrow",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "arrow",
+          "parentId": "inst-cross-icon-end-ic-icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "inst-cross-icon-end-ic-icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-arrow-path",
+          "overrides": {},
+          "vars": {
+            "stroke": "i-fg-v"
           }
         }
       ]
@@ -967,6 +1237,61 @@
           }
         },
         {
+          "id": "details-cart",
+          "name": "Checkout",
+          "type": "frame",
+          "parentId": "frame-details",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Checkout",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "details-cart-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-checkout",
+                  "transition": {
+                    "type": "instant",
+                    "durationMs": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
           "id": "details-bar",
           "name": "Wide bar",
           "type": "rect",
@@ -1211,6 +1536,90 @@
           }
         ]
       }
+    },
+    {
+      "id": "page-cart",
+      "name": "Cart",
+      "nodes": [
+        {
+          "id": "frame-checkout",
+          "name": "Checkout",
+          "type": "frame",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 375,
+          "h": 667,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "checkout-pay",
+          "name": "Pay",
+          "type": "frame",
+          "parentId": "frame-checkout",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Pay",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "checkout-pay-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-home",
+                  "transition": {
+                    "type": "instant",
+                    "durationMs": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   ],
   "tokens": {
@@ -1311,7 +1720,7 @@
         "collectionId": "c-variant",
         "values": {
           "primary": "#ffffff",
-          "danger": "#ffffff"
+          "danger": "#fde68a"
         }
       },
       {
@@ -1505,12 +1914,12 @@
       },
       {
         "id": "i-icon",
-        "name": "button/iconSize",
+        "name": "button/icon-size",
         "type": "number",
         "collectionId": "c-size",
         "values": {
           "sm": 14,
-          "lg": 16
+          "lg": 18
         }
       }
     ]

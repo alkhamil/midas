@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, assertCanOwnInteractions } from '../src/prototype/plan.js';
+import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions } from '../src/prototype/plan.js';
 
 const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } });
 const proto = interactions => ({ version: 1, interactions });
@@ -61,4 +61,39 @@ test('deleting a node removes its own interactions with it: the node is not in t
 test('a flow that starts at a deleted frame is reported, and its start is cleared', () => {
     const plan = planNodeRemoval(pages, new Set(['B']));
     assert.deepEqual(plan.flows, [{ pageId: 'p', page: 'Screens', flowId: 'f', flowName: 'Main' }]);
+});
+
+// Copies: the nodes copied together, their copy ids, and the nodes that exist in the document.
+const copies = { A: 'A2', B: 'B2' };
+const copyOf = new Map(Object.entries(copies));
+const existing = new Set(['A', 'B', 'C', 'D', 'X']); // X is on another page
+
+test('a copied link to a node copied with it points at the copy, with a new interaction id', () => {
+    const { prototypes, report } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'B')]) }], copyOf, exists: id => existing.has(id) });
+    assert.deepEqual(prototypes.get('A'), proto([{ ...link('i1', 'B2') }]));
+    assert.deepEqual(report, []);
+});
+
+test('a link to a node that was not copied keeps pointing at the original, including on another page', () => {
+    const { prototypes } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'X'), link('a2', 'C')]) }], copyOf, exists: id => existing.has(id) });
+    assert.deepEqual(prototypes.get('A').interactions.map(i => i.action.destinationId), ['X', 'C']);
+});
+
+test('a link to a node that no longer exists is dropped and reported', () => {
+    const { prototypes, report } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'gone'), link('a2', 'C')]) }], copyOf, exists: id => existing.has(id) });
+    assert.deepEqual(prototypes.get('A').interactions.map(i => i.action.destinationId), ['C']);
+    assert.deepEqual(report, [{ code: 'interaction-dropped-on-copy', node: 'A', interaction: 'a1', destination: 'gone' }]);
+});
+
+test('the copy keeps the scroll behaviour, and a node left with nothing has no prototype', () => {
+    const scrolls = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: { version: 1, interactions: [], overflow: 'vertical' } }], copyOf, exists: () => true });
+    assert.deepEqual(scrolls.prototypes.get('A'), { version: 1, interactions: [], overflow: 'vertical' });
+    const dropped = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'gone')]) }], copyOf, exists: () => false });
+    assert.equal(dropped.prototypes.get('A'), undefined);
+});
+
+test('an open-link needs no destination and is copied as it is', () => {
+    const open = { id: 'o', trigger: { type: 'on-click' }, action: { type: 'open-link', url: 'https://example.com' } };
+    const { prototypes } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([open]) }], copyOf, exists: () => false });
+    assert.deepEqual(prototypes.get('A').interactions, [{ ...open, id: 'i1' }]);
 });

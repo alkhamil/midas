@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -9768,15 +9768,25 @@ function toggleProperty(prop) {
     if (n)
         setProperty(prop, !n[prop]);
 }
-function cloneNodes(roots, offset = 20, asInstance = false) {
+function cloneNodes(roots, offset = 20, asInstance = false, report = []) {
     const results = [];
+    // One id map for every root, so a link between two copied roots points at the copy of the other.
+    const everything = roots.flatMap(r => [r, ...doc.descendants(r.id)]), map = new Map(everything.map(n => [n.id, uid()]));
+    const existing = new Set(allNodes().map(n => n.id));
+    const copied = asInstance ? null : planCopiedInteractions({ nodes: everything, copyOf: map, exists: id => existing.has(id) });
+    if (copied) report.push(...copied.report);
     for (const root of roots) {
-        const children = doc.descendants(root.id), all = [root, ...children], map = new Map(all.map(n => [n.id, uid()]));
+        const children = doc.descendants(root.id), all = [root, ...children];
         for (const src of all) {
             const copy = structuredClone(src);
             copy.id = map.get(src.id);
             copy.parentId = src.id === root.id ? src.parentId : map.get(src.parentId);
             copy.version = 0;
+            if (copied) {
+                const proto = copied.prototypes.get(src.id);
+                if (proto) copy.prototype = proto;
+                else delete copy.prototype;
+            }
             if (src.id === root.id) {
                 copy.x += offset;
                 copy.y += offset;
@@ -9818,13 +9828,14 @@ function cloneNodes(roots, offset = 20, asInstance = false) {
 function duplicate() {
     if (!state.selection.size || refusedManaged('duplicate', selectedRoots()))
         return;
+    const dropped = [];
     transaction('Duplicate layers', () => {
         const roots = selectedRoots();
         // Top-level frames get placed to the right of the copied block (same Y, 48px gap),
         // so the copy never lands on top of the frame it was copied from.
         if (roots.length && roots.every(n => !n.parentId && n.type === 'frame')) {
             const boxes = roots.map(n => doc.world(n.id).box).filter(Boolean);
-            const copies = cloneNodes(roots, 0);
+            const copies = cloneNodes(roots, 0, false, dropped);
             if (boxes.length) {
                 const minX = Math.min(...boxes.map(b => b.x)), maxR = Math.max(...boxes.map(b => b.x + b.w));
                 const dx = Math.round((maxR - minX) + 48);
@@ -9836,11 +9847,11 @@ function duplicate() {
             select(copies.map(n => n.id));
         }
         else {
-            const copies = cloneNodes(roots);
+            const copies = cloneNodes(roots, 20, false, dropped);
             select(copies.map(n => n.id));
         }
     });
-    toast('Selection duplicated');
+    toast(dropped.length ? prototypeCopyMessage(dropped) : 'Selection duplicated');
 }
 function removeSelection() {
     if (!state.selection.size || refusedManaged('delete', selectedRoots()))
@@ -9877,6 +9888,11 @@ function applyPrototypeRemoval(plan) {
         if (flows.length) page.prototype = { ...page.prototype, flows };
         else delete page.prototype;
     }
+}
+/** The toast after a copy: the links that pointed at layers which no longer exist were left out of the copies. */
+function prototypeCopyMessage(report) {
+    const links = report.length;
+    return `Left out ${links} interaction${links === 1 ? '' : 's'} that pointed at layers that no longer exist.`;
 }
 /** The toast after a removal: how many interactions and flows pointed at the deleted layers, and the flows by name. */
 function prototypeRemovalMessage(report) {
@@ -9960,22 +9976,27 @@ async function pasteSelection(clipText, mode = 'canvas') {
         const temp = { format: 'midas', version: 1, name: 'Clipboard', pageId: 'paste', pages: [{ id: 'paste', name: 'Paste', nodes: payload.nodes }], assets: payload.assets || {} };
         let data;
         try {
-            data = DocumentModel.parse(JSON.stringify(temp));
+            // Copied layers may link to layers and components that are not in the clipboard: those references are the document's, not a problem.
+            data = DocumentModel.parse(JSON.stringify(temp), { partial: true });
         }
         catch (e) {
             toast('Clipboard data is not valid.');
             return;
         }
         Object.assign(doc.data.assets, data.assets);
-        const all = [];
+        const all = [], dropped = [];
         for (const t of targets)
-            all.push(...pasteNodes(data, payload, t));
+            all.push(...pasteNodes(data, payload, t, dropped));
         select(all);
+        if (dropped.length) toast(prototypeCopyMessage(dropped));
     });
 }
 /** One paste of the clipboard layers at `target` ({ kind: 'canvas' | 'into' | 'sibling' | 'replace' }); returns the new root ids. */
-function pasteNodes(data, payload, target) {
+function pasteNodes(data, payload, target, report = []) {
     const map = new Map(data.pages[0].nodes.map(n => [n.id, uid()]));
+    const existing = new Set(allNodes().map(n => n.id));
+    const copied = planCopiedInteractions({ nodes: data.pages[0].nodes, copyOf: map, exists: id => existing.has(id) });
+    report.push(...copied.report);
     const roots = [];
     const byId = new Map(data.pages[0].nodes.map(n => [n.id, n]));
     const rootParent = target.kind === 'into' ? target.parent.id : target.kind === 'canvas' ? null : target.anchor.parentId || null;
@@ -9998,6 +10019,9 @@ function pasteNodes(data, payload, target) {
         const n = structuredClone(src);
         n.id = map.get(src.id);
         n.parentId = map.get(src.parentId) || null;
+        const proto = copied.prototypes.get(src.id);
+        if (proto) n.prototype = proto;
+        else delete n.prototype;
         // A managed layer belongs to its instance: pasted anywhere else it is a plain layer.
         if (n.behavior && 'slot' in n.behavior && !pastedInInstance(src))
             delete n.behavior;

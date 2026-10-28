@@ -2,6 +2,7 @@
 // never touches a document. Destinations are kept, dropped or remapped as the operation requires, and every drop is reported.
 // A node's prototype keeps its scroll behaviour (`overflow`) through every interaction edit.
 import { PROTOTYPE_VERSION, OVERFLOWS } from './data.js';
+import { nextInteractionId } from './play.js';
 
 /**
  * Refuses a node that cannot own interactions: a managed layer (the slot of a behavior component) belongs to its instance.
@@ -129,4 +130,35 @@ export function planDetach(nodes, instanceId) {
         for (const i of n.prototype.interactions) report.push({ code: 'interaction-dropped-on-detach', node: n.name, interaction: i.id });
     }
     return { edits, report };
+}
+
+/**
+ * The prototype of copied nodes, for their copies. Every copied interaction gets a new id. A link to a node that was copied with
+ * them points at the copy. A link to any other node that still exists keeps pointing at it, on whatever page it is. A link to a node
+ * that is gone is dropped and reported. A copy left with neither interactions nor a scroll behaviour has no prototype.
+ * @param {{ nodes: { id: string, name: string, prototype?: any }[], copyOf: Map<string, string>, exists: (id: string) => boolean }} input
+ *   the copied nodes (the originals); the copy id of each copied node; whether a node exists in the document
+ * @returns {{ prototypes: Map<string, any>, report: { code: string, node: string, interaction: string, destination: string }[] }}
+ *   the copy's prototype by the original's id (undefined when none is left)
+ */
+export function planCopiedInteractions({ nodes, copyOf, exists }) {
+    const prototypes = new Map(), report = [];
+    for (const node of nodes) {
+        const p = node.prototype;
+        if (!p) continue;
+        /** @type {any[]} */
+        const interactions = [];
+        for (const i of p.interactions) {
+            const destination = destinationOf(i);
+            if (destination !== null && !copyOf.has(destination) && !exists(destination)) {
+                report.push({ code: 'interaction-dropped-on-copy', node: node.name, interaction: i.id, destination });
+                continue;
+            }
+            const action = destination !== null && copyOf.has(destination) ? { ...i.action, destinationId: copyOf.get(destination) } : i.action;
+            interactions.push({ ...i, id: nextInteractionId(interactions.map(x => x.id)), action });
+        }
+        if (interactions.length || p.overflow !== undefined) prototypes.set(node.id, { ...p, interactions });
+        else prototypes.set(node.id, undefined);
+    }
+    return { prototypes, report };
 }

@@ -58,6 +58,8 @@ export function buildPrototypeFixture({ broken = false } = {}) {
         screen('frame-details', 'Details', 480),
         button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
         button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),
+        // Navigate to a frame on another page (the Cart page).
+        button('details-cart', 'frame-details', 'Checkout', {}, PRIMARY, [navigate('details-cart-go', 'frame-checkout')]),
         // A fixed-size layer wider than a phone frame: clipped by default, scrolled when the frame's Scroll behaviour opens the horizontal axis.
         { id: 'details-bar', name: 'Wide bar', type: 'rect', parentId: 'frame-details', x: 0, y: 0, w: 600, h: 40, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), version: 0 },
         screen('frame-confirm', 'Confirm', 960),
@@ -69,6 +71,10 @@ export function buildPrototypeFixture({ broken = false } = {}) {
     doc.pages.push({
         id: 'page-flow', name: 'Flow', nodes,
         prototype: { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'frame-home' }] },
+    });
+    doc.pages.push({
+        id: 'page-cart', name: 'Cart',
+        nodes: [screen('frame-checkout', 'Checkout', 0), button('checkout-pay', 'frame-checkout', 'Pay', {}, PRIMARY, [navigate('checkout-pay-go', 'frame-home')])],
     });
     return doc;
 }
