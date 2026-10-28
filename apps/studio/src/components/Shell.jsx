@@ -32,7 +32,8 @@ export function Topbar({ user }) {
                 <span className="save-indicator" id="save-indicator"><i></i> Saved</span>
             </div>
             <div className="top-actions">
-                <button className="avatar" id="profile" title={user ? `${user.name} · ${user.email}` : 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
+                <button className="avatar" id="profile" title={user?.name || 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
+                <button className="share-button play-button" id="play" aria-label="Play" title="Play (Alt+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>
@@ -155,6 +156,7 @@ export function RightPanel() {
             <div className="inspector-tabs">
                 <button className="active" data-inspector-tab="design">Design</button>
                 <button data-inspector-tab="behavior" id="inspector-tab-behavior">Behavior</button>
+                <button data-inspector-tab="prototype" id="inspector-tab-prototype">Prototype</button>
                 <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>

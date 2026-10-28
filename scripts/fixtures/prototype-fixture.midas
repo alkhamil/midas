@@ -1,0 +1,1469 @@
+{
+  "format": "midas",
+  "version": 1,
+  "name": "Prototype fixture",
+  "pageId": "page-components",
+  "pages": [
+    {
+      "id": "page-components",
+      "name": "Components",
+      "nodes": [
+        {
+          "name": "Button",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "main",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "templateId": "button",
+            "variables": {
+              "variant": "c-variant",
+              "size": "c-size"
+            }
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "main",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "main-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          }
+        },
+        {
+          "name": "Save",
+          "parentId": null,
+          "x": 200,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-start",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "label": "Save"
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
+          }
+        },
+        {
+          "name": "iconStart",
+          "parentId": "inst-start",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fill": "#8c8297",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-start-icon-start",
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-start",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Save",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-start-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
+        },
+        {
+          "name": "Cancel",
+          "parentId": null,
+          "x": 400,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-plain",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Cancel"
+            }
+          },
+          "varModes": {
+            "c-variant": "danger",
+            "c-size": "lg"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-plain",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Cancel",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-plain-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
+        },
+        {
+          "name": "Unbound",
+          "parentId": null,
+          "x": 600,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "unbound",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug"
+        },
+        {
+          "name": "Label",
+          "parentId": "unbound",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "unbound-label"
+        },
+        {
+          "name": "Button (legacy)",
+          "parentId": null,
+          "x": 0,
+          "y": 240,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "legacy",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "templateId": "button",
+            "variables": {
+              "variant": "c-variant-b",
+              "size": "c-size"
+            }
+          },
+          "vars": {
+            "fill": "i-bg-b",
+            "stroke": "i-border-b",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "legacy",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "legacy-label",
+          "vars": {
+            "fill": "i-fg-b",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-screens",
+      "name": "Screens",
+      "nodes": [
+        {
+          "name": "Next",
+          "parentId": null,
+          "x": 0,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fill": "#0058CA",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-cross",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "end",
+              "label": "Next"
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "i-bg-v",
+            "stroke": "i-border-v",
+            "radius": "i-radius",
+            "padH": "i-px",
+            "padV": "i-py",
+            "gap": "i-gap"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-cross",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fill": "#ffffff",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "text": "Next",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-cross-label",
+          "vars": {
+            "fill": "i-fg-v",
+            "fontSize": "i-fs",
+            "lineHeight": "i-lh"
+          },
+          "sourceId": "main-label"
+        },
+        {
+          "name": "iconEnd",
+          "parentId": "inst-cross",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fill": "#8c8297",
+          "fill2": "#cfe1fa",
+          "fillType": "solid",
+          "gradientAngle": 90,
+          "fillOpacity": 1,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "shadow": false,
+          "shadowColor": "#000000",
+          "shadowOpacity": 0.16,
+          "shadowBlur": 20,
+          "shadowX": 0,
+          "shadowY": 6,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-cross-icon-end",
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-empty-3",
+      "name": "Empty 3",
+      "nodes": []
+    },
+    {
+      "id": "page-empty-4",
+      "name": "Empty 4",
+      "nodes": []
+    },
+    {
+      "id": "page-empty-5",
+      "name": "Empty 5",
+      "nodes": []
+    },
+    {
+      "id": "page-flow",
+      "name": "Flow",
+      "nodes": [
+        {
+          "id": "frame-home",
+          "name": "Home",
+          "type": "frame",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 375,
+          "h": 667,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "fill": "#ffffff",
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "home-next",
+          "name": "Next",
+          "type": "frame",
+          "parentId": "frame-home",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Next",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "home-next-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-details",
+                  "transition": {
+                    "type": "slide-in",
+                    "direction": "left",
+                    "durationMs": 300,
+                    "easing": "ease-out"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "home-delete",
+          "name": "Delete",
+          "type": "frame",
+          "parentId": "frame-home",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Delete",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "danger",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "home-delete-go",
+                "trigger": {
+                  "type": "mouse-enter"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-confirm",
+                  "transition": {
+                    "type": "dissolve",
+                    "durationMs": 200,
+                    "easing": "linear"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "home-off",
+          "name": "Unavailable",
+          "type": "frame",
+          "parentId": "frame-home",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Unavailable",
+              "disabled": true,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "home-off-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-details",
+                  "transition": {
+                    "type": "instant",
+                    "durationMs": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "frame-details",
+          "name": "Details",
+          "type": "frame",
+          "parentId": null,
+          "x": 480,
+          "y": 0,
+          "w": 375,
+          "h": 667,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "fill": "#ffffff",
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "details-back",
+          "name": "Back",
+          "type": "frame",
+          "parentId": "frame-details",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Back",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "danger",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "details-back-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "back"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "details-continue",
+          "name": "Continue",
+          "type": "frame",
+          "parentId": "frame-details",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Continue",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "details-continue-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-confirm",
+                  "transition": {
+                    "type": "push",
+                    "direction": "top",
+                    "durationMs": 250,
+                    "easing": "ease-in-out"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "details-bar",
+          "name": "Wide bar",
+          "type": "rect",
+          "parentId": "frame-details",
+          "x": 0,
+          "y": 0,
+          "w": 600,
+          "h": 40,
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "fill": "#f59e0b",
+          "version": 0
+        },
+        {
+          "id": "frame-confirm",
+          "name": "Confirm",
+          "type": "frame",
+          "parentId": null,
+          "x": 960,
+          "y": 0,
+          "w": 375,
+          "h": 667,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "fill": "#ffffff",
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "confirm-done",
+          "name": "Done",
+          "type": "frame",
+          "parentId": "frame-confirm",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Done",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "confirm-done-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-done",
+                  "transition": {
+                    "type": "instant",
+                    "durationMs": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "confirm-cancel",
+          "name": "Cancel",
+          "type": "frame",
+          "parentId": "frame-confirm",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Cancel",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "danger",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "confirm-cancel-go",
+                "trigger": {
+                  "type": "on-click"
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-home",
+                  "transition": {
+                    "type": "dissolve",
+                    "durationMs": 150,
+                    "easing": "linear"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "frame-done",
+          "name": "Done",
+          "type": "frame",
+          "parentId": null,
+          "x": 1440,
+          "y": 0,
+          "w": 375,
+          "h": 667,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 24,
+          "fill": "#ffffff",
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "done-home",
+          "name": "Back home",
+          "type": "frame",
+          "parentId": "frame-done",
+          "x": 0,
+          "y": 0,
+          "w": 136,
+          "h": 48,
+          "isInstance": true,
+          "sourceId": "main",
+          "version": 0,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fill": "#0058CA",
+          "radius": 8,
+          "behavior": {
+            "version": 2,
+            "props": {
+              "label": "Back home",
+              "disabled": false,
+              "hasIcon": false
+            }
+          },
+          "varModes": {
+            "c-variant": "primary",
+            "c-size": "lg"
+          },
+          "prototype": {
+            "version": 1,
+            "interactions": [
+              {
+                "id": "done-home-go",
+                "trigger": {
+                  "type": "after-delay",
+                  "delayMs": 1200
+                },
+                "action": {
+                  "type": "navigate-to",
+                  "destinationId": "frame-home",
+                  "transition": {
+                    "type": "instant",
+                    "durationMs": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "prototype": {
+        "version": 1,
+        "flows": [
+          {
+            "id": "flow-main",
+            "name": "Main",
+            "startFrameId": "frame-home"
+          }
+        ]
+      }
+    }
+  ],
+  "tokens": {
+    "colors": [],
+    "typography": []
+  },
+  "assets": {},
+  "variables": {
+    "collections": [
+      {
+        "id": "c-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "primary",
+            "name": "Primary"
+          },
+          {
+            "id": "danger",
+            "name": "Danger"
+          }
+        ]
+      },
+      {
+        "id": "c-variant-b",
+        "name": "Variant B",
+        "modes": [
+          {
+            "id": "primary",
+            "name": "Primary"
+          },
+          {
+            "id": "danger",
+            "name": "Danger"
+          }
+        ]
+      },
+      {
+        "id": "c-size",
+        "name": "Size",
+        "modes": [
+          {
+            "id": "sm",
+            "name": "Small"
+          },
+          {
+            "id": "lg",
+            "name": "Large"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "i-bg-v",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-bg-hover-v",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "i-bg-active-v",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "i-bg-disabled-v",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "i-fg-v",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#ffffff"
+        }
+      },
+      {
+        "id": "i-fg-disabled-v",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
+        "id": "i-border-v",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-border-focus-v",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#818cf8",
+          "danger": "#f87171"
+        }
+      },
+      {
+        "id": "i-bg-b",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-bg-hover-b",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#3730a3"
+        }
+      },
+      {
+        "id": "i-bg-active-b",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "i-bg-disabled-b",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "i-fg-b",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#ffffff"
+        }
+      },
+      {
+        "id": "i-fg-disabled-b",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
+        "id": "i-border-b",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "i-border-focus-b",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "primary": "#818cf8",
+          "danger": "#f87171"
+        }
+      },
+      {
+        "id": "i-card-bg-v",
+        "name": "card/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#ffffff",
+          "danger": "#fff1f1"
+        }
+      },
+      {
+        "id": "i-card-fg-v",
+        "name": "card/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "primary": "#20202a",
+          "danger": "#20202a"
+        }
+      },
+      {
+        "id": "i-fs",
+        "name": "button/fontSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 18
+        }
+      },
+      {
+        "id": "i-lh",
+        "name": "button/lineHeight",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 20,
+          "lg": 27
+        }
+      },
+      {
+        "id": "i-px",
+        "name": "button/paddingX",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 12,
+          "lg": 16
+        }
+      },
+      {
+        "id": "i-py",
+        "name": "button/paddingY",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-gap",
+        "name": "button/gap",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-radius",
+        "name": "button/radius",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "i-icon",
+        "name": "button/iconSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 16
+        }
+      }
+    ]
+  }
+}

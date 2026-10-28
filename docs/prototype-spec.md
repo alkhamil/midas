@@ -1,0 +1,77 @@
+# Prototype spec
+
+Source of truth for the Prototype feature (phase 1: Figma-style interactions and a DOM Play preview). Behavior rules live in
+`docs/behavior-spec.md`; the two share the load rules in `AGENTS.md`.
+
+## Data
+
+- `node.prototype = { version: 1, interactions: [{ id, trigger, action }], overflow? }` on the source node. An instance may own interactions. A managed layer may not. `overflow` is `none` (the default, not stored), `horizontal`, `vertical` or `both`, and only a frame may have it.
+- `trigger` is `{ type }`, or `{ type: 'after-delay', delayMs }` with a whole `delayMs` above zero.
+- `action` is `{ type: 'navigate-to', destinationId, transition }`, `{ type: 'back' }`, or `{ type: 'open-link', url }` (http and https only).
+- `transition` is `{ type, durationMs, direction?, easing? }`. `slide-in` and `push` need a direction. `instant` and `dissolve` take none.
+- `page.prototype = { version: 1, flows: [{ id, name, startFrameId }] }`. A flow starts at a top-level frame.
+- A destination is any top-level frame on any page, including a top-level instance or master.
+- New action types (overlay, dropdown, conditional, variables) are added to `ACTION_TYPES` with their own fields. The structure does not change.
+
+## Load rules
+
+- A file with no prototype data opens normally. A different version, an unknown field, or a shape error fails with an explicit error naming the page and the node.
+- Eager open validates the whole file. Lazy open validates each page as it arrives with `complete: false`: a reference to a page that has not arrived yet is deferred, and checked when that page arrives.
+- A failing lazily loaded page stays an empty stub and is never written back.
+- Validation returns `{ code, page, node, interaction, message }` for every problem. The codes are listed in `packages/builder-core/src/prototype/validate.js`.
+
+## Decisions
+
+1. `navigate-to` and `back` cannot run on `while-hovering` or `while-pressing`. The validator reports `trigger-action-mismatch`. `open-link` can. Other actions come later.
+2. Save waits while any page is still loading (the editor's existing lazy-page wait), and is blocked by the first prototype problem in the document. The toast names the page and the node. `saveBlockedBy` decides the second part.
+3. Deleting a node removes the interactions that point at it and the flows whose start is that node. Both are reported in a toast. No flow is left dangling.
+4. Detaching an instance keeps the instance's own interactions. Interactions on master-owned inner layers and on managed layers are dropped and reported.
+5. Play never writes to the document or its history. It reads the document, and its state lives only in the overlay.
+
+## Play
+
+- Play starts at the first flow of the active page, else the selected top-level frame, else the first top-level frame (`playStartOf`).
+- A frame is drawn as DOM from `toDomTree`. A Button instance is the same `<button>` the codegen exports, styled by the codegen CSS, which is injected once per Play session. So `:hover`, `:active`, `:focus` and `:disabled` are live.
+- Mouse events on a node go to the player (`eventFromDom`, then `respond`). `schedule` effects become timers; a timer is cleared on a frame change and on exit.
+- Transitions: `transitionCss` gives the duration, the easing, and the starting state of the entering frame.
+- Layers the DOM does not draw are counted in the toolbar, not dropped silently.
+- Fit scales the frame's width to the window, never up. Zoom steps are 25% to 200%. Taller frames scroll.
+- Esc exits. Alt+Enter opens Play when no other Play is open (Alt+Enter was free).
+
+## Play viewer (Figma-style)
+
+- Dark top bar: the file name with a flow selector, a view-options button (sliders), a full-screen toggle and a close control. Esc closes the open menu first, then Play.
+- Bottom centre pill: previous and next frame, with an "n / total" counter. The frames are the top-level frames of the flow's page in order (`flowFrames`). Previous and next dispatch a `navigate` event to the player, so they are history steps and Back returns to the frame before. Both are disabled at the ends.
+- Bottom right: Restart, shown with the R key (R restarts, with the menu open or closed). Restart resets the scroll position when "Reset on restart" is on.
+- Disabled layers: a disabled Button, and every layer inside it, triggers no pointer interaction (on-click, mouse enter, leave, down and up, while hovering, while pressing). Chromium does not dispatch click, mouse down or mouse up to a disabled button, but it does dispatch mouse enter and leave, so the Play listeners check `isDisabledTarget` before they call the player. After-delay is not pointer driven and stays active. A disabled Button has `disabled`, `aria-disabled="true"` and the `not-allowed` cursor.
+- Chrome (`chromeVisibility`, pure): a click on an empty area, on a node with no interaction, or on a disabled element hides the top bar and the bottom controls. A click that triggers an interaction, a Button, a scrollbar, the chrome or the menu does not. The pointer in the top 48 px shows the chrome again; the pointer elsewhere does not. The chrome has no timer. Hidden chrome is `visibility: hidden`, so it takes no clicks or focus, and the top edge is a position, not an element, so it blocks nothing.
+- Ctrl+\ pins the chrome hidden (`pinnedHidden`). While pinned it never shows: not at the top edge, not on a click, not with a menu. The first pin in a Play session shows the toast "Press Ctrl+\ to show the toolbar" for three seconds. Ctrl+\ again shows the chrome. The view menu's Hide UI does the same.
+- View menu: a "Scaling" group whose header carries the Z hint, then Actual size (100%), Responsive, Fit width and Fit width and height. Advanced settings: the viewport background, Show hotspot hints (also held with Shift) and Reset on restart.
+- Z cycles the scaling mode (`nextScalingMode`): Actual size, Responsive, Fit width, Fit width and height, then Actual size again. It works with the menu open, the checkmark follows, and the new mode's name shows for one second. Z and R do nothing while a field has focus. An unknown mode counts as Actual size, so Z from it goes to Responsive.
+- Scaling (`viewportLayout`, pure): Actual size is 1:1 and centred; the page scrolls on the axes the frame overflows. Responsive gives the frame the window size at scale 1: the top-level frame's width and height follow the window, the window never scrolls, and the frame's own Scroll behaviour decides what scrolls inside it. Fit width scales the frame to the window width and scrolls vertically when taller. Fit width and height contains the frame, centred, and never scrolls.
+- Responsive: `toDomTree(doc, id, { responsive: true })` gives the top-level frame 100% width and height. A child's sizing is per axis, on the parent's main axis (its flow direction) and its cross axis (`flowSizing`): fill takes the free space on the main axis and stretches on the cross axis; hug and fixed keep their size and do not shrink, so a child wider than its frame is clipped by the frame, unless the frame's Scroll behaviour opens that axis. Absolutely positioned children keep their x, y and size.
+- Scroll behaviour (Overflow): `node.prototype.overflow` on a frame, one of `none` (the default, not stored), `horizontal`, `vertical` or `both`. The frame's `overflow-x` and `overflow-y` open the named axes and clip the others, for top-level and nested frames alike. A press on a scrollbar triggers nothing. The Prototype tab shows a warning icon, with the tooltip "For scrolling to work on this frame, the content needs to be bigger than the frame.", when the content does not reach past the frame on a chosen axis (`overflowWarning`).
+- The view settings are kept in the browser (localStorage key `midas.play`), never in the document or its history. A stored `fill-screen` becomes Fit width and height; an unknown or empty value becomes Actual size (`resolveScalingMode`). A missing value keeps the default.
+
+### Known limitations
+
+- Midas has no constraints (left, right, centre, stretch) in the data model. An absolutely positioned child keeps its x, y and fixed size in responsive mode; it does not follow the frame width. Implement constraints first, then map them in `toDomTree`.
+- A click on a child layer does not reach its parent's on-click (the innermost layer answers). Separate defect, not fixed in this pass.
+- The overflow warning uses the children's stored x, y, w and h. It does not model auto layout gaps or padding.
+- Every frame clips by default. The `clip` flag of a frame no longer decides clipping.
+
+## Not in phase 1
+
+- Connection handle, connector arrows and the flow-start marker on the canvas.
+- Flow creation from the panel (a flow exists only in the file for now).
+- Copy, paste and duplicate wiring to `planCopiedInteractions` (the planner exists and is tested; the editor does not call it yet).
+- Rolling back a prototype problem with a "Not applied" message (the editor does not yet run the prototype check as a backstop).
+- Marking a flow start from the panel and showing the flow-start marker on the canvas.
+- The `while-end` effect has no consumer yet; Play ignores it.
+- The canvas draws no Play state; the Canvas 2D fallback is not involved.
+
+## Status
+
+Phase 1 pure core and the editor wiring listed in `docs/manual-test.md` are in. The items under "Not in phase 1" are not built. Known debt from review: the top-level frame rule is still spelled in validate.js and dom-tree.js as well as play.js; the managed-layer check repeats the `slot` test in three places; the Play listener list is spelled in play.js and events.js.
+
+Round 2 (disabled layers, scaling modes, chrome visibility, Scroll behaviour) is built and checked in `docs/manual-test.md`. Known debt from review, still open: the top-level frame rule is spelled in validate.js and dom-tree.js as well as play.js; a click on a child layer does not reach its parent's on-click; the constraints model is missing.

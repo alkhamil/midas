@@ -1,7 +1,8 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarning, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
+import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -6775,6 +6776,7 @@ class DocumentModel {
             throw new Error('This is not a supported Midas document.');
         if (partial) assertPagesBehavior(d, d.pages.map(p => p.id));
         else assertBehaviorData(d);
+        assertPrototypeData(d, { complete: !partial });
         const all = new Set();
         let total = 0, donePages = 0;
         const valid = new Set(['rect', 'ellipse', 'text', 'frame', 'group', 'path', 'line', 'image']);
@@ -8069,7 +8071,7 @@ class Renderer {
 
 // ===== icons.js =====
 const paths = {
-    cursor: 'M5 3l14 9-7 1-3 7Z', frame: 'M8 3v18M16 3v18M3 8h18M3 16h18', rect: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z', ellipse: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z', line: 'M4 20 20 4', pen: 'm12 3 8 8-5 9-11 1 1-11ZM12 3l-7 7 7 7 8-6M4 21l7-8M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', text: 'M4 5h16M12 5v15M8 20h8', hand: 'M7 11V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v7l1-2a1.7 1.7 0 0 1 3 1l-3 7c-1 3-9 4-12 0l-5-6c-1-2 1-4 3-2l3 3', image: 'M4 4h16v16H4ZM4 15l5-5 5 6 3-3 3 3M16 8h.01', sparkles: 'm12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8ZM20 2v4M18 4h4', panel: 'M4 4h16v16H4ZM9 4v16', play: 'm8 4 12 8-12 8Z', search: 'M15.5 9.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM14 14l6 6', plus: 'M12 5v14M5 12h14', minus: 'M5 12h14', close: 'm6 6 12 12M6 18 18 6', arrowUpRight: 'M6 18 18 6M6 6h12v12', arrowLeft: 'M20 12H4m6-6-6 6 6 6', arrowRight: 'M4 12h16m-6-6 6 6-6 6', collapse: 'm8 4 4 4 4-4M8 20l4-4 4 4M5 12h14', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0', eyeOff: 'M3 3l18 18M10 5c6-1 12 7 12 7s-1 2-4 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 3-1 4-1M10 10l4 4', lock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0v4', unlock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0', sun: 'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5', moon: 'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z', sliders: 'M4 7h6M14 7h6M4 17h10M18 17h2M10 4v6M14 14v6', help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16h.01', page: 'M6 3h8l4 4v14H6ZM14 3v5h4', folder: 'M3 7a2 2 0 0 1 2-2h4.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', check: 'm5 12 4 4L19 6', chevron: 'm9 5 7 7-7 7', group: 'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 8h8v8H8Z', component: 'm12 2 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Zm-12 0 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Z', instance: 'm12 3 9 9-9 9-9-9Z', variant: 'm12 3 9 9-9 9-9-9ZM12 8l4 4-4 4-4-4Z', download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5', upload: 'M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5', copy: 'M9 8h11v13H9ZM15 8V3H4v13h5', undo: 'M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12', redo: 'm16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12', alignLeft: 'M4 3v18M8 6h12v4H8ZM8 14h8v4H8Z', alignCenter: 'M12 3v18M5 6h14v4H5ZM8 14h8v4H8Z', alignRight: 'M20 3v18M4 6h12v4H4ZM8 14h8v4H8Z', alignTop: 'M3 4h18M6 8h4v12H6ZM14 8h4v8h-4Z', alignMiddle: 'M3 12h18M6 5h4v14H6ZM14 8h4v8h-4Z', alignBottom: 'M3 20h18M6 4h4v12H6ZM14 8h4v8h-4Z', distributeH: 'M3 4v16M21 4v16M7 7h3v10H7ZM14 7h3v10h-3Z', distributeV: 'M4 3h16M4 21h16M7 7h10v3H7ZM7 14h10v3H7Z', textLeft: 'M4 5h16M4 10h11M4 15h16M4 20h11', textCenter: 'M4 5h16M7 10h10M4 15h16M7 20h10', textRight: 'M4 5h16M9 10h11M4 15h16M9 20h11', bold: 'M6 4h7a4 4 0 0 1 0 8H6ZM6 12h8a4 4 0 0 1 0 8H6Z', italic: 'M11 4h9M4 20h9M15 4 9 20', underline: 'M6 3v8a6 6 0 0 0 12 0V3M4 21h16', radius: 'M5 20v-9a6 6 0 0 1 6-6h9', rotate: 'M20 7V2l-4 4M20 7a9 9 0 1 0 1 8', opacity: 'M12 3S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12-7-12ZM12 3v19', grid: 'M3 3h18v18H3ZM9 3v18M15 3v18M3 9h18M3 15h18', code: 'm8 5-7 7 7 7m8-14 7 7-7 7M14 3l-4 18', trash: 'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7', link: 'm9 14 6-6M9 7l2-2a5 5 0 0 1 7 7l-2 2M15 17l-2 2a5 5 0 0 1-7-7l2-2', layers: 'm12 3 10 6-10 6L2 9Zm-10 11 10 6 10-6', chevronDown: 'm6 9 6 6 6-6', checkSquare: 'M4 4h16v16H4Zm3 8 3 3 7-7'
+    cursor: 'M5 3l14 9-7 1-3 7Z', frame: 'M8 3v18M16 3v18M3 8h18M3 16h18', rect: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z', ellipse: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z', line: 'M4 20 20 4', pen: 'm12 3 8 8-5 9-11 1 1-11ZM12 3l-7 7 7 7 8-6M4 21l7-8M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0', text: 'M4 5h16M12 5v15M8 20h8', hand: 'M7 11V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v7l1-2a1.7 1.7 0 0 1 3 1l-3 7c-1 3-9 4-12 0l-5-6c-1-2 1-4 3-2l3 3', image: 'M4 4h16v16H4ZM4 15l5-5 5 6 3-3 3 3M16 8h.01', sparkles: 'm12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8ZM20 2v4M18 4h4', panel: 'M4 4h16v16H4ZM9 4v16', play: 'm8 4 12 8-12 8Z', search: 'M15.5 9.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM14 14l6 6', plus: 'M12 5v14M5 12h14', minus: 'M5 12h14', close: 'm6 6 12 12M6 18 18 6', arrowUpRight: 'M6 18 18 6M6 6h12v12', arrowLeft: 'M20 12H4m6-6-6 6 6 6', arrowRight: 'M4 12h16m-6-6 6 6-6 6', collapse: 'm8 4 4 4 4-4M8 20l4-4 4 4M5 12h14', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0', eyeOff: 'M3 3l18 18M10 5c6-1 12 7 12 7s-1 2-4 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 3-1 4-1M10 10l4 4', lock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0v4', unlock: 'M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0', sun: 'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5', moon: 'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z', sliders: 'M4 7h6M14 7h6M4 17h10M18 17h2M10 4v6M14 14v6', help: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16h.01', page: 'M6 3h8l4 4v14H6ZM14 3v5h4', folder: 'M3 7a2 2 0 0 1 2-2h4.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', check: 'm5 12 4 4L19 6', chevron: 'm9 5 7 7-7 7', group: 'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 8h8v8H8Z', component: 'm12 2 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Zm-12 0 4 4-4 4-4-4Zm6 6 4 4-4 4-4-4Z', instance: 'm12 3 9 9-9 9-9-9Z', variant: 'm12 3 9 9-9 9-9-9ZM12 8l4 4-4 4-4-4Z', download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5', upload: 'M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5', copy: 'M9 8h11v13H9ZM15 8V3H4v13h5', undo: 'M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12', redo: 'm16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12', alignLeft: 'M4 3v18M8 6h12v4H8ZM8 14h8v4H8Z', alignCenter: 'M12 3v18M5 6h14v4H5ZM8 14h8v4H8Z', alignRight: 'M20 3v18M4 6h12v4H4ZM8 14h8v4H8Z', alignTop: 'M3 4h18M6 8h4v12H6ZM14 8h4v8h-4Z', alignMiddle: 'M3 12h18M6 5h4v14H6ZM14 8h4v8h-4Z', alignBottom: 'M3 20h18M6 4h4v12H6ZM14 8h4v8h-4Z', distributeH: 'M3 4v16M21 4v16M7 7h3v10H7ZM14 7h3v10h-3Z', distributeV: 'M4 3h16M4 21h16M7 7h10v3H7ZM7 14h10v3H7Z', textLeft: 'M4 5h16M4 10h11M4 15h16M4 20h11', textCenter: 'M4 5h16M7 10h10M4 15h16M7 20h10', textRight: 'M4 5h16M9 10h11M4 15h16M9 20h11', bold: 'M6 4h7a4 4 0 0 1 0 8H6ZM6 12h8a4 4 0 0 1 0 8H6Z', italic: 'M11 4h9M4 20h9M15 4 9 20', underline: 'M6 3v8a6 6 0 0 0 12 0V3M4 21h16', radius: 'M5 20v-9a6 6 0 0 1 6-6h9', rotate: 'M20 7V2l-4 4M20 7a9 9 0 1 0 1 8', opacity: 'M12 3S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12-7-12ZM12 3v19', grid: 'M3 3h18v18H3ZM9 3v18M15 3v18M3 9h18M3 15h18', code: 'm8 5-7 7 7 7m8-14 7 7-7 7M14 3l-4 18', trash: 'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7', link: 'm9 14 6-6M9 7l2-2a5 5 0 0 1 7 7l-2 2M15 17l-2 2a5 5 0 0 1-7-7l2-2', layers: 'm12 3 10 6-10 6L2 9Zm-10 11 10 6 10-6', chevronDown: 'm6 9 6 6 6-6', checkSquare: 'M4 4h16v16H4Zm3 8 3 3 7-7', warning: 'M12 4 2.5 20h19ZM12 10v4M12 17.5h.01'
 };
 paths.section = 'M3 4.5h8M3 4.5v15h18v-15h-4M3 9h18';
 paths.mask = 'M4 4h16v16H4ZM12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8';
@@ -8299,7 +8301,7 @@ function pageSig(p) {
     let s = 0;
     for (const n of p.nodes)
         s += (n.version || 0) + 1;
-    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}:`;
+    return `${p.nodes.length}:${s}:${p.name}:${p.parentId || ''}:${JSON.stringify(p.prototype ?? null)}:`;
 }
 function markPagesSaved() {
     savedPageSigs.clear();
@@ -8327,7 +8329,9 @@ function fillPage(fileId, id) {
         if (stub && data) {
             const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: { collections: [], items: [] }, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
             // The page is checked against the document as it would be with it, before it becomes editable. A failure throws and the page stays a stub.
-            assertPagesBehavior({ ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) }, [id]);
+            const withPage = { ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) };
+            assertPagesBehavior(withPage, [id]);
+            assertPrototypeData(withPage, { complete: false });
             Object.assign(stub, parsed);
             doc._pageSnapshots.delete(id);
             savedPageSigs.set(id, pageSig(stub));
@@ -8397,6 +8401,11 @@ async function save() {
     }
     if (lazyPages.size) {
         retryTimer = setTimeout(save, 1500); // pages are still arriving: nothing is written until the whole file is here
+        return;
+    }
+    const blocked = saveBlockedBy(doc.data);
+    if (blocked) {
+        toast(`Not saved: “${blocked.node}” on page “${blocked.page}”. ${blocked.message}`);
         return;
     }
     if (savingInProgress) {
@@ -9207,6 +9216,115 @@ function behaviorTabHtml(n) {
     const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id, textVar: cssVarOf(template.id, textColorTokenOf(template)) };
     return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
 }
+/** The Prototype tab: the interactions of the selected layer. Managed layers cannot own any. */
+function prototypeTabHtml(n) {
+    if (!n) return '<div class="empty-state">Select a layer to edit its interactions.</div>';
+    if (isManagedLayer(n)) return '<div class="empty-state">A managed layer cannot own interactions. Edit them on the instance.</div>';
+    const destinations = destinationOptions(doc.data.pages);
+    const options = (list, current) => list.map(([value, label, unavailable]) => `<option value="${esc(value)}"${value === current ? ' selected' : ''}${unavailable ? ' disabled' : ''}>${esc(label)}</option>`).join('');
+    const select = (key, label, id, list, current) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><select class="cmp-input" data-pt="${key}" data-pt-id="${esc(id)}">${options(list, current)}</select></div></div>`;
+    const number = (key, label, id, value) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}" value="${value}"></div></div>`;
+    const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
+    const actions = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['overlay', 'Open overlay', true], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
+    const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
+    const easings = [['linear', 'Linear'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in out']];
+    const rows = (n.prototype?.interactions ?? []).map(i => {
+        const a = i.action, t = a.transition, fields = transitionFieldsOf(t?.type ?? 'instant');
+        const parts = [
+            select('trigger', 'Trigger', i.id, triggers, i.trigger.type),
+            i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : '',
+            select('action', 'Action', i.id, actions, a.type),
+            a.type === 'navigate-to' ? select('destination', 'Destination', i.id, destinations.map(d => [d.id, `${d.name} · ${d.page}`]), a.destinationId) : '',
+            a.type === 'navigate-to' ? select('transition', 'Transition', i.id, transitions, t?.type ?? 'instant') : '',
+            a.type === 'navigate-to' && fields.direction ? select('direction', 'Direction', i.id, directions, t.direction) : '',
+            a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', i.id, t.durationMs) : '',
+            a.type === 'navigate-to' && fields.easing ? select('easing', 'Easing', i.id, easings, t.easing) : '',
+            a.type === 'open-link' ? `<div class="cmp-prop2"><label>URL</label><div class="cmp-ctl"><span class="small-label">${esc(a.url)}</span></div></div>` : '',
+            `<div class="cmp-prop2"><label></label><div class="cmp-ctl"><button class="wide-button" data-pt-remove="${esc(i.id)}">Remove</button></div></div>`,
+        ];
+        return `<div class="cmp-props" data-pt-row="${esc(i.id)}">${parts.join('')}</div>`;
+    }).join('');
+    const add = destinations.length
+        ? '<button class="wide-button" data-pt-add>Add interaction</button>'
+        : '<span class="small-label">Add a top-level frame to link to.</span>';
+    return `<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' ? scrollBehaviorHtml(n) : ''}`;
+}
+/** The Scroll behavior section of a frame: the axes its content may scroll on, with a warning when the content does not reach past the frame. */
+function scrollBehaviorHtml(n) {
+    const overflow = n.prototype?.overflow ?? 'none';
+    const axes = { none: [], horizontal: ['horizontal'], vertical: ['vertical'], both: ['horizontal', 'vertical'] }[overflow];
+    const children = doc.children(n.id);
+    const size = { width: n.w, height: n.h };
+    const warn = axes.some(axis => overflowWarning(size, axis, children));
+    const options = [['none', 'No scrolling'], ['horizontal', 'Horizontal'], ['vertical', 'Vertical'], ['both', 'Both']].map(([value, label]) => `<option value="${value}"${value === overflow ? ' selected' : ''}>${label}</option>`).join('');
+    const warning = warn ? `<span class="warning-icon" title="For scrolling to work on this frame, the content needs to be bigger than the frame." aria-label="For scrolling to work on this frame, the content needs to be bigger than the frame.">${icon('warning')}</span>` : '';
+    return `<div class="inspector-section"><div class="section-heading">Scroll behavior</div><div class="cmp-props"><div class="cmp-prop2"><label>Overflow</label><div class="cmp-ctl"><select class="cmp-input" data-pt-overflow="${esc(n.id)}">${options}</select>${warning}</div></div></div></div>`;
+}
+/** An interaction field changed in the Prototype tab: one history step. A refused edit shows its reason. */
+document.addEventListener('change', e => {
+    const el = e.target.closest?.('[data-pt]');
+    if (!el) return;
+    const n = activeNode();
+    const i = n?.prototype?.interactions.find(x => x.id === el.dataset.ptId);
+    if (!i) return;
+    try {
+        const firstDestination = destinationOptions(doc.data.pages)[0]?.id;
+        const patch = interactionPatch(i, el.dataset.pt, el.value, { firstDestination });
+        transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, patch); doc.touch(n); });
+    } catch (err) {
+        toast(err.message);
+    }
+    renderInspector();
+});
+/** The Scroll behavior of the selected frame changed: one history step. */
+document.addEventListener('change', e => {
+    if (!e.target.matches?.('[data-pt-overflow]')) return;
+    const n = activeNode();
+    if (!n) return;
+    try {
+        transaction('Set scroll behavior', () => { n.prototype = setOverflow(n.prototype, e.target.value); if (!n.prototype) delete n.prototype; doc.touch(n); });
+    }
+    catch (err) {
+        toast(err.message);
+    }
+    renderInspector();
+});
+document.addEventListener('click', e => {
+    const add = e.target.closest?.('[data-pt-add]');
+    const remove = e.target.closest?.('[data-pt-remove]');
+    if (!add && !remove) return;
+    const n = activeNode();
+    if (!n) return;
+    if (add) {
+        try {
+            assertCanOwnInteractions(n);
+        }
+        catch (err) {
+            return toast(err.message);
+        }
+        const destination = destinationOptions(doc.data.pages)[0];
+        if (!destination) return toast('There is no top-level frame to link to.');
+        const id = nextInteractionId((n.prototype?.interactions ?? []).map(x => x.id));
+        transaction('Add interaction', () => { n.prototype = addInteraction(n.prototype, defaultNavigate(id, destination.id)); doc.touch(n); });
+    }
+    if (remove) {
+        transaction('Remove interaction', () => { n.prototype = removeInteraction(n.prototype, remove.dataset.ptRemove); if (!n.prototype) delete n.prototype; doc.touch(n); });
+    }
+    renderInspector();
+});
+/** Play: the flow of the active page, from its selected or first top-level frame. One Play at a time. */
+function startPlay() {
+    if (document.querySelector('.play-overlay') || !doc.page)
+        return;
+    const start = playStartOf(doc.data.pages, doc.page.id, activeNode()?.id ?? null);
+    if (!start)
+        return toast('This page has no top-level frame to play from.');
+    const page = doc.data.pages.find(p => p.id === doc.page.id);
+    openPlay({ data: doc.data, startFrameId: start, name: doc.data.name, flows: page?.prototype?.flows ?? [], pageFrames: flowFrames(page ?? { nodes: [] }) });
+}
+$('#play').onclick = startPlay;
+
 /** Bind tokens: binds each unbound mapped property of a bound master's layers to its group variable. Existing bindings are kept. */
 function bindTokensTo(master) {
     const binding = master?.component ? master.behavior : null;
@@ -9483,6 +9601,10 @@ function renderInspector() {
     const ns = selected(), n = ns[0];
     if (state.inspectorTab === 'behavior') {
         $('#inspector').innerHTML = behaviorTabHtml(n);
+        return;
+    }
+    if (state.inspectorTab === 'prototype') {
+        $('#inspector').innerHTML = prototypeTabHtml(n);
         return;
     }
     let html = '';
@@ -9854,7 +9976,47 @@ function duplicate() {
 function removeSelection() {
     if (!state.selection.size || refusedManaged('delete', selectedRoots()))
         return;
-    transaction('Delete layers', () => { doc.remove([...state.selection]); state.selection.clear(); });
+    const gone = new Set(state.selection);
+    for (const id of state.selection)
+        for (const d of doc.descendants(id))
+            gone.add(d.id);
+    const plan = planNodeRemoval(doc.data.pages, gone);
+    transaction('Delete layers', () => { applyPrototypeRemoval(plan); doc.remove([...state.selection]); state.selection.clear(); });
+    if (plan.report.length)
+        toast(prototypeRemovalMessage(plan.report));
+}
+/** Applies a removal plan from builder-core: interactions leave their nodes, flows leave their pages. Each change is a touch. */
+function applyPrototypeRemoval(plan) {
+    for (const e of plan.edits) {
+        onPage(pageOfNode(e.nodeId)?.id, () => {
+            const n = doc.get(e.nodeId);
+            if (!n)
+                return;
+            let proto = n.prototype;
+            for (const id of e.removeInteractions)
+                proto = removeInteraction(proto, id);
+            if (proto) n.prototype = proto;
+            else delete n.prototype;
+            doc.touch(n);
+        });
+    }
+    for (const f of plan.flows) {
+        const page = doc.data.pages.find(p => p.id === f.pageId);
+        if (!page)
+            continue;
+        const flows = (page.prototype?.flows ?? []).filter(x => x.id !== f.flowId);
+        if (flows.length) page.prototype = { ...page.prototype, flows };
+        else delete page.prototype;
+    }
+}
+/** The toast after a removal: how many interactions and flows pointed at the deleted layers, and the flows by name. */
+function prototypeRemovalMessage(report) {
+    const links = report.filter(r => r.code === 'interaction-removed').length;
+    const flows = report.filter(r => r.code === 'flow-start-removed').map(r => `“${r.flow}”`);
+    const parts = [];
+    if (links) parts.push(`${links} interaction${links === 1 ? '' : 's'}`);
+    if (flows.length) parts.push(`the flow${flows.length === 1 ? '' : 's'} ${flows.join(', ')}`);
+    return `Removed ${parts.join(' and ')} that pointed at the deleted layers.`;
 }
 function copySelection() {
     const roots = selectedRoots();
@@ -12130,8 +12292,19 @@ function pushToMain() {
 function instanceMenuItems(n) {
     return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Push changes to main component', action: 'pushToMain' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, { label: 'Reset instance', action: 'resetOverrides' }, '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
 }
-function detachSelectedInstances() { transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
-    detachNodeTree(pageOfNode(x.id), x.id); }); }
+function detachSelectedInstances() {
+    const reports = [];
+    transaction('Detach instance', () => {
+        for (const x of selectedRoots().filter(r => r.isInstance)) {
+            const plan = planDetach(doc.data.pages.flatMap(p => p.nodes), x.id);
+            applyPrototypeRemoval({ edits: plan.edits, flows: [] });
+            reports.push(...plan.report);
+            detachNodeTree(pageOfNode(x.id), x.id);
+        }
+    });
+    if (reports.length)
+        toast(`Detached. Dropped ${reports.length} interaction${reports.length === 1 ? '' : 's'} on master-owned or managed layers.`);
+}
 function resetSelectedOverrides() { transaction('Reset overrides', () => { for (const r of selectedRoots()) {
     const page = pageOfNode(r.id);
     for (const x of [r, ...pageTree(page, r.id)]) {
@@ -20809,6 +20982,11 @@ document.addEventListener('keydown', e => {
     if (lib.open) {
         if (e.key === 'Escape' && !isInput(document.activeElement) && lib.index.some(m => m.id === lib.fileId && !m.trashed))
             hideHome();
+        return;
+    }
+    if (e.altKey && e.key === 'Enter' && !isInput(document.activeElement)) {
+        e.preventDefault();
+        startPlay();
         return;
     }
     if (!$('#modal-backdrop').classList.contains('hidden')) {

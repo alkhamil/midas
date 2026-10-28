@@ -170,3 +170,115 @@ These cannot be checked in Node. Run them in the browser on a fresh import, and 
 - Canvas 2D fallback preview: the Hover/Active/Focus substitution is drawn only by the GPU `push()`. The fallback draws the instance's own colours. Expected: no substitution. Force the fallback (no WebGPU) and confirm the canvas does not change while a preview is selected.
 - Bind tokens in the browser, on the Button master with unbound tokens: the button shows the unbound count, binds only the missing tokens, and never overwrites an existing binding. (`bind-tokens.test.js` covers the planner, not the editor.)
 - Kopi Kita master resize in the browser: resize the master, then check that auto-layout children, fill children of a plain frame, absolute children and nested instances follow the master. The copy decision is covered by `copy-decision.test.js`; the layout that writes x/y/w/h is in `midas.js` and is not importable in Node.
+
+## Prototype phase 1 (browser smoke, prototype fixture)
+
+Fixture: `scripts/fixtures/prototype-fixture.midas` (import via the home screen). Signed in through the sign-in form.
+
+| Check | Result |
+| --- | --- |
+| The file opens with its Flow page; the four frames draw on the canvas | Pass |
+| Select Next, open the Prototype tab: trigger, action, destination, transition, direction, duration and easing fields | Pass |
+| Add interaction on the Unavailable button saves one on-click navigate-to; Remove drops it and the `prototype` key | Pass |
+| Play opens on Home from the toolbar button; Alt+Enter also opens it; Esc closes it | Pass |
+| Primary, danger and disabled Buttons render with the codegen classes; the disabled one ignores clicks | Pass |
+| Next (slide-in), Continue (push), Cancel (dissolve), Done: each navigates | Pass |
+| Mouse-enter on Delete navigates to Confirm | Pass |
+| After-delay on Back home returns to Home after 1.2 s | Pass |
+| Zoom in doubles the stage; Fit returns to width | Pass (zoom only) |
+| Play leaves the document unchanged: no node version changes | Pass |
+| Back (back action) and Restart | Not run in the browser (the player tests cover them) |
+| Open link, while-hovering and while-pressing in the browser | Not run (the player tests cover them) |
+| Lazy open of a file with a broken prototype page | Not run in the browser (validator tests cover it) |
+| Save blocked while a page is loading | Not run in the browser (`saveBlockedBy` tests cover it) |
+| Delete of a flow start, detach of an instance with interactions | Not run in the browser (planner tests cover them) |
+| Copy, paste and duplicate of interactions | Not wired |
+| Connection handle, connector arrows, flow-start marker | Not built |
+
+DOM against canvas for the Home frame:
+
+- Button width: the DOM buttons hugged their content (72, 87 and 131 px) after the align-self fix. Before the fix they were stretched to the frame width.
+- Button height: the DOM button is 43 px tall (codegen tokens). The fixture master is 48 px tall on the canvas. Not reconciled.
+- Disabled colour: the canvas draws the Unavailable button in the primary colour, because the fixture's flow instances carry no variable bindings. The DOM draws it disabled, from the codegen CSS. A canvas-side mismatch, not a DOM bug.
+- Label font: the canvas and the DOM both use Inter here. Not measured against each other pixel by pixel.
+
+Known limits recorded during this pass:
+
+- Opening a deep link to a lazily loaded page (for example `?page=page-flow` on a six-page file) can fall back to a new empty file. Open the file on its first page, then click the page.
+- Each import of a fixture adds a file to the workspace. Delete the test copies from All files when done.
+
+## Play viewer (Figma-style) browser smoke
+
+Fixture: `scripts/fixtures/prototype-fixture.midas`, opened on its Components page, then its Flow page. Pane set to 800 x 600 for the screenshots, then reset to desktop.
+
+| Check | Result |
+| --- | --- |
+| Play is an icon-only button, same height as Export; the avatar is a 28 px circle with an "A" and the name as its tooltip | Pass |
+| Play opens from the icon; the counter shows 1 / 4 on Home | Pass |
+| Chrome hides about 2.5 s after the last activity; a pointer move brings it back | Superseded by round 2: no timer; see below |
+| View menu: Fit width and height checked; Responsive, Fit width, Fill screen and Actual size listed | Superseded by round 2: Fill screen is removed |
+| Fit width and height contains the frame (scale 600 / 667 in a 600 px high window) | Pass |
+| Responsive: the frame follows the window width (600 px window, frame 600 px) | Pass |
+| Previous and next move through the four frames; disabled at each end | Pass |
+| R restarts to Home, with the view menu open | Pass |
+| Ctrl+ hides the chrome and shows the hint; Ctrl+ again shows it | Superseded by round 2: the hint is a one-time toast; see below |
+| Flow selector lists the flow; choosing it restarts at its start | Pass |
+| Esc closes the menu first, then Play; the injected style is removed | Pass |
+| Actual size, Fit width, Fill screen | Superseded by round 2 (Fill screen is removed; the other modes are checked there) |
+| Hotspot hints, Shift held, viewport background, Reset on restart | Not run in the browser |
+| Hide UI from the menu | Not run in the browser (the Ctrl+ path is the same) |
+| Nested after-delay, click on a child with a parent interaction | Not run in the browser (player and runtime fixes are in; tests cover the player) |
+
+Known: the screenshots of the pane do not always match the element positions reported by the DOM (the pane's framing differs from the page), so positions were checked through the DOM, not only in the images.
+
+## Play viewer: code review pass (fixes made, browser status)
+
+Fixed after the two review axes: mouse-leave interactions now run (a unit test covers it); a height-only resize re-fits the frame; hidden chrome no longer takes clicks; the editor's own shortcuts (Delete and others) are stopped while Play is open; the pill is centred and the top bar has its own dark background; dead code removed (an unused mode list, an unused icon, an unused export, a dead class, and an unreachable condition).
+
+Not verified in the browser: Delete with Play open (the shortcut block), a height-only resize, mouse-leave on a button, and the centred pill. Tests cover the player and the layout; the browser check is still open.
+
+Known and left as is: the Hide UI item and the section headings are in the request, so they stay. The Play button has its own one-off style, because it has to match Export's shape. Hotspot hints stay on if the Shift key is released while the window is not focused (no blur handler yet). Round 2 changed the responsive branch of `viewportLayout`: it now drives the stage size, so the review note above no longer applies.
+
+## Play viewer: round 2 (disabled layers, scaling, chrome, scroll behaviour)
+
+Fixture: `scripts/fixtures/prototype-fixture.midas` (document name "Prototype fixture"), imported from the home page, then its Flow page. Pane emulated at 375 x 812 for the responsive and scroll checks, reset to desktop after. Clicks by element reference, not by coordinate, because the pane's pointer mapping is not reliable.
+
+Disabled root cause (measured in the pane with real clicks on the disabled Unavailable button and its label):
+
+- Chromium still dispatches `pointerdown`, `mouseenter` and `mouseleave` to a disabled button and to its label. It does not dispatch `mousedown`, `mouseup` or `click` to them.
+- Play listened to `mouseenter` and `mouseleave` on every layer, and never checked whether the layer was disabled. So a disabled Button still ran mouse-enter and while-hovering interactions. The native suppression only covered click, mouse down and mouse up.
+- Fix: every layer's listener checks `isDisabledTarget` (the layer or any layer it sits in is a disabled Button) and returns before the player is called. A disabled layer also shows `aria-disabled="true"` and the `not-allowed` cursor.
+
+| Check | Result |
+| --- | --- |
+| Click on the label of the disabled Unavailable button: frame unchanged (still Home), chrome hides (a click that triggers nothing) | Pass |
+| Disabled button cursor is `not-allowed` | Pass |
+| Top edge zone (pointer at y 10) shows the chrome | Pass |
+| Click on an empty part of the frame hides the chrome | Pass |
+| Ctrl+\ pins the chrome hidden; the top edge does not show it while pinned; the one-time toast "Press Ctrl+\ to show the toolbar" appears | Pass |
+| Ctrl+\ again shows the chrome | Pass |
+| A Button click navigates (Home to Details, Details Back to Home) and the chrome stays shown | Pass |
+| Z cycles Fit width and height, Actual size, Responsive, Fit width, Fit width and height; the label names the mode; the checkmark follows with the menu open | Pass |
+| Responsive at 375 px: the frame is 375 x 812 (the window), the 600 px fixed bar is clipped by the frame | Pass |
+| Overflow Horizontal on Details: the frame scrolls on x (scroll width 648, client width 375); the bar moves with the scroll; the chrome stays shown | Pass |
+| Overflow Vertical on Home with no content taller than the frame: the warning icon shows, with the tooltip "For scrolling to work on this frame, the content needs to be bigger than the frame." | Pass (title attribute read in the DOM; the native tooltip is not in the screenshot) |
+| Overflow Horizontal on Details (content 600 wider than 375): no warning | Pass |
+| Toolbar Play: 32 x 32, no border, transparent, same height as Export (32 px); the triangle is 20 px; the avatar is 28 px and centred on the same line | Pass |
+| Preferences: a stored `fill-screen` maps to Fit width and height, unknown values map to Actual size | Pure test only (`prototype-viewport.test.js`); the load path in `loadPlayPrefs` is not run in the browser |
+| Delete with Play open does not edit the document | Not run in round 2 (the shortcut block is `stopPropagation` in `onKey`) |
+| Shift hints, viewport background, Reset on restart | Not run in round 2 |
+| Nested after-delay and an on-click on a parent with a child interaction | Not run in round 2 |
+
+Other defects found and fixed in round 2:
+
+- Rectangles were never drawn in Play: `toDomTree` listed `rectangle`, but the document's layer type is `rect`. The fixture now has a fixed-size rect inside Details, and tests use `rect`.
+- A frame's `overflow` would have been removed by the first interaction edit (the planner rebuilt the prototype with only interactions). The planner keeps it now, and a test covers each edit.
+- The flex sizing of a child set `flex` on the width regardless of the parent's direction. Sizing is per axis now (`flowSizing`), with the table test in `prototype-layout.test.js`.
+- The Scroll behaviour warning compared a node's `w`/`h` to `width`/`height`. The panel passes the frame's size with the right names.
+
+Not verified or open:
+
+- A click on a child layer does not reach its parent's on-click: the innermost layer answers, and a layer with no interaction does not pass the click up, so clicking a text layer inside a frame with an on-click does not run the frame's interaction. Found by reading the code, not run in the browser. Separate defect, left as it is.
+- Every frame clips by default now; the existing `clip` flag no longer decides clipping. Confirm this is the intent.
+- Button instances are frames, so they also show the Scroll behaviour section.
+- Files this pass created in the workspace: several "Untitled" files from deep-link redirects and test imports, plus "Behavior fixture" and "Behavior fixture (copy)". Delete them from All files when done.
