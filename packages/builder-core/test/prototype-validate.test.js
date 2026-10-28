@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePrototype, assertPrototypeData, PrototypeDataError } from '../src/prototype/validate.js';
+import { validatePrototype, assertPrototypeData, PrototypeDataError, introducedProblems } from '../src/prototype/validate.js';
 
 const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, ...extra });
 const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rectangle', parentId, ...extra });
@@ -122,4 +122,26 @@ test('an unknown easing is refused, and an absent easing is allowed', () => {
     const withEasing = easing => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId: 'B', transition: { type: 'dissolve', durationMs: 100, easing } } }]) }), frame('B')] }]);
     assert.deepEqual(codesOf(withEasing('bounce')), ['transition-easing']);
     assert.deepEqual(validatePrototype(withEasing(undefined)), []);
+});
+
+test('an edit introduces only the problems it did not find before (a problem that was there stays a problem, not the edit\'s)', () => {
+    const before = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([link('a', 'gone')]) })] }]));
+    const after = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([link('a', 'gone'), link('b', 'missing-too')]) })] }]));
+    const introduced = introducedProblems(before, after);
+    assert.deepEqual(introduced.map(p => [p.code, p.interaction]), [['destination-missing', 'i-b']]);
+});
+
+test('a valid edit introduces no problem', () => {
+    const before = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A'), frame('B')] }]));
+    const after = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([link('a', 'B')]) }), frame('B')] }]));
+    assert.deepEqual(introducedProblems(before, after), []);
+});
+
+test('moving a link target out of the top level is an introduced problem, with the page and node named', () => {
+    const before = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([link('a', 'B')]) }), frame('B')] }]));
+    const after = validatePrototype(doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([link('a', 'B')]) }), frame('B', { parentId: 'A' })] }]));
+    const [problem] = introducedProblems(before, after);
+    assert.equal(problem.code, 'destination-not-frame');
+    assert.equal(problem.page, 'Screens');
+    assert.equal(problem.node, 'A');
 });

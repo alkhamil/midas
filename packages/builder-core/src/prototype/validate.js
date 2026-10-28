@@ -198,3 +198,16 @@ export function saveBlockedBy(doc) {
     const [problem] = validatePrototype(doc);
     return problem ?? null;
 }
+
+/**
+ * The problems an edit introduced: those in `after` that `before` did not have, matched by code, page, node and interaction. A
+ * problem that was there before is not the edit's, so an edit is never refused for it.
+ * @param {Problem[]} before the problems of the document before the edit
+ * @param {Problem[]} after the problems of the document after it
+ * @returns {Problem[]}
+ */
+export function introducedProblems(before, after) {
+    const key = p => [p.code, p.page, p.node, p.interaction].join('\u0000');
+    const known = new Set(before.map(key));
+    return after.filter(p => !known.has(key(p)));
+}

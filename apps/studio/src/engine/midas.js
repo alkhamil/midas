@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -8513,7 +8513,7 @@ function changed({ ui = true, commit = false } = {}) {
         applyAllLayouts();
         syncComponents();
         autoMatchUnbound();
-        if (rolledBackForBehavior())
+        if (rolledBackForBehavior() || rolledBackForPrototype())
             return;
         // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
         // a gesture that didn't move anything, setting a value to what it already was).
@@ -8552,6 +8552,18 @@ function autoMatchUnbound() {
 }
 // The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
 // to open is rolled back and the reason is shown. Not run while pages are still loading: the file is incomplete then.
+// A prototype edit that leaves a problem the document did not have is undone, with the validator's reason: the document and its
+// history are as they were before the edit. Problems the document already had are not the edit's and do not block it.
+function rolledBackForPrototype() {
+    if (!protoBefore || lazyPages.size) return false;
+    const [problem] = introducedProblems(protoBefore, validatePrototype(doc.data, { complete: failedPages.size === 0 }));
+    if (!problem) return false;
+    history.cancel();
+    doc.refresh();
+    refreshUI();
+    toast(`Not applied: "${problem.node ?? problem.page}" on page "${problem.page}": ${problem.message}.`);
+    return true;
+}
 function rolledBackForBehavior() {
     const problem = lazyPages.size ? null : behaviorProblem(doc.data, { partial: failedPages.size > 0 });
     if (!problem)
@@ -8570,6 +8582,8 @@ function refusedManaged(action, nodes) {
     return !!why;
 }
 // One change is one undo step (changed() checks that the change leaves the file able to open).
+// The prototype problems of the document before an edit: an edit that adds one is rolled back (see rolledBackForPrototype).
+let protoBefore = null;
 function transaction(label, fn) {
     if (viewOnly()) {
         viewOnlyNotice();
@@ -8577,8 +8591,19 @@ function transaction(label, fn) {
     }
     finishText();
     history.begin(label);
-    fn();
-    changed({ commit: true });
+    const outer = protoBefore;
+    protoBefore = prototypeProblemsNow();
+    try {
+        fn();
+        changed({ commit: true });
+    }
+    finally {
+        protoBefore = outer;
+    }
+}
+/** The prototype problems now, for the rollback check. Null while pages are still loading (the check waits for them). */
+function prototypeProblemsNow() {
+    return lazyPages.size ? null : validatePrototype(doc.data, { complete: failedPages.size === 0 });
 }
 function select(ids, { reveal = true } = {}) {
     varOwnerId = null;
@@ -12634,7 +12659,10 @@ async function deletePage(id) {
     }
     if (p.nodes.length && !(await confirmDialog({ title: `Delete page “${p.name}”?`, message: `It has ${p.nodes.length} layer${p.nodes.length > 1 ? 's' : ''}. You can undo this right after.`, confirmLabel: 'Delete', danger: true })))
         return;
+    // Links into the page's layers leave the other pages, as deleting layers does (see removeSelection).
+    const plan = planNodeRemoval(doc.data.pages, new Set(p.nodes.map(n => n.id)));
     transaction('Delete page', () => {
+        applyPrototypeRemoval(plan);
         const i = doc.data.pages.indexOf(p);
         for (const c of doc.data.pages)
             if (c.parentId === p.id)
@@ -12646,6 +12674,8 @@ async function deletePage(id) {
         state.selection.clear();
         fit();
     });
+    if (plan.report.length)
+        toast(prototypeRemovalMessage(plan.report));
 }
 function inspectCSS() {
     const n = activeNode();
