@@ -6,7 +6,7 @@ import { buildPrototypeFixture } from '../../../scripts/make-prototype-fixture.j
 test('the player context reads interactions, frames and nodes from the document, without changing it', () => {
     const doc = buildPrototypeFixture();
     const before = JSON.stringify(doc);
-    const ctx = playContext(doc.pages);
+    const ctx = playContext(doc);
     assert.deepEqual(ctx.interactionsOf('home-next').map(i => i.id), ['home-next-go']);
     assert.equal(ctx.frameOf('home-next'), 'frame-home');
     assert.equal(ctx.frameOf('frame-home'), null);
@@ -77,7 +77,7 @@ test('a nested layer belongs to its top-level frame: its after-delay schedules a
         { id: 'G', type: 'group', parentId: 'F' },
         { id: 'deep', type: 'frame', parentId: 'G', prototype: { version: 1, interactions: [{ id: 'd', trigger: { type: 'after-delay', delayMs: 100 }, action: { type: 'back' } }] } },
     ] }];
-    const ctx = playContext(pages);
+    const ctx = playContext({ pages });
     assert.equal(ctx.frameOf('deep'), 'F');
     assert.deepEqual(ctx.nodesOf('F').map(n => n.id), ['G', 'deep']);
 });

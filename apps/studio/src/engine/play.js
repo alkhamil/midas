@@ -76,7 +76,7 @@ function onScrollbar(el, e) {
  *   `data` is the document data, read only. `pageFrames` are the frames the previous and next controls walk through (the flow's page).
  */
 export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], pageFrames = [] }) {
-    const ctx = playContext(data.pages);
+    const ctx = playContext(data);
     const nodeById = new Map(data.pages.flatMap(p => (p.nodes || []).map(n => [n.id, n])));
     const prefs = loadPlayPrefs();
     let state = createPlayer(startFrameId);

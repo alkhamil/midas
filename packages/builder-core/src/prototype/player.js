@@ -4,6 +4,8 @@
 //
 // State: { current: frameId, history: frameId[] } (the frames to go back to, last one on top).
 // Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs }.
+// A conditional runs the actions of its branch that holds when the trigger fires; variable values come from the context.
+import { chooseBranch } from './conditional.js';
 
 /** The interaction triggers a pointer event starts. `mouse-enter` also starts while-hovering, `mouse-down` also while-pressing. */
 const STARTS = { 'on-click': ['on-click'], 'mouse-enter': ['mouse-enter', 'while-hovering'], 'mouse-down': ['mouse-down', 'while-pressing'], 'mouse-up': ['mouse-up'], 'mouse-leave': ['mouse-leave'] };
@@ -11,7 +13,7 @@ const INSTANT = { type: 'instant', durationMs: 0 };
 
 /**
  * @typedef {{ current: string, history: string[] }} PlayerState
- * @typedef {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[] }} PlayerContext
+ * @typedef {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[], valueOf: (nodeId: string, variableId: string) => any }} PlayerContext
  */
 
 /**
@@ -40,14 +42,14 @@ export function respond(state, event, ctx) {
     if (event.type === 'timer') {
         if (ctx.frameOf(event.nodeId) !== state.current) return { state, effects: [] };
         const interaction = ctx.interactionsOf(event.nodeId).find(i => i.id === event.interactionId && i.trigger?.type === 'after-delay');
-        return interaction ? run(state, interaction, ctx) : { state, effects: [] };
+        return interaction ? runAction(state, interaction.action, ctx, event.nodeId) : { state, effects: [] };
     }
     const interactions = ctx.interactionsOf(event.nodeId);
     const starts = interactions.filter(i => (STARTS[event.trigger] ?? []).includes(i.trigger?.type));
     let next = state;
     const effects = [];
     for (const interaction of starts) {
-        const result = run(next, interaction, ctx);
+        const result = runAction(next, interaction.action, ctx, event.nodeId);
         next = result.state;
         effects.push(...result.effects);
     }
@@ -55,14 +57,25 @@ export function respond(state, event, ctx) {
 }
 
 /**
- * Runs one interaction's action. The caller has checked its trigger.
+ * Runs one action in order. A conditional runs the actions of its chosen branch, with the variable values of the node it sits on.
+ * The caller has checked the trigger.
  * @param {PlayerState} state
- * @param {any} interaction
+ * @param {any} action
  * @param {PlayerContext} ctx
+ * @param {string} nodeId the node the action's interaction belongs to
  * @returns {{ state: PlayerState, effects: any[] }}
  */
-function run(state, interaction, ctx) {
-    const action = interaction.action;
+function runAction(state, action, ctx, nodeId) {
+    if (action?.type === 'conditional') {
+        let next = state;
+        const effects = [];
+        for (const nested of chooseBranch(action, variableId => ctx.valueOf(nodeId, variableId))) {
+            const result = runAction(next, nested, ctx, nodeId);
+            next = result.state;
+            effects.push(...result.effects);
+        }
+        return { state: next, effects };
+    }
     if (action?.type === 'navigate-to') return moveTo(state, { current: action.destinationId, history: [...state.history, state.current] }, ctx, action.transition);
     if (action?.type === 'back') return goBack(state, ctx);
     if (action?.type === 'open-link') return { state, effects: [{ type: 'open-link', url: action.url }] };

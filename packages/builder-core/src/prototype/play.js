@@ -1,13 +1,15 @@
 // Play and editing helpers (pure). The Play overlay and the Prototype panel use these: the player context read from a document, the
 // destinations a navigate-to can name, and the default interaction a new one starts from.
 import { MOVING_TRANSITIONS } from './data.js';
+import { resolveMode } from '../behavior-engine/modes.js';
 
 /**
- * What the player reads from a document: the interactions of a node, the frame a node sits in, and the nodes of a frame.
- * @param {{ id: string, name: string, nodes?: any[] }[]} pages
- * @returns {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[] }}
+ * What the player reads from a document: the interactions of a node, the frame a node sits in, the nodes of a frame, and a variable's
+ * value on a node. The value follows the node's mode for the variable's collection, the same rule Appearance uses.
+ * @param {{ pages: { id: string, name: string, nodes?: any[], varModes?: Record<string, string> }[], variables?: { collections?: any[], items?: any[] } }} data
+ * @returns {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[], valueOf: (nodeId: string, variableId: string) => any }}
  */
-export function playContext(pages) {
+export function playContext({ pages, variables = {} }) {
     const nodes = pages.flatMap(p => p.nodes || []);
     const byId = new Map(nodes.map(n => [n.id, n]));
     /** The top-level frame a layer sits in: the layer itself when it is one. */
@@ -16,10 +18,18 @@ export function playContext(pages) {
         while (n?.parentId && byId.get(n.parentId) && !byId.get(n.parentId).isSection) n = byId.get(n.parentId);
         return n?.id ?? null;
     };
+    const collections = variables.collections ?? [], items = variables.items ?? [];
     return {
         interactionsOf: id => byId.get(id)?.prototype?.interactions ?? [],
         frameOf: id => (byId.get(id)?.parentId ? topOf(id) : null),
         nodesOf: frameId => nodes.filter(n => n.id !== frameId && topOf(n.id) === frameId).map(n => ({ id: n.id, interactions: n.prototype?.interactions ?? [] })),
+        valueOf: (nodeId, variableId) => {
+            const node = byId.get(nodeId), item = items.find(v => v.id === variableId);
+            const collection = item && collections.find(c => c.id === item.collectionId);
+            if (!node || !collection) return undefined;
+            const page = pages.find(p => (p.nodes || []).includes(node));
+            return item.values?.[resolveMode(collection, node, byId, page?.varModes)];
+        },
     };
 }
 
