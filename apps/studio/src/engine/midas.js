@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -3737,16 +3737,21 @@ async function libOpen(id) {
     libSaveIndex().catch(() => { });
     hideHome();
 }
+/** The index entry of a new empty file, held until its first edit (see libNew). */
+let unindexedFile = null;
 async function libNew(templateId = 'blank', { stay = false } = {}) {
     if (state.dirty)
         await save();
     const data = templateData(templateId), id = uid(), now = Date.now();
     const folder = lib.view === 'all' && lib.folder ? lib.folder : null;
-    lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null, folder });
+    const entry = { id, name: data.name, created: now, updated: now, opened: now, thumb: null, folder };
+    // An empty file stays out of the index until its first edit (save() adds it), so Recents never lists a file with no content.
+    if (data.pages[0].nodes.length) lib.index.unshift(entry);
+    else unindexedFile = entry;
     await loadIntoEditor(data, id);
     savedPageSigs.clear(); // a new file: every page still has to be written
     // An empty file is written on its first edit, like the starter document: opening a new file and leaving it must not leave an
-    // empty "Untitled" on the server. save() also records the file's folder.
+    // empty "Untitled" on the server.
     if (data.pages[0].nodes.length)
         await save();
     if (!stay)
@@ -5999,7 +6004,6 @@ function scDetach(g) {
         if (!n.vars)
             return;
         if (u.kind === 'fill') {
-            n.fills;
             delete n.vars['fills.' + u.i];
             if (u.i === 0)
                 delete n.vars.fill;
@@ -8163,7 +8167,8 @@ async function save() {
         let m = lib.index.find(x => x.id === lib.fileId);
         if (!m) {
             const now = Date.now();
-            m = { id: lib.fileId, name: doc.data.name, created: now, updated: now, opened: now, thumb: null };
+            m = unindexedFile?.id === lib.fileId ? unindexedFile : { id: lib.fileId, name: doc.data.name, created: now, updated: now, opened: now, thumb: null };
+            unindexedFile = null;
             lib.index.unshift(m);
         }
         const changedPages = doc.data.pages.filter(p => !failedPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
@@ -10190,7 +10195,7 @@ function insertAsset(type) {
             doc.add(node('text', { parentId: f.id, x: 14, y: 8, w: 120, h: 22, text: '●  In progress', name: 'Status', fontSize: 12, fills: paintOf('#537962') }));
         }
         else {
-            f = doc.add(node('frame', { name: 'Card / Content', x: center.x - 150, y: center.y - 100, w: 300, h: 200, fills: paintOf('#e3edfb'), radius: 16, shadow: true }));
+            f = doc.add(node('frame', { name: 'Card / Content', x: center.x - 150, y: center.y - 100, w: 300, h: 200, fills: paintOf('#e3edfb'), radius: 16, effects: [fxDefaults('drop')] }));
             doc.add(node('text', { parentId: f.id, x: 25, y: 29, w: 250, h: 80, text: 'A little\ninspiration.', name: 'Heading', fontSize: 30, fills: paintOf('#2c5a90'), fontWeight: 600, lineHeight: 1.15 }));
             doc.add(node('text', { parentId: f.id, x: 25, y: 139, w: 250, h: 42, text: 'Give your next big idea\na little room to grow.', name: 'Body', fontSize: 13, fills: paintOf('#6f8dab') }));
         }
@@ -11882,7 +11887,7 @@ function hugText(n) {
 }
 function startPendingText(x, y, parentId, fill) {
     finishText();
-    const proto = node('text', { x, y, parentId, fill, text: '', autoW: true });
+    const proto = node('text', { x, y, parentId, fills: paintOf(fill), text: '', autoW: true });
     state.pendingText = { x, y, parentId, colour: fill, proto };
     const el = $('#text-editor');
     el.textContent = '';
@@ -12256,8 +12261,6 @@ function flattenSelection() {
             if (r.type === 'ellipse') {
                 const k = .5523, cx = r.w / 2, cy = r.h / 2;
                 nn = node('path', { name: r.name, x: r.x, y: r.y, w: r.w, h: r.h, pathW: r.w, pathH: r.h, rotation: r.rotation || 0, parentId: r.parentId || null, closed: true, fills: structuredClone(r.fills), stroke: r.stroke, strokeWidth: r.strokeWidth, opacity: r.opacity, points: [{ x: cx, y: 0, in: { x: cx - k * cx, y: 0 }, out: { x: cx + k * cx, y: 0 } }, { x: r.w, y: cy, in: { x: r.w, y: cy - k * cy }, out: { x: r.w, y: cy + k * cy } }, { x: cx, y: r.h, in: { x: cx + k * cx, y: r.h }, out: { x: cx - k * cx, y: r.h } }, { x: 0, y: cy, in: { x: 0, y: cy + k * cy }, out: { x: 0, y: cy - k * cy } }] });
-                if (Array.isArray(r.fills))
-                    nn.fills = structuredClone(r.fills);
             }
             else {
                 const poly = nodePolys(r);

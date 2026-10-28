@@ -87,8 +87,8 @@ test('a tiled image at a scale other than 1 has no CSS form (its natural size is
     assert.deepEqual(cssBackgroundOf([image('tile', { scale: 2 })], assets), { background: '', unsupported: ['image'] });
 });
 
-test('an image whose asset is not in the file shows the canvas placeholder', () => {
-    assert.equal(cssBackgroundOf([image('fill')], {}).background, 'rgba(140,140,150,.18)');
+test('an image whose asset is not in the file shows the canvas placeholder, and is reported', () => {
+    assert.deepEqual(cssBackgroundOf([image('fill')], {}), { background: 'rgba(140,140,150,.18)', unsupported: ['image with no asset'] });
 });
 
 test('an image layer paints its asset as a cover fill; other layers paint their own fills', () => {

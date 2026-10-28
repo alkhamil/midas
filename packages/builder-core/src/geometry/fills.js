@@ -8,7 +8,7 @@ import { colorWithAlpha } from './format.js';
  * @param {string} color
  * @param {number} [opacity]
  */
-export const solidFill = (color, opacity = 1) => ({ type: 'solid', color, opacity, visible: true });
+const solidFill = (color, opacity = 1) => ({ type: 'solid', color, opacity, visible: true });
 
 /**
  * The fills a layer paints, in the order stored: the first is the top.
@@ -93,7 +93,7 @@ function cssFillLayer(f, assets) {
     const o = f.opacity;
     if (f.type === 'image') {
         const src = assets[f.image];
-        if (!src) return { css: IMAGE_PENDING, solid: true };
+        if (!src) return { css: IMAGE_PENDING, solid: true, missing: true };
         if (f.mode === 'tile') return f.scale && f.scale !== 1 ? null : { css: `url("${src}") repeat`, solid: false };
         return { css: `url("${src}") center / ${f.mode === 'fit' ? 'contain' : 'cover'} no-repeat`, solid: false };
     }
@@ -116,7 +116,11 @@ export function cssBackgroundOf(fills, assets = {}) {
     for (const f of fills.filter(x => x.visible !== false)) {
         const layer = cssFillLayer(f, assets);
         if (layer === null) unsupported.push(f.type);
-        else if (layer) layers.push(layer);
+        else if (layer) {
+            layers.push(layer);
+            // The canvas draws a placeholder for a missing asset; the DOM draws it too, and reports it.
+            if (layer.missing) unsupported.push('image with no asset');
+        }
     }
     if (!layers.length) return { background: '', unsupported };
     if (layers.length === 1 && layers[0].solid) return { background: layers[0].css, unsupported };

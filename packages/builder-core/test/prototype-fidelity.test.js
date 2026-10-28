@@ -165,6 +165,14 @@ test('a rectangle mask clips as an inset with its corner radii; the layers below
     assert.equal(children[1].style.clipPath, 'inset(10px 90px 130px 10px round 4px 4px 4px 4px)');
 });
 
+test('a mask in an auto layout is reported, since the layout places its children', () => {
+    const auto = frame('A', { layout: 'row' });
+    const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
+    const result = toDomTree(docOf([auto, mask, layer({ id: 'R' })]), 'A');
+    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask in an auto layout' }]);
+    assert.equal(result.root.children[0].style.clipPath, undefined);
+});
+
 test('a mask on a rotated layer is reported, and the layer is drawn unclipped', () => {
     const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
     const turned = layer({ id: 'R', rotation: 10 });

@@ -114,7 +114,9 @@ function renderChildren(n, scope) {
     let mask = null;
     for (const c of scope.childrenOf(n.id)) {
         if (c.isMask && c.visible !== false) {
-            mask = c;
+            // An auto layout places its children itself, so a mask's stored position does not say where it sits on screen.
+            mask = isAutoLayout(n) ? null : c;
+            if (mask === null) scope.unsupported.push({ nodeId: c.id, type: 'mask in an auto layout' });
             continue;
         }
         const el = renderNode(c, n, scope);
@@ -455,17 +457,16 @@ function opacityOf(n) {
  * @returns {Element}
  */
 function textElement(n, style) {
-    if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s, n)) };
+    if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s)) };
     return { tag: 'span', nodeId: n.id, attrs: {}, style, text: n.text ?? '', children: [] };
 }
 
 /**
  * One style run of a rich text layer. It sets only the properties it has; the rest come from the layer.
  * @param {any} s
- * @param {any} n
  * @returns {Element}
  */
-function spanElement(s, n) {
+function spanElement(s) {
     /** @type {Record<string, string>} */
     const color = topColorOf(s);
     const style = { color: color !== 'none' ? colorWithAlpha(color, topOpacityOf(s)) : 'transparent' };

@@ -120,12 +120,6 @@ function vectorCommands(n) {
 }
 
 /**
- * The SVG `d` of commands. An ellipse arc runs from the current point; a full ellipse is two half arcs, so it is never a degenerate arc.
- * @param {any[]} commands
- * @param {(v: number) => string | number} f number formatter
- * @returns {string}
- */
-/**
  * Replays commands on a sink. The canvas Path2D and the SVG path both read the outline through this one definition of the command set.
  * @param {any[]} commands
  * @param {{ moveTo: (x: number, y: number) => void, lineTo: (x: number, y: number) => void, curveTo: (x1: number, y1: number, x2: number, y2: number, x: number, y: number) => void, closePath: () => void, ellipse: (cx: number, cy: number, rx: number, ry: number, start: number, end: number, ccw: boolean) => void, roundRect: (w: number, h: number, radii: number[]) => void }} sink
