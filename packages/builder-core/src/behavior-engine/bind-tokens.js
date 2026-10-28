@@ -3,9 +3,9 @@
 // exists is never overwritten. A token with no variable in its group, or with no bound collection, is a problem, not a guess.
 import { NODE_PROPERTIES, VARIABLE_KEYS, targetKindOf } from './display.js';
 import { dimensionOfGroup } from './validate-schema.js';
+import { variableKey } from './tokens.js';
 
 /** @param {string} name */
-const nameKey = name => String(name ?? '').trim().toLowerCase();
 
 /**
  * The bindings to add to a master, and what could not be bound.
@@ -32,7 +32,7 @@ export function planBindTokens({ template, binding, layers, variables }) {
             const dimension = group ? dimensionOfGroup(group, template.props) : null;
             const collectionId = dimension ? binding.variables[dimension] : null;
             if (!collectionId) { problems.push({ key, prop, token: source, reason: 'dimension-unbound' }); continue; }
-            const item = items.find(i => i.collectionId === collectionId && nameKey(i.name) === `${template.group}/${source}`.toLowerCase());
+            const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(`${template.group}/${source}`));
             if (!item) { problems.push({ key, prop, token: source, reason: 'no-variable' }); continue; }
             for (const varKey of VARIABLE_KEYS[prop] || []) {
                 if (node.vars?.[varKey] !== undefined) continue;

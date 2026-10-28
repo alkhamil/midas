@@ -97,3 +97,32 @@ test('a duplicated instance keeps its managed layers and values consistent', () 
     assert.deepEqual(plan(on('start'), original).ops, []);
     assert.deepEqual(plan(on('start'), copy).ops, []);
 });
+
+// The icon of the slot: the component the managed layer shows (null for the placeholder).
+const iconOn = (placement, icon) => ({ hasIcon: true, iconPlacement: placement, icon });
+const inSlot = (id, slot, component) => ({ id, slot, component });
+
+test('an icon chosen for a new slot is inserted with that component', () => {
+    const { ops } = plan(iconOn('start', 'ic-check'), [child('label')]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 0, component: 'ic-check' }]);
+});
+
+test('a different icon swaps the slot in place: same layer, same position, no insert', () => {
+    const { ops } = plan(iconOn('start', 'ic-b'), [inSlot('iStart', 'iconStart', 'ic-a'), child('label')]);
+    assert.deepEqual(ops, [{ op: 'swap', id: 'iStart', component: 'ic-b' }]);
+});
+
+test('the same icon in its slot is left alone', () => {
+    const { ops } = plan(iconOn('start', 'ic-a'), [inSlot('iStart', 'iconStart', 'ic-a'), child('label')]);
+    assert.deepEqual(ops, []);
+});
+
+test('no icon chosen empties a slot that held one (the placeholder)', () => {
+    const { ops } = plan(iconOn('start', null), [inSlot('iStart', 'iconStart', 'ic-a'), child('label')]);
+    assert.deepEqual(ops, [{ op: 'swap', id: 'iStart', component: null }]);
+});
+
+test('an icon with no icon prop value is the placeholder when a slot is inserted', () => {
+    const { ops } = plan(iconOn('end', null), [child('label')]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconEnd', index: 1 }]);
+});

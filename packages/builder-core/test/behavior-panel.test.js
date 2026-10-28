@@ -71,10 +71,14 @@ test('visibleIf: the icon placement row is shown only while hasIcon is on, and a
     assert.equal('iconPlacement' in behavior.props, false);
 });
 
-test('an icon control is not rendered yet (the icon picker is a later stage)', () => {
-    const panel = instancePanel(instanceOf(), boundMaster([variant]), [variant], { variant: 'primary', size: null });
-    assert.equal(rowOf(panel, 'icon'), undefined);
-    assert.deepEqual(panel.deferred, ['icon']);
+test('the icon is a swap row, shown while hasIcon is on, with the id of the icon it shows', () => {
+    const master = boundMaster([variant]);
+    const off = instancePanel(instanceOf(), master, [variant], { variant: 'primary', size: null });
+    assert.equal(rowOf(off, 'icon'), undefined);
+    const on = instancePanel(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, [variant], { variant: 'primary', size: null });
+    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', value: null });
+    const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'primary', size: null });
+    assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
 });
 
 test('writing a literal value on an instance goes to the instance store only', () => {

@@ -5,6 +5,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
+import { iconSlotBindings } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,23 +54,66 @@ function master(id, name, x, binding, vars, y = 0) {
 }
 
 /**
- * An instance of a master: its Appearance modes (`varModes`), its props, its managed icon layer (when `icon` is 'start' or 'end'),
- * and its label. The instance copies the master's bindings, as sync does.
+ * An icon component in the file, the icons a Button's icon slot can show: a root frame named Icon/<name> with one path. A filled
+ * icon has a closed filled path; a stroked icon has an open path with no fill, so its colour is its stroke.
  */
-function instance(id, name, x, sourceId, props, varModes, icon, vars) {
+function iconComponent(id, name, x, filled) {
+    const root = node('frame', { id, name: `Icon/${name}`, x, y: 0, w: 24, h: 24, component: true, fills: [], clip: false });
+    const path = node('path', {
+        id: `${id}-path`, name, parentId: id, w: 24, h: 24, pathW: 24, pathH: 24, closed: filled,
+        points: filled ? [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }] : [{ x: 4, y: 12 }, { x: 20, y: 12 }],
+        fills: filled ? solid('#20202a') : [], stroke: '#20202a', strokeWidth: filled ? 0 : 2,
+    });
+    return [root, path];
+}
+
+/**
+ * The nested instance a managed slot holds: a copy of the icon component, sized to fill the slot, with the bindings the icon slot
+ * takes (iconSlotBindings), as the editor writes them on each sync. `slot` is the managed slot's own vars (its size).
+ */
+function iconInstance(slotId, componentId, components, disabled) {
+    const copies = components.filter(c => c.id === componentId || c.parentId === componentId);
+    const map = new Map(copies.map(c => [c.id, `${slotId}-ic-${c.id}`]));
+    const layers = copies.map(c => ({
+        id: map.get(c.id), fillIndexes: (c.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!c.stroke && c.strokeWidth > 0,
+    }));
+    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, layers });
+    const nodes = copies.map(c => {
+        const bound = plan.layers.find(l => l.id === map.get(c.id)).vars;
+        const isRoot = c.id === componentId;
+        return {
+            ...c, id: map.get(c.id), parentId: isRoot ? slotId : map.get(c.parentId), component: false, isInstance: isRoot, sourceId: c.id,
+            overrides: {}, version: 0, ...(isRoot ? { x: 0, y: 0, layoutSizingH: 'fill', layoutSizingV: 'fill' } : {}),
+            ...(Object.keys(bound).length ? { vars: bound } : {}),
+        };
+    });
+    return { nodes, slotVars: plan.slot };
+}
+
+/**
+ * An instance of a master: its Appearance modes (`varModes`), its props, its managed icon slot (when hasIcon is on: the slot holds the
+ * icon component the props name, as a nested instance), and its label. The instance copies the master's bindings, as sync does.
+ */
+function instance(id, name, x, sourceId, props, varModes, vars, components) {
     const root = node('frame', {
         id, name, x, y: 120, w: 136, h: 48, isInstance: true, sourceId, layout: 'horizontal', gap: 6, padding: 12,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, props },
         varModes, vars: vars.root,
     });
     const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
-    const slot = icon ? `icon${icon[0].toUpperCase()}${icon.slice(1)}` : null;
-    const iconLayer = icon ? node('frame', {
-        id: `${id}-icon-${icon}`, name: slot, parentId: id, w: 16, h: 16, fills: solid('#8c8297'), clip: false,
+    const icon = props.hasIcon ? props.iconPlacement : null;
+    if (!icon) return [root, label];
+    const slot = `icon${icon[0].toUpperCase()}${icon.slice(1)}`, slotId = `${id}-icon-${icon}`;
+    const nested = props.icon ? iconInstance(slotId, props.icon, components, props.disabled === true) : null;
+    const iconLayer = node('frame', {
+        id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
+        ...(nested
+            ? { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
+            : { fills: solid('#8c8297'), layout: 'none' }),
         behavior: { version: BEHAVIOR_DATA_VERSION, slot },
-    }) : null;
-    const kids = !iconLayer ? [label] : icon === 'start' ? [iconLayer, label] : [label, iconLayer];
-    return [root, ...kids];
+    });
+    const kids = icon === 'start' ? [iconLayer, label] : [label, iconLayer];
+    return [root, ...kids, ...(nested ? nested.nodes : [])];
 }
 
 const collection = (id, name, modeList) => ({ id, name, modes: modeList });
@@ -79,7 +123,7 @@ const number = (id, name, collectionId, values) => ({ id, name, type: 'number', 
 /**
  * The variables. Variant and Size are bound to the main master. Variant B is bound to the legacy master, which has no
  * `button/bg-hover` value in Danger: that is the one deliberate error. The `card/` group sits in Variant too, to show that Button
- * never reads another component's variables.
+ * never reads another component's variables. The icon size follows the font size of each Size mode (+2 px).
  */
 function variables() {
     const variantTokens = (suffix, vals) => [
@@ -92,12 +136,12 @@ function variables() {
         number('i-fs', 'button/fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'button/lineHeight', ids.size, { sm: 20, lg: 27 }),
         number('i-px', 'button/paddingX', ids.size, { sm: 12, lg: 16 }), number('i-py', 'button/paddingY', ids.size, { sm: 6, lg: 8 }),
         number('i-gap', 'button/gap', ids.size, { sm: 6, lg: 8 }), number('i-radius', 'button/radius', ids.size, { sm: 6, lg: 8 }),
-        number('i-icon', 'button/iconSize', ids.size, { sm: 14, lg: 16 }),
+        number('i-icon', 'button/icon-size', ids.size, { sm: 16, lg: 20 }),
     ];
     const full = variantTokens('-v', {
         bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3', danger: '#b91c1c' },
         bgActive: { primary: '#312e81', danger: '#991b1b' }, bgDisabled: { primary: '#a5b4fc', danger: '#fca5a5' },
-        fg: { primary: '#ffffff', danger: '#ffffff' }, fgDisabled: { primary: '#e0e7ff', danger: '#fee2e2' },
+        fg: { primary: '#ffffff', danger: '#fde68a' }, fgDisabled: { primary: '#e0e7ff', danger: '#fee2e2' },
         border: { primary: '#4338ca', danger: '#dc2626' }, borderFocus: { primary: '#818cf8', danger: '#f87171' },
     });
     // Variant B: no bg-hover value in Danger.
@@ -126,16 +170,18 @@ const LEGACY = { templateId: 'button', variables: { variant: ids.variantLegacy, 
 
 /** The fixture document. Five pages, so a lazy open applies (more than three pages). */
 export function buildBehaviorFixture() {
+    const icons = [...iconComponent('icon-check', 'check', 800, true), ...iconComponent('icon-arrow', 'arrow', 1000, false)];
     const page1 = [
         ...master('main', 'Button', 0, BOUND, bindings('-v')),
-        ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', label: 'Save' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, 'start', bindings('-v')),
-        ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel' }, { [ids.variant]: 'danger', [ids.size]: 'lg' }, null, bindings('-v')),
+        ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, bindings('-v'), icons),
+        ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel' }, { [ids.variant]: 'danger', [ids.size]: 'lg' }, bindings('-v'), icons),
         ...master('unbound', 'Unbound', 600, null, { root: {}, label: {} }, 0),
         ...master('legacy', 'Button (legacy)', 0, LEGACY, bindings('-b'), 240),
+        ...icons,
     ];
     // The master's root has a stroke, so the Focus preview (border) is visible on the canvas; instances copy it.
     page1[0].strokeWidth = 2;
-    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', label: 'Next' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, 'end', bindings('-v'));
+    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Next' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, bindings('-v'), icons);
     const pages = [
         { id: 'page-components', name: 'Components', nodes: page1 },
         { id: 'page-screens', name: 'Screens', nodes: page2 },
@@ -149,10 +195,7 @@ export function buildBehaviorFixture() {
     };
 }
 
-/**
- * A clipboard payload holding one managed icon layer and no instance, in the editor's clipboard format. Pasting it is refused.
- * Copy the file's text to the system clipboard, then paste on the canvas.
- */
+/** The managed-layer clipboard payload: one icon slot copied alone (the paste guard refuses it, naming the layer). */
 export function buildManagedLayerClipboard() {
     const layer = node('frame', { id: 'clip-icon-start', name: 'iconStart', parentId: null, x: 0, y: 0, w: 16, h: 16, clip: false, behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } });
     return { format: 'midas-clipboard', rootIds: [layer.id], nodes: [layer], assets: {} };

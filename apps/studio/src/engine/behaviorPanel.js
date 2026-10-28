@@ -3,8 +3,8 @@
 // caller from the data-bp attributes written here. Markup uses the Design panel's classes (section-heading, cmp-props,
 // cmp-prop2, cmp-ctl, cmp-input, vsw, empty-state, small-label, badge), so both tabs look the same.
 
-/** The props that drive the managed icon slots. They are grouped under Slots. The icon picker is deferred, so `icon` has no row. */
-const SLOT_PROPS = new Set(['hasIcon', 'iconPlacement']);
+/** The props that drive the managed icon slots. They are grouped under Slots. */
+const SLOT_PROPS = new Set(['hasIcon', 'iconPlacement', 'icon']);
 
 /** The preview-only states the instance can be shown in, as [state, label]. Preview only; it never changes the document.
  * Disabled is a persistent state (a prop), so it is not listed here: it is shown on the canvas and wins over these. */
@@ -88,7 +88,7 @@ function instanceHtml(panel, esc, findings, preview) {
             </select>`;
         return row(r.label, control, esc, r.prop) + (r.hint ? note(r.hint, esc) : '');
     }).join('');
-    const literal = panel.rows.filter(r => r.kind === 'literal');
+    const literal = panel.rows.filter(r => r.kind === 'literal' || r.kind === 'icon');
     const props = literal.filter(r => !SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
     const slots = literal.filter(r => SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
     const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
@@ -119,6 +119,8 @@ function bindTokensRow(findings, esc) {
 /** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs). */
 function literalRow(r, esc) {
     const name = esc(r.prop), label = labelOf(r.prop);
+    if (r.kind === 'icon')
+        return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
     if (r.type === 'boolean')
         return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop);
     if (r.type === 'enum')

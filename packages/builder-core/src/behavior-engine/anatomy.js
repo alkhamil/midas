@@ -6,8 +6,13 @@ import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { resolveProps } from './instance-props.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
-/** @typedef {{ id: string, slot: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker */
-/** @typedef {{ op: 'remove', id: string } | { op: 'move', id: string, index: number } | { op: 'insert', slot: string, index: number }} AnatomyOp */
+/** @typedef {{ id: string, slot: string | null, component?: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker; component is the icon component the slot shows (null for the placeholder) */
+/**
+ * @typedef {{ op: 'remove', id: string }
+ *   | { op: 'move', id: string, index: number }
+ *   | { op: 'insert', slot: string, index: number, component?: string }
+ *   | { op: 'swap', id: string, component: string | null }} AnatomyOp
+ */
 
 /** The managed slot each icon placement uses. Removals come first in a plan; moves and inserts give the final index in the child list. */
 export const SLOT_OF_PLACEMENT = { start: 'iconStart', end: 'iconEnd' };
@@ -19,15 +24,17 @@ export function managedBehavior(slot) {
 }
 
 /**
- * The operations that bring an instance's managed layers in line with its values. The label slot is not touched.
+ * The operations that bring an instance's managed layers in line with its values. The label slot is not touched. A slot takes the
+ * icon the instance chose: a different icon (or none, the placeholder) swaps the slot in place, keeping its position.
  * @param {TemplateSchema} template
- * @param {{ hasIcon: boolean, iconPlacement: string }} values the instance's resolved values
+ * @param {{ hasIcon: boolean, iconPlacement: string, icon?: string | null }} values the instance's resolved values
  * @param {ChildLayer[]} children the instance root's children, in order
  * @returns {AnatomyOp[]}
  */
 function planAnatomy(template, values, children) {
     const managed = template.anatomy.filter(s => s.managed).map(s => s.id);
     const want = values.hasIcon ? SLOT_OF_PLACEMENT[/** @type {'start' | 'end'} */ (values.iconPlacement)] : null;
+    const icon = want && typeof values.icon === 'string' ? values.icon : null;
     if (want && !managed.includes(want)) throw new Error(`${template.id} has no managed slot "${want}"`);
     /** @type {AnatomyOp[]} */
     const ops = [];
@@ -42,8 +49,11 @@ function planAnatomy(template, values, children) {
     const placed = kept.find(c => c.slot === want);
     const finalLength = kept.length + (placed ? 0 : 1);
     const index = want === SLOT_OF_PLACEMENT.start ? 0 : finalLength - 1;
-    if (!placed) ops.push({ op: 'insert', slot: want, index });
-    else if (kept.indexOf(placed) !== index) ops.push({ op: 'move', id: placed.id, index });
+    if (!placed) ops.push(icon ? { op: 'insert', slot: want, index, component: icon } : { op: 'insert', slot: want, index });
+    else {
+        if (kept.indexOf(placed) !== index) ops.push({ op: 'move', id: placed.id, index });
+        if ((placed.component ?? null) !== icon) ops.push({ op: 'swap', id: placed.id, component: icon });
+    }
     return ops;
 }
 

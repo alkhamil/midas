@@ -129,3 +129,12 @@ test('a token group with no variable prop of its dimension is reported, not gues
     const result = resolveTokens(extended, binding(), modes(), variables());
     assert.equal(result.unresolved.some(u => u.token === 'gap' && u.reason === 'no-dimension'), true);
 });
+
+test('a variable named with dashes is the camel-case token: button/icon-size resolves iconSize', () => {
+    const items = baseItems().map(i => (i.name === 'button/iconSize' ? { ...i, name: 'button/icon-size', values: { sm: 16, lg: 20 } } : i));
+    const { vars, unresolved } = resolveTokens(button, binding(), modes(), variables(items));
+    assert.equal(vars['--button-icon-size'], '16px');
+    assert.equal(unresolved.some(u => u.token === 'iconSize'), false);
+    const large = resolveTokens(button, binding(), modes({ size: 'lg' }), variables(items));
+    assert.equal(large.vars['--button-icon-size'], '20px');
+});

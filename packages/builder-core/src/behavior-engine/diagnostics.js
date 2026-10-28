@@ -3,7 +3,7 @@
 // something is left out or set by hand (a collection no component binds, a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps } from './registry.js';
-import { resolveTokens } from './tokens.js';
+import { resolveTokens, variableKey } from './tokens.js';
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
 import { planStateBindings } from './state-bindings.js';
@@ -44,7 +44,7 @@ export function diagnoseDocument(doc) {
                 if (dimensionOfGroup(group, template.props) !== dim) continue;
                 for (const token of names) {
                     const variable = `${template.group}/${token}`;
-                    const item = items.find(i => i.collectionId === collection.id && String(i.name ?? '').trim().toLowerCase() === variable.toLowerCase());
+                    const item = items.find(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(variable));
                     if (!item) {
                         out.push({ severity: 'error', code: 'variable-missing', node: m.name, nodeId: m.id, variable, collection: collection.name, message: `${m.name}: variable "${variable}" is missing from collection "${collection.name}".` });
                         continue;

@@ -114,7 +114,11 @@ function checkAnatomy(n, nodes, children, page) {
         masterRoot: { isAutoLayout: !!master && master.type === 'frame' && !!master.layout && master.layout !== 'none' },
         masterTree: master ? descendantsOf(master.id, children) : [],
         stored: n.behavior?.props,
-        children: (children.get(n.id) || []).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null })),
+        children: (children.get(n.id) || []).map(c => ({
+            id: c.id, slot: c.behavior?.slot ?? null,
+            // A slot shows the icon its nested instance is an instance of (null for the placeholder).
+            component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,
+        })),
     });
     if (reason || !ops.length) return;
     const op = ops[0];
@@ -122,7 +126,8 @@ function checkAnatomy(n, nodes, children, page) {
     const slotOf = id => nodes.get(id)?.behavior?.slot;
     const problem = op.op === 'remove' ? `managed layer "${slotOf(op.id)}" is not expected for these values`
         : op.op === 'insert' ? `managed layer "${op.slot}" is missing`
-            : `managed layer "${slotOf(op.id)}" is at the wrong position`;
+            : op.op === 'swap' ? `managed layer "${slotOf(op.id)}" does not show the icon its instance chose`
+                : `managed layer "${slotOf(op.id)}" is at the wrong position`;
     throw behaviorError(n, problem, page);
 }
 

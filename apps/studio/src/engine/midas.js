@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -11,7 +11,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
-import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
+import { buildIconPage, assetIdsOf, looksLikeIcon, isIconName } from '../iconSet.js';
 
 
 // ===== document.js =====
@@ -8564,7 +8564,7 @@ function rolledBackForBehavior() {
 }
 // Stops an action that would touch a managed layer on its own: says why (see managedRefusal) and returns true.
 function refusedManaged(action, nodes) {
-    const why = managedRefusal(action, nodes);
+    const why = managedRefusal(action, nodes.map(n => managedOwnerOf(n) ?? n));
     if (why)
         toast(why);
     return !!why;
@@ -8959,6 +8959,7 @@ function behaviorTabHtml(n) {
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     const modes = instanceModesOf(n, template ? binding : null);
     const panel = instancePanel(n, master, collections, modes);
+    for (const r of panel.rows) if (r.kind === 'icon') r.name = componentById(r.value)?.name ?? null;
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     const shown = template ? previewOf(template, binding, modes, varStore(), props, behaviorPreview) : null;
     const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id, textVar: cssVarOf(template.id, textColorTokenOf(template)) };
@@ -9092,6 +9093,11 @@ function bindTokensTo(master) {
 /** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
 function onBehaviorClick(e) {
     if (e.target.closest?.('[data-bp-action="bind-tokens"]')) return bindTokensTo(activeNode());
+    const iconButton = e.target.closest?.('[data-bp-action="icon"]');
+    if (iconButton) {
+        const owner = activeNode();
+        return openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, 'icon', id)) });
+    }
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
@@ -9156,7 +9162,7 @@ function anatomyPlanOf(inst) {
             masterRoot: { isAutoLayout: isAutoLayout(master) },
             masterTree,
             stored: inst.behavior?.props,
-            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null })),
+            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, component: iconOfSlot(c) })),
         });
     });
 }
@@ -9169,6 +9175,101 @@ function placeAmongChildren(parent, n, index) {
     doc.nodes.splice(at, 0, n);
     doc.refresh();
 }
+/** The icon component a managed slot shows: the component of its nested instance, or null for the placeholder. */
+function iconOfSlot(slot) {
+    if (!slot.behavior || !('slot' in slot.behavior)) return null;
+    return doc.children(slot.id).find(c => c.isInstance && c.sourceId)?.sourceId ?? null;
+}
+/** Whether a layer is one of an icon's layers inside a managed slot (not the slot itself). */
+function iconLayerOf(n, getNode) {
+    for (let p = getNode(n.parentId); p; p = getNode(p.parentId))
+        if (isManagedLayer(p)) return true;
+    return false;
+}
+/** The managed slot a layer belongs to (the layer itself, or the slot above it), or null. Its icon's layers are managed through it. */
+function managedOwnerOf(n) {
+    for (let p = n; p; p = doc.get(p.parentId))
+        if (isManagedLayer(p)) return p;
+    return null;
+}
+/**
+ * Copies an icon component into a slot as its nested instance, sized to fill the slot. The copy is a whole instance: its layers
+ * come with it, and the copy from the component keeps them in step afterwards.
+ */
+function placeIconInSlot(slot, componentId) {
+    const comp = componentById(componentId);
+    if (!comp) return false;
+    const copies = onPage(pageOfNode(comp.id)?.id, () => [comp, ...doc.descendants(comp.id)].map(n => structuredClone(n)));
+    const ids = new Map(copies.map(n => [n.id, uid()]));
+    for (const n of copies) {
+        const src = n.id;
+        n.id = ids.get(src);
+        n.parentId = src === comp.id ? slot.id : ids.get(n.parentId);
+        n.sourceId = src;
+        n.component = false;
+        n.isInstance = src === comp.id || !!n.isInstance;
+        delete n.swapOf;
+        n.overrides = {};
+        n.version = 0;
+        doc.add(n);
+    }
+    Object.assign(doc.get(ids.get(comp.id)), { x: 0, y: 0, layoutSizingH: 'fill', layoutSizingV: 'fill' });
+    delete doc.get(ids.get(comp.id)).layoutPositioning;
+    return true;
+}
+/**
+ * A managed slot holds the icon its instance chose: the icon's nested instance, in a row that fills the slot with no padding and no
+ * fill of its own. Without an icon it is the placeholder square.
+ */
+function setSlotIcon(slot, componentId) {
+    doc.remove(doc.children(slot.id).map(c => c.id));
+    const shown = !!componentId && placeIconInSlot(slot, componentId);
+    if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
+    else Object.assign(slot, { layout: 'none', fills: paintOf('#8c8297'), clip: false });
+    doc.touch(slot);
+}
+/** The variable a name names in the collection an instance's master binds to a dimension of the template (Variant or Size). */
+function iconVariableId(binding, dimension, name) {
+    const collectionId = binding.variables?.[dimension];
+    const item = collectionId && varStore().items?.find(i => i.collectionId === collectionId && String(i.name).trim().toLowerCase() === name);
+    return item ? item.id : null;
+}
+/**
+ * The icon bindings of every managed slot of an instance: the slot's size, and the colour of each layer of the icon (the disabled
+ * colour while the instance is disabled). The engine owns these vars: they are rewritten on each sync (see iconSlotBindings).
+ * Returns the variables that are missing, so the caller can say what to add.
+ */
+function applyIconSlotBindings(inst) {
+    const master = componentById(inst.sourceId), binding = master?.behavior;
+    if (!binding || !('templateId' in binding) || binding.templateId !== 'button') return [];
+    const disabled = inst.behavior?.props?.disabled === true;
+    const missing = new Set();
+    for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
+        const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
+        const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
+        const plan = iconSlotBindings({
+            fg: iconVariableId(binding, 'variant', ICON_COLOUR_VARIABLE),
+            fgDisabled: iconVariableId(binding, 'variant', ICON_DISABLED_COLOUR_VARIABLE),
+            size: iconVariableId(binding, 'size', ICON_SIZE_VARIABLE),
+            disabled,
+            layers,
+        });
+        plan.missing.forEach(m => missing.add(m));
+        setIconVars(slot, plan.slot);
+        for (const layer of plan.layers) setIconVars(doc.get(layer.id), layer.vars);
+    }
+    return [...missing];
+}
+/** Replaces the icon-owned vars of a layer with the given ones, keeping every other binding. */
+function setIconVars(n, bound) {
+    if (!n) return;
+    const kept = Object.fromEntries(Object.entries(n.vars || {}).filter(([key]) => !isIconSlotVarKey(key)));
+    const next = { ...kept, ...bound };
+    if (sameVars(n.vars, Object.keys(next).length ? next : undefined)) return;
+    if (Object.keys(next).length) n.vars = next;
+    else delete n.vars;
+    doc.touch(n);
+}
 /**
  * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
  * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
@@ -9179,8 +9280,10 @@ function syncInstance(inst) {
         for (const op of ops) {
             if (op.op === 'remove') doc.remove([op.id]);
             else if (op.op === 'move') placeAmongChildren(inst, doc.get(op.id), op.index);
+            else if (op.op === 'swap') setSlotIcon(doc.get(op.id), op.component);
             else {
-                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, fills: paintOf('#8c8297'), clip: false, behavior: managedBehavior(op.slot) }));
+                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, clip: false, behavior: managedBehavior(op.slot) }));
+                setSlotIcon(n, op.component ?? null);
                 placeAmongChildren(inst, n, op.index);
             }
         }
@@ -9190,6 +9293,8 @@ function syncInstance(inst) {
         }
         applyStateBindings(inst, stateBindingsOf(inst));
         applyLiteralFields(inst);
+        const missingIconVars = applyIconSlotBindings(inst);
+        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')} in its collections.`);
     });
     return reason ?? null;
 }
@@ -9198,6 +9303,7 @@ function syncInstance(inst) {
  * `getNode` reads a node by id on the page the node is on; `components` holds the masters.
  */
 function ownedVarsOf(n, getNode, components, labels) {
+    if (iconLayerOf(n, getNode)) return Object.keys(n.vars || {}).filter(isIconSlotVarKey);
     const template = ownedTemplateOf(n, getNode, components, labels);
     return template ? ownedVarKeys(template) : [];
 }
@@ -14293,7 +14399,7 @@ function selNameHtml(n, multi, ns) {
 }
 // Chevrons that sit right next to the layer name: the "···" button: kind switcher for frames / groups, instance swap for instances.
 function headerChevronHtml(n) {
-    if (n.isInstance && n.sourceId && (!insideInstance(n) || inSlot(n)))
+    if (n.isInstance && n.sourceId && (!insideInstance(n) || inSlot(n) || managedOwnerOf(n) !== n && managedOwnerOf(n)))
         return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
     if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
         return `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
@@ -14301,6 +14407,13 @@ function headerChevronHtml(n) {
 }
 // Point an instance at another component, rebuilding its layers.
 function swapInstanceTo(inst, compId) {
+    // The icon of a managed slot is the instance's icon prop: the swap goes through the behavior path, so the slot follows it.
+    const slot = managedOwnerOf(inst);
+    if (slot && slot !== inst) {
+        const owner = doc.get(slot.parentId);
+        if (owner) setInstanceValueTo(owner, 'icon', compId);
+        return;
+    }
     const target = componentById(compId);
     if (!target || chainComponent(inst)?.id === target.id)
         return;
@@ -14327,7 +14440,7 @@ document.addEventListener('click', e => {
     const n = b && activeNode();
     if (!n)
         return;
-    openSwapPicker(b, { current: chainComponent(n)?.id, onPick: id => swapInstanceTo(n, id) });
+    openSwapPicker(b, { current: chainComponent(n)?.id, icons: managedOwnerOf(n) !== null && managedOwnerOf(n) !== n, onPick: id => swapInstanceTo(n, id) });
 });
 function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
 function convertKind(kind) {
@@ -15496,14 +15609,14 @@ function swapLibEntries(have) {
 }
 const SWP = { page: '' };
 function swapMatch(e) { const v = SWP.page; return !v || (v === '@file' ? !e.libId : v.startsWith('lib:') ? e.libId === v.slice(4) : v.startsWith('page:') ? e.page === v.slice(5) : e.page === v); }
-function openSwapPicker(anchor, { current = null, onPick }) {
+function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
     closeVarPicker();
     const have = new Set();
     for (const p of doc.data.pages)
         for (const n of p.nodes)
             if (n.libRef && !n.parentId)
                 have.add(n.libRef);
-    const pop = document.createElement('div'), entries = [...swapEntries(), ...swapLibEntries(have)], pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
+    const pop = document.createElement('div'), entries = [...swapEntries(), ...(icons ? [] : swapLibEntries(have))].filter(e => !icons || isIconName([...e.path, e.leaf].join('/'))), pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
     pop.id = 'var-picker';
     pop.className = 'var-picker';
     let q = '', limit = 300;

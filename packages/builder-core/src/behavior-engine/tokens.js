@@ -28,6 +28,8 @@ const TOKEN_KIND = {
 
 /** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
 const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase();
+/** The name a variable matches a token by: case and dashes do not count, so `button/icon-size` is the `iconSize` token. */
+export const variableKey = (/** @type {unknown} */ name) => nameKey(name).replace(/-/g, '');
 
 /** `fontSize` -> `font-size`, `paddingX` -> `padding-x`. */
 const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
@@ -147,7 +149,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             const mode = selectedModes[dimension] ?? null;
             if (mode === null) { miss('no-mode-selected'); continue; }
             if (!collection.modes?.some((/** @type {{ id: string }} */ m) => m.id === mode)) { miss('mode-missing'); continue; }
-            const named = items.filter(i => i.collectionId === collection.id && nameKey(i.name) === `${template.group}/${token}`.toLowerCase());
+            const named = items.filter(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(`${template.group}/${token}`));
             if (named.length === 0) { miss('no-variable'); continue; }
             if (named.length > 1) { miss('ambiguous'); continue; }
             const found = valueIn(named[0], mode, items);

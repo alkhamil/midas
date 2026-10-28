@@ -130,7 +130,8 @@ test('a Button instance is a real button with the codegen classes, mode attribut
 
 test('a disabled Button instance is disabled, and the icon is shown only for its placement', () => {
     const instance = { id: 'i2', name: 'Next', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Next', disabled: true, hasIcon: true, iconPlacement: 'end', icon: '' } }, varModes: { 'c-variant': 'primary', 'c-size': 'sm' } };
-    const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance] }], variables };
+    const slot = { id: 'i2-icon', name: 'iconEnd', type: 'frame', parentId: 'i2', x: 0, y: 0, w: 16, h: 16, fills: [], clip: false, behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconEnd' } };
+    const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance, slot] }], variables };
     const { root } = toDomTree(d, 'i2');
     assert.equal(root.attrs.disabled, true);
     assert.equal(root.attrs['aria-disabled'], 'true');
@@ -233,4 +234,22 @@ test('Play ignores a scroll behaviour on a template instance: it clips on both a
     const instance = { id: 'I', name: 'Card copy', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', w: 200, h: 100, prototype: { version: 1, interactions: [], overflow: 'both' } };
     const { root } = toDomTree(doc([frame('A'), master, instance]), 'I');
     assert.deepEqual([root.style.overflowX, root.style.overflowY], ['hidden', 'hidden']);
+});
+
+test('a Button icon slot draws the icon its nested instance holds, not the icon id as text', () => {
+    const icon = { id: 'ic', name: 'Icon/check', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
+    const iconPath = { id: 'ic-p', name: 'check', type: 'path', parentId: 'ic', x: 0, y: 0, w: 24, h: 24, pathW: 24, pathH: 24, closed: true, points: [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }], fills: solid('#20202a'), stroke: '#000000', strokeWidth: 0 };
+    const slot = { id: 'inst-icon', name: 'iconStart', type: 'frame', parentId: 'inst', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const nested = { id: 'nested', name: 'Icon/check', type: 'frame', parentId: 'inst-icon', x: 0, y: 0, w: 16, h: 16, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
+    const nestedPath = { id: 'nested-p', name: 'check', type: 'path', parentId: 'nested', x: 0, y: 0, w: 16, h: 16, pathW: 24, pathH: 24, closed: true, points: iconPath.points, fills: solid('#20202a'), stroke: '#000000', strokeWidth: 0 };
+    const instance = { id: 'inst', name: 'Save', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', disabled: false, hasIcon: true, iconPlacement: 'start', icon: 'ic' } } };
+    const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, icon, iconPath, instance, slot, nested, nestedPath] }], variables };
+    const { root } = toDomTree(d, 'inst');
+    const [iconEl, labelEl] = root.children;
+    assert.equal(iconEl.attrs.class, 'button-iconStart');
+    assert.equal(iconEl.text, undefined);
+    assert.equal(labelEl.text, 'Save');
+    assert.match(JSON.stringify(iconEl), /<svg/);
+    assert.equal(iconEl.style.position, undefined, 'the icon flows in the button, not at its stored place');
+    assert.doesNotMatch(JSON.stringify(root), /"ic"/, 'the icon id is not written as text');
 });

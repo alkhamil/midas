@@ -69,7 +69,8 @@ export function masterPanel(master, collections) {
 
 /**
  * What an instance's Behavior tab shows: variable props with the modes of their bound collection, literal props with their
- * current value (the schema default when unset). Props hidden by visibleIf are not listed. Icon props are listed as deferred.
+ * current value (the schema default when unset). Props hidden by visibleIf are not listed. An icon prop is a swap row: its value is
+ * the id of the icon component the slot shows (null for none).
  * @param {{ behavior?: any }} instance
  * @param {{ behavior?: any }} master
  * @param {import('./binding.js').Collection[]} collections
@@ -77,10 +78,10 @@ export function masterPanel(master, collections) {
  */
 export function instancePanel(instance, master, collections, modes) {
     const bound = boundTemplate(master);
-    if (!bound) return { templateId: null, rows: [], deferred: [] };
+    if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
-    const rows = [], deferred = [];
+    const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         if (def.source === 'variable') {
             const collection = collections.find(c => c.id === binding.variables[name]);
@@ -95,11 +96,11 @@ export function instancePanel(instance, master, collections, modes) {
             });
             continue;
         }
+        if (!isPropVisible(template, name, values)) continue;
         if (def.type === 'iconComponent') {
-            deferred.push(name);
+            rows.push({ prop: name, kind: 'icon', value: values[name] ?? null });
             continue;
         }
-        if (!isPropVisible(template, name, values)) continue;
         rows.push({
             prop: name,
             kind: 'literal',
@@ -108,7 +109,7 @@ export function instancePanel(instance, master, collections, modes) {
             options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],
         });
     }
-    return { templateId: template.id, rows, deferred };
+    return { templateId: template.id, rows };
 }
 
 /**

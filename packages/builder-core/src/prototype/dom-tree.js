@@ -194,7 +194,13 @@ function renderButton(n, template, parent, scope) {
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
         else if (slot.managed && props.hasIcon === true && props.iconPlacement === placementOf(slot.id)) {
-            children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props.icon ?? ''), children: [] });
+            // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
+            const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
+            const el = layer && renderNode(layer, n, scope);
+            if (el) {
+                const { position, left, top, ...style } = el.style;
+                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style });
+            }
         }
     }
     return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, scope.responsive), children };

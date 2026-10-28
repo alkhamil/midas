@@ -7,12 +7,12 @@
 // - A state's variable that is missing from the collection is reported as `no-variable`, never replaced by the base variable.
 // - Running the plan again on its own result gives no operations.
 import { dimensionOfGroup } from './validate-schema.js';
+import { variableKey } from './tokens.js';
 
 /** @typedef {{ key: string, instance: { id: string, vars?: Record<string, string> }, master: { vars?: Record<string, string> } | null }} LayerPair */
 /** @typedef {{ instanceId: string, prop: string, value: string | null }} BindingOp */
 
 /** @param {string} name */
-const nameKey = name => String(name ?? '').trim().toLowerCase();
 
 /**
  * The plan for one instance.
@@ -39,7 +39,7 @@ export function planStateBindings({ template, binding, props, layers, variables 
         const dimension = group ? dimensionOfGroup(group, template.props) : null;
         const collectionId = dimension ? binding.variables[dimension] : null;
         if (!collectionId) { problems.push({ key: '*', prop: base, token: base, reason: 'dimension-unbound' }); continue; }
-        const stateItem = items.find(i => i.collectionId === collectionId && nameKey(i.name) === `${template.group}/${stateToken}`.toLowerCase());
+        const stateItem = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(`${template.group}/${stateToken}`));
         if (!stateItem) { problems.push({ key: '*', prop: base, token: stateToken, reason: 'no-variable' }); continue; }
         for (const layer of layers) {
             if (layer.key !== key) continue;

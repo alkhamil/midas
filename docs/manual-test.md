@@ -82,6 +82,34 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
 
 14. **Canvas selection fix (commit f1fd440).** Click, double-click and Ctrl+click layers in nested frames. Confirm the selection goes to the layer you clicked.
 
+## Icon slot: swap, colour, size
+
+Open the newest **Behavior fixture** (import it again after `node scripts/make-behavior-fixture.js`). **Save** has Has Icon on, placement start, and the icon **Icon/check**. **Cancel** has Has Icon off. **Next** (Screens) has placement end and **Icon/arrow**. The Danger foreground is yellow, so a colour change is visible. Icon sizes: Small 16 px, Large 20 px.
+
+1. **Chosen icon shows.** Select **Save**, Behavior tab, Slots.
+   - Expected: the Icon row shows "Icon/check". The canvas draws a filled check in the Save button.
+2. **Swap from the inspector.** Click the Icon row. The picker lists only **Icon/** components in the file (check, arrow).
+   - Pick **arrow**. Expected: the slot stays first in the row, and the icon is the arrow, drawn as a stroke. Undo restores check; redo applies arrow.
+3. **Swap from the layer.** Select the icon layer inside **Save** and open its Swap chevron.
+   - Expected: the same icon picker. Picking check changes the Icon row to "Icon/check".
+4. **Colour follows Variant.** On **Save**, set Variant to Danger.
+   - Expected: the icon and the label turn yellow, the Danger foreground. Set Primary: both white again.
+5. **Size follows Size.** On **Save**, set Size to Large.
+   - Expected: the slot is 20 px. Small is 16 px. No manual size override.
+6. **Colour follows disabled.** Turn Disabled on for **Save**.
+   - Expected: the icon and the label take the disabled foreground. Turn it off: both return to the Variant foreground.
+7. **Creating an icon.** On **Cancel**, turn Has Icon on.
+   - Expected: the Icon row reads "Choose icon", and the slot is already sized by the Size variable. Choose **arrow**.
+   - Expected: the arrow is a stroke in the Danger foreground (yellow), sized 20 px. The label keeps its colour.
+8. **Managed layer stays locked.** Select the icon layer inside **Save** and press Delete.
+   - Expected toast: `"iconStart" is managed by its instance: deleting it on its own is not allowed.` Nothing is removed.
+9. **Play.** Wrap **Save** in a frame on the Components page (Frame selection), select the frame and open Play.
+   - Expected: the button shows its icon in a row with the label. It does not show the icon's id as text.
+10. **Save and reopen.** Save, reopen the file from All files.
+    - Expected: Icon row, colours and size are as left. Diagnostics shows "No issues".
+
+Known limits of this step: the hover and active previews change the root background and border only, so the icon colour does not change in those previews (the same as the text colour). A Size collection without `button/icon-size` leaves the slot at its placeholder size, and the editor says which variable is missing.
+
 ## Known limits (not covered by this script)
 
 - The Preview section shows token values only. Nothing is drawn on the canvas.

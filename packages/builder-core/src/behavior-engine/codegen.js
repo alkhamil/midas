@@ -73,7 +73,8 @@ function displayRules(template) {
     const tokens = Object.values(template.tokens).flat();
     return Object.entries(template.display).map(([key, props]) => {
         const kind = targetKindOf(template, key);
-        const decls = [];
+        // The root lays its label and its icon slots out in a row, centred on the cross axis.
+        const decls = key === 'root' ? ['  display: inline-flex;\n', '  align-items: center;\n'] : [];
         for (const [prop, source] of Object.entries(props)) {
             const css = NODE_PROPERTIES[kind][prop].css;
             if (!css || !tokens.includes(source)) continue;
