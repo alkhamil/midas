@@ -186,7 +186,7 @@ export function strokeDashArray(n) {
 export function strokeMiterLimit(n) { return Math.max(1, 1 / Math.max(Math.sin((n.strokeMiter ?? 28.96) * Math.PI / 360), .001)); }
 
 /** A stroke SVG can draw as an attribute set on the shape: centred, uniform, not a per-side one. */
-export function strokeSvgAdvanced(n) {
+function strokeSvgAdvanced(n) {
     return strokeIsOn(n) && ((n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n)) || !strokeSidesUniform(n));
 }
 

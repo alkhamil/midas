@@ -278,7 +278,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     }
 
     /**
-     * Sends one event to the player. Returns whether it triggered anything (a navigation, a link, a timer or a while-end).
+     * Sends one event to the player. Returns whether it triggered anything (a navigation, a link or a timer).
      * @param {any} event
      * @returns {boolean}
      */

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePrototype } from '../src/prototype/validate.js';
-import { addInteraction, editInteraction, removeInteraction, setOverflow, planCopiedInteractions } from '../src/prototype/plan.js';
+import { addInteraction, editInteraction, removeInteraction, setOverflow } from '../src/prototype/plan.js';
 
 const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } });
 const frameNode = (prototype, type = 'frame') => ({ id: 'F', name: 'Frame', type, parentId: null, prototype });
@@ -55,12 +55,6 @@ test('setting none on a frame with nothing else leaves no prototype data, and an
     assert.equal(setOverflow(undefined, 'none'), undefined);
     assert.deepEqual(setOverflow(undefined, 'vertical'), { version: 1, interactions: [], overflow: 'vertical' });
     assert.throws(() => setOverflow(undefined, 'diagonal'), /Unknown scroll behaviour "diagonal"/);
-});
-
-test('copying a frame copies its scroll behaviour, even when its interactions are all dropped', () => {
-    const copied = planCopiedInteractions({ prototype: { version: 1, interactions: [link('a', 'gone')], overflow: 'vertical' }, exists: () => false });
-    assert.deepEqual(copied.prototype, { version: 1, interactions: [], overflow: 'vertical' });
-    assert.deepEqual(copied.dropped.map(d => d.code), ['interaction-dropped']);
 });
 
 test('a template instance cannot have a scroll behaviour: the validator names the page and the node', () => {

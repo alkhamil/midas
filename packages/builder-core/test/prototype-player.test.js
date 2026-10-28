@@ -91,18 +91,16 @@ test('a transition with its direction and easing is passed through unchanged', (
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'on-click' }, c2).effects.filter(e => e.type === 'navigate'), [{ type: 'navigate', from: 'A', to: 'B', transition: slide }]);
 });
 
-test('while-hovering runs its action on mouse-enter and reports the end on mouse-leave', () => {
+test('while-hovering runs its action on mouse-enter', () => {
     const hover = { id: 'h', trigger: { type: 'while-hovering' }, action: { type: 'open-link', url: 'https://example.com' } };
     const c2 = { ...ctx, interactionsOf: id => (id === 'btnA' ? [hover] : []) };
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-enter' }, c2).effects, [{ type: 'open-link', url: 'https://example.com' }]);
-    assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-leave' }, c2).effects, [{ type: 'while-end', nodeId: 'btnA', interactionId: 'h' }]);
 });
 
-test('while-pressing runs its action on mouse-down and reports the end on mouse-up', () => {
+test('while-pressing runs its action on mouse-down', () => {
     const press = { id: 'p', trigger: { type: 'while-pressing' }, action: { type: 'open-link', url: 'https://example.com' } };
     const c2 = { ...ctx, interactionsOf: id => (id === 'btnA' ? [press] : []) };
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-down' }, c2).effects, [{ type: 'open-link', url: 'https://example.com' }]);
-    assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-up' }, c2).effects, [{ type: 'while-end', nodeId: 'btnA', interactionId: 'p' }]);
 });
 
 test('the player never mutates the state it is given', () => {

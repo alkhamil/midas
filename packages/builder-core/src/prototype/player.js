@@ -3,12 +3,10 @@
 // come back as `schedule` effects, and the runtime answers with a `timer` event when the delay has passed.
 //
 // State: { current: frameId, history: frameId[] } (the frames to go back to, last one on top).
-// Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs } · while-end { nodeId, interactionId }.
+// Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs }.
 
 /** The interaction triggers a pointer event starts. `mouse-enter` also starts while-hovering, `mouse-down` also while-pressing. */
 const STARTS = { 'on-click': ['on-click'], 'mouse-enter': ['mouse-enter', 'while-hovering'], 'mouse-down': ['mouse-down', 'while-pressing'], 'mouse-up': ['mouse-up'], 'mouse-leave': ['mouse-leave'] };
-/** The while-* trigger a pointer event ends. */
-const ENDS = { 'mouse-leave': 'while-hovering', 'mouse-up': 'while-pressing' };
 const INSTANT = { type: 'instant', durationMs: 0 };
 
 /**
@@ -45,10 +43,9 @@ export function respond(state, event, ctx) {
         return interaction ? run(state, interaction, ctx) : { state, effects: [] };
     }
     const interactions = ctx.interactionsOf(event.nodeId);
-    const ends = ENDS[event.trigger] ? interactions.filter(i => i.trigger?.type === ENDS[event.trigger]) : [];
     const starts = interactions.filter(i => (STARTS[event.trigger] ?? []).includes(i.trigger?.type));
     let next = state;
-    const effects = ends.map(i => ({ type: 'while-end', nodeId: event.nodeId, interactionId: i.id }));
+    const effects = [];
     for (const interaction of starts) {
         const result = run(next, interaction, ctx);
         next = result.state;

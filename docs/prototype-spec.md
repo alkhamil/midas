@@ -68,10 +68,9 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 
 - Connection handle, connector arrows and the flow-start marker on the canvas.
 - Flow creation from the panel (a flow exists only in the file for now).
-- Copy, paste and duplicate wiring to `planCopiedInteractions` (the planner exists and is tested; the editor does not call it yet). Unused: no caller outside its tests.
+- Copy, paste and duplicate wiring of interactions. The copy planner (`planCopiedInteractions`) was removed as unused; re-add it with the wiring.
 - Rolling back a prototype problem with a "Not applied" message (the editor does not yet run the prototype check as a backstop).
 - Marking a flow start from the panel and showing the flow-start marker on the canvas.
-- The `while-end` effect has no consumer yet; Play ignores it. Unused: the player emits it and nothing reads it.
 - The canvas draws no Play state; the Canvas 2D fallback is not involved.
 
 ## Status

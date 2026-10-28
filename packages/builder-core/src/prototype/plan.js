@@ -100,30 +100,6 @@ export function planNodeRemoval(pages, removed) {
 }
 
 /**
- * The interactions a copied node keeps. A destination that the copy also contains is remapped to its copy; one the target
- * document does not have is dropped and reported. `exists` answers for the target document. The scroll behaviour is copied as it is.
- * @param {{ prototype: { version: number, interactions: any[], overflow?: string } | undefined, remap?: Map<string, string>, exists: (id: string) => boolean }} input
- */
-export function planCopiedInteractions({ prototype, remap = new Map(), exists }) {
-    const dropped = [];
-    const kept = [];
-    for (const interaction of prototype?.interactions ?? []) {
-        const destination = destinationOf(interaction);
-        if (destination === null) {
-            kept.push(interaction);
-            continue;
-        }
-        const target = remap.get(destination) ?? destination;
-        if (!exists(target)) {
-            dropped.push({ code: 'interaction-dropped', interaction: interaction.id, destination });
-            continue;
-        }
-        kept.push({ ...interaction, action: { ...interaction.action, destinationId: target } });
-    }
-    return { prototype: withInteractions(prototype, kept), dropped };
-}
-
-/**
  * What detaching an instance does to the prototype. The instance keeps its own interactions. Its inner layers that copy the master
  * (a master-owned layer, with sourceId) and its managed layers lose theirs: those interactions belong to the component, not to the
  * detached copy. Each drop is reported.
