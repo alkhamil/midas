@@ -141,7 +141,7 @@ test('a line draws no fill, however its fill is set', () => {
     assert.equal(drawn({ type: 'line', fills: solid('#ff0000'), stroke: '#000000', strokeWidth: 1 }).style.background, undefined);
 });
 
-test('a boolean result is reported and its operands are not drawn', () => {
+test('a boolean group with no stored result is reported, and its operands are not drawn', () => {
     const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ id: 'G', type: 'group', booleanOp: 'union', fills: solid('none') }), layer({ id: 'K', parentId: 'G', type: 'rect' })]), 'A');
     assert.deepEqual(unsupported, [{ nodeId: 'G', type: 'boolean' }]);
     assert.deepEqual(root.children, []);

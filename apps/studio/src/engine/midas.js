@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -12289,96 +12289,15 @@ function resetSelectedOverrides() { transaction('Reset overrides', () => { for (
     }
 } }); }
 function createFromInstance() { detachSelectedInstances(); makeComponent(); }
-function flattenPathOf(n, ptsIn = null, closedIn = null) {
-    const pts = ptsIn || n.points || [], closedFlag = closedIn ?? n.closed, sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), out = [];
-    const seg = (a, b) => {
-        if (a.out || b.in) {
-            const p0 = { x: a.x * sx, y: a.y * sy }, p1 = { x: (a.out?.x ?? a.x) * sx, y: (a.out?.y ?? a.y) * sy }, p2 = { x: (b.in?.x ?? b.x) * sx, y: (b.in?.y ?? b.y) * sy }, p3 = { x: b.x * sx, y: b.y * sy };
-            for (let i = 1; i <= 24; i++) {
-                const t = i / 24, u = 1 - t;
-                out.push({ x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y });
-            }
-        }
-        else
-            out.push({ x: b.x * sx, y: b.y * sy });
-    };
-    if (!pts.length)
-        return out;
-    out.push({ x: pts[0].x * sx, y: pts[0].y * sy });
-    for (let i = 1; i < pts.length; i++)
-        seg(pts[i - 1], pts[i]);
-    if (closedFlag && pts.length > 1)
-        seg(pts.at(-1), pts[0]);
-    return out;
-}
-function nodePolys(n) {
-    // A frame / group operand contributes the shapes inside it (an instance of an icon, for example), not its own box.
-    if ((n.type === 'frame' || n.type === 'group') && doc.children(n.id).length) {
-        const out = [];
-        for (const c of doc.children(n.id))
-            if (c.visible !== false)
-                out.push(...(nodePolys(c) || []));
-        return out.length ? out : null;
-    }
-    const m = doc.world(n.id).matrix, tp = (x, y) => { const q = point(m, x, y); return [q.x, q.y]; };
-    let ring = null;
-    if (n.type === 'ellipse' && arcActive(n)) {
-        const polys = arcPoly(n).map(r => r.map(([x, y]) => tp(x, y)));
-        return [polys];
-    }
-    if (n.type === 'ellipse') {
-        ring = [];
-        for (let i = 0; i < 128; i++) {
-            const a = i / 128 * Math.PI * 2;
-            ring.push(tp(n.w / 2 + Math.cos(a) * n.w / 2, n.h / 2 + Math.sin(a) * n.h / 2));
-        }
-    }
-    else if (n.type === 'path') {
-        if (!n.closed)
-            return null;
-        // Every closed sub-path counts: rings inside other rings become holes (even-odd), so icons keep their counters.
-        const rings = [flattenPathOf(n).map(p => tp(p.x, p.y))];
-        for (const c of n.contours || [])
-            if (c.closed !== false && (c.points || []).length > 2)
-                rings.push(flattenPathOf(n, c.points, true).map(p => tp(p.x, p.y)));
-        if (rings.length > 1) {
-            const area = r => Math.abs(r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
-            const inside = (pt, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
-            const info = rings.map((r, i) => ({ r, a: area(r), cont: rings.map((o, j) => j !== i && inside(r[0], o) ? j : -1).filter(j => j >= 0) }));
-            const polys = [];
-            const owner = new Map();
-            for (const x of info.filter(x => x.cont.length % 2 === 0)) { const p = [x.r]; polys.push(p); owner.set(x, p); }
-            for (const x of info.filter(x => x.cont.length % 2 === 1)) {
-                const parent = info.filter(o => o.cont.length === x.cont.length - 1 && x.cont.includes(info.indexOf(o))).sort((a, b) => a.a - b.a)[0];
-                if (parent && owner.get(parent))
-                    owner.get(parent).push(x.r);
-            }
-            return polys.filter(p => p[0].length >= 3);
-        }
-        ring = rings[0];
-    }
-    else if (['rect', 'frame', 'image'].includes(n.type))
-        ring = [tp(0, 0), tp(n.w, 0), tp(n.w, n.h), tp(0, n.h)];
-    else
-        return null;
-    return ring.length >= 3 ? [[ring]] : null;
-}
+// The scene the shared boolean geometry reads: a node's children and its matrix in the scene.
+const sceneOf = { children: id => doc.children(id), world: id => doc.world(id).matrix };
 function buildPathNode(res, first, name) {
     const inv = first.parentId ? doc.world(first.parentId).inverse : identity();
-    const rings = res.flatMap(poly => poly).map(r => { const q = r.map(([x, y]) => point(inv, x, y)); if (q.length > 1 && q[0].x === q.at(-1).x && q[0].y === q.at(-1).y)
-        q.pop(); return q; });
-    const xs = rings.flat().map(p => p.x), ys = rings.flat().map(p => p.y), minX = Math.min(...xs), minY = Math.min(...ys), w = Math.max(1, Math.max(...xs) - minX), h = Math.max(1, Math.max(...ys) - minY);
-    const rel = r => r.map(p => ({ x: p.x - minX, y: p.y - minY }));
-    const props = { name, x: minX, y: minY, w, h, pathW: w, pathH: h, points: rel(rings[0]), closed: true, parentId: first.parentId || null, stroke: first.stroke, strokeWidth: first.strokeWidth, opacity: first.opacity };
-    if (rings.length > 1) {
-        props.contours = rings.slice(1).map(r => ({ points: rel(r), closed: true }));
-        props.fillRule = 'evenodd';
-    }
-    props.fills = structuredClone(first.fills);
+    const props = { name, ...resultPathOf(res, (x, y) => point(inv, x, y)), parentId: first.parentId || null, stroke: first.stroke, strokeWidth: first.strokeWidth, opacity: first.opacity, fills: structuredClone(first.fills) };
     return node('path', props);
 }
 function booleanOp(kind) {
-    const roots = selectedRoots(), pc = window.polygonClipping;
+    const roots = selectedRoots();
     if (refusedManaged('boolean', roots))
         return;
     if (!roots.length) {
@@ -12391,15 +12310,14 @@ function booleanOp(kind) {
     }
     // Stacking order decides the base: Subtract removes every layer above from the lowest one (like Figma), whatever order they were selected in.
     roots.sort((a, b) => doc.nodes.indexOf(a) - doc.nodes.indexOf(b));
-    const polys = roots.map(nodePolys);
-    if (polys.some(p => !p) || !pc) {
+    const polys = roots.map(r => operandPolygons(r, sceneOf));
+    if (polys.some(p => !p)) {
         toast('Boolean operations work on rectangles, ellipses and closed paths.');
         return;
     }
     let res;
     try {
-        const [a, ...rest] = polys;
-        res = kind === 'union' ? pc.union(a, ...rest) : kind === 'intersect' ? pc.intersection(a, ...rest) : kind === 'subtract' ? pc.difference(a, ...rest) : pc.xor(a, ...rest);
+        res = combine(kind, polys);
     }
     catch {
         toast('Could not compute this operation.');
@@ -12435,8 +12353,8 @@ function booleanOp(kind) {
 const boolSignatures = new Map();
 // Recompute every boolean group whose operands moved or changed. Deepest first, so nested booleans feed outer ones.
 function refreshBooleans() {
-    const pc = window.polygonClipping, list = doc.nodes.filter(n => n.booleanOp);
-    if (!list.length || !pc)
+    const list = doc.nodes.filter(n => n.booleanOp);
+    if (!list.length)
         return;
     list.sort((a, b) => doc.ancestors(b).length - doc.ancestors(a).length);
     for (const b of list) {
@@ -12453,13 +12371,12 @@ function refreshBooleans() {
         }
         if (prev === sig)
             continue;
-        const polys = kids.map(nodePolys);
+        const polys = kids.map(k => operandPolygons(k, sceneOf));
         if (polys.some(p => !p))
             continue;
         let res;
         try {
-            const [a, ...rest] = polys;
-            res = !rest.length ? pc.union(a) : b.booleanOp === 'union' ? pc.union(a, ...rest) : b.booleanOp === 'intersect' ? pc.intersection(a, ...rest) : b.booleanOp === 'subtract' ? pc.difference(a, ...rest) : pc.xor(a, ...rest);
+            res = combine(b.booleanOp, polys);
         }
         catch {
             continue;
@@ -12486,10 +12403,10 @@ function refreshBooleans() {
     }
 }
 function flattenSelection() {
-    const roots = selectedRoots(), pc = window.polygonClipping;
+    const roots = selectedRoots();
     if (refusedManaged('flatten', roots))
         return;
-    if (!roots.length || !pc)
+    if (!roots.length)
         return;
     const ids = [];
     transaction('Flatten', () => {
@@ -12500,10 +12417,10 @@ function flattenSelection() {
                 nn = node('path', { name: r.name, x: r.x, y: r.y, w: r.w, h: r.h, pathW: r.w, pathH: r.h, rotation: r.rotation || 0, parentId: r.parentId || null, closed: true, fills: structuredClone(r.fills), stroke: r.stroke, strokeWidth: r.strokeWidth, opacity: r.opacity, points: [{ x: cx, y: 0, in: { x: cx - k * cx, y: 0 }, out: { x: cx + k * cx, y: 0 } }, { x: r.w, y: cy, in: { x: r.w, y: cy - k * cy }, out: { x: r.w, y: cy + k * cy } }, { x: cx, y: r.h, in: { x: cx + k * cx, y: r.h }, out: { x: cx - k * cx, y: r.h } }, { x: 0, y: cy, in: { x: 0, y: cy + k * cy }, out: { x: 0, y: cy - k * cy } }] });
             }
             else {
-                const poly = nodePolys(r);
+                const poly = operandPolygons(r, sceneOf);
                 if (!poly)
                     continue;
-                nn = buildPathNode(pc.union(poly), r, r.name);
+                nn = buildPathNode(combine('union', [poly]), r, r.name);
             }
             doc.remove([r.id]);
             doc.add(nn);

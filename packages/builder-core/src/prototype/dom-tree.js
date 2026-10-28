@@ -7,8 +7,8 @@
 // read. A layer's fill, border radius and shadows are CSS. Outlines the CSS cannot draw (an arc, a line, a vector path, a stroke that is
 // centred on the outline, a dash) are an `html` string of SVG, placed in the element.
 //
-// Anything the DOM does not draw is listed in `unsupported`, never drawn silently: boolean results, masks, image fills on vector
-// layers and effects with no DOM form (glass).
+// Anything the DOM does not draw is listed in `unsupported`, never drawn silently: a boolean group with no stored result, masks inside an
+// auto layout, image fills on vector layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
@@ -22,7 +22,7 @@ import { layoutGap, layoutGapCross, layoutOrder, layoutPads, strokeOutside } fro
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
  */
 
-/** Layer kinds the DOM draws. Boolean results and masks are not drawn yet. */
+/** Layer kinds the DOM draws. A mask is not drawn: it clips the layers above it. */
 const DRAWN = ['frame', 'group', 'rect', 'ellipse', 'text', 'line', 'path', 'image'];
 /** Kinds whose outline is drawn as an SVG path, not a CSS box. */
 const VECTOR = ['line', 'path'];
@@ -60,8 +60,8 @@ function renderNode(n, parent, scope) {
     const template = templateOf(n, scope);
     if (template === undefined) return null;
     if (template) return renderButton(n, template, parent, scope);
-    // A boolean result is computed from its operands (polygon clipping), which the DOM does not have. Its operands are not drawn either.
-    if (n.booleanOp) {
+    // A boolean group draws its stored result, the path the canvas computed; its operands are not drawn. Without a result there is nothing.
+    if (n.booleanOp && !(n.type === 'path' && (n.points?.length || n.contours?.length))) {
         scope.unsupported.push({ nodeId: n.id, type: 'boolean' });
         return null;
     }

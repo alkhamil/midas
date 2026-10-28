@@ -217,7 +217,7 @@ function strokeSvgAdvanced(n) {
  */
 export function svgShapeEl(n, f, a) {
     if (arcActive(n) || n.type === 'path' || n.type === 'line')
-        return `<path d="${svgPathD(pathCommands(n), f)}"${arcActive(n) ? ' fill-rule="evenodd"' : ''} ${a}/>`;
+        return `<path d="${svgPathD(pathCommands(n), f)}"${arcActive(n) || n.fillRule === 'evenodd' ? ' fill-rule="evenodd"' : ''} ${a}/>`;
     if (n.type === 'ellipse')
         return `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${a}/>`;
     if (hasRadii(n))

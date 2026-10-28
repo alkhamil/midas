@@ -1665,13 +1665,20 @@
         {
           "id": "g1",
           "name": "g1",
-          "type": "group",
+          "type": "path",
           "parentId": "frame-30",
           "x": 20,
           "y": 20,
           "w": 120,
-          "h": 80,
-          "fills": [],
+          "h": 90,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "stroke": "#000000",
           "strokeWidth": 0,
           "strokeOpacity": 1,
@@ -1682,7 +1689,44 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "booleanOp": "union"
+          "booleanOp": "union",
+          "pathW": 120,
+          "pathH": 90,
+          "points": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 80,
+              "y": 0
+            },
+            {
+              "x": 80,
+              "y": 30
+            },
+            {
+              "x": 120,
+              "y": 30
+            },
+            {
+              "x": 120,
+              "y": 90
+            },
+            {
+              "x": 40,
+              "y": 90
+            },
+            {
+              "x": 40,
+              "y": 60
+            },
+            {
+              "x": 0,
+              "y": 60
+            }
+          ],
+          "closed": true
         },
         {
           "id": "g1a",
@@ -1763,13 +1807,20 @@
         {
           "id": "g2",
           "name": "g2",
-          "type": "group",
+          "type": "path",
           "parentId": "frame-31",
           "x": 20,
           "y": 20,
-          "w": 120,
-          "h": 80,
-          "fills": [],
+          "w": 80,
+          "h": 60,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "stroke": "#000000",
           "strokeWidth": 0,
           "strokeOpacity": 1,
@@ -1780,7 +1831,36 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "booleanOp": "subtract"
+          "booleanOp": "subtract",
+          "pathW": 80,
+          "pathH": 60,
+          "points": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 80,
+              "y": 0
+            },
+            {
+              "x": 80,
+              "y": 30
+            },
+            {
+              "x": 40,
+              "y": 30
+            },
+            {
+              "x": 40,
+              "y": 60
+            },
+            {
+              "x": 0,
+              "y": 60
+            }
+          ],
+          "closed": true
         },
         {
           "id": "g2a",

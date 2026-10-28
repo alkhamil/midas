@@ -6,6 +6,7 @@ import { deflateSync } from 'node:zlib';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildBehaviorFixture } from './make-behavior-fixture.js';
+import { combine, operandPolygons, resultPathOf } from '../packages/builder-core/src/geometry/boolean.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const FIDELITY_FIXTURE_PATH = resolve(here, 'fixtures/fidelity-fixture.midas');
@@ -81,6 +82,24 @@ const text = (id, parentId, content, extra = {}) => layer(id, parentId, 'text', 
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 /**
+ * A boolean group as the canvas stores it: its operands combined by the shared boolean geometry into one result path, which is what the
+ * group draws. The operands stay inside the group, and the canvas and Play do not draw them.
+ * @param {string} id
+ * @param {string} frameId
+ * @param {string} op
+ * @param {any[]} operands the operand layers, positioned in the group
+ */
+function booleanGroup(id, frameId, op, operands) {
+    const g = layer(id, frameId, 'group', { booleanOp: op, fills: solid('none') });
+    const kids = operands.map(o => ({ ...o, parentId: id }));
+    const world = nid => { const k = kids.find(x => x.id === nid); return [1, 0, 0, 1, k?.x ?? 0, k?.y ?? 0]; };
+    const scene = { children: nid => kids.filter(k => k.parentId === nid), world };
+    const res = combine(op, kids.map(k => operandPolygons(k, scene)));
+    const result = { ...g, type: 'path', ...resultPathOf(res, (x, y) => ({ x: x + g.x, y: y + g.y })), closed: true, fills: structuredClone(kids[0].fills) };
+    return [result, ...kids];
+}
+
+/**
  * The features, each a frame and the layers that draw it. `layers` receives the frame id.
  * @type {{ name: string, layers: (frameId: string) => any[], frame?: Record<string, unknown> }[]}
  */
@@ -115,8 +134,8 @@ const FEATURES = [
     { name: 'Line: stroke', layers: f => [layer('l1', f, 'line', { w: 160, h: 80, fills: solid('none'), strokeWidth: 4, stroke: '#c0392b', strokeCap: 'round' })] },
     { name: 'Vector path: closed', layers: f => [layer('p1', f, 'path', { w: 140, h: 120, pathW: 10, pathH: 10, closed: true, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 10 }], stroke: '#112233', strokeWidth: 2 })] },
     { name: 'Vector path: curves', layers: f => [layer('p2', f, 'path', { w: 140, h: 120, pathW: 10, pathH: 10, closed: false, points: [{ x: 0, y: 5, out: { x: 0, y: 0 } }, { x: 10, y: 5, in: { x: 10, y: 10 } }], stroke: '#c0392b', strokeWidth: 3, fills: solid('none') })] },
-    { name: 'Boolean: union', layers: f => [{ ...layer('g1', f, 'group', { booleanOp: 'union', fills: solid('none') }) }, layer('g1a', 'g1', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g1b', 'g1', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })] },
-    { name: 'Boolean: subtract', layers: f => [layer('g2', f, 'group', { booleanOp: 'subtract', fills: solid('none') }), layer('g2a', 'g2', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g2b', 'g2', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })] },
+    { name: 'Boolean: union', layers: f => booleanGroup('g1', f, 'union', [layer('g1a', 'g1', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g1b', 'g1', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })]) },
+    { name: 'Boolean: subtract', layers: f => booleanGroup('g2', f, 'subtract', [layer('g2a', 'g2', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g2b', 'g2', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })]) },
     { name: 'Mask: rectangle mask', layers: f => [layer('m2', f, 'ellipse', { w: 120, h: 120, isMask: true, fills: solid('#000000') }), layer('m1', f, 'rect', { w: 200, h: 140, fills: solid('#0058CA') })] },
     { name: 'Image fill: fill', layers: f => [layer('im1', f, 'rect', { w: 200, h: 140, fills: [imageFill('fill')] })] },
     { name: 'Image fill: fit', layers: f => [layer('im2', f, 'rect', { w: 200, h: 140, fills: [imageFill('fit')] })] },
