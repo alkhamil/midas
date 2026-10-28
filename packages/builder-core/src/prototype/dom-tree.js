@@ -16,7 +16,7 @@ import { generateComponent } from '../behavior-engine/codegen.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
-import { layoutGap, layoutGapCross, layoutPads, strokeOutside } from '../geometry/autolayout.js';
+import { layoutGap, layoutGapCross, layoutOrder, layoutPads, strokeOutside } from '../geometry/autolayout.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -114,8 +114,13 @@ function renderNode(n, parent, scope) {
  */
 function renderChildren(n, scope) {
     const out = [];
+    const auto = n.type === 'frame' && isAutoLayout(n);
+    // The flow order of an auto layout's children is the canvas's (a Figma import stores them back to front); the DOM order is the paint
+    // order, so a flow position is a CSS `order` and the paint order is reversed when the frame paints its first child on top.
+    const stored = scope.childrenOf(n.id);
+    const flowPosition = new Map(layoutOrder(n, stored).filter(c => c.layoutPositioning !== 'absolute' && c.visible !== false).map((c, i) => [c.id, i]));
     let mask = null;
-    for (const c of scope.childrenOf(n.id)) {
+    for (const c of stored) {
         if (c.isMask && c.visible !== false) {
             // An auto layout places its children itself, so a mask's stored position does not say where it sits on screen.
             mask = isAutoLayout(n) ? null : c;
@@ -129,9 +134,10 @@ function renderChildren(n, scope) {
             if (clip) el.style.clipPath = clip;
             else scope.unsupported.push({ nodeId: mask.id, type: 'mask that is not a rectangle or ellipse, or on a rotated layer' });
         }
+        if (auto && flowPosition.has(c.id)) el.style.order = String(flowPosition.get(c.id));
         out.push(el);
     }
-    return out;
+    return auto && n.layoutReverseZ ? out.reverse() : out;
 }
 
 /**

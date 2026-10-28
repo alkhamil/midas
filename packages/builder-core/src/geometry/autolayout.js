@@ -4,6 +4,18 @@ import { strokeIsOn, strokeSideWidths } from './shapes.js';
 
 const NONE = { t: 0, r: 0, b: 0, l: 0 };
 
+/** Whether a node is a frame that lays its children out (auto layout). */
+const isAutoFrame = n => !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none';
+
+/**
+ * The order the children of an auto layout frame follow in the flow. A frame imported from Figma stores its children back to front
+ * (`layoutFlip`): they are laid out in reverse list order. `kids` are the children in list order; other frames keep their order.
+ * @param {any} parent
+ * @param {any[]} kids
+ * @returns {any[]}
+ */
+export const layoutOrder = (parent, kids) => (parent?.layoutFlip && isAutoFrame(parent) ? [...kids].reverse() : kids);
+
 /**
  * The stroke room inside a frame's padding: the part of its own stroke that lies inside its box, per side, when strokes are included in
  * the layout. An outside stroke takes no room.
