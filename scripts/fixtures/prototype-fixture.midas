@@ -1107,6 +1107,30 @@
           }
         },
         {
+          "id": "home-flag",
+          "name": "Flag marker",
+          "type": "rect",
+          "parentId": "frame-home",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 8,
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f59e0b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "vars": {
+            "visible": "var-flag"
+          },
+          "version": 0
+        },
+        {
           "id": "frame-details",
           "name": "Details",
           "type": "frame",
@@ -1670,6 +1694,20 @@
             "name": "Large"
           }
         ]
+      },
+      {
+        "id": "col-flag",
+        "name": "Flag",
+        "modes": [
+          {
+            "id": "mode-on",
+            "name": "On"
+          },
+          {
+            "id": "mode-off",
+            "name": "Off"
+          }
+        ]
       }
     ],
     "items": [
@@ -1920,6 +1958,16 @@
         "values": {
           "sm": 14,
           "lg": 18
+        }
+      },
+      {
+        "id": "var-flag",
+        "name": "Flag",
+        "type": "boolean",
+        "collectionId": "col-flag",
+        "values": {
+          "mode-on": true,
+          "mode-off": false
         }
       }
     ]

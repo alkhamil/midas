@@ -50,11 +50,16 @@ const navigate = (id, destinationId, trigger = { type: 'on-click' }, transition 
 export function buildPrototypeFixture({ broken = false } = {}) {
     const doc = buildBehaviorFixture();
     doc.name = 'Prototype fixture';
+    // A boolean variable with two modes. A conditional reads it through the mode of the node it sits on.
+    doc.variables.collections.push({ id: 'col-flag', name: 'Flag', modes: [{ id: 'mode-on', name: 'On' }, { id: 'mode-off', name: 'Off' }] });
+    doc.variables.items.push({ id: 'var-flag', name: 'Flag', type: 'boolean', collectionId: 'col-flag', values: { 'mode-on': true, 'mode-off': false } });
     const nodes = [
         screen('frame-home', 'Home', 0),
         button('home-next', 'frame-home', 'Next', {}, PRIMARY, [navigate('home-next-go', 'frame-details', { type: 'on-click' }, { type: 'slide-in', direction: 'left', durationMs: 300, easing: 'ease-out' })]),
         button('home-delete', 'frame-home', 'Delete', {}, DANGER, [navigate('home-delete-go', 'frame-confirm', { type: 'mouse-enter' }, { type: 'dissolve', durationMs: 200, easing: 'linear' })]),
         button('home-off', 'frame-home', 'Unavailable', { disabled: true }, PRIMARY, [navigate('home-off-go', 'frame-details')]),
+        // A plain layer shown in the mode On and hidden in the mode Off: it binds Flag, so Home's mode for Flag can be set.
+        { id: 'home-flag', name: 'Flag marker', type: 'rect', parentId: 'frame-home', x: 0, y: 0, w: 40, h: 8, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), vars: { visible: 'var-flag' }, version: 0 },
         screen('frame-details', 'Details', 480),
         button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
         button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),

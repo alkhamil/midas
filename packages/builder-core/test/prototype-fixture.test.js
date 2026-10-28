@@ -70,12 +70,14 @@ test('the Home frame draws as a flex column with three Button elements: primary,
     assert.deepEqual(problems, []);
     assert.equal(root.style.display, 'flex');
     assert.equal(root.style.flexDirection, 'column');
-    assert.deepEqual(root.children.map(b => [b.tag, b.attrs.class, b.attrs['data-variant'], b.attrs.disabled === true]), [
+    // The Flag marker is a plain layer, drawn in the mode On; the Buttons are the frame's three instances.
+    const buttons = root.children.filter(b => b.attrs?.class === 'button');
+    assert.deepEqual(buttons.map(b => [b.tag, b.attrs.class, b.attrs['data-variant'], b.attrs.disabled === true]), [
         ['button', 'button', 'primary', false],
         ['button', 'button', 'danger', false],
         ['button', 'button', 'primary', true],
     ]);
-    assert.deepEqual(root.children.map(b => b.children[0].text), ['Next', 'Delete', 'Unavailable']);
+    assert.deepEqual(buttons.map(b => b.children[0].text), ['Next', 'Delete', 'Unavailable']);
     assert.match(styles, /\.button\[data-variant="danger"\]\[data-size="lg"\]/);
     assert.equal(JSON.stringify(doc), before, 'building the DOM does not change the document');
 });
