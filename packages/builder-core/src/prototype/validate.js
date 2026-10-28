@@ -2,6 +2,7 @@
 // Nothing is repaired. A problem names the page and the node by name, and the interaction by id when there is one.
 // `complete` false (a lazily opened file, pages still arriving): a reference that cannot be resolved yet is deferred, not refused.
 import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS } from './data.js';
+import { actionsOf } from './conditional.js';
 
 export class PrototypeDataError extends Error {
     /** @param {string} message @param {Problem | null} [problem] */
@@ -151,16 +152,6 @@ function checkAction(action, where, id, add, refs, nested) {
         return checkConditional(action, where, id, add, refs);
     }
     checkPlainAction(action, where, id, add, refs.topLevelFrame);
-}
-
-/**
- * The actions a node's action runs, the conditional's nested ones included, in order.
- * @param {any} action
- * @returns {any[]}
- */
-function actionsOf(action) {
-    if (action?.type !== 'conditional') return [action];
-    return [...(action.branches ?? []).flatMap(b => b?.actions ?? []), ...(action.else ?? [])];
 }
 
 /**

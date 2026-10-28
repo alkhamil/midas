@@ -2,6 +2,7 @@
 // destinations a navigate-to can name, and the default interaction a new one starts from.
 import { MOVING_TRANSITIONS } from './data.js';
 import { resolveMode } from '../behavior-engine/modes.js';
+import { actionsOf, branchIndex, conditionPatch, defaultCondition, defaultVariableOf, listOf, withBranch, withList } from './conditional.js';
 
 /**
  * What the player reads from a document: the interactions of a node, the frame a node sits in, the nodes of a frame, and a variable's
@@ -67,7 +68,7 @@ export function nextInteractionId(taken) {
  * @param {string} destinationId
  */
 export function defaultNavigate(id, destinationId) {
-    return { id, trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } };
+    return { id, trigger: { type: 'on-click' }, action: navigateTo(destinationId) };
 }
 
 /**
@@ -114,29 +115,41 @@ export function transitionFieldsOf(type) {
     return { direction: MOVING_TRANSITIONS.includes(type), duration: type !== 'instant', easing: type !== 'instant' };
 }
 
+/** A navigate-to with an instant transition: what a new navigation starts from. */
+export const navigateTo = destinationId => ({ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } });
+
 /**
  * The patch an edit of one field makes to an interaction, for editInteraction. A new action or trigger starts from its defaults; a
- * navigate-to needs a destination (`firstDestination`), and throws when there is none. Actions not yet supported throw.
+ * navigate-to needs a destination (`firstDestination`), and throws when there is none. A conditional starts with one branch on the first
+ * boolean, number or string variable (`variables`), and cannot sit inside another conditional (`nested`). Actions not yet supported throw.
  * @param {{ trigger: any, action: any }} interaction
  * @param {'trigger' | 'delay' | 'action' | 'destination' | 'transition' | 'duration' | 'direction' | 'easing'} field
  * @param {string} value
- * @param {{ firstDestination?: string }} context
+ * @param {{ firstDestination?: string, variables?: { id: string, type: string }[], nested?: boolean }} context
  * @returns {{ trigger?: any, action?: any }}
  */
-export function interactionPatch(interaction, field, value, { firstDestination }) {
+export function interactionPatch(interaction, field, value, { firstDestination, variables = [], nested = false }) {
     const transition = interaction.action?.transition;
     const withTransition = transition => ({ action: { ...interaction.action, transition } });
     switch (field) {
         case 'trigger':
-            if (CONTINUOUS.includes(value) && NAVIGATING.includes(interaction.action?.type)) throw new Error('While hovering and while pressing cannot navigate or go back.');
+            if (CONTINUOUS.includes(value) && actionsOf(interaction.action).some(a => NAVIGATING.includes(a?.type))) throw new Error('While hovering and while pressing cannot navigate or go back.');
             return { trigger: value === 'after-delay' ? { type: 'after-delay', delayMs: 500 } : { type: value } };
         case 'delay':
             return { trigger: { type: 'after-delay', delayMs: wholeNumber(value, 1, 'Delay') } };
         case 'action':
             if (value === 'navigate-to' && CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot navigate or go back.');
+            if (value === 'conditional') {
+                if (nested) throw new Error('A conditional cannot sit inside a conditional.');
+                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot navigate or go back.');
+                if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
+                const variable = defaultVariableOf(variables);
+                if (!variable) throw new Error('There is no boolean, number or string variable to compare.');
+                return { action: { type: 'conditional', branches: [{ condition: defaultCondition(variable), actions: [navigateTo(firstDestination)] }] } };
+            }
             if (value === 'navigate-to') {
                 if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
-                return { action: { type: 'navigate-to', destinationId: firstDestination, transition: { type: 'instant', durationMs: 0 } } };
+                return { action: navigateTo(firstDestination) };
             }
             if (value === 'back') return { action: { type: 'back' } };
             if (value === 'open-link') return { action: { type: 'open-link', url: 'https://example.com' } };
@@ -165,6 +178,29 @@ export function interactionPatch(interaction, field, value, { firstDestination }
         default:
             throw new Error(`Unknown field "${field}".`);
     }
+}
+
+/**
+ * The action of an interaction after one field of a part inside its conditional changed: a condition field of the branch at `at` (`b<i>`),
+ * or a field of the action at `index` in the list at `at` (a branch, or `e` for the else). `context` is as for interactionPatch.
+ * @param {{ trigger: any, action: any }} interaction
+ * @param {string} field
+ * @param {string} value
+ * @param {string} at
+ * @param {string | number} index
+ * @param {{ firstDestination?: string, variables?: { id: string, type: string }[] }} context
+ * @returns {any} the interaction's whole action
+ */
+export function nestedPatch(interaction, field, value, at, index, context) {
+    const top = interaction.action;
+    if (field.startsWith('cond-')) {
+        const branch = top.branches[branchIndex(at)];
+        const condition = conditionPatch(branch.condition, field, value, id => context.variables?.find(v => v.id === id));
+        return withBranch(top, at, { ...branch, condition });
+    }
+    const list = listOf(top, at), j = Number(index);
+    const patched = interactionPatch({ trigger: interaction.trigger, action: list[j] }, field, value, { ...context, nested: true }).action;
+    return withList(top, at, list.map((a, k) => (k === j ? patched : a)));
 }
 
 /**

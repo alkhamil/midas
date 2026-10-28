@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -8991,31 +8991,69 @@ function behaviorTabHtml(n) {
     const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id, textVar: cssVarOf(template.id, textColorTokenOf(template)) };
     return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
 }
+/** The variables a condition can compare: the document's boolean, number and string variables. */
+function conditionVariables() {
+    return (doc.data.variables?.items ?? []).filter(v => CONDITION_OPERATORS[v.type]);
+}
+/** What an interaction edit starts from: the first top-level frame to link to, and the variables a condition can compare. */
+function interactionContext() {
+    return { firstDestination: destinationOptions(doc.data.pages)[0]?.id, variables: conditionVariables() };
+}
 /** The Prototype tab: the interactions of the selected layer. Managed layers cannot own any. */
 function prototypeTabHtml(n) {
     if (!n) return '<div class="empty-state">Select a layer to edit its interactions.</div>';
     if (isManagedLayer(n)) return '<div class="empty-state">A managed layer cannot own interactions. Edit them on the instance.</div>';
     const destinations = destinationOptions(doc.data.pages);
+    const variables = conditionVariables();
     const options = (list, current) => list.map(([value, label, unavailable]) => `<option value="${esc(value)}"${value === current ? ' selected' : ''}${unavailable ? ' disabled' : ''}>${esc(label)}</option>`).join('');
-    const select = (key, label, id, list, current) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><select class="cmp-input" data-pt="${key}" data-pt-id="${esc(id)}">${options(list, current)}</select></div></div>`;
-    const number = (key, label, id, value) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}" value="${value}"></div></div>`;
+    // Where a control sits: its part of a conditional (`b<i>` a branch, `e` the else), and the index of its action in that list.
+    const at = where => (where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : '');
+    const select = (key, label, id, list, current, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><select class="cmp-input" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)}>${options(list, current)}</select></div></div>`;
+    const number = (key, label, id, value, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}"></div></div>`;
+    const button = (name, label, id, where) => `<button class="wide-button" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${label}</button>`;
     const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
-    const actions = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['overlay', 'Open overlay', true], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['overlay', 'Open overlay', true], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const nestedActionTypes = actionTypes.filter(([value]) => value !== 'conditional');
     const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
     const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
     const easings = [['linear', 'Linear'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in out']];
+    /** The fields of one action: its type, and what its type needs. Used for an interaction's action and for the actions of a branch. */
+    const actionFields = (id, a, where, types) => {
+        const t = a.transition, fields = transitionFieldsOf(t?.type ?? 'instant');
+        return [
+            select('action', 'Action', id, types, a.type, where),
+            a.type === 'navigate-to' ? select('destination', 'Destination', id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId, where) : '',
+            a.type === 'navigate-to' ? select('transition', 'Transition', id, transitions, t?.type ?? 'instant', where) : '',
+            a.type === 'navigate-to' && fields.direction ? select('direction', 'Direction', id, directions, t.direction, where) : '',
+            a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', id, t.durationMs, where) : '',
+            a.type === 'navigate-to' && fields.easing ? select('easing', 'Easing', id, easings, t.easing, where) : '',
+            a.type === 'open-link' ? `<div class="cmp-prop2"><label>URL</label><div class="cmp-ctl"><span class="small-label">${esc(a.url)}</span></div></div>` : '',
+        ].join('');
+    };
+    /** The actions of a branch (`b<i>`) or the else (`e`), each with its remove, and an add. */
+    const actionsHtml = (id, actions, list) => actions.map((a, j) => `<div class="cmp-props">${actionFields(id, a, { at: list, index: j }, nestedActionTypes)}<div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('action-remove', 'Remove action', id, { at: list, index: j })}</div></div></div>`).join('')
+        + `<div class="cmp-props">${button('action-add', 'Add action', id, { at: list })}</div>`;
+    const branchesHtml = (id, c) => c.branches.map((b, bi) => {
+        const list = `b${bi}`, variable = variables.find(v => v.id === b.condition.variableId);
+        const operators = (CONDITION_OPERATORS[variable?.type] ?? []).map(o => [o, o]);
+        const value = variable?.type === 'boolean'
+            ? `<select class="cmp-input" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })}>${options([['true', 'true'], ['false', 'false']], String(b.condition.value))}</select>`
+            : `<input class="cmp-input" type="${variable?.type === 'number' ? 'number' : 'text'}" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })} value="${esc(b.condition.value)}">`;
+        return `<div class="cmp-props">`
+            + `<div class="cmp-prop2"><label>${bi === 0 ? 'If' : 'Else if'}</label><div class="cmp-ctl">${button('branch-up', 'Up', id, { at: list })}${button('branch-down', 'Down', id, { at: list })}${button('branch-remove', 'Remove', id, { at: list })}</div></div>`
+            + `<div class="cmp-prop2"><label>Variable</label><div class="cmp-ctl"><select class="cmp-input" data-pt="cond-variable" data-pt-id="${esc(id)}"${at({ at: list })}>${options(variables.map(v => [v.id, v.name]), b.condition.variableId)}</select></div></div>`
+            + `<div class="cmp-prop2"><label>Operator</label><div class="cmp-ctl"><select class="cmp-input" data-pt="cond-operator" data-pt-id="${esc(id)}"${at({ at: list })}>${options(operators, b.condition.operator)}</select></div></div>`
+            + `<div class="cmp-prop2"><label>Value</label><div class="cmp-ctl">${value}</div></div>`
+            + `</div>${actionsHtml(id, b.actions, list)}`;
+    }).join('');
+    const elseHtml = (id, c) => (c.else === undefined ? '' : `<div class="cmp-props"><div class="cmp-prop2"><label>Else</label><div class="cmp-ctl">${button('else-remove', 'Remove else', id, { at: 'e' })}</div></div></div>${actionsHtml(id, c.else, 'e')}`);
+    const conditionalHtml = (id, c) => `${branchesHtml(id, c)}${elseHtml(id, c)}<div class="cmp-props"><div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('branch-add', 'Add branch', id)}${c.else === undefined ? button('else-add', 'Add else', id) : ''}</div></div></div>`;
     const rows = (n.prototype?.interactions ?? []).map(i => {
-        const a = i.action, t = a.transition, fields = transitionFieldsOf(t?.type ?? 'instant');
         const parts = [
             select('trigger', 'Trigger', i.id, triggers, i.trigger.type),
             i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : '',
-            select('action', 'Action', i.id, actions, a.type),
-            a.type === 'navigate-to' ? select('destination', 'Destination', i.id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId) : '',
-            a.type === 'navigate-to' ? select('transition', 'Transition', i.id, transitions, t?.type ?? 'instant') : '',
-            a.type === 'navigate-to' && fields.direction ? select('direction', 'Direction', i.id, directions, t.direction) : '',
-            a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', i.id, t.durationMs) : '',
-            a.type === 'navigate-to' && fields.easing ? select('easing', 'Easing', i.id, easings, t.easing) : '',
-            a.type === 'open-link' ? `<div class="cmp-prop2"><label>URL</label><div class="cmp-ctl"><span class="small-label">${esc(a.url)}</span></div></div>` : '',
+            actionFields(i.id, i.action, undefined, actionTypes),
+            i.action.type === 'conditional' ? conditionalHtml(i.id, i.action) : '',
             `<div class="cmp-prop2"><label></label><div class="cmp-ctl"><button class="wide-button" data-pt-remove="${esc(i.id)}">Remove</button></div></div>`,
         ];
         return `<div class="cmp-props" data-pt-row="${esc(i.id)}">${parts.join('')}</div>`;
@@ -9067,9 +9105,15 @@ document.addEventListener('change', e => {
     const i = n?.prototype?.interactions.find(x => x.id === el.dataset.ptId);
     if (!i) return;
     try {
-        const firstDestination = destinationOptions(doc.data.pages)[0]?.id;
-        const patch = interactionPatch(i, el.dataset.pt, el.value, { firstDestination });
-        transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, patch); doc.touch(n); });
+        const at = el.dataset.ptAt;
+        if (at === undefined) {
+            const patch = interactionPatch(i, el.dataset.pt, el.value, interactionContext());
+            transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, patch); doc.touch(n); });
+        }
+        else {
+            const action = nestedPatch(i, el.dataset.pt, el.value, at, el.dataset.ptIndex, interactionContext());
+            transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, { action }); doc.touch(n); });
+        }
     } catch (err) {
         toast(err.message);
     }
@@ -9082,6 +9126,24 @@ document.addEventListener('change', e => {
     if (!n) return;
     try {
         transaction('Set scroll behavior', () => { n.prototype = setOverflow(n.prototype, e.target.value); if (!n.prototype) delete n.prototype; doc.touch(n); });
+    }
+    catch (err) {
+        toast(err.message);
+    }
+    renderInspector();
+});
+/** A conditional's branch, else or action button: one history step. A refused edit shows its reason. */
+document.addEventListener('click', e => {
+    const op = e.target.closest?.('[data-pt-op]');
+    if (!op) return;
+    const n = activeNode();
+    const i = n?.prototype?.interactions.find(x => x.id === op.dataset.ptId);
+    if (!i) return;
+    try {
+        const { firstDestination, variables } = interactionContext();
+        if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
+        const action = conditionalOp(i.action, op.dataset.ptOp, { at: op.dataset.ptAt, index: op.dataset.ptIndex, navigate: navigateTo(firstDestination), variable: defaultVariableOf(variables) });
+        transaction('Edit conditional', () => { n.prototype = editInteraction(n.prototype, i.id, { action }); doc.touch(n); });
     }
     catch (err) {
         toast(err.message);
