@@ -101,9 +101,10 @@ Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fix
 | Rect: centred, inside, outside, dashed, per-side strokes | browser-verified (Play) | per-side checked at thumbnail size only |
 | Ellipse: full, 75% arc, donut | browser-verified (Play) | |
 | Line, vector path (closed, curves) | browser-verified (Play) | |
-| Frame: uniform, inside stroke | browser-verified (Play) | |
-| Frame: per-side stroke | browser-verified (Play) | top edge seen; left edge faint |
-| Frame: outside stroke | WRONG | the outer half is clipped by the frame, so it is not visible |
+| Frame: uniform centred and inside strokes | browser-verified (Play) | a centred stroke is an overlay (inner half) plus an outline (outer half) |
+| Frame: per-side stroke | flagged, partly drawn | the inner half is drawn; the outer half of a centred per-side stroke is reported as unsupported, not drawn |
+| Frame: outside stroke | browser-verified (Play) | drawn as the frame outline, which the frame clip does not cut (zoomed, frame 3) |
+| Fills: solid, gradient, multiple, text colour | browser-verified (Play, canvas by thumbnail) | `fills` is the only paint source: every layer, text run and gradient reads its list |
 | Effect: drop shadow (rect, GPU route on canvas) | browser-verified (Play); canvas by thumbnail | |
 | Effect: inner shadow | browser-verified (Play) | faint |
 | Effect: layer blur | browser-verified (Play) | |
@@ -112,7 +113,7 @@ Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fix
 | Opacity 40% | browser-verified (Play) | |
 | Group with clip content | browser-verified (Play) | |
 | Boolean union, subtract | not drawn, flagged | canvas draws the result; DOM reports each as unsupported and draws neither operand (thumbnail checked) |
-| Mask | WRONG, flagged | the mask is not drawn and is reported, but the layer under it draws unclipped |
+| Mask | flagged, not implemented | the mask is not drawn and is reported as unsupported; the layer under it draws unclipped. Not implemented yet |
 | Image layer, image fill | not drawn, flagged | reported as unsupported |
 | Effect: glass | not drawn, flagged | reported as unsupported |
 | Blend mode | not applicable | the canvas has no per-layer blend mode field, so there is nothing to draw or report |
