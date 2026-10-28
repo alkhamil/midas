@@ -20,6 +20,9 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
 - Preview renders the real React template component with props and CSS variable tokens from binding. Generated code uses the same components.
 - Behavior defaults live in the template (e.g. Input `validateOn` default `blur`). Loading/disabled block onClick.
 - Prototype (frame-to-frame interactions, overlays, scroll/sticky) is a separate tab, out of scope for now. Behavior events with `exposeAsTrigger: true` become Prototype triggers later.
+- Auto-match: a variable slot is bound to the one collection whose name matches it (case-insensitive, surrounding spaces ignored). Two collections with the same name bind nothing: the choice would be a guess. No fuzzy match. Matching runs on template bind, and again whenever the collections change (created, renamed or removed) while a slot is unbound. A slot that has a binding, manual or automatic, is never changed. Rationale: the Variables window creates a collection as "Collection 1" and it is renamed afterwards, so matching only at bind time left slots empty.
+- Lazy open (more than three pages), decision: strict. Every page is checked when it loads (phase 1 and phase 2), before it becomes editable. A cross-page rule runs when either of its pages arrives: an instance whose master is not loaded yet waits for that master. A page that fails is not made editable, stays empty, is never written back, and its error is shown with the page and node. Save waits until every page has loaded or failed, so no page is written unchecked. Rationale: the file on the server is never overwritten with a partial document, and nothing is shown as valid before it has been checked.
+- Pasting a managed layer without its instance is refused, naming the layer (pasteSelection). A whole instance, with its managed layers, pastes and syncs in the Paste layers transaction.
 - Template rollout: Button only until the full pipeline works end to end. Next: Input, Checkbox, Select, Form, Modal, Tabs.
 
 ## Button schema
@@ -69,7 +72,7 @@ Load rules (AGENTS.md), implemented:
 - Phase 2, whole document: each instance's props checked against its master's template and binding (`behavior-engine/document-check.js`). Prop names, value types, hidden props holding a value, and modes against the bound collection.
 - Instancing: a copy gets the master's props store, not the binding (`instanceBehaviorOf`); instance sync omits `behavior`.
 - Phase 2 runs on import or parse (`DocumentModel.parse`) and on a full project open (`loadProject` with no lazy queue).
-- Open gap: a lazy project open (more than three pages) runs phase 1 only, and this stays true even when its page queue drains later. Partial loads (lazy open, single page) need the instance-to-master check once the document is complete. Not built yet.
+- Lazy open: phase 2 runs per page as each page arrives (assertPagesBehavior), so a cross-page instance is checked when either page arrives. Closed. The root cause was that a lazy page was parsed as a one-page document, so an instance whose master was on another page failed, and the failure was only logged. A failing page now shows its error.
 
 - [x] Stage 1: Schema + registry
 - [x] Stage 2: Binding model
@@ -95,17 +98,15 @@ Load rules (AGENTS.md), implemented:
 
 Everything the automated tests do not cover. Run once after stage 9, highest risk first.
 
-1. Paste of a managed layer alone: copy only the icon placeholder and paste it. The result must be refused or leave the file valid.
-2. Keyboard reorder and arrow-key move of a managed layer: refused with the reason, and the layer stays in its slot.
-3. Whole-instance copy and paste via the clipboard: the instance keeps its props, and its managed layers come back with markers, in order.
-4. Editor-path coverage that Node tests cannot import: paste, cross-page paste, detach, sync triggers (hasIcon and iconPlacement edits, bind and unbind, instantiate), and a save and reopen round trip.
-5. Lazy open (more than three pages): phase 2 runs on phase 1 only. Confirm an invalid instance is caught once the queue drains. Known gap, not built.
-6. Stage 7 (canvas not wired): the Preview section shows the resolved tokens of the chosen state. Check against a file that has Variant and Size collections: hover, active and disabled rows change the bg value; no document change or undo entry is made.
-7. Stage 8: the two downloaded files render in a plain React project, and the `data-variant` and `data-size` selectors match the mode ids. Check that the browser accepts both downloads (it may ask once to allow multiple downloads).
-8. Stage 9: each error shows in the Diagnostics section, and the unused-collection warning appears for an unbound collection. Check a large file (the 6.7 MB Ant Design sample): the Behavior tab recomputes diagnostics on every change, so check it stays responsive.
-9. Rollback message: a change that would make the file fail to open is undone, with "Not applied" and the reason.
-10. Behavior panel UI cleanup (stage 5 leftovers).
-11. Canvas selection fix confirmation (commit f1fd440).
-12. Collection auto-match: confirm it does not run in some path, and check which one.
-13. Populated Preview: token rows were not visually checked (the test file has no Variant or Size collections). Check the rows and their values with collections bound.
-14. Lazy open: Diagnostics show the "appear when all pages are loaded" note until the queue drains, then the findings.
+1. Keyboard reorder and arrow-key move of a managed layer: refused with the reason, and the layer stays in its slot.
+2. Whole-instance copy and paste via the clipboard: the instance keeps its props, and its managed layers come back with markers, in order.
+3. Editor-path coverage that Node tests cannot import: paste, cross-page paste, detach, sync triggers (hasIcon and iconPlacement edits, bind and unbind, instantiate), and a save and reopen round trip.
+4. Stage 7 (canvas not wired): the Preview section shows the resolved tokens of the chosen state. Check against a file that has Variant and Size collections: hover, active and disabled rows change the bg value; no document change or undo entry is made.
+5. Stage 8: the two downloaded files render in a plain React project, and the `data-variant` and `data-size` selectors match the mode ids. Check that the browser accepts both downloads (it may ask once to allow multiple downloads).
+6. Stage 9: each error shows in the Diagnostics section, and the unused-collection warning appears for an unbound collection. Check a large file (the 6.7 MB Ant Design sample): the Behavior tab recomputes diagnostics on every change, so check it stays responsive.
+7. Rollback message: a change that would make the file fail to open is undone, with "Not applied" and the reason.
+8. Behavior panel UI cleanup (stage 5 leftovers).
+9. Canvas selection fix confirmation (commit f1fd440).
+10. Populated Preview: token rows were not visually checked (the test file has no Variant or Size collections). Check the rows and their values with collections bound.
+11. Lazy open: Diagnostics show the "appear when all pages are loaded" note until the queue drains, then the findings.
+12. Editor wiring of the auto-match triggers, the lazy page error toast and the paste refusal toast is not browser-checked. The rules themselves are covered by unit tests.
