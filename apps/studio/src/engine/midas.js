@@ -63,7 +63,7 @@ function parseColor(c, opacity = 1) {
         hex = hex.split('').map(x => x + x).join('');
     return [parseInt(hex.slice(0, 2), 16) / 255 || 0, parseInt(hex.slice(2, 4), 16) / 255 || 0, parseInt(hex.slice(4, 6), 16) / 255 || 0, (hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1) * opacity];
 }
-function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, shadow: false, shadowColor: '#000000', shadowOpacity: .16, shadowBlur: 20, shadowX: 0, shadowY: 6, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44 } : {}), ...(type === 'frame' ? { fill: '#ffffff', w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fill: 'none' } : {}), ...props }; }
+function node(type, props = {}) { return { id: uid(), type, name: type[0].toUpperCase() + type.slice(1), parentId: null, x: 0, y: 0, w: 160, h: 100, rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0, ...(type === 'text' ? { text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fill: '#20202a', w: 240, h: 44 } : {}), ...(type === 'frame' ? { fill: '#ffffff', w: 400, h: 300, clip: true } : {}), ...(type === 'group' ? { fill: 'none' } : {}), ...props }; }
 // ===== autolayout engine =====
 function isAutoLayout(n) { return !!n && n.type === 'frame' && !!n.layout && n.layout !== 'none'; }
 function lyPads(n) { const p = n.padding ?? 16; return { t: n.padT ?? p, r: n.padR ?? p, b: n.padB ?? p, l: n.padL ?? p }; }
@@ -753,7 +753,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== variables =====
-const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', shadowColor: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
+const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 function vpropType(name) {
@@ -836,7 +836,6 @@ function writeBound(n, prop, val, type) {
         if (!Array.isArray(val) || n.type === 'group' || (Array.isArray(n.effects) && JSON.stringify(n.effects) === JSON.stringify(val)))
             return false;
         n.effects = structuredClone(val);
-        syncLegacyShadow(n);
         return true;
     }
     if (prop === 'fontWeight') {
@@ -2729,8 +2728,6 @@ function scopeKeyFor(prop, node) {
         return node?.type === 'text' ? 'fillText' : node?.type === 'frame' ? 'fillFrame' : 'fillShape';
     if (prop === 'stroke')
         return 'stroke';
-    if (prop === 'shadowColor')
-        return 'effects';
     if (['w', 'h', 'minW', 'maxW', 'minH', 'maxH'].includes(prop))
         return 'size';
     if (['gap', 'gapCross'].includes(prop))
@@ -4793,9 +4790,12 @@ function fxDefaults(type) {
 function getEffects(n) {
     if (Array.isArray(n.effects))
         return n.effects;
-    if (n.shadow)
-        return [{ type: 'drop', visible: true, color: n.shadowColor || '#000000', opacity: n.shadowOpacity ?? .16, x: n.shadowX || 0, y: n.shadowY || 0, blur: n.shadowBlur ?? 20, spread: 0 }];
     return [];
+}
+// The one drop shadow a layer draws on the GPU shape path: its only visible effect, a drop with no spread. Null for anything else.
+function simpleDropOf(n) {
+    const e = getEffects(n).filter(x => x.visible !== false);
+    return e.length === 1 && e[0].type === 'drop' && !e[0].spread ? e[0] : null;
 }
 function materializeEffects(n) {
     if (!Array.isArray(n.effects))
@@ -4810,19 +4810,6 @@ function hasComplexFx(n) {
     if (n.type === 'text')
         return e.length > 0; // text shadows follow the glyphs, which only the 2D painter can do
     return e.length > 0 && !(e.length === 1 && e[0].type === 'drop' && !e[0].spread);
-}
-function syncLegacyShadow(n) {
-    const e = n.effects.filter(x => x.visible !== false);
-    if (e.length === 1 && e[0].type === 'drop' && !e[0].spread) {
-        n.shadow = true;
-        n.shadowColor = e[0].color;
-        n.shadowOpacity = e[0].opacity;
-        n.shadowX = e[0].x;
-        n.shadowY = e[0].y;
-        n.shadowBlur = e[0].blur;
-    }
-    else
-        n.shadow = false;
 }
 function newCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 function rgbaOf(hex, opacity) { const c = color(hex, opacity); return `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${c[3]})`; }
@@ -4964,7 +4951,6 @@ function addEffect(type) {
                 continue;
             const list = materializeEffects(n);
             list.push(fxDefaults(typeof type === 'string' ? type : 'drop'));
-            syncLegacyShadow(n);
             doc.touch(n);
         }
     });
@@ -5018,7 +5004,6 @@ function editEffect(i, key, v, live) {
             default:
                 e[key] = v;
         }
-        syncLegacyShadow(n);
         doc.touch(n);
     }
     changed({ ui: !live, commit: !live });
@@ -5031,7 +5016,6 @@ document.addEventListener('click', e => {
             const x = materializeEffects(n)[i];
             if (x) {
                 x.visible = x.visible === false;
-                syncLegacyShadow(n);
                 doc.touch(n);
             }
         } });
@@ -5043,7 +5027,6 @@ document.addEventListener('click', e => {
             const list = materializeEffects(n);
             if (list[i]) {
                 list.splice(i, 1);
-                syncLegacyShadow(n);
                 doc.touch(n);
             }
         } });
@@ -7586,7 +7569,7 @@ class Renderer {
         const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
         // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
         const preview = this.canvasPreview?.() ?? null;
-        const push = (s, n, clipId, shadow = false) => {
+        const push = (s, n, clipId, shadow = null) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null;
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
             d.set(color(sub?.fill ?? n.fill, n.fillOpacity), base + 8);
@@ -7602,12 +7585,12 @@ class Renderer {
                 d[base + 28] = -1000;
             }
             if (shadow) {
-                d[base + 4] += n.shadowX || 0;
-                d[base + 5] += n.shadowY || 0;
-                d.set(color(n.shadowColor || '#000000', n.shadowOpacity ?? .16), base + 8);
+                d[base + 4] += shadow.x || 0;
+                d[base + 5] += shadow.y || 0;
+                d.set(color(shadow.color || '#000000', shadow.opacity ?? .16), base + 8);
                 d[base + 17] = 0;
                 d[base + 28] = -1000;
-                d[base + 29] = (n.shadowBlur || 20) * .5;
+                d[base + 29] = (shadow.blur || 20) * .5;
                 return;
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
@@ -7633,8 +7616,9 @@ class Renderer {
                 this.clipData.set([m[0], m[1], m[2], m[3], m[4] + m[0] * originX + m[2] * originY, m[5] + m[1] * originX + m[3] * originY, clip.w, clip.h, clip.radius || 0, clipId, 0, 0, cr[0], cr[1], cr[2], cr[3]], i);
                 clipId = clipN - 1;
             }
-            if (s.node.shadow && !['text', 'path', 'line'].includes(s.node.type) && s.mode !== 'stroke')
-                push(s, s.node, clipId, true);
+            const simpleDrop = simpleDropOf(s.node);
+            if (simpleDrop && !['text', 'path', 'line'].includes(s.node.type) && s.mode !== 'stroke')
+                push(s, s.node, clipId, simpleDrop);
             push(s, s.node, clipId);
         }
         this.device.queue.writeBuffer(this.uniform, 0, new Float32Array([this.width, this.height, camera.zoom, this.dpr, 0, 0, 0, 0]));
@@ -9555,7 +9539,7 @@ function setProperty(prop, value, { live = false } = {}) {
         history.begin(`Change ${prop}`);
     for (const n of selected()) {
         let v = value;
-        if (['opacity', 'fillOpacity', 'shadowOpacity', 'strokeOpacity'].includes(prop))
+        if (['opacity', 'fillOpacity', 'strokeOpacity'].includes(prop))
             v = clamp(+v / 100, 0, 1);
         if (prop === 'lineHeight')
             v = clamp(+v / 100, .05, 20);
@@ -9567,7 +9551,7 @@ function setProperty(prop, value, { live = false } = {}) {
             v = clamp(+v, 0, 100);
         if (prop === 'arcRatio')
             v = clamp(+v, 0, 99);
-        if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'shadowBlur', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
+        if (['radius', 'rTL', 'rTR', 'rBR', 'rBL', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeDash', 'strokeGap', 'strokeWidth', 'padding', 'padH', 'padV', 'padT', 'padR', 'padB', 'padL'].includes(prop))
             v = Math.max(0, +v);
         // Auto layout gaps may be negative (overlapping items), like Figma.
         if (['gap', 'gapCross'].includes(prop))
@@ -12616,8 +12600,9 @@ function inspectCSS() {
     }
     if (n.opacity !== 1)
         css += `\nopacity: ${n.opacity};`;
-    if (n.shadow)
-        css += `\nbox-shadow: ${n.shadowX}px ${n.shadowY}px ${n.shadowBlur}px ${n.shadowColor}${Math.round(n.shadowOpacity * 255).toString(16).padStart(2, '0')};`;
+    const drop = simpleDropOf(n);
+    if (drop)
+        css += `\nbox-shadow: ${drop.x || 0}px ${drop.y || 0}px ${drop.blur || 0}px ${drop.color}${Math.round((drop.opacity ?? .25) * 255).toString(16).padStart(2, '0')};`;
     if (n.layout && n.layout !== 'none')
         css += n.layout === 'grid' ? `\ndisplay: grid;\ngrid-template-columns: repeat(${n.gridCols || 2}, auto);\ngap: ${n.gapCross ?? n.gap ?? 16}px ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;` : `\ndisplay: flex;\nflex-direction: ${n.layout === 'horizontal' ? 'row' : 'column'};${n.layoutWrap ? '\nflex-wrap: wrap;' : ''}\ngap: ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;`;
     modal(`${modalHeader('Inspect CSS', esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>Geometry and visual styles. Vector paths and text shaping remain renderer-specific.</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">Copy CSS</button></div>`);
@@ -16696,7 +16681,6 @@ async function figToMidas(file, onProgress, abortSignal) {
         }
         if (list.length) {
             n.effects = list;
-            syncLegacyShadow(n);
         }
     };
     const createSpan = (text, styleId, lookup, base) => {
@@ -19146,7 +19130,6 @@ const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: (
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
                 m.effects = m.effects.filter(e => e.type !== 'drop');
-                syncLegacyShadow(m);
                 doc.touch(m);
             }
         } });

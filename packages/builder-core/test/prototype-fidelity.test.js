@@ -77,10 +77,6 @@ test('a vector path is an SVG path of its points', () => {
     assert.match(d.html, /<path d="M0 0L20 0L20 20L0 0Z"/);
 });
 
-test('a legacy shadow flag draws no shadow: only the effects list is read', () => {
-    assert.equal(drawn({ shadow: true, shadowX: 0, shadowY: 4 }).style.boxShadow, undefined);
-});
-
 test('a drop shadow is a box shadow with its offset, blur, spread and colour; its opacity is the colour alpha', () => {
     const effects = [{ type: 'drop', visible: true, x: 2, y: 4, blur: 10, spread: 1, color: '#000000', opacity: 0.5 }];
     assert.equal(drawn({ effects }).style.boxShadow, '2px 4px 10px 1px #00000080');

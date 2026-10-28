@@ -90,7 +90,7 @@ export function buildIconPage(files, { uid, existing = null, fallbackStyle = 'de
     page.nodes = (existing?.nodes || []).filter(n => keep.has(n.id));
     let slot = page.nodes.filter(n => !n.parentId).length;
     const assets = {};
-    const base = { rotation: 0, opacity: 1, visible: true, locked: false, shadow: false, stroke: '#000000', strokeWidth: 0, radius: 0, version: 0 };
+    const base = { rotation: 0, opacity: 1, visible: true, locked: false, stroke: '#000000', strokeWidth: 0, radius: 0, version: 0 };
     for (const g of [...groups.values()].sort((a, b) => (a.category + a.name).localeCompare(b.category + b.name))) {
         const styles = [...g.styles.keys()].sort();
         const setW = styles.length * ICON_SIZE + (styles.length + 1) * 8, setH = ICON_SIZE + 16;

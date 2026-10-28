@@ -12,8 +12,7 @@ export const CLIPBOARD_PATH = resolve(here, 'fixtures/managed-layer-clipboard.js
 
 const COMMON = {
     rotation: 0, fill: '#0058CA', fill2: '#cfe1fa', fillType: 'solid', gradientAngle: 90, fillOpacity: 1, stroke: '#000000',
-    strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, shadow: false, shadowColor: '#000000',
-    shadowOpacity: 0.16, shadowBlur: 20, shadowX: 0, shadowY: 6, version: 0,
+    strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0,
 };
 const TEXT = {
     text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35,

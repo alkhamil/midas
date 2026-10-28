@@ -25,12 +25,6 @@ export const NODE_BASE = {
     visible: true,
     locked: false,
     clip: false,
-    shadow: false,
-    shadowColor: '#000000',
-    shadowOpacity: 0.16,
-    shadowBlur: 20,
-    shadowX: 0,
-    shadowY: 6,
     version: 0,
 };
 

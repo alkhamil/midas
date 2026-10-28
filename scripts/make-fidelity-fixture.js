@@ -22,7 +22,7 @@ const frame = (id, name, index, extra = {}) => ({
 const layer = (id, parentId, type, extra = {}) => ({
     id, name: id, type, parentId, x: 20, y: 20, w: 120, h: 80,
     fill: '#0058CA', fillOpacity: 1, stroke: '#000000', strokeWidth: 0, strokeOpacity: 1,
-    radius: 0, opacity: 1, rotation: 0, visible: true, locked: false, clip: false, shadow: false,
+    radius: 0, opacity: 1, rotation: 0, visible: true, locked: false, clip: false,
     version: 0, ...extra,
 });
 

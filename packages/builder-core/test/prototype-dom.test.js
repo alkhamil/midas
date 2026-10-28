@@ -188,7 +188,7 @@ test('a text layer takes its fill as its text colour and never as a background',
 });
 
 test('a text layer gets no radius, border or shadow box, even when the node carries them', () => {
-    const text = child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', radius: 8, stroke: '#000000', strokeWidth: 2, shadow: true, shadowX: 0, shadowY: 4 });
+    const text = child('t', 'A', { type: 'text', text: 'Hi', fill: '#112233', radius: 8, stroke: '#000000', strokeWidth: 2 });
     const style = toDomTree(doc([frame('A'), text]), 'A').root.children[0].style;
     assert.deepEqual([style.borderRadius, style.border, style.boxShadow], [undefined, undefined, undefined]);
 });
