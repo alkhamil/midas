@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp , RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -7119,43 +7119,6 @@ function paintText(ctx, n) {
     ctx.globalAlpha = baseAlpha;
     return l;
 }
-// ===== corners + stroke helpers =====
-const RECT_LIKE = ['rect', 'frame', 'image'];
-function hasRadii(n) { return RECT_LIKE.includes(n.type) && Array.isArray(n.radii) && n.radii.length === 4; }
-// [top-left, top-right, bottom-right, bottom-left], clamped to half of the shorter side.
-function cornerRadii(n) {
-    const m = Math.max(0, Math.min(n.w, n.h) / 2), r = hasRadii(n) ? n.radii : [n.radius || 0, n.radius || 0, n.radius || 0, n.radius || 0];
-    return r.map(v => Math.max(0, Math.min(+v || 0, m)));
-}
-function roundRectD(w, h, r, f = v => +(+v).toFixed(3)) {
-    const [a, b, c, d] = r;
-    return `M${f(a)} 0H${f(w - b)}A${f(b)} ${f(b)} 0 0 1 ${f(w)} ${f(b)}V${f(h - c)}A${f(c)} ${f(c)} 0 0 1 ${f(w - c)} ${f(h)}H${f(d)}A${f(d)} ${f(d)} 0 0 1 0 ${f(h - d)}V${f(a)}A${f(a)} ${f(a)} 0 0 1 ${f(a)} 0Z`;
-}
-function strokeIsOn(n) { return !['group'].includes(n.type) && n.strokeWidth > 0 && n.strokeVisible !== false && !!n.stroke && n.stroke !== 'none'; }
-function strokeClosed(n) { return !(n.type === 'line' || (n.type === 'path' && !n.closed)); }
-function strokeSideWidths(n) {
-    const w = n.strokeWidth || 0, m = n.strokeSides || 'all';
-    if (m === 'custom')
-        return { t: n.strokeT ?? w, r: n.strokeR ?? w, b: n.strokeB ?? w, l: n.strokeL ?? w };
-    if (m === 'all')
-        return { t: w, r: w, b: w, l: w };
-    return { t: m === 'top' ? w : 0, r: m === 'right' ? w : 0, b: m === 'bottom' ? w : 0, l: m === 'left' ? w : 0 };
-}
-function strokeSidesUniform(n) {
-    if (!RECT_LIKE.includes(n.type))
-        return true;
-    const s = strokeSideWidths(n);
-    return s.t === s.r && s.r === s.b && s.b === s.l;
-}
-function strokeDashArray(n) {
-    const w = n.strokeWidth || 1;
-    if (n.strokeStyle === 'dash')
-        return [n.strokeDash ?? 10, n.strokeGap ?? 10];
-    if (n.strokeStyle === 'dot')
-        return [.01, Math.max(2, w * 2)];
-    return [];
-}
-function strokeMiterLimit(n) { return Math.max(1, 1 / Math.max(Math.sin((n.strokeMiter ?? 28.96) * Math.PI / 360), .001)); }
 // Strokes the shader cannot draw (inside/outside, dashes, per-side widths, miter joins) go through the raster path.
 function strokeNeedsRaster(n) {
     if (!strokeIsOn(n) || ['path', 'line', 'image', 'text'].includes(n.type))
@@ -7220,164 +7183,21 @@ function paintStroke(ctx, n, path) {
     }
     ctx.restore();
 }
-// SVG: element for the node geometry with arbitrary attributes.
-function svgShapeEl(n, f, a) {
-    if (arcActive(n))
-        return `<path d="${arcD(n, f)}" fill-rule="evenodd" ${a}/>`;
-    if (n.type === 'ellipse')
-        return `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${a}/>`;
-    if (n.type === 'path' || n.type === 'line')
-        return `<path d="${dFor(n)}" ${a}/>`;
-    if (hasRadii(n))
-        return `<path d="${roundRectD(n.w, n.h, cornerRadii(n), f)}" ${a}/>`;
-    return `<rect width="${f(n.w)}" height="${f(n.h)}" rx="${f(Math.min(n.radius || 0, n.w / 2, n.h / 2))}" ${a}/>`;
-}
-function strokeSvgAdvanced(n) {
-    return strokeIsOn(n) && ((n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n)) || !strokeSidesUniform(n));
-}
-function svgStrokeAttrs(n, f, e) {
-    if (!strokeIsOn(n) || strokeSvgAdvanced(n))
-        return 'stroke="none" stroke-width="0"';
-    const w = RECT_LIKE.includes(n.type) ? strokeSideWidths(n).t : n.strokeWidth, dash = strokeDashArray(n);
-    return `stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
-}
-function svgStrokeExtra(n, f, e, prefix) {
-    if (!strokeSvgAdvanced(n))
-        return { defs: '', el: '' };
-    const align = strokeClosed(n) ? (n.strokeAlign || 'center') : 'center', sides = RECT_LIKE.includes(n.type) ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n);
-    let defs = '', wrap = '';
-    if (align === 'inside') {
-        defs = `<clipPath id="${prefix}k">${svgShapeEl(n, f, '')}</clipPath>`;
-        wrap = ` clip-path="url(#${prefix}k)"`;
-    }
-    else if (align === 'outside') {
-        defs = `<mask id="${prefix}k" maskUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="#fff"/>${svgShapeEl(n, f, 'fill="#000"')}</mask>`;
-        wrap = ` mask="url(#${prefix}k)"`;
-    }
-    const op = f(n.strokeOpacity ?? 1);
-    let el;
-    if (uniform) {
-        const w = sides ? sides.t : n.strokeWidth, dash = strokeDashArray(n);
-        el = `<g${wrap}>${svgShapeEl(n, f, `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${op}" stroke-width="${f(align === 'center' ? w : w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`)}</g>`;
-    }
-    else {
-        const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v, fl = `fill="${e(n.stroke)}" fill-opacity="${op}"`;
-        const y0 = t > 0 ? -off(t) : 0, y1 = b > 0 ? H + off(b) : H, rect = (x, y, w, h) => `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" ${fl}/>`;
-        el = `<g${wrap}>${t > 0 ? rect(-off(l), -off(t), W + off(l) + off(r), t) : ''}${b > 0 ? rect(-off(l), H - b + off(b), W + off(l) + off(r), b) : ''}${l > 0 ? rect(-off(l), y0, l, y1 - y0) : ''}${r > 0 ? rect(W - r + off(r), y0, r, y1 - y0) : ''}</g>`;
-    }
-    return { defs, el };
-}
 
-// ----- ellipse arc mode: Start (degrees), Sweep (% of the full turn), Ratio (% inner radius) -----
-function arcActive(n) { return n.type === 'ellipse' && ((n.arcSweep ?? 100) < 100 || (n.arcRatio || 0) > 0); }
-function arcParams(n) {
-    const a0 = (n.arcStart || 0) * Math.PI / 180, sweep = clamp((n.arcSweep ?? 100), 0, 100) / 100 * Math.PI * 2, ratio = clamp((n.arcRatio || 0) / 100, 0, .99);
-    return { a0, sweep, ratio, full: sweep >= Math.PI * 2 - 1e-6 };
-}
-// Local-space polygon of the arc shape (used for boolean operations).
-function arcPoly(n, steps = 96) {
-    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2, pt = (a, k) => [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k];
-    const out = [];
-    const nOuter = Math.max(2, Math.ceil(steps * sweep / (Math.PI * 2)));
-    for (let i = 0; i <= nOuter; i++)
-        out.push(pt(a0 + sweep * i / nOuter, 1));
-    if (full && ratio > 0)
-        return [out.slice(0, -1), Array.from({ length: steps }, (_, i) => pt(a0 - Math.PI * 2 * i / steps, ratio))];
-    if (ratio > 0)
-        for (let i = nOuter; i >= 0; i--)
-            out.push(pt(a0 + sweep * i / nOuter, ratio));
-    else if (!full)
-        out.push([cx, cy]);
-    return [out];
-}
-function arcPath(p, n) {
-    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = Math.max(.001, n.w / 2), ry = Math.max(.001, n.h / 2);
-    if (sweep <= 0)
-        return p;
-    if (full) {
-        p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
-        p.ellipse(cx, cy, rx, ry, 0, a0, a0 + Math.PI * 2);
-        p.closePath();
-        if (ratio > 0) {
-            p.moveTo(cx + Math.cos(a0) * rx * ratio, cy + Math.sin(a0) * ry * ratio);
-            p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a0, a0 - Math.PI * 2, true);
-            p.closePath();
-        }
-        return p;
-    }
-    const a1 = a0 + sweep;
-    p.moveTo(cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry);
-    p.ellipse(cx, cy, rx, ry, 0, a0, a1);
-    if (ratio > 0) {
-        p.lineTo(cx + Math.cos(a1) * rx * ratio, cy + Math.sin(a1) * ry * ratio);
-        p.ellipse(cx, cy, rx * ratio, ry * ratio, 0, a1, a0, true);
-    }
-    else
-        p.lineTo(cx, cy);
-    p.closePath();
-    return p;
-}
-function arcD(n, f = v => Math.round(v * 100) / 100) {
-    const { a0, sweep, ratio, full } = arcParams(n), cx = n.w / 2, cy = n.h / 2, rx = n.w / 2, ry = n.h / 2;
-    const P = (a, k) => `${f(cx + Math.cos(a) * rx * k)} ${f(cy + Math.sin(a) * ry * k)}`;
-    if (sweep <= 0)
-        return '';
-    if (full) {
-        let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0 + Math.PI, 1)}A${f(rx)} ${f(ry)} 0 1 1 ${P(a0, 1)}Z`;
-        if (ratio > 0)
-            d += `M${P(a0, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0 + Math.PI, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 1 0 ${P(a0, ratio)}Z`;
-        return d;
-    }
-    const large = sweep > Math.PI ? 1 : 0, a1 = a0 + sweep;
-    let d = `M${P(a0, 1)}A${f(rx)} ${f(ry)} 0 ${large} 1 ${P(a1, 1)}`;
-    if (ratio > 0)
-        d += `L${P(a1, ratio)}A${f(rx * ratio)} ${f(ry * ratio)} 0 ${large} 0 ${P(a0, ratio)}Z`;
-    else
-        d += `L${f(cx)} ${f(cy)}Z`;
-    return d;
-}
-function pathFor(n) {
+/** The canvas Path2D of a layer outline, built from the shared geometry commands. */
+function toPath2D(commands) {
     const p = new Path2D();
-    if (n.type === 'ellipse' && arcActive(n))
-        return arcPath(p, n);
-    if (n.type === 'ellipse')
-        p.ellipse(n.w / 2, n.h / 2, Math.max(.001, n.w / 2), Math.max(.001, n.h / 2), 0, 0, Math.PI * 2);
-    else if (n.type === 'line') {
-        p.moveTo(0, 0);
-        p.lineTo(n.w, n.h);
+    for (const c of commands) {
+        if (c.op === 'M') p.moveTo(c.x, c.y);
+        else if (c.op === 'L') p.lineTo(c.x, c.y);
+        else if (c.op === 'C') p.bezierCurveTo(c.x1, c.y1, c.x2, c.y2, c.x, c.y);
+        else if (c.op === 'Z') p.closePath();
+        else if (c.op === 'E') p.ellipse(c.cx, c.cy, c.rx, c.ry, 0, c.start, c.end, c.ccw);
+        else if (c.op === 'R') p.roundRect(0, 0, c.w, c.h, c.radii);
     }
-    else if (n.type === 'path') {
-        const pts = n.points || [];
-        if (!pts.length)
-            return p;
-        const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1);
-        // One path can hold several sub-paths (an icon's outer shape, its holes, separate strokes):
-        // the main points plus `contours`, each with its own curves and open / closed state.
-        const trace = (list, closed) => {
-            if (!list?.length)
-                return;
-            p.moveTo(list[0].x * sx, list[0].y * sy);
-            const seg = (a, b) => {
-                if (a.out || b.in)
-                    p.bezierCurveTo((a.out?.x ?? a.x) * sx, (a.out?.y ?? a.y) * sy, (b.in?.x ?? b.x) * sx, (b.in?.y ?? b.y) * sy, b.x * sx, b.y * sy);
-                else
-                    p.lineTo(b.x * sx, b.y * sy);
-            };
-            for (let i = 1; i < list.length; i++)
-                seg(list[i - 1], list[i]);
-            if (closed) {
-                seg(list.at(-1), list[0]);
-                p.closePath();
-            }
-        };
-        trace(pts, n.closed);
-        for (const c of n.contours || [])
-            trace(c.points, c.closed !== false);
-    }
-    else
-        p.roundRect(0, 0, Math.max(0, n.w), Math.max(0, n.h), hasRadii(n) ? cornerRadii(n) : Math.max(0, Math.min(n.radius || 0, n.w / 2, n.h / 2)));
     return p;
 }
+function pathFor(n) { return toPath2D(pathCommands(n)); }
 function fillStyle(ctx, n) {
     if (!n.fill || n.fill === 'none')
         return 'transparent';
@@ -8085,30 +7905,6 @@ function hydrateIcons(root = document) { root.querySelectorAll('[data-icon]').fo
 
 const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const f = n => Math.round(n * 10000) / 10000;
-function dFor(n) {
-    if (n.type === 'line')
-        return `M0 0L${f(n.w)} ${f(n.h)}`;
-    const pts = n.points || [];
-    if (!pts.length)
-        return '';
-    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1);
-    const xy = p => `${f(p.x * sx)} ${f(p.y * sy)}`;
-    let d = 'M' + xy(pts[0]);
-    for (let i = 1; i < pts.length; i++) {
-        const a = pts[i - 1], b = pts[i];
-        d += a.out || b.in ? `C${xy(a.out || a)} ${xy(b.in || b)} ${xy(b)}` : `L${xy(b)}`;
-    }
-    if (n.closed) {
-        const a = pts.at(-1), b = pts[0];
-        if (a.out || b.in)
-            d += `C${xy(a.out || a)} ${xy(b.in || b)} ${xy(b)}`;
-        d += 'Z';
-    }
-    for (const c of n.contours || [])
-        if (c.points?.length)
-            d += 'M' + c.points.map(q => `${f(q.x * sx)} ${f(q.y * sy)}`).join('L') + 'Z';
-    return d;
-}
 function svgFxFilter(id, list, f, e) {
     let body = '';
     const under = [], over = [];
@@ -8181,7 +7977,7 @@ function exportSVG(doc, ids) {
         else if (n.type === 'ellipse' && !arcActive(n))
             item = `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${attrs}/>`;
         else if (n.type === 'path' || n.type === 'line')
-            item = `<path d="${dFor(n)}" ${attrs}/>`;
+            item = `<path d="${svgPathD(pathCommands(n), f)}" ${attrs}/>`;
         else
             item = svgShapeEl(n, f, attrs);
         if (n.type !== 'image' && n.type !== 'text' && !needsRasterFill(n) && sx.el)

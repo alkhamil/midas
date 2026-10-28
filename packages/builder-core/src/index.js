@@ -28,3 +28,4 @@ export * from './prototype/dom-tree.js';
 export * from './prototype/play.js';
 export * from './prototype/events.js';
 export * from './prototype/viewport.js';
+export * from './geometry/shapes.js';
