@@ -29,8 +29,9 @@ test('a variable prop with no matching collection shows the miss and offers the 
 
 test('the master shows the contract read-only, and no icon control', () => {
     const html = masterHtml(master([variant]), [variant]);
-    assert.match(html, /label · string · default Button/);
-    assert.match(html, /Events: onClick \(trigger\), onHover \(trigger\), onFocus, onBlur/);
+    assert.match(html, /<span title="label">Label<\/span>/);
+    assert.match(html, /string · default Button/);
+    assert.match(html, /onClick \(trigger\), onHover \(trigger\), onFocus, onBlur/);
     assert.doesNotMatch(html, /data-bp-prop="icon"|data-bp-prop="hasIcon"|data-bp-prop="iconPlacement"/);
 });
 
