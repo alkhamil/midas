@@ -156,3 +156,24 @@ test('a mask is reported and not drawn', () => {
     assert.deepEqual(unsupported, [{ nodeId: 'L', type: 'mask' }]);
     assert.deepEqual(root.children, []);
 });
+
+test('a frame stroke is an SVG layer under its content, centred on the frame edge, not a CSS border', () => {
+    const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233' }), layer()]), 'A').root;
+    assert.equal(root.style.border, undefined);
+    assert.equal(root.children[0].style.zIndex, '-1');
+    assert.match(root.children[0].html, /stroke-width="4"/);
+    assert.equal(root.style.isolation, 'isolate');
+    assert.equal(root.children[1].nodeId, 'L');
+});
+
+test('a per-side frame stroke draws only the sides it names', () => {
+    const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233', strokeSides: 'top' }), layer()]), 'A').root;
+    assert.equal((root.children[0].html.match(/<rect x=/g) || []).length, 1);
+});
+
+test('an inside frame stroke is clipped to the frame, and a frame with no stroke has no stroke layer', () => {
+    const inside = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233', strokeAlign: 'inside' })]), 'A').root;
+    assert.match(inside.children[0].html, /<clipPath/);
+    const plain = toDomTree(docOf([frame('A'), layer()]), 'A').root;
+    assert.equal(plain.children.length, 1);
+});

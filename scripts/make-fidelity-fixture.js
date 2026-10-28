@@ -39,6 +39,10 @@ const solid = (color, extra = {}) => ({ type: 'solid', color, opacity: 1, visibl
  * @type {{ name: string, layers: (frameId: string) => any[], frame?: Record<string, unknown> }[]}
  */
 const FEATURES = [
+    { name: 'Frame: uniform stroke', frame: { strokeWidth: 6, stroke: '#c0392b' }, layers: f => [layer('fs1', f, 'rect', { w: 100, h: 60, fill: '#0058CA' })] },
+    { name: 'Frame: per-side stroke (top and left)', frame: { strokeWidth: 6, stroke: '#c0392b', strokeSides: 'custom', strokeT: 6, strokeL: 6, strokeR: 0, strokeB: 0 }, layers: f => [layer('fs2', f, 'rect', { w: 100, h: 60, fill: '#0058CA' })] },
+    { name: 'Frame: inside stroke', frame: { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'inside' }, layers: f => [layer('fs3', f, 'rect', { w: 100, h: 60, fill: '#0058CA' })] },
+    { name: 'Frame: outside stroke', frame: { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside' }, layers: f => [layer('fs4', f, 'rect', { w: 100, h: 60, fill: '#0058CA' })] },
     { name: 'Text: solid colour', layers: f => [text('t1', f, 'Solid text', { fill: '#c0392b' })] },
     { name: 'Text: fill opacity', layers: f => [text('t2', f, 'Half opacity', { fillOpacity: 0.5 })] },
     { name: 'Text: in a plain frame (no box)', layers: f => [text('t3', f, 'No box behind me', { radius: 8, stroke: '#000000', strokeWidth: 0 })] },
@@ -87,7 +91,7 @@ export function buildFidelityFixture() {
     const base = buildBehaviorFixture();
     const nodes = FEATURES.flatMap((feature, index) => {
         const id = `frame-${index}`;
-        return [frame(id, feature.name, index), ...feature.layers(id)];
+        return [frame(id, feature.name, index, feature.frame), ...feature.layers(id)];
     });
     return {
         format: base.format, version: base.version, name: 'Fidelity fixture', pageId: 'page-fidelity', tokens: base.tokens, assets: base.assets,

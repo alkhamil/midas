@@ -13,7 +13,7 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
-import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeIsOn, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { getFills } from '../geometry/fills.js';
 
 /**
@@ -85,10 +85,15 @@ function renderNode(n, parent, cx) {
         Object.assign(style, overflowOf(n));
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
-    if (n.type === 'frame') Object.assign(style, borderOf(n));
-    const html = n.type === 'rect' || n.type === 'ellipse' ? strokeOverlay(n) : undefined;
-    if (html !== undefined) style.position = style.position ?? 'relative';
     const children = cx.childrenOf(n.id).map(c => renderNode(c, n, cx)).filter(Boolean);
+    const stroke = strokeOverlay(n);
+    if (n.type === 'frame' && stroke !== undefined) {
+        // A frame's stroke is a layer under its content, so the content draws over it. The isolation keeps that layer above the frame's fill.
+        style.isolation = 'isolate';
+        children.unshift({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', zIndex: '-1', pointerEvents: 'none' }, html: stroke, children: [] });
+    }
+    const html = n.type !== 'frame' ? stroke : undefined;
+    if (html !== undefined) style.position = style.position ?? 'relative';
     return { tag: 'div', nodeId: n.id, attrs: {}, style, ...(html !== undefined ? { html } : {}), children };
 }
 
@@ -299,16 +304,6 @@ function radiusStyle(n) {
     if (!n.radius && !hasRadii(n)) return {};
     const r = cornerRadii(n);
     return { borderRadius: r.every(v => v === r[0]) ? `${r[0]}px` : r.map(v => `${v}px`).join(' ') };
-}
-
-/**
- * The border of a frame or group, from its stroke. Rectangles and ellipses draw their stroke as an SVG overlay, centred on the outline.
- * @param {any} n
- * @returns {Record<string, string>}
- */
-function borderOf(n) {
-    if (!strokeIsOn(n)) return {};
-    return { border: `${strokeSideWidths(n).t}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, boxSizing: 'border-box' };
 }
 
 /**
