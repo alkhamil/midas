@@ -1,0 +1,1398 @@
+// Generates scripts/fixtures/sample-app.midas ("Kopi Kita" mobile coffee ordering app)
+// for general manual testing and phase-1 / phase-2 / diagnostics verification.
+//
+//   node scripts/make-sample-file.js [output.midas]
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertBehaviorData, diagnoseDocument, managedBehavior } from '@midas/builder-core';
+
+const here = dirname(fileURLToPath(import.meta.url));
+export const DEFAULT_OUT = join(here, 'fixtures', 'sample-app.midas');
+
+// ---------- Node defaults & helpers ----------
+export const NODE_BASE = {
+    rotation: 0,
+    fill: '#0058CA',
+    fill2: '#cfe1fa',
+    fillType: 'solid',
+    gradientAngle: 90,
+    fillOpacity: 1,
+    stroke: '#000000',
+    strokeWidth: 0,
+    radius: 0,
+    opacity: 1,
+    visible: true,
+    locked: false,
+    clip: false,
+    shadow: false,
+    shadowColor: '#000000',
+    shadowOpacity: 0.16,
+    shadowBlur: 20,
+    shadowX: 0,
+    shadowY: 6,
+    version: 0,
+};
+
+export const TEXT_DEFAULTS = {
+    text: 'Text',
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: 400,
+    fontStyle: 'normal',
+    lineHeight: 1.4,
+    letterSpacing: 0,
+    textAlign: 'left',
+    textDecoration: 'none',
+    textCase: 'none',
+    direction: 'auto',
+    fill: '#231815',
+    autoW: true,
+};
+
+function solidFills(fill) {
+    return fill && fill !== 'none' ? [{ type: 'solid', color: fill, opacity: 1, visible: true }] : [];
+}
+
+export function frameNode(id, name, props = {}) {
+    const fill = props.fill ?? '#FFFFFF';
+    return {
+        ...NODE_BASE,
+        id,
+        type: 'frame',
+        name,
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 100,
+        clip: true,
+        fill,
+        fills: props.fills ?? solidFills(fill),
+        ...props,
+    };
+}
+
+export function autoFrameNode(id, name, layout = 'vertical', props = {}) {
+    const pad = props.padding ?? 16;
+    return frameNode(id, name, {
+        layout,
+        gap: props.gap ?? 12,
+        gapAuto: false,
+        padding: pad,
+        padT: props.padT ?? pad,
+        padR: props.padR ?? pad,
+        padB: props.padB ?? pad,
+        padL: props.padL ?? pad,
+        layoutWrap: false,
+         primaryAlign: props.primaryAlign ?? 'start',
+        counterAlign: props.counterAlign ?? 'start',
+        layoutSizingH: props.layoutSizingH ?? 'fixed',
+        layoutSizingV: props.layoutSizingV ?? 'hug',
+        ...props,
+    });
+}
+
+export function textNode(id, name, textContent, props = {}) {
+    const fs = props.fontSize ?? 14;
+    const lh = props.lineHeight ?? 1.4;
+    const fw = props.fontWeight ?? 400;
+    const estW = props.w ?? Math.max(24, Math.ceil(String(textContent).length * fs * (fw >= 600 ? 0.6 : 0.55)));
+    const estH = props.h ?? Math.ceil(fs * lh);
+    return {
+        ...NODE_BASE,
+        ...TEXT_DEFAULTS,
+        id,
+        type: 'text',
+        name,
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: estW,
+        h: estH,
+        text: String(textContent),
+        fontSize: fs,
+        fontWeight: fw,
+        lineHeight: lh,
+        ...props,
+    };
+}
+
+export function rectNode(id, name, props = {}) {
+    const fill = props.fill ?? '#EADACA';
+    return {
+        ...NODE_BASE,
+        id,
+        type: 'rect',
+        name,
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: 64,
+        h: 64,
+        radius: 8,
+        fill,
+        fills: props.fills ?? solidFills(fill),
+        ...props,
+    };
+}
+
+export function imagePlaceholderNode(id, name, props = {}) {
+    return rectNode(id, name, {
+        fill: '#E5DDD5',
+        radius: 10,
+        fills: [{ type: 'image', image: null, mode: 'fill', scale: 1, opacity: 1, visible: true }],
+        ...props,
+    });
+}
+
+export function ellipseNode(id, name, props = {}) {
+    const fill = props.fill ?? '#C87D4B';
+    return {
+        ...NODE_BASE,
+        id,
+        type: 'ellipse',
+        name,
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: 40,
+        h: 40,
+        fill,
+        fills: props.fills ?? solidFills(fill),
+        ...props,
+    };
+}
+
+export function groupNode(id, name, props = {}) {
+    return {
+        ...NODE_BASE,
+        id,
+        type: 'group',
+        name,
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: 48,
+        h: 24,
+        fill: 'none',
+        fills: [],
+        ...props,
+    };
+}
+
+// ---------- Variable collections ----------
+const COL_VARIANT_ID = 'col-variant';
+const COL_SIZE_ID = 'col-size';
+const COL_THEME_ID = 'col-theme';
+
+export const MODES = {
+    variant: {
+        primary: 'mode-primary',
+        secondary: 'mode-secondary',
+        danger: 'mode-danger',
+    },
+    size: {
+        sm: 'mode-sm',
+        md: 'mode-md',
+        lg: 'mode-lg',
+    },
+    theme: {
+        light: 'mode-kopi-light',
+    },
+};
+
+function buildVariables() {
+    const collections = [
+        {
+            id: COL_VARIANT_ID,
+            name: 'Variant',
+            modes: [
+                { id: MODES.variant.primary, name: 'Primary' },
+                { id: MODES.variant.secondary, name: 'Secondary' },
+                { id: MODES.variant.danger, name: 'Danger' },
+            ],
+            groups: ['Button'],
+        },
+        {
+            id: COL_SIZE_ID,
+            name: 'Size',
+            modes: [
+                { id: MODES.size.sm, name: 'Small' },
+                { id: MODES.size.md, name: 'Medium' },
+                { id: MODES.size.lg, name: 'Large' },
+            ],
+            groups: ['Button'],
+        },
+        {
+            id: COL_THEME_ID,
+            name: 'Colors & Typography',
+            modes: [{ id: MODES.theme.light, name: 'Default' }],
+            groups: ['color', 'typography'],
+        },
+    ];
+
+    const vMode = (p, s, d) => ({
+        [MODES.variant.primary]: p,
+        [MODES.variant.secondary]: s,
+        [MODES.variant.danger]: d,
+    });
+    const sMode = (sm, md, lg) => ({
+        [MODES.size.sm]: sm,
+        [MODES.size.md]: md,
+        [MODES.size.lg]: lg,
+    });
+    const tMode = val => ({ [MODES.theme.light]: val });
+
+    const items = [
+        // Variant tokens (all required Button base + state tokens)
+        { id: 'var-btn-bg', collectionId: COL_VARIANT_ID, name: 'Button/bg', type: 'color', values: vMode('#6F4E37', '#F5EBE1', '#DC2626'), description: 'Button background', hidden: false },
+        { id: 'var-btn-fg', collectionId: COL_VARIANT_ID, name: 'Button/fg', type: 'color', values: vMode('#FFFFFF', '#3E2723', '#FFFFFF'), description: 'Button label color', hidden: false },
+        { id: 'var-btn-border', collectionId: COL_VARIANT_ID, name: 'Button/border', type: 'color', values: vMode('#6F4E37', '#D7C4B4', '#DC2626'), description: 'Button border color', hidden: false },
+        { id: 'var-btn-bg-hover', collectionId: COL_VARIANT_ID, name: 'Button/bg-hover', type: 'color', values: vMode('#5C3E2A', '#EADACA', '#B91C1C'), description: 'Button hover background', hidden: false },
+        { id: 'var-btn-bg-active', collectionId: COL_VARIANT_ID, name: 'Button/bg-active', type: 'color', values: vMode('#4A3121', '#DEC8B4', '#991B1B'), description: 'Button active background', hidden: false },
+        { id: 'var-btn-bg-disabled', collectionId: COL_VARIANT_ID, name: 'Button/bg-disabled', type: 'color', values: vMode('#C8B7A6', '#EFEAE4', '#FCA5A5'), description: 'Button disabled background', hidden: false },
+
+        // Size tokens (all required Button size tokens)
+        { id: 'var-btn-fs', collectionId: COL_SIZE_ID, name: 'Button/fontSize', type: 'number', values: sMode(12, 14, 16), description: 'Button font size', hidden: false },
+        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode(1.35, 1.4, 1.45), description: 'Button line height ratio', hidden: false },
+        { id: 'var-btn-px', collectionId: COL_SIZE_ID, name: 'Button/paddingX', type: 'number', values: sMode(12, 16, 20), description: 'Button horizontal padding', hidden: false },
+        { id: 'var-btn-py', collectionId: COL_SIZE_ID, name: 'Button/paddingY', type: 'number', values: sMode(6, 10, 14), description: 'Button vertical padding', hidden: false },
+        { id: 'var-btn-gap', collectionId: COL_SIZE_ID, name: 'Button/gap', type: 'number', values: sMode(6, 8, 10), description: 'Button icon-label gap', hidden: false },
+        { id: 'var-btn-radius', collectionId: COL_SIZE_ID, name: 'Button/radius', type: 'number', values: sMode(6, 8, 10), description: 'Button corner radius', hidden: false },
+        { id: 'var-btn-icon', collectionId: COL_SIZE_ID, name: 'Button/iconSize', type: 'number', values: sMode(14, 16, 18), description: 'Button icon box size', hidden: false },
+
+        // Colors & Typography collection for general app styling
+        { id: 'var-col-bg-app', collectionId: COL_THEME_ID, name: 'color/bg-app', type: 'color', values: tMode('#FAF6F2'), description: 'App warm cream background', hidden: false },
+        { id: 'var-col-bg-card', collectionId: COL_THEME_ID, name: 'color/bg-card', type: 'color', values: tMode('#FFFFFF'), description: 'Card surface color', hidden: false },
+        { id: 'var-col-bg-banner', collectionId: COL_THEME_ID, name: 'color/bg-banner', type: 'color', values: tMode('#3E2723'), description: 'Dark espresso banner fill', hidden: false },
+        { id: 'var-col-brand', collectionId: COL_THEME_ID, name: 'color/brand-roast', type: 'color', values: tMode('#6F4E37'), description: 'Primary coffee roast accent', hidden: false },
+        { id: 'var-col-caramel', collectionId: COL_THEME_ID, name: 'color/brand-caramel', type: 'color', values: tMode('#C87D4B'), description: 'Warm caramel accent', hidden: false },
+        { id: 'var-col-text-main', collectionId: COL_THEME_ID, name: 'color/text-primary', type: 'color', values: tMode('#231815'), description: 'Primary espresso ink', hidden: false },
+        { id: 'var-col-text-sub', collectionId: COL_THEME_ID, name: 'color/text-secondary', type: 'color', values: tMode('#6D5D53'), description: 'Secondary muted roast text', hidden: false },
+        { id: 'var-col-border', collectionId: COL_THEME_ID, name: 'color/border-subtle', type: 'color', values: tMode('#E6DCD2'), description: 'Card border stroke', hidden: false },
+        { id: 'var-typ-display', collectionId: COL_THEME_ID, name: 'typography/display-size', type: 'number', values: tMode(24), description: 'Hero heading font size', hidden: false },
+        { id: 'var-typ-title', collectionId: COL_THEME_ID, name: 'typography/title-size', type: 'number', values: tMode(18), description: 'Section title font size', hidden: false },
+        { id: 'var-typ-body', collectionId: COL_THEME_ID, name: 'typography/body-size', type: 'number', values: tMode(14), description: 'Body copy font size', hidden: false },
+        { id: 'var-typ-caption', collectionId: COL_THEME_ID, name: 'typography/caption-size', type: 'number', values: tMode(12), description: 'Caption and badge font size', hidden: false },
+    ];
+
+    return { collections, items };
+}
+
+// ---------- Button master & instance builders ----------
+const MASTER_BUTTON_ID = 'comp-button';
+const MASTER_LABEL_ID = 'comp-button-label';
+
+function buildButtonMaster(x = 440, y = 40) {
+    const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
+        x,
+        y,
+        w: 112,
+        h: 40,
+        padding: 16,
+        padT: 10,
+        padR: 16,
+        padB: 10,
+        padL: 16,
+        gap: 8,
+        radius: 8,
+        fill: '#6F4E37',
+        primaryAlign: 'center',
+        counterAlign: 'center',
+        layoutSizingH: 'hug',
+        layoutSizingV: 'hug',
+        component: true,
+        isInstance: false,
+        behavior: {
+            version: 1,
+            templateId: 'button',
+            variables: {
+                variant: COL_VARIANT_ID,
+                size: COL_SIZE_ID,
+            },
+        },
+    });
+    const label = textNode(MASTER_LABEL_ID, 'Label', 'Button', {
+        parentId: MASTER_BUTTON_ID,
+        x: 16,
+        y: 10,
+        fontSize: 14,
+        fontWeight: 600,
+        lineHeight: 1.4,
+        fill: '#FFFFFF',
+    });
+    return [master, label];
+}
+
+const VARIANT_COLORS = {
+    [MODES.variant.primary]: { bg: '#6F4E37', fg: '#FFFFFF', border: '#6F4E37' },
+    [MODES.variant.secondary]: { bg: '#F5EBE1', fg: '#3E2723', border: '#D7C4B4' },
+    [MODES.variant.danger]: { bg: '#DC2626', fg: '#FFFFFF', border: '#DC2626' },
+};
+const SIZE_METRICS = {
+    [MODES.size.sm]: { fs: 12, px: 12, py: 6, gap: 6, radius: 6, h: 30 },
+    [MODES.size.md]: { fs: 14, px: 16, py: 10, gap: 8, radius: 8, h: 40 },
+    [MODES.size.lg]: { fs: 16, px: 20, py: 14, gap: 10, radius: 10, h: 48 },
+};
+
+/**
+ * Builds a Button instance and its child layers (including managed iconStart / iconEnd when hasIcon is true).
+ */
+function buildButtonInstance(id, name, parentId, opts = {}) {
+    const variant = opts.variant ?? MODES.variant.primary;
+    const size = opts.size ?? MODES.size.md;
+    const labelText = opts.label ?? 'Button';
+    const hasIcon = !!opts.hasIcon;
+    const placement = opts.iconPlacement ?? 'start';
+    const loading = !!opts.loading;
+    const disabled = !!opts.disabled;
+    const fullWidth = !!opts.fullWidth;
+
+    const colors = VARIANT_COLORS[variant] || VARIANT_COLORS[MODES.variant.primary];
+    const metrics = SIZE_METRICS[size] || SIZE_METRICS[MODES.size.md];
+
+    const behaviorProps = {
+        variant,
+        size,
+        label: labelText,
+        hasIcon,
+        ...(hasIcon ? { iconPlacement: placement } : {}),
+        loading,
+        disabled,
+        fullWidth,
+    };
+
+    const textW = Math.max(28, Math.ceil(labelText.length * metrics.fs * 0.6));
+    const estW = opts.w ?? (fullWidth ? 358 : metrics.px * 2 + textW + (hasIcon ? 16 + metrics.gap : 0));
+
+    const inst = autoFrameNode(id, name, 'horizontal', {
+        parentId,
+        x: opts.x ?? 0,
+        y: opts.y ?? 0,
+        w: estW,
+        h: metrics.h,
+        padding: metrics.px,
+        padT: metrics.py,
+        padR: metrics.px,
+        padB: metrics.py,
+        padL: metrics.px,
+        gap: metrics.gap,
+        radius: metrics.radius,
+        fill: disabled ? '#C8B7A6' : colors.bg,
+        stroke: colors.border,
+        strokeWidth: variant === MODES.variant.secondary ? 1 : 0,
+        primaryAlign: 'center',
+        counterAlign: 'center',
+        layoutSizingH: fullWidth ? 'fill' : 'hug',
+        layoutSizingV: 'hug',
+        isInstance: true,
+        sourceId: MASTER_BUTTON_ID,
+        overrides: { fill: true, radius: true, w: true, h: true },
+        behavior: {
+            version: 1,
+            props: behaviorProps,
+        },
+    });
+
+    const labelNode = textNode(`${id}-label`, 'Label', labelText, {
+        parentId: id,
+        sourceId: MASTER_LABEL_ID,
+        x: metrics.px + (hasIcon && placement === 'start' ? 16 + metrics.gap : 0),
+        y: metrics.py,
+        w: textW,
+        h: Math.ceil(metrics.fs * 1.4),
+        fontSize: metrics.fs,
+        fontWeight: 600,
+        lineHeight: 1.4,
+        fill: colors.fg,
+        overrides: { text: true, fill: true, fontSize: true, w: true },
+    });
+
+    if (!hasIcon) return [inst, labelNode];
+
+    const slot = placement === 'end' ? 'iconEnd' : 'iconStart';
+    const managedIcon = frameNode(`${id}-${slot}`, slot, {
+        parentId: id,
+        x: placement === 'start' ? metrics.px : metrics.px + textW + metrics.gap,
+        y: Math.round((metrics.h - 16) / 2),
+        w: 16,
+        h: 16,
+        radius: 4,
+        fill: colors.fg,
+        clip: false,
+        behavior: managedBehavior(slot),
+    });
+
+    return placement === 'start' ? [inst, managedIcon, labelNode] : [inst, labelNode, managedIcon];
+}
+
+// ---------- Shared screen chrome builders ----------
+function buildScreenRoot(id, name) {
+    return autoFrameNode(id, name, 'vertical', {
+        parentId: null,
+        x: 0,
+        y: 0,
+        w: 390,
+        h: 844,
+        padding: 16,
+        padT: 16,
+        padR: 16,
+        padB: 16,
+        padL: 16,
+        gap: 14,
+        fill: '#FAF6F2',
+        vars: { 'fills.0': 'var-col-bg-app' },
+        layoutSizingH: 'fixed',
+        layoutSizingV: 'fixed',
+        clip: true,
+    });
+}
+
+/**
+ * Top header bar (auto-layout level 1) with nested title stack (level 2), status pill (level 3), avatar ellipse, and rating group.
+ */
+function buildHeaderBar(prefix, title, subtitle) {
+    const out = [];
+    const headerId = `${prefix}-header`;
+    const leftId = `${prefix}-header-titles`;
+    const pillId = `${prefix}-header-outlet-pill`;
+    const rightId = `${prefix}-header-actions`;
+    const grpId = `${prefix}-brand-badge-group`;
+
+    out.push(
+        autoFrameNode(headerId, 'Top Navigation Header', 'horizontal', {
+            parentId: `${prefix}-screen`,
+            w: 358,
+            h: 56,
+            padding: 8,
+            padT: 6,
+            padR: 8,
+            padB: 6,
+            padL: 8,
+            gap: 10,
+            radius: 12,
+            fill: '#FFFFFF',
+            vars: { 'fills.0': 'var-col-bg-card' },
+            primaryAlign: 'between',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(leftId, 'Header Title Stack', 'vertical', {
+            parentId: headerId,
+            w: 220,
+            h: 44,
+            padding: 0,
+            gap: 2,
+            fill: 'none',
+            layoutSizingH: 'hug',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${prefix}-header-title`, 'Screen Title', title, {
+            parentId: leftId,
+            fontSize: 18,
+            fontWeight: 700,
+            fill: '#231815',
+            vars: { fill: 'var-col-text-main', fontSize: 'var-typ-title' },
+        }),
+        autoFrameNode(pillId, 'Outlet Status Pill', 'horizontal', {
+            parentId: leftId,
+            w: 160,
+            h: 18,
+            padding: 4,
+            padT: 2,
+            padR: 6,
+            padB: 2,
+            padL: 6,
+            gap: 4,
+            radius: 6,
+            fill: '#F3ECE4',
+            counterAlign: 'center',
+            layoutSizingH: 'hug',
+            layoutSizingV: 'hug',
+        }),
+        rectNode(`${prefix}-status-dot`, 'Status Indicator Dot', {
+            parentId: pillId,
+            w: 6,
+            h: 6,
+            radius: 3,
+            fill: '#15803D',
+        }),
+        textNode(`${prefix}-header-subtitle`, 'Outlet Subtitle', subtitle, {
+            parentId: pillId,
+            fontSize: 11,
+            fontWeight: 500,
+            fill: '#6D5D53',
+            vars: { fill: 'var-col-text-sub' },
+        }),
+        autoFrameNode(rightId, 'Header Profile Cluster', 'horizontal', {
+            parentId: headerId,
+            w: 92,
+            h: 36,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            counterAlign: 'center',
+            layoutSizingH: 'hug',
+            layoutSizingV: 'hug',
+        }),
+        groupNode(grpId, 'Bean Points Group', {
+            parentId: rightId,
+            w: 44,
+            h: 24,
+        }),
+        rectNode(`${prefix}-points-bg`, 'Points Badge Background', {
+            parentId: grpId,
+            x: 0,
+            y: 0,
+            w: 44,
+            h: 24,
+            radius: 6,
+            fill: '#EADACA',
+        }),
+        textNode(`${prefix}-points-label`, 'Points Count Text', '240pt', {
+            parentId: grpId,
+            x: 6,
+            y: 4,
+            fontSize: 11,
+            fontWeight: 600,
+            fill: '#6F4E37',
+            vars: { fill: 'var-col-brand' },
+        }),
+        ellipseNode(`${prefix}-avatar`, 'Member Avatar', {
+            parentId: rightId,
+            w: 32,
+            h: 32,
+            fill: '#C87D4B',
+            vars: { 'fills.0': 'var-col-caramel' },
+        }),
+    );
+    return out;
+}
+
+/**
+ * Non-auto-layout promo banner frame containing positioned children (exercises non-auto-layout container selection).
+ */
+function buildFreeformBanner(prefix, badgeText, headline, caption) {
+    const bannerId = `${prefix}-promo-canvas`;
+    return [
+        frameNode(bannerId, 'Promo Spotlight Banner', {
+            parentId: `${prefix}-screen`,
+            w: 358,
+            h: 92,
+            radius: 14,
+            fill: '#3E2723',
+            vars: { 'fills.0': 'var-col-bg-banner' },
+            layoutSizingH: 'fill',
+            layoutSizingV: 'fixed',
+        }),
+        imagePlaceholderNode(`${prefix}-promo-photo`, 'Roastery Photo Placeholder', {
+            parentId: bannerId,
+            x: 254,
+            y: 10,
+            w: 92,
+            h: 72,
+            radius: 10,
+            layoutPositioning: 'absolute',
+        }),
+        rectNode(`${prefix}-promo-pill`, 'Promo Tag Background', {
+            parentId: bannerId,
+            x: 14,
+            y: 12,
+            w: 88,
+            h: 20,
+            radius: 6,
+            fill: '#C87D4B',
+            vars: { 'fills.0': 'var-col-caramel' },
+            layoutPositioning: 'absolute',
+        }),
+        textNode(`${prefix}-promo-badge`, 'Promo Tag Label', badgeText, {
+            parentId: bannerId,
+            x: 20,
+            y: 14,
+            fontSize: 11,
+            fontWeight: 600,
+            fill: '#FFFFFF',
+            layoutPositioning: 'absolute',
+        }),
+        textNode(`${prefix}-promo-headline`, 'Promo Headline', headline, {
+            parentId: bannerId,
+            x: 14,
+            y: 38,
+            fontSize: 16,
+            fontWeight: 700,
+            fill: '#FFFFFF',
+            layoutPositioning: 'absolute',
+        }),
+        textNode(`${prefix}-promo-caption`, 'Promo Caption', caption, {
+            parentId: bannerId,
+            x: 14,
+            y: 62,
+            fontSize: 12,
+            fontWeight: 400,
+            fill: '#EADACA',
+            vars: { fontSize: 'var-typ-caption' },
+            layoutPositioning: 'absolute',
+        }),
+    ];
+}
+
+/**
+ * Bottom navigation tab bar (level 1 -> level 2 tab items).
+ */
+function buildBottomTabBar(prefix, activeTab) {
+    const barId = `${prefix}-tab-bar`;
+    const out = [
+        autoFrameNode(barId, 'Bottom Tab Bar', 'horizontal', {
+            parentId: `${prefix}-screen`,
+            w: 358,
+            h: 52,
+            padding: 8,
+            padT: 8,
+            padR: 12,
+            padB: 8,
+            padL: 12,
+            gap: 8,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            primaryAlign: 'between',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+    ];
+    for (const tab of ['Home', 'Menu', 'Cart', 'Profile']) {
+        const isCurrent = tab === activeTab;
+        const tabId = `${prefix}-tab-${tab.toLowerCase()}`;
+        out.push(
+            autoFrameNode(tabId, `Tab Item · ${tab}`, 'vertical', {
+                parentId: barId,
+                w: 74,
+                h: 36,
+                padding: 4,
+                gap: 2,
+                radius: 8,
+                fill: isCurrent ? '#F3ECE4' : 'none',
+                primaryAlign: 'center',
+                counterAlign: 'center',
+                layoutSizingH: 'hug',
+                layoutSizingV: 'hug',
+            }),
+            textNode(`${tabId}-label`, `Tab Label · ${tab}`, tab, {
+                parentId: tabId,
+                fontSize: 12,
+                fontWeight: isCurrent ? 700 : 500,
+                fill: isCurrent ? '#6F4E37' : '#6D5D53',
+            }),
+        );
+    }
+    return out;
+}
+
+// ---------- Page 1: Login ----------
+function buildLoginPage() {
+    const p = 'login';
+    const cardId = `${p}-form-card`;
+    const fieldsId = `${p}-fields-stack`;
+    const emailRowId = `${p}-email-field`;
+    const emailInnerId = `${p}-email-input-row`;
+    const actionsId = `${p}-actions-stack`;
+
+    return [
+        buildScreenRoot(`${p}-screen`, 'Login Screen'),
+        ...buildHeaderBar(p, 'Kopi Kita', 'Senopati Flagship'),
+        ...buildFreeformBanner(p, 'MEMBER PERKS', 'Morning Brew 20% Off', 'Sign in to claim your daily voucher'),
+        autoFrameNode(cardId, 'Sign In Card', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 360,
+            padding: 16,
+            gap: 12,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-welcome-heading`, 'Welcome Heading', 'Welcome back, coffee lover', {
+            parentId: cardId,
+            fontSize: 24,
+            fontWeight: 700,
+            fill: '#231815',
+        }),
+        textNode(`${p}-welcome-body`, 'Welcome Description', 'Enter your phone or email to order ahead and skip the queue.', {
+            parentId: cardId,
+            fontSize: 14,
+            fontWeight: 400,
+            fill: '#6D5D53',
+        }),
+        autoFrameNode(fieldsId, 'Credential Fields Stack', 'vertical', {
+            parentId: cardId,
+            w: 326,
+            h: 110,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(emailRowId, 'Email Input Container', 'vertical', {
+            parentId: fieldsId,
+            w: 326,
+            h: 58,
+            padding: 10,
+            gap: 4,
+            radius: 10,
+            fill: '#FAF6F2',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-email-caption`, 'Email Field Label', 'Phone or Email', {
+            parentId: emailRowId,
+            fontSize: 11,
+            fontWeight: 600,
+            fill: '#6D5D53',
+        }),
+        autoFrameNode(emailInnerId, 'Email Value Row', 'horizontal', {
+            parentId: emailRowId,
+            w: 306,
+            h: 22,
+            padding: 0,
+            gap: 6,
+            fill: 'none',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        rectNode(`${p}-email-icon-box`, 'Phone Prefix Badge', {
+            parentId: emailInnerId,
+            w: 28,
+            h: 18,
+            radius: 4,
+            fill: '#EADACA',
+        }),
+        textNode(`${p}-email-value`, 'Email Input Value', 'nadia.putri@kopikita.id', {
+            parentId: emailInnerId,
+            fontSize: 14,
+            fontWeight: 500,
+            fill: '#231815',
+        }),
+        autoFrameNode(actionsId, 'Login Buttons Stack', 'vertical', {
+            parentId: cardId,
+            w: 326,
+            h: 96,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-signin`, 'Sign In Button', actionsId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.lg,
+            label: 'Sign In to Kopi Kita',
+            hasIcon: true,
+            iconPlacement: 'end',
+            fullWidth: true,
+        }),
+        ...buildButtonInstance(`${p}-btn-sso`, 'Continue with Passkey Button', actionsId, {
+            variant: MODES.variant.secondary,
+            size: MODES.size.md,
+            label: 'Continue with Passkey',
+            hasIcon: true,
+            iconPlacement: 'start',
+            fullWidth: true,
+        }),
+        ...buildBottomTabBar(p, 'Profile'),
+    ];
+}
+
+// ---------- Page 2: Home ----------
+function buildHomePage() {
+    const p = 'home';
+    const featuredId = `${p}-featured-section`;
+    const cardId = `${p}-signature-card`;
+    const infoId = `${p}-signature-info`;
+    const metaRowId = `${p}-signature-meta-row`;
+    const quickActionsId = `${p}-quick-actions`;
+
+    return [
+        buildScreenRoot(`${p}-screen`, 'Home Screen'),
+        ...buildHeaderBar(p, 'Good Morning, Nadia', 'Pickup in 8 mins · Senopati'),
+        ...buildFreeformBanner(p, 'NEW HARVEST', 'Toraja Sapan Honey Process', 'Tasting notes: brown sugar, Mandarin orange'),
+        autoFrameNode(featuredId, 'Featured Recommendations Section', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 280,
+            padding: 12,
+            gap: 10,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-section-heading`, 'Featured Section Heading', 'Barista Picks Today', {
+            parentId: featuredId,
+            fontSize: 16,
+            fontWeight: 700,
+            fill: '#231815',
+        }),
+        autoFrameNode(cardId, 'Signature Drink Card', 'horizontal', {
+            parentId: featuredId,
+            w: 334,
+            h: 112,
+            padding: 10,
+            gap: 12,
+            radius: 12,
+            fill: '#FAF6F2',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        imagePlaceholderNode(`${p}-drink-thumb`, 'Kopi Susu Photo Placeholder', {
+            parentId: cardId,
+            w: 76,
+            h: 76,
+            radius: 10,
+        }),
+        autoFrameNode(infoId, 'Signature Drink Details', 'vertical', {
+            parentId: cardId,
+            w: 220,
+            h: 88,
+            padding: 0,
+            gap: 6,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-drink-title`, 'Signature Drink Name', 'Es Kopi Susu Gula Aren', {
+            parentId: infoId,
+            fontSize: 16,
+            fontWeight: 600,
+            fill: '#231815',
+        }),
+        autoFrameNode(metaRowId, 'Drink Price and Action Row', 'horizontal', {
+            parentId: infoId,
+            w: 220,
+            h: 34,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            primaryAlign: 'between',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-drink-price`, 'Signature Drink Price', 'Rp 28.000', {
+            parentId: metaRowId,
+            fontSize: 14,
+            fontWeight: 700,
+            fill: '#6F4E37',
+        }),
+        ...buildButtonInstance(`${p}-btn-order-now`, 'Quick Order Button', metaRowId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.sm,
+            label: 'Order Now',
+            hasIcon: true,
+            iconPlacement: 'start',
+        }),
+        autoFrameNode(quickActionsId, 'Home Voucher Action Row', 'horizontal', {
+            parentId: featuredId,
+            w: 334,
+            h: 44,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            primaryAlign: 'between',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-redeem`, 'Redeem Voucher Button', quickActionsId, {
+            variant: MODES.variant.secondary,
+            size: MODES.size.md,
+            label: 'Redeem Voucher',
+            hasIcon: false,
+        }),
+        ...buildButtonInstance(`${p}-btn-reorder`, 'Repeat Last Order Button', quickActionsId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.md,
+            label: 'Repeat Last Order',
+            hasIcon: true,
+            iconPlacement: 'end',
+        }),
+        ...buildBottomTabBar(p, 'Home'),
+    ];
+}
+
+// ---------- Page 3: Menu (with 6 repeated card frames) ----------
+const MENU_ITEMS = [
+    { slug: 'aren', name: 'Kopi Susu Gula Aren', notes: 'Double ristretto, organic palm sugar, fresh milk', price: 'Rp 28.000', btnLabel: 'Add', variant: MODES.variant.primary, size: MODES.size.sm, hasIcon: true, iconPlacement: 'start', disabled: false },
+    { slug: 'espresso', name: 'Espresso Single Origin', notes: ' Flores Bajawa dark chocolate & roasted hazelnut', price: 'Rp 22.000', btnLabel: 'Add', variant: MODES.variant.primary, size: MODES.size.sm, hasIcon: false, disabled: false },
+    { slug: 'matcha', name: 'Matcha Oat Latte', notes: 'Uji ceremonial grade matcha with barista oat milk', price: 'Rp 36.000', btnLabel: 'Customize', variant: MODES.variant.secondary, size: MODES.size.sm, hasIcon: true, iconPlacement: 'end', disabled: false },
+    { slug: 'coldbrew', name: 'Cold Brew Citrus Tonic', notes: '18-hour steeped Arabica with calamansi zest', price: 'Rp 34.000', btnLabel: 'Add', variant: MODES.variant.primary, size: MODES.size.sm, hasIcon: true, iconPlacement: 'start', disabled: false },
+    { slug: 'mocha', name: 'Mocha Pandan Signature', notes: 'House cacao ganache infused with pandan leaf', price: 'Rp 35.000', btnLabel: 'Add', variant: MODES.variant.secondary, size: MODES.size.sm, hasIcon: false, disabled: false },
+    { slug: 'v60', name: 'Manual Brew V60 Aceh Gayo', notes: 'Filter pour-over · seasonal micro-lot (sold out)', price: 'Rp 38.000', btnLabel: 'Sold Out', variant: MODES.variant.secondary, size: MODES.size.sm, hasIcon: false, disabled: true },
+];
+
+function buildMenuPage() {
+    const p = 'menu';
+    const listId = `${p}-card-list`;
+    const out = [
+        buildScreenRoot(`${p}-screen`, 'Menu Screen'),
+        ...buildHeaderBar(p, 'Full Coffee Menu', '6 handcrafted beverages'),
+        ...buildFreeformBanner(p, 'SEASONAL', 'Single Origin Pour-Over Bar', 'Freshly roasted every Tuesday & Friday'),
+        autoFrameNode(listId, 'Menu Card List', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 520,
+            padding: 8,
+            gap: 8,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+    ];
+
+    for (const item of MENU_ITEMS) {
+        const cardId = `${p}-card-${item.slug}`;
+        const bodyId = `${cardId}-body`;
+        const footerId = `${cardId}-footer`;
+        out.push(
+            autoFrameNode(cardId, `Menu Card · ${item.name}`, 'horizontal', {
+                parentId: listId,
+                w: 342,
+                h: 78,
+                padding: 8,
+                gap: 10,
+                radius: 10,
+                fill: '#FAF6F2',
+                counterAlign: 'center',
+                layoutSizingH: 'fill',
+                layoutSizingV: 'hug',
+            }),
+            imagePlaceholderNode(`${cardId}-thumb`, `${item.name} Thumbnail`, {
+                parentId: cardId,
+                w: 56,
+                h: 56,
+                radius: 8,
+            }),
+            autoFrameNode(bodyId, `${item.name} Info Column`, 'vertical', {
+                parentId: cardId,
+                w: 256,
+                h: 62,
+                padding: 0,
+                gap: 4,
+                fill: 'none',
+                layoutSizingH: 'fill',
+                layoutSizingV: 'hug',
+            }),
+            textNode(`${cardId}-title`, `${item.name} Title`, item.name, {
+                parentId: bodyId,
+                fontSize: 14,
+                fontWeight: 600,
+                fill: '#231815',
+            }),
+            textNode(`${cardId}-notes`, `${item.name} Tasting Notes`, item.notes, {
+                parentId: bodyId,
+                fontSize: 11,
+                fontWeight: 400,
+                fill: '#6D5D53',
+            }),
+            autoFrameNode(footerId, `${item.name} Price Bar`, 'horizontal', {
+                parentId: bodyId,
+                w: 256,
+                h: 30,
+                padding: 0,
+                gap: 8,
+                fill: 'none',
+                primaryAlign: 'between',
+                counterAlign: 'center',
+                layoutSizingH: 'fill',
+                layoutSizingV: 'hug',
+            }),
+            textNode(`${cardId}-price`, `${item.name} Price`, item.price, {
+                parentId: footerId,
+                fontSize: 12,
+                fontWeight: 700,
+                fill: '#6F4E37',
+            }),
+            ...buildButtonInstance(`${cardId}-btn`, `${item.name} Action Button`, footerId, {
+                variant: item.variant,
+                size: item.size,
+                label: item.btnLabel,
+                hasIcon: item.hasIcon,
+                iconPlacement: item.iconPlacement,
+                disabled: item.disabled,
+            }),
+        );
+    }
+
+    out.push(...buildBottomTabBar(p, 'Menu'));
+    return out;
+}
+
+// ---------- Page 4: Cart ----------
+function buildCartPage() {
+    const p = 'cart';
+    const bagId = `${p}-order-summary-card`;
+    const lineId = `${p}-line-item-row`;
+    const lineMetaId = `${p}-line-item-meta`;
+    const totalsId = `${p}-totals-box`;
+    const footerActionsId = `${p}-checkout-actions`;
+
+    return [
+        buildScreenRoot(`${p}-screen`, 'Cart Screen'),
+        ...buildHeaderBar(p, 'Your Coffee Bag', '2 items · Pickup at Counter'),
+        ...buildFreeformBanner(p, 'FREE UPSIZE', 'Applied: Regular to Large', 'Member reward unlocked on this order'),
+        autoFrameNode(bagId, 'Cart Order Summary Card', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 320,
+            padding: 14,
+            gap: 12,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(lineId, 'Cart Line Item · Kopi Susu', 'horizontal', {
+            parentId: bagId,
+            w: 330,
+            h: 68,
+            padding: 8,
+            gap: 10,
+            radius: 10,
+            fill: '#FAF6F2',
+            primaryAlign: 'between',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(lineMetaId, 'Line Item Spec Stack', 'vertical', {
+            parentId: lineId,
+            w: 210,
+            h: 48,
+            padding: 0,
+            gap: 2,
+            fill: 'none',
+            layoutSizingH: 'hug',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-item-title`, 'Cart Item Title', '2x Es Kopi Susu Gula Aren', {
+            parentId: lineMetaId,
+            fontSize: 14,
+            fontWeight: 600,
+            fill: '#231815',
+        }),
+        textNode(`${p}-item-mods`, 'Cart Item Modifiers', 'Less ice · Oat milk · Extra shot', {
+            parentId: lineMetaId,
+            fontSize: 12,
+            fontWeight: 400,
+            fill: '#6D5D53',
+        }),
+        textNode(`${p}-item-subtotal`, 'Cart Item Subtotal', 'Rp 64.000', {
+            parentId: lineId,
+            fontSize: 14,
+            fontWeight: 700,
+            fill: '#6F4E37',
+        }),
+        autoFrameNode(totalsId, 'Payment Breakdown Box', 'vertical', {
+            parentId: bagId,
+            w: 330,
+            h: 56,
+            padding: 8,
+            gap: 4,
+            radius: 8,
+            fill: '#F3ECE4',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-tax-row`, 'Tax and Service Label', 'PB1 10% included · Packaging Rp 4.000', {
+            parentId: totalsId,
+            fontSize: 12,
+            fontWeight: 400,
+            fill: '#6D5D53',
+        }),
+        textNode(`${p}-grand-total`, 'Grand Total Amount', 'Total Payment: Rp 68.000', {
+            parentId: totalsId,
+            fontSize: 16,
+            fontWeight: 700,
+            fill: '#231815',
+        }),
+        autoFrameNode(footerActionsId, 'Cart Action Buttons Row', 'vertical', {
+            parentId: bagId,
+            w: 330,
+            h: 132,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-pay`, 'Pay with QRIS Button', footerActionsId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.lg,
+            label: 'Pay Now · Rp 68.000',
+            hasIcon: true,
+            iconPlacement: 'end',
+            fullWidth: true,
+        }),
+        ...buildButtonInstance(`${p}-btn-syncing`, 'Syncing Promo Button', footerActionsId, {
+            variant: MODES.variant.secondary,
+            size: MODES.size.md,
+            label: 'Verifying Voucher...',
+            hasIcon: false,
+            loading: true,
+            fullWidth: true,
+        }),
+        ...buildButtonInstance(`${p}-btn-clear`, 'Clear Cart Danger Button', footerActionsId, {
+            variant: MODES.variant.danger,
+            size: MODES.size.sm,
+            label: 'Remove All Items',
+            hasIcon: true,
+            iconPlacement: 'start',
+        }),
+        ...buildBottomTabBar(p, 'Cart'),
+    ];
+}
+
+// ---------- Page 5: Profile ----------
+function buildProfilePage() {
+    const p = 'profile';
+    const cardId = `${p}-member-card`;
+    const tierRowId = `${p}-tier-row`;
+    const tierDetailsId = `${p}-tier-details`;
+    const actionsId = `${p}-account-actions`;
+
+    return [
+        buildScreenRoot(`${p}-screen`, 'Profile Screen'),
+        ...buildHeaderBar(p, 'Nadia Putri', 'Gold Roast Member · Since 2024'),
+        ...buildFreeformBanner(p, 'GOLD TIER', '240 Kopi Beans Collected', '60 beans away from a free bag of house blend'),
+        autoFrameNode(cardId, 'Member Account Preferences Card', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 260,
+            padding: 14,
+            gap: 12,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(tierRowId, 'Favorite Outlet Row', 'horizontal', {
+            parentId: cardId,
+            w: 330,
+            h: 64,
+            padding: 10,
+            gap: 10,
+            radius: 10,
+            fill: '#FAF6F2',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        autoFrameNode(tierDetailsId, 'Outlet Preference Stack', 'vertical', {
+            parentId: tierRowId,
+            w: 290,
+            h: 44,
+            padding: 0,
+            gap: 2,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-pref-title`, 'Default Brew Preference Title', 'Default Milk: Oatside Barista Blend', {
+            parentId: tierDetailsId,
+            fontSize: 14,
+            fontWeight: 600,
+            fill: '#231815',
+        }),
+        textNode(`${p}-pref-sub`, 'Default Sweetness Subtitle', 'Sweetness: 50% Gula Aren · Ice: Less Ice', {
+            parentId: tierDetailsId,
+            fontSize: 12,
+            fontWeight: 400,
+            fill: '#6D5D53',
+        }),
+        autoFrameNode(actionsId, 'Profile Action Buttons', 'vertical', {
+            parentId: cardId,
+            w: 330,
+            h: 96,
+            padding: 0,
+            gap: 8,
+            fill: 'none',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-edit`, 'Edit Taste Profile Button', actionsId, {
+            variant: MODES.variant.secondary,
+            size: MODES.size.md,
+            label: 'Edit Taste Profile',
+            hasIcon: true,
+            iconPlacement: 'start',
+            fullWidth: true,
+        }),
+        ...buildButtonInstance(`${p}-btn-signout`, 'Sign Out Button', actionsId, {
+            variant: MODES.variant.danger,
+            size: MODES.size.md,
+            label: 'Sign Out of Device',
+            hasIcon: true,
+            iconPlacement: 'end',
+            fullWidth: true,
+        }),
+        ...buildBottomTabBar(p, 'Profile'),
+    ];
+}
+
+// ---------- Page 6: Components (arrives last in page order) ----------
+function buildComponentsPage() {
+    const p = 'components';
+    const galleryId = `${p}-gallery-card`;
+    const rowPrimaryId = `${p}-row-variants`;
+    const rowStatesId = `${p}-row-states`;
+
+    return [
+        // Button master component (bound to Button template with Variant and Size collections)
+        ...buildButtonMaster(430, 24),
+        // Component Showcase 390x844 screen
+        buildScreenRoot(`${p}-screen`, 'Components Showcase Screen'),
+        ...buildHeaderBar(p, 'Kopi Kita UI Kit', 'Button Master & Token Matrix'),
+        ...buildFreeformBanner(p, 'DESIGN SYSTEM', 'Button Behavior Contract', 'Variant (Primary, Secondary, Danger) × Size (S, M, L)'),
+        autoFrameNode(galleryId, 'Button Variant Matrix Card', 'vertical', {
+            parentId: `${p}-screen`,
+            w: 358,
+            h: 240,
+            padding: 14,
+            gap: 12,
+            radius: 14,
+            fill: '#FFFFFF',
+            stroke: '#E6DCD2',
+            strokeWidth: 1,
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        textNode(`${p}-matrix-title`, 'Matrix Section Heading', 'Live Button Instances', {
+            parentId: galleryId,
+            fontSize: 16,
+            fontWeight: 700,
+            fill: '#231815',
+        }),
+        autoFrameNode(rowPrimaryId, 'Variant Showcase Row', 'horizontal', {
+            parentId: galleryId,
+            w: 330,
+            h: 52,
+            padding: 4,
+            gap: 8,
+            fill: 'none',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-primary-sm`, 'Primary Small Instance', rowPrimaryId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.sm,
+            label: 'Primary S',
+            hasIcon: false,
+        }),
+        ...buildButtonInstance(`${p}-btn-secondary-md`, 'Secondary Medium Instance', rowPrimaryId, {
+            variant: MODES.variant.secondary,
+            size: MODES.size.md,
+            label: 'Secondary M',
+            hasIcon: true,
+            iconPlacement: 'start',
+        }),
+        ...buildButtonInstance(`${p}-btn-danger-lg`, 'Danger Large Instance', rowPrimaryId, {
+            variant: MODES.variant.danger,
+            size: MODES.size.lg,
+            label: 'Danger L',
+            hasIcon: true,
+            iconPlacement: 'end',
+        }),
+        autoFrameNode(rowStatesId, 'State Showcase Row', 'horizontal', {
+            parentId: galleryId,
+            w: 330,
+            h: 48,
+            padding: 4,
+            gap: 8,
+            fill: 'none',
+            counterAlign: 'center',
+            layoutSizingH: 'fill',
+            layoutSizingV: 'hug',
+        }),
+        ...buildButtonInstance(`${p}-btn-loading`, 'Loading Instance', rowStatesId, {
+            variant: MODES.variant.primary,
+            size: MODES.size.md,
+            label: 'Brewing...',
+            loading: true,
+            hasIcon: false,
+        }),
+        ...buildButtonInstance(`${p}-btn-disabled`, 'Disabled Instance', rowStatesId, {
+            variant: MODES.variant.danger,
+            size: MODES.size.md,
+            label: 'Unavailable',
+            disabled: true,
+            hasIcon: false,
+        }),
+        ...buildBottomTabBar(p, 'Home'),
+    ];
+}
+
+export function buildSampleApp() {
+    const pages = [
+        { id: 'page-login', name: 'Login', parentId: null, nodes: buildLoginPage() },
+        { id: 'page-home', name: 'Home', parentId: null, nodes: buildHomePage() },
+        { id: 'page-menu', name: 'Menu', parentId: null, nodes: buildMenuPage() },
+        { id: 'page-cart', name: 'Cart', parentId: null, nodes: buildCartPage() },
+        { id: 'page-profile', name: 'Profile', parentId: null, nodes: buildProfilePage() },
+        { id: 'page-components', name: 'Components', parentId: null, nodes: buildComponentsPage() },
+    ];
+
+    const doc = {
+        format: 'midas',
+        version: 1,
+        name: 'Kopi Kita',
+        pageId: pages[0].id,
+        pages,
+        tokens: { colors: [], typography: [] },
+        variables: buildVariables(),
+        guideStyles: [],
+        created: 1793159000000,
+        assets: {},
+    };
+
+    assertBehaviorData(doc);
+    const errors = diagnoseDocument(doc).filter(f => f.severity === 'error');
+    if (errors.length) {
+        throw new Error(`Sample app has diagnostics errors: ${errors.map(e => e.message).join('; ')}`);
+    }
+
+    return doc;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+    const outPath = process.argv[2] || DEFAULT_OUT;
+    mkdirSync(dirname(outPath), { recursive: true });
+    const doc = buildSampleApp();
+    const json = JSON.stringify(doc, null, 2);
+    writeFileSync(outPath, json);
+    const totalNodes = doc.pages.reduce((sum, p) => sum + p.nodes.length, 0);
+    const instances = doc.pages.flatMap(p => p.nodes).filter(n => n.isInstance).length;
+    console.log(
+        `Wrote ${outPath} (${(Buffer.byteLength(json) / 1024).toFixed(1)} KB): ${doc.pages.length} pages, ${totalNodes} nodes, ${instances} Button instances, ${doc.variables.items.length} variables in ${doc.variables.collections.length} collections.`,
+    );
+}
