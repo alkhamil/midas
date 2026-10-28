@@ -111,3 +111,33 @@ test('an instance is selected as a unit: a click on its layers picks the instanc
 test('a top-level instance is selected as a unit too', () => {
     assert.equal(pick(['V', 'W']), 'V');
 });
+
+// A standalone component (M, auto layout, with its text N), a component set (S) with two variants (S1, S2) and a text in each.
+const componentPage = tree([
+    { id: 'M', type: 'frame', isAutoLayout: true, isStandaloneComponent: true },
+    { id: 'N', parentId: 'M', type: 'text' },
+    { id: 'S', type: 'frame', componentSet: true, isAutoLayout: true },
+    { id: 'S1', parentId: 'S', type: 'frame', isAutoLayout: true },
+    { id: 'N1', parentId: 'S1', type: 'text' },
+    { id: 'S2', parentId: 'S', type: 'frame', isAutoLayout: true },
+    { id: 'N2', parentId: 'S2', type: 'text' },
+]);
+const pickIn = (path, selection = [], modifiers = {}) => resolveSelectTarget({ path: componentPage.path(path), selection: selection.map(id => componentPage.get(id)), ...modifiers });
+
+test('a standalone component is picked as a whole: a plain click on its label picks the component first', () => {
+    assert.equal(pickIn(['M', 'N']), 'M');
+});
+
+test('with the component selected, a plain click on its label keeps the component', () => {
+    assert.equal(pickIn(['M', 'N'], ['M']), 'M');
+});
+
+test('Ctrl/Cmd+click on the label of a component picks the label; a double-click (drill) on the selected component picks it too', () => {
+    assert.equal(pickIn(['M', 'N'], [], { deep: true }), 'N');
+    assert.equal(pickIn(['M', 'N'], ['M'], { drill: true }), 'N');
+});
+
+test('a component set picks its variants directly: a plain click on a variant does not need the set selected', () => {
+    assert.equal(pickIn(['S', 'S1', 'N1']), 'S1');
+    assert.equal(pickIn(['S', 'S2', 'N2'], ['S1']), 'S2');
+});

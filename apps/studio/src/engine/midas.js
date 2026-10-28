@@ -11015,6 +11015,7 @@ function layerRecord(n) {
     return {
         id: n.id, parentId: n.parentId || null, type: n.type, isSection: !!n.isSection, isInstance: !!n.isInstance,
         isAutoLayout: isAutoLayout(n), componentSet: !!n.componentSet, parentIsSection: !!doc.get(n.parentId)?.isSection, childCount: doc.children(n.id).length,
+        isStandaloneComponent: !!n.component && !doc.get(n.parentId)?.componentSet,
     };
 }
 // The layers under the cursor, root first, down to the deepest one.

@@ -6,15 +6,18 @@
  * What the rules need to know about one layer.
  * @typedef {{
  *   id: string, parentId: string | null, type: string, isSection: boolean, isInstance: boolean,
- *   isAutoLayout: boolean, componentSet: boolean, parentIsSection: boolean, childCount: number
+ *   isAutoLayout: boolean, componentSet: boolean, parentIsSection: boolean, childCount: number, isStandaloneComponent: boolean
  * }} LayerRecord
  */
 
-/** A frame, group or component instance: a click picks it whole, never the layers inside it. */
-const isContainer = (/** @type {LayerRecord} */ l) => l.type === 'frame' || l.type === 'group' || l.isInstance;
+/** A standalone component (not a variant of a component set) is picked whole, like an instance: its layers are entered with Ctrl or a double-click. */
+const isStandaloneComponentOf = (/** @type {LayerRecord} */ l) => !!l.isStandaloneComponent;
+
+/** A frame, group, component instance or standalone component: a click picks it whole, never the layers inside it. */
+const isContainer = (/** @type {LayerRecord} */ l) => l.type === 'frame' || l.type === 'group' || l.isInstance || isStandaloneComponentOf(l);
 
 /** A top-level frame (on the page, or in a section): not a section and not a component instance. */
-const isTopLevelPlainFrame = (/** @type {LayerRecord} */ l) => l.type === 'frame' && !l.isSection && !l.isInstance && (l.parentId === null || l.parentIsSection);
+const isTopLevelPlainFrame = (/** @type {LayerRecord} */ l) => l.type === 'frame' && !l.isSection && !l.isInstance && !isStandaloneComponentOf(l) && (l.parentId === null || l.parentIsSection);
 
 /** A top-level frame with children that is picked through its label: its area is not a target. */
 const isLabelOnly = (/** @type {LayerRecord} */ l) => isTopLevelPlainFrame(l) && !l.isAutoLayout;
