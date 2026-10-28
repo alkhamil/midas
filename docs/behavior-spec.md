@@ -87,9 +87,9 @@ Load rules (AGENTS.md), implemented:
   - Triggers: an instance's hasIcon or iconPlacement edit, a template bind or unbind (all instances, after all pages load), instantiate, and paste (instances the pasted layers land in or are). Detach strips all behavior data, slot markers included.
   - Placeholder: a 16x16 frame named after the slot. Style, size and content are not managed. The icon picker is deferred: the placeholder is not an icon, and no library, themeable or currentColor handling exists yet.
   - Guards: the editor refuses delete, duplicate, copy, replace-paste, group, align, reorder, move (drag and arrow keys), boolean and flatten on a managed layer, with the reason. Open risk: paste of a managed layer alone is not guarded (manual checklist item 1).
-- [x] Stage 7: Preview renderer (`behavior-engine/preview.js`, `previewOf`). Engine only: props and CSS variables for one state. A disabled instance is in the disabled state. A state token that does not resolve is left out and reported, never replaced by `bg`. Schema gains `stateTokens`. Not wired into the studio.
-- [x] Stage 8: Code generator (`behavior-engine/codegen.js`, `generateComponent`). Engine only: `<Name>.jsx` from the schema (anatomy order, managed icons on `hasIcon` and `iconPlacement`, click blocked when disabled or loading) and `<Name>.css` (one block per variant and size mode, state blocks hold only the tokens they change). Refused with the reasons when anything is unresolved. Not wired into the studio.
-- [x] Stage 9: Diagnostics (`behavior-engine/diagnostics.js`, `diagnoseDocument`). Errors: `token-unresolved` per instance, `state-token-missing` per master and mode. Warning: `unused-collection`. Not shown in the studio yet.
+- [x] Stage 7: Preview renderer (`behavior-engine/preview.js`, `previewOf`). Engine only: props and CSS variables for one state. A disabled instance is in the disabled state. A state token that does not resolve is left out and reported, never replaced by `bg`. Schema gains `stateTokens`. Studio: the Behavior panel shows the previewed state (Preview section, studio-side view only). The canvas does not draw the preview.
+- [x] Stage 8: Code generator (`behavior-engine/codegen.js`, `generateComponent`). Engine only: `<Name>.jsx` from the schema (anatomy order, managed icons on `hasIcon` and `iconPlacement`, click blocked when disabled or loading) and `<Name>.css` (one block per variant and size mode, state blocks hold only the tokens they change). Refused with the reasons when anything is unresolved. Studio: a Generate code button on a bound master downloads `Button.jsx` and `Button.css` (two downloads); a refusal downloads nothing and its reasons show under Diagnostics.
+- [x] Stage 9: Diagnostics (`behavior-engine/diagnostics.js`, `diagnoseDocument`). Errors: `token-unresolved` per instance, `state-token-missing` per master and mode. Warning: `unused-collection`. Studio: the Behavior panel lists them in a Diagnostics section (master: its own and document-wide; instance: its own). Hidden while pages are still loading.
 
 ## Manual test checklist
 
@@ -100,10 +100,12 @@ Everything the automated tests do not cover. Run once after stage 9, highest ris
 3. Whole-instance copy and paste via the clipboard: the instance keeps its props, and its managed layers come back with markers, in order.
 4. Editor-path coverage that Node tests cannot import: paste, cross-page paste, detach, sync triggers (hasIcon and iconPlacement edits, bind and unbind, instantiate), and a save and reopen round trip.
 5. Lazy open (more than three pages): phase 2 runs on phase 1 only. Confirm an invalid instance is caught once the queue drains. Known gap, not built.
-6. Stage 7 (once wired): hover, active and disabled colours on the canvas match the CSS. A loading button shows the default colour, not the disabled one.
-7. Stage 8 (once wired): the generated `Button.jsx` and `Button.css` render in a plain React project, and the `data-variant` and `data-size` selectors match the mode ids.
-8. Stage 9 (once wired): each error shows in the editor, and the unused-collection warning appears for an unbound collection.
+6. Stage 7 (canvas not wired): the Preview section shows the resolved tokens of the chosen state. Check against a file that has Variant and Size collections: hover, active and disabled rows change the bg value; no document change or undo entry is made.
+7. Stage 8: the two downloaded files render in a plain React project, and the `data-variant` and `data-size` selectors match the mode ids. Check that the browser accepts both downloads (it may ask once to allow multiple downloads).
+8. Stage 9: each error shows in the Diagnostics section, and the unused-collection warning appears for an unbound collection. Check a large file (the 6.7 MB Ant Design sample): the Behavior tab recomputes diagnostics on every change, so check it stays responsive.
 9. Rollback message: a change that would make the file fail to open is undone, with "Not applied" and the reason.
 10. Behavior panel UI cleanup (stage 5 leftovers).
 11. Canvas selection fix confirmation (commit f1fd440).
 12. Collection auto-match: confirm it does not run in some path, and check which one.
+13. Populated Preview: token rows were not visually checked (the test file has no Variant or Size collections). Check the rows and their values with collections bound.
+14. Lazy open: Diagnostics show the "appear when all pages are loaded" note until the queue drains, then the findings.

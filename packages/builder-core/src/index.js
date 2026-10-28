@@ -10,3 +10,6 @@ export * from './selection.js';
 export * from './behavior-engine/anatomy.js';
 export * from './behavior-engine/managed-layers.js';
 export * from './behavior-engine/child-order.js';
+export * from './behavior-engine/preview.js';
+export * from './behavior-engine/codegen.js';
+export * from './behavior-engine/diagnostics.js';

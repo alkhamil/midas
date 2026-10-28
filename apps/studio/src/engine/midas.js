@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren } from '@midas/builder-core';
-import { behaviorPanelHtml } from './behaviorPanel.js';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument } from '@midas/builder-core';
+import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { layoutOrder } from './layoutOrder.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -9127,11 +9127,32 @@ function field(label, prop, value, opts = {}) {
 function section(title, body, action = '', extra = '') { return `<section class="inspector-section ${extra}"><div class="section-heading"><span>${title}</span>${action}</div>${body}</section>`; }
 function selectField(prop, value, values) { return `<select class="full-width" data-prop="${prop}" aria-label="${prop}">${values.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`; }
 // ----- Behavior tab (stage 5): the panel is drawn from the template schema. Edits go through the binding model and the instance store. -----
+// The preview state the Behavior tab shows an instance in. A studio-side view only: it never writes to the document or history.
+let behaviorPreview = 'default';
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
-    if (n?.component) return behaviorPanelHtml({ kind: 'master', panel: masterPanel(n, collections), esc });
-    if (n?.isInstance) return behaviorPanelHtml({ kind: 'instance', panel: instancePanel(n, componentById(n.sourceId), collections), esc });
-    return behaviorPanelHtml({ kind: 'none', esc });
+    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: 'none', esc });
+    // Diagnostics need every page; while pages are still loading they are not shown (null).
+    const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
+    if (n.component) {
+        const panel = masterPanel(n, collections), binding = n.behavior;
+        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name) : null;
+        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
+    }
+    const master = componentById(n.sourceId), panel = instancePanel(n, master, collections), binding = master?.behavior;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    const shown = template ? previewOf(template, binding, n.behavior?.props ?? {}, varStore(), behaviorPreview) : null;
+    const preview = shown && { state: behaviorPreview, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(template.stateTokens?.[shown.state] ?? {}), templateId: template.id };
+    return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
+}
+/** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
+function onBehaviorClick(e) {
+    if (!e.target.closest?.('[data-bp-action="generate"]')) return;
+    const n = activeNode(), binding = n?.behavior;
+    if (!n?.component || !binding || !('templateId' in binding)) return;
+    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const result = generateComponent(template, binding, varStore(), template.name);
+    for (const file of codeDownloads(result)) download(new Blob([file.text], { type: 'text/plain' }), file.name);
 }
 /** Waits until every page of the file is here. False when a page did not come, or another file was opened meanwhile. */
 async function waitForAllPages() {
@@ -9258,6 +9279,11 @@ function onBehaviorChange(e) {
     if (!kind) return;
     const n = activeNode();
     if (!n) return;
+    if (kind === 'preview') {
+        behaviorPreview = t.value;
+        renderInspector();
+        return;
+    }
     whenAllPagesLoaded(() => {
         if (kind === 'template') bindTemplateTo(n, t.value || null);
         else if (kind === 'collection') bindCollectionTo(n, t.dataset.bpProp, t.value || null);
@@ -21003,6 +21029,7 @@ window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, re
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#inspector').addEventListener('change', onBehaviorChange);
+$('#inspector').addEventListener('click', onBehaviorClick);
 $('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
 if (deepLink?.used) {
     lib.open = false;

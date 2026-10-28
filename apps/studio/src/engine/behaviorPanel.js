@@ -6,11 +6,18 @@
 /** The props that drive the managed icon slots. They are grouped under Slots. The icon picker is deferred, so `icon` has no row. */
 const SLOT_PROPS = new Set(['hasIcon', 'iconPlacement']);
 
-/** Markup for a master, an instance, or a node that has no behavior. `esc` escapes text for HTML. */
-export function behaviorPanelHtml({ kind, panel, esc }) {
+/** The preview states the instance can be shown in, as [state, label]. Preview only; it never changes the document. */
+export const PREVIEW_STATES = [['default', 'Default'], ['hover', 'Hover'], ['active', 'Active'], ['disabled', 'Disabled']];
+
+/**
+ * Markup for a master, an instance, or a node that has no behavior. `esc` escapes text for HTML.
+ * `findings` are the diagnostics of the node, or null while pages are still loading. `preview` (instance) is the resolved
+ * preview with the tokens its state overrides. `code` (bound master) is the generator's problems, if any.
+ */
+export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code }) {
     if (kind === 'none') return empty('Select a component or one of its instances to set its behavior.');
-    if (kind === 'master') return masterHtml(panel, esc);
-    return instanceHtml(panel, esc);
+    if (kind === 'master') return masterHtml(panel, esc, findings, code);
+    return instanceHtml(panel, esc, findings, preview);
 }
 
 /** A Design section: the section header, then rows in the Design grid. */
@@ -41,7 +48,7 @@ function note(text, esc) {
     return `<div class="small-label">${esc(text)}</div>`;
 }
 
-function masterHtml(panel, esc) {
+function masterHtml(panel, esc, findings, code) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
@@ -59,10 +66,15 @@ function masterHtml(panel, esc) {
         row('States', `<span class="small-label">${panel.contract.states.map(s => esc(s)).join(', ')}</span>`, esc),
         row('Events', `<span class="small-label">${panel.contract.events.map(e => esc(e.name) + (e.exposeAsTrigger ? ' (trigger)' : '')).join(', ')}</span>`, esc),
     ].join('');
-    return section('Template and binding', templateRow, esc) + block('Collections', collections, esc) + section('Contract (read-only)', contract, esc);
+    const generate = `<button class="wide-button full-width" data-bp-action="generate" ${code?.problems.length ? 'disabled' : ''}>Generate code</button>`;
+    return section('Template and binding', templateRow, esc)
+        + block('Collections', collections, esc)
+        + section('Contract (read-only)', contract, esc)
+        + section('Code', generate, esc)
+        + diagnosticsSection(findings, code?.problems ?? [], esc);
 }
 
-function instanceHtml(panel, esc) {
+function instanceHtml(panel, esc, findings, preview) {
     if (!panel.templateId) return empty('This component has no template. Bind the main component first.');
     const variable = panel.rows.filter(r => r.kind === 'variable').map(r => {
         const name = esc(r.prop);
@@ -74,7 +86,22 @@ function instanceHtml(panel, esc) {
     const literal = panel.rows.filter(r => r.kind === 'literal');
     const props = literal.filter(r => !SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
     const slots = literal.filter(r => SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
-    return block('Collections', variable, esc) + block('Props', props, esc) + block('Slots', slots, esc);
+    const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
+    return block('Collections', variable, esc)
+        + block('Props', props, esc)
+        + block('Slots', slots, esc)
+        + (preview ? section('Preview', row('State', state, esc) + previewRows(preview.vars, preview.templateId, esc), esc) : '')
+        + diagnosticsSection(findings, [], esc, preview);
+}
+
+/**
+ * The Diagnostics section: the node's findings, the generator's reasons (master), and the missing state tokens of the
+ * previewed state (instance). Null findings means pages are still loading; nothing is reported then.
+ */
+function diagnosticsSection(findings, problems, esc, preview = null) {
+    if (findings === null) return section('Diagnostics', empty('Diagnostics appear when all pages are loaded.'), esc);
+    const all = [...findings, ...codeFindings(problems), ...(preview ? stateFindings(preview.unresolved, preview.stateTokens) : [])];
+    return section('Diagnostics', all.length ? findingRows(all, esc) : empty('No issues'), esc);
 }
 
 /** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs). */
@@ -89,4 +116,35 @@ function literalRow(r, esc) {
     if (r.type === 'string')
         return row(label, `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${name}" value="${esc(r.value)}">`, esc, r.prop);
     return '';
+}
+
+/** One row per finding: its severity badge, then its one-line message (the only part that may wrap). */
+export function findingRows(findings, esc) {
+    return findings.map(f => `<div class="cmp-prop2"><span><span class="badge">${f.severity === 'error' ? 'Error' : 'Warning'}</span></span><div class="cmp-ctl"><span class="small-label">${esc(f.message)}</span></div></div>`).join('');
+}
+
+/** The generator's reasons as error findings, one per refused token, naming the modes it was refused in. */
+export function codeFindings(problems) {
+    return problems.map(p => {
+        const label = p.token ?? p.slot ?? p.event ?? p.dimension ?? 'component';
+        const at = [p.variant && `variant ${p.variant}`, p.size && `size ${p.size}`].filter(Boolean).join(', ');
+        return { severity: 'error', message: `Code: ${label}${at ? ` in ${at}` : ''} (${p.reason}).` };
+    });
+}
+
+/** The state tokens of the previewed state that do not resolve, as error findings. Other unresolved tokens are reported elsewhere. */
+export function stateFindings(unresolved, stateTokens) {
+    return unresolved.filter(u => stateTokens.includes(u.token)).map(u => ({ severity: 'error', message: `Preview: token "${u.token}" is missing (${u.reason}).` }));
+}
+
+/** The files a generated component downloads as, in order. Nothing when the generator refused. */
+export function codeDownloads(result) {
+    return result.files ? Object.entries(result.files).map(([name, text]) => ({ name, text })) : [];
+}
+
+/** The resolved tokens of the previewed state as read-only rows, named without the template prefix. */
+export function previewRows(vars, templateId, esc) {
+    const entries = Object.entries(vars);
+    if (!entries.length) return empty('No resolved tokens');
+    return entries.map(([name, value]) => row(name.replace(`--${templateId}-`, ''), `<span class="small-label">${esc(value)}</span>`, esc, name)).join('');
 }
