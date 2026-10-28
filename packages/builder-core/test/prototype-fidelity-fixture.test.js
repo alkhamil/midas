@@ -11,14 +11,14 @@ test('the fidelity fixture on disk is the one the generator builds', () => {
     assert.deepEqual(JSON.parse(readFileSync(FIDELITY_FIXTURE_PATH, 'utf8')), doc);
 });
 
-test('every feature frame draws, and the only layers not drawn are the known gaps: images and glass', () => {
-    const types = new Set();
+test('every feature frame draws, and exactly these layers are reported as not drawn: booleans, a mask, an image layer and glass', () => {
+    const reported = [];
     for (const id of frameIds) {
         const { root, unsupported } = toDomTree(doc, id);
         assert.ok(root, id);
-        for (const u of unsupported) types.add(u.type);
+        reported.push(...unsupported);
     }
-    assert.deepEqual([...types].sort(), ['glass', 'image']);
+    assert.deepEqual(reported.map(u => [u.nodeId, u.type]), [['g1', 'boolean'], ['g2', 'boolean'], ['m2', 'mask'], ['i1', 'image'], ['x5', 'glass']]);
 });
 
 test('building the tree does not change the document', () => {

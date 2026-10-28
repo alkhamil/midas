@@ -144,3 +144,15 @@ test('text wrap balance and pretty map to the text-wrap property; the default wr
 test('a line draws no fill, however its fill is set', () => {
     assert.equal(drawn({ type: 'line', fill: '#ff0000', stroke: '#000000', strokeWidth: 1 }).style.background, undefined);
 });
+
+test('a boolean result is reported and its operands are not drawn', () => {
+    const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ id: 'G', type: 'group', booleanOp: 'union', fill: 'none' }), layer({ id: 'K', parentId: 'G', type: 'rect' })]), 'A');
+    assert.deepEqual(unsupported, [{ nodeId: 'G', type: 'boolean' }]);
+    assert.deepEqual(root.children, []);
+});
+
+test('a mask is reported and not drawn', () => {
+    const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ type: 'ellipse', isMask: true })]), 'A');
+    assert.deepEqual(unsupported, [{ nodeId: 'L', type: 'mask' }]);
+    assert.deepEqual(root.children, []);
+});

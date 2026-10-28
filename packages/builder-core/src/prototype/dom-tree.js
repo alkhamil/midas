@@ -7,7 +7,8 @@
 // read. A layer's fill, border radius and shadows are CSS. Outlines the CSS cannot draw (an arc, a line, a vector path, a stroke that is
 // centred on the outline, a dash) are an `html` string of SVG, placed in the element.
 //
-// Layers the DOM does not draw yet (image, boolean results, masks) are listed in `unsupported`, and so are effects the DOM has no form for.
+// Anything the DOM does not draw is listed in `unsupported`, never drawn silently: image layers, boolean results, masks, image fills and
+// effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
@@ -57,6 +58,16 @@ function renderNode(n, parent, cx) {
     const template = templateOf(n, cx);
     if (template === undefined) return null;
     if (template) return renderButton(n, template, parent, cx);
+    // A boolean result is computed from its operands (polygon clipping), which the DOM does not have. Its operands are not drawn either.
+    if (n.booleanOp) {
+        cx.unsupported.push({ nodeId: n.id, type: 'boolean' });
+        return null;
+    }
+    // A mask clips the layers under it. The DOM does not clip yet, so the mask is not drawn and is reported.
+    if (n.isMask) {
+        cx.unsupported.push({ nodeId: n.id, type: 'mask' });
+        return null;
+    }
     if (!DRAWN.includes(n.type)) {
         cx.unsupported.push({ nodeId: n.id, type: n.type });
         return null;
