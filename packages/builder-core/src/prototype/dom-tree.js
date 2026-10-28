@@ -74,7 +74,8 @@ function renderNode(n, parent, scope) {
     const base = { ...placement(n, parent, scope.responsive), ...opacityOf(n) };
     if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, scope, true) });
     if (VECTOR.includes(n.type) || arcActive(n)) {
-        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope), children: [] };
+        // The outline is an SVG placed at the box's corner: the box must be positioned, or the SVG lands on an ancestor's corner.
+        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, position: base.position ?? 'relative', ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope), children: [] };
     }
     const style = { ...base, ...fillStyle(n, scope), ...radiusStyle(n), ...effectStyle(n, scope, false) };
     if (n.type === 'ellipse') style.borderRadius = '50%';

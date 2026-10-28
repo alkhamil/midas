@@ -1644,7 +1644,7 @@
         },
         {
           "id": "frame-30",
-          "name": "Boolean: union",
+          "name": "Vector path: dashed closed",
           "type": "frame",
           "parentId": null,
           "x": 0,
@@ -1663,10 +1663,224 @@
           "version": 0
         },
         {
+          "id": "p3",
+          "name": "p3",
+          "type": "path",
+          "parentId": "frame-30",
+          "x": 20,
+          "y": 20,
+          "w": 140,
+          "h": 120,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#112233",
+          "strokeWidth": 2,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "pathW": 10,
+          "pathH": 10,
+          "closed": true,
+          "points": [
+            {
+              "x": 1,
+              "y": 1
+            },
+            {
+              "x": 9,
+              "y": 1
+            },
+            {
+              "x": 9,
+              "y": 9
+            },
+            {
+              "x": 1,
+              "y": 9
+            }
+          ],
+          "strokeStyle": "dash",
+          "strokeDash": 3,
+          "strokeGap": 2,
+          "strokeCap": "butt",
+          "strokeJoin": "miter"
+        },
+        {
+          "id": "frame-31",
+          "name": "Vector path: dashed open",
+          "type": "frame",
+          "parentId": null,
+          "x": 360,
+          "y": 1500,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "p4",
+          "name": "p4",
+          "type": "path",
+          "parentId": "frame-31",
+          "x": 20,
+          "y": 20,
+          "w": 140,
+          "h": 120,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#c0392b",
+          "strokeWidth": 2,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "pathW": 10,
+          "pathH": 10,
+          "closed": false,
+          "points": [
+            {
+              "x": 1,
+              "y": 8
+            },
+            {
+              "x": 4,
+              "y": 1
+            },
+            {
+              "x": 7,
+              "y": 8
+            },
+            {
+              "x": 9,
+              "y": 2
+            }
+          ],
+          "strokeStyle": "dash",
+          "strokeDash": 3,
+          "strokeGap": 1.5,
+          "strokeCap": "round",
+          "strokeJoin": "round"
+        },
+        {
+          "id": "frame-32",
+          "name": "Vector path: dotted round caps",
+          "type": "frame",
+          "parentId": null,
+          "x": 720,
+          "y": 1500,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "p5",
+          "name": "p5",
+          "type": "path",
+          "parentId": "frame-32",
+          "x": 20,
+          "y": 20,
+          "w": 140,
+          "h": 120,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 4,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "pathW": 10,
+          "pathH": 10,
+          "closed": false,
+          "points": [
+            {
+              "x": 1,
+              "y": 5
+            },
+            {
+              "x": 9,
+              "y": 5
+            }
+          ],
+          "strokeStyle": "dash",
+          "strokeDash": 0,
+          "strokeGap": 6,
+          "strokeCap": "round",
+          "strokeJoin": "round"
+        },
+        {
+          "id": "frame-33",
+          "name": "Boolean: union",
+          "type": "frame",
+          "parentId": null,
+          "x": 1080,
+          "y": 1500,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
           "id": "g1",
           "name": "g1",
           "type": "path",
-          "parentId": "frame-30",
+          "parentId": "frame-33",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -1785,11 +1999,11 @@
           "version": 0
         },
         {
-          "id": "frame-31",
+          "id": "frame-34",
           "name": "Boolean: subtract",
           "type": "frame",
           "parentId": null,
-          "x": 360,
+          "x": 1440,
           "y": 1500,
           "w": 320,
           "h": 240,
@@ -1808,7 +2022,7 @@
           "id": "g2",
           "name": "g2",
           "type": "path",
-          "parentId": "frame-31",
+          "parentId": "frame-34",
           "x": 20,
           "y": 20,
           "w": 80,
@@ -1919,11 +2133,11 @@
           "version": 0
         },
         {
-          "id": "frame-32",
+          "id": "frame-35",
           "name": "Mask: rectangle mask",
           "type": "frame",
           "parentId": null,
-          "x": 720,
+          "x": 1800,
           "y": 1500,
           "w": 320,
           "h": 240,
@@ -1942,7 +2156,7 @@
           "id": "m2",
           "name": "m2",
           "type": "ellipse",
-          "parentId": "frame-32",
+          "parentId": "frame-35",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -1971,7 +2185,7 @@
           "id": "m1",
           "name": "m1",
           "type": "rect",
-          "parentId": "frame-32",
+          "parentId": "frame-35",
           "x": 20,
           "y": 20,
           "w": 200,
@@ -1996,12 +2210,12 @@
           "version": 0
         },
         {
-          "id": "frame-33",
+          "id": "frame-36",
           "name": "Image fill: fill",
           "type": "frame",
           "parentId": null,
-          "x": 1080,
-          "y": 1500,
+          "x": 0,
+          "y": 1800,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2019,7 +2233,7 @@
           "id": "im1",
           "name": "im1",
           "type": "rect",
-          "parentId": "frame-33",
+          "parentId": "frame-36",
           "x": 20,
           "y": 20,
           "w": 200,
@@ -2045,12 +2259,12 @@
           "version": 0
         },
         {
-          "id": "frame-34",
+          "id": "frame-37",
           "name": "Image fill: fit",
           "type": "frame",
           "parentId": null,
-          "x": 1440,
-          "y": 1500,
+          "x": 360,
+          "y": 1800,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2068,7 +2282,7 @@
           "id": "im2",
           "name": "im2",
           "type": "rect",
-          "parentId": "frame-34",
+          "parentId": "frame-37",
           "x": 20,
           "y": 20,
           "w": 200,
@@ -2094,12 +2308,12 @@
           "version": 0
         },
         {
-          "id": "frame-35",
+          "id": "frame-38",
           "name": "Image fill: tile",
           "type": "frame",
           "parentId": null,
-          "x": 1800,
-          "y": 1500,
+          "x": 720,
+          "y": 1800,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2117,7 +2331,7 @@
           "id": "im3",
           "name": "im3",
           "type": "rect",
-          "parentId": "frame-35",
+          "parentId": "frame-38",
           "x": 20,
           "y": 20,
           "w": 200,
@@ -2143,11 +2357,11 @@
           "version": 0
         },
         {
-          "id": "frame-36",
+          "id": "frame-39",
           "name": "Image layer",
           "type": "frame",
           "parentId": null,
-          "x": 0,
+          "x": 1080,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2166,7 +2380,7 @@
           "id": "i1",
           "name": "i1",
           "type": "image",
-          "parentId": "frame-36",
+          "parentId": "frame-39",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2192,11 +2406,11 @@
           "assetId": "fidelity-image"
         },
         {
-          "id": "frame-37",
+          "id": "frame-40",
           "name": "Effect: drop shadow",
           "type": "frame",
           "parentId": null,
-          "x": 360,
+          "x": 1440,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2215,7 +2429,7 @@
           "id": "x1",
           "name": "x1",
           "type": "rect",
-          "parentId": "frame-37",
+          "parentId": "frame-40",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2252,11 +2466,11 @@
           ]
         },
         {
-          "id": "frame-38",
+          "id": "frame-41",
           "name": "Effect: inner shadow",
           "type": "frame",
           "parentId": null,
-          "x": 720,
+          "x": 1800,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2275,7 +2489,7 @@
           "id": "x2",
           "name": "x2",
           "type": "rect",
-          "parentId": "frame-38",
+          "parentId": "frame-41",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2312,12 +2526,12 @@
           ]
         },
         {
-          "id": "frame-39",
+          "id": "frame-42",
           "name": "Effect: layer blur",
           "type": "frame",
           "parentId": null,
-          "x": 1080,
-          "y": 1800,
+          "x": 0,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2335,7 +2549,7 @@
           "id": "x3",
           "name": "x3",
           "type": "rect",
-          "parentId": "frame-39",
+          "parentId": "frame-42",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2367,12 +2581,12 @@
           ]
         },
         {
-          "id": "frame-40",
+          "id": "frame-43",
           "name": "Effect: background blur",
           "type": "frame",
           "parentId": null,
-          "x": 1440,
-          "y": 1800,
+          "x": 360,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2390,7 +2604,7 @@
           "id": "x4a",
           "name": "x4a",
           "type": "rect",
-          "parentId": "frame-40",
+          "parentId": "frame-43",
           "x": 0,
           "y": 0,
           "w": 320,
@@ -2418,7 +2632,7 @@
           "id": "x4",
           "name": "x4",
           "type": "rect",
-          "parentId": "frame-40",
+          "parentId": "frame-43",
           "x": 40,
           "y": 40,
           "w": 160,
@@ -2450,12 +2664,12 @@
           ]
         },
         {
-          "id": "frame-41",
+          "id": "frame-44",
           "name": "Effect: glass (not drawn yet)",
           "type": "frame",
           "parentId": null,
-          "x": 1800,
-          "y": 1800,
+          "x": 720,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2473,7 +2687,7 @@
           "id": "x5",
           "name": "x5",
           "type": "rect",
-          "parentId": "frame-41",
+          "parentId": "frame-44",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2505,11 +2719,11 @@
           ]
         },
         {
-          "id": "frame-42",
+          "id": "frame-45",
           "name": "Transform: flip X and rotation",
           "type": "frame",
           "parentId": null,
-          "x": 0,
+          "x": 1080,
           "y": 2100,
           "w": 320,
           "h": 240,
@@ -2528,7 +2742,7 @@
           "id": "tr1",
           "name": "tr1",
           "type": "rect",
-          "parentId": "frame-42",
+          "parentId": "frame-45",
           "x": 20,
           "y": 20,
           "w": 140,
@@ -2560,11 +2774,11 @@
           ]
         },
         {
-          "id": "frame-43",
+          "id": "frame-46",
           "name": "Opacity 40%",
           "type": "frame",
           "parentId": null,
-          "x": 360,
+          "x": 1440,
           "y": 2100,
           "w": 320,
           "h": 240,
@@ -2583,7 +2797,7 @@
           "id": "o1",
           "name": "o1",
           "type": "rect",
-          "parentId": "frame-43",
+          "parentId": "frame-46",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2608,11 +2822,11 @@
           "version": 0
         },
         {
-          "id": "frame-44",
+          "id": "frame-47",
           "name": "Group with clip content",
           "type": "frame",
           "parentId": null,
-          "x": 720,
+          "x": 1800,
           "y": 2100,
           "w": 320,
           "h": 240,
@@ -2631,7 +2845,7 @@
           "id": "gc",
           "name": "gc",
           "type": "group",
-          "parentId": "frame-44",
+          "parentId": "frame-47",
           "x": 20,
           "y": 20,
           "w": 100,
