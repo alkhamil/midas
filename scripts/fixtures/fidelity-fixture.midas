@@ -1859,34 +1859,6 @@
           "version": 0
         },
         {
-          "id": "m1",
-          "name": "m1",
-          "type": "rect",
-          "parentId": "frame-32",
-          "x": 20,
-          "y": 20,
-          "w": 200,
-          "h": 140,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#0058CA",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "strokeOpacity": 1,
-          "radius": 0,
-          "opacity": 1,
-          "rotation": 0,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0
-        },
-        {
           "id": "m2",
           "name": "m2",
           "type": "ellipse",
@@ -1914,6 +1886,34 @@
           "clip": false,
           "version": 0,
           "isMask": true
+        },
+        {
+          "id": "m1",
+          "name": "m1",
+          "type": "rect",
+          "parentId": "frame-32",
+          "x": 20,
+          "y": 20,
+          "w": 200,
+          "h": 140,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0
         },
         {
           "id": "frame-33",

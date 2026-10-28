@@ -147,10 +147,30 @@ test('a boolean result is reported and its operands are not drawn', () => {
     assert.deepEqual(root.children, []);
 });
 
-test('a mask is reported and not drawn', () => {
-    const { root, unsupported } = toDomTree(docOf([frame('A'), layer({ type: 'ellipse', isMask: true })]), 'A');
-    assert.deepEqual(unsupported, [{ nodeId: 'L', type: 'mask' }]);
-    assert.deepEqual(root.children, []);
+test('a mask is not drawn and clips the layers above it: an ellipse mask clips each one as an ellipse on its own box', () => {
+    const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
+    const above = layer({ id: 'R', x: 10, y: 10, w: 200, h: 200 });
+    const { root, unsupported } = toDomTree(docOf([frame('A'), mask, above]), 'A');
+    assert.deepEqual(unsupported, []);
+    assert.equal(root.children.length, 1);
+    assert.equal(root.children[0].style.clipPath, 'ellipse(50px 25px at 40px 15px)');
+});
+
+test('a rectangle mask clips as an inset with its corner radii; the layers below it are not clipped', () => {
+    const below = layer({ id: 'B', x: 0, y: 0, w: 50, h: 50 });
+    const mask = layer({ id: 'M', type: 'rect', isMask: true, x: 20, y: 20, w: 100, h: 60, radii: [4, 4, 4, 4] });
+    const above = layer({ id: 'R', x: 10, y: 10, w: 200, h: 200 });
+    const children = toDomTree(docOf([frame('A'), below, mask, above]), 'A').root.children;
+    assert.equal(children[0].style.clipPath, undefined);
+    assert.equal(children[1].style.clipPath, 'inset(10px 90px 130px 10px round 4px 4px 4px 4px)');
+});
+
+test('a mask on a rotated layer is reported, and the layer is drawn unclipped', () => {
+    const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
+    const turned = layer({ id: 'R', rotation: 10 });
+    const result = toDomTree(docOf([frame('A'), mask, turned]), 'A');
+    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask that is not a rectangle or ellipse, or on a rotated layer' }]);
+    assert.equal(result.root.children[0].style.clipPath, undefined);
 });
 
 test('a frame stroke is an SVG layer under its content, centred on the frame edge, not a CSS border', () => {

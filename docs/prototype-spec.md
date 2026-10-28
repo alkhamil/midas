@@ -113,7 +113,7 @@ Fidelity audit (Play at Actual size, 1280 wide). Every frame of the fidelity fix
 | Opacity 40% | browser-verified (Play) | |
 | Group with clip content | browser-verified (Play) | |
 | Boolean union, subtract | not drawn, flagged | canvas draws the result; DOM reports each as unsupported and draws neither operand (thumbnail checked) |
-| Mask | flagged, not implemented | the mask is not drawn and is reported as unsupported; the layer under it draws unclipped. Not implemented yet |
+| Mask | browser-verified (Play) | the mask is not drawn; it clips each layer above it, in stored order, as the canvas does. A rectangle or ellipse clips as a CSS inset or ellipse on the layer's box. Another shape, or a mask over a rotated layer, is reported |
 | Image fill: fill, fit, tile; image layer | browser-verified (Play) | the asset covers, contains or repeats the box, as the canvas does. A tile at a scale other than 1 is reported (the DOM does not know the natural size). An image fill on a vector layer is reported |
 | Effect: glass | not drawn, flagged | reported as unsupported |
 | Blend mode | not applicable | the canvas has no per-layer blend mode field, so there is nothing to draw or report |

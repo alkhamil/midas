@@ -64,11 +64,8 @@ function renderNode(n, parent, scope) {
         scope.unsupported.push({ nodeId: n.id, type: 'boolean' });
         return null;
     }
-    // A mask clips the layers under it. The DOM does not clip yet, so the mask is not drawn and is reported.
-    if (n.isMask) {
-        scope.unsupported.push({ nodeId: n.id, type: 'mask' });
-        return null;
-    }
+    // A mask is not drawn: the box it sits in clips the layers above it (see renderChildren).
+    if (n.isMask) return null;
     if (!DRAWN.includes(n.type)) {
         scope.unsupported.push({ nodeId: n.id, type: n.type });
         return null;
@@ -86,7 +83,7 @@ function renderNode(n, parent, scope) {
         Object.assign(style, overflowOf(n));
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
-    const children = scope.childrenOf(n.id).map(c => renderNode(c, n, scope)).filter(Boolean);
+    const children = renderChildren(n, scope);
     const outline = frameOutlineOf(n, scope);
     if (outline !== undefined) {
         style.outline = outline;
@@ -102,6 +99,51 @@ function renderNode(n, parent, scope) {
     const html = n.type !== 'frame' ? stroke : undefined;
     if (html !== undefined) style.position = style.position ?? 'relative';
     return { tag: 'div', nodeId: n.id, attrs: {}, style, ...(html !== undefined ? { html } : {}), children };
+}
+
+/**
+ * The rendered children of a box, in stored order. A visible mask clips every sibling above it, until the next mask, as the canvas
+ * does. The clip is a CSS inset or ellipse on the sibling's box; a mask that is not an unrotated rectangle or ellipse, or a sibling
+ * that is rotated, has no such clip and is reported.
+ * @param {any} n
+ * @param {any} scope
+ * @returns {any[]}
+ */
+function renderChildren(n, scope) {
+    const out = [];
+    let mask = null;
+    for (const c of scope.childrenOf(n.id)) {
+        if (c.isMask && c.visible !== false) {
+            mask = c;
+            continue;
+        }
+        const el = renderNode(c, n, scope);
+        if (!el) continue;
+        if (mask) {
+            const clip = maskClipOf(mask, c);
+            if (clip) el.style.clipPath = clip;
+            else scope.unsupported.push({ nodeId: mask.id, type: 'mask that is not a rectangle or ellipse, or on a rotated layer' });
+        }
+        out.push(el);
+    }
+    return out;
+}
+
+/**
+ * The CSS clip-path of a sibling by a mask: the mask's box, relative to the sibling's box. Null when the mask is not an unrotated
+ * rectangle or ellipse (an arc is not one), or the sibling is rotated (its clip would turn with it).
+ * @param {any} mask
+ * @param {any} child
+ * @returns {string | null}
+ */
+function maskClipOf(mask, child) {
+    if (mask.rotation || child.rotation || arcActive(mask)) return null;
+    if (mask.type !== 'rect' && mask.type !== 'ellipse') return null;
+    const left = mask.x - child.x, top = mask.y - child.y;
+    if (mask.type === 'ellipse') return `ellipse(${svgNumber(mask.w / 2)}px ${svgNumber(mask.h / 2)}px at ${svgNumber(left + mask.w / 2)}px ${svgNumber(top + mask.h / 2)}px)`;
+    const right = child.w - left - mask.w, bottom = child.h - top - mask.h;
+    const radii = cornerRadii(mask).map(r => `${svgNumber(r)}px`).join(' ');
+    return `inset(${svgNumber(top)}px ${svgNumber(right)}px ${svgNumber(bottom)}px ${svgNumber(left)}px round ${radii})`;
 }
 
 /**
