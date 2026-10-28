@@ -97,9 +97,16 @@ test('a text layer is a span with its characters, font, colour and line height a
 });
 
 test('the root frame is reported with its node id, and unknown types are listed rather than drawn silently', () => {
-    const result = toDomTree(doc([frame('A'), child('p', 'A', { type: 'image' })]), 'A');
+    const result = toDomTree(doc([frame('A'), child('p', 'A', { type: 'slice' })]), 'A');
     assert.equal(result.root.nodeId, 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'p', type: 'image' }]);
+    assert.deepEqual(result.unsupported, [{ nodeId: 'p', type: 'slice' }]);
+});
+
+test('an image layer draws its asset as a cover background, from the file assets', () => {
+    const data = { ...doc([frame('A'), child('p', 'A', { type: 'image', assetId: 'a1', w: 120, h: 80 })]), assets: { a1: 'data:image/png;base64,AAAA' } };
+    const { root, unsupported } = toDomTree(data, 'A');
+    assert.equal(root.children[0].style.background, 'url("data:image/png;base64,AAAA") center / cover no-repeat');
+    assert.deepEqual(unsupported, []);
 });
 
 test('a frame id that is not a top-level frame is refused', () => {

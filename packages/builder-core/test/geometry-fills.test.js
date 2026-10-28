@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { topFillOf, withTopColor, topColorOf, cssBackgroundOf } from '../src/geometry/fills.js';
+import { topFillOf, withTopColor, topColorOf, cssBackgroundOf, displayFills } from '../src/geometry/fills.js';
 import { colorWithAlpha } from '../src/geometry/format.js';
 
 const fill = (color, extra = {}) => ({ type: 'solid', color, opacity: 1, visible: true, ...extra });
@@ -63,8 +63,7 @@ test('radial and angular fills map to their CSS gradients', () => {
     assert.equal(cssBackgroundOf([angular]).background, 'conic-gradient(from 0deg, #000000, #ffffff)');
 });
 
-test('an image fill has no CSS background and is reported as unsupported; no fills paint nothing', () => {
-    assert.deepEqual(cssBackgroundOf([{ type: 'image', image: 'x', visible: true }]), { background: '', unsupported: ['image'] });
+test('no fills paint nothing', () => {
     assert.deepEqual(cssBackgroundOf([]), { background: '', unsupported: [] });
 });
 
@@ -72,4 +71,27 @@ test('a colour with an opacity: a six digit hex takes an alpha byte, any other c
     assert.equal(colorWithAlpha('#1e88e5', 1), '#1e88e5');
     assert.equal(colorWithAlpha('#1e88e5', 0.25), '#1e88e540');
     assert.equal(colorWithAlpha('red', 0.5), 'color-mix(in srgb, red 50%, transparent)');
+});
+
+const image = (mode, extra = {}) => ({ type: 'image', image: 'a1', mode, opacity: 1, visible: true, ...extra });
+const assets = { a1: 'data:image/png;base64,AAAA' };
+
+test('an image fill fills its box: cover by default, contained for fit, repeated for tile', () => {
+    assert.equal(cssBackgroundOf([image('fill')], assets).background, 'url("data:image/png;base64,AAAA") center / cover no-repeat');
+    assert.equal(cssBackgroundOf([image(undefined)], assets).background, 'url("data:image/png;base64,AAAA") center / cover no-repeat');
+    assert.equal(cssBackgroundOf([image('fit')], assets).background, 'url("data:image/png;base64,AAAA") center / contain no-repeat');
+    assert.equal(cssBackgroundOf([image('tile')], assets).background, 'url("data:image/png;base64,AAAA") repeat');
+});
+
+test('a tiled image at a scale other than 1 has no CSS form (its natural size is unknown here): reported', () => {
+    assert.deepEqual(cssBackgroundOf([image('tile', { scale: 2 })], assets), { background: '', unsupported: ['image'] });
+});
+
+test('an image whose asset is not in the file shows the canvas placeholder', () => {
+    assert.equal(cssBackgroundOf([image('fill')], {}).background, 'rgba(140,140,150,.18)');
+});
+
+test('an image layer paints its asset as a cover fill; other layers paint their own fills', () => {
+    assert.deepEqual(displayFills({ type: 'image', assetId: 'a1' }), [{ type: 'image', image: 'a1', mode: 'fill' }]);
+    assert.deepEqual(displayFills({ type: 'rect', fills: [fill('#0058CA')] }), [fill('#0058CA')]);
 });

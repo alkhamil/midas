@@ -7,22 +7,22 @@
 // read. A layer's fill, border radius and shadows are CSS. Outlines the CSS cannot draw (an arc, a line, a vector path, a stroke that is
 // centred on the outline, a dash) are an `html` string of SVG, placed in the element.
 //
-// Anything the DOM does not draw is listed in `unsupported`, never drawn silently: image layers, boolean results, masks, image fills and
-// effects with no DOM form (glass).
+// Anything the DOM does not draw is listed in `unsupported`, never drawn silently: boolean results, masks, image fills on vector
+// layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
-import { cssBackgroundOf, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
+import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
  */
 
-/** Layer kinds the DOM draws. Image, boolean results and masks are not drawn yet. */
-const DRAWN = ['frame', 'group', 'rect', 'ellipse', 'text', 'line', 'path'];
+/** Layer kinds the DOM draws. Boolean results and masks are not drawn yet. */
+const DRAWN = ['frame', 'group', 'rect', 'ellipse', 'text', 'line', 'path', 'image'];
 /** Kinds whose outline is drawn as an SVG path, not a CSS box. */
 const VECTOR = ['line', 'path'];
 
@@ -40,7 +40,7 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const parent = frame?.parentId ? byId.get(frame.parentId) : null;
     if (!frame || !(frame.type === 'frame' && (!frame.parentId || parent?.isSection))) throw new Error(`"${frameId}" is not a top-level frame`);
     const pageVarModes = pages.find(p => (p.nodes || []).includes(frame))?.varModes;
-    const scope = { byId, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => nodes.filter(n => n.parentId === id) };
+    const scope = { byId, assets: doc.assets || {}, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => nodes.filter(n => n.parentId === id) };
     const root = renderNode(frame, null, scope);
     if (!root) return { root: null, styles: null, unsupported: scope.unsupported, problems: scope.problems };
     const styles = [...scope.styles.values()].join('\n');
@@ -270,13 +270,13 @@ function flexOf(n) {
 
 /**
  * The fill of a box as CSS. Each visible fill is one layer, the first on top, as the canvas stacks them. A solid fill is the background
- * colour; a gradient is a gradient layer. An image fill is not drawn yet: it is reported.
+ * colour; a gradient or an image is a background layer. An image layer paints its asset.
  * @param {any} n
  * @param {any} scope
  * @returns {Record<string, string>}
  */
 function fillStyle(n, scope) {
-    const { background, unsupported } = cssBackgroundOf(getFills(n));
+    const { background, unsupported } = cssBackgroundOf(displayFills(n), scope.assets);
     for (const type of unsupported) scope.unsupported.push({ nodeId: n.id, type: `${type} fill` });
     return background ? { background } : {};
 }

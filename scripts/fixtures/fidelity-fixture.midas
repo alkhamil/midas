@@ -7,7 +7,9 @@
     "colors": [],
     "typography": []
   },
-  "assets": {},
+  "assets": {
+    "fidelity-image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAR0lEQVR4nGNgiDgFR//PMMAR1cRHLSAoThNDkcRHLSBswdBPRUPfgqGfioa+BUM/FQ19C4Z+Khr6Fgz9VDT0LRj6qWjIWwAAKmTaTPJgb+gAAAAASUVORK5CYII="
+  },
   "pages": [
     {
       "id": "page-fidelity",
@@ -1915,7 +1917,7 @@
         },
         {
           "id": "frame-33",
-          "name": "Image layer",
+          "name": "Image fill: fill",
           "type": "frame",
           "parentId": null,
           "x": 1080,
@@ -1934,10 +1936,157 @@
           "version": 0
         },
         {
+          "id": "im1",
+          "name": "im1",
+          "type": "rect",
+          "parentId": "frame-33",
+          "x": 20,
+          "y": 20,
+          "w": 200,
+          "h": 140,
+          "fills": [
+            {
+              "type": "image",
+              "image": "fidelity-image",
+              "mode": "fill",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0
+        },
+        {
+          "id": "frame-34",
+          "name": "Image fill: fit",
+          "type": "frame",
+          "parentId": null,
+          "x": 1440,
+          "y": 1500,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "im2",
+          "name": "im2",
+          "type": "rect",
+          "parentId": "frame-34",
+          "x": 20,
+          "y": 20,
+          "w": 200,
+          "h": 140,
+          "fills": [
+            {
+              "type": "image",
+              "image": "fidelity-image",
+              "mode": "fit",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0
+        },
+        {
+          "id": "frame-35",
+          "name": "Image fill: tile",
+          "type": "frame",
+          "parentId": null,
+          "x": 1800,
+          "y": 1500,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
+          "id": "im3",
+          "name": "im3",
+          "type": "rect",
+          "parentId": "frame-35",
+          "x": 20,
+          "y": 20,
+          "w": 200,
+          "h": 140,
+          "fills": [
+            {
+              "type": "image",
+              "image": "fidelity-image",
+              "mode": "tile",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "strokeOpacity": 1,
+          "radius": 0,
+          "opacity": 1,
+          "rotation": 0,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0
+        },
+        {
+          "id": "frame-36",
+          "name": "Image layer",
+          "type": "frame",
+          "parentId": null,
+          "x": 0,
+          "y": 1800,
+          "w": 320,
+          "h": 240,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#f4f4f6",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "clip": true,
+          "version": 0
+        },
+        {
           "id": "i1",
           "name": "i1",
           "type": "image",
-          "parentId": "frame-33",
+          "parentId": "frame-36",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -1960,15 +2109,15 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "assetId": "missing"
+          "assetId": "fidelity-image"
         },
         {
-          "id": "frame-34",
+          "id": "frame-37",
           "name": "Effect: drop shadow",
           "type": "frame",
           "parentId": null,
-          "x": 1440,
-          "y": 1500,
+          "x": 360,
+          "y": 1800,
           "w": 320,
           "h": 240,
           "fills": [
@@ -1986,7 +2135,7 @@
           "id": "x1",
           "name": "x1",
           "type": "rect",
-          "parentId": "frame-34",
+          "parentId": "frame-37",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2023,12 +2172,12 @@
           ]
         },
         {
-          "id": "frame-35",
+          "id": "frame-38",
           "name": "Effect: inner shadow",
           "type": "frame",
           "parentId": null,
-          "x": 1800,
-          "y": 1500,
+          "x": 720,
+          "y": 1800,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2046,7 +2195,7 @@
           "id": "x2",
           "name": "x2",
           "type": "rect",
-          "parentId": "frame-35",
+          "parentId": "frame-38",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2083,11 +2232,11 @@
           ]
         },
         {
-          "id": "frame-36",
+          "id": "frame-39",
           "name": "Effect: layer blur",
           "type": "frame",
           "parentId": null,
-          "x": 0,
+          "x": 1080,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2106,7 +2255,7 @@
           "id": "x3",
           "name": "x3",
           "type": "rect",
-          "parentId": "frame-36",
+          "parentId": "frame-39",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2138,11 +2287,11 @@
           ]
         },
         {
-          "id": "frame-37",
+          "id": "frame-40",
           "name": "Effect: background blur",
           "type": "frame",
           "parentId": null,
-          "x": 360,
+          "x": 1440,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2161,7 +2310,7 @@
           "id": "x4a",
           "name": "x4a",
           "type": "rect",
-          "parentId": "frame-37",
+          "parentId": "frame-40",
           "x": 0,
           "y": 0,
           "w": 320,
@@ -2189,7 +2338,7 @@
           "id": "x4",
           "name": "x4",
           "type": "rect",
-          "parentId": "frame-37",
+          "parentId": "frame-40",
           "x": 40,
           "y": 40,
           "w": 160,
@@ -2221,11 +2370,11 @@
           ]
         },
         {
-          "id": "frame-38",
+          "id": "frame-41",
           "name": "Effect: glass (not drawn yet)",
           "type": "frame",
           "parentId": null,
-          "x": 720,
+          "x": 1800,
           "y": 1800,
           "w": 320,
           "h": 240,
@@ -2244,7 +2393,7 @@
           "id": "x5",
           "name": "x5",
           "type": "rect",
-          "parentId": "frame-38",
+          "parentId": "frame-41",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2276,12 +2425,12 @@
           ]
         },
         {
-          "id": "frame-39",
+          "id": "frame-42",
           "name": "Transform: flip X and rotation",
           "type": "frame",
           "parentId": null,
-          "x": 1080,
-          "y": 1800,
+          "x": 0,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2299,7 +2448,7 @@
           "id": "tr1",
           "name": "tr1",
           "type": "rect",
-          "parentId": "frame-39",
+          "parentId": "frame-42",
           "x": 20,
           "y": 20,
           "w": 140,
@@ -2331,12 +2480,12 @@
           ]
         },
         {
-          "id": "frame-40",
+          "id": "frame-43",
           "name": "Opacity 40%",
           "type": "frame",
           "parentId": null,
-          "x": 1440,
-          "y": 1800,
+          "x": 360,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2354,7 +2503,7 @@
           "id": "o1",
           "name": "o1",
           "type": "rect",
-          "parentId": "frame-40",
+          "parentId": "frame-43",
           "x": 20,
           "y": 20,
           "w": 120,
@@ -2379,12 +2528,12 @@
           "version": 0
         },
         {
-          "id": "frame-41",
+          "id": "frame-44",
           "name": "Group with clip content",
           "type": "frame",
           "parentId": null,
-          "x": 1800,
-          "y": 1800,
+          "x": 720,
+          "y": 2100,
           "w": 320,
           "h": 240,
           "fills": [
@@ -2402,7 +2551,7 @@
           "id": "gc",
           "name": "gc",
           "type": "group",
-          "parentId": "frame-41",
+          "parentId": "frame-44",
           "x": 20,
           "y": 20,
           "w": 100,

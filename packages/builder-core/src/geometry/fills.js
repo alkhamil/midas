@@ -69,14 +69,34 @@ export function withTopColor(fills, color) {
  */
 export const paintOf = (color, opacity = 1) => (!color || color === 'none' ? [] : [solidFill(color, opacity)]);
 
+/** What the canvas paints for an image whose asset is not loaded (or not in the file). */
+const IMAGE_PENDING = 'rgba(140,140,150,.18)';
+
+/**
+ * The paints a layer shows. An image layer shows its asset as a cover fill, the same as the canvas; any other layer shows its fills.
+ * @param {{ type?: string, assetId?: string, fills?: any[] }} n
+ * @returns {any[]}
+ */
+export function displayFills(n) {
+    return n.type === 'image' ? [{ type: 'image', image: n.assetId, mode: 'fill' }] : getFills(n);
+}
+
 /**
  * One fill as a CSS background layer. A linear fill's angle is measured from the x axis on the canvas, and from the top in CSS: CSS is
- * the canvas angle plus 90 degrees. Null for a fill CSS cannot draw (an image); undefined for a fill that draws nothing.
+ * the canvas angle plus 90 degrees. An image is its asset, covering the box, contained for fit, or repeated for tile. Null for a fill
+ * CSS cannot draw (a tiled image at a scale: the natural size is not known here); undefined for a fill that draws nothing.
  * @param {any} f
+ * @param {Record<string, string>} assets
  * @returns {{ css: string, solid: boolean } | null | undefined}
  */
-function cssFillLayer(f) {
+function cssFillLayer(f, assets) {
     const o = f.opacity;
+    if (f.type === 'image') {
+        const src = assets[f.image];
+        if (!src) return { css: IMAGE_PENDING, solid: true };
+        if (f.mode === 'tile') return f.scale && f.scale !== 1 ? null : { css: `url("${src}") repeat`, solid: false };
+        return { css: `url("${src}") center / ${f.mode === 'fit' ? 'contain' : 'cover'} no-repeat`, solid: false };
+    }
     if (f.type === 'solid') return f.color && f.color !== 'none' ? { css: colorWithAlpha(f.color, o), solid: true } : undefined;
     if (f.type === 'linear') return { css: `linear-gradient(${(f.angle ?? 90) + 90}deg, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
     if (f.type === 'radial') return { css: `radial-gradient(circle, ${colorWithAlpha(f.color || '#d9d9d9', o)}, ${colorWithAlpha(f.color2 || '#ffffff', o)})`, solid: false };
@@ -88,12 +108,13 @@ function cssFillLayer(f) {
  * The CSS background of a fill list: every visible fill, the top one first, as one layer each. `background` is '' when nothing paints;
  * `unsupported` names the fill types CSS cannot draw.
  * @param {any[]} fills
+ * @param {Record<string, string>} [assets] the document's asset sources, by id
  * @returns {{ background: string, unsupported: string[] }}
  */
-export function cssBackgroundOf(fills) {
+export function cssBackgroundOf(fills, assets = {}) {
     const layers = [], unsupported = [];
     for (const f of fills.filter(x => x.visible !== false)) {
-        const layer = cssFillLayer(f);
+        const layer = cssFillLayer(f, assets);
         if (layer === null) unsupported.push(f.type);
         else if (layer) layers.push(layer);
     }

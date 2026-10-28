@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, assertCanOwnInteractions, planNodeRemoval, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, destinationOptions, nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, solidFill, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { layoutOrder } from './layoutOrder.js';
@@ -1243,8 +1243,6 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
 function bindVariable(prop, id) {
     transaction('Apply variable', () => {
         for (const n of varTargets()) {
-            if (/^fills\./.test(prop))
-                n.fills;
             n.vars = { ...(n.vars || {}), [prop]: id };
             // One variable for all corners / both sides replaces the per-corner / per-side ones.
             for (const k of prop === 'radius' ? ['rTL', 'rTR', 'rBL', 'rBR'] : prop === 'padH' ? ['padL', 'padR'] : prop === 'padV' ? ['padT', 'padB'] : [])
@@ -5971,7 +5969,6 @@ function scApply(g, fn) {
 function scSetColor(g, color, opacity) {
     scApply(g, (n, u) => {
         if (u.kind === 'fill') {
-            n.fills;
             const fl = n.fills[u.i];
             if (!fl)
                 return;
@@ -5991,8 +5988,6 @@ function scSetColor(g, color, opacity) {
 function scBind(g, id) {
     scApply(g, (n, u) => {
         const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
-        if (u.kind === 'fill')
-            n.fills;
         n.vars = { ...(n.vars || {}), [prop]: id };
         if (u.kind === 'fill' && u.i === 0)
             delete n.vars.fill;
@@ -10299,7 +10294,7 @@ async function importImage(file, location = null) {
         const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
         if (img.naturalWidth * img.naturalHeight > 64e6)
             throw new Error('Image exceeds the 64 megapixel limit.');
-        transaction('Place image', () => { const asset = uid(); doc.data.assets[asset] = url; const scale = Math.min(1, 800 / img.naturalWidth, 800 / img.naturalHeight), w = img.naturalWidth * scale, h = img.naturalHeight * scale, c = location || screenToWorld(area.clientWidth / 2, area.clientHeight / 2); const n = doc.add(node('image', { name: file.name, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), w: Math.round(w), h: Math.round(h), assetId: asset })); n.fills; n.type = 'rect'; n.clip = false; n.radius = 0; n.lockRatio = true; syncLegacyFill(n); renderer.images.images.set(asset, img); select([n.id]); });
+        transaction('Place image', () => { const asset = uid(); doc.data.assets[asset] = url; const scale = Math.min(1, 800 / img.naturalWidth, 800 / img.naturalHeight), w = img.naturalWidth * scale, h = img.naturalHeight * scale, c = location || screenToWorld(area.clientWidth / 2, area.clientHeight / 2); const n = doc.add(node('rect', { name: file.name, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), w: Math.round(w), h: Math.round(h), fills: [{ type: 'image', image: asset, mode: 'fill', opacity: 1, visible: true }], clip: false, radius: 0, lockRatio: true })); renderer.images.images.set(asset, img); select([n.id]); });
         toast('Image placed. Original resolution preserved.');
     }
     catch (e) {
@@ -12555,7 +12550,7 @@ function inspectCSS() {
             css += `\n-webkit-text-stroke: ${fmt(n.strokeWidth)}px ${n.stroke};`;
     }
     else {
-        css += `\nbackground: ${cssBackgroundOf(getFills(n)).background || 'transparent'};`;
+        css += `\nbackground: ${cssBackgroundOf(displayFills(n), doc.data.assets).background || 'transparent'};`;
         if (hasRadii(n))
             css += `\nborder-radius: ${n.radii.map(v => fmt(v) + 'px').join(' ')};`;
         else if (n.radius)

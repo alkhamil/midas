@@ -2,6 +2,7 @@
 // shapes, arcs, lines, vector paths, strokes, fills, effects, booleans, masks, images, transforms). The frames sit in a grid, six to a
 // row, and each frame's name is the feature it shows. Run `node scripts/make-fidelity-fixture.js` to write the file.
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { deflateSync } from 'node:zlib';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildBehaviorFixture } from './make-behavior-fixture.js';
@@ -10,6 +11,51 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const FIDELITY_FIXTURE_PATH = resolve(here, 'fixtures/fidelity-fixture.midas');
 
 const COLS = 6, CELL_W = 360, CELL_H = 300, FRAME_W = 320, FRAME_H = 240;
+
+/** The asset the image features draw: a real picture in the file, not a placeholder id. */
+const IMAGE = 'fidelity-image';
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+});
+const crc32 = buf => {
+    let c = 0xffffffff;
+    for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+};
+
+/**
+ * A 32 by 32 blue and yellow checker as a PNG data URL (8-bit RGB), built here so the fixture needs no image file.
+ * @returns {string}
+ */
+export function checkerPng() {
+    const size = 32, cell = 4, raw = [];
+    for (let y = 0; y < size; y++) {
+        raw.push(0);
+        for (let x = 0; x < size; x++) {
+            const blue = (Math.floor(x / cell) + Math.floor(y / cell)) % 2 === 0;
+            raw.push(...(blue ? [0x00, 0x58, 0xca] : [0xff, 0xcc, 0x00]));
+        }
+    }
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(size, 0);
+    ihdr.writeUInt32BE(size, 4);
+    ihdr[8] = 8;
+    ihdr[9] = 2;
+    const chunk = (type, data) => {
+        const len = Buffer.alloc(4), crc = Buffer.alloc(4), td = Buffer.concat([Buffer.from(type), data]);
+        len.writeUInt32BE(data.length);
+        crc.writeUInt32BE(crc32(td));
+        return Buffer.concat([len, td, crc]);
+    };
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(Buffer.from(raw))), chunk('IEND', Buffer.alloc(0))]);
+    return `data:image/png;base64,${png.toString('base64')}`;
+}
+
+/** An image paint: the asset in the given mode (fill, fit or tile). */
+const imageFill = (mode, extra = {}) => ({ type: 'image', image: IMAGE, mode, opacity: 1, visible: true, ...extra });
 
 /** A top-level frame of the grid. */
 const frame = (id, name, index, extra = {}) => ({
@@ -72,7 +118,10 @@ const FEATURES = [
     { name: 'Boolean: union', layers: f => [{ ...layer('g1', f, 'group', { booleanOp: 'union', fills: solid('none') }) }, layer('g1a', 'g1', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g1b', 'g1', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })] },
     { name: 'Boolean: subtract', layers: f => [layer('g2', f, 'group', { booleanOp: 'subtract', fills: solid('none') }), layer('g2a', 'g2', 'rect', { x: 0, y: 0, w: 80, h: 60 }), layer('g2b', 'g2', 'rect', { x: 40, y: 30, w: 80, h: 60, fills: solid('#c0392b') })] },
     { name: 'Mask: rectangle mask', layers: f => [layer('m1', f, 'rect', { w: 200, h: 140, fills: solid('#0058CA') }), layer('m2', f, 'ellipse', { w: 120, h: 120, isMask: true, fills: solid('#000000') })] },
-    { name: 'Image layer', layers: f => [layer('i1', f, 'image', { assetId: 'missing', w: 120, h: 80 })] },
+    { name: 'Image fill: fill', layers: f => [layer('im1', f, 'rect', { w: 200, h: 140, fills: [imageFill('fill')] })] },
+    { name: 'Image fill: fit', layers: f => [layer('im2', f, 'rect', { w: 200, h: 140, fills: [imageFill('fit')] })] },
+    { name: 'Image fill: tile', layers: f => [layer('im3', f, 'rect', { w: 200, h: 140, fills: [imageFill('tile')] })] },
+    { name: 'Image layer', layers: f => [layer('i1', f, 'image', { assetId: IMAGE, w: 120, h: 80 })] },
     { name: 'Effect: drop shadow', layers: f => [layer('x1', f, 'rect', { effects: [{ type: 'drop', visible: true, x: 4, y: 6, blur: 12, spread: 0, color: '#000000', opacity: 0.4 }] })] },
     { name: 'Effect: inner shadow', layers: f => [layer('x2', f, 'rect', { effects: [{ type: 'inner', visible: true, x: 0, y: 4, blur: 8, spread: 0, color: '#000000', opacity: 0.5 }] })] },
     { name: 'Effect: layer blur', layers: f => [layer('x3', f, 'rect', { effects: [{ type: 'layerBlur', visible: true, radius: 8 }] })] },
@@ -94,7 +143,7 @@ export function buildFidelityFixture() {
         return [frame(id, feature.name, index, feature.frame), ...feature.layers(id)];
     });
     return {
-        format: base.format, version: base.version, name: 'Fidelity fixture', pageId: 'page-fidelity', tokens: base.tokens, assets: base.assets,
+        format: base.format, version: base.version, name: 'Fidelity fixture', pageId: 'page-fidelity', tokens: base.tokens, assets: { ...base.assets, [IMAGE]: checkerPng() },
         pages: [{ id: 'page-fidelity', name: 'Fidelity', nodes }],
         variables: { collections: [], items: [] },
     };
