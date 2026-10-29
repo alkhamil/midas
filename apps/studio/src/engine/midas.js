@@ -9579,14 +9579,15 @@ function instanceModesOf(inst, binding) {
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
-    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
-    if (state.inspectorTab === 'behavior') {
-        $('#inspector').innerHTML = behaviorTabHtml(n);
-        return;
-    }
+    // The Prototype tab reads interactions, not sizes: it does not lay the page out.
     if (state.inspectorTab === 'prototype') {
         $('#inspector').innerHTML = prototypeTabHtml(n);
+        return;
+    }
+    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
+    if (state.inspectorTab === 'behavior') {
+        $('#inspector').innerHTML = behaviorTabHtml(n);
         return;
     }
     let html = '';
