@@ -98,9 +98,8 @@ function renderNode(n, parent, scope) {
     // An outside stroke of a frame is all outline: an overlay inside the frame would only draw the part the frame clips.
     const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n);
     if (n.type === 'frame' && stroke !== undefined) {
-        // A frame's stroke is a layer under its content, so the content draws over it. The isolation keeps that layer above the frame's fill.
-        style.isolation = 'isolate';
-        children.unshift({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', zIndex: '-1', pointerEvents: 'none' }, html: stroke, children: [] });
+        // A frame's stroke is drawn above its fill and its content, as on the canvas, and takes no clicks.
+        children.push({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html: stroke, children: [] });
     }
     const html = n.type !== 'frame' ? stroke : undefined;
     if (html !== undefined) style.position = style.position ?? 'relative';

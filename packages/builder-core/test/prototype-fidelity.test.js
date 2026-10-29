@@ -181,18 +181,19 @@ test('a mask on a rotated layer is reported, and the layer is drawn unclipped', 
     assert.equal(result.root.children[0].style.clipPath, undefined);
 });
 
-test('a frame stroke is an SVG layer under its content, centred on the frame edge, not a CSS border', () => {
+test('a frame stroke is an SVG layer above its fill and content, centred on the frame edge, not a CSS border', () => {
     const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233' }), layer()]), 'A').root;
     assert.equal(root.style.border, undefined);
-    assert.equal(root.children[0].style.zIndex, '-1');
-    assert.match(root.children[0].html, /stroke-width="4"/);
-    assert.equal(root.style.isolation, 'isolate');
-    assert.equal(root.children[1].nodeId, 'L');
+    assert.equal(root.children[0].nodeId, 'L');
+    const stroke = root.children[1];
+    assert.match(stroke.html, /stroke-width="4"/);
+    assert.equal(stroke.style.zIndex, undefined);
+    assert.equal(stroke.style.pointerEvents, 'none');
 });
 
 test('a per-side frame stroke draws only the sides it names', () => {
     const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233', strokeSides: 'top' }), layer()]), 'A').root;
-    assert.equal((root.children[0].html.match(/<rect x=/g) || []).length, 1);
+    assert.equal((root.children.at(-1).html.match(/<rect x=/g) || []).length, 1);
 });
 
 test('an inside frame stroke is clipped to the frame, and a frame with no stroke has no stroke layer', () => {
@@ -213,7 +214,7 @@ test('a centred frame stroke is drawn whole by its overlay; the frame clips with
     const root = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b' }), layer()]), 'A').root;
     assert.equal(root.style.outline, undefined);
     assert.equal(root.style.overflowClipMargin, '3px');
-    assert.match(root.children[0].html, /stroke-width="6"/);
+    assert.match(root.children.at(-1).html, /stroke-width="6"/);
 });
 
 test('an outside frame stroke on some sides only is reported: an outline cannot be per side', () => {
