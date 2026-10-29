@@ -96,6 +96,9 @@
           "direction": "auto",
           "type": "text",
           "id": "main-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
             "fill": "v-fg",
             "fontSize": "s-fontSize",
@@ -230,6 +233,9 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-start-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
             "fill": "v-fg",
             "fontSize": "s-fontSize",
@@ -406,6 +412,9 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-plain-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
             "fill": "v-fg",
             "fontSize": "s-fontSize",
@@ -482,7 +491,10 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "unbound-label"
+          "id": "unbound-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug"
         },
         {
           "name": "Button (legacy)",
@@ -572,6 +584,9 @@
           "direction": "auto",
           "type": "text",
           "id": "legacy-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
             "fill": "b-v-fg",
             "fontSize": "s-fontSize",
@@ -797,6 +812,9 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-cross-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
             "fill": "v-fg",
             "fontSize": "s-fontSize",
@@ -1258,8 +1276,8 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 1.5714285714285714,
-          "lg": 1.4444444444444444
+          "sm": 22,
+          "lg": 26
         }
       },
       {

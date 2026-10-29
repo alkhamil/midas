@@ -10,7 +10,7 @@ const model = buttonModel({
     variantModes: ['solid', 'outlined'],
     sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
     sizeValues: {
-        fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 1.5, lg: 1.5 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
+        fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 21, lg: 27 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
         gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
     },
 });
@@ -27,7 +27,7 @@ const withItem = (name, change) => baseItems().map(i => (i.name === name ? { ...
 test('size, variant and colour tokens resolve to CSS custom properties, with the stored form of each value', () => {
     const { vars, unresolved } = resolveTokens(button, binding(), modes(), variables());
     assert.equal(vars['--button-font-size'], '14px');
-    assert.equal(vars['--button-line-height'], '1.5');
+    assert.equal(vars['--button-line-height'], '21px');
     assert.equal(vars['--button-padding-x'], '12px');
     assert.equal(vars['--button-bg'], '#4338ca');
     assert.equal(vars['--button-fg'], '#ffffff');
