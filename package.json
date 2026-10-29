@@ -16,6 +16,6 @@
     "infra:down": "docker compose down"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   }
 }

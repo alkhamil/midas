@@ -131,6 +131,8 @@ export const libraries = pgTable('libraries', {
     id: text('id').primaryKey().references(() => designFiles.id, { onDelete: 'cascade' }),
     workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    /** The documentation site of the library (/docs/<name>) can be opened by anyone with the link, not only by the workspace. */
+    docsPublic: boolean('docs_public').notNull().default(false),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

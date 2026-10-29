@@ -35,3 +35,4 @@ export * from './geometry/fills.js';
 export * from './geometry/format.js';
 export * from './geometry/autolayout.js';
 export * from './geometry/boolean.js';
+export * from './library/index.js';
