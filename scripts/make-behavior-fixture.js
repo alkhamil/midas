@@ -51,7 +51,7 @@ function master(id, name, x, binding, vars, y = 0) {
         id, name, x, y, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug',
         layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, ...(binding ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...binding }, vars: vars.root } : {}),
     });
-    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14, ...(binding ? { vars: vars.label } : {}) });
+    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, ...(binding ? { vars: vars.label } : {}) });
     return [root, label];
 }
 
@@ -103,7 +103,7 @@ function instance(id, name, x, sourceId, props, varModes, vars, components) {
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, props },
         varModes, vars: vars.root,
     });
-    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
+    const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
     const icon = props.hasIcon ? props.iconPlacement : null;
     if (!icon) return [root, label];
     const slot = `icon${icon[0].toUpperCase()}${icon.slice(1)}`, slotId = `${id}-icon-${icon}`;
