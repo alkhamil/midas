@@ -40,6 +40,22 @@ Sudah jalan (di branch `feat/naz`):
 6. Aplikasi dokumentasi (nomor 2), diuji di server uji terpisah.
 7. Publish ulang dan cek di library Anda.
 
+## Menggabungkan feat/naz dan feat/fahmi (sudah diuji di worktree sementara)
+
+Kode generator paket library sekarang mandiri di `packages/builder-core/src/library/`. Percobaan merge `feat/naz` ke `origin/feat/fahmi` (tanpa mengubah branch mana pun) memberi 5 konflik, semuanya mudah:
+
+1. `apps/studio/src/engine/midas.js` (`fillPage`): pertahankan keduanya, yaitu baris `const parentId = data.parentId || null;` dan `parsed.parentId = parentId;` dari naz, serta `variables: doc.data.variables` dan pemeriksaan `assertPagesBehavior`/`assertPrototypeData` dari Fahmi.
+2. `packages/builder-core/src/index.js`: ambil versi Fahmi, tambahkan satu baris `export * from './library/index.js';`.
+3. `packages/builder-core/src/index.d.ts`: Fahmi menghapusnya; buat ulang berisi `export * from './library/index.js';` (server TypeScript membutuhkannya).
+4. `screen.js` dan `component-codegen.js` di builder-core: hapus (Fahmi menghapusnya; di naz hanya shim satu baris).
+5. Pasang dependensi baru Fahmi (`polygon-clipping`) dengan `npm install` setelah merge.
+
+Hasil setelah resolusi itu: tes builder-core 626 lulus (milik Fahmi dan saya), server typecheck dan 34 tes lulus.
+
+**Masalah yang sudah ada di branch Fahmi (bukan dari merge):** build Studio gagal: `Rollup failed to resolve import "robust-predicates" from polygon-clipping`. Tambahkan `robust-predicates` sebagai dependensi di `apps/studio` atau `packages/builder-core`.
+
+Catatan: `origin/main` berisi sembilan commit "Revert" untuk pekerjaan layout dan grid yang ada di `feat/naz`; merge ke `main` akan mempertahankan revert itu.
+
 ## Pertanyaan yang belum dijawab
 
 Kalau library yang di-publish tidak punya komponen yang dibutuhkan dokumentasi (misalnya tanpa Sidebar):
