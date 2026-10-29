@@ -98,6 +98,7 @@ export function validateTemplateSchema(schema) {
     out.push(...tokenKindProblems(schema, allTokens));
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
+    out.push(...controlProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -211,6 +212,28 @@ function iconProblems(schema, allTokens) {
             if (!allTokens.includes(icon.tokens?.[role])) out.push(`${tag} ${role} token "${icon.tokens?.[role]}" is not a token`);
         }
     });
+    return out;
+}
+
+/**
+ * Problems in the control: it names a text anatomy slot and the string props that fill its value and placeholder.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function controlProblems(schema) {
+    const control = schema.control;
+    if (control === undefined) return [];
+    if (!isPlainObject(control)) return ['control must be an object'];
+    const out = [];
+    const text = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.kind === 'text').map(s => s.id);
+    if (!text.includes(control.slot)) out.push(`control slot "${control.slot}" is not a text anatomy slot`);
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const value = props[control.value];
+    if (!value || value.source !== 'literal' || value.type !== 'string') out.push(`control value "${control.value}" is not a string prop`);
+    if (control.placeholder !== undefined) {
+        const placeholder = props[control.placeholder];
+        if (!placeholder || placeholder.source !== 'literal' || placeholder.type !== 'string') out.push(`control placeholder "${control.placeholder}" is not a string prop`);
+    }
     return out;
 }
 

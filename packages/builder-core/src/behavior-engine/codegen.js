@@ -5,7 +5,7 @@ import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, iconOnlyValuesOf, targetKindOf } from './display.js';
-import { placementsOfDef, slotDefsOf } from './anatomy.js';
+import { controlOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
 
 /** The DOM handler each schema event is written to. */
@@ -30,7 +30,11 @@ function componentSource(template, name, problems) {
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
             if (!template.props[slot.id]) problems.push({ slot: slot.id, reason: 'no-prop' });
-            const label = `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
+            const control = controlOf(template);
+            // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
+            const label = control && control.slot === slot.id
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''} />`
+                : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(iconOnlyValues.length ? `{!iconOnly && ${label}}` : label);
         }
         else if (slot.managed) {

@@ -34,6 +34,13 @@ export interface NodeField {
     field: string;
 }
 
+/** A text slot drawn as an input: the schema names the slot and its value and placeholder props. Data only: the engine renders it, the canvas keeps the text layer. */
+export interface ControlDef {
+    slot: string;
+    value: string;
+    placeholder?: string;
+}
+
 /** A prop whose value is a literal stored on the instance. */
 export type LiteralProp =
     | { source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf }
@@ -92,6 +99,7 @@ export interface TemplateSchema {
     element: ElementDef;
     anatomy: AnatomySlot[];
     icons: IconSlotDef[];
+    control?: ControlDef;
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

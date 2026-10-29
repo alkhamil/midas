@@ -13,7 +13,7 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
-import { placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { iconOnlyIn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
@@ -230,7 +230,10 @@ function renderButton(n, template, parent, scope) {
     const children = [];
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
-            if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
+            const control = controlOf(template);
+            // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
+            if (!iconOnly && control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style: {}, children: [] });
+            else if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.

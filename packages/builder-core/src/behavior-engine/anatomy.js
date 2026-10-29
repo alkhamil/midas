@@ -43,6 +43,11 @@ export function iconOnlyOf(template, values) {
         && (template.props[def.placement]?.iconOnly ?? []).includes(String(values[def.placement])));
 }
 
+/** The control of a template: the text slot drawn as an input, or undefined for plain labels. */
+export function controlOf(template) {
+    return template.control;
+}
+
 /** The behavior data of a managed layer: its slot name, under the `behavior` key. */
 /** @param {string} slot */
 export function managedBehavior(slot) {
