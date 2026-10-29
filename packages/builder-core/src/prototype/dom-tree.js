@@ -13,9 +13,9 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
-import { placementsOfSlot } from '../behavior-engine/anatomy.js';
+import { placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { iconOnlyIn } from '../behavior-engine/display.js';
-import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
 import { layoutGap, layoutGapCross, layoutOrder, layoutPads, strokeOutside } from '../geometry/autolayout.js';
@@ -96,7 +96,8 @@ function renderNode(n, parent, scope) {
         style.outlineOffset = '0px';
     }
     // An outside stroke of a frame is all outline: an overlay inside the frame would only draw the part the frame clips.
-    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n);
+    const fluid = !parent && scope.responsive && n.type === 'frame' && fluidStrokeOf(n);
+    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n, fluid);
     if (n.type === 'frame' && stroke !== undefined) {
         // A frame's stroke is drawn above its fill and its content, as on the canvas, and takes no clicks.
         children.push({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html: stroke, children: [] });
@@ -231,13 +232,17 @@ function renderButton(n, template, parent, scope) {
         if (slot.kind === 'text') {
             if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
         }
-        else if (slot.managed && props.hasIcon === true && placementsOfSlot(template, slot.id).includes(String(props.iconPlacement))) {
+        else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
             const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
-            const el = layer && renderNode(layer, n, scope);
-            if (el) {
+            for (const def of slotDefsOf(template, slot.id)) {
+                if (props[def.show] !== true) continue;
+                if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
+                const el = layer && renderNode(layer, n, scope);
+                if (!el) continue;
                 const { position, left, top, ...style } = el.style;
                 children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style });
+                break;
             }
         }
     }
@@ -418,9 +423,43 @@ function radiusStyle(n) {
  * @param {any} n
  * @returns {string | undefined}
  */
-function strokeOverlay(n) {
+function strokeOverlay(n, fluid = false) {
     if (!strokeIsOn(n)) return undefined;
+    if (fluid) return fluidStrokeOverlay(n);
     return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
+}
+
+/**
+ * Whether a frame's stroke can be drawn to follow its box: one width on every side and one radius on every corner, so the
+ * outline is a plain rectangle the box size can drive. Anything else keeps the fixed design-size overlay.
+ * @param {any} n
+ * @returns {boolean}
+ */
+function fluidStrokeOf(n) {
+    if (!strokeIsOn(n) || !strokeSidesUniform(n)) return false;
+    const radii = hasRadii(n) ? n.radii : [n.radius || 0];
+    return radii.every(v => (+v || 0) === (+radii[0] || 0));
+}
+
+/**
+ * A frame stroke drawn at its box, not at the design size: the SVG fills the box (no viewBox, so lengths stay in px) and the
+ * rectangle spans it in full, so the stroke sits on the box edges whatever the box size. An inside stroke is clipped to the
+ * box, mirroring the fixed overlay's doubled-width stroke. An outside stroke never reaches here: it is a CSS outline.
+ * @param {any} n a frame with a uniform stroke on every side and corner
+ * @returns {string}
+ */
+function fluidStrokeOverlay(n) {
+    const w = n.strokeWidth, f = svgNumber, e = escapeAttr;
+    const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
+    // Raw, not design-clamped: the browser clamps against the box it draws. Lengths are px (no viewBox), so the stroke keeps its width.
+    const rx = Math.max(0, +((hasRadii(n) ? n.radii[0] : n.radius) || 0));
+    const rect = attrs => `<rect x="0" y="0" width="100%" height="100%" rx="${f(rx)}" ${attrs}/>`;
+    if ((n.strokeAlign ?? 'center') === 'inside') {
+        const dash = strokeDashArray(n);
+        const stroked = rect(`fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`);
+        return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><clipPath id="${prefix}k">${rect('')}</clipPath><g clip-path="url(#${prefix}k)">${stroked}</g></svg>`;
+    }
+    return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${rect(`fill="none" ${svgStrokeAttrs(n, f, e)}`)}</svg>`;
 }
 
 /**

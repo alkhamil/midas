@@ -81,8 +81,8 @@ export function instancePanel(instance, master, collections, modes) {
     if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
-    // The props that drive the managed icon slot: they are listed under Slots.
-    const slotProps = [template.icon.show, template.icon.placement, template.icon.component];
+    // The props that drive the managed icon slots: they are listed under Slots.
+    const slotProps = template.icons.flatMap(def => [def.show, def.placement, def.component].filter(Boolean));
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         if (def.source === 'variable') {

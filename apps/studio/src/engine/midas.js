@@ -9341,8 +9341,6 @@ function applyIconSlotBindings(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return [];
-    const targets = iconSlotTargets(template);
-    const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
     // What a missing variable is called in the toast: its collection and the instance's mode for it, the place the lookup searched.
     const where = target => {
         const collectionId = binding.variables?.[target.dimension];
@@ -9350,10 +9348,12 @@ function applyIconSlotBindings(inst) {
         const mode = collection?.modes?.find(m => m.id === inst.varModes?.[collectionId]);
         return missingIconVariable({ name: target.name, collectionName: collection?.name ?? target.dimension, modeName: mode?.name ?? 'none selected' });
     };
-    const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
     for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
+        const targets = iconSlotTargets(template, slot.behavior.slot);
+        const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+        const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
         const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
         const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
         const plan = iconSlotBindings({

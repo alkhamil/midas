@@ -5,7 +5,7 @@ import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, iconOnlyValuesOf, targetKindOf } from './display.js';
-import { placementsOfSlot } from './anatomy.js';
+import { placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
 
 /** The DOM handler each schema event is written to. */
@@ -25,7 +25,6 @@ function componentSource(template, name, problems) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
-    const { show, placement, component } = template.icon;
     const iconOnlyValues = iconOnlyValuesOf(template);
     const children = [];
     for (const slot of template.anatomy) {
@@ -34,10 +33,16 @@ function componentSource(template, name, problems) {
             const label = `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(iconOnlyValues.length ? `{!iconOnly && ${label}}` : label);
         }
-        else if (slot.managed && placementsOfSlot(template, slot.id).length) {
-            const tests = placementsOfSlot(template, slot.id).map(value => `${placement} === "${value}"`);
-            const cond = tests.length === 1 ? tests[0] : `(${tests.join(' || ')})`;
-            children.push(`{${show} && ${cond} && <span className="${template.id}-${slot.id}">{${component}}</span>}`);
+        else if (slot.managed) {
+            const defs = slotDefsOf(template, slot.id);
+            if (!defs.length) problems.push({ slot: slot.id, reason: 'unsupported-slot' });
+            else for (const def of defs) {
+                const tests = placementsOfDef(template, def, slot.id).map(value => `${def.placement} === "${value}"`);
+                const cond = tests.length === 1 ? tests[0] : tests.length ? `(${tests.join(' || ')})` : null;
+                children.push(cond
+                    ? `{${def.show} && ${cond} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`
+                    : `{${def.show} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+            }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
@@ -58,7 +63,7 @@ function componentSource(template, name, problems) {
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
-        ...(iconOnlyValues.length ? [`  const iconOnly = ${show} && (${iconOnlyValues.map(value => `${placement} === "${value}"`).join(' || ')});`] : []),
+        ...(iconOnlyValues.length ? [`  const iconOnly = ${template.icons.filter(def => def.placement).map(def => `${def.show} && (${(template.props[def.placement].iconOnly ?? []).map(value => `${def.placement} === "${value}"`).join(' || ')})`).join(' || ')};`] : []),
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),

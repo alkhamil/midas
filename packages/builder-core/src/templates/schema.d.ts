@@ -60,10 +60,12 @@ export interface ElementDef {
     blockClickProps: string[];
 }
 
-/** The managed icon slot: the props that show it, place it and choose its icon, and the tokens that colour and size it. */
+/** A managed icon slot: the props that show it and choose its icon, and the tokens that colour and size it. A def with a
+ * placement maps each placement value to a managed slot; a def without one names its fixed slot directly. */
 export interface IconSlotDef {
     show: string;
-    placement: string;
+    placement?: string;
+    slot?: string;
     component: string;
     tokens: { colour: string; disabledColour: string; size: string };
 }
@@ -89,7 +91,7 @@ export interface TemplateSchema {
     group: string;
     element: ElementDef;
     anatomy: AnatomySlot[];
-    icon: IconSlotDef;
+    icons: IconSlotDef[];
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

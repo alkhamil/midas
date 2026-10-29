@@ -7,7 +7,7 @@ const names = { colour: 'button/fg', disabledColour: 'button/fg-disabled', size:
 const vars = { fg: 'v-fg', fgDisabled: 'v-fg-disabled', size: 'v-icon-size', names };
 
 test('the icon variables are named from the template: its group and its icon tokens, with the dimension that holds them', () => {
-    assert.deepEqual(iconSlotTargets(BUTTON), {
+    assert.deepEqual(iconSlotTargets(BUTTON, 'iconStart'), {
         colour: { name: 'button/fg', dimension: 'variant' },
         disabledColour: { name: 'button/fg-disabled', dimension: 'variant' },
         size: { name: 'button/icon-size', dimension: 'size' },
