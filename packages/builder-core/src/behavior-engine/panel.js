@@ -81,6 +81,8 @@ export function instancePanel(instance, master, collections, modes) {
     if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
+    // The props that drive the managed icon slot: they are listed under Slots.
+    const slotProps = [template.icon.show, template.icon.placement, template.icon.component];
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         if (def.source === 'variable') {
@@ -98,12 +100,13 @@ export function instancePanel(instance, master, collections, modes) {
         }
         if (!isPropVisible(template, name, values)) continue;
         if (def.type === 'iconComponent') {
-            rows.push({ prop: name, kind: 'icon', value: values[name] ?? null });
+            rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null });
             continue;
         }
         rows.push({
             prop: name,
             kind: 'literal',
+            slot: slotProps.includes(name),
             type: def.type,
             value: values[name],
             options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],

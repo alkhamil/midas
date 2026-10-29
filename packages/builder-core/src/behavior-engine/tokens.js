@@ -3,29 +3,6 @@
 import { variableProps } from './registry.js';
 import { dimensionOfGroup } from './validate-schema.js';
 
-/**
- * The kind of value each known token holds. `length` is a number in px (line height included: it is px, not a ratio), `ratio` is a
- * unitless number, `color` is a CSS colour string. A token not listed here has no kind and is reported.
- * @type {Record<string, 'length' | 'ratio' | 'color'>}
- */
-const TOKEN_KIND = {
-    fontSize: 'length',
-    lineHeight: 'length',
-    paddingX: 'length',
-    paddingY: 'length',
-    gap: 'length',
-    radius: 'length',
-    iconSize: 'length',
-    bg: 'color',
-    fg: 'color',
-    border: 'color',
-    'bg-hover': 'color',
-    'bg-active': 'color',
-    'bg-disabled': 'color',
-    'fg-disabled': 'color',
-    'border-focus': 'color',
-};
-
 /** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
 const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase();
 /** The name a variable matches a token by: case and dashes do not count, so `button/icon-size` is the `iconSize` token. */
@@ -40,6 +17,9 @@ const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/
  * @param {string} token
  */
 export const cssVarOf = (templateId, token) => `--${templateId}-${kebab(token)}`;
+
+/** The variable a token is named: `<group>/<token in kebab-case>`, e.g. `button/icon-size` for `iconSize`. */
+export const variableNameOf = (/** @type {{ group: string }} */ template, /** @type {string} */ token) => `${template.group}/${kebab(token)}`;
 
 /**
  * A colour as its 6-digit form and its alpha in percent, the way the editor reads it (#rgb, #rgba, #rrggbb, #rrggbbaa).
@@ -139,7 +119,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
         for (const token of names) {
             /** @param {string} reason */
             const miss = reason => unresolved.push({ token, dimension, reason });
-            const kind = Object.hasOwn(TOKEN_KIND, token) ? TOKEN_KIND[token] : null;
+            const kind = Object.hasOwn(template.tokenKinds, token) ? template.tokenKinds[token] : null;
             if (!kind) { miss('no-kind'); continue; }
             if (!dimension || !props[dimension]) { miss('no-dimension'); continue; }
             const collectionId = binding.variables?.[dimension] ?? null;

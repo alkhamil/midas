@@ -2,10 +2,23 @@
 // height follow the size variable, and the icon's colour follows the foreground variable of the variant (the disabled one while the
 // instance is disabled). The engine writes these bindings with each sync of the instance; nothing here writes to a document.
 
-/** The variable the icon colour follows, and the one used while the instance is disabled. */
-export const ICON_COLOUR_VARIABLE = 'button/fg';
-export const ICON_DISABLED_COLOUR_VARIABLE = 'button/fg-disabled';
-export const ICON_SIZE_VARIABLE = 'button/icon-size';
+import { variableNameOf } from './tokens.js';
+import { dimensionOfGroup } from './validate-schema.js';
+
+/**
+ * The variables an icon slot follows, from the template's icon tokens: for each of colour, disabled colour and size, the variable
+ * name, and the variable prop (dimension) whose collection holds it.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {Record<'colour' | 'disabledColour' | 'size', { name: string, dimension: string | null }>}
+ */
+export function iconSlotTargets(template) {
+    const dimensionOf = token => {
+        const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
+        return group ? dimensionOfGroup(group, template.props) : null;
+    };
+    const { tokens } = template.icon;
+    return Object.fromEntries(['colour', 'disabledColour', 'size'].map(role => [role, { name: variableNameOf(template, tokens[role]), dimension: dimensionOf(tokens[role]) }]));
+}
 
 /**
  * Whether a vars key is one the icon slot owns: a fill by index, a stroke, or the slot's width and height. The engine derives these
@@ -19,19 +32,20 @@ export function isIconSlotVarKey(key) {
 /**
  * The bindings an icon slot's layers carry. `fg`, `fgDisabled` and `size` are the variable ids (null when the variable is missing).
  * A layer's visible fills bind by index to the colour; a layer with no fill but a stroke binds its stroke. A missing variable is listed
- * in `missing` and nothing is bound in its place (never the plain colour while disabled).
+ * in `missing` (by variable name, from `names`) and nothing is bound in its place (never the plain colour while disabled).
  * @param {{
  *   fg: string | null, fgDisabled: string | null, size: string | null, disabled: boolean,
+ *   names: { colour: string, disabledColour: string, size: string },
  *   layers: { id: string, fillIndexes: number[], stroke: boolean }[]
  * }} input
  * @returns {{ slot: Record<string, string>, layers: { id: string, vars: Record<string, string> }[], missing: string[] }}
  */
-export function iconSlotBindings({ fg, fgDisabled, size, disabled, layers }) {
+export function iconSlotBindings({ fg, fgDisabled, size, disabled, names, layers }) {
     const missing = [];
     const colour = disabled ? fgDisabled : fg;
-    if (disabled && !fgDisabled) missing.push(ICON_DISABLED_COLOUR_VARIABLE);
-    else if (!disabled && !fg) missing.push(ICON_COLOUR_VARIABLE);
-    if (!size) missing.push(ICON_SIZE_VARIABLE);
+    if (disabled && !fgDisabled) missing.push(names.disabledColour);
+    else if (!disabled && !fg) missing.push(names.colour);
+    if (!size) missing.push(names.size);
     const slot = size ? { w: size, h: size } : {};
     return {
         slot,

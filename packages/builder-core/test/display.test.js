@@ -32,7 +32,12 @@ test('a property the node kind does not take is refused', () => {
     assert.match(problems.join('\n'), /iconStart.*fill/);
 });
 
-test('a literal prop of the wrong type is refused', () => {
-    const problems = validateTemplateSchema(withDisplay({ ...BUTTON.display, label: { text: 'hasIcon' } }));
-    assert.match(problems.join('\n'), /hasIcon/);
+test('a literal prop cannot be mapped in the display: it writes its node field from its own schema', () => {
+    const problems = validateTemplateSchema(withDisplay({ ...BUTTON.display, label: { fill: 'hasIcon' } }));
+    assert.match(problems.join('\n'), /"label.fill" to "hasIcon", which is not a token/);
+});
+
+test('a prop that writes a node field the node does not take is refused', () => {
+    const bad = { ...BUTTON, props: { ...BUTTON.props, label: { ...BUTTON.props.label, node: { key: 'root', field: 'text' } } } };
+    assert.match(validateTemplateSchema(bad).join('\n'), /prop "label" writes "text", which a frame does not take/);
 });

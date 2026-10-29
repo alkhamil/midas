@@ -27,5 +27,5 @@ test('token sources and props with no node field write nothing (loading, hasIcon
 });
 
 test('the fields literal props write are named per layer: the label text and the root width mode', () => {
-    assert.deepEqual(literalFieldNames(button), [{ key: 'root', field: 'layoutSizingH' }, { key: 'label', field: 'text' }]);
+    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }, { key: 'root', field: 'layoutSizingH' }]);
 });

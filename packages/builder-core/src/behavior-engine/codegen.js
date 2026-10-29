@@ -4,16 +4,13 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { SLOT_OF_PLACEMENT } from './anatomy.js';
 import { NODE_PROPERTIES, targetKindOf } from './display.js';
 import { cssVarOf } from './tokens.js';
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
-/** The CSS pseudo-class each state is written as. Only these states get a stylesheet block. */
-const PSEUDO = { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' };
-/** The placement each managed slot shows for: `iconStart` -> `start`. */
-const PLACEMENT_OF_SLOT = Object.fromEntries(Object.entries(SLOT_OF_PLACEMENT).map(([placement, slot]) => [slot, placement]));
+/** The width a boolean prop writes when it is true and the node fills its container. */
+const FILL_WIDTH = 'width: "100%"';
 
 /**
  * The component source for a template. Problems found on the way are pushed onto `problems`.
@@ -27,37 +24,42 @@ function componentSource(template, name, problems) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
+    const { show, placement, component } = template.icon;
+    const placementOf = Object.fromEntries(Object.entries(template.props[placement].slots).map(([value, slot]) => [slot, value]));
     const children = [];
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
             if (!template.props[slot.id]) problems.push({ slot: slot.id, reason: 'no-prop' });
             children.push(`<span className="${template.id}-${slot.id}">{${slot.id}}</span>`);
         }
-        else if (slot.managed && PLACEMENT_OF_SLOT[slot.id]) {
-            for (const prop of ['hasIcon', 'iconPlacement', 'icon']) if (!template.props[prop]) problems.push({ slot: slot.id, prop, reason: 'no-prop' });
-            children.push(`{hasIcon && iconPlacement === "${PLACEMENT_OF_SLOT[slot.id]}" && <span className="${template.id}-${slot.id}">{icon}</span>}`);
+        else if (slot.managed && placementOf[slot.id]) {
+            children.push(`{${show} && ${placement} === "${placementOf[slot.id]}" && <span className="${template.id}-${slot.id}">{${component}}</span>}`);
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
+    const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
+    const disabledProp = template.persistentStates[disabledState].prop;
+    const widthProps = Object.entries(template.props).filter(([, def]) => def.source === 'literal' && def.node?.field === 'layoutSizingH').map(([prop]) => prop);
+    if (widthProps.length > 1) problems.push({ reason: 'several-width-props', props: widthProps });
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
-        'type="button"',
+        ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
         `className="${template.id}"`,
         ...dims.map(dim => `data-${dim}={${dim}}`),
-        'disabled={disabled}',
-        ...(template.props.fullWidth ? ['style={fullWidth ? { width: "100%" } : undefined}'] : []),
+        `disabled={${disabledProp}}`,
+        ...widthProps.map(prop => `style={${prop} ? { ${FILL_WIDTH} } : undefined}`),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? 'blocked ? undefined : onClick' : event.name}}`),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
-        '  const blocked = disabled || loading;',
+        `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
         '  return (',
-        '    <button',
+        `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
         '    >',
         ...children.map(child => indent(child, 6)),
-        '    </button>',
+        `    </${tag}>`,
         '  );',
         '}',
         '',
@@ -108,6 +110,7 @@ function stylesheet(template, binding, variables, problems) {
     }
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
     const blocks = displayRules(template);
+    const { disabledState } = template.element;
     const defaults = resolveProps(template, {});
     for (const combo of combos) {
         const selector = `.${template.id}${dims.map(dim => `[data-${dim}="${combo[dim]}"]`).join('')}`;
@@ -115,15 +118,14 @@ function stylesheet(template, binding, variables, problems) {
         for (const u of base.unresolved) problems.push({ ...u, ...combo });
         if (Object.keys(base.vars).length) blocks.push(`${selector} {\n${declarations(base.vars)}}\n`);
         for (const state of [...Object.keys(template.persistentStates), ...Object.keys(template.previewStates)]) {
-            const pseudo = PSEUDO[state];
-            if (!pseudo) { problems.push({ state, reason: 'no-pseudo-class' }); continue; }
+            const pseudo = template.statePseudo[state];
             const persistent = template.persistentStates[state];
             const changed = persistent
                 ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
                 : previewOf(template, binding, combo, variables, defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
-            // A disabled Button shows only its disabled style: the interaction states never apply to it.
-            const guard = state === 'disabled' ? '' : ':not(:disabled)';
+            // A disabled element shows only its disabled style: the other states never apply to it.
+            const guard = state === disabledState ? '' : `:not(${template.statePseudo[disabledState]})`;
             if (Object.keys(delta).length) blocks.push(`${selector}${pseudo}${guard} {\n${declarations(delta)}}\n`);
         }
     }

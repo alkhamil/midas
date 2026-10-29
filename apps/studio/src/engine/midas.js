@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, ICON_COLOUR_VARIABLE, ICON_DISABLED_COLOUR_VARIABLE, ICON_SIZE_VARIABLE, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -9334,17 +9334,21 @@ function iconVariableId(binding, dimension, name) {
  */
 function applyIconSlotBindings(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
-    if (!binding || !('templateId' in binding) || binding.templateId !== 'button') return [];
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template) return [];
+    const targets = iconSlotTargets(template);
+    const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
     for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
         const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
         const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
         const plan = iconSlotBindings({
-            fg: iconVariableId(binding, 'variant', ICON_COLOUR_VARIABLE),
-            fgDisabled: iconVariableId(binding, 'variant', ICON_DISABLED_COLOUR_VARIABLE),
-            size: iconVariableId(binding, 'size', ICON_SIZE_VARIABLE),
+            fg: iconVariableId(binding, targets.colour.dimension, names.colour),
+            fgDisabled: iconVariableId(binding, targets.disabledColour.dimension, names.disabledColour),
+            size: iconVariableId(binding, targets.size.dimension, names.size),
             disabled,
+            names,
             layers,
         });
         plan.missing.forEach(m => missing.add(m));

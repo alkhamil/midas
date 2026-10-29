@@ -78,3 +78,27 @@ test('a template must name its variable group', () => {
     delete bad.group;
     assert.match(validateTemplateSchema(bad).join('\n'), /schema has no group/);
 });
+
+test('a token with no kind is refused', () => {
+    const bad = clone(BUTTON);
+    delete bad.tokenKinds.bg;
+    assert.match(validateTemplateSchema(bad).join('\n'), /token "bg" has no kind/);
+});
+
+test('an icon placement must map to a managed anatomy slot', () => {
+    const bad = clone(BUTTON);
+    bad.props.iconPlacement.slots.end = 'label';
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon placement "end" maps to "label", which is not a managed anatomy slot/);
+});
+
+test('the element must name a persistent state that disables it', () => {
+    const bad = clone(BUTTON);
+    bad.element.disabledState = 'hover';
+    assert.match(validateTemplateSchema(bad).join('\n'), /element disabledState "hover" is not a persistent state/);
+});
+
+test('every state has a pseudo-class', () => {
+    const bad = clone(BUTTON);
+    delete bad.statePseudo.hover;
+    assert.match(validateTemplateSchema(bad).join('\n'), /state "hover" has no pseudo-class/);
+});

@@ -1,4 +1,4 @@
-import { COLOUR_TOKENS, displayProblems } from './display.js';
+import { COLOUR_TOKENS, NODE_FIELDS, displayProblems, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'enum', 'iconComponent'];
 
@@ -92,6 +92,10 @@ export function validateTemplateSchema(schema) {
     const allTokens = isPlainObject(tokens) ? Object.values(tokens).flat() : [];
     out.push(...stateProblems(schema, allTokens, props || {}));
     out.push(...displayProblems(schema));
+    out.push(...tokenKindProblems(schema, allTokens));
+    out.push(...elementProblems(schema));
+    out.push(...iconProblems(schema, allTokens));
+    out.push(...nodeProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 
@@ -130,5 +134,90 @@ function stateProblems(schema, allTokens, props) {
             if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`preview state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
         }
     }
+    return out;
+}
+
+/**
+ * Problems in the kind of each token: every token of the template has a kind the resolver knows.
+ * @param {any} schema
+ * @param {string[]} allTokens
+ * @returns {string[]}
+ */
+function tokenKindProblems(schema, allTokens) {
+    const kinds = isPlainObject(schema.tokenKinds) ? schema.tokenKinds : {};
+    return allTokens.filter(t => !['length', 'color'].includes(kinds[t])).map(t => `token "${t}" has no kind (length or color)`);
+}
+
+/**
+ * Problems in the element a component is written as: its tag, its attributes, the persistent state that disables it, and the props
+ * that stop onClick (boolean literal props).
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function elementProblems(schema) {
+    const el = schema.element;
+    if (!isPlainObject(el)) return ['schema has no element'];
+    const out = [];
+    if (!isName(el.tag)) out.push('element has no tag');
+    if (!isPlainObject(el.attrs)) out.push('element attrs must be an object');
+    if (!isPlainObject(schema.persistentStates) || !(el.disabledState in schema.persistentStates)) out.push(`element disabledState "${el.disabledState}" is not a persistent state`);
+    if (!Array.isArray(el.blockClickProps)) out.push('element blockClickProps must be a list');
+    else for (const prop of el.blockClickProps) {
+        const def = isPlainObject(schema.props) ? schema.props[prop] : undefined;
+        if (!def || def.source !== 'literal' || def.type !== 'boolean') out.push(`element blockClickProps names "${prop}", which is not a boolean prop`);
+    }
+    return out;
+}
+
+/**
+ * Problems in the managed icon slot: its show, placement and component props, its colour and size tokens, and the anatomy slot each
+ * placement value maps to (a managed icon slot).
+ * @param {any} schema
+ * @param {string[]} allTokens
+ * @returns {string[]}
+ */
+function iconProblems(schema, allTokens) {
+    const icon = schema.icon;
+    if (!isPlainObject(icon)) return ['schema has no icon slot'];
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const out = [];
+    const show = props[icon.show], placement = props[icon.placement], component = props[icon.component];
+    if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`icon show "${icon.show}" is not a boolean prop`);
+    if (!placement || placement.source !== 'literal' || placement.type !== 'enum') out.push(`icon placement "${icon.placement}" is not an enum prop`);
+    if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`icon component "${icon.component}" is not an icon prop`);
+    if (placement && placement.type === 'enum') {
+        if (!isPlainObject(placement.slots)) out.push(`icon placement "${icon.placement}" has no slots`);
+        else {
+            const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed).map(s => s.id);
+            for (const option of placement.options) {
+                if (!managed.includes(placement.slots[option])) out.push(`icon placement "${option}" maps to "${placement.slots[option]}", which is not a managed anatomy slot`);
+            }
+        }
+    }
+    for (const role of ['colour', 'disabledColour', 'size']) {
+        if (!allTokens.includes(icon.tokens?.[role])) out.push(`icon ${role} token "${icon.tokens?.[role]}" is not a token`);
+    }
+    return out;
+}
+
+/**
+ * Problems in the node a literal prop writes: the node must be root or an anatomy slot, the field must be one that node kind takes,
+ * and the prop type must match the field (see NODE_FIELDS in display.js). Also every persistent and preview state has a pseudo-class.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function nodeProblems(schema) {
+    const out = [];
+    for (const [name, def] of Object.entries(isPlainObject(schema.props) ? schema.props : {})) {
+        if (!isPlainObject(def) || !def.node) continue;
+        const kind = targetKindOf(schema, def.node.key);
+        if (!kind) { out.push(`prop "${name}" writes "${def.node.key}", which is not root or an anatomy slot`); continue; }
+        const field = NODE_FIELDS[kind]?.[def.node.field];
+        if (!field) { out.push(`prop "${name}" writes "${def.node.field}", which a ${kind} does not take`); continue; }
+        if (def.type !== field.kind) out.push(`prop "${name}" is ${def.type} but writes "${def.node.field}", which takes ${field.kind}`);
+    }
+    const states = [...Object.keys(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}), ...Object.keys(isPlainObject(schema.previewStates) ? schema.previewStates : {})];
+    const pseudo = isPlainObject(schema.statePseudo) ? schema.statePseudo : {};
+    for (const state of states) if (!String(pseudo[state] ?? '').startsWith(':')) out.push(`state "${state}" has no pseudo-class in statePseudo`);
     return out;
 }

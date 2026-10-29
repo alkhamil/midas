@@ -14,9 +14,6 @@ import { resolveProps } from './instance-props.js';
  *   | { op: 'swap', id: string, component: string | null }} AnatomyOp
  */
 
-/** The managed slot each icon placement uses. Removals come first in a plan; moves and inserts give the final index in the child list. */
-export const SLOT_OF_PLACEMENT = { start: 'iconStart', end: 'iconEnd' };
-
 /** The behavior data of a managed layer: its slot name, under the `behavior` key. */
 /** @param {string} slot */
 export function managedBehavior(slot) {
@@ -27,15 +24,15 @@ export function managedBehavior(slot) {
  * The operations that bring an instance's managed layers in line with its values. The label slot is not touched. A slot takes the
  * icon the instance chose: a different icon (or none, the placeholder) swaps the slot in place, keeping its position.
  * @param {TemplateSchema} template
- * @param {{ hasIcon: boolean, iconPlacement: string, icon?: string | null }} values the instance's resolved values
+ * @param {Record<string, unknown>} values the instance's resolved values, by prop name
  * @param {ChildLayer[]} children the instance root's children, in order
  * @returns {AnatomyOp[]}
  */
 function planAnatomy(template, values, children) {
-    const managed = template.anatomy.filter(s => s.managed).map(s => s.id);
-    const want = values.hasIcon ? SLOT_OF_PLACEMENT[/** @type {'start' | 'end'} */ (values.iconPlacement)] : null;
-    const icon = want && typeof values.icon === 'string' ? values.icon : null;
-    if (want && !managed.includes(want)) throw new Error(`${template.id} has no managed slot "${want}"`);
+    const { show, placement, component } = template.icon;
+    const want = values[show] === true ? template.props[placement].slots[String(values[placement])] : null;
+    const icon = want && typeof values[component] === 'string' ? values[component] : null;
+    if (want && !template.anatomy.some(s => s.id === want && s.managed)) throw new Error(`${template.id} has no managed slot "${want}"`);
     /** @type {AnatomyOp[]} */
     const ops = [];
     /** @type {ChildLayer[]} */
@@ -48,7 +45,9 @@ function planAnatomy(template, values, children) {
     if (!want) return ops;
     const placed = kept.find(c => c.slot === want);
     const finalLength = kept.length + (placed ? 0 : 1);
-    const index = want === SLOT_OF_PLACEMENT.start ? 0 : finalLength - 1;
+    // A slot anatomically before the label is the first child; one after it is the last.
+    const atStart = template.anatomy.findIndex(s => s.id === want) < template.anatomy.findIndex(s => s.kind === 'text');
+    const index = atStart ? 0 : finalLength - 1;
     if (!placed) ops.push(icon ? { op: 'insert', slot: want, index, component: icon } : { op: 'insert', slot: want, index });
     else {
         if (kept.indexOf(placed) !== index) ops.push({ op: 'move', id: placed.id, index });
@@ -73,6 +72,6 @@ export function planInstanceAnatomy({ binding, masterRoot, masterTree, stored, c
     // The label slot: the master's first text layer inside its root auto layout (tree is depth first). Nothing is guessed.
     if (!masterRoot.isAutoLayout) return { ops: [], reason: 'the master is not an auto layout frame' };
     if (!masterTree.some(n => n.type === 'text')) return { ops: [], reason: 'the master has no text layer' };
-    const values = /** @type {{ hasIcon: boolean, iconPlacement: string }} */ (resolveProps(template, stored || {}));
+    const values = resolveProps(template, stored || {});
     return { ops: planAnatomy(template, values, children) };
 }

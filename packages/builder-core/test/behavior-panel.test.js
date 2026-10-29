@@ -76,7 +76,7 @@ test('the icon is a swap row, shown while hasIcon is on, with the id of the icon
     const off = instancePanel(instanceOf(), master, [variant], { variant: 'primary', size: null });
     assert.equal(rowOf(off, 'icon'), undefined);
     const on = instancePanel(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, [variant], { variant: 'primary', size: null });
-    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', value: null });
+    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null });
     const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'primary', size: null });
     assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
 });

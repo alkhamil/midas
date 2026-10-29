@@ -1,9 +1,9 @@
-// Display mapping. A template's `display` says which token or literal prop drives which property of which node. The code
-// generator and the diagnostics both read this one table.
+// Display mapping. A template's `display` says which token drives which property of which node. A literal prop writes its node field
+// (`node` in the prop's schema). The code generator and the diagnostics both read these tables.
 
 /**
- * What each node kind takes from the mapping: `kind` is the value format a token must hold (or the prop type a literal must
- * have), `css` the CSS properties it is written to by the code generator (null: the generator does not write it).
+ * What each node kind takes from the token mapping: `kind` is the value format a token must hold, `css` the CSS properties it is
+ * written to by the code generator (null: the generator does not write it).
  * @type {Record<'frame' | 'text' | 'icon', Record<string, { kind: string, css: string | string[] | null }>>}
  */
 export const NODE_PROPERTIES = {
@@ -14,17 +14,25 @@ export const NODE_PROPERTIES = {
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
         gap: { kind: 'length', css: 'gap' },
-        width: { kind: 'boolean', css: null },
     },
     text: {
         fill: { kind: 'color', css: 'color' },
         fontSize: { kind: 'length', css: 'font-size' },
         lineHeight: { kind: 'length', css: 'line-height' },
-        text: { kind: 'string', css: null },
     },
     icon: {
         size: { kind: 'length', css: ['width', 'height'] },
     },
+};
+
+/**
+ * The node fields a literal prop can write, per node kind: the prop type it takes and, for a boolean, the value each state writes.
+ * `layoutSizingH` is the width mode of a frame: true is fill, false is hug.
+ * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
+ */
+export const NODE_FIELDS = {
+    frame: { layoutSizingH: { kind: 'boolean', values: { true: 'fill', false: 'hug' } } },
+    text: { text: { kind: 'string' } },
 };
 
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's kind. */
@@ -36,8 +44,8 @@ export const targetKindOf = (template, key) => {
 };
 
 /**
- * Problems in a template's display mapping, as messages. Every key must be `root` or an anatomy slot, every property must be one
- * its node kind takes, and every source must be a token of the template (token sources) or a literal prop of the matching type.
+ * Problems in a template's display mapping, as messages. Every key must be `root` or an anatomy slot, every property must be one its
+ * node kind takes, and every source must be a token of the template.
  * @param {any} template
  * @returns {string[]}
  */
@@ -49,12 +57,8 @@ export function displayProblems(template) {
         const kind = targetKindOf(template, key);
         if (!kind) { out.push(`display maps "${key}", which is not root or an anatomy slot`); continue; }
         for (const [prop, source] of Object.entries(props)) {
-            const def = NODE_PROPERTIES[kind][prop];
-            if (!def) { out.push(`display maps "${key}" to "${prop}", which a ${kind} does not take`); continue; }
-            if (tokens.includes(source)) continue;
-            const literal = template.props?.[source];
-            if (!literal) out.push(`display maps "${key}.${prop}" to "${source}", which is neither a token nor a prop`);
-            else if (literal.source !== 'literal' || literal.type !== def.kind) out.push(`display maps "${key}.${prop}" to prop "${source}", which is not a ${def.kind} prop`);
+            if (!NODE_PROPERTIES[kind][prop]) { out.push(`display maps "${key}" to "${prop}", which a ${kind} does not take`); continue; }
+            if (!tokens.includes(source)) out.push(`display maps "${key}.${prop}" to "${source}", which is not a token`);
         }
     }
     return out;
@@ -81,44 +85,40 @@ export const VARIABLE_KEYS = {
 };
 
 /**
- * The node fields the literal props write: the label prop writes the text of the `label` layer, fullWidth writes the root's
- * width mode (fill when on, hug when off). Token sources are not literal and write nothing here. A prop with no node field
- * (loading, hasIcon, disabled) writes nothing: loading is reported by the diagnostics, the others are handled by the anatomy
- * and state sync.
+ * The literal props that write a node field, in prop order, as [prop, node, field]. A prop with no `node` writes nothing (loading,
+ * hasIcon, disabled): loading is reported by the diagnostics, the others are handled by the anatomy and state sync.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+function nodeWritersOf(template) {
+    return Object.entries(template.props)
+        .filter(([, def]) => def.source === 'literal' && 'node' in def && def.node)
+        .map(([prop, def]) => ({ prop, key: def.node.key, field: def.node.field }));
+}
+
+/**
+ * The node fields the literal props write, with the value each one writes. A boolean writes the field value its `values` map gives.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {Record<string, unknown>} props the instance's resolved literal props
  * @returns {{ key: string, field: string, value: string }[]}
  */
 export function literalFields(template, props) {
-    const tokens = Object.values(template.tokens).flat();
     /** @type {{ key: string, field: string, value: string }[]} */
     const out = [];
-    for (const [key, mapped] of Object.entries(template.display)) {
-        for (const [prop, source] of Object.entries(mapped)) {
-            if (tokens.includes(source) || !(source in props)) continue;
-            if (prop === 'text') out.push({ key, field: 'text', value: String(props[source]) });
-            else if (prop === 'width') out.push({ key, field: 'layoutSizingH', value: props[source] === true ? 'fill' : 'hug' });
-        }
+    for (const { prop, key, field } of nodeWritersOf(template)) {
+        const spec = NODE_FIELDS[targetKindOf(template, key)][field];
+        const raw = props[prop];
+        if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
+        else out.push({ key, field, value: String(raw) });
     }
     return out;
 }
 
 /**
- * The node fields literal props write, per display key: the label text and the root width mode. These fields belong to the
- * instance once a prop writes them, so the copy from the master never overwrites them.
+ * The node fields literal props write, per display key: the label text and the root width mode. These fields belong to the instance
+ * once a prop writes them, so the copy from the master never overwrites them.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {{ key: string, field: string }[]}
  */
 export function literalFieldNames(template) {
-    const tokens = Object.values(template.tokens).flat();
-    /** @type {{ key: string, field: string }[]} */
-    const out = [];
-    for (const [key, mapped] of Object.entries(template.display)) {
-        for (const [prop, source] of Object.entries(mapped)) {
-            if (tokens.includes(source)) continue;
-            if (prop === 'text') out.push({ key, field: 'text' });
-            else if (prop === 'width') out.push({ key, field: 'layoutSizingH' });
-        }
-    }
-    return out;
+    return nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
 }

@@ -3,9 +3,6 @@
 // caller from the data-bp attributes written here. Markup uses the Design panel's classes (section-heading, cmp-props,
 // cmp-prop2, cmp-ctl, cmp-input, vsw, empty-state, small-label, badge), so both tabs look the same.
 
-/** The props that drive the managed icon slots. They are grouped under Slots. */
-const SLOT_PROPS = new Set(['hasIcon', 'iconPlacement', 'icon']);
-
 /** The preview-only states the instance can be shown in, as [state, label]. Preview only; it never changes the document.
  * Disabled is a persistent state (a prop), so it is not listed here: it is shown on the canvas and wins over these. */
 export const PREVIEW_STATES = [['default', 'Default'], ['hover', 'Hover'], ['active', 'Active'], ['focus', 'Focus']];
@@ -89,8 +86,8 @@ function instanceHtml(panel, esc, findings, preview) {
         return row(r.label, control, esc, r.prop) + (r.hint ? note(r.hint, esc) : '');
     }).join('');
     const literal = panel.rows.filter(r => r.kind === 'literal' || r.kind === 'icon');
-    const props = literal.filter(r => !SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
-    const slots = literal.filter(r => SLOT_PROPS.has(r.prop)).map(r => literalRow(r, esc)).join('');
+    const props = literal.filter(r => !r.slot).map(r => literalRow(r, esc)).join('');
+    const slots = literal.filter(r => r.slot).map(r => literalRow(r, esc)).join('');
     const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
     return block('Collections', variable, esc)
         + block('Props', props, esc)

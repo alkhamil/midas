@@ -5,7 +5,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
-import { iconSlotBindings } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
+import { iconSlotBindings, iconSlotTargets } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
+import { BUTTON } from '../packages/builder-core/src/templates/button.js';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -77,7 +78,8 @@ function iconInstance(slotId, componentId, components, disabled) {
     const layers = copies.map(c => ({
         id: map.get(c.id), fillIndexes: (c.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!c.stroke && c.strokeWidth > 0,
     }));
-    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, layers });
+    const names = Object.fromEntries(Object.entries(iconSlotTargets(BUTTON)).map(([role, target]) => [role, target.name]));
+    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, names, layers });
     const nodes = copies.map(c => {
         const bound = plan.layers.find(l => l.id === map.get(c.id)).vars;
         const isRoot = c.id === componentId;
