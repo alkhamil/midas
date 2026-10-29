@@ -1,5 +1,5 @@
 // Types of the library package generator (library/).
-export function generateComponent(opts: {
+export function generateLibraryComponent(opts: {
   ctx: any;
   mapping: { componentKey: string; componentName: string; exportName: string; propsMap: { props: any[] } };
   types?: 'generated' | 'inline';

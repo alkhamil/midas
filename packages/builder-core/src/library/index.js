@@ -4,5 +4,6 @@ export * from './library-package.js';
 export * from './library-behavior.js';
 export * from './tailwind.js';
 export * from './icon-svg.js';
-export * from './component-codegen.js';
+// named apart: the engine's own code generator is also called generateComponent
+export { generateComponent as generateLibraryComponent } from './component-codegen.js';
 export { kebabCase as kebabName } from './screen.js';
