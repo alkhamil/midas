@@ -82,6 +82,9 @@ function displayRules(template) {
         const kind = targetKindOf(template, key);
         // The root lays its label and its icon slots out in a row, centred on the cross axis.
         const decls = key === 'root' ? ['  display: inline-flex;\n', '  align-items: center;\n'] : [];
+        if (key === 'root' && template.outline) {
+            decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`);
+        }
         for (const [prop, source] of Object.entries(props)) {
             const css = NODE_PROPERTIES[kind][prop].css;
             if (!css || !tokens.includes(source)) continue;

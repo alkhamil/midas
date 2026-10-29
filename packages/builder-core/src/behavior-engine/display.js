@@ -66,7 +66,7 @@ export function displayProblems(template) {
 }
 
 /** The base tokens a preview-only state may change. Size, padding and radius are not colours, so a preview state never changes them. */
-export const COLOUR_TOKENS = ['bg', 'fg', 'border'];
+export const COLOUR_TOKENS = ['bg', 'fg', 'border', 'outline-color'];
 
 /**
  * The node variable keys (`vars`) a mapped property is bound through in the editor. One property can take more than one key

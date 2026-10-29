@@ -16,6 +16,8 @@ export const BUTTON = {
     // The managed icon slot: `show` turns it on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the tokens
     // that colour and size the icon.
     icon: { show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+    // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
+    outline: { width: 2, offset: 1 },
     props: {
         variant: { source: 'variable', collection: 'Variant' },
         color: { source: 'variable', collection: 'Color' },
@@ -31,21 +33,21 @@ export const BUTTON = {
     },
     tokens: {
         fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'border-focus'],
+        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color'],
         fromColor: [
             'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
             'color-bg', 'color-bg-hover', 'color-bg-active', 'color-text', 'color-text-hover', 'color-text-active',
-            'color-text-bg-hover', 'color-text-bg-active', 'color-solid', 'color-solid-hover', 'color-solid-active', 'color-solid-text',
+            'color-text-bg-hover', 'color-text-bg-active', 'color-solid', 'color-solid-hover', 'color-solid-active', 'color-solid-text', 'color-outline',
         ],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
         height: 'length', fontSize: 'length', lineHeight: 'ratio', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
-        'bg-disabled': 'color', 'fg-disabled': 'color', 'border-focus': 'color',
+        'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
         'color-bg': 'color', 'color-bg-hover': 'color', 'color-bg-active': 'color', 'color-text': 'color', 'color-text-hover': 'color', 'color-text-active': 'color',
-        'color-text-bg-hover': 'color', 'color-text-bg-active': 'color', 'color-solid': 'color', 'color-solid-hover': 'color', 'color-solid-active': 'color', 'color-solid-text': 'color',
+        'color-text-bg-hover': 'color', 'color-text-bg-active': 'color', 'color-solid': 'color', 'color-solid-hover': 'color', 'color-solid-active': 'color', 'color-solid-text': 'color', 'color-outline': 'color',
     },
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {
@@ -55,7 +57,7 @@ export const BUTTON = {
     previewStates: {
         hover: { bg: 'bg-hover', fg: 'fg-hover', border: 'border-hover' },
         active: { bg: 'bg-active', fg: 'fg-active', border: 'border-active' },
-        focus: { border: 'border-focus' },
+        focus: { 'outline-color': 'color-outline' },
     },
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' },

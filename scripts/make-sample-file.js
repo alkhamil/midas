@@ -204,8 +204,8 @@ const LOOKS = {
 
 /** The brand colours of the Color collection: the roast accent, its cream tint, and the danger red. */
 const BRAND_PALETTE = {
-    primary: { accent: '#6F4E37', accentHover: '#5C3E2A', accentActive: '#4A3121', tint: '#F5EBE1', tintHover: '#EADACA', tintActive: '#DEC8B4', text: '#6F4E37', textHover: '#5C3E2A', textActive: '#4A3121', solid: '#6F4E37', solidHover: '#5C3E2A', solidActive: '#4A3121', solidText: '#FFFFFF' },
-    danger: { accent: '#DC2626', accentHover: '#B91C1C', accentActive: '#991B1B', tint: '#FEE2E2', tintHover: '#FECACA', tintActive: '#FCA5A5', text: '#DC2626', textHover: '#B91C1C', textActive: '#991B1B', solid: '#DC2626', solidHover: '#B91C1C', solidActive: '#991B1B', solidText: '#FFFFFF' },
+    primary: { accent: '#6F4E37', accentHover: '#5C3E2A', accentActive: '#4A3121', tint: '#F5EBE1', tintHover: '#EADACA', tintActive: '#DEC8B4', text: '#6F4E37', textHover: '#5C3E2A', textActive: '#4A3121', solid: '#6F4E37', solidHover: '#5C3E2A', solidActive: '#4A3121', solidText: '#FFFFFF', outline: '#6F4E3733' },
+    danger: { accent: '#DC2626', accentHover: '#B91C1C', accentActive: '#991B1B', tint: '#FEE2E2', tintHover: '#FECACA', tintActive: '#FCA5A5', text: '#DC2626', textHover: '#B91C1C', textActive: '#991B1B', solid: '#DC2626', solidHover: '#B91C1C', solidActive: '#991B1B', solidText: '#FFFFFF', outline: '#DC262633' },
 };
 
 function buildVariables() {

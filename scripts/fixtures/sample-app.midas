@@ -12412,6 +12412,16 @@
         }
       },
       {
+        "id": "c-color-outline",
+        "name": "button/color-outline",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#6F4E3733",
+          "danger": "#DC262633"
+        }
+      },
+      {
         "id": "s-height",
         "name": "button/height",
         "type": "number",
@@ -12634,17 +12644,13 @@
         }
       },
       {
-        "id": "v-border-focus",
-        "name": "button/border-focus",
+        "id": "v-outline-color",
+        "name": "button/outline-color",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
-          "solid": {
-            "alias": "c-color-border"
-          },
-          "outlined": {
-            "alias": "c-color-border"
-          }
+          "solid": "#00000000",
+          "outlined": "#00000000"
         }
       },
       {

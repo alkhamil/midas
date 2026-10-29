@@ -333,3 +333,10 @@ Setup: the prototype fixture, opened by import. Play from Home.
    - Expected: the label comes back, the icon moves to the start, and the padding returns.
 3. **Play.** Open Play on a frame with an icon-only Button.
    - Expected: the Button draws with the icon-only class and no label element.
+
+## Focus outline
+
+1. **Focus outline.** Tab to a Button (Save) in Play, or set the Focus preview in the Behavior panel.
+   - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour.
+2. **Disabled has no outline.** Turn on Disabled, then Focus.
+   - Expected: no outline, and no focus colour.

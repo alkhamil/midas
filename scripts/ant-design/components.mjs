@@ -30,6 +30,7 @@ const BUTTON_COLOR = {
     'color-solid-hover': ['colorBgSolidHover', 'colorPrimaryHover', 'colorErrorHover'],
     'color-solid-active': ['colorBgSolidActive', 'colorPrimaryActive', 'colorErrorActive'],
     'color-solid-text': ['solidTextColor', 'colorTextLightSolid', 'colorTextLightSolid'],
+    'color-outline': ['controlOutline', 'controlOutline', 'colorErrorOutline'],
 };
 // Variant values per mode: `s:` a Semantic token, `c:` a Color token, or `transparent`.
 const BUTTON_VARIANT_MODES = ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'];
@@ -37,25 +38,25 @@ const OUTLINED = {
     bg: 's:colorBgContainer', fg: 'c:color', border: 'c:color-border',
     'bg-hover': 's:colorBgContainer', 'fg-hover': 'c:color-hover', 'border-hover': 'c:color-border-hover',
     'bg-active': 's:colorBgContainer', 'fg-active': 'c:color-active', 'border-active': 'c:color-border-active',
-    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'outline-color': 'transparent',
 };
 const SOLID = {
     bg: 'c:color-solid', fg: 'c:color-solid-text', border: 'transparent',
     'bg-hover': 'c:color-solid-hover', 'fg-hover': 'c:color-solid-text', 'border-hover': 'transparent',
     'bg-active': 'c:color-solid-active', 'fg-active': 'c:color-solid-text', 'border-active': 'transparent',
-    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'outline-color': 'transparent',
 };
 const FILLED = {
     bg: 'c:color-bg', fg: 'c:color', border: 'transparent',
     'bg-hover': 'c:color-bg-hover', 'fg-hover': 'c:color', 'border-hover': 'transparent',
     'bg-active': 'c:color-bg-active', 'fg-active': 'c:color', 'border-active': 'transparent',
-    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'outline-color': 'transparent',
 };
 const TEXT = {
     bg: 'transparent', fg: 'c:color-text', border: 'transparent',
     'bg-hover': 'c:color-text-bg-hover', 'fg-hover': 'c:color-text-hover', 'border-hover': 'transparent',
     'bg-active': 'c:color-text-bg-active', 'fg-active': 'c:color-text-active', 'border-active': 'transparent',
-    'bg-disabled': 'transparent', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+    'bg-disabled': 'transparent', 'fg-disabled': 's:colorTextDisabled', 'outline-color': 'transparent',
 };
 const LINK = { ...TEXT, 'bg-hover': 'transparent', 'bg-active': 'transparent' };
 const BUTTON_VARIANT = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };

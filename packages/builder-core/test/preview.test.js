@@ -43,11 +43,13 @@ test('a disabled instance draws the disabled colour, whatever preview state is a
     assert.equal(result.state, 'disabled');
 });
 
-test('focus changes the border colour only; loading draws the default colour', () => {
+test('focus changes the outline colour only; loading draws the default colour', () => {
     const base = draw().vars;
     const focused = draw('focus').vars;
-    assert.equal(focused['--button-border'], '#4338ca');
+    assert.equal(base['--button-outline-color'], '#00000000');
+    assert.equal(focused['--button-outline-color'], '#4338ca33');
     assert.equal(focused['--button-bg'], base['--button-bg']);
+    assert.equal(focused['--button-border'], base['--button-border']);
     assert.equal(draw('default', { loading: true }).vars['--button-bg'], '#4338ca');
 });
 
@@ -79,8 +81,8 @@ test('hover substitutes the root fill and border: both are the hover values of t
     assert.deepEqual(canvasDraw('hover'), { fill: '#3730a3', stroke: '#00000000' });
 });
 
-test('focus substitutes the root stroke only, and never the fill or the text colour', () => {
-    assert.deepEqual(canvasDraw('focus'), { stroke: '#4338ca' });
+test('focus has no canvas preview: the outline is not drawn on the canvas, which keeps bg and border only', () => {
+    assert.equal(canvasDraw('focus'), null);
 });
 
 test('a disabled instance has no canvas preview: the persistent state wins over hover and focus', () => {

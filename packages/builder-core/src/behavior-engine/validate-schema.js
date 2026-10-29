@@ -96,6 +96,7 @@ export function validateTemplateSchema(schema) {
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...nodeProblems(schema));
+    out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 
@@ -201,6 +202,17 @@ function iconProblems(schema, allTokens) {
         if (!allTokens.includes(icon.tokens?.[role])) out.push(`icon ${role} token "${icon.tokens?.[role]}" is not a token`);
     }
     return out;
+}
+
+/**
+ * Problems in the focus outline: a width and an offset, in px, 0 or more.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function outlineProblems(schema) {
+    const o = schema.outline;
+    if (!isPlainObject(o)) return ['schema has no outline (width and offset)'];
+    return ['width', 'offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
 }
 
 /**
