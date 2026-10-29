@@ -47,14 +47,15 @@ function withOpacity(color, percent) {
 }
 
 /**
- * The value of an item in one mode, following aliases (an alias is `{ alias: itemId, opacity? }`) inside the same mode.
+ * The value of an item, following aliases (an alias is `{ alias: itemId, opacity? }`). Each variable is read in the mode of its own
+ * collection (`modeOf`): an alias that reaches another collection is read in that collection's mode, not the source's.
  * An alias's own opacity (below 100) is kept, outermost first, to be applied to the colour it reaches.
  * @param {any} item
- * @param {string} mode
+ * @param {(collectionId: string) => string | null} modeOf the mode a collection is read in
  * @param {any[]} items
  * @returns {{ item: any, value: unknown, opacities: number[] } | { reason: string }}
  */
-function valueIn(item, mode, items) {
+function valueIn(item, modeOf, items) {
     const seen = new Set();
     /** @type {number[]} */
     const opacities = [];
@@ -62,7 +63,7 @@ function valueIn(item, mode, items) {
     for (;;) {
         if (seen.has(current.id)) return { reason: 'alias-cycle' };
         seen.add(current.id);
-        const value = current.values?.[mode];
+        const value = current.values?.[modeOf(current.collectionId)];
         if (value === undefined) return { reason: 'no-value-in-mode' };
         if (value && typeof value === 'object' && 'alias' in value) {
             if (typeof value.opacity === 'number' && value.opacity < 100) opacities.push(value.opacity);
@@ -114,6 +115,12 @@ export function resolveTokens(template, binding, selectedModes, variables) {
     /** @type {{ token: string, dimension: string | null, reason: string }[]} */
     const unresolved = [];
     const props = Object.fromEntries(variableProps(template));
+    // The mode a collection is read in: the instance's mode of the dimension bound to it, else the collection's first mode.
+    const modeOf = collectionId => {
+        const dimension = Object.keys(binding.variables || {}).find(d => binding.variables[d] === collectionId);
+        if (dimension && selectedModes[dimension]) return selectedModes[dimension];
+        return collections.find(c => c.id === collectionId)?.modes?.[0]?.id ?? null;
+    };
     for (const [group, names] of Object.entries(template.tokens)) {
         const dimension = dimensionOfGroup(group, template.props);
         for (const token of names) {
@@ -132,7 +139,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             const named = items.filter(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(`${template.group}/${token}`));
             if (named.length === 0) { miss('no-variable'); continue; }
             if (named.length > 1) { miss('ambiguous'); continue; }
-            const found = valueIn(named[0], mode, items);
+            const found = valueIn(named[0], modeOf, items);
             if ('reason' in found) { miss(found.reason); continue; }
             if (found.item.type !== (kind === 'color' ? 'color' : 'number')) { miss('type-mismatch'); continue; }
             const text = formatOf(kind, found.value, found.opacities);
