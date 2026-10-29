@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -9343,6 +9343,14 @@ function applyIconSlotBindings(inst) {
     if (!template) return [];
     const targets = iconSlotTargets(template);
     const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+    // What a missing variable is called in the toast: its collection and the instance's mode for it, the place the lookup searched.
+    const where = target => {
+        const collectionId = binding.variables?.[target.dimension];
+        const collection = varStore().collections?.find(c => c.id === collectionId);
+        const mode = collection?.modes?.find(m => m.id === inst.varModes?.[collectionId]);
+        return missingIconVariable({ name: target.name, collectionName: collection?.name ?? target.dimension, modeName: mode?.name ?? 'none selected' });
+    };
+    const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
     for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
@@ -9353,7 +9361,7 @@ function applyIconSlotBindings(inst) {
             fgDisabled: iconVariableId(binding, targets.disabledColour.dimension, names.disabledColour),
             size: iconVariableId(binding, targets.size.dimension, names.size),
             disabled,
-            names,
+            names: described,
             layers,
         });
         plan.missing.forEach(m => missing.add(m));
@@ -9397,7 +9405,7 @@ function syncInstance(inst) {
         applyLiteralFields(inst);
         applyVariantStroke(inst);
         const missingIconVars = applyIconSlotBindings(inst);
-        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')} in its collections.`);
+        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
     });
     return reason ?? null;
 }

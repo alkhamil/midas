@@ -21,6 +21,15 @@ export function iconSlotTargets(template) {
 }
 
 /**
+ * The text that says a missing icon variable: its name, the collection it was searched in and the mode the instance has for it.
+ * @param {{ name: string, collectionName: string, modeName: string }} input
+ * @returns {string}
+ */
+export function missingIconVariable({ name, collectionName, modeName }) {
+    return `${name} in the ${collectionName} collection (mode ${modeName})`;
+}
+
+/**
  * Whether a vars key is one the icon slot owns: a fill by index, a stroke, or the slot's width and height. The engine derives these
  * on every sync, so the copy from the icon component never overwrites them.
  * @param {string} key
