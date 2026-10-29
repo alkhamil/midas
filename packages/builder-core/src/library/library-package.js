@@ -5,7 +5,7 @@
 import { generateComponent } from './component-codegen.js';
 import { behaviorFor, RUNTIME, RUNTIME_DTS } from './library-behavior.js';
 import { iconSvg, isIconComponent } from './icon-svg.js';
-import { pascalCase } from './model.js';
+import { pascalCase } from './names.js';
 import { camelCase, cssVarOf, kebabCase, makeContext } from './screen.js';
 import { colorTokens, tailwindPreset, tailwindTheme } from './tailwind.js';
 

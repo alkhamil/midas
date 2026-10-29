@@ -3,7 +3,7 @@ import { posix } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { compile, optimize } from '@tailwindcss/node';
 import { build, type Plugin } from 'esbuild';
-import { kebabCase, libraryPackage, TAILWIND_PREFIX, type LibraryPackageIssue, type LibraryPackageResult } from '@midas/builder-core';
+import { kebabName as kebabCase, libraryPackage, TAILWIND_PREFIX, type LibraryPackageIssue, type LibraryPackageResult } from '@midas/builder-core';
 import type { ComponentDoc, LibrarySnapshot } from './library.js';
 
 /** Bump when the generated package changes, so packages cached for an older generator are built again. */
