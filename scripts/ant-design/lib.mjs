@@ -1,6 +1,6 @@
 // Small framework to write a Midas design system the way the WDS file is built:
 //   Primitives → Semantic (Light / Dark) → Size (small / middle / large) → one collection per component axis
-//   (e.g. "Button type", "Button states") where mode = variant / state, and layers only bind to variables.
+//   (e.g. "Variant", "Color") where mode = variant / state, and layers only bind to variables.
 // Nodes are described as specs, bound properties are resolved against the variable modes in force, laid out with a small
 // auto layout, and written as plain Midas nodes (with `vars` and `varModes`).
 

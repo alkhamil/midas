@@ -1,5 +1,5 @@
 // Ant Design components, each defined as a table of tokens (look × state) plus a layer tree that only binds to variables.
-import { b, ellipse, frame, text } from './lib.mjs';
+import { addColl, addVar, b, ellipse, frame, text } from './lib.mjs';
 import { defineComponent } from './define.mjs';
 
 const S = n => `Semantic:${n}`;
@@ -8,49 +8,77 @@ const NONE = '#00000000';
 const icon = (name, size, stroke, extra = {}) => ellipse(name, { w: size, h: size, stroke, sw: 1.5, ...extra });
 
 // ---------------------------------------------------------------- Button
+// Structure of antd v5 Button (components/button/style): Color (default, primary, danger) holds the accent tokens of each colour,
+// Variant (outlined, dashed, solid, filled, text, link) aliases into Color or Semantic, Size holds the metrics. Names are ours; the
+// values are antd's (Semantic names are antd's global tokens, see antd-tokens.json).
+const BUTTON_COLOR = {
+    color: ['colorText', 'colorPrimary', 'colorError'],
+    'color-hover': ['colorPrimaryHover', 'colorPrimaryHover', 'colorErrorHover'],
+    'color-active': ['colorPrimaryActive', 'colorPrimaryActive', 'colorErrorActive'],
+    'color-border': ['colorBorder', 'colorPrimary', 'colorError'],
+    'color-border-hover': ['colorPrimaryHover', 'colorPrimaryHover', 'colorErrorBorderHover'],
+    'color-border-active': ['colorPrimaryActive', 'colorPrimaryActive', 'colorErrorActive'],
+    'color-bg': ['colorFillTertiary', 'colorPrimaryBg', 'colorErrorBg'],
+    'color-bg-hover': ['colorFillSecondary', 'colorPrimaryBgHover', 'colorErrorBgFilledHover'],
+    'color-bg-active': ['colorFill', 'colorPrimaryBorder', 'colorErrorBgActive'],
+    'color-text': ['colorText', 'colorPrimaryText', 'colorError'],
+    'color-text-hover': ['colorText', 'colorPrimaryTextHover', 'colorErrorHover'],
+    'color-text-active': ['colorText', 'colorPrimaryTextActive', 'colorErrorActive'],
+    'color-text-bg-hover': ['colorFillTertiary', 'colorPrimaryBg', 'colorErrorBg'],
+    'color-text-bg-active': ['colorBgTextActive', 'colorPrimaryBorder', 'colorErrorBgActive'],
+    'color-solid': ['colorBgSolid', 'colorPrimary', 'colorError'],
+    'color-solid-hover': ['colorBgSolidHover', 'colorPrimaryHover', 'colorErrorHover'],
+    'color-solid-active': ['colorBgSolidActive', 'colorPrimaryActive', 'colorErrorActive'],
+    'color-solid-text': ['solidTextColor', 'colorTextLightSolid', 'colorTextLightSolid'],
+};
+// Variant values per mode: `s:` a Semantic token, `c:` a Color token, or `transparent`.
+const BUTTON_VARIANT_MODES = ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'];
+const OUTLINED = {
+    bg: 's:colorBgContainer', fg: 'c:color', border: 'c:color-border',
+    'bg-hover': 's:colorBgContainer', 'fg-hover': 'c:color-hover', 'border-hover': 'c:color-border-hover',
+    'bg-active': 's:colorBgContainer', 'fg-active': 'c:color-active', 'border-active': 'c:color-border-active',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+};
+const SOLID = {
+    bg: 'c:color-solid', fg: 'c:color-solid-text', border: 'transparent',
+    'bg-hover': 'c:color-solid-hover', 'fg-hover': 'c:color-solid-text', 'border-hover': 'transparent',
+    'bg-active': 'c:color-solid-active', 'fg-active': 'c:color-solid-text', 'border-active': 'transparent',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+};
+const FILLED = {
+    bg: 'c:color-bg', fg: 'c:color', border: 'transparent',
+    'bg-hover': 'c:color-bg-hover', 'fg-hover': 'c:color', 'border-hover': 'transparent',
+    'bg-active': 'c:color-bg-active', 'fg-active': 'c:color', 'border-active': 'transparent',
+    'bg-disabled': 's:colorBgContainerDisabled', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+};
+const TEXT = {
+    bg: 'transparent', fg: 'c:color-text', border: 'transparent',
+    'bg-hover': 'c:color-text-bg-hover', 'fg-hover': 'c:color-text-hover', 'border-hover': 'transparent',
+    'bg-active': 'c:color-text-bg-active', 'fg-active': 'c:color-text-active', 'border-active': 'transparent',
+    'bg-disabled': 'transparent', 'fg-disabled': 's:colorTextDisabled', 'border-focus': 'c:color-border',
+};
+const LINK = { ...TEXT, 'bg-hover': 'transparent', 'bg-active': 'transparent' };
+const BUTTON_VARIANT = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };
+/** A Variant value in the library: a Color or Semantic reference, or a transparent colour. */
+const buttonValue = v => (v === 'transparent' ? NONE : v.startsWith('c:') ? { ref: `Color/button/${v.slice(2)}` } : { ref: `Semantic/${v.slice(2)}` });
+function buttonCollections() {
+    addColl('Color', ['default', 'primary', 'danger']);
+    for (const [token, values] of Object.entries(BUTTON_COLOR)) addVar('Color', `button/${token}`, 'color', values.map(n => ({ ref: `Semantic/${n}` })));
+    addColl('Variant', BUTTON_VARIANT_MODES);
+    for (const token of Object.keys(OUTLINED)) addVar('Variant', `button/${token}`, 'color', BUTTON_VARIANT_MODES.map(m => buttonValue(BUTTON_VARIANT[m][token])));
+}
+buttonCollections();
 defineComponent({
     key: 'button', name: 'Button', category: 'General',
     description: 'To trigger an operation.',
-    axis: { coll: 'Button type', modes: ['default', 'primary', 'dashed', 'text', 'link'] },
-    states: { coll: 'Button states', modes: ['default', 'hover', 'pressed', 'disabled', 'focused'] },
-    props: { bg: 'color/background', text: 'color/text', stroke: 'color/stroke' },
-    numeric: { 'stroke/width': 1 },
-    stateBools: { 'focus/visible': ['focused'] },
-    tokens: {
-        default: { bg: { default: S('colorBgContainer'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorText'), hover: S('colorPrimaryTextHover'), pressed: S('colorPrimaryTextActive'), disabled: S('colorTextDisabled') }, stroke: { default: S('colorBorder'), hover: S('colorPrimaryBorderHover'), pressed: S('colorPrimaryBorder'), disabled: S('colorBorder') }, 'stroke/width': 1 },
-        primary: { bg: { default: S('colorPrimary'), hover: S('colorPrimaryHover'), pressed: S('colorPrimaryActive'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorTextLightSolid'), disabled: S('colorTextDisabled') }, stroke: NONE, 'stroke/width': 0 },
-        dashed: { bg: { default: S('colorBgContainer'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorText'), hover: S('colorPrimaryTextHover'), pressed: S('colorPrimaryTextActive'), disabled: S('colorTextDisabled') }, stroke: { default: S('colorBorder'), hover: S('colorPrimaryBorderHover'), pressed: S('colorPrimaryBorder'), disabled: S('colorBorder') }, 'stroke/width': 1 },
-        text: { bg: { default: NONE, hover: S('colorFill'), pressed: S('colorFill'), disabled: NONE }, text: { default: S('colorText'), disabled: S('colorTextDisabled') }, stroke: NONE, 'stroke/width': 0 },
-        link: { bg: NONE, text: { default: S('colorLink'), hover: S('colorLinkHover'), pressed: S('colorLinkActive'), disabled: S('colorTextDisabled') }, stroke: NONE, 'stroke/width': 0 },
-    },
-    suffixTokens: {
-        '-danger': {
-            default: { bg: { default: S('colorBgContainer'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorError'), hover: S('colorErrorHover'), pressed: S('colorErrorActive'), disabled: S('colorTextDisabled') }, stroke: { default: S('colorErrorBorder'), hover: S('colorErrorBorderHover'), pressed: S('colorErrorBorder'), disabled: S('colorBorder') } },
-            primary: { bg: { default: S('colorError'), hover: S('colorErrorHover'), pressed: S('colorErrorActive'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorTextLightSolid'), disabled: S('colorTextDisabled') }, stroke: NONE },
-            dashed: { bg: { default: S('colorBgContainer'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorError'), hover: S('colorErrorHover'), pressed: S('colorErrorActive'), disabled: S('colorTextDisabled') }, stroke: { default: S('colorErrorBorder'), hover: S('colorErrorBorderHover'), pressed: S('colorErrorBorder'), disabled: S('colorBorder') } },
-            text: { bg: { default: NONE, hover: S('colorErrorBg'), pressed: S('colorErrorBg'), disabled: NONE }, text: { default: S('colorError'), hover: S('colorErrorHover'), pressed: S('colorErrorActive'), disabled: S('colorTextDisabled') }, stroke: NONE },
-            link: { bg: NONE, text: { default: S('colorError'), hover: S('colorErrorHover'), pressed: S('colorErrorActive'), disabled: S('colorTextDisabled') }, stroke: NONE },
-        },
-    },
-    colls: [{ name: 'Button icon', modes: ['none', 'start', 'end', 'only'], vars: [
-        { name: 'icon/start/visible', type: 'boolean', values: [false, true, false, true] },
-        { name: 'icon/end/visible', type: 'boolean', values: [false, false, true, false] },
-        { name: 'label/visible', type: 'boolean', values: [true, true, true, false] },
-        { name: 'padding-x', type: 'number', values: [{ ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, 0] },
-        // Icon only: a square of the control height (antd's circle shape), so the minimum width is the height.
-        { name: 'min-width', type: 'number', values: [0, 0, 0, { ref: 'Size/button/height' }] },
-    ] }],
-    variants: { Danger: { No: '', Yes: '-danger' }, Dashed: { No: '', Yes: '' } },
-    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 23], 'padding-y': [0, 0, 0], gap: [8, 8, 8], 'font-size': [14, 14, 16], 'line-height': [22 / 14, 22 / 14, 24 / 16], radius: [4, 6, 8], 'icon-size': [14, 14, 16] },
+    axis: { use: true, coll: 'Variant', modes: BUTTON_VARIANT_MODES },
     text: { prop: 'Label', def: 'Button' },
-    tree: ({ st, ax, sz, x, sf, v, label }) => frame('Button', {
-        dir: 'h', alignC: 'center', alignP: 'center', h: sz('height'), minW: x('Button icon', 'min-width'), pad: [sz('padding-y'), x('Button icon', 'padding-x'), sz('padding-y'), x('Button icon', 'padding-x')], gap: sz('gap'), radius: sz('radius'),
-        fill: st('bg'), stroke: st('stroke'), sw: ax('stroke/width'), dash: v.Dashed === 'Yes',
+    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 23], 'padding-y': [0, 0, 0], gap: [8, 8, 8], 'font-size': [14, 14, 16], 'line-height': [22 / 14, 22 / 14, 24 / 16], radius: [4, 6, 8], 'icon-size': [14, 14, 16] },
+    tree: ({ sz, label }) => frame('Button', {
+        dir: 'h', alignC: 'center', alignP: 'center', h: sz('height'), pad: [sz('padding-y'), sz('padding-x'), sz('padding-y'), sz('padding-x')], gap: sz('gap'), radius: sz('radius'),
+        fill: b('Variant', 'button/bg'), stroke: b('Variant', 'button/border'), sw: 1,
     }, [
-        frame('Focus indicator', { pos: 'abs', x: 0, y: 0, w: 'fill', h: 'fill', radius: sz('radius'), stroke: b('Semantic', v.Danger === 'Yes' ? 'colorErrorOutline' : 'controlOutline'), sw: 3, strokeAlign: 'outside', visible: sf('focus/visible') }),
-        icon('Icon start', sz('icon-size'), st('text'), { visible: x('Button icon', 'icon/start/visible') }),
-        text(label, { name: 'Label', fs: sz('font-size'), lh: sz('line-height'), fill: st('text'), cprop: 'Label', visible: x('Button icon', 'label/visible') }),
-        icon('Icon end', sz('icon-size'), st('text'), { visible: x('Button icon', 'icon/end/visible') }),
+        text(label, { name: 'Label', fs: sz('font-size'), lh: sz('line-height'), fill: b('Variant', 'button/fg'), cprop: 'Label' }),
     ]),
 });
 

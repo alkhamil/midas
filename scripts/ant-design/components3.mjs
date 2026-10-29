@@ -9,11 +9,16 @@ const sem = n => b('Semantic', n);
 /** Pin a layer (and what is inside it) to a mode of a collection: both for baking and in the file. */
 const at = (coll, mode, extra = {}) => ({ modes: { [coll]: mode }, varModes: { [coll]: mode }, ...extra });
 const pin = (spec, coll, mode) => Object.assign(spec, at(coll, mode));
-/** Button drawn inline from the Button variables (for dialogs, popconfirm …). */
-const btn = (label, type = 'default', size = 'middle') => frame('Button', {
-    dir: 'h', alignC: 'center', alignP: 'center', h: b('Size', 'button/height'), pad: [0, b('Size', 'button/padding-x'), 0, b('Size', 'button/padding-x')], radius: b('Size', 'button/radius'),
-    fill: b('Button states', 'color/background'), stroke: b('Button states', 'color/stroke'), sw: b('Button type', 'stroke/width'), ...at('Button type', type, { modes: { 'Button type': type, 'Button states': 'default', Size: size } }),
-}, [text(label, { name: 'Label', fs: b('Size', 'button/font-size'), fill: b('Button states', 'color/text') })]);
+/** Button drawn inline from the Button variables (for dialogs, popconfirm …): the look is a Variant and a Color. */
+const BTN_LOOK = { default: ['outlined', 'default'], primary: ['solid', 'primary'], dashed: ['dashed', 'default'], text: ['text', 'default'], link: ['link', 'default'] };
+const btn = (label, type = 'default', size = 'middle') => {
+    const [variant, color] = BTN_LOOK[type];
+    const modes = { Variant: variant, Color: color, Size: size };
+    return frame('Button', {
+        dir: 'h', alignC: 'center', alignP: 'center', h: b('Size', 'button/height'), pad: [b('Size', 'button/padding-y'), b('Size', 'button/padding-x'), b('Size', 'button/padding-y'), b('Size', 'button/padding-x')], radius: b('Size', 'button/radius'),
+        fill: b('Variant', 'button/bg'), stroke: b('Variant', 'button/border'), sw: 1, modes, varModes: modes,
+    }, [text(label, { name: 'Label', fs: b('Size', 'button/font-size'), fill: b('Variant', 'button/fg') })]);
+};
 
 // ---------------------------------------------------------------- Tabs
 const TAB_STATES = ['default', 'hover', 'active', 'disabled'];

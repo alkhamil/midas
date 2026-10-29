@@ -240,5 +240,26 @@
     "light": "#ffffff33",
     "dark": "#14141433",
     "antd": "colorBgContainer at opacity 0.2"
+  },
+  "colorBgTextActive": {
+    "light": "#00000026",
+    "dark": "#ffffff2e"
+  },
+  "colorErrorBgFilledHover": {
+    "light": "#ffdfdc",
+    "dark": "#441e1f"
+  },
+  "colorErrorBgActive": {
+    "light": "#ffccc7",
+    "dark": "#5b2526"
+  },
+  "colorPrimaryBgHover": {
+    "light": "#bae0ff",
+    "dark": "#15417e"
+  },
+  "solidTextColor": {
+    "light": "#ffffff",
+    "dark": "#000000",
+    "antd": "button token solidTextColor: #000 when colorBgSolid is bright, else #fff"
   }
 }

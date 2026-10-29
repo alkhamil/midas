@@ -24,8 +24,8 @@ const stateName = (prop, suffix, state) => `${prop}${suffix}${state === 'default
 /**
  * def = {
  *   key: 'button', name: 'Button', category: 'General', description,
- *   axis: { coll: 'Button type', modes: ['default', 'primary', …] },          // looks (one mode when the component has one look)
- *   states: { coll: 'Button states', modes: ['default', 'hover', …] },
+ *   axis: { coll: 'Variant', modes: ['outlined', 'solid', …] },          // looks (one mode when the component has one look)
+ *   states: { coll: 'States', modes: ['default', 'hover', …] },
  *   props: { bg: 'color/background', text: 'color/text', stroke: 'color/stroke' },   // colour properties: name → variable name
  *   tokens: { primary: { bg: { default: 'Semantic:bg/brand', hover: … }, sw: 1 } },   // per look; a plain string = every state
  *   variants: { Danger: { No: '', Yes: '-danger' } },                           // variant properties of the set → variable suffix
@@ -72,7 +72,7 @@ export function defineComponent(def) {
     for (const [name, on] of Object.entries(def.stateBools || {})) if (states && !states.use) addVar(stCollName, name, 'boolean', stateModes.map(s => on.includes(s)));
     // effect (shadow) variables per state: name → { state → 'Semantic:elevation/…' }
     for (const [name, map] of Object.entries(def.stateEffects || {})) if (states && !states.use) addVar(stCollName, name, 'effect', stateModes.map(s => tokenValue(map[s] ?? map.default)));
-    // extra collections with their own modes (e.g. "Button icon": none / start / end / only)
+    // extra collections with their own modes (e.g. "Color": default / primary / danger)
     for (const c of def.colls || []) { addColl(c.name, c.modes); collsUsed.add(c.name); for (const v of c.vars) addVar(c.name, v.name, v.type, v.values); }
     if (def.sizes) sizeVars(def.key, def.sizes);
     // ---- modes in force when a layer is baked: first look, default state, middle size, light theme

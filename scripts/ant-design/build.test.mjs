@@ -23,8 +23,9 @@ test('foundations follow the WDS layers', () => {
     assert.deepEqual(c('Primitives').modes.map(m => m.name), ['Base']);
     assert.deepEqual(c('Semantic').modes.map(m => m.name), ['Light', 'Dark']);
     assert.deepEqual(c('Size').modes.map(m => m.name), ['small', 'middle', 'large']);
-    for (const n of ['Button type', 'Button states', 'Input states', 'Checkbox states']) assert.ok(c(n), n);
-    assert.ok(c('Button states').modes.length >= 5);
+    assert.deepEqual(c('Variant').modes.map(m => m.name), ['outlined', 'dashed', 'solid', 'filled', 'text', 'link']);
+    assert.deepEqual(c('Color').modes.map(m => m.name), ['default', 'primary', 'danger']);
+    for (const n of ['Input states', 'Checkbox states']) assert.ok(c(n), n);
 });
 
 test('every Ant component is covered, except the ones without a visual', () => {
@@ -69,9 +70,6 @@ test('the file is well formed: unique ids, valid parents and sources, no negativ
 
 test('state collections are named so Preview picks them up (hover / pressed switch by themselves)', () => {
     for (const c of collections.filter(c => / states?$/.test(c.name))) assert.ok(c.modes.length >= 2, c.name);
-    const button = nodes.find(n => n.name === 'Danger=No, Dashed=No' && n.component);
-    const states = collections.find(c => c.name === 'Button states');
-    assert.ok(button.varModes[states.id], 'Button variant pins Button states');
 });
 
 test('overview cards open their documentation', () => {
