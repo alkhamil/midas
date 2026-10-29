@@ -14,6 +14,7 @@ export const registry = ALL;
 const tokenValue = v => {
     if (v === undefined || v === null) return undefined;
     if (typeof v === 'number') return v;
+    if (Array.isArray(v)) return v;
     if (v.startsWith('#')) return v;
     const [c, n] = v.split(':');
     return ref(c, n);

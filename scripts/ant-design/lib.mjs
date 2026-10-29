@@ -20,7 +20,7 @@ export function addColl(name, modes) {
 }
 export const collOf = name => byName.get(name) || (() => { throw new Error(`no collection "${name}"`); })();
 export const modeId = (coll, name) => (typeof coll === 'string' ? collOf(coll) : coll).modes.find(m => m.name === name)?.id;
-/** Reference to another variable (an alias): ref('Semantic', 'bg/brand'). */
+/** Reference to another variable (an alias): ref('Semantic', 'colorPrimary'). */
 export const ref = (coll, name) => ({ ref: `${coll}/${name}` });
 /** A binding in a node spec: b('Size', 'button/height'). */
 export const b = (coll, name) => ({ bind: `${coll}/${name}` });

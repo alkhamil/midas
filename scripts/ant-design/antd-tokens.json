@@ -1,0 +1,244 @@
+{
+  "$source": "antd 5.29.3, default and dark algorithms (node_modules/antd/lib/theme/getDesignToken + themes/dark). Component tokens: antd component style source.",
+  "colorPrimary": {
+    "light": "#1677ff",
+    "dark": "#1668dc"
+  },
+  "colorPrimaryHover": {
+    "light": "#4096ff",
+    "dark": "#3c89e8"
+  },
+  "colorPrimaryActive": {
+    "light": "#0958d9",
+    "dark": "#1554ad"
+  },
+  "colorPrimaryBg": {
+    "light": "#e6f4ff",
+    "dark": "#15325b"
+  },
+  "colorPrimaryBorder": {
+    "light": "#91caff",
+    "dark": "#15325b"
+  },
+  "colorPrimaryBorderHover": {
+    "light": "#69b1ff",
+    "dark": "#15417e"
+  },
+  "colorPrimaryText": {
+    "light": "#1677ff",
+    "dark": "#1668dc"
+  },
+  "colorPrimaryTextHover": {
+    "light": "#4096ff",
+    "dark": "#3c89e8"
+  },
+  "colorPrimaryTextActive": {
+    "light": "#0958d9",
+    "dark": "#1554ad"
+  },
+  "colorBgContainer": {
+    "light": "#ffffff",
+    "dark": "#141414"
+  },
+  "colorBgElevated": {
+    "light": "#ffffff",
+    "dark": "#1f1f1f"
+  },
+  "colorBgLayout": {
+    "light": "#f5f5f5",
+    "dark": "#000000"
+  },
+  "colorBgSpotlight": {
+    "light": "#000000d9",
+    "dark": "#424242"
+  },
+  "colorBgMask": {
+    "light": "#00000073",
+    "dark": "#00000073"
+  },
+  "colorFill": {
+    "light": "#00000026",
+    "dark": "#ffffff2e"
+  },
+  "colorFillSecondary": {
+    "light": "#0000000f",
+    "dark": "#ffffff1f"
+  },
+  "colorFillTertiary": {
+    "light": "#0000000a",
+    "dark": "#ffffff14"
+  },
+  "colorBgContainerDisabled": {
+    "light": "#0000000a",
+    "dark": "#ffffff14"
+  },
+  "colorError": {
+    "light": "#ff4d4f",
+    "dark": "#dc4446"
+  },
+  "colorErrorHover": {
+    "light": "#ff7875",
+    "dark": "#e86e6b"
+  },
+  "colorErrorActive": {
+    "light": "#d9363e",
+    "dark": "#ad393a"
+  },
+  "colorErrorBg": {
+    "light": "#fff2f0",
+    "dark": "#2c1618"
+  },
+  "colorErrorBorder": {
+    "light": "#ffccc7",
+    "dark": "#5b2526"
+  },
+  "colorErrorBorderHover": {
+    "light": "#ffa39e",
+    "dark": "#7e2e2f"
+  },
+  "colorErrorOutline": {
+    "light": "#ff26050f",
+    "dark": "#ee26381c"
+  },
+  "colorSuccess": {
+    "light": "#52c41a",
+    "dark": "#49aa19"
+  },
+  "colorSuccessBg": {
+    "light": "#f6ffed",
+    "dark": "#162312"
+  },
+  "colorSuccessBorder": {
+    "light": "#b7eb8f",
+    "dark": "#274916"
+  },
+  "colorWarning": {
+    "light": "#faad14",
+    "dark": "#d89614"
+  },
+  "colorWarningBg": {
+    "light": "#fffbe6",
+    "dark": "#2b2111"
+  },
+  "colorWarningBorder": {
+    "light": "#ffe58f",
+    "dark": "#594214"
+  },
+  "colorWarningOutline": {
+    "light": "#ffd7051a",
+    "dark": "#ad6b0026"
+  },
+  "colorInfo": {
+    "light": "#1677ff",
+    "dark": "#1668dc"
+  },
+  "colorInfoBg": {
+    "light": "#e6f4ff",
+    "dark": "#111a2c"
+  },
+  "colorInfoBorder": {
+    "light": "#91caff",
+    "dark": "#15325b"
+  },
+  "colorText": {
+    "light": "#000000e0",
+    "dark": "#ffffffd9"
+  },
+  "colorTextSecondary": {
+    "light": "#000000a6",
+    "dark": "#ffffffa6"
+  },
+  "colorTextTertiary": {
+    "light": "#00000073",
+    "dark": "#ffffff73"
+  },
+  "colorTextDisabled": {
+    "light": "#00000040",
+    "dark": "#ffffff40"
+  },
+  "colorTextLightSolid": {
+    "light": "#ffffff",
+    "dark": "#ffffff"
+  },
+  "colorBorder": {
+    "light": "#d9d9d9",
+    "dark": "#424242"
+  },
+  "colorBorderSecondary": {
+    "light": "#f0f0f0",
+    "dark": "#303030"
+  },
+  "colorLink": {
+    "light": "#1677ff",
+    "dark": "#1668dc"
+  },
+  "colorLinkHover": {
+    "light": "#69b1ff",
+    "dark": "#15417e"
+  },
+  "colorLinkActive": {
+    "light": "#0958d9",
+    "dark": "#1554ad"
+  },
+  "controlOutline": {
+    "light": "#0591ff1a",
+    "dark": "#1775f94f"
+  },
+  "colorBgSolid": {
+    "light": "#000000",
+    "dark": "#fffffff2"
+  },
+  "colorBgSolidHover": {
+    "light": "#000000bf",
+    "dark": "#ffffff"
+  },
+  "colorBgSolidActive": {
+    "light": "#000000f2",
+    "dark": "#ffffffe6"
+  },
+  "switch/track-off": {
+    "light": "#00000040",
+    "dark": "#ffffff40",
+    "antd": "colorTextQuaternary"
+  },
+  "switch/track-off-hover": {
+    "light": "#00000073",
+    "dark": "#ffffff73",
+    "antd": "colorTextTertiary"
+  },
+  "avatar/bg": {
+    "light": "#00000040",
+    "dark": "#ffffff40",
+    "antd": "colorTextPlaceholder"
+  },
+  "slider/rail": {
+    "light": "#0000000a",
+    "dark": "#ffffff14",
+    "antd": "slider.railBg"
+  },
+  "slider/rail-hover": {
+    "light": "#0000000f",
+    "dark": "#ffffff1f",
+    "antd": "slider.railHoverBg"
+  },
+  "rate/star-bg": {
+    "light": "#0000000f",
+    "dark": "#ffffff1f",
+    "antd": "rate.starBg"
+  },
+  "rate/star-color": {
+    "light": "#fadb14",
+    "dark": "#d8bd14",
+    "antd": "rate.starColor"
+  },
+  "segmented/track-bg": {
+    "light": "#f5f5f5",
+    "dark": "#000000",
+    "antd": "segmented.trackBg"
+  },
+  "carousel/dot": {
+    "light": "#ffffff33",
+    "dark": "#14141433",
+    "antd": "colorBgContainer at opacity 0.2"
+  }
+}

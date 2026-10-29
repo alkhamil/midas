@@ -8,9 +8,9 @@ const ring = (sz, name, token, visible) => frame(name, { pos: 'abs', x: 0, y: 0,
 
 // ---------------------------------------------------------------- field-like components (share the Input look × state tokens)
 const FIELD_TOKENS = {
-    outlined: { bg: { default: S('bg/container'), disabled: S('bg/disabled') }, text: { default: S('text/primary'), disabled: S('text/disabled') }, placeholder: S('text/tertiary'), stroke: { default: S('border/default'), hover: S('border/brand-hover'), focused: S('border/brand'), disabled: S('border/disabled'), error: S('border/danger'), warning: S('border/warning') }, 'stroke/width': 1 },
-    filled: { bg: { default: S('bg/fill-tertiary'), hover: S('bg/fill'), focused: S('bg/container'), disabled: S('bg/disabled'), error: S('bg/danger-subtle'), warning: S('bg/warning-subtle') }, text: { default: S('text/primary'), disabled: S('text/disabled') }, placeholder: S('text/tertiary'), stroke: { default: NONE, focused: S('border/brand'), error: S('border/danger'), warning: S('border/warning') }, 'stroke/width': 1 },
-    borderless: { bg: { default: NONE, hover: S('bg/fill-tertiary'), disabled: NONE }, text: { default: S('text/primary'), disabled: S('text/disabled') }, placeholder: S('text/tertiary'), stroke: NONE, 'stroke/width': 0 },
+    outlined: { bg: { default: S('colorBgContainer'), disabled: S('colorBgContainerDisabled') }, text: { default: S('colorText'), disabled: S('colorTextDisabled') }, placeholder: S('colorTextTertiary'), stroke: { default: S('colorBorder'), hover: S('colorPrimaryBorderHover'), focused: S('colorPrimaryBorder'), disabled: S('colorBorder'), error: S('colorErrorBorder'), warning: S('colorWarningBorder') }, 'stroke/width': 1 },
+    filled: { bg: { default: S('colorFillTertiary'), hover: S('colorFill'), focused: S('colorBgContainer'), disabled: S('colorBgContainerDisabled'), error: S('colorErrorBg'), warning: S('colorWarningBg') }, text: { default: S('colorText'), disabled: S('colorTextDisabled') }, placeholder: S('colorTextTertiary'), stroke: { default: NONE, focused: S('colorPrimaryBorder'), error: S('colorErrorBorder'), warning: S('colorWarningBorder') }, 'stroke/width': 1 },
+    borderless: { bg: { default: NONE, hover: S('colorFillTertiary'), disabled: NONE }, text: { default: S('colorText'), disabled: S('colorTextDisabled') }, placeholder: S('colorTextTertiary'), stroke: NONE, 'stroke/width': 0 },
 };
 function field({ key, name, description, placeholder, suffix = null, prefix = null, width = 240, tall = false, category = 'Data Entry' }) {
     defineComponent({
@@ -26,10 +26,10 @@ function field({ key, name, description, placeholder, suffix = null, prefix = nu
         tree: ({ st, ax, sz, sf, label }) => frame(name, {
             dir: 'h', alignC: tall ? 'start' : 'center', w: width, ...(tall ? { h: 64, pad: [5, 11, 5, 11] } : { h: sz('height'), pad: [0, sz('padding-x'), 0, sz('padding-x')] }), gap: sz('gap'), radius: sz('radius'), fill: st('bg'), stroke: st('stroke'), sw: ax('stroke/width'),
         }, [
-            ring(sz('radius'), 'Focus ring', 'ring/brand', sf('ring/brand/visible')),
-            ring(sz('radius'), 'Error ring', 'ring/danger', sf('ring/danger/visible')),
-            ring(sz('radius'), 'Warning ring', 'ring/warning', sf('ring/warning/visible')),
-            ...(prefix === 'swatch' ? [frame('Swatch', { w: 16, h: 16, radius: 4, fill: b('Semantic', 'bg/brand') })] : []),
+            ring(sz('radius'), 'Focus ring', 'controlOutline', sf('ring/brand/visible')),
+            ring(sz('radius'), 'Error ring', 'colorErrorOutline', sf('ring/danger/visible')),
+            ring(sz('radius'), 'Warning ring', 'colorWarningOutline', sf('ring/warning/visible')),
+            ...(prefix === 'swatch' ? [frame('Swatch', { w: 16, h: 16, radius: 4, fill: b('Semantic', 'colorPrimary') })] : []),
             text(label, { name: 'Placeholder', fs: sz('font-size'), fill: st('placeholder'), cprop: 'Placeholder', w: 'fill' }),
             ...(suffix ? [text(suffix, { name: 'Suffix', fs: 12, fill: st('placeholder') })] : []),
         ]),
@@ -54,15 +54,15 @@ defineComponent({
     props: { box: 'color/circle-background', boxStroke: 'color/circle-stroke', dot: 'color/dot', text: 'color/text' },
     stateBools: { 'focus/visible': ['focused'] },
     tokens: { default: {
-        box: { default: S('bg/container'), 'disabled-off': S('bg/disabled'), 'disabled-on': S('bg/disabled') },
-        boxStroke: { default: S('border/default'), hover: S('border/brand'), selected: S('border/brand'), 'selected-hover': S('border/brand-hover'), 'disabled-off': S('border/disabled'), 'disabled-on': S('border/disabled'), focused: S('border/brand'), error: S('border/danger') },
-        dot: { default: NONE, selected: S('bg/brand'), 'selected-hover': S('bg/brand-hover'), 'disabled-on': S('text/disabled') },
-        text: { default: S('text/primary'), 'disabled-off': S('text/disabled'), 'disabled-on': S('text/disabled') },
+        box: { default: S('colorBgContainer'), 'disabled-off': S('colorBgContainerDisabled'), 'disabled-on': S('colorBgContainerDisabled') },
+        boxStroke: { default: S('colorBorder'), hover: S('colorPrimaryBorder'), selected: S('colorPrimaryBorder'), 'selected-hover': S('colorPrimaryBorderHover'), 'disabled-off': S('colorBorder'), 'disabled-on': S('colorBorder'), focused: S('colorPrimaryBorder'), error: S('colorErrorBorder') },
+        dot: { default: NONE, selected: S('colorPrimary'), 'selected-hover': S('colorPrimaryHover'), 'disabled-on': S('colorTextDisabled') },
+        text: { default: S('colorText'), 'disabled-off': S('colorTextDisabled'), 'disabled-on': S('colorTextDisabled') },
     } },
     text: { prop: 'Label', def: 'Radio' },
     tree: ({ st, label }) => frame('Radio', { dir: 'h', alignC: 'center', gap: 8 }, [
         frame('Circle', { dir: 'h', alignC: 'center', alignP: 'center', w: 16, h: 16, radius: 999, fill: st('box'), stroke: st('boxStroke'), sw: 1 }, [
-            ring(999, 'Focus indicator', 'ring/brand', b('Radio states', 'focus/visible')),
+            ring(999, 'Focus indicator', 'controlOutline', b('Radio states', 'focus/visible')),
             frame('Dot', { w: 8, h: 8, radius: 999, fill: st('dot') }),
         ]),
         text(label, { name: 'Label', fs: 14, fill: st('text'), cprop: 'Label' }),
@@ -77,12 +77,12 @@ defineComponent({
     props: { track: 'color/track', knob: 'color/knob' },
     stateBools: { 'focus/visible': ['focused'], 'knob/off/visible': ['default', 'hover', 'disabled-off', 'focused'], 'knob/on/visible': ['selected', 'selected-hover', 'disabled-on'] },
     tokens: { default: {
-        track: { default: S('bg/toggle-off'), hover: S('bg/toggle-off-hover'), selected: S('bg/brand'), 'selected-hover': S('bg/brand-hover'), 'disabled-off': S('bg/fill'), 'disabled-on': S('bg/brand-subtle'), focused: S('bg/toggle-off') },
-        knob: S('text/on-brand'),
+        track: { default: S('switch/track-off'), hover: S('switch/track-off-hover'), selected: S('colorPrimary'), 'selected-hover': S('colorPrimaryHover'), 'disabled-off': S('colorFill'), 'disabled-on': S('colorPrimaryBg'), focused: S('switch/track-off') },
+        knob: S('colorTextLightSolid'),
     } },
     sizes: { width: [28, 44, 44], height: [16, 22, 22], knob: [12, 18, 18], 'knob-on-x': [14, 24, 24] },
     tree: ({ st, sz, sf }) => frame('Switch', { w: sz('width'), h: sz('height'), radius: 999, fill: st('track') }, [
-        ring(999, 'Focus indicator', 'ring/brand', sf('focus/visible')),
+        ring(999, 'Focus indicator', 'controlOutline', sf('focus/visible')),
         frame('Knob off', { pos: 'abs', x: 2, y: 2, w: sz('knob'), h: sz('knob'), radius: 999, fill: st('knob'), visible: sf('knob/off/visible') }),
         frame('Knob on', { pos: 'abs', x: 24, y: 2, w: sz('knob'), h: sz('knob'), radius: 999, fill: st('knob'), visible: sf('knob/on/visible') }),
     ]),
@@ -94,11 +94,11 @@ defineComponent({
     axis: { coll: 'Slider styles', modes: ['default'] },
     states: { coll: 'Slider states', modes: ['default', 'hover', 'disabled'] },
     props: { rail: 'color/rail', track: 'color/track', handle: 'color/handle' },
-    tokens: { default: { rail: { default: S('bg/rail'), hover: S('bg/rail-hover') }, track: { default: S('border/info'), hover: S('border/brand-hover'), disabled: S('text/disabled') }, handle: { default: S('border/info'), hover: S('border/brand'), disabled: S('text/disabled') } } },
+    tokens: { default: { rail: { default: S('slider/rail'), hover: S('slider/rail-hover') }, track: { default: S('colorInfoBorder'), hover: S('colorPrimaryBorderHover'), disabled: S('colorTextDisabled') }, handle: { default: S('colorInfoBorder'), hover: S('colorPrimaryBorder'), disabled: S('colorTextDisabled') } } },
     tree: ({ st }) => frame('Slider', { w: 240, h: 14 }, [
         frame('Rail', { pos: 'abs', x: 0, y: 5, w: 240, h: 4, radius: 2, fill: st('rail') }),
         frame('Track', { pos: 'abs', x: 0, y: 5, w: 100, h: 4, radius: 2, fill: st('track') }),
-        frame('Handle', { pos: 'abs', x: 93, y: 0, w: 14, h: 14, radius: 999, fill: b('Semantic', 'bg/container'), stroke: st('handle'), sw: 2 }),
+        frame('Handle', { pos: 'abs', x: 93, y: 0, w: 14, h: 14, radius: 999, fill: b('Semantic', 'colorBgContainer'), stroke: st('handle'), sw: 2 }),
     ]),
 });
 
@@ -107,7 +107,7 @@ defineComponent({
     key: 'rate', name: 'Rate', category: 'Data Entry', description: 'Used for rating.',
     axis: { coll: 'Rate styles', modes: ['default'] },
     props: { on: 'color/star-on', off: 'color/star-off' },
-    tokens: { default: { on: S('bg/warning'), off: S('bg/rail') } },
+    tokens: { default: { on: S('rate/star-color'), off: S('rate/star-bg') } },
     tree: ({ st }) => frame('Rate', { dir: 'h', gap: 8, alignC: 'center' }, [1, 2, 3, 4, 5].map(i => text('★', { name: `Star ${i}`, fs: 20, lh: 1, fill: st(i <= 3 ? 'on' : 'off') }))),
 });
 
@@ -117,9 +117,9 @@ defineComponent({
     axis: { coll: 'Upload styles', modes: ['default'] },
     states: { coll: 'Upload states', modes: ['default', 'hover', 'disabled'] },
     props: { bg: 'color/background', stroke: 'color/stroke', text: 'color/text', hint: 'color/hint' },
-    tokens: { default: { bg: { default: S('bg/fill-tertiary'), hover: S('bg/fill'), disabled: S('bg/disabled') }, stroke: { default: S('border/default'), hover: S('border/brand'), disabled: S('border/disabled') }, text: { default: S('text/primary'), disabled: S('text/disabled') }, hint: { default: S('text/tertiary'), disabled: S('text/disabled') } } },
+    tokens: { default: { bg: { default: S('colorFillTertiary'), hover: S('colorFill'), disabled: S('colorBgContainerDisabled') }, stroke: { default: S('colorBorder'), hover: S('colorPrimaryBorder'), disabled: S('colorBorder') }, text: { default: S('colorText'), disabled: S('colorTextDisabled') }, hint: { default: S('colorTextTertiary'), disabled: S('colorTextDisabled') } } },
     tree: ({ st }) => frame('Upload', { dir: 'v', alignC: 'center', alignP: 'center', gap: 8, w: 300, h: 140, radius: 8, fill: st('bg'), stroke: st('stroke'), sw: 1, dash: true }, [
-        ellipse('Icon', { w: 32, h: 32, stroke: b('Semantic', 'bg/brand'), sw: 2 }),
+        ellipse('Icon', { w: 32, h: 32, stroke: b('Semantic', 'colorPrimary'), sw: 2 }),
         text('Click or drag file to this area to upload', { fs: 16, fill: st('text') }),
         text('Support for a single or bulk upload.', { fs: 14, fill: st('hint') }),
     ]),
@@ -131,7 +131,7 @@ defineComponent({
     axis: { coll: 'Avatar styles', modes: ['circle', 'square'] },
     props: { bg: 'color/background', text: 'color/text' },
     numeric: { radius: 999 },
-    tokens: { circle: { bg: S('bg/toggle-off'), text: S('text/on-brand'), radius: 999 }, square: { bg: S('bg/toggle-off'), text: S('text/on-brand'), radius: 6 } },
+    tokens: { circle: { bg: S('avatar/bg'), text: S('colorTextLightSolid'), radius: 999 }, square: { bg: S('avatar/bg'), text: S('colorTextLightSolid'), radius: 6 } },
     sizes: { size: [24, 32, 40], 'font-size': [14, 14, 18] },
     text: { prop: 'Label', def: 'U' },
     tree: ({ st, ax, sz, label }) => frame('Avatar', { dir: 'h', alignC: 'center', alignP: 'center', w: sz('size'), h: sz('size'), radius: ax('radius'), fill: st('bg') }, [text(label, { name: 'Label', fs: sz('font-size'), fill: st('text'), cprop: 'Label' })]),
@@ -142,13 +142,13 @@ defineComponent({
     key: 'badge', name: 'Badge', category: 'Data Display', description: 'Small numerical value or status descriptor for UI elements.',
     axis: { coll: 'Badge styles', modes: ['error', 'success', 'processing', 'warning', 'default'] },
     props: { bg: 'color/background', text: 'color/text' },
-    tokens: { error: { bg: S('bg/danger'), text: S('text/on-brand') }, success: { bg: S('bg/success'), text: S('text/on-brand') }, processing: { bg: S('bg/info'), text: S('text/on-brand') }, warning: { bg: S('bg/warning'), text: S('text/on-brand') }, default: { bg: S('text/tertiary'), text: S('text/on-brand') } },
+    tokens: { error: { bg: S('colorError'), text: S('colorTextLightSolid') }, success: { bg: S('colorSuccess'), text: S('colorTextLightSolid') }, processing: { bg: S('colorInfo'), text: S('colorTextLightSolid') }, warning: { bg: S('colorWarning'), text: S('colorTextLightSolid') }, default: { bg: S('colorTextTertiary'), text: S('colorTextLightSolid') } },
     variants: { Type: { Count: '', Dot: '', Status: '' } },
     text: { prop: 'Label', def: '5' },
     tree: ({ st, v, label }) => v.Type === 'Dot'
         ? frame('Badge', { w: 6, h: 6, radius: 999, fill: st('bg') })
         : v.Type === 'Status'
-            ? frame('Badge', { dir: 'h', alignC: 'center', gap: 8 }, [frame('Dot', { w: 6, h: 6, radius: 999, fill: st('bg') }), text(label, { name: 'Label', fs: 14, fill: b('Semantic', 'text/primary'), cprop: 'Label' })])
+            ? frame('Badge', { dir: 'h', alignC: 'center', gap: 8 }, [frame('Dot', { w: 6, h: 6, radius: 999, fill: st('bg') }), text(label, { name: 'Label', fs: 14, fill: b('Semantic', 'colorText'), cprop: 'Label' })])
             : frame('Badge', { dir: 'h', alignC: 'center', alignP: 'center', h: 20, minW: 20, pad: [0, 6, 0, 6], radius: 10, fill: st('bg') }, [text(label, { name: 'Label', fs: 12, fill: st('text'), cprop: 'Label' })]),
 });
 
@@ -159,16 +159,16 @@ defineComponent({
     states: { coll: 'Card states', modes: ['default', 'hover'] },
     props: { bg: 'color/background', stroke: 'color/stroke', title: 'color/title', body: 'color/body', line: 'color/divider' },
     numeric: { 'stroke/width': 1 },
-    stateEffects: { elevation: { default: S('elevation/none'), hover: S('elevation/card') } },
+    stateEffects: { elevation: { default: [], hover: S('elevation/card') } },
     tokens: {
-        outlined: { bg: S('bg/container'), stroke: S('border/secondary'), title: S('text/primary'), body: S('text/primary'), line: S('border/secondary'), 'stroke/width': 1 },
-        borderless: { bg: S('bg/container'), stroke: NONE, title: S('text/primary'), body: S('text/primary'), line: S('border/secondary'), 'stroke/width': 0 },
+        outlined: { bg: S('colorBgContainer'), stroke: S('colorBorderSecondary'), title: S('colorText'), body: S('colorText'), line: S('colorBorderSecondary'), 'stroke/width': 1 },
+        borderless: { bg: S('colorBgContainer'), stroke: NONE, title: S('colorText'), body: S('colorText'), line: S('colorBorderSecondary'), 'stroke/width': 0 },
     },
     sizes: { padding: [12, 24, 24], 'header-height': [38, 56, 56], 'title-size': [14, 16, 16], width: [300, 300, 300], radius: [8, 8, 8] },
     text: { prop: 'Title', def: 'Card title' },
     tree: ({ st, ax, sz, sf, label }) => frame('Card', { dir: 'v', w: sz('width'), radius: sz('radius'), fill: st('bg'), stroke: st('stroke'), sw: ax('stroke/width'), effects: sf('elevation') }, [
         frame('Head', { dir: 'h', alignC: 'center', w: 'fill', h: sz('header-height'), pad: [0, sz('padding'), 0, sz('padding')] }, [
-            text(label, { name: 'Title', fs: sz('title-size'), fw: 600, fill: st('title'), cprop: 'Title', w: 'fill' }), text('More', { fs: 14, fill: b('Semantic', 'text/link') }),
+            text(label, { name: 'Title', fs: sz('title-size'), fw: 600, fill: st('title'), cprop: 'Title', w: 'fill' }), text('More', { fs: 14, fill: b('Semantic', 'colorLink') }),
         ]),
         frame('Divider', { w: 'fill', h: 1, fill: st('line') }),
         frame('Body', { dir: 'v', gap: 8, w: 'fill', pad: [sz('padding'), sz('padding'), sz('padding'), sz('padding')] }, [text('Card content', { fs: 14, fill: st('body') }), text('Card content', { fs: 14, fill: st('body') })]),
@@ -180,7 +180,7 @@ defineComponent({
     key: 'text', name: 'Typography.Text', category: 'General', description: 'Basic text writing, including headings, body text, lists, and more.',
     axis: { coll: 'Text type', modes: ['default', 'secondary', 'success', 'warning', 'danger', 'disabled'] },
     props: { text: 'color/text' },
-    tokens: { default: { text: S('text/primary') }, secondary: { text: S('text/secondary') }, success: { text: S('text/success') }, warning: { text: S('text/warning') }, danger: { text: S('text/danger') }, disabled: { text: S('text/disabled') } },
+    tokens: { default: { text: S('colorText') }, secondary: { text: S('colorTextSecondary') }, success: { text: S('colorSuccess') }, warning: { text: S('colorWarning') }, danger: { text: S('colorError') }, disabled: { text: S('colorTextDisabled') } },
     text: { prop: 'Label', def: 'Ant Design' },
     tree: ({ st, label }) => text(label, { name: 'Label', fs: b('Typography', 'body/font-size'), fill: st('text'), cprop: 'Label' }),
 });
@@ -188,7 +188,7 @@ defineComponent({
     key: 'title', name: 'Typography.Title', category: 'General', description: 'Headings h1 to h5.',
     axis: { coll: 'Title styles', modes: ['default'] },
     props: { text: 'color/text' },
-    tokens: { default: { text: S('text/primary') } },
+    tokens: { default: { text: S('colorText') } },
     variants: { Level: { 1: '', 2: '', 3: '', 4: '', 5: '' } },
     text: { prop: 'Label', def: 'h1. Ant Design' },
     tree: ({ st, v, label }) => text(label, { name: 'Label', fs: b('Typography', `heading-${v.Level}/font-size`), fw: b('Typography', `heading-${v.Level}/font-weight`), fill: st('text'), cprop: 'Label' }),
@@ -199,11 +199,11 @@ defineComponent({
     key: 'divider', name: 'Divider', category: 'Layout', description: 'A divider line separates different content.',
     axis: { coll: 'Divider styles', modes: ['subtle', 'default'] },
     props: { line: 'color/line' },
-    tokens: { subtle: { line: S('border/secondary') }, default: { line: S('border/default') } },
+    tokens: { subtle: { line: S('colorBorderSecondary') }, default: { line: S('colorBorder') } },
     variants: { Text: { No: '', Yes: '' } },
     text: { prop: 'Label', def: 'Text' },
     tree: ({ st, v, label }) => v.Text === 'Yes'
-        ? frame('Divider', { dir: 'h', alignC: 'center', gap: 16, w: 240 }, [frame('Line', { w: 'fill', h: 1, fill: st('line') }), text(label, { name: 'Label', fs: 14, fw: 600, fill: b('Semantic', 'text/primary'), cprop: 'Label' }), frame('Line', { w: 'fill', h: 1, fill: st('line') })])
+        ? frame('Divider', { dir: 'h', alignC: 'center', gap: 16, w: 240 }, [frame('Line', { w: 'fill', h: 1, fill: st('line') }), text(label, { name: 'Label', fs: 14, fw: 600, fill: b('Semantic', 'colorText'), cprop: 'Label' }), frame('Line', { w: 'fill', h: 1, fill: st('line') })])
         : frame('Divider', { w: 240, h: 1, fill: st('line') }),
 });
 
@@ -214,10 +214,10 @@ defineComponent({
     props: { bg: 'color/background', stroke: 'color/stroke', icon: 'color/icon', text: 'color/text' },
     numeric: { 'stroke/width': 1 },
     tokens: {
-        info: { bg: S('bg/info-subtle'), stroke: S('border/info'), icon: S('bg/info'), text: S('text/primary') },
-        success: { bg: S('bg/success-subtle'), stroke: S('border/success-subtle'), icon: S('bg/success'), text: S('text/primary') },
-        warning: { bg: S('bg/warning-subtle'), stroke: S('border/warning-subtle'), icon: S('bg/warning'), text: S('text/primary') },
-        error: { bg: S('bg/danger-subtle'), stroke: S('border/danger-subtle'), icon: S('bg/danger'), text: S('text/primary') },
+        info: { bg: S('colorInfoBg'), stroke: S('colorInfoBorder'), icon: S('colorInfo'), text: S('colorText') },
+        success: { bg: S('colorSuccessBg'), stroke: S('colorSuccessBorder'), icon: S('colorSuccess'), text: S('colorText') },
+        warning: { bg: S('colorWarningBg'), stroke: S('colorWarningBorder'), icon: S('colorWarning'), text: S('colorText') },
+        error: { bg: S('colorErrorBg'), stroke: S('colorErrorBorder'), icon: S('colorError'), text: S('colorText') },
     },
     variants: { Icon: { Yes: '', No: '' }, Description: { No: '', Yes: '' } },
     sizes: { 'padding-x': [12, 12, 12], 'padding-y': [8, 8, 8], gap: [8, 8, 8], radius: [8, 8, 8] },
@@ -226,7 +226,7 @@ defineComponent({
         ...(v.Icon === 'Yes' ? [ellipse('Icon', { w: 16, h: 16, fill: st('icon') })] : []),
         frame('Content', { dir: 'v', gap: 4, w: 'fill' }, [
             text(label, { name: 'Message', fs: 14, fill: st('text'), cprop: 'Message' }),
-            ...(v.Description === 'Yes' ? [text('Detailed description and advice about successful copywriting.', { fs: 14, fill: b('Semantic', 'text/secondary'), w: 'fill' })] : []),
+            ...(v.Description === 'Yes' ? [text('Detailed description and advice about successful copywriting.', { fs: 14, fill: b('Semantic', 'colorTextSecondary'), w: 'fill' })] : []),
         ]),
     ]),
 });
@@ -236,10 +236,10 @@ defineComponent({
     key: 'progress', name: 'Progress', category: 'Feedback', description: 'Display the current progress of an operation flow.',
     axis: { coll: 'Progress status', modes: ['normal', 'success', 'exception', 'active'] },
     props: { bar: 'color/bar', info: 'color/info' },
-    tokens: { normal: { bar: S('bg/brand'), info: S('text/secondary') }, success: { bar: S('bg/success'), info: S('text/success') }, exception: { bar: S('bg/danger'), info: S('text/danger') }, active: { bar: S('bg/brand'), info: S('text/secondary') } },
+    tokens: { normal: { bar: S('colorPrimary'), info: S('colorTextSecondary') }, success: { bar: S('colorSuccess'), info: S('colorSuccess') }, exception: { bar: S('colorError'), info: S('colorError') }, active: { bar: S('colorPrimary'), info: S('colorTextSecondary') } },
     colls: [{ name: 'Progress value', modes: ['0%', '25%', '50%', '75%', '100%'], vars: [{ name: 'bar-width', type: 'number', values: [0, 50, 100, 150, 200] }] }],
     tree: ({ st, x }) => frame('Progress', { dir: 'h', alignC: 'center', gap: 8 }, [
-        frame('Rail', { w: 200, h: 8, radius: 100, clip: true, fill: b('Semantic', 'bg/rail') }, [frame('Bar', { pos: 'abs', x: 0, y: 0, w: x('Progress value', 'bar-width'), h: 8, radius: 100, fill: st('bar') })]),
+        frame('Rail', { w: 200, h: 8, radius: 100, clip: true, fill: b('Semantic', 'colorFillSecondary') }, [frame('Bar', { pos: 'abs', x: 0, y: 0, w: x('Progress value', 'bar-width'), h: 8, radius: 100, fill: st('bar') })]),
         text('50%', { name: 'Info', fs: 14, fill: st('info') }),
     ]),
 });
@@ -249,7 +249,7 @@ defineComponent({
     key: 'tooltip', name: 'Tooltip', category: 'Data Display', description: 'Simple text popup tip.',
     axis: { coll: 'Tooltip styles', modes: ['default'] },
     props: { bg: 'color/background', text: 'color/text' },
-    tokens: { default: { bg: S('bg/spotlight'), text: S('text/on-brand') } },
+    tokens: { default: { bg: S('colorBgSpotlight'), text: S('colorTextLightSolid') } },
     text: { prop: 'Label', def: 'prompt text' },
     tree: ({ st, label }) => frame('Tooltip', { dir: 'v', alignC: 'center' }, [
         frame('Bubble', { dir: 'h', alignC: 'center', pad: [6, 8, 6, 8], radius: 6, fill: st('bg'), minW: 32 }, [text(label, { name: 'Label', fs: 14, fill: st('text'), cprop: 'Label' })]),
@@ -260,7 +260,7 @@ defineComponent({
     key: 'popover', name: 'Popover', category: 'Data Display', description: 'The floating card popped by clicking or hovering.',
     axis: { coll: 'Popover styles', modes: ['default'] },
     props: { bg: 'color/background', title: 'color/title', body: 'color/body' },
-    tokens: { default: { bg: S('bg/elevated'), title: S('text/primary'), body: S('text/primary') } },
+    tokens: { default: { bg: S('colorBgElevated'), title: S('colorText'), body: S('colorText') } },
     text: { prop: 'Title', def: 'Title' },
     tree: ({ st, label }) => frame('Popover', { dir: 'v', gap: 8, pad: [12, 16, 12, 16], radius: 8, fill: st('bg'), effects: b('Semantic', 'elevation/popup'), minW: 160 }, [text(label, { name: 'Title', fs: 16, fw: 600, fill: st('title'), cprop: 'Title' }), text('Content\nContent', { fs: 14, fill: st('body') })]),
 });
@@ -270,7 +270,7 @@ defineComponent({
     key: 'spin', name: 'Spin', category: 'Feedback', description: 'Used for the loading status of a page or a block.',
     axis: { coll: 'Spin styles', modes: ['default'] },
     props: { ring: 'color/ring', dot: 'color/dot' },
-    tokens: { default: { ring: S('border/info'), dot: S('bg/brand') } },
+    tokens: { default: { ring: S('colorInfoBorder'), dot: S('colorPrimary') } },
     sizes: { size: [14, 20, 32] },
     tree: ({ st, sz }) => frame('Spin', { w: sz('size'), h: sz('size') }, [
         ellipse('Ring', { pos: 'abs', x: 0, y: 0, w: sz('size'), h: sz('size'), stroke: st('ring'), sw: 3 }),
@@ -281,7 +281,7 @@ defineComponent({
     key: 'skeleton', name: 'Skeleton', category: 'Feedback', description: 'Provide a placeholder while you wait for content to load.',
     axis: { coll: 'Skeleton styles', modes: ['default'] },
     props: { bar: 'color/bar' },
-    tokens: { default: { bar: S('bg/fill') } },
+    tokens: { default: { bar: S('colorFill') } },
     tree: ({ st }) => frame('Skeleton', { dir: 'h', gap: 16, w: 280 }, [
         ellipse('Avatar', { w: 32, h: 32, fill: st('bar') }),
         frame('Lines', { dir: 'v', gap: 12, w: 'fill' }, [frame('Title', { w: 120, h: 16, radius: 4, fill: st('bar') }), frame('Line', { w: 'fill', h: 16, radius: 4, fill: st('bar') }), frame('Line', { w: 200, h: 16, radius: 4, fill: st('bar') })]),
@@ -291,7 +291,7 @@ defineComponent({
     key: 'empty', name: 'Empty', category: 'Data Display', description: 'Empty state placeholder.',
     axis: { coll: 'Empty styles', modes: ['default'] },
     props: { art: 'color/art', text: 'color/text' },
-    tokens: { default: { art: S('border/default'), text: S('text/tertiary') } },
+    tokens: { default: { art: S('colorBorder'), text: S('colorTextTertiary') } },
     text: { prop: 'Description', def: 'No data' },
     tree: ({ st, label }) => frame('Empty', { dir: 'v', alignC: 'center', gap: 8, w: 160 }, [frame('Art', { w: 64, h: 41, radius: 8, stroke: st('art'), sw: 2 }), text(label, { name: 'Description', fs: 14, fill: st('text'), cprop: 'Description' })]),
 });
@@ -299,7 +299,7 @@ defineComponent({
     key: 'statistic', name: 'Statistic', category: 'Data Display', description: 'Display statistic number.',
     axis: { coll: 'Statistic styles', modes: ['default'] },
     props: { title: 'color/title', value: 'color/value' },
-    tokens: { default: { title: S('text/secondary'), value: S('text/primary') } },
+    tokens: { default: { title: S('colorTextSecondary'), value: S('colorText') } },
     text: { prop: 'Title', def: 'Active Users' },
     tree: ({ st, label }) => frame('Statistic', { dir: 'v', gap: 4 }, [text(label, { name: 'Title', fs: 14, fill: st('title'), cprop: 'Title' }), text('112,893', { fs: 24, fill: st('value') })]),
 });
@@ -308,6 +308,6 @@ defineComponent({
     axis: { coll: 'FloatButton type', modes: ['default', 'primary'] },
     states: { coll: 'FloatButton states', modes: ['default', 'hover'] },
     props: { bg: 'color/background', icon: 'color/icon' },
-    tokens: { default: { bg: { default: S('bg/container'), hover: S('bg/fill-tertiary') }, icon: S('text/primary') }, primary: { bg: { default: S('bg/brand'), hover: S('bg/brand-hover') }, icon: S('text/on-brand') } },
+    tokens: { default: { bg: { default: S('colorBgContainer'), hover: S('colorFillTertiary') }, icon: S('colorText') }, primary: { bg: { default: S('colorPrimary'), hover: S('colorPrimaryHover') }, icon: S('colorTextLightSolid') } },
     tree: ({ st }) => frame('FloatButton', { dir: 'h', alignC: 'center', alignP: 'center', w: 40, h: 40, radius: 999, fill: st('bg'), effects: b('Semantic', 'elevation/popup') }, [ellipse('Icon', { w: 16, h: 16, stroke: st('icon'), sw: 1.5 })]),
 });
