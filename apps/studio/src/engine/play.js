@@ -231,6 +231,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         lastHeight = vh;
         const responsive = prefs.mode === 'responsive';
         viewport.style.overflow = responsive ? 'hidden' : 'auto';
+        // The scrollbar space is always reserved: a scrollbar that appears only when the frame is taller than the window would narrow the
+        // viewport, rescale the frame, and hide the scrollbar again, over and over (the flicker).
+        viewport.style.scrollbarGutter = responsive ? 'auto' : 'stable';
         const box = responsive ? { width: vw, height: vh } : { width: frame.w, height: frame.h };
         const placed = viewportLayout({ viewport: { width: vw, height: vh }, frame: box, mode: prefs.mode });
         sizer.style.width = `${Math.max(vw, placed.width)}px`;
