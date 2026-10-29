@@ -55,7 +55,8 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap"
+            "gap": "s-gap",
+            "minW": "s-height"
           }
         },
         {
@@ -154,7 +155,8 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap"
+            "gap": "s-gap",
+            "minW": "s-height"
           }
         },
         {
@@ -363,7 +365,8 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap"
+            "gap": "s-gap",
+            "minW": "s-height"
           }
         },
         {
@@ -528,7 +531,8 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap"
+            "gap": "s-gap",
+            "minW": "s-height"
           }
         },
         {
@@ -752,7 +756,8 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap"
+            "gap": "s-gap",
+            "minW": "s-height"
           }
         },
         {
@@ -2663,6 +2668,27 @@
         }
       },
       {
+        "id": "c-color-outline",
+        "name": "button/color-outline",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b1a",
+          "primary": "#4338ca33",
+          "danger": "#dc262633"
+        }
+      },
+      {
+        "id": "s-height",
+        "name": "button/height",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 32,
+          "lg": 40
+        }
+      },
+      {
         "id": "s-fontSize",
         "name": "button/fontSize",
         "type": "number",
@@ -2951,29 +2977,17 @@
         }
       },
       {
-        "id": "v-border-focus",
-        "name": "button/border-focus",
+        "id": "v-outline-color",
+        "name": "button/outline-color",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
-          "outlined": {
-            "alias": "c-color-border"
-          },
-          "dashed": {
-            "alias": "c-color-border"
-          },
-          "solid": {
-            "alias": "c-color-border"
-          },
-          "filled": {
-            "alias": "c-color-border"
-          },
-          "text": {
-            "alias": "c-color-border"
-          },
-          "link": {
-            "alias": "c-color-border"
-          }
+          "outlined": "#00000000",
+          "dashed": "#00000000",
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
         }
       },
       {
@@ -3192,29 +3206,17 @@
         }
       },
       {
-        "id": "b-v-border-focus",
-        "name": "button/border-focus",
+        "id": "b-v-outline-color",
+        "name": "button/outline-color",
         "type": "color",
         "collectionId": "c-variant-b",
         "values": {
-          "outlined": {
-            "alias": "c-color-border"
-          },
-          "dashed": {
-            "alias": "c-color-border"
-          },
-          "solid": {
-            "alias": "c-color-border"
-          },
-          "filled": {
-            "alias": "c-color-border"
-          },
-          "text": {
-            "alias": "c-color-border"
-          },
-          "link": {
-            "alias": "c-color-border"
-          }
+          "outlined": "#00000000",
+          "dashed": "#00000000",
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
         }
       },
       {

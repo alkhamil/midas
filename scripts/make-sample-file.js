@@ -204,8 +204,8 @@ const LOOKS = {
 
 /** The brand colours of the Color collection: the roast accent, its cream tint, and the danger red. */
 const BRAND_PALETTE = {
-    primary: { accent: '#6F4E37', accentHover: '#5C3E2A', accentActive: '#4A3121', tint: '#F5EBE1', tintHover: '#EADACA', tintActive: '#DEC8B4', text: '#6F4E37', textHover: '#5C3E2A', textActive: '#4A3121', solid: '#6F4E37', solidHover: '#5C3E2A', solidActive: '#4A3121', solidText: '#FFFFFF' },
-    danger: { accent: '#DC2626', accentHover: '#B91C1C', accentActive: '#991B1B', tint: '#FEE2E2', tintHover: '#FECACA', tintActive: '#FCA5A5', text: '#DC2626', textHover: '#B91C1C', textActive: '#991B1B', solid: '#DC2626', solidHover: '#B91C1C', solidActive: '#991B1B', solidText: '#FFFFFF' },
+    primary: { accent: '#6F4E37', accentHover: '#5C3E2A', accentActive: '#4A3121', tint: '#F5EBE1', tintHover: '#EADACA', tintActive: '#DEC8B4', text: '#6F4E37', textHover: '#5C3E2A', textActive: '#4A3121', solid: '#6F4E37', solidHover: '#5C3E2A', solidActive: '#4A3121', solidText: '#FFFFFF', outline: '#6F4E3733' },
+    danger: { accent: '#DC2626', accentHover: '#B91C1C', accentActive: '#991B1B', tint: '#FEE2E2', tintHover: '#FECACA', tintActive: '#FCA5A5', text: '#DC2626', textHover: '#B91C1C', textActive: '#991B1B', solid: '#DC2626', solidHover: '#B91C1C', solidActive: '#991B1B', solidText: '#FFFFFF', outline: '#DC262633' },
 };
 
 function buildVariables() {
@@ -222,7 +222,7 @@ function buildVariables() {
         palette: BRAND_PALETTE,
         sizeModes: [{ id: MODES.size.sm, name: 'Small' }, { id: MODES.size.md, name: 'Medium' }, { id: MODES.size.lg, name: 'Large' }],
         sizeValues: {
-            fontSize: sMode(12, 14, 16), lineHeight: sMode((12 + 8) / 12, (14 + 8) / 14, (16 + 8) / 16), paddingX: sMode(12, 16, 20),
+            height: sMode(30, 40, 48), fontSize: sMode(12, 14, 16), lineHeight: sMode((12 + 8) / 12, (14 + 8) / 14, (16 + 8) / 16), paddingX: sMode(12, 16, 20),
             paddingY: sMode(6, 10, 14), gap: sMode(6, 8, 10), radius: sMode(6, 8, 10), iconSize: sMode(14, 16, 18),
         },
     });
@@ -259,7 +259,7 @@ const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
 // The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
-const BUTTON_ROOT_VARS = { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' };
+const BUTTON_ROOT_VARS = { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' };
 const BUTTON_LABEL_VARS = { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
 
 function buildButtonMaster(x = 440, y = 40) {

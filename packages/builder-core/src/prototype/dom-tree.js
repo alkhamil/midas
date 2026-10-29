@@ -13,6 +13,8 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
+import { placementsOfSlot } from '../behavior-engine/anatomy.js';
+import { iconOnlyIn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -200,10 +202,15 @@ function renderButton(n, template, parent, scope) {
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
+    // An icon-only instance hides its label: the codegen class and the label child follow the same rule.
+    const iconOnly = iconOnlyIn(template, props);
+    if (iconOnly) attrs.class = `${template.id} ${template.id}-icon-only`;
     const children = [];
     for (const slot of template.anatomy) {
-        if (slot.kind === 'text') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
-        else if (slot.managed && props.hasIcon === true && props.iconPlacement === placementOf(slot.id)) {
+        if (slot.kind === 'text') {
+            if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
+        }
+        else if (slot.managed && props.hasIcon === true && placementsOfSlot(template, slot.id).includes(String(props.iconPlacement))) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
             const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
             const el = layer && renderNode(layer, n, scope);
@@ -215,9 +222,6 @@ function renderButton(n, template, parent, scope) {
     }
     return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, scope.responsive), children };
 }
-
-/** `iconStart` -> `start`, the placement a managed slot shows for. */
-const placementOf = slot => (slot === 'iconStart' ? 'start' : 'end');
 
 /** @param {any} n */
 const isAutoLayout = n => !!n.layout && n.layout !== 'none';

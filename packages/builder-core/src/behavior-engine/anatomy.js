@@ -14,6 +14,18 @@ import { resolveProps } from './instance-props.js';
  *   | { op: 'swap', id: string, component: string | null }} AnatomyOp
  */
 
+/** The placement values that show a managed slot: `iconStart` is shown for `start` and `only` (see the template's `slots`). */
+export function placementsOfSlot(template, slot) {
+    const { placement } = template.icon;
+    return Object.entries(template.props[placement].slots).filter(([, s]) => s === slot).map(([value]) => value);
+}
+
+/** Whether the instance is icon-only: its icon is shown and its placement is one of the icon-only values (`iconOnly` of the placement prop). */
+export function iconOnlyOf(template, values) {
+    const { show, placement } = template.icon;
+    return values[show] === true && (template.props[placement].iconOnly ?? []).includes(String(values[placement]));
+}
+
 /** The behavior data of a managed layer: its slot name, under the `behavior` key. */
 /** @param {string} slot */
 export function managedBehavior(slot) {

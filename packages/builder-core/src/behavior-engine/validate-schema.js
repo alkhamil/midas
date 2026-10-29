@@ -18,6 +18,9 @@ function propProblems(name, def, props) {
     if (!isPlainObject(def)) return [`prop "${name}" must be an object`];
     if (def.source === 'variable') {
         if (!isName(def.collection)) out.push(`prop "${name}" is variable but names no collection`);
+        for (const [mode, rule] of Object.entries(def.styles ?? {})) {
+            if (!['solid', 'dashed', 'dotted'].includes(rule?.borderStyle)) out.push(`prop "${name}" style for mode "${mode}" has no border style (solid, dashed or dotted)`);
+        }
     } else if (def.source === 'literal') {
         if (!LITERAL_TYPES.includes(def.type)) out.push(`prop "${name}" has unknown type "${def.type}"`);
         if (def.type === 'enum') {
@@ -96,6 +99,7 @@ export function validateTemplateSchema(schema) {
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...nodeProblems(schema));
+    out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 
@@ -194,10 +198,24 @@ function iconProblems(schema, allTokens) {
             }
         }
     }
+    if (placement && placement.type === 'enum') {
+        for (const value of placement.iconOnly ?? []) if (!placement.options.includes(value)) out.push(`icon-only placement "${value}" is not an option of "${icon.placement}"`);
+    }
     for (const role of ['colour', 'disabledColour', 'size']) {
         if (!allTokens.includes(icon.tokens?.[role])) out.push(`icon ${role} token "${icon.tokens?.[role]}" is not a token`);
     }
     return out;
+}
+
+/**
+ * Problems in the focus outline: a width and an offset, in px, 0 or more.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function outlineProblems(schema) {
+    const o = schema.outline;
+    if (!isPlainObject(o)) return ['schema has no outline (width and offset)'];
+    return ['width', 'offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
 }
 
 /**
