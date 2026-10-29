@@ -7,7 +7,7 @@ import { kebabCase, libraryPackage, TAILWIND_PREFIX, type LibraryPackageIssue, t
 import type { ComponentDoc, LibrarySnapshot } from './library.js';
 
 /** Bump when the generated package changes, so packages cached for an older generator are built again. */
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 8;
 
 export interface PackageInfo {
     libraryId: string;

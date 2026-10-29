@@ -53,11 +53,13 @@ export function tailwindClasses(style, { colors = new Set() } = {}) {
     return out.map(c => `${TAILWIND_PREFIX}:${c}`);
 }
 
-/** The colour tokens of the library: the names Tailwind gets as colours (`--theme-primary` → `primary`). */
+/** The colour tokens of the library: the names Tailwind gets as colours (`--theme-primary` → `primary`), without the raw palette. */
 export function colorTokens(variables) {
     const colors = new Map();
+    // The raw palette (a "Primitives" collection) stays out: a project picks from the semantic tokens, not from palette steps
+    const primitive = new Set((variables?.collections || []).filter(c => /^primitives?$/i.test(String(c.name).trim())).map(c => c.id));
     for (const i of variables?.items || []) {
-        if (i.hidden || i.type !== 'color') continue;
+        if (i.hidden || i.type !== 'color' || primitive.has(i.collectionId)) continue;
         const v = cssVarOf(i);
         if (v.startsWith('--theme-')) colors.set(v.slice('--theme-'.length), v);
     }
@@ -71,7 +73,8 @@ export function colorTokens(variables) {
  */
 export function tailwindTheme(variables, { reset = true } = {}) {
     const lines = [...colorTokens(variables)].map(([name, v]) => `  --color-${name}: var(${v});`);
-    return `/* The library's colour tokens as Tailwind colours (bg-primary, text-muted-foreground, border-border). Needs tokens.css. */\n@theme {\n${reset ? '  --color-*: initial;\n' : ''}${lines.join('\n')}\n}\n`;
+    // `inline`: the utilities use var(--theme-…) itself, not a copy made at :root, so data-theme="dark" on any element switches them.
+    return `/* The library's colour tokens as Tailwind colours (bg-primary, text-muted-foreground, border-border). Needs tokens.css. */\n@theme inline {\n${reset ? '  --color-*: initial;\n' : ''}${lines.join('\n')}\n}\n`;
 }
 
 /** The Tailwind v3 preset with the same colours, for a project still on Tailwind 3: `presets: [require('<pkg>/tailwind.preset.cjs')]`. */

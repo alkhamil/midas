@@ -46,7 +46,8 @@ export function iconSvg(nodes, rootId) {
             const { attrs, visible } = paintAttrs(c);
             if (c.type === 'path' && visible) {
                 const t = { ox: x, oy: y, sx: c.pathW ? (c.w || c.pathW) / c.pathW : 1, sy: c.pathH ? (c.h || c.pathH) / c.pathH : 1 };
-                const list = c.contours?.length ? c.contours : [{ points: c.points, closed: c.closed }];
+                // `points` is the main outline, `contours` are extra sub-paths (a hole, a stroke-like line): the studio draws both
+                const list = [{ points: c.points || [], closed: c.closed }, ...(c.contours || []).map(k => ({ points: k.points || [], closed: k.closed !== false }))].filter(k => k.points.length);
                 const d = list.map(k => contourPath(k.points, k.closed ?? c.closed ?? true, t)).join(' ');
                 if (d) parts.push({ tag: 'path', attrs: { d, ...(c.fillRule === 'evenodd' ? { fillRule: 'evenodd' } : {}), ...attrs } });
             }

@@ -3,6 +3,7 @@
 //
 // Pure (no I/O): returns the files of the package. The server compiles `src/` to `dist/` and packs it (apps/server/src/lib/package.ts).
 import { generateComponent } from './component-codegen.js';
+import { behaviorFor, RUNTIME, RUNTIME_DTS } from './library-behavior.js';
 import { iconSvg, isIconComponent } from './icon-svg.js';
 import { pascalCase } from './model.js';
 import { camelCase, cssVarOf, kebabCase, makeContext } from './screen.js';
@@ -180,11 +181,14 @@ export function libraryPackage(snapshot, opts = {}) {
     const files = {}, components = [];
     const colors = new Set(colorTokens(snapshot.variables).keys()), classes = new Set();
     const uiMappings = mappings.filter(m => !iconNames.has(m.exportName));
+    const behaviors = new Map();   // export name → the behaviour of the component (state, props), see library-behavior.js
     uiMappings.forEach((m, i) => {
         progress({ phase: 'components', current: i + 1, total: uiMappings.length, name: m.componentName });
         let out;
+        const beh = isInternal(m.componentName) ? null : behaviorFor({ name: m.componentName, exportName: m.exportName, props: m.propsMap.props });
         try {
-            out = generateComponent({ ctx, mapping: m, types: 'inline', iconNames, resolveImport, tailwind: true, colors, classes });
+            out = generateComponent({ ctx, mapping: m, types: 'inline', iconNames, resolveImport, tailwind: true, colors, classes, inputs: beh?.inputs ?? null, slot: beh?.slot ?? null });
+            if (beh) { behaviors.set(m.exportName, beh); Object.assign(files, beh.files); }
         }
         catch (e) {
             addIssue(m.componentName, 'error', e.message);
@@ -193,7 +197,7 @@ export function libraryPackage(snapshot, opts = {}) {
         for (const i of out.issues) if (i.severity !== 'info') addIssue(m.componentName, i.severity === 'error' ? 'error' : 'warning', i.message, i.nodeName, i.nodeId);
         files[`src/components/${m.exportName}.tsx`] = out.source;
         files[`dist/components/${m.exportName}.d.ts`] = out.dts;
-        components.push({ key: m.componentKey, name: m.componentName, exportName: m.exportName, internal: isInternal(m.componentName), props: m.propsMap.props.map(({ source, key, ...p }) => p) });
+        components.push({ key: m.componentKey, name: m.componentName, exportName: m.exportName, internal: isInternal(m.componentName), interactive: behaviors.get(m.exportName)?.kit === 'kit' ? true : undefined, props: (behaviors.get(m.exportName)?.props ?? m.propsMap.props).map(({ source, key, ...p }) => p) });
     });
 
     // ---- icons
@@ -202,7 +206,7 @@ export function libraryPackage(snapshot, opts = {}) {
         if (i % 25 === 0 || i === iconComps.length - 1) progress({ phase: 'icons', current: i + 1, total: iconComps.length, name: c.name });
         const name = exportOf.get(c.id), svg = iconSvg(c.nodes, c.id);
         for (const w of svg.warnings) addIssue(c.name, 'warning', w);
-        files[`src/icons/${name}.ts`] = `${GEN}import { createIcon } from './createIcon';\n\nexport const ${name} = createIcon(${lit(name)}, ${svg.width}, ${svg.height}, ${lit(svg.parts)});\n`;
+        files[`src/icons/${name}.ts`] = `${GEN}import { createIcon } from './createIcon';\n\nexport const ${name} = /* @__PURE__ */ createIcon(${lit(name)}, ${svg.width}, ${svg.height}, ${lit(svg.parts)});\n`;
         files[`dist/icons/${name}.d.ts`] = `import type { IconComponent } from './createIcon';\nexport declare const ${name}: IconComponent;\n`;
         icons.push({ key: c.id, name: c.name, exportName: name });
     });
@@ -216,8 +220,21 @@ export function libraryPackage(snapshot, opts = {}) {
     files['dist/icons/createIcon.d.ts'] = CREATE_ICON_DTS;
     files['src/icons/index.ts'] = `${GEN}export { createIcon } from './createIcon';\nexport type { IconProps } from './createIcon';\n${iconIndex}\n`;
     files['dist/icons/index.d.ts'] = `export * from './createIcon';\n${icons.map(i => `export * from './${i.exportName}';`).join('\n')}\n`;
-    files['src/index.ts'] = `${GEN}export * from './components';\nexport * from './icons';\n`;
-    files['dist/index.d.ts'] = `export * from './components';\nexport * from './icons';\n`;
+    // What the package exports are the components with their behaviour (src/behavior); the drawn-only parts stay in src/components.
+    const behIndex = exported.map(c => {
+        const own = behaviors.has(c.exportName), from = own ? `./${c.exportName}` : `../components/${c.exportName}`;
+        const extra = (behaviors.get(c.exportName)?.extraExports || []).map(n => `, ${n}`).join('');
+        return `export { ${c.exportName}${extra} } from '${from}';\nexport type { ${c.exportName}Props${(behaviors.get(c.exportName)?.extraExports || []).map(n => `, ${n}Props`).join('')} } from '${from}';`;
+    }).join('\n');
+    const behDts = exported.map(c => `export * from '${behaviors.has(c.exportName) ? `./${c.exportName}` : `../components/${c.exportName}`}';`).join('\n');
+    files['src/behavior/runtime.tsx'] = RUNTIME;
+    files['dist/behavior/runtime.d.ts'] = RUNTIME_DTS;
+    files['src/behavior/index.ts'] = `${GEN}${behIndex}\n`;
+    files['dist/behavior/index.d.ts'] = `${behDts}\n`;
+    files['src/index.ts'] = `${GEN}export * from './behavior';\nexport * from './icons';\n`;
+    files['dist/index.d.ts'] = `export * from './behavior';\nexport * from './icons';\n`;
+    // The classes the behaviour files use (the option list of a Select) are part of the stylesheet too
+    for (const [file, code] of Object.entries(files)) if (file.startsWith('src/behavior/')) for (const m of code.match(/mds:[^\s"'`]+/g) || []) classes.add(m);
 
     // ---- tokens, package.json, README
     progress({ phase: 'tokens', total: (snapshot.variables?.items || []).length });
@@ -247,7 +264,7 @@ import { ${exported[0]?.exportName || 'Button'} } from '${packageName}';
 
 No Tailwind is needed in your project: \`styles.css\` is already compiled (every class has the \`mds:\` prefix, so it never clashes with a Tailwind of your own).
 \`tokens.css\` holds the theme tokens as CSS custom properties; set \`data-theme="dark"\` on an ancestor to switch themes.
-Components are static markup drawn from the design; every one accepts \`className\`, \`style\` and \`testId\`.
+Components are drawn from the design and work: they react to the pointer and the keyboard (hover, pressed, focus, disabled), and the form controls keep their own state or follow yours (\`value\` / \`onValueChange\`, \`checked\` / \`onCheckedChange\`, \`open\` / \`onOpenChange\`). Every one accepts \`className\`, \`style\` and \`testId\`.
 
 ### With Tailwind in your project
 

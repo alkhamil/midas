@@ -3,6 +3,7 @@ export * from './model.js';
 export * from './behavior.js';
 export * from './component-codegen.js';
 export * from './library-package.js';
+export * from './library-behavior.js';
 export * from './tailwind.js';
 export * from './icon-svg.js';
 export * from './generate/index.js';

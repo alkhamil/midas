@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { colorTokens, tailwindClasses, tailwindPreset, tailwindTheme } from '../src/index.js';
 
 const variables = {
-    collections: [{ id: 'c', name: 'Semantic', modes: [{ id: 'm', name: 'Light' }] }],
+    collections: [{ id: 'c', name: 'Semantic', modes: [{ id: 'm', name: 'Light' }] }, { id: 'p', name: 'Primitives', modes: [{ id: 'pm', name: 'Base' }] }],
     items: [
         { id: 'a', name: 'color/primary', type: 'color', collectionId: 'c', values: { m: '#123456' } },
         { id: 'b', name: 'color/muted-foreground', type: 'color', collectionId: 'c', values: { m: '#667085' } },
+        { id: 'r', name: 'primary/500', type: 'color', collectionId: 'p', values: { pm: '#0a2540' } },
         { id: 'g', name: 'spacing/lg', type: 'number', collectionId: 'c', values: { m: 16 } },
     ],
 };
@@ -23,8 +24,10 @@ test('tailwindClasses: a colour that is not a theme token stays an arbitrary pro
 });
 
 test('the Tailwind theme, v4 and v3, holds only the library colours', () => {
+    assert.ok(!colorTokens(variables).has('primary-500'), 'the raw palette is not a Tailwind colour');
     assert.deepEqual([...colorTokens(variables)], [['primary', '--theme-primary'], ['muted-foreground', '--theme-muted-foreground']]);
     const css = tailwindTheme(variables);
+    assert.match(css, /@theme inline \{/);                                       // so a dark theme set on any element reaches the utilities
     assert.match(css, /--color-\*: initial;/);                                  // Tailwind's own palette is dropped
     assert.match(css, /--color-primary: var\(--theme-primary\);/);
     assert.match(css, /--color-muted-foreground: var\(--theme-muted-foreground\);/);

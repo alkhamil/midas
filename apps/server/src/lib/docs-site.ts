@@ -135,9 +135,9 @@ export function componentPage(c: DocsContext, comp: Component): string {
     const d = comp.doc;
     const props = comp.props;
     const rows = props.map(p => {
-        const type = p.type === 'enum' ? Object.values(p.values ?? {}).map(v => `<code>"${esc(v)}"</code>`).join(' | ') : p.type === 'node' ? '<code>ReactNode</code>' : `<code>${p.type}</code>`;
-        const def = p.type === 'node' || p.def === undefined ? '<span class="tag">design icon</span>' : `<code>${esc(JSON.stringify(p.def))}</code>`;
-        return `<tr><td><code>${esc(p.name)}</code></td><td>${type}</td><td>${p.type === 'node' ? '—' : def}</td><td>${esc(p.label ?? '')}</td></tr>`;
+        const type = p.ts ? `<code>${esc(p.ts)}</code>` : p.type === 'enum' ? Object.values(p.values ?? {}).map(v => `<code>"${esc(v)}"</code>`).join(' | ') : p.type === 'node' ? '<code>ReactNode</code>' : `<code>${p.type}</code>`;
+        const def = p.type === 'node' || p.def === undefined ? '—' : `<code>${esc(JSON.stringify(p.def))}</code>`;
+        return `<tr><td><code>${esc(p.name)}</code></td><td>${type}</td><td>${def}</td><td>${esc(p.label ?? '')}</td></tr>`;
     }).join('');
     const list = (items?: string[]) => (items?.length ? `<ul>${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : '');
     const preview = `<h2>Preview</h2>
@@ -146,29 +146,31 @@ export function componentPage(c: DocsContext, comp: Component): string {
 <div class="bar"><label><input type="checkbox" id="dark"> Dark theme</label></div>
 <div id="code"></div>
 <noscript><p class="warn">The live preview needs JavaScript.</p></noscript>`;
-    const meta = { exportName: comp.exportName, props: props.map(p => ({ name: p.name, type: p.type, values: p.type === 'enum' ? Object.values(p.values ?? {}) : undefined, def: p.def })) };
+    const meta = { exportName: comp.exportName, interactive: !!comp.interactive, props: props.map(p => ({ name: p.name, type: p.type, values: p.type === 'enum' ? Object.values(p.values ?? {}) : undefined, def: p.def, demo: p.demo })) };
     const script = `<script id="meta" type="application/json">${JSON.stringify(meta).replace(/</g, '\\u003c')}</script>
 <script src="/docs/${c.slug}/_/preview.js?v=${c.seq}"></script>
 <script>(function(){var M=JSON.parse(document.getElementById('meta').textContent),m=window.__midas;if(!m){document.getElementById('stage').innerHTML='<p class="warn">The preview could not be loaded.</p>';return}
 var C=m.lib[M.exportName],stage=document.getElementById('stage'),root=m.createRoot(stage),st={};
-M.props.forEach(function(p){if(p.type!=='node')st[p.name]=p.def===undefined?(p.type==='boolean'?false:p.type==='enum'?p.values[0]:''):p.def});
+function dflt(p){return p.def===undefined?(p.type==='boolean'?false:p.type==='enum'?p.values[0]:''):p.def}
+M.props.forEach(function(p){if(p.demo!==undefined)st[p.name]=p.demo});
 var bar=document.getElementById('controls');
-M.props.forEach(function(p){if(p.type==='node')return;var l=document.createElement('label'),i;l.textContent=p.name+' ';
-if(p.type==='enum'){i=document.createElement('select');p.values.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;if(v===st[p.name])o.selected=true;i.appendChild(o)});i.onchange=function(){st[p.name]=i.value;draw()}}
-else if(p.type==='boolean'){i=document.createElement('input');i.type='checkbox';i.checked=!!st[p.name];i.onchange=function(){st[p.name]=i.checked;draw()}}
-else{i=document.createElement('input');i.type='text';i.value=st[p.name];i.oninput=function(){st[p.name]=i.value;draw()}}
+function set(p,v){if(v===dflt(p))delete st[p.name];else st[p.name]=v;draw()}
+M.props.forEach(function(p){if(p.type==='node'||p.demo!==undefined)return;var l=document.createElement('label'),i;l.textContent=p.name+' ';
+if(p.type==='enum'){i=document.createElement('select');p.values.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;if(v===dflt(p))o.selected=true;i.appendChild(o)});i.onchange=function(){set(p,i.value)}}
+else if(p.type==='boolean'){i=document.createElement('input');i.type='checkbox';i.checked=!!dflt(p);i.onchange=function(){set(p,i.checked)}}
+else{i=document.createElement('input');i.type='text';i.value=dflt(p);i.oninput=function(){set(p,i.value)}}
 l.appendChild(i);bar.appendChild(l)});
 document.getElementById('dark').onchange=function(){stage.dataset.theme=this.checked?'dark':'light'};
-function draw(){root.render(m.createElement(C,st));var a=[];M.props.forEach(function(p){if(p.type==='node')return;var v=st[p.name],d=p.def===undefined?(p.type==='boolean'?false:p.type==='enum'?p.values[0]:''):p.def;if(v===d)return;a.push(p.type==='boolean'?(v?p.name:p.name+'={false}'):p.name+'="'+String(v).replace(/"/g,'&quot;')+'"')});
-var s='<'+M.exportName+(a.length?' '+a.join(' '):'')+' />';var pre=document.createElement('pre'),cd=document.createElement('code');cd.textContent=s;pre.appendChild(cd);var o=document.getElementById('code');o.innerHTML='';o.appendChild(pre)}
+function draw(){root.render(m.createElement(C,st));var a=[];M.props.forEach(function(p){if(p.type==='node'||p.demo!==undefined||!(p.name in st))return;var v=st[p.name];a.push(typeof v==='boolean'?(v?p.name:p.name+'={false}'):p.name+'="'+String(v).replace(/"/g,'&quot;')+'"')});
+var s=(M.interactive?'':'')+'<'+M.exportName+(a.length?' '+a.join(' '):'')+' />';var pre=document.createElement('pre'),cd=document.createElement('code');cd.textContent=s;pre.appendChild(cd);var o=document.getElementById('code');o.innerHTML='';o.appendChild(pre)}
 draw()})()</script>`;
     const body = `<h1>${esc(comp.name)}</h1>
-<div class="tags">${d?.category ? `<span class="tag">${esc(d.category)}</span>` : ''}${d?.status ? `<span class="tag">${esc(d.status)}</span>` : ''}<span class="tag">${esc(c.info.version)}</span></div>
+<div class="tags">${comp.interactive ? '<span class="tag">Interactive</span>' : ''}${d?.category ? `<span class="tag">${esc(d.category)}</span>` : ''}${d?.status ? `<span class="tag">${esc(d.status)}</span>` : ''}<span class="tag">${esc(c.info.version)}</span></div>
 ${d?.description ? `<p class="lead">${esc(d.description)}</p>` : ''}
 ${preview}
 <h2>Import</h2>${copyable(`import { ${comp.exportName} } from '${pkgOf(c)}';`)}
 <h2>Props</h2>
-${props.length ? `<table><thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Design property</th></tr></thead><tbody>${rows}</tbody></table><p class="lead">Every component also takes <code>className</code>, <code>style</code> and <code>testId</code>.</p>` : '<p class="lead">No props besides <code>className</code>, <code>style</code> and <code>testId</code>.</p>'}
+${props.length ? `<table><thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table><p class="lead">Every component also takes <code>className</code>, <code>style</code> and <code>testId</code>.</p>` : '<p class="lead">No props besides <code>className</code>, <code>style</code> and <code>testId</code>.</p>'}
 ${d?.dos?.length || d?.donts?.length ? `<h2>Usage</h2><div class="cols"><div class="do"><b>Do</b>${list(d?.dos)}</div><div class="dont"><b>Don't</b>${list(d?.donts)}</div></div>` : ''}
 ${d?.a11y?.length ? `<h2>Accessibility</h2>${list(d.a11y)}` : ''}`;
     return layout(c, `c:${comp.exportName}`, comp.name, body + script, `<link rel="stylesheet" href="/docs/${c.slug}/_/tokens.css?v=${c.seq}"><link rel="stylesheet" href="/docs/${c.slug}/_/styles.css?v=${c.seq}">`);

@@ -115,10 +115,32 @@ Nama paket = `@midas/` + nama library (kebab-case). Setiap publish adalah versi 
 
 Semua komponen menerima `className`, `style`, `testId`, dan atribut `div` biasa. Penamaan: `Text Field` → `TextField`, prop `Show leading icon` → `showLeadingIcon`, ikon `Outline / Arrows / Arrow Left` → `ArrowLeftIcon`.
 
+## Perilaku
+
+Desain hanya berisi gambar setiap variant. Paket menambahkan lapisan perilaku yang memilih variant yang sesuai dengan apa yang dilakukan pengguna, dan memberi komponen props yang biasa dipakai developer. Semua komponen yang punya properti **State** di desain bereaksi pada pointer dan keyboard (`hover`, `pressed`, `focus`, `disabled`) tanpa kode apa pun, dan menerima `disabled`.
+
+Yang berfungsi penuh (terkendali lewat props, atau memegang state sendiri bila props tidak diberikan):
+
+| Komponen | Props | Perilaku |
+| --- | --- | --- |
+| Button, Icon Button, Link | `onClick`, `disabled`, `loading` | Enter dan Spasi mengklik; tidak bisa diklik saat disabled atau loading |
+| Checkbox | `checked`, `defaultChecked`, `onCheckedChange`, `disabled` | klik atau Spasi mengubah centang; mendukung `"indeterminate"` |
+| Radio, RadioGroup | `value`, `onValueChange` (grup), `checked`, `onCheckedChange` | satu pilihan per grup |
+| Switch | `checked`, `defaultChecked`, `onCheckedChange` | klik atau Spasi |
+| Text Field, Textarea | `value`, `defaultValue`, `onValueChange`, `onChange`, `placeholder`, `invalid`, `disabled`, `readOnly`, `maxLength`, `type` | `<input>` / `<textarea>` sungguhan; tombol hapus bila `clearable`; hitungan karakter bila ada `maxLength` |
+| Password Input | `value`, `onValueChange`, `placeholder` | ikon mata menampilkan dan menyembunyikan teks |
+| Number Input | `value`, `onValueChange`, `min`, `max`, `step` | tombol minus dan plus, panah atas dan bawah |
+| Select | `options`, `value`, `defaultValue`, `onValueChange`, `searchable`, `clearable`, `placeholder` | daftar opsi sungguhan (tidak terpotong induknya), panah, Enter, Esc, pencarian |
+| Segmented Control | `value`, `defaultValue`, `onValueChange` | klik atau panah kiri dan kanan |
+| Accordion | `open`, `defaultOpen`, `onOpenChange` | klik judul membuka dan menutup |
+| Form Item | `children`, `invalid`, `disabled` | label, hint, dan pesan error di sekitar kontrol yang Anda taruh di dalamnya |
+
+Daftar ini ada di halaman dokumentasi tiap komponen (tanda **Interactive**), dengan preview yang bisa diklik. Kodenya ada di `packages/builder-core/src/library-behavior.js`.
+
 ## Batasan tahap ini
 
-- **Statis:** hasilnya markup dari desain. Perilaku (klik, buka-tutup dropdown, fokus, validasi) belum ada; itu menyusul sebagai kit perilaku.
-- State visual (hover, pressed, focus) menjadi nilai prop `state`, bukan reaksi pada interaksi (belum `:hover` atau `:focus` sungguhan).
+- **Perilaku datang dari lapisan tersendiri** (`src/behavior/`), bukan dari desain. Tampilan tetap dari desain; lapisan ini menyimpan state dan memilih variant yang cocok. Lihat bagian Perilaku di bawah untuk apa yang sudah berfungsi.
+- Komponen yang tidak punya perilaku buatan tetap berupa gambar dari desain (Table, Dialog, Drawer, Tabs, Date Picker, Tooltip, Toast, dan lainnya). Komponen yang punya properti State tetap bereaksi pada hover, tekan, fokus, dan `disabled`.
 - Gambar (fill image) belum ikut; layer itu dilaporkan sebagai peringatan di dialog.
 - Satu komponen dengan banyak variant menghasilkan file besar (Button 5 × 3 × 4 = 60 variant ≈ 60 KB); bundle akhir tetap kecil setelah gzip dan tree-shaking.
 - Registry hanya membaca dan hanya melayani paket `@midas/*` milik workspace token; versi lama muncul di daftar setelah paketnya pernah dibangun.

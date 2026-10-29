@@ -172,3 +172,14 @@ test('libraryPackage: shapes that are drawn inline are not problems; a design ti
     assert.equal(tips.length, 1);
     assert.equal(tips[0].count, 2);
 });
+
+test('icons: the main outline and the extra contours of a vector are both drawn', () => {
+    const nodes = [
+        { id: 'r', parentId: null, type: 'frame', component: true, name: 'Eye', w: 24, h: 24 },
+        { id: 'v', parentId: 'r', type: 'path', name: 'Vector', x: 0, y: 0, w: 20, h: 10, pathW: 20, pathH: 10, closed: true, fill: '#000', points: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }], contours: [{ closed: false, points: [{ x: 2, y: 2 }, { x: 4, y: 4 }] }] },
+    ];
+    const { parts } = iconSvg(nodes, 'r');
+    assert.equal(parts.length, 1);
+    assert.equal((parts[0].attrs.d.match(/M/g) || []).length, 2, 'main outline + the extra contour');
+    assert.match(parts[0].attrs.d, /^M0 0|^M0\.0 0\.0|^M0 0 /);
+});

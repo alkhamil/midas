@@ -21,16 +21,19 @@ const clean = style => Object.fromEntries(Object.entries(style || {}).filter(([,
  * @param {string} [opts.importPrefix]  import path of the generated icon/props layer from the component file
  * @param {(exportName: string) => string} [opts.resolveImport]  import path of another generated component (default `./<Name>`)
  * @param {Set<string>} [opts.iconNames]  export names that are icon components: their instances get `size` and the colour of the layer
+ * @param {{ layers: Set<string>, tag: 'input' | 'textarea' }} [opts.inputs]  layers that become a real <input> / <textarea> (the field of a text input); it takes `inputProps`
+ * @param {Set<string>} [opts.slot]  components whose instances inside this one become `children` (the field of a form item): `{children ?? <the instance of the design />}`
  * @param {boolean} [opts.tailwind]  write the styles as Tailwind classes (the library package), not as inline `style` (a project's own code)
  * @param {Set<string>} [opts.colors]  names of the theme's colour tokens: a colour bound to one is written as a theme utility (`bg-primary`)
  * @param {Set<string>} [opts.classes]  collects every Tailwind class the component uses (what the stylesheet is compiled for)
  * @returns {{ source: string, dts: string, warnings: string[], components: string[], icons: string[] }}
  */
-export function generateComponent({ ctx, mapping, types = 'generated', iconOf = () => null, importPrefix = '../..', resolveImport = null, iconNames = null, tailwind = false, colors = new Set(), classes = new Set() }) {
+export function generateComponent({ ctx, mapping, types = 'generated', iconOf = () => null, importPrefix = '../..', resolveImport = null, iconNames = null, tailwind = false, colors = new Set(), classes = new Set(), inputs = null, slot = null }) {
     const root = ctx.byId.get(mapping.componentKey);
     if (!root) throw new Error(`component ${mapping.componentName} not found in the snapshot`);
     const name = mapping.exportName;
     const props = mapping.propsMap.props;
+    let usesInput = false, usesSlot = false;
     const warnings = [], issues = [], components = new Set(), icons = new Set();
     const styleLiteral = style => JSON.stringify(clean(style));
     /** The attribute that carries a style: Tailwind classes, or an inline style. */
@@ -95,12 +98,22 @@ export function generateComponent({ ctx, mapping, types = 'generated', iconOf = 
         }
         else if (node.kind === 'text') {
             const bound = src?.propBind?.text ? textProp(src.propBind.text) : null;
-            jsx = `${pad}<span ${styleAttr(node.style)}>{${bound ?? q(node.text ?? '')}}</span>`;
+            if (tailwind && inputs?.layers.has(src?.name)) {
+                // The text of a field is a real input: same look as the layer, and what the person types goes through `inputProps`
+                usesInput = true;
+                const reset = { background: 'transparent', border: '0', outline: 'none', padding: '0', margin: '0', minWidth: '0', fontFamily: 'inherit', ...(inputs.tag === 'textarea' ? { resize: 'none', height: '100%', width: '100%' } : {}) };
+                const c = `${cls(node.style)} ${cls(reset)} mds:placeholder:text-muted-foreground`;
+                classes.add('mds:placeholder:text-muted-foreground');
+                jsx = `${pad}<${inputs.tag} className=${q(c)} {...inputProps} />`;
+            }
+            else
+                jsx = `${pad}<span ${styleAttr(node.style)}>{${bound ?? q(node.text ?? '')}}</span>`;
         }
         else if (node.kind === 'component') {
             const attrs = Object.entries(node.props || {}).filter(([, v]) => v !== undefined).map(([k, v]) => ` ${k}={${q(v)}}`).join('');
             components.add(node.exportName);
             jsx = `${pad}<${node.exportName}${attrs}${iconNames?.has(node.exportName) && src ? iconAttrs(src) : ''} />`;
+            if (slot?.has(node.exportName) && !isRoot) { usesSlot = true; jsx = `${pad}{children ?? (\n${jsx}\n${pad})}`; }
         }
         else if (node.kind === 'unsupported') {
             const main = src?.isInstance ? ctx.byId.get(src.sourceId) : null;
@@ -140,7 +153,7 @@ export function generateComponent({ ctx, mapping, types = 'generated', iconOf = 
 
     // ---- props handled by the design (destructured), the rest goes to the root element
     const handled = [...new Set(props.map(p => p.name))];
-    const all = [...handled, 'testId', 'className', 'style'].filter((n, i, a) => a.indexOf(n) === i);
+    const all = [...handled, 'testId', 'className', 'style', ...(usesInput ? ['inputProps'] : []), ...(usesSlot ? ['children'] : [])].filter((n, i, a) => a.indexOf(n) === i);
     const defaults = `${camelCase(name)}Defaults`;
     const typesBlock = types === 'generated'
         ? `import { ${defaults}, type ${name}Props as DesignProps } from '${importPrefix}/generated/props';\n`
@@ -152,8 +165,10 @@ export function generateComponent({ ctx, mapping, types = 'generated', iconOf = 
         ...[...components].filter(c => c !== name).sort().map(c => `import { ${c} } from '${resolveImport ? resolveImport(c) : `./${c}`}';`),
     ].filter(Boolean).join('\n');
 
+    const slotType = usesSlot ? "  /** What the design shows as the field: put your own control here. */\n  children?: import('react').ReactNode;\n" : '';
+    const inputType = slotType + (usesInput ? `  inputProps?: import('react').${inputs.tag === 'textarea' ? 'TextareaHTMLAttributes<HTMLTextAreaElement>' : 'InputHTMLAttributes<HTMLInputElement>'};\n` : '');
     const inlineType = types === 'inline'
-        ? `interface DesignProps {\n${props.map(p => `  ${p.name}?: ${p.type === 'enum' ? Object.values(p.values || {}).map(q).join(' | ') || 'string' : p.type === 'boolean' ? 'boolean' : p.type === 'node' ? 'import(\'react\').ReactNode' : 'string'};`).join('\n')}\n  testId?: string;\n}\n`
+        ? `interface DesignProps {\n${props.map(p => `  ${p.name}?: ${p.type === 'enum' ? Object.values(p.values || {}).map(q).join(' | ') || 'string' : p.type === 'boolean' ? 'boolean' : p.type === 'node' ? 'import(\'react\').ReactNode' : 'string'};`).join('\n')}\n${inputType}  testId?: string;\n}\n`
         : '';
     // The design's own values: the first variant of every property, the text and the on/off of the component properties.
     const inlineDefaults = types === 'inline' ? `const ${defaults}: Partial<DesignProps> = { ${props.filter(p => p.def !== undefined && p.type !== 'node').map(p => `${p.name}: ${typeof p.def === 'string' ? q(p.def) : JSON.stringify(p.def)}`).join(', ')} };\n` : '';
@@ -168,7 +183,7 @@ ${inlineDefaults}${variantProps.length ? `\n/** Code value → design value of e
 /** ${mapping.componentName} (from the design). */
 export function ${name}(props: ${name}Props): ReactElement {
   const { ${all.join(', ')}, ...rest } = { ...${defaults}, ...props } as ${name}Props;
-  void [${all.filter(n => !['testId', 'className', 'style'].includes(n)).join(', ')}];${body}
+  void [${all.filter(n => !['testId', 'className', 'style', 'inputProps', 'children'].includes(n)).join(', ')}];${body}
 }
 `;
     const dts = `import type { HTMLAttributes, ReactElement } from 'react';
