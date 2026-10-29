@@ -8965,7 +8965,7 @@ function behaviorTabHtml(n) {
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
-        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name) : null;
+        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
         return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
@@ -9201,7 +9201,7 @@ function onBehaviorClick(e) {
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
-    const result = generateComponent(template, binding, varStore(), template.name);
+    const result = generateComponent(template, binding, varStore(), template.name, n, id => doc.children(id));
     for (const file of codeDownloads(result)) download(new Blob([file.text], { type: 'text/plain' }), file.name);
 }
 /** Waits until every page of the file is here. False when a page did not come, or another file was opened meanwhile. */

@@ -2,18 +2,29 @@
 // `label` the first text layer inside it (depth first). Icon slots have no master layer. Diagnostics and the studio share this rule.
 
 /**
- * The first text layer under `id`, depth first; null when there is none.
+ * The first text layer under `id` with the frame that holds it, depth first; null when there is none.
+ * @param {string} id
+ * @param {(id: string) => any[]} childrenOf
+ * @param {any} [parent] the frame `id` hangs under: the parent of a top-level hit
+ * @returns {{ node: any, parent: any } | null}
+ */
+export function labelEntryOf(id, childrenOf, parent = null) {
+    for (const c of childrenOf(id)) {
+        if (c.type === 'text') return { node: c, parent };
+        const found = labelEntryOf(c.id, childrenOf, c);
+        if (found) return found;
+    }
+    return null;
+}
+
+/**
+ * The first text layer under `id` (depth first); null when there is none.
  * @param {string} id
  * @param {(id: string) => any[]} childrenOf
  * @returns {any}
  */
 export function labelLayerOf(id, childrenOf) {
-    for (const c of childrenOf(id)) {
-        if (c.type === 'text') return c;
-        const found = labelLayerOf(c.id, childrenOf);
-        if (found) return found;
-    }
-    return null;
+    return labelEntryOf(id, childrenOf)?.node ?? null;
 }
 
 /**

@@ -14,11 +14,13 @@ import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
+import { labelEntryOf } from '../behavior-engine/layers.js';
 import { iconOnlyIn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
-import { layoutGap, layoutGapCross, layoutOrder, layoutPads, strokeOutside } from '../geometry/autolayout.js';
+import { layoutOrder } from '../geometry/autolayout.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -196,7 +198,7 @@ function templateOf(n, scope) {
     const template = TEMPLATES.get(binding.templateId);
     if (!template) return null;
     if (!scope.styles.has(template.id)) {
-        const generated = generateComponent(template, binding, scope.variables, template.name);
+        const generated = generateComponent(template, binding, scope.variables, template.name, master, scope.childrenOf);
         if (!generated.files) {
             scope.problems.push(...generated.problems.map(p => ({ ...p, nodeId: n.id })));
             return undefined;
@@ -228,12 +230,15 @@ function renderButton(n, template, parent, scope) {
     const iconOnly = iconOnlyIn(template, props);
     if (iconOnly) attrs.class = `${template.id} ${template.id}-icon-only`;
     const children = [];
+    // The label's layer and its parent, for the label's own width and alignment (see layout.js).
+    const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
             const control = controlOf(template);
             // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
-            if (!iconOnly && control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style: {}, children: [] });
-            else if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
+            const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
+            if (!iconOnly && control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style, children: [] });
+            else if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
@@ -251,7 +256,9 @@ function renderButton(n, template, parent, scope) {
     }
     // The stroke is the node's own, drawn as an overlay on the canvas's rules (inside, center or outside), so the component's CSS border is off.
     if (strokeIsOn(n)) children.push(strokeBoxOf(n));
-    const style = { ...placement(n, parent, scope.responsive), borderWidth: '0px' };
+    // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
+    // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
+    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeIsOn(n) ? 1 : 0)), borderWidth: '0px' };
     // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
     if (strokeIsOn(n) && !style.position) style.position = 'relative';
     return { tag: 'button', nodeId: n.id, attrs, style, children };
@@ -307,42 +314,6 @@ function transformOf(n) {
 }
 
 /**
- * How a child of an auto layout frame sizes itself on the parent's main axis (the flow direction) and on its cross axis.
- * - main fill: takes the free space (flex 1, may shrink to zero). Main fixed or hug: keeps its size and does not shrink, so a child
- *   wider than its frame is clipped by the frame instead of squeezed.
- * - cross fill: stretches across the parent. Cross fixed or hug: keeps its size, aligned to the start.
- * A text layer takes its natural size on a fixed or hug axis; only a fill axis changes it.
- * @param {any} n
- * @param {any} parent an auto layout frame
- * @returns {Record<string, string>}
- */
-function flowSizing(n, parent) {
-    const vertical = parent.layout === 'vertical';
-    const mainAxis = vertical ? { sizing: n.layoutSizingV, size: 'height', length: n.h, min: 'minHeight' } : { sizing: n.layoutSizingH, size: 'width', length: n.w, min: 'minWidth' };
-    const crossAxis = vertical ? { sizing: n.layoutSizingH, size: 'width', length: n.w } : { sizing: n.layoutSizingV, size: 'height', length: n.h };
-    /** @type {Record<string, string>} */
-    const style = {};
-    if (mainAxis.sizing === 'fill') {
-        style.flex = '1 1 0';
-        style[mainAxis.min] = '0px';
-    }
-    else {
-        style.flexShrink = '0';
-        if (mainAxis.sizing !== 'hug' && n.type !== 'text') style[mainAxis.size] = `${mainAxis.length}px`;
-    }
-    // A fixed or hug cross axis keeps its size and takes the parent's cross alignment (align-items), as on the canvas.
-    if (crossAxis.sizing === 'fill') {
-        style.alignSelf = 'stretch';
-    }
-    else if (crossAxis.sizing !== 'hug' && n.type !== 'text') {
-        style[crossAxis.size] = `${crossAxis.length}px`;
-    }
-    const outside = strokeOutside(n, parent);
-    if (outside) style.margin = `${outside}px`;
-    return style;
-}
-
-/**
  * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips. A template instance has no scroll behaviour:
  * the validator refuses one, and Play ignores any it finds.
  * @param {any} n
@@ -366,35 +337,6 @@ function centredStrokeHalf(n) {
     if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'center') return 0;
     const s = strokeSideWidths(n);
     return Math.max(s.t, s.r, s.b, s.l) / 2;
-}
-
-/**
- * The flex container style of an auto layout frame: the spacing and alignment the canvas layout engine uses (`layoutPads`, the gaps,
- * `gapAuto` for space between, evenly or around, and the alignments). Grid layouts are laid out as a row here.
- * @param {any} n
- * @param {number} flowCount the children in the flow
- */
-function flexOf(n, flowCount) {
-    const vertical = n.layout === 'vertical';
-    const P = layoutPads(n), gap = layoutGap(n), mainGap = n.gapAuto ? 0 : gap, crossGap = layoutGapCross(n, gap);
-    const edge = { start: 'flex-start', center: 'center', end: 'flex-end' };
-    const mode = n.gapMode || 'between';
-    let justify = edge[n.primaryAlign ?? 'start'] ?? 'flex-start';
-    if (n.gapAuto && mode === 'evenly') justify = 'space-evenly';
-    else if (n.gapAuto && mode === 'around') justify = 'space-around';
-    else if (n.gapAuto && flowCount > 1) justify = 'space-between';
-    return {
-        display: 'flex',
-        flexDirection: vertical ? 'column' : 'row',
-        flexWrap: n.layoutWrap ? 'wrap' : 'nowrap',
-        columnGap: `${vertical ? crossGap : mainGap}px`,
-        rowGap: `${vertical ? mainGap : crossGap}px`,
-        padding: `${P.t}px ${P.r}px ${P.b}px ${P.l}px`,
-        justifyContent: justify,
-        alignItems: !vertical && n.alignBaseline ? 'baseline' : edge[n.counterAlign ?? n.layoutAlign ?? 'start'] ?? 'flex-start',
-        alignContent: 'flex-start',
-        boxSizing: 'border-box',
-    };
 }
 
 /**
