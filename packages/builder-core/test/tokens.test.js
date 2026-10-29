@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveTokens, variableIdNamed, ratioVariableOf } from '../src/behavior-engine/tokens.js';
+import { resolveTokens, variableIdNamed } from '../src/behavior-engine/tokens.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
@@ -111,11 +111,4 @@ test('a variable is found by name the way a token is matched: case and dashes do
     assert.equal(variableIdNamed(items, 'c-size', 'Button/ICON-SIZE'), 's-iconSize');
     assert.equal(variableIdNamed(items, 'c-other', 'button/icon-size'), null);
     assert.equal(variableIdNamed(items, 'c-size', 'button/icon-size-x'), null);
-});
-
-test('a variable is a ratio token when a template names it so: the Button line height is a unitless ratio, not pixels', () => {
-    assert.equal(ratioVariableOf({ name: 'button/lineHeight' }), true);
-    assert.equal(ratioVariableOf({ name: 'Button/Line-Height' }), true);
-    assert.equal(ratioVariableOf({ name: 'button/fontSize' }), false);
-    assert.equal(ratioVariableOf({ name: 'lineHeight' }), false);
 });

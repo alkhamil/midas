@@ -1,6 +1,6 @@
 // Token resolver (stage 4). Pure: the schema, the master's binding, the instance's selected mode per variable prop and the
 // document's variables in, CSS custom properties and the unresolved tokens (with the reason) out. Nothing is guessed.
-import { TEMPLATES, variableProps } from './registry.js';
+import { variableProps } from './registry.js';
 import { dimensionOfGroup } from './validate-schema.js';
 
 /** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
@@ -161,15 +161,4 @@ export function resolveTokens(template, binding, selectedModes, variables) {
         }
     }
     return { vars, unresolved };
-}
-
-/**
- * Whether a variable holds a unitless ratio because a template names it so: its name is `<group>/<token>` for a token whose kind is
- * `ratio` (the Button line height). Such a variable resolves unchanged; any other line height variable is in pixels.
- * @param {{ name: unknown }} item
- * @returns {boolean}
- */
-export function ratioVariableOf(item) {
-    const key = variableKey(item.name);
-    return [...TEMPLATES.values()].some(template => Object.entries(template.tokenKinds).some(([token, kind]) => kind === 'ratio' && key === variableKey(`${template.group}/${token}`)));
 }
