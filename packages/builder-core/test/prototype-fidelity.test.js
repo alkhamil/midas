@@ -165,12 +165,12 @@ test('a rectangle mask clips as an inset with its corner radii; the layers below
     assert.equal(children[1].style.clipPath, 'inset(10px 90px 130px 10px round 4px 4px 4px 4px)');
 });
 
-test('a mask in an auto layout is reported, since the layout places its children', () => {
+test('a mask in an auto layout clips the layers above it at its stored place: a mask is not in the flow', () => {
     const auto = frame('A', { layout: 'row' });
     const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
-    const result = toDomTree(docOf([auto, mask, layer({ id: 'R' })]), 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask in an auto layout' }]);
-    assert.equal(result.root.children[0].style.clipPath, undefined);
+    const result = toDomTree(docOf([auto, mask, layer({ id: 'R', layoutPositioning: 'absolute' })]), 'A');
+    assert.deepEqual(result.unsupported, []);
+    assert.equal(result.root.children[0].style.clipPath, 'ellipse(50px 25px at 40px 15px)');
 });
 
 test('a mask on a rotated layer is reported, and the layer is drawn unclipped', () => {
@@ -232,4 +232,14 @@ test('a path mask clips the layers above it as a CSS mask image: its shape, draw
     assert.match(image, /viewBox="0 0 200 100"/);
     assert.match(image, /<g transform="translate\(10 20\)"><path d="M0 0L40 0L20 40L0 0Z" fill="#000"\/><\/g>/);
     assert.equal(root.children[0].style.maskSize, '100% 100%');
+});
+
+test('in a flipped frame, a mask clips the layers after it in reading order: a colour layer under an icon mask is cut to the icon', () => {
+    const flipped = frame('A', { layout: 'row', layoutFlip: true });
+    const color = layer({ id: 'C', type: 'rect', parentId: 'A', layoutPositioning: 'absolute', x: 0, y: 0, w: 20, h: 20 });
+    const mask = layer({ id: 'M', type: 'ellipse', isMask: true, parentId: 'A', x: 0, y: 0, w: 20, h: 20 });
+    const { root, unsupported } = toDomTree(docOf([flipped, color, mask]), 'A');
+    assert.deepEqual(unsupported, []);
+    assert.equal(root.children.length, 1);
+    assert.match(root.children[0].style.clipPath ?? '', /^ellipse\(/);
 });

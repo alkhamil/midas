@@ -122,16 +122,19 @@ function renderChildren(n, scope) {
     // order, so a flow position is a CSS `order` and the paint order is reversed when the frame paints its first child on top.
     const stored = scope.childrenOf(n.id);
     const flowPosition = new Map(layoutOrder(n, stored).filter(c => c.layoutPositioning !== 'absolute' && c.visible !== false).map((c, i) => [c.id, i]));
-    let mask = null;
+    // Which mask clips each sibling: the canvas reads a flipped frame's children back to front, and a visible mask clips every sibling
+    // after it in that reading. A mask is not in the flow, so it sits at its stored place even in an auto layout.
+    const maskFor = new Map();
+    let active = null;
+    for (const c of n.layoutFlip ? [...stored].reverse() : stored) {
+        if (c.isMask && c.visible !== false) active = c;
+        else maskFor.set(c.id, active);
+    }
     for (const c of stored) {
-        if (c.isMask && c.visible !== false) {
-            // An auto layout places its children itself, so a mask's stored position does not say where it sits on screen.
-            mask = isAutoLayout(n) ? null : c;
-            if (mask === null) scope.unsupported.push({ nodeId: c.id, type: 'mask in an auto layout' });
-            continue;
-        }
+        if (c.isMask) continue;
         const el = renderNode(c, n, scope);
         if (!el) continue;
+        const mask = maskFor.get(c.id);
         if (mask) {
             const clip = maskClipOf(mask, c);
             if (clip) el.style.clipPath = clip;
