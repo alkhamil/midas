@@ -323,3 +323,13 @@ Setup: the prototype fixture, opened by import. Play from Home.
 | Play: programmatic focus on Unavailable | Refused (`document.activeElement` is not the button) |
 | Play: Tab from Delete | Focus skips Unavailable and lands on the next control |
 | Editor: Delete, Preview State Hover, then Disabled on | Preview State reads Default, "Previewing: Disabled"; no hover look |
+
+## Icon-only Button
+
+1. **Icon-only.** On **Save** (Has Icon on, placement start), set the placement to Only.
+   - Expected: the label disappears, the icon stays, the button is as wide as its height at least, and the padding is 0.
+   - Expected: the generated `Button.jsx` hides the label child (`{!iconOnly && …}`) and adds the `button-icon-only` class.
+2. **Back to start.** Set the placement to Start.
+   - Expected: the label comes back, the icon moves to the start, and the padding returns.
+3. **Play.** Open Play on a frame with an icon-only Button.
+   - Expected: the Button draws with the icon-only class and no label element.

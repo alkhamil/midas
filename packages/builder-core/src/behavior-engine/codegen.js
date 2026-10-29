@@ -4,7 +4,8 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, iconOnlyValuesOf, targetKindOf } from './display.js';
+import { placementsOfSlot } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
 
 /** The DOM handler each schema event is written to. */
@@ -25,15 +26,18 @@ function componentSource(template, name, problems) {
         params.push(event.name);
     }
     const { show, placement, component } = template.icon;
-    const placementOf = Object.fromEntries(Object.entries(template.props[placement].slots).map(([value, slot]) => [slot, value]));
+    const iconOnlyValues = iconOnlyValuesOf(template);
     const children = [];
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
             if (!template.props[slot.id]) problems.push({ slot: slot.id, reason: 'no-prop' });
-            children.push(`<span className="${template.id}-${slot.id}">{${slot.id}}</span>`);
+            const label = `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
+            children.push(iconOnlyValues.length ? `{!iconOnly && ${label}}` : label);
         }
-        else if (slot.managed && placementOf[slot.id]) {
-            children.push(`{${show} && ${placement} === "${placementOf[slot.id]}" && <span className="${template.id}-${slot.id}">{${component}}</span>}`);
+        else if (slot.managed && placementsOfSlot(template, slot.id).length) {
+            const tests = placementsOfSlot(template, slot.id).map(value => `${placement} === "${value}"`);
+            const cond = tests.length === 1 ? tests[0] : `(${tests.join(' || ')})`;
+            children.push(`{${show} && ${cond} && <span className="${template.id}-${slot.id}">{${component}}</span>}`);
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
@@ -44,7 +48,7 @@ function componentSource(template, name, problems) {
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
-        `className="${template.id}"`,
+        iconOnlyValues.length ? `className={iconOnly ? "${template.id} ${template.id}-icon-only" : "${template.id}"}` : `className="${template.id}"`,
         ...dims.map(dim => `data-${dim}={${dim}}`),
         `disabled={${disabledProp}}`,
         ...widthProps.map(prop => `style={${prop} ? { ${FILL_WIDTH} } : undefined}`),
@@ -54,6 +58,7 @@ function componentSource(template, name, problems) {
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+        ...(iconOnlyValues.length ? [`  const iconOnly = ${show} && (${iconOnlyValues.map(value => `${placement} === "${value}"`).join(' || ')});`] : []),
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
@@ -110,6 +115,8 @@ function stylesheet(template, binding, variables, problems) {
     }
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
     const blocks = displayRules(template);
+    // An icon-only instance has no label padding: its icon is the whole content, and the minimum width keeps it square.
+    if (iconOnlyValuesOf(template).length) blocks.push(`.${template.id}-icon-only {\n  padding-inline: 0;\n}\n`);
     const { disabledState } = template.element;
     const defaults = resolveProps(template, {});
     for (const combo of combos) {

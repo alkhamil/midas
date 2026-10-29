@@ -53,6 +53,7 @@ const LINK = { ...TEXT, 'bg-hover': 'transparent', 'bg-active': 'transparent' };
 const VARIANT_VALUES = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
+    height: { sm: 32, lg: 40 },
     fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 22 / 14, lg: 26 / 18 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
     gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
 };
@@ -65,7 +66,8 @@ const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
  * `shared` reuses the Color and Size collections of another call (its `ids`): the second call then adds only its Variant set.
  * @param {{ ids?: { variant?: string, color?: string, size?: string }, prefix?: string, variantModes?: string[], shared?: { color: string, size: string } }} [options]
  */
-export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIANTS, colors = BUTTON_COLORS, palette = PALETTE, sizeModes = BUTTON_SIZES, sizeValues = DEFAULT_SIZE_VALUES, shared = null } = {}) {
+export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIANTS, colors = BUTTON_COLORS, palette = PALETTE, sizeModes = BUTTON_SIZES, sizeValues = {}, shared = null } = {}) {
+    const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
     const variant = ids.variant ?? 'c-variant';
     const color = shared ? shared.color : ids.color ?? 'c-color';
     const size = shared ? shared.size : ids.size ?? 'c-size';
@@ -77,7 +79,7 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
             const values = Object.fromEntries(colors.map(c => [c, palette[c][key]]));
             items.push({ id: `c-${token}`, name: `button/${token}`, type: 'color', collectionId: color, values });
         }
-        for (const [token, values] of Object.entries(sizeValues)) {
+        for (const [token, values] of Object.entries(sizes)) {
             items.push({ id: `s-${token}`, name: `button/${token}`, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
         }
     }

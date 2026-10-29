@@ -11,7 +11,7 @@ const items = [
     item('i-bg', 'button/bg', 'c-variant'), item('i-border', 'button/border', 'c-variant'), item('i-fg', 'button/fg', 'c-variant'),
     item('i-radius', 'button/radius', 'c-size'), item('i-px', 'button/paddingX', 'c-size'), item('i-py', 'button/paddingY', 'c-size'),
     item('i-gap', 'button/gap', 'c-size'), item('i-fs', 'button/fontSize', 'c-size'), item('i-lh', 'button/lineHeight', 'c-size'),
-    item('i-icon', 'button/iconSize', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
+    item('i-icon', 'button/iconSize', 'c-size'), item('i-height', 'button/height', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
 ];
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
 const variables = (over = items) => ({ collections: [variant, size], items: over });
@@ -24,7 +24,7 @@ test('an unbound master binds every mapped property to its group variable', () =
     const { ops, problems } = planBindTokens({ template: button, binding, layers: layers(), variables: variables() });
     assert.deepEqual(problems, []);
     assert.deepEqual(ops.filter(o => o.key === 'root').map(o => [o.varKey, o.itemId]), [
-        ['fill', 'i-bg'], ['stroke', 'i-border'], ['radius', 'i-radius'], ['padH', 'i-px'], ['padV', 'i-py'], ['gap', 'i-gap'],
+        ['fill', 'i-bg'], ['stroke', 'i-border'], ['radius', 'i-radius'], ['padH', 'i-px'], ['padV', 'i-py'], ['gap', 'i-gap'], ['minW', 'i-height'],
     ]);
     assert.deepEqual(ops.filter(o => o.key === 'label').map(o => [o.varKey, o.itemId]), [['fill', 'i-fg'], ['fontSize', 'i-fs'], ['lineHeight', 'i-lh']]);
 });
@@ -36,7 +36,7 @@ test('a binding that already exists is never overwritten', () => {
 });
 
 test('a fully bound master gives no operations (idempotent)', () => {
-    const root = { fill: 'i-bg', stroke: 'i-border', radius: 'i-radius', padH: 'i-px', padV: 'i-py', gap: 'i-gap' };
+    const root = { fill: 'i-bg', stroke: 'i-border', radius: 'i-radius', padH: 'i-px', padV: 'i-py', gap: 'i-gap', minW: 'i-height' };
     const label = { fill: 'i-fg', fontSize: 'i-fs', lineHeight: 'i-lh' };
     assert.deepEqual(planBindTokens({ template: button, binding, layers: layers(root, label), variables: variables() }).ops, []);
 });

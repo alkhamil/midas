@@ -36,11 +36,11 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
   - color (variable, collection "Color": default, primary, danger)
   - size (variable, collection "Size": small, middle, large)
   - label (string, "Button")
-  - hasIcon (boolean, false), iconPlacement (start | end, "start", visibleIf hasIcon), icon (iconComponent, visibleIf hasIcon)
+  - hasIcon (boolean, false), iconPlacement (start | end | only, "start", visibleIf hasIcon), icon (iconComponent, visibleIf hasIcon). `only` is icon-only: the label is hidden, the padding is 0, and the minimum width is the control height (`height` token).
   - loading (boolean, false), disabled (boolean, false), block (boolean, false, node layout width fill)
 - structure: antd v5 (components/button/style). Names are ours. Variant values alias into Color, Color into Semantic (antd's global tokens).
 - tokens:
-  - fromSize: fontSize, lineHeight (unitless ratio), paddingX, paddingY, gap, radius, iconSize
+  - fromSize: height, fontSize, lineHeight (unitless ratio), paddingX, paddingY, gap, radius, iconSize
   - fromVariant: bg, fg, border, bg-hover, fg-hover, border-hover, bg-active, fg-active, border-active, bg-disabled, fg-disabled, border-focus
   - fromColor: color, color-hover, color-active, color-border(-hover, -active), color-bg(-hover, -active), color-text(-hover, -active), color-text-bg(-hover, -active), color-solid(-hover, -active, -text)
 - states: default, hover, active, focus, disabled, loading

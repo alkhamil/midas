@@ -194,6 +194,9 @@ function iconProblems(schema, allTokens) {
             }
         }
     }
+    if (placement && placement.type === 'enum') {
+        for (const value of placement.iconOnly ?? []) if (!placement.options.includes(value)) out.push(`icon-only placement "${value}" is not an option of "${icon.placement}"`);
+    }
     for (const role of ['colour', 'disabledColour', 'size']) {
         if (!allTokens.includes(icon.tokens?.[role])) out.push(`icon ${role} token "${icon.tokens?.[role]}" is not a token`);
     }

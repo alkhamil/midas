@@ -23,9 +23,9 @@ test('block on writes the root width mode to fill, and off writes hug', () => {
 
 test('token sources and props with no node field write nothing (loading, hasIcon, disabled)', () => {
     const fields = literalFields(button, resolveProps(button, { loading: true, hasIcon: true, disabled: true }));
-    assert.deepEqual(fields.map(f => f.field).sort(), ['layoutSizingH', 'text']);
+    assert.deepEqual(fields.map(f => f.field).sort(), ['layoutSizingH', 'text', 'visible']);
 });
 
 test('the fields literal props write are named per layer: the label text and the root width mode', () => {
-    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }, { key: 'root', field: 'layoutSizingH' }]);
+    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }, { key: 'root', field: 'layoutSizingH' }, { key: 'label', field: 'visible' }]);
 });
