@@ -41,7 +41,7 @@ defineComponent({
         { name: 'min-width', type: 'number', values: [0, 0, 0, { ref: 'Size/button/height' }] },
     ] }],
     variants: { Danger: { No: '', Yes: '-danger' }, Dashed: { No: '', Yes: '' } },
-    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 23], 'padding-y': [0, 0, 0], gap: [8, 8, 8], 'font-size': [14, 14, 16], 'line-height': [22, 22, 24], radius: [4, 6, 8], 'icon-size': [14, 14, 16] },
+    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 23], 'padding-y': [0, 0, 0], gap: [8, 8, 8], 'font-size': [14, 14, 16], 'line-height': [22 / 14, 22 / 14, 24 / 16], radius: [4, 6, 8], 'icon-size': [14, 14, 16] },
     text: { prop: 'Label', def: 'Button' },
     tree: ({ st, ax, sz, x, sf, v, label }) => frame('Button', {
         dir: 'h', alignC: 'center', alignP: 'center', h: sz('height'), minW: x('Button icon', 'min-width'), pad: [sz('padding-y'), x('Button icon', 'padding-x'), sz('padding-y'), x('Button icon', 'padding-x')], gap: sz('gap'), radius: sz('radius'),
@@ -49,7 +49,7 @@ defineComponent({
     }, [
         frame('Focus indicator', { pos: 'abs', x: 0, y: 0, w: 'fill', h: 'fill', radius: sz('radius'), stroke: b('Semantic', v.Danger === 'Yes' ? 'colorErrorOutline' : 'controlOutline'), sw: 3, strokeAlign: 'outside', visible: sf('focus/visible') }),
         icon('Icon start', sz('icon-size'), st('text'), { visible: x('Button icon', 'icon/start/visible') }),
-        text(label, { name: 'Label', fs: sz('font-size'), fill: st('text'), cprop: 'Label', visible: x('Button icon', 'label/visible') }),
+        text(label, { name: 'Label', fs: sz('font-size'), lh: sz('line-height'), fill: st('text'), cprop: 'Label', visible: x('Button icon', 'label/visible') }),
         icon('Icon end', sz('icon-size'), st('text'), { visible: x('Button icon', 'icon/end/visible') }),
     ]),
 });

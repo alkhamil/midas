@@ -18,7 +18,7 @@ function buttonVariables() {
         const dim = group.includes('Size') || group === 'fromSize' ? 'size' : 'variant';
         for (const token of names) {
             const isColor = !['fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'].includes(token);
-            const values = Object.fromEntries(modes[dim].map(m => [m, isColor ? '#4338ca' : token === 'lineHeight' ? 20 : 12]));
+            const values = Object.fromEntries(modes[dim].map(m => [m, isColor ? '#4338ca' : token === 'lineHeight' ? 1.5 : 12]));
             items.push({ id: `i-${token}`, name: `button/${token}`, type: isColor ? 'color' : 'number', collectionId: dim === 'variant' ? 'c-variant' : 'c-size', values });
         }
     }

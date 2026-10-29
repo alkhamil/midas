@@ -138,11 +138,3 @@ test('the same document gives the same diagnostics, in the same order', () => {
     assert.deepEqual(diagnoseDocument(d), diagnoseDocument(d));
 });
 
-test('a line height value under 4 looks like a ratio, not px: an error naming the variable and the mode', () => {
-    const items = sizeItems().map(i => (i.name === 'button/lineHeight' ? { ...i, values: { sm: 1.4, lg: 27 } } : i));
-    const found = diagnoseDocument(doc({ variables: { items: [...items, ...variantItems()] } }));
-    assert.deepEqual(found.filter(f => f.code === 'line-height-looks-like-ratio'), [{
-        severity: 'error', code: 'line-height-looks-like-ratio', node: 'Button', nodeId: 'm1', variable: 'button/lineHeight', mode: 'Small',
-        message: 'Button: variable "button/lineHeight" is 1.4 in mode "Small". Line height is in px (for example 20), not a ratio.',
-    }]);
-});

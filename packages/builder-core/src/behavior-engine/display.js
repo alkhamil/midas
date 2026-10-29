@@ -18,7 +18,7 @@ export const NODE_PROPERTIES = {
     text: {
         fill: { kind: 'color', css: 'color' },
         fontSize: { kind: 'length', css: 'font-size' },
-        lineHeight: { kind: 'length', css: 'line-height' },
+        lineHeight: { kind: 'ratio', css: 'line-height' },
     },
     icon: {
         size: { kind: 'length', css: ['width', 'height'] },

@@ -34,7 +34,7 @@ export const BUTTON = {
     },
     // The kind of value each token holds: `length` is a number in px (line height included), `color` a CSS colour string.
     tokenKinds: {
-        fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        fontSize: 'length', lineHeight: 'ratio', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'bg-active': 'color', 'bg-disabled': 'color', 'fg-disabled': 'color', 'border-focus': 'color',
     },
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.

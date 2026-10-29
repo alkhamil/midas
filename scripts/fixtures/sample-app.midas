@@ -12306,11 +12306,11 @@
         "name": "Button/lineHeight",
         "type": "number",
         "values": {
-          "mode-sm": 16,
-          "mode-md": 20,
-          "mode-lg": 24
+          "mode-sm": 1.6666666666666667,
+          "mode-md": 1.5714285714285714,
+          "mode-lg": 1.5
         },
-        "description": "Button line height in px",
+        "description": "Button line height as a ratio of the font size, (fontSize + 8) / fontSize",
         "hidden": false
       },
       {

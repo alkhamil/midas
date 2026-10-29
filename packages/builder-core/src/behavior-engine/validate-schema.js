@@ -145,7 +145,7 @@ function stateProblems(schema, allTokens, props) {
  */
 function tokenKindProblems(schema, allTokens) {
     const kinds = isPlainObject(schema.tokenKinds) ? schema.tokenKinds : {};
-    return allTokens.filter(t => !['length', 'color'].includes(kinds[t])).map(t => `token "${t}" has no kind (length or color)`);
+    return allTokens.filter(t => !['length', 'ratio', 'color'].includes(kinds[t])).map(t => `token "${t}" has no kind (length, ratio or color)`);
 }
 
 /**

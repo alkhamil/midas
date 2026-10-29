@@ -11,7 +11,7 @@ const num = (id, name, collectionId, values) => ({ id, name, type: 'number', col
 const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
 const sizeItems = () => [
     num('i-fs', 'button/fontSize', 'c-size', { sm: 14 }),
-    num('i-lh', 'button/lineHeight', 'c-size', { sm: 20 }),
+    num('i-lh', 'button/lineHeight', 'c-size', { sm: 1.5 }),
     num('i-px', 'button/paddingX', 'c-size', { sm: 12 }),
     num('i-py', 'button/paddingY', 'c-size', { sm: 6 }),
     num('i-gap', 'button/gap', 'c-size', { sm: 6 }),

@@ -135,7 +135,7 @@ function variables() {
         color(`i-border${suffix}`, 'button/border', ids.variant, vals.border), color(`i-border-focus${suffix}`, 'button/border-focus', ids.variant, vals.borderFocus),
     ];
     const sizeTokens = [
-        number('i-fs', 'button/fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'button/lineHeight', ids.size, { sm: 20, lg: 27 }),
+        number('i-fs', 'button/fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'button/lineHeight', ids.size, { sm: (14 + 8) / 14, lg: (18 + 8) / 18 }),
         number('i-px', 'button/paddingX', ids.size, { sm: 12, lg: 16 }), number('i-py', 'button/paddingY', ids.size, { sm: 6, lg: 8 }),
         number('i-gap', 'button/gap', ids.size, { sm: 6, lg: 8 }), number('i-radius', 'button/radius', ids.size, { sm: 6, lg: 8 }),
         number('i-icon', 'button/icon-size', ids.size, { sm: 14, lg: 18 }),

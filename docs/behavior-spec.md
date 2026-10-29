@@ -155,7 +155,7 @@ Everything the automated tests do not cover. Run once after stage 9, highest ris
 
 ## Decisions recorded later (supersede the rework section where they differ)
 
-1. lineHeight is px. A variable named Button/lineHeight holds the line height in px (for example 20 for a 14 px font). The engine resolves it to px, and codegen writes it as line-height in px. The node field lineHeight stays the editor's ratio (px / font size). A value under 4 is an error (line-height-looks-like-ratio), so a ratio cannot pass silently.
+1. lineHeight is a unitless ratio. A variable named Button/lineHeight holds the ratio per Size mode, (fontSize + 8) / fontSize (1.5714 at 14 px, 1.5 at 16 px), and resolves unchanged; codegen writes it as line-height without a unit. The node field lineHeight is the same ratio, so a bound label takes the variable directly.
 2. Override detection compares bindings, not materialized values. A field bound through vars is never an override (fieldsBoundBy). The master copy does not overwrite a bound field either (isCopiedField): its variable decides its value.
 3. Canvas preview is scoped to the instance root background and border (bg and border). The preview is a per-instance colour lookup read in the GPU quad path, not stored in the document or history. Persistent disabled wins over any preview state. Text colour (fg) stays in the Preview section as read-only rows; the glyph atlas is not changed.
 

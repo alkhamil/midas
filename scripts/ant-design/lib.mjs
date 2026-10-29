@@ -79,7 +79,7 @@ export function bake(spec, inherited = {}) {
         spec.vars[key] = item.id;
         return resolveVar(item, modes);
     };
-    for (const p of ['w', 'h', 'gap', 'radius', 'sw', 'opacity', 'fs', 'fw', 'minW', 'minH']) if (isBind(spec[p])) spec[p] = take(p, { sw: 'strokeWidth', fs: 'fontSize', fw: 'fontWeight' }[p] || p, spec[p]);
+    for (const p of ['w', 'h', 'gap', 'radius', 'sw', 'opacity', 'fs', 'fw', 'lh', 'minW', 'minH']) if (isBind(spec[p])) spec[p] = take(p, { sw: 'strokeWidth', fs: 'fontSize', fw: 'fontWeight', lh: 'lineHeight' }[p] || p, spec[p]);
     if (isBind(spec.fill)) spec.fill = take('fill', spec.t === 'text' ? 'fill' : 'fills.0', spec.fill);
     if (isBind(spec.stroke)) spec.stroke = take('stroke', 'stroke', spec.stroke);
     if (isBind(spec.visible)) spec.visible = take('visible', 'visible', spec.visible);
@@ -119,6 +119,7 @@ function toNode(s, id, parentId, x, y, w, h) {
     if (s.t === 'text') {
         const n = { id, type: 'text', name: s.name || String(s.text ?? 'Text').slice(0, 30), parentId, x: r2(x), y: r2(y), w: r2(w), h: r2(h), ...BASE, ...TEXT, fill: s.fill || '#262626', text: String(s.text ?? ''), fontSize: s.fs || 14, fontWeight: s.fw || 400, lineHeight: s.lh || 1.4286, autoW: !isNum(s.w) && s.w !== 'fill', ...(s.style || {}) };
         if (s.w === 'fill') n.layoutSizingH = 'fill';
+        if (isNum(s.lh)) n.lineHeight = s.lh;
         if (s.cprop) n.propBind = { ...(n.propBind || {}), text: s.cprop };
         if (s.vars && Object.keys(s.vars).length) n.vars = { ...s.vars };
         if (s.extra) Object.assign(n, s.extra);

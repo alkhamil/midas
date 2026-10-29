@@ -54,9 +54,6 @@ export function diagnoseDocument(doc) {
                         if (value === undefined) {
                             out.push({ severity: 'error', code: 'variable-missing-in-mode', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" has no value in mode "${mode.name}" of "${collection.name}".` });
                         }
-                        else if (token === 'lineHeight' && typeof value === 'number' && value < 4) {
-                            out.push({ severity: 'error', code: 'line-height-looks-like-ratio', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" is ${value} in mode "${mode.name}". Line height is in px (for example 20), not a ratio.` });
-                        }
                     }
                 }
             }

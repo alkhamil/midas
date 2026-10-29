@@ -46,7 +46,7 @@ export interface TokenGroups {
     [group: string]: string[];
 }
 
-export type TokenKind = 'length' | 'color';
+export type TokenKind = 'length' | 'ratio' | 'color';
 
 /** The element a component is written as, and what stops it reacting. */
 export interface ElementDef {

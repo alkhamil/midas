@@ -248,7 +248,7 @@ function buildVariables() {
 
         // Size tokens (all required Button size tokens)
         { id: 'var-btn-fs', collectionId: COL_SIZE_ID, name: 'Button/fontSize', type: 'number', values: sMode(12, 14, 16), description: 'Button font size', hidden: false },
-        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode(16, 20, 24), description: 'Button line height in px', hidden: false },
+        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode((12 + 8) / 12, (14 + 8) / 14, (16 + 8) / 16), description: 'Button line height as a ratio of the font size, (fontSize + 8) / fontSize', hidden: false },
         { id: 'var-btn-px', collectionId: COL_SIZE_ID, name: 'Button/paddingX', type: 'number', values: sMode(12, 16, 20), description: 'Button horizontal padding', hidden: false },
         { id: 'var-btn-py', collectionId: COL_SIZE_ID, name: 'Button/paddingY', type: 'number', values: sMode(6, 10, 14), description: 'Button vertical padding', hidden: false },
         { id: 'var-btn-gap', collectionId: COL_SIZE_ID, name: 'Button/gap', type: 'number', values: sMode(6, 8, 10), description: 'Button icon-label gap', hidden: false },

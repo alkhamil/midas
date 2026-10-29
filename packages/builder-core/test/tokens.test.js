@@ -10,7 +10,7 @@ const num = (id, name, collectionId, values) => ({ id, name, type: 'number', col
 const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
 const baseItems = () => [
     num('i-fs', 'button/fontSize', 'c-size', { sm: 14, lg: 18 }),
-    num('i-lh', 'button/lineHeight', 'c-size', { sm: 20, lg: 27 }),
+    num('i-lh', 'button/lineHeight', 'c-size', { sm: 1.5, lg: 1.5 }),
     num('i-px', 'button/paddingX', 'c-size', { sm: 12, lg: 16 }),
     num('i-py', 'button/paddingY', 'c-size', { sm: 6, lg: 8 }),
     num('i-gap', 'button/gap', 'c-size', { sm: 6, lg: 8 }),
@@ -37,7 +37,7 @@ test('size and variant tokens resolve to CSS custom properties, with the stored 
     const { vars, unresolved } = resolveTokens(button, binding(), modes(), variables());
     assert.deepEqual(vars, {
         '--button-font-size': '14px',
-        '--button-line-height': '20px',
+        '--button-line-height': '1.5',
         '--button-padding-x': '12px',
         '--button-padding-y': '6px',
         '--button-gap': '6px',
