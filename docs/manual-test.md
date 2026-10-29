@@ -340,3 +340,5 @@ Setup: the prototype fixture, opened by import. Play from Home.
    - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour.
 2. **Disabled has no outline.** Turn on Disabled, then Focus.
    - Expected: no outline, and no focus colour.
+3. **Dashed.** Set the Variant of Save to Dashed.
+   - Expected: the border is dashed on the canvas and in Play, and the generated `Button.css` has `border-style: dashed` for the dashed Variant. Set Outlined back: the border is solid.

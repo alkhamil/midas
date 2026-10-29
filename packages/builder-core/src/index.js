@@ -21,6 +21,7 @@ export * from './behavior-engine/instance-vars.js';
 export * from './behavior-engine/layers.js';
 export * from './behavior-engine/edits.js';
 export * from './behavior-engine/icon-slot.js';
+export * from './behavior-engine/variant-style.js';
 export * from './prototype/data.js';
 export * from './prototype/validate.js';
 export * from './prototype/plan.js';

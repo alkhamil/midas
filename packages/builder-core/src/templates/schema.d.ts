@@ -23,6 +23,8 @@ export interface VariableProp {
     source: 'variable';
     /** Name of the variable collection the prop is auto-matched to (case-insensitive). */
     collection: string;
+    /** How the root is drawn in one mode, by mode id: its border style. Modes without a rule are solid. */
+    styles?: Record<string, { borderStyle: 'solid' | 'dashed' | 'dotted' }>;
     visibleIf?: VisibleIf;
 }
 

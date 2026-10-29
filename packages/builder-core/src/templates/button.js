@@ -19,7 +19,7 @@ export const BUTTON = {
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     outline: { width: 2, offset: 1 },
     props: {
-        variant: { source: 'variable', collection: 'Variant' },
+        variant: { source: 'variable', collection: 'Variant', styles: { dashed: { borderStyle: 'dashed' } } },
         color: { source: 'variable', collection: 'Color' },
         size: { source: 'variable', collection: 'Size' },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).

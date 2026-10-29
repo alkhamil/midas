@@ -18,6 +18,9 @@ function propProblems(name, def, props) {
     if (!isPlainObject(def)) return [`prop "${name}" must be an object`];
     if (def.source === 'variable') {
         if (!isName(def.collection)) out.push(`prop "${name}" is variable but names no collection`);
+        for (const [mode, rule] of Object.entries(def.styles ?? {})) {
+            if (!['solid', 'dashed', 'dotted'].includes(rule?.borderStyle)) out.push(`prop "${name}" style for mode "${mode}" has no border style (solid, dashed or dotted)`);
+        }
     } else if (def.source === 'literal') {
         if (!LITERAL_TYPES.includes(def.type)) out.push(`prop "${name}" has unknown type "${def.type}"`);
         if (def.type === 'enum') {

@@ -85,6 +85,7 @@ function displayRules(template) {
         if (key === 'root' && template.outline) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`);
         }
+        if (key === 'root') decls.push('  border-width: 1px;\n', '  border-style: solid;\n');
         for (const [prop, source] of Object.entries(props)) {
             const css = NODE_PROPERTIES[kind][prop].css;
             if (!css || !tokens.includes(source)) continue;
@@ -120,6 +121,11 @@ function stylesheet(template, binding, variables, problems) {
     const blocks = displayRules(template);
     // An icon-only instance has no label padding: its icon is the whole content, and the minimum width keeps it square.
     if (iconOnlyValuesOf(template).length) blocks.push(`.${template.id}-icon-only {\n  padding-inline: 0;\n}\n`);
+    for (const [dim, def] of variableProps(template)) {
+        for (const [mode, rule] of Object.entries(def.styles ?? {})) {
+            if (modes[dim]?.includes(mode)) blocks.push(`.${template.id}[data-${dim}="${mode}"] {\n  border-style: ${rule.borderStyle};\n}\n`);
+        }
+    }
     const { disabledState } = template.element;
     const defaults = resolveProps(template, {});
     for (const combo of combos) {
