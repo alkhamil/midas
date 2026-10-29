@@ -5,6 +5,7 @@ import { db } from '../db/index.js';
 import { designFiles, fileLibraries, libraries, libraryVersions } from '../db/schema.js';
 import { canSeeFile, requireUser } from '../lib/auth.js';
 import { variablesJson, type LibrarySnapshot } from '../lib/library.js';
+import { buildLibraryPackage, GENERATOR_VERSION, PackageBuildError, STEP_LABEL, type PackageEvent, type PackageInfo } from '../lib/package.js';
 import { deletePrefix, getObject, putObject } from '../lib/s3.js';
 
 type VersionRow = typeof libraryVersions.$inferSelect;
@@ -23,15 +24,47 @@ async function sourceFile(req: FastifyRequest, id: string) {
     return f && canSeeFile(req.user!, f) ? f : null;
 }
 
-async function libraryOf(req: FastifyRequest, id: string) {
+export async function libraryOf(req: FastifyRequest, id: string) {
     const [l] = await db.select().from(libraries)
         .where(and(eq(libraries.id, id), eq(libraries.workspaceId, req.user!.workspaceId))).limit(1);
     return l ?? null;
 }
 
-async function latestVersion(libraryId: string): Promise<VersionRow | null> {
+export async function latestVersion(libraryId: string): Promise<VersionRow | null> {
     const [v] = await db.select().from(libraryVersions).where(eq(libraryVersions.libraryId, libraryId)).orderBy(desc(libraryVersions.seq)).limit(1);
     return v ?? null;
+}
+
+/** A library version: the one asked for with `?seq=`, else the latest. */
+async function versionFor(libraryId: string, seq?: string): Promise<VersionRow | null> {
+    if (!seq)
+        return latestVersion(libraryId);
+    const [v] = await db.select().from(libraryVersions).where(and(eq(libraryVersions.libraryId, libraryId), eq(libraryVersions.seq, Number(seq)))).limit(1);
+    return v ?? null;
+}
+
+/** The React package of a library version: built from the snapshot on the first request, then kept next to it (per generator version). */
+export async function packageOf(l: typeof libraries.$inferSelect, v: VersionRow, emit: (e: PackageEvent) => void = () => {}): Promise<{ tgz: Buffer; info: PackageInfo; cached: boolean }> {
+    const key = `libraries/${l.id}/${v.seq}.pkg${GENERATOR_VERSION}`;
+    emit({ type: 'step', id: 'load', label: STEP_LABEL.load, status: 'running' });
+    try {
+        const [meta, tgz] = await Promise.all([getObject(`${key}.json`), getObject(`${key}.tgz`)]);
+        emit({ type: 'step', id: 'load', label: STEP_LABEL.load, status: 'done', detail: 'already built' });
+        return { tgz, info: JSON.parse(meta.toString('utf8')) as PackageInfo, cached: true };
+    }
+    catch { /* not built yet */ }
+    const snapshot = JSON.parse(String(await getObject(v.snapshotKey))) as LibrarySnapshot;
+    emit({ type: 'step', id: 'load', label: STEP_LABEL.load, status: 'done', detail: `version ${v.seq} · ${snapshot.components.length} components` });
+    const built = await buildLibraryPackage(snapshot, { libraryId: l.id, libraryName: l.name, seq: v.seq, publishedAt: v.publishedAt.getTime() }, emit);
+    emit({ type: 'step', id: 'save', label: STEP_LABEL.save, status: 'running' });
+    try {
+        await Promise.all([putObject(`${key}.tgz`, built.tgz, 'application/gzip'), putObject(`${key}.json`, Buffer.from(JSON.stringify(built.info)), 'application/json')]);
+    }
+    catch (e) {
+        throw new PackageBuildError('save', `The package was built but could not be stored: ${(e as Error).message}`, 'Check that the object storage (S3) is reachable and has free space, then try again.');
+    }
+    emit({ type: 'step', id: 'save', label: STEP_LABEL.save, status: 'done' });
+    return { ...built, cached: false };
 }
 
 /** Ringkasan library untuk daftar di Studio (bentuk sama dengan `LIBS.published` di engine). */
@@ -127,6 +160,64 @@ export async function libraryRoutes(app: FastifyInstance) {
         if (req.query.format === 'css')
             return reply.header('content-type', 'text/css').send(`:root { ${Object.entries(vars).map(([k, x]) => `--${k}: ${x};`).join(' ')} }`);
         return vars;
+    });
+
+    // The React package of a version (default: latest): what it contains and where to download it. Built on first use.
+    app.get<{ Params: { id: string }; Querystring: { seq?: string } }>('/api/libraries/:id/package', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l && await versionFor(l.id, req.query.seq);
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found' });
+        try {
+            const { info } = await packageOf(l, v);
+            return { package: { ...info, downloadUrl: `/api/libraries/${l.id}/package.tgz?seq=${v.seq}` } };
+        }
+        catch (e) {
+            req.log.error(e, 'package build failed');
+            return reply.code(500).send({ error: 'package_failed', message: `The package could not be built: ${(e as Error).message}` });
+        }
+    });
+
+    // The same build, told step by step as it happens (NDJSON: one JSON event per line), for the progress dialog in Studio.
+    app.get<{ Params: { id: string }; Querystring: { seq?: string } }>('/api/libraries/:id/package/build', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l && await versionFor(l.id, req.query.seq);
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found' });
+        reply.hijack();
+        const raw = reply.raw;
+        raw.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' });
+        const emit = (e: PackageEvent) => { raw.write(`${JSON.stringify(e)}\n`); };
+        try {
+            const { info, cached } = await packageOf(l, v, emit);
+            if (cached)
+                for (const issue of info.issues ?? [])
+                    emit({ type: 'issue', issue });
+            emit({ type: 'done', package: { ...info, downloadUrl: `/api/libraries/${l.id}/package.tgz?seq=${v.seq}` } });
+        }
+        catch (e) {
+            req.log.error(e, 'package build failed');
+            emit(e instanceof PackageBuildError
+                ? { type: 'error', step: e.step, message: e.message, fix: e.fix, where: e.where }
+                : { type: 'error', step: 'read', message: (e as Error).message, fix: 'Try again. If it keeps failing, report it with the library name and version.' });
+        }
+        raw.end();
+    });
+
+    // The package itself: a tarball `npm install ./file.tgz` accepts.
+    app.get<{ Params: { id: string }; Querystring: { seq?: string } }>('/api/libraries/:id/package.tgz', async (req, reply) => {
+        const l = await libraryOf(req, req.params.id);
+        const v = l && await versionFor(l.id, req.query.seq);
+        if (!l || !v)
+            return reply.code(404).send({ error: 'not_found' });
+        try {
+            const { tgz, info } = await packageOf(l, v);
+            return reply.header('content-type', 'application/gzip').header('content-disposition', `attachment; filename="${info.fileName}"`).send(tgz);
+        }
+        catch (e) {
+            req.log.error(e, 'package build failed');
+            return reply.code(500).send({ error: 'package_failed', message: `The package could not be built: ${(e as Error).message}` });
+        }
     });
 
     // Publish Library: versi baru dari file design system.

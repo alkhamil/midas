@@ -4142,6 +4142,7 @@ function openDocMenu(anchor) {
         return;
     openHomeMenu(r.left, r.bottom + 4, [
         ['Publish library', () => publishLibrary()],
+        ...(LIBS.published.some(x => x.id === id) ? [['React package…', () => libPackageDialog(id)]] : []),
         [meta.starred ? 'Remove from Starred' : 'Add to Starred', () => libStar(id)],
         ['Duplicate', async () => { await libDuplicate(id); toast('Duplicated as \u201c' + meta.name + ' copy\u201d.'); }],
         ['Rename', () => renameDocFrom($('#left-heading-title'))],
@@ -4227,6 +4228,8 @@ function openLibraryMenu(x, y, id) {
         ['Download', () => libDownload(id)],
         ['Duplicate', () => libDuplicate(id)],
         ['Move to trash', () => Promise.resolve(libTrash(id, true)).then(() => homeLibsLoad()), 'danger'],
+        '-',
+        ['React package…', () => libPackageDialog(id)],
         '-',
         ['Unpublish library', () => libUnpublish(id), 'danger'],
     ]);
@@ -8056,7 +8059,9 @@ function fillPage(fileId, id) {
             return; // another file was opened meanwhile
         const stub = doc.data.pages.find(p => p.id === id);
         if (stub && data) {
+            const parentId = data.parentId || null; // parse() below sees this page alone and would clear its parent (a page inside a folder; the folder is another page of the file)
             const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: doc.data.variables, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
+            parsed.parentId = parentId;
             // The page is checked against the document as it would be with it, before it becomes editable. A failure throws and the page stays a stub.
             const withPage = { ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) };
             assertPagesBehavior(withPage, [id]);
@@ -13755,12 +13760,47 @@ function snapshotNodesInOrder(c) {
     }
     return out.length === c.nodes.length ? out : c.nodes;
 }
+/**
+ * What the Documentation frame of a component page says (category and status tags, description, Do / Don't, accessibility), for every
+ * component on that page: it travels with the snapshot, so the library's documentation site can show it.
+ */
+function componentDocs() {
+    const out = new Map();
+    for (const pg of doc.data.pages) {
+        const frame = pg.nodes.find(n => !n.parentId && n.name === 'Documentation');
+        if (!frame)
+            continue;
+        const kids = new Map();
+        for (const n of pg.nodes)
+            if (n.parentId)
+                (kids.get(n.parentId) || kids.set(n.parentId, []).get(n.parentId)).push(n);
+        const under = (id, f) => (kids.get(id) || []).filter(f);
+        const texts = (id) => under(id, n => n.type === 'text').map(n => String(n.text ?? '').trim()).filter(Boolean);
+        const section = name => (kids.get(frame.id) || []).find(n => n.name === name);
+        const tags = (kids.get(section('Meta')?.id) || []).map(t => texts(t.id)[0]).filter(Boolean);
+        const columns = (kids.get(section('Usage')?.id) || []).find(n => n.name === 'Usage columns');
+        const column = label => (kids.get(columns?.id) || []).find(n => (kids.get(n.id) || []).some(t => t.name === 'Heading' && t.text === label));
+        const items = col => (kids.get(col?.id) || []).filter(t => t.name === 'Item').map(t => String(t.text ?? '').trim()).filter(Boolean);
+        const list = (kids.get(section('Accessibility')?.id) || []).find(n => n.name === 'Accessibility list');
+        const d = {
+            category: tags[0], status: tags[1],
+            description: String((kids.get(frame.id) || []).find(n => n.name === 'Description')?.text ?? '').trim() || undefined,
+            dos: items(column('Do')), donts: items(column("Don't")),
+            a11y: (kids.get(list?.id) || []).map(t => String(t.text ?? '').replace(/^\s*[•\-*]\s*/, '').trim()).filter(Boolean),
+        };
+        for (const r of pg.nodes)
+            if (!r.parentId && (r.componentSet || r.component))
+                out.set(r.id, d);
+    }
+    return out;
+}
 function librarySnapshot() {
     const nodes = allNodes(), roots = nodes.filter(n => n.componentSet || n.component && !parentSetOf(n));
     const vars = cleanVariables(structuredClone(doc.data.variables));
     vars.collections = vars.collections.filter(c => !c.libId);
     vars.items = vars.items.filter(i => !i.libId && vars.collections.some(c => c.id === i.collectionId));
-    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, ordered: true, hidden: isSoftDeletedComp(r) || undefined, nodes: subtreeInOrder(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
+    const docs = componentDocs();
+    const components = roots.map(r => ({ id: r.id, name: r.name, set: !!r.componentSet, ordered: true, hidden: isSoftDeletedComp(r) || undefined, doc: docs.get(r.id), nodes: subtreeInOrder(r.id).map(n => { const c = structuredClone(n); delete c._drag; if (n.id === r.id)
             c.parentId = null; return c; }) }));
     return { components, variables: vars };
 }
@@ -13804,6 +13844,10 @@ function startBusy(label, pct = null) {
     return api;
 }
 async function publishLibrary() {
+    if (lazyPages.size) {
+        toast('Some pages are still loading. Wait a moment, then publish.');
+        return;
+    }
     const snapshot = librarySnapshot();
     if (!snapshot.components.some(c => !c.hidden) && !snapshot.variables.items.length) {
         toast('Create a component or a variable first, then publish.');
@@ -13821,9 +13865,19 @@ async function publishLibrary() {
     snapshot.assets = {};
     publishDialog(snapshot, LIBS.published.find(x => x.id === lib.fileId) || null);
 }
+/** A small vector-only component (no text, no instances): an icon, listed apart from UI components when publishing. */
+function libIsIcon(c) {
+    if (c.set) return false;
+    const root = c.nodes.find(n => n.id === c.id);
+    if (!root || root.w > 64 || root.h > 64) return false;
+    const layers = c.nodes.filter(n => n.id !== root.id);
+    return layers.length > 0 && layers.every(n => ['path', 'rect', 'ellipse', 'frame', 'group'].includes(n.type) && !n.isInstance) && layers.some(n => ['path', 'rect', 'ellipse'].includes(n.type));
+}
 // Publish form: the library name, release notes, and which components to share. Other files in the workspace can then use them.
 function publishDialog(snapshot, current) {
-    const comps = snapshot.components.filter(c => !c.hidden).map(c => ({ componentKey: c.id, componentName: c.name }));
+    const comps = snapshot.components.filter(c => !c.hidden).map(c => ({ componentKey: c.id, componentName: c.name, icon: libIsIcon(c) }));
+    const hasIcons = comps.some(m => m.icon);
+    let tab = 'components';
     const include = comps.map(m => !/^[_.]/.test(m.componentName));
     const vars = snapshot.variables.items.length, nextVersion = (current?.version || 0) + 1;
     let query = '';
@@ -13833,8 +13887,10 @@ function publishDialog(snapshot, current) {
     const isInternalName = i => /^[_.]/.test(comps[i].componentName);
     const shortName = m => String(m.componentName).split('/').pop().trim() || String(m.componentName);
     const matches = m => !query || String(m.componentName).toLowerCase().includes(query);
+    const inTab = i => !!comps[i].icon === (tab === 'icons');
+    const tabCount = t => { const idx = comps.map((m, i) => (!!m.icon === (t === 'icons') && !isInternalName(i) ? i : -1)).filter(i => i >= 0); return `${idx.filter(i => include[i]).length}/${idx.length}`; };
     const inFolder = (i, key) => { const k = folderParts(comps[i]).join('/'); return k === key || k.startsWith(key + '/'); };
-    const groupIdx = key => comps.map((m, i) => (matches(m) && !isInternalName(i) && inFolder(i, key) ? i : -1)).filter(i => i >= 0);
+    const groupIdx = key => comps.map((m, i) => (matches(m) && inTab(i) && !isInternalName(i) && inFolder(i, key) ? i : -1)).filter(i => i >= 0);
     const chevron = open => `<svg class="lp-chev ${open ? 'open' : ''}" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const compRow = (m, i) => `<div class="lp-comp"><div class="lp-comp-head"><input type="checkbox" data-lp-include="${i}" ${include[i] ? 'checked' : ''} aria-label="Publish ${esc(m.componentName)}"><span class="lp-comp-name" title="${esc(m.componentName)}">${esc(shortName(m))}</span></div></div>`;
     const tree = idx => {
@@ -13860,19 +13916,21 @@ function publishDialog(snapshot, current) {
     const lists = () => {
         const shown = [], internal = [];
         comps.forEach((m, i) => {
-            if (!matches(m)) return;
+            if (!matches(m) || !inTab(i)) return;
             (isInternalName(i) ? internal : shown).push(i);
         });
-        const total = comps.filter((_, i) => !isInternalName(i)).length, chosen = comps.filter((_, i) => include[i] && !isInternalName(i)).length;
+        const total = comps.filter((_, i) => inTab(i) && !isInternalName(i)).length, chosen = comps.filter((_, i) => inTab(i) && include[i] && !isInternalName(i)).length;
+        const what = tab === 'icons' ? 'icons' : 'components';
         const internalHtml = internal.length ? `<details class="lp-internal"><summary>Internal parts (${internal.length}) · used by other components, shared along with them</summary></details>` : '';
-        return `<div class="lp-summary"><span><b>${chosen}</b> of ${total} components</span></div>
-<section class="lp-section"><div class="lp-cats">${tree(shown) || `<p class="small-label">${query ? 'Nothing matches your search.' : 'No components.'}</p>`}</div>${internalHtml}</section>`;
+        return `<div class="lp-summary"><span><b>${chosen}</b> of ${total} ${what}</span></div>
+<section class="lp-section"><div class="lp-cats">${tree(shown) || `<p class="small-label">${query ? 'Nothing matches your search.' : `No ${what}.`}</p>`}</div>${internalHtml}</section>`;
     };
     modal(`${modalHeader(current ? 'Publish library update' : 'Publish as library', 'Other files in your workspace can use the components and variables you share here.')}
 <form id="lp-form" class="lp-form" novalidate>
 <label class="lp-field"><span>Library name</span><input class="lp-input" id="lp-name" value="${esc(current?.name || doc.data.name)}" required maxlength="120"></label>
 <div class="lp-field"><span>Version</span><small>${current ? `Publishing version ${nextVersion} · latest is ${current.version}` : 'First release.'}</small></div>
 <label class="lp-field"><span>Release notes</span><textarea class="lp-input" id="lp-notes" rows="2" maxlength="5000" placeholder="What changed in this version?"></textarea></label>
+${hasIcons ? `<div class="lp-tabs" role="tablist"><button type="button" role="tab" class="active" aria-selected="true" data-lp-tab="components">Components <small data-lp-tabcount="components">${tabCount('components')}</small></button><button type="button" role="tab" aria-selected="false" data-lp-tab="icons">Icons <small data-lp-tabcount="icons">${tabCount('icons')}</small></button></div>` : ''}
 <div class="lp-toolbar"><input type="search" class="lp-input lp-search" id="lp-search" placeholder="Search components" autocomplete="off" aria-label="Search components"><button type="button" class="wide-button" data-lp-all="1">Select all</button><button type="button" class="wide-button" data-lp-all="0">Select none</button></div>
 <div id="lp-lists">${lists()}</div>
 <small class="lp-vars">${vars} variable${vars === 1 ? '' : 's'} from this file are shared as well.</small>
@@ -13901,7 +13959,8 @@ function publishDialog(snapshot, current) {
     const applyIncludes = () => form.querySelectorAll('[data-lp-include]').forEach(el => { el.checked = !!include[+el.dataset.lpInclude]; });
     const updateCounts = () => {
         const summary = form.querySelector('.lp-summary');
-        if (summary) summary.innerHTML = `<span><b>${comps.filter((_, i) => include[i] && !isInternalName(i)).length}</b> of ${comps.filter((_, i) => !isInternalName(i)).length} components</span>`;
+        if (summary) summary.innerHTML = `<span><b>${comps.filter((_, i) => inTab(i) && include[i] && !isInternalName(i)).length}</b> of ${comps.filter((_, i) => inTab(i) && !isInternalName(i)).length} ${tab === 'icons' ? 'icons' : 'components'}</span>`;
+        form.querySelectorAll('[data-lp-tabcount]').forEach(el => { el.textContent = tabCount(el.dataset.lpTabcount); });
         form.querySelectorAll('[data-lp-count]').forEach(el => {
             const idx = groupIdx(el.dataset.lpCount);
             el.textContent = `${idx.filter(i => include[i]).length}/${idx.length}`;
@@ -13910,11 +13969,22 @@ function publishDialog(snapshot, current) {
     };
     $('#lp-search').oninput = e => { collect(); query = e.target.value.trim().toLowerCase(); redraw(); };
     form.addEventListener('click', e => {
-        const all = e.target.closest('[data-lp-all]'), fold = e.target.closest('[data-lp-catfold]');
+        const all = e.target.closest('[data-lp-all]'), fold = e.target.closest('[data-lp-catfold]'), tabBtn = e.target.closest('[data-lp-tab]');
+        if (tabBtn && tabBtn.dataset.lpTab !== tab) {
+            collect();
+            tab = tabBtn.dataset.lpTab;
+            query = '';
+            const search = $('#lp-search');
+            search.value = '';
+            search.placeholder = tab === 'icons' ? 'Search icons' : 'Search components';
+            search.setAttribute('aria-label', search.placeholder);
+            form.querySelectorAll('[data-lp-tab]').forEach(b => { const on = b.dataset.lpTab === tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
+            redraw();
+        }
         if (all) {
             collect();
             // Only what the search currently shows; internal parts keep their own choice.
-            comps.forEach((m, i) => { if (matches(m) && !isInternalName(i)) include[i] = all.dataset.lpAll === '1'; });
+            comps.forEach((m, i) => { if (matches(m) && inTab(i) && !isInternalName(i)) include[i] = all.dataset.lpAll === '1'; });
             applyIncludes();
             updateCounts();
         }
@@ -13944,29 +14014,166 @@ function publishDialog(snapshot, current) {
         const chosen = comps.filter((_, i) => include[i]);
         if (!chosen.length && !vars)
             return showErrors(['Choose at least one component to publish.']);
-        submit.disabled = true;
-        submit.textContent = 'Publishing…';
-        const busy = startBusy('Publishing…');
+        const name = $('#lp-name').value.trim(), notes = $('#lp-notes').value.trim() || null, fileId = lib.fileId;
+        const pd = progressDialog(`Publishing “${name}”`, 'The design is shared with your workspace, then turned into a React package.');
+        let at = 'collect', published;
         try {
+            pd.step('lib', 'collect', 'Collecting components', 'running');
             // Components that the chosen ones are built from (nested instances, swap defaults) travel along, or their copies in other files would lose those parts.
             const send = snapshotDependencies(snapshot, new Set(chosen.map(m => m.componentKey))), components = snapshot.components.filter(c => send.has(c.id));
             const assets = await snapshotAssets(components);
-            const published = await libraryApi.publish(lib.fileId, { name: $('#lp-name').value.trim(), releaseNotes: $('#lp-notes').value.trim() || null, snapshot: { ...snapshot, components, assets }, componentKeys: chosen.map(m => m.componentKey) });
-            busy.done();
-            closeModal();
-            LIBS.published = [...LIBS.published.filter(x => x.id !== lib.fileId), published];
-            LIBS.snaps.delete(lib.fileId);
-            toast(`Published “${published.name}” version ${published.version}: ${published.components} component${published.components === 1 ? '' : 's'}, ${published.variables} variable${published.variables === 1 ? '' : 's'}.`);
+            pd.step('lib', 'collect', 'Collecting components', 'done', `${components.length} components · ${Object.keys(assets).length} assets`);
+            at = 'upload';
+            pd.step('lib', 'upload', `Publishing version ${nextVersion}`, 'running');
+            published = await libraryApi.publish(fileId, { name, releaseNotes: notes, snapshot: { ...snapshot, components, assets }, componentKeys: chosen.map(m => m.componentKey) });
+            pd.step('lib', 'upload', `Published version ${published.version}`, 'done', `${published.components} component${published.components === 1 ? '' : 's'} · ${published.variables} variable${published.variables === 1 ? '' : 's'}`);
+            LIBS.published = [...LIBS.published.filter(x => x.id !== fileId), published];
+            LIBS.snaps.delete(fileId);
             renderAssets();
         }
         catch (err) {
-            busy.done();
-            showErrors(err?.body?.errors || [err?.message || String(err)]);
-            submit.disabled = false;
-            submit.textContent = `Publish version ${nextVersion}`;
+            pd.fail(publishFailure(err, at), { retry: () => publishLibrary() });
+            return;
         }
+        await runPackageBuild(pd, fileId, published.version, { published: true });
     };
 }
+
+// The React package of a published library: what the design turns into (components with their props, icons, tokens) and the tarball to install.
+// The server builds it from the published version; the first request takes a moment.
+async function libPackageDialog(id, seq = null, preloaded = null) {
+    const propText = p => `${p.name}${p.type === 'enum' ? `: ${Object.values(p.values).map(v => `"${v}"`).join(' | ')}` : p.type === 'boolean' ? ': boolean' : p.type === 'node' ? ': ReactNode' : ': string'}`;
+    const body = () => document.querySelector('#modal .pkg-body');
+    let info = preloaded, versions = [];
+    if (!info) {
+        // Not built yet (or being looked up): the progress dialog shows what is going on, then the package opens.
+        if (!seq) seq = (await libraryApi.history(id).then(h => h.versions[0]?.seq).catch(() => null)) || null;
+        const pd = progressDialog('React package', 'Generated from the published design.');
+        await runPackageBuild(pd, id, seq, { onDone: done => libPackageDialog(id, seq, done) });
+        return;
+    }
+    modal(`${modalHeader('React package', 'Components, icons and theme tokens generated from the published design.')}<div class="pkg-body"><p class="small-label">Loading…</p></div>`);
+    versions = await libraryApi.history(id).then(h => h.versions).catch(() => []);
+    const docs = await libraryApi.docs(id).catch(() => null);
+    if (!body())
+        return; // the dialog was closed meanwhile
+    const shown = info.components.filter(c => !c.internal), install = `npm install ${info.packageName}`, tgzInstall = `npm install ./${info.fileName}`;
+    const host = location.host, registry = `${location.origin}/api/registry/`;
+    const npmrc = `${info.packageName.split('/')[0]}:registry=${registry}\n//${host}/api/registry/:_authToken=<your API token>`;
+    const usage = `import '${info.packageName}/tokens.css';\nimport '${info.packageName}/styles.css';\nimport { ${shown[0]?.exportName || 'Button'} } from '${info.packageName}';`;
+    const kb = Math.max(1, Math.round(info.sizeBytes / 1024));
+    body().innerHTML = `<div class="lp-form">
+<div class="pkg-meta"><b>${esc(info.packageName)}</b><span>version ${esc(info.version)}</span><span>${shown.length} component${shown.length === 1 ? '' : 's'}</span><span>${info.icons.length} icon${info.icons.length === 1 ? '' : 's'}</span><span>${kb} KB</span></div>
+${versions.length > 1 ? `<label class="lp-field"><span>Published version</span><select class="lp-input" id="pkg-seq">${versions.map(v => `<option value="${v.seq}" ${v.seq === info.seq ? 'selected' : ''}>Version ${v.seq}${v.releaseNotes ? ` · ${esc(v.releaseNotes.slice(0, 48))}` : ''}</option>`).join('')}</select></label>` : ''}
+<div class="lp-field"><span>Install from this server</span><pre class="pkg-code">${esc(`# .npmrc in the project\n${npmrc}\n\n${install}`)}</pre><small>Create the token under <b>API tokens</b> (the same token as for MCP). It only reads packages. Without a registry: download the .tgz below and run <code>${esc(tgzInstall)}</code>.</small></div>
+${docs ? `<div class="lp-field"><span>Documentation site</span><div class="pkg-docs"><a id="pkg-docs-link" href="${esc(docs.path)}" target="_blank" rel="noopener">${esc(location.origin + docs.path)}</a><button type="button" class="wide-button" id="pkg-docs-copy">Copy link</button></div><label class="pkg-docs-switch"><input type="checkbox" id="pkg-docs-public" ${docs.public ? 'checked' : ''}> Anyone with the link can read it (without signing in)</label><small>Install steps, versions with release notes, and a page per component with a live preview. It is made from the version you publish. The package itself always needs an API token.</small></div>` : ''}
+<div class="lp-field"><span>Use</span><pre class="pkg-code">${esc(usage)}</pre><small>Set <code>data-theme="dark"</code> on an ancestor to switch to the dark theme.</small></div>
+${issuesHtml(info.issues || info.warnings.map(w => ({ level: 'warning', kind: 'code', component: w.split(':')[0], message: w.split(':').slice(1).join(':').trim(), fix: '' })))}
+<div class="lp-field"><span>Components</span><div class="pkg-list">${shown.map(c => `<div class="pkg-comp"><b>${esc(c.exportName)}</b><div class="pkg-props">${c.props.map(p => `<code>${esc(propText(p))}</code>`).join('') || '<small>no props</small>'}</div></div>`).join('') || '<small>No components were published.</small>'}</div></div>
+<div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Close</button><button type="button" class="wide-button" id="pkg-copy">Copy .npmrc + install</button><a class="wide-button primary" id="pkg-download" href="${esc(info.downloadUrl)}" download="${esc(info.fileName)}" title="${esc(info.fileName)}">Download .tgz</a></div>
+</div>`;
+    $('#pkg-copy').onclick = async () => { try { await navigator.clipboard.writeText(`${npmrc}\n\n${install}`); toast('.npmrc lines and install command copied.'); } catch { toast('Could not copy: select the command and copy it.'); } };
+    $('#pkg-seq')?.addEventListener('change', e => libPackageDialog(id, e.target.value));
+    $('#pkg-docs-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.origin + docs.path); toast('Link copied.'); } catch { toast('Could not copy: select the link and copy it.'); } });
+    $('#pkg-docs-public')?.addEventListener('change', async e => {
+        try { await libraryApi.setDocsPublic(id, e.target.checked); toast(e.target.checked ? 'Anyone with the link can read the documentation.' : 'Only members of the workspace can read the documentation.'); }
+        catch (err) { e.target.checked = !e.target.checked; toast(err?.body?.message || 'Could not change this setting.'); }
+    });
+}
+// ---- Publish progress: what is being worked on, what went wrong, and what to do about it.
+const PUBLISH_STEPS = { collect: 'Collecting components', upload: 'Publishing the version' };
+/** A problem (from the generator) as a card: where it is, what it is, and how to fix it. */
+function issuesHtml(issues) {
+    if (!issues?.length) return '';
+    const rank = i => (i.level === 'error' ? 0 : i.kind === 'code' ? 1 : 2);
+    const list = [...issues].sort((a, b) => rank(a) - rank(b));
+    const row = i => `<li class="pp-issue ${i.level}"><div class="pp-issue-head"><b>${esc(i.component)}</b>${i.layer ? `<span>› ${esc(i.layer)}${i.count > 1 ? ` · ${i.count} places` : ''}</span>` : ''}<em>${i.level === 'error' ? 'Error' : i.kind === 'design' ? 'Design tip' : 'Not generated'}</em></div><p>${esc(i.message)}</p>${i.fix ? `<p class="pp-fix"><b>Fix:</b> ${esc(i.fix)}</p>` : ''}</li>`;
+    const errors = list.filter(i => i.level === 'error').length;
+    return `<div class="pp-issues"><div class="pp-issues-title"><b>${list.length} thing${list.length === 1 ? '' : 's'} to review</b>${errors ? `<span class="pp-bad">${errors} error${errors === 1 ? '' : 's'}</span>` : ''}</div><ul>${list.slice(0, 8).map(row).join('')}</ul>${list.length > 8 ? `<details><summary>${list.length - 8} more</summary><ul>${list.slice(8).map(row).join('')}</ul></details>` : ''}</div>`;
+}
+/** A failed request as { where, message, fix }: which part failed and what to do. */
+function publishFailure(err, step) {
+    const where = PUBLISH_STEPS[step] || 'Publishing';
+    if (err instanceof TypeError || err?.status === 503)
+        return { step, where: 'Connection', message: 'The Midas server could not be reached.', fix: 'Check your connection and that the Midas server is running, then try again.' };
+    if (err?.status === 401)
+        return { step, where: 'Session', message: 'You are signed out.', fix: 'Sign in again, then publish.' };
+    if (err?.status >= 500) {
+        const said = String(err?.body?.message || '');
+        return { step, where, message: `The server answered with an error (${err.status}).${said && !/^Request failed/.test(said) ? ` ${said}` : ''}`, fix: 'The server may be restarting or having trouble. Wait a moment and try again. If it keeps failing, ask whoever runs the server to check its log.' };
+    }
+    if (err?.status === 413)
+        return { step, where, message: 'The library is too large to upload in one go.', fix: 'Deselect some components (large icon sets, for example) in the publish list and publish again.' };
+    const list = err?.body?.errors || (err?.body?.message ? [err.body.message] : [err?.message || String(err)]);
+    const first = String(list[0] || '');
+    const fix = /Select at least one/i.test(first) ? 'Tick at least one component in the list (or create Variables first), then publish.'
+        : /not in the snapshot/i.test(first) ? 'The component list changed while this dialog was open. Close it, open Publish again and retry.'
+            : /not found/i.test(first) ? 'This file is not saved on the server yet. Wait for “Saved” in the editor, then publish again.'
+                : 'Fix what is described above and publish again.';
+    return { step, where, message: list.join('\n'), fix };
+}
+/** The progress dialog: steps (with a bar when the count is known), problems found on the way, and the final result. */
+function progressDialog(title, subtitle = '') {
+    const st = { order: [], steps: new Map(), issues: [], error: null, result: null, retry: null, view: null, published: false };
+    modal(`${modalHeader(title, subtitle)}<div class="pp-body"></div><div class="modal-actions pp-actions"></div>`);
+    let queued = false;
+    const paint = () => {
+        const body = document.querySelector('#modal .pp-body'), actions = document.querySelector('#modal .pp-actions');
+        if (!body || !actions) return;
+        const group = (g, name) => {
+            const rows = st.order.filter(k => k.startsWith(`${g}:`)).map(k => st.steps.get(k));
+            if (!rows.length) return '';
+            return `<div class="pp-group"><div class="pp-group-title">${name}</div><ol class="pp-steps">${rows.map(r => `<li class="pp-step ${r.status}"><i class="pp-ico" aria-hidden="true"></i><div class="pp-step-main"><span class="pp-label">${esc(r.label)}</span>${r.detail ? `<span class="pp-detail" title="${esc(r.detail)}">${esc(r.detail)}</span>` : ''}${r.total && r.status === 'running' ? `<span class="pp-bar"><i style="width:${Math.min(100, Math.round(((r.current || 0) / r.total) * 100))}%"></i></span>` : ''}</div></li>`).join('')}</ol></div>`;
+        };
+        const e = st.error;
+        const headline = e ? (st.published ? 'The library is published, but the React package failed.' : 'Publishing stopped.') : st.result ? (st.issues.length ? 'Published. A few things are worth a look.' : 'Published.') : '';
+        body.innerHTML = `${headline ? `<p class="pp-headline ${e ? 'bad' : 'ok'}">${esc(headline)}</p>` : ''}${group('lib', 'Publish library')}${group('pkg', 'React package')}${e ? `<div class="lp-errors pp-error" role="alert"><div><b>Where</b> ${esc(e.where || 'Publishing')}</div><div><b>What happened</b> ${esc(e.message).replace(/\n/g, '<br>')}</div><div><b>What to do</b> ${esc(e.fix || 'Try again.')}</div></div>` : ''}${issuesHtml(st.issues)}`;
+        actions.innerHTML = `<button type="button" class="wide-button" data-close-modal>${st.result || e ? 'Close' : 'Hide'}</button>${e && st.retry ? '<button type="button" class="wide-button" data-pp="retry">Try again</button>' : ''}${st.result && st.view ? '<button type="button" class="wide-button primary" data-pp="view">View React package</button>' : ''}`;
+        actions.querySelector('[data-pp="retry"]')?.addEventListener('click', () => st.retry());
+        actions.querySelector('[data-pp="view"]')?.addEventListener('click', () => st.view());
+    };
+    const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; paint(); }); } };
+    schedule();
+    return {
+        step(group, id, label, status, detail, current, total) {
+            const key = `${group}:${id}`;
+            if (!st.steps.has(key)) st.order.push(key);
+            st.steps.set(key, { label, status, detail, current, total });
+            schedule();
+        },
+        issue(i) { st.issues.push(i); schedule(); },
+        /** Stop on a problem: the running step turns red, and the dialog says where, what, and what to do. */
+        fail(f, { retry = null, published = false } = {}) {
+            for (const [, r] of st.steps) if (r.status === 'running') r.status = 'error';
+            st.error = f; st.retry = retry; st.published = published; st.result = null;
+            schedule();
+        },
+        resetPackage() { st.order = st.order.filter(k => !k.startsWith('pkg:')); for (const k of [...st.steps.keys()]) if (k.startsWith('pkg:')) st.steps.delete(k); st.error = null; st.issues = []; schedule(); },
+        finish(result, view) { st.result = result; st.view = view; st.error = null; schedule(); },
+    };
+}
+/** Build the React package of a version inside a progress dialog; `onDone(info)` runs on success (the publish dialog offers a button instead). */
+async function runPackageBuild(pd, id, seq, { onDone = null, published = false } = {}) {
+    let info = null, failure = null;
+    const retry = () => { pd.resetPackage(); runPackageBuild(pd, id, seq, { onDone, published }); };
+    try {
+        await libraryApi.buildPackage(id, seq, ev => {
+            if (ev.type === 'step') pd.step('pkg', ev.id, ev.label, ev.status, ev.detail, ev.current, ev.total);
+            else if (ev.type === 'issue') pd.issue(ev.issue);
+            else if (ev.type === 'done') info = ev.package;
+            else if (ev.type === 'error') failure = { step: ev.step, where: ev.where ? `${ev.where} (${PKG_STEP[ev.step] || ev.step})` : PKG_STEP[ev.step] || ev.step, message: ev.message, fix: ev.fix };
+        });
+    }
+    catch (err) {
+        failure = { ...publishFailure(err, 'package'), where: err instanceof TypeError || err?.status === 503 ? 'Connection' : 'React package' };
+    }
+    if (failure) return pd.fail(failure, { retry, published });
+    if (!info) return pd.fail({ where: 'React package', message: 'The build ended without a result.', fix: 'Try again. If it keeps happening, report it with the library name and version.' }, { retry, published });
+    if (onDone) { closeModal(); return onDone(info); }
+    pd.finish(info, () => libPackageDialog(id, seq, info));
+    toast(`Published version ${info.seq}: ${info.components.filter(c => !c.internal).length} components, ${info.icons.length} icons in a React package.`);
+}
+const PKG_STEP = { load: 'Loading the published version', read: 'Reading the design', components: 'Writing components', icons: 'Drawing icons', tokens: 'Building theme tokens', bundle: 'Compiling to JavaScript', styles: 'Compiling the stylesheet', pack: 'Packing the tarball', save: 'Saving the package' };
 // Import ikon SVG (folder atau beberapa file) ke page "Icons": satu component set per ikon,
 // satu variant per gaya (Style=outline, bold, …). Set dengan nama sama diganti.
 function importIcons() {

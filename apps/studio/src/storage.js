@@ -447,6 +447,38 @@ export const libraryApi = {
         }
     },
     history: id => api('GET', `/api/libraries/${enc(id)}`),
+    /** The documentation site of a library: its path and whether anyone with the link can read it. */
+    docs: id => api('GET', `/api/libraries/${enc(id)}/docs`),
+    setDocsPublic: (id, value) => api('PUT', `/api/libraries/${enc(id)}/docs`, { public: value }),
+    /** The React package of a library version (default: latest): its contents and download URL. The server builds it on first use. */
+    package: (id, seq) => api('GET', `/api/libraries/${enc(id)}/package${seq ? `?seq=${seq}` : ''}`).then(r => r.package),
+    /**
+     * Build (or fetch) the React package of a version and hear every step as it happens: `onEvent({ type: 'step' | 'issue' | 'done' | 'error', … })`.
+     * The server answers with one JSON event per line.
+     */
+    buildPackage: async (id, seq, onEvent) => {
+        const res = await fetch(`/api/libraries/${enc(id)}/package/build${seq ? `?seq=${seq}` : ''}`, { credentials: 'same-origin' });
+        if (res.status === 401) window.dispatchEvent(new CustomEvent('midas:unauthorized'));
+        if (!res.ok || !res.body) {
+            let data = null;
+            try { data = await res.json(); } catch { /* not JSON */ }
+            throw new ApiError(res.status, data);
+        }
+        const reader = res.body.getReader(), decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+            const { value, done } = await reader.read();
+            buf += decoder.decode(value || new Uint8Array(), { stream: !done });
+            let nl;
+            while ((nl = buf.indexOf('\n')) >= 0) {
+                const line = buf.slice(0, nl).trim();
+                buf = buf.slice(nl + 1);
+                if (line) onEvent(JSON.parse(line));
+            }
+            if (done) break;
+        }
+        if (buf.trim()) onEvent(JSON.parse(buf));
+    },
     publish: (id, body) => api('POST', `/api/libraries/${enc(id)}/versions`, body).then(r => r.library),
     fileUses: async fileId => {
         try {
