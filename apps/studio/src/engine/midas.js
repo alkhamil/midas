@@ -1418,9 +1418,9 @@ function strokeSectionHtml(n) {
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
-    const widthPart = mode === 'custom' ? '<span class="small-label">Per side</span>' : field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
+    const widthPart = field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
     let h = `<div class="fr fr2 ${hidden ? 'off' : ''}">${sw}${hex}${op}${ops}</div>`;
-    h += `<div class="st-row">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
+    h += `<div class="fr fr2">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
     if (mode === 'custom') {
         const s = strokeSideWidths(n);
         h += `<div class="property-grid st-custom">${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}</div>`;
