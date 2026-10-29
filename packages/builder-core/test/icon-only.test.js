@@ -33,7 +33,7 @@ test('an icon-only instance hides its label, and a label otherwise stays visible
 });
 
 test('the component hides the label and sets the icon-only class when the instance is icon-only', () => {
-    const jsx = generateComponent(button, binding(), variables(), 'Button').files['Button.jsx'];
+    const jsx = generateComponent(button, binding(), variables(), 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.jsx'];
     assert.match(jsx, /const iconOnly = hasIcon && \(iconPlacement === "only"\);/);
     assert.match(jsx, /className=\{iconOnly \? "button button-icon-only" : "button"\}/);
     assert.match(jsx, /\{!iconOnly && <span className="button-label">\{label\}<\/span>\}/);
@@ -41,7 +41,7 @@ test('the component hides the label and sets the icon-only class when the instan
 });
 
 test('the stylesheet has no padding for an icon-only Button, and a minimum width of the control height', () => {
-    const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
+    const css = generateComponent(button, binding(), variables(), 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.css'];
     assert.match(css, /\.button-icon-only \{\n {2}padding-inline: 0;\n\}/);
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*min-width: var\(--button-height\);/);
 });

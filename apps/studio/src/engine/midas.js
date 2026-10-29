@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1418,9 +1418,9 @@ function strokeSectionHtml(n) {
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
-    const widthPart = mode === 'custom' ? '<span class="small-label">Per side</span>' : field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
+    const widthPart = field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
     let h = `<div class="fr fr2 ${hidden ? 'off' : ''}">${sw}${hex}${op}${ops}</div>`;
-    h += `<div class="st-row">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
+    h += `<div class="fr fr2">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
     if (mode === 'custom') {
         const s = strokeSideWidths(n);
         h += `<div class="property-grid st-custom">${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}</div>`;
@@ -8965,7 +8965,7 @@ function behaviorTabHtml(n) {
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
-        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name) : null;
+        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
         return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
@@ -9201,7 +9201,7 @@ function onBehaviorClick(e) {
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
-    const result = generateComponent(template, binding, varStore(), template.name);
+    const result = generateComponent(template, binding, varStore(), template.name, n, id => doc.children(id));
     for (const file of codeDownloads(result)) download(new Blob([file.text], { type: 'text/plain' }), file.name);
 }
 /** Waits until every page of the file is here. False when a page did not come, or another file was opened meanwhile. */
@@ -9330,8 +9330,7 @@ function setSlotIcon(slot, componentId) {
 /** The variable a name names in the collection an instance's master binds to a dimension of the template (Variant or Size). */
 function iconVariableId(binding, dimension, name) {
     const collectionId = binding.variables?.[dimension];
-    const item = collectionId && varStore().items?.find(i => i.collectionId === collectionId && String(i.name).trim().toLowerCase() === name);
-    return item ? item.id : null;
+    return collectionId ? variableIdNamed(varStore().items ?? [], collectionId, name) : null;
 }
 /**
  * The icon bindings of every managed slot of an instance: the slot's size, and the colour of each layer of the icon (the disabled
@@ -9342,11 +9341,19 @@ function applyIconSlotBindings(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return [];
-    const targets = iconSlotTargets(template);
-    const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+    // What a missing variable is called in the toast: its collection and the instance's mode for it, the place the lookup searched.
+    const where = target => {
+        const collectionId = binding.variables?.[target.dimension];
+        const collection = varStore().collections?.find(c => c.id === collectionId);
+        const mode = collection?.modes?.find(m => m.id === inst.varModes?.[collectionId]);
+        return missingIconVariable({ name: target.name, collectionName: collection?.name ?? target.dimension, modeName: mode?.name ?? 'none selected' });
+    };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
     for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
+        const targets = iconSlotTargets(template, slot.behavior.slot);
+        const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+        const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
         const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
         const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
         const plan = iconSlotBindings({
@@ -9354,7 +9361,7 @@ function applyIconSlotBindings(inst) {
             fgDisabled: iconVariableId(binding, targets.disabledColour.dimension, names.disabledColour),
             size: iconVariableId(binding, targets.size.dimension, names.size),
             disabled,
-            names,
+            names: described,
             layers,
         });
         plan.missing.forEach(m => missing.add(m));
@@ -9398,7 +9405,7 @@ function syncInstance(inst) {
         applyLiteralFields(inst);
         applyVariantStroke(inst);
         const missingIconVars = applyIconSlotBindings(inst);
-        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')} in its collections.`);
+        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
     });
     return reason ?? null;
 }
@@ -9572,14 +9579,15 @@ function instanceModesOf(inst, binding) {
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
-    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
-    if (state.inspectorTab === 'behavior') {
-        $('#inspector').innerHTML = behaviorTabHtml(n);
-        return;
-    }
+    // The Prototype tab reads interactions, not sizes: it does not lay the page out.
     if (state.inspectorTab === 'prototype') {
         $('#inspector').innerHTML = prototypeTabHtml(n);
+        return;
+    }
+    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
+    if (state.inspectorTab === 'behavior') {
+        $('#inspector').innerHTML = behaviorTabHtml(n);
         return;
     }
     let html = '';

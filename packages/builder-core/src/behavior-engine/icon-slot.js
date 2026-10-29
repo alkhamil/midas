@@ -4,20 +4,32 @@
 
 import { variableNameOf } from './tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
+import { iconDefsOf, slotDefsOf } from './anatomy.js';
 
 /**
- * The variables an icon slot follows, from the template's icon tokens: for each of colour, disabled colour and size, the variable
+ * The variables one managed slot follows, from its def's icon tokens: for each of colour, disabled colour and size, the variable
  * name, and the variable prop (dimension) whose collection holds it.
  * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {string} slot the managed slot
  * @returns {Record<'colour' | 'disabledColour' | 'size', { name: string, dimension: string | null }>}
  */
-export function iconSlotTargets(template) {
+export function iconSlotTargets(template, slot) {
+    const def = slotDefsOf(template, slot)[0] ?? iconDefsOf(template)[0];
     const dimensionOf = token => {
         const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
         return group ? dimensionOfGroup(group, template.props) : null;
     };
-    const { tokens } = template.icon;
+    const { tokens } = def;
     return Object.fromEntries(['colour', 'disabledColour', 'size'].map(role => [role, { name: variableNameOf(template, tokens[role]), dimension: dimensionOf(tokens[role]) }]));
+}
+
+/**
+ * The text that says a missing icon variable: its name, the collection it was searched in and the mode the instance has for it.
+ * @param {{ name: string, collectionName: string, modeName: string }} input
+ * @returns {string}
+ */
+export function missingIconVariable({ name, collectionName, modeName }) {
+    return `${name} in the ${collectionName} collection (mode ${modeName})`;
 }
 
 /**

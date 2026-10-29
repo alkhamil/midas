@@ -8,6 +8,19 @@ const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLow
 /** The name a variable matches a token by: case and dashes do not count, so `button/icon-size` is the `iconSize` token. */
 export const variableKey = (/** @type {unknown} */ name) => nameKey(name).replace(/-/g, '');
 
+/**
+ * The id of the variable named `name` in a collection, matched the way tokens are (variableKey); null when there is none.
+ * @param {{ id: string, name: unknown, collectionId: string }[]} items
+ * @param {string} collectionId
+ * @param {string} name
+ * @returns {string | null}
+ */
+export const variableIdNamed = (items, collectionId, name) => {
+    const key = variableKey(name);
+    const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === key);
+    return item ? item.id : null;
+};
+
 /** `fontSize` -> `font-size`, `paddingX` -> `padding-x`. */
 const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 

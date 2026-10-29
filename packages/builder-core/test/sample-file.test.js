@@ -134,7 +134,7 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
         }
     }
 
-    const code = generateComponent(buttonTemplate, master.behavior, doc.variables, 'Button');
+    const code = generateComponent(buttonTemplate, master.behavior, doc.variables, 'Button', master, id => allNodes.filter(n => n.parentId === id));
     assert.deepEqual(code.problems, []);
     assert.ok(code.files['Button.jsx']);
     assert.ok(code.files['Button.css']);

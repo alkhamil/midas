@@ -13,12 +13,14 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
-import { placementsOfSlot } from '../behavior-engine/anatomy.js';
+import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
+import { labelEntryOf } from '../behavior-engine/layers.js';
 import { iconOnlyIn } from '../behavior-engine/display.js';
-import { arcActive, cornerRadii, hasRadii, strokeIsOn, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
-import { layoutGap, layoutGapCross, layoutOrder, layoutPads, strokeOutside } from '../geometry/autolayout.js';
+import { layoutOrder } from '../geometry/autolayout.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -96,11 +98,11 @@ function renderNode(n, parent, scope) {
         style.outlineOffset = '0px';
     }
     // An outside stroke of a frame is all outline: an overlay inside the frame would only draw the part the frame clips.
-    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n);
+    const fluid = !parent && scope.responsive && n.type === 'frame' && fluidStrokeOf(n);
+    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n, fluid);
     if (n.type === 'frame' && stroke !== undefined) {
-        // A frame's stroke is a layer under its content, so the content draws over it. The isolation keeps that layer above the frame's fill.
-        style.isolation = 'isolate';
-        children.unshift({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', zIndex: '-1', pointerEvents: 'none' }, html: stroke, children: [] });
+        // A frame's stroke is drawn above its fill and its content, as on the canvas, and takes no clicks.
+        children.push({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html: stroke, children: [] });
     }
     const html = n.type !== 'frame' ? stroke : undefined;
     if (html !== undefined) style.position = style.position ?? 'relative';
@@ -122,20 +124,24 @@ function renderChildren(n, scope) {
     // order, so a flow position is a CSS `order` and the paint order is reversed when the frame paints its first child on top.
     const stored = scope.childrenOf(n.id);
     const flowPosition = new Map(layoutOrder(n, stored).filter(c => c.layoutPositioning !== 'absolute' && c.visible !== false).map((c, i) => [c.id, i]));
-    let mask = null;
+    // Which mask clips each sibling: the canvas reads a flipped frame's children back to front, and a visible mask clips every sibling
+    // after it in that reading. A mask is not in the flow, so it sits at its stored place even in an auto layout.
+    const maskFor = new Map();
+    let active = null;
+    for (const c of n.layoutFlip ? [...stored].reverse() : stored) {
+        if (c.isMask && c.visible !== false) active = c;
+        else maskFor.set(c.id, active);
+    }
     for (const c of stored) {
-        if (c.isMask && c.visible !== false) {
-            // An auto layout places its children itself, so a mask's stored position does not say where it sits on screen.
-            mask = isAutoLayout(n) ? null : c;
-            if (mask === null) scope.unsupported.push({ nodeId: c.id, type: 'mask in an auto layout' });
-            continue;
-        }
+        if (c.isMask) continue;
         const el = renderNode(c, n, scope);
         if (!el) continue;
+        const mask = maskFor.get(c.id);
         if (mask) {
             const clip = maskClipOf(mask, c);
             if (clip) el.style.clipPath = clip;
-            else scope.unsupported.push({ nodeId: mask.id, type: 'mask that is not a rectangle or ellipse, or on a rotated layer' });
+            else if (!mask.rotation && !c.rotation) Object.assign(el.style, maskImageOf(mask, c, scope));
+            else scope.unsupported.push({ nodeId: mask.id, type: 'mask on a rotated layer' });
         }
         if (auto && flowPosition.has(c.id)) el.style.order = String(flowPosition.get(c.id));
         out.push(el);
@@ -161,6 +167,24 @@ function maskClipOf(mask, child) {
 }
 
 /**
+ * A mask that is not a plain rectangle or ellipse, as a CSS mask image over the layer's own box: its shapes (a path, a group, or the
+ * children of a frame) drawn in black, at the place they hold in the frame. The layer shows only where the mask is.
+ * @param {any} mask
+ * @param {any} child
+ * @param {any} scope
+ * @returns {Record<string, string>}
+ */
+function maskImageOf(mask, child, scope) {
+    const shape = (n, dx, dy) => {
+        if (n.type === 'frame' || n.type === 'group') return scope.childrenOf(n.id).filter(k => !k.isMask && k.visible !== false).map(k => shape(k, dx + k.x, dy + k.y)).join('');
+        return `<g transform="translate(${svgNumber(dx)} ${svgNumber(dy)})">${svgShapeEl(n, svgNumber, 'fill="#000"')}</g>`;
+    };
+    const box = `width="${svgNumber(child.w)}" height="${svgNumber(child.h)}" viewBox="0 0 ${svgNumber(child.w)} ${svgNumber(child.h)}"`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" ${box}>${shape(mask, mask.x - child.x, mask.y - child.y)}</svg>`;
+    return { maskImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`, maskSize: '100% 100%', maskRepeat: 'no-repeat' };
+}
+
+/**
  * The Button-style template a node is bound to, when it is an instance of a bound master: the template, or null for a plain node.
  * undefined when the binding cannot be drawn (the reason is in scope.problems).
  * @param {any} n
@@ -174,7 +198,7 @@ function templateOf(n, scope) {
     const template = TEMPLATES.get(binding.templateId);
     if (!template) return null;
     if (!scope.styles.has(template.id)) {
-        const generated = generateComponent(template, binding, scope.variables, template.name);
+        const generated = generateComponent(template, binding, scope.variables, template.name, master, scope.childrenOf);
         if (!generated.files) {
             scope.problems.push(...generated.problems.map(p => ({ ...p, nodeId: n.id })));
             return undefined;
@@ -206,21 +230,44 @@ function renderButton(n, template, parent, scope) {
     const iconOnly = iconOnlyIn(template, props);
     if (iconOnly) attrs.class = `${template.id} ${template.id}-icon-only`;
     const children = [];
+    // The label's layer and its parent, for the label's own width and alignment (see layout.js).
+    const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
-            if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, text: String(props[slot.id] ?? ''), children: [] });
+            const control = controlOf(template);
+            // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
+            const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
+            if (!iconOnly && control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style, children: [] });
+            else if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
         }
-        else if (slot.managed && props.hasIcon === true && placementsOfSlot(template, slot.id).includes(String(props.iconPlacement))) {
+        else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
             const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
-            const el = layer && renderNode(layer, n, scope);
-            if (el) {
+            for (const def of slotDefsOf(template, slot.id)) {
+                if (props[def.show] !== true) continue;
+                if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
+                const el = layer && renderNode(layer, n, scope);
+                if (!el) continue;
                 const { position, left, top, ...style } = el.style;
                 children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style });
+                break;
             }
         }
     }
-    return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, scope.responsive), children };
+    // The stroke is the node's own, drawn as an overlay on the canvas's rules (inside, center or outside), so the component's CSS border is off.
+    if (strokeIsOn(n)) children.push(strokeBoxOf(n));
+    // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
+    // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
+    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeIsOn(n) ? 1 : 0)), borderWidth: '0px' };
+    // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
+    if (strokeIsOn(n) && !style.position) style.position = 'relative';
+    return { tag: 'button', nodeId: n.id, attrs, style, children };
+}
+
+/** A stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws it. */
+function strokeBoxOf(n) {
+    const w = n.strokeWidth, grow = { inside: 0, center: w / 2, outside: w }[n.strokeAlign ?? 'center'];
+    return { tag: 'div', attrs: {}, style: { position: 'absolute', inset: `${svgNumber(-grow)}px`, boxSizing: 'border-box', pointerEvents: 'none', border: `${svgNumber(w)}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, borderRadius: 'var(--button-radius)' }, children: [] };
 }
 
 /** @param {any} n */
@@ -267,42 +314,6 @@ function transformOf(n) {
 }
 
 /**
- * How a child of an auto layout frame sizes itself on the parent's main axis (the flow direction) and on its cross axis.
- * - main fill: takes the free space (flex 1, may shrink to zero). Main fixed or hug: keeps its size and does not shrink, so a child
- *   wider than its frame is clipped by the frame instead of squeezed.
- * - cross fill: stretches across the parent. Cross fixed or hug: keeps its size, aligned to the start.
- * A text layer takes its natural size on a fixed or hug axis; only a fill axis changes it.
- * @param {any} n
- * @param {any} parent an auto layout frame
- * @returns {Record<string, string>}
- */
-function flowSizing(n, parent) {
-    const vertical = parent.layout === 'vertical';
-    const mainAxis = vertical ? { sizing: n.layoutSizingV, size: 'height', length: n.h, min: 'minHeight' } : { sizing: n.layoutSizingH, size: 'width', length: n.w, min: 'minWidth' };
-    const crossAxis = vertical ? { sizing: n.layoutSizingH, size: 'width', length: n.w } : { sizing: n.layoutSizingV, size: 'height', length: n.h };
-    /** @type {Record<string, string>} */
-    const style = {};
-    if (mainAxis.sizing === 'fill') {
-        style.flex = '1 1 0';
-        style[mainAxis.min] = '0px';
-    }
-    else {
-        style.flexShrink = '0';
-        if (mainAxis.sizing !== 'hug' && n.type !== 'text') style[mainAxis.size] = `${mainAxis.length}px`;
-    }
-    // A fixed or hug cross axis keeps its size and takes the parent's cross alignment (align-items), as on the canvas.
-    if (crossAxis.sizing === 'fill') {
-        style.alignSelf = 'stretch';
-    }
-    else if (crossAxis.sizing !== 'hug' && n.type !== 'text') {
-        style[crossAxis.size] = `${crossAxis.length}px`;
-    }
-    const outside = strokeOutside(n, parent);
-    if (outside) style.margin = `${outside}px`;
-    return style;
-}
-
-/**
  * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips. A template instance has no scroll behaviour:
  * the validator refuses one, and Play ignores any it finds.
  * @param {any} n
@@ -326,35 +337,6 @@ function centredStrokeHalf(n) {
     if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'center') return 0;
     const s = strokeSideWidths(n);
     return Math.max(s.t, s.r, s.b, s.l) / 2;
-}
-
-/**
- * The flex container style of an auto layout frame: the spacing and alignment the canvas layout engine uses (`layoutPads`, the gaps,
- * `gapAuto` for space between, evenly or around, and the alignments). Grid layouts are laid out as a row here.
- * @param {any} n
- * @param {number} flowCount the children in the flow
- */
-function flexOf(n, flowCount) {
-    const vertical = n.layout === 'vertical';
-    const P = layoutPads(n), gap = layoutGap(n), mainGap = n.gapAuto ? 0 : gap, crossGap = layoutGapCross(n, gap);
-    const edge = { start: 'flex-start', center: 'center', end: 'flex-end' };
-    const mode = n.gapMode || 'between';
-    let justify = edge[n.primaryAlign ?? 'start'] ?? 'flex-start';
-    if (n.gapAuto && mode === 'evenly') justify = 'space-evenly';
-    else if (n.gapAuto && mode === 'around') justify = 'space-around';
-    else if (n.gapAuto && flowCount > 1) justify = 'space-between';
-    return {
-        display: 'flex',
-        flexDirection: vertical ? 'column' : 'row',
-        flexWrap: n.layoutWrap ? 'wrap' : 'nowrap',
-        columnGap: `${vertical ? crossGap : mainGap}px`,
-        rowGap: `${vertical ? mainGap : crossGap}px`,
-        padding: `${P.t}px ${P.r}px ${P.b}px ${P.l}px`,
-        justifyContent: justify,
-        alignItems: !vertical && n.alignBaseline ? 'baseline' : edge[n.counterAlign ?? n.layoutAlign ?? 'start'] ?? 'flex-start',
-        alignContent: 'flex-start',
-        boxSizing: 'border-box',
-    };
 }
 
 /**
@@ -386,9 +368,43 @@ function radiusStyle(n) {
  * @param {any} n
  * @returns {string | undefined}
  */
-function strokeOverlay(n) {
+function strokeOverlay(n, fluid = false) {
     if (!strokeIsOn(n)) return undefined;
+    if (fluid) return fluidStrokeOverlay(n);
     return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
+}
+
+/**
+ * Whether a frame's stroke can be drawn to follow its box: one width on every side and one radius on every corner, so the
+ * outline is a plain rectangle the box size can drive. Anything else keeps the fixed design-size overlay.
+ * @param {any} n
+ * @returns {boolean}
+ */
+function fluidStrokeOf(n) {
+    if (!strokeIsOn(n) || !strokeSidesUniform(n)) return false;
+    const radii = hasRadii(n) ? n.radii : [n.radius || 0];
+    return radii.every(v => (+v || 0) === (+radii[0] || 0));
+}
+
+/**
+ * A frame stroke drawn at its box, not at the design size: the SVG fills the box (no viewBox, so lengths stay in px) and the
+ * rectangle spans it in full, so the stroke sits on the box edges whatever the box size. An inside stroke is clipped to the
+ * box, mirroring the fixed overlay's doubled-width stroke. An outside stroke never reaches here: it is a CSS outline.
+ * @param {any} n a frame with a uniform stroke on every side and corner
+ * @returns {string}
+ */
+function fluidStrokeOverlay(n) {
+    const w = n.strokeWidth, f = svgNumber, e = escapeAttr;
+    const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
+    // Raw, not design-clamped: the browser clamps against the box it draws. Lengths are px (no viewBox), so the stroke keeps its width.
+    const rx = Math.max(0, +((hasRadii(n) ? n.radii[0] : n.radius) || 0));
+    const rect = attrs => `<rect x="0" y="0" width="100%" height="100%" rx="${f(rx)}" ${attrs}/>`;
+    if ((n.strokeAlign ?? 'center') === 'inside') {
+        const dash = strokeDashArray(n);
+        const stroked = rect(`fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`);
+        return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><clipPath id="${prefix}k">${rect('')}</clipPath><g clip-path="url(#${prefix}k)">${stroked}</g></svg>`;
+    }
+    return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${rect(`fill="none" ${svgStrokeAttrs(n, f, e)}`)}</svg>`;
 }
 
 /**

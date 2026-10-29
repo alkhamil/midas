@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { iconSlotBindings, iconSlotTargets, isIconSlotVarKey } from '../src/behavior-engine/icon-slot.js';
+import { iconSlotBindings, iconSlotTargets, isIconSlotVarKey, missingIconVariable } from '../src/behavior-engine/icon-slot.js';
 import { BUTTON } from '../src/templates/button.js';
 
 const names = { colour: 'button/fg', disabledColour: 'button/fg-disabled', size: 'button/icon-size' };
 const vars = { fg: 'v-fg', fgDisabled: 'v-fg-disabled', size: 'v-icon-size', names };
 
 test('the icon variables are named from the template: its group and its icon tokens, with the dimension that holds them', () => {
-    assert.deepEqual(iconSlotTargets(BUTTON), {
+    assert.deepEqual(iconSlotTargets(BUTTON, 'iconStart'), {
         colour: { name: 'button/fg', dimension: 'variant' },
         disabledColour: { name: 'button/fg-disabled', dimension: 'variant' },
         size: { name: 'button/icon-size', dimension: 'size' },
@@ -59,4 +59,11 @@ test('the keys the icon slot owns are fills by index, stroke, and the slot size'
     assert.equal(isIconSlotVarKey('h'), true);
     assert.equal(isIconSlotVarKey('fill'), false);
     assert.equal(isIconSlotVarKey('radius'), false);
+});
+
+test('a missing icon variable is named with the collection it was searched in and the mode of the instance', () => {
+    assert.equal(
+        missingIconVariable({ name: 'button/icon-size', collectionName: 'Size', modeName: 'Small' }),
+        'button/icon-size in the Size collection (mode Small)',
+    );
 });

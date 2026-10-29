@@ -5,8 +5,10 @@ import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, iconOnlyValuesOf, targetKindOf } from './display.js';
-import { placementsOfSlot } from './anatomy.js';
+import { controlOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
+import { rootLayoutOf, labelLayoutOf } from './layout.js';
+import { labelEntryOf } from './layers.js';
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
@@ -25,19 +27,28 @@ function componentSource(template, name, problems) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
-    const { show, placement, component } = template.icon;
     const iconOnlyValues = iconOnlyValuesOf(template);
     const children = [];
     for (const slot of template.anatomy) {
         if (slot.kind === 'text') {
             if (!template.props[slot.id]) problems.push({ slot: slot.id, reason: 'no-prop' });
-            const label = `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
+            const control = controlOf(template);
+            // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
+            const label = control && control.slot === slot.id
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''} />`
+                : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(iconOnlyValues.length ? `{!iconOnly && ${label}}` : label);
         }
-        else if (slot.managed && placementsOfSlot(template, slot.id).length) {
-            const tests = placementsOfSlot(template, slot.id).map(value => `${placement} === "${value}"`);
-            const cond = tests.length === 1 ? tests[0] : `(${tests.join(' || ')})`;
-            children.push(`{${show} && ${cond} && <span className="${template.id}-${slot.id}">{${component}}</span>}`);
+        else if (slot.managed) {
+            const defs = slotDefsOf(template, slot.id);
+            if (!defs.length) problems.push({ slot: slot.id, reason: 'unsupported-slot' });
+            else for (const def of defs) {
+                const tests = placementsOfDef(template, def, slot.id).map(value => `${def.placement} === "${value}"`);
+                const cond = tests.length === 1 ? tests[0] : tests.length ? `(${tests.join(' || ')})` : null;
+                children.push(cond
+                    ? `{${def.show} && ${cond} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`
+                    : `{${def.show} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+            }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
@@ -58,7 +69,7 @@ function componentSource(template, name, problems) {
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
-        ...(iconOnlyValues.length ? [`  const iconOnly = ${show} && (${iconOnlyValues.map(value => `${placement} === "${value}"`).join(' || ')});`] : []),
+        ...(iconOnlyValues.length ? [`  const iconOnly = ${template.icons.filter(def => def.placement).map(def => `${def.show} && (${(template.props[def.placement].iconOnly ?? []).map(value => `${def.placement} === "${value}"`).join(' || ')})`).join(' || ')};`] : []),
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
@@ -72,16 +83,28 @@ function componentSource(template, name, problems) {
 }
 
 /**
+ * A style object as CSS declaration lines: camelCase names become kebab-case, in the object's order.
+ * @param {Record<string, string>} style
+ * @returns {string[]}
+ */
+const cssDecls = style => Object.entries(style).map(([prop, value]) => '  ' + prop.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ': ' + value + ';\n');
+
+/**
  * One rule per node the display mapping styles from a token: each mapped property is written to its CSS property, reading the
  * token's custom property. Literal sources (width, text) are not CSS and are written by the component.
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
-function displayRules(template) {
+function displayRules(template, master, childrenOf) {
     const tokens = Object.values(template.tokens).flat();
+    const entry = labelEntryOf(master.id, childrenOf, master);
     return Object.entries(template.display).map(([key, props]) => {
         const kind = targetKindOf(template, key);
-        // The root lays its label and its icon slots out in a row, centred on the cross axis.
-        const decls = key === 'root' ? ['  display: inline-flex;\n', '  align-items: center;\n'] : [];
+        // The root lays its label and its icon slots out like the canvas auto layout frame. Play draws the same rules
+        // with display:flex (a real element in its parent's layout); the export is inline-flex so a hug Button keeps its
+        // natural width. The label keeps its own width and alignment from its layer.
+        const decls = key === 'root'
+            ? ['  display: inline-flex;\n', ...cssDecls(rootLayoutOf(master))]
+            : kind === 'text' ? cssDecls(labelLayoutOf(entry?.node, entry?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`);
         }
@@ -105,7 +128,7 @@ function displayRules(template) {
  * @param {{ collections?: any[], items?: any[] }} variables
  * @param {any[]} problems
  */
-function stylesheet(template, binding, variables, problems) {
+function stylesheet(template, binding, variables, problems, master, childrenOf) {
     const dims = variableProps(template).map(([prop]) => prop);
     /** @type {Record<string, string[]>} */
     const modes = {};
@@ -118,7 +141,7 @@ function stylesheet(template, binding, variables, problems) {
         modes[dim] = (collection.modes || []).map(/** @param {{ id: string }} m */ m => m.id);
     }
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
-    const blocks = displayRules(template);
+    const blocks = displayRules(template, master, childrenOf);
     // An icon-only instance has no label padding: its icon is the whole content, and the minimum width keeps it square.
     if (iconOnlyValuesOf(template).length) blocks.push(`.${template.id}-icon-only {\n  padding-inline: 0;\n}\n`);
     for (const [dim, def] of variableProps(template)) {
@@ -161,14 +184,18 @@ function declarations(vars) {
  * @param {{ variables: Record<string, string | null> }} binding the master's binding
  * @param {{ collections?: any[], items?: any[] }} variables the document's variables
  * @param {string} name the component name, e.g. `Button`
+ * @param {any} master the master's node: the root's layout comes from its fields
+ * @param {(id: string) => any[]} childrenOf how to reach the master's subtree, for the label layer
  * @returns {{ files: Record<string, string> | null, problems: Record<string, unknown>[] }}
  */
-export function generateComponent(template, binding, variables, name) {
+export function generateComponent(template, binding, variables, name, master, childrenOf) {
     if (!/^[A-Z][A-Za-z0-9]*$/.test(name)) throw new Error(`"${name}" is not a component name`);
+    if (!master) throw new Error('generateComponent needs the master node');
+    if (typeof childrenOf !== 'function') throw new Error('generateComponent needs a childrenOf lookup');
     /** @type {any[]} */
     const problems = [];
     const jsx = componentSource(template, name, problems);
-    const css = stylesheet(template, binding, variables, problems);
+    const css = stylesheet(template, binding, variables, problems, master, childrenOf);
     if (problems.length) return { files: null, problems };
     return { files: { [`${name}.jsx`]: jsx, [`${name}.css`]: css }, problems: [] };
 }

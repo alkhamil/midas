@@ -226,11 +226,16 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     function layout() {
         const frame = nodeById.get(frameId);
         if (!frame) return;
+        const responsive = prefs.mode === 'responsive';
+        // The scrollbar mode is set before the window is measured: a scrollbar left over from the last mode would make the viewport read
+        // narrower than the window, and the frame would be laid out at that width.
+        viewport.style.overflow = responsive ? 'hidden' : 'auto';
+        // The scrollbar space is always reserved in the fit modes: a scrollbar that appears only when the frame is taller than the window
+        // would narrow the viewport, rescale the frame, and hide the scrollbar again, over and over (the flicker).
+        viewport.style.scrollbarGutter = responsive ? 'auto' : 'stable';
         const vw = viewport.clientWidth, vh = viewport.clientHeight;
         lastWidth = vw;
         lastHeight = vh;
-        const responsive = prefs.mode === 'responsive';
-        viewport.style.overflow = responsive ? 'hidden' : 'auto';
         const box = responsive ? { width: vw, height: vh } : { width: frame.w, height: frame.h };
         const placed = viewportLayout({ viewport: { width: vw, height: vh }, frame: box, mode: prefs.mode });
         sizer.style.width = `${Math.max(vw, placed.width)}px`;

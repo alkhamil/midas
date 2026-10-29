@@ -165,34 +165,35 @@ test('a rectangle mask clips as an inset with its corner radii; the layers below
     assert.equal(children[1].style.clipPath, 'inset(10px 90px 130px 10px round 4px 4px 4px 4px)');
 });
 
-test('a mask in an auto layout is reported, since the layout places its children', () => {
+test('a mask in an auto layout clips the layers above it at its stored place: a mask is not in the flow', () => {
     const auto = frame('A', { layout: 'row' });
     const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
-    const result = toDomTree(docOf([auto, mask, layer({ id: 'R' })]), 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask in an auto layout' }]);
-    assert.equal(result.root.children[0].style.clipPath, undefined);
+    const result = toDomTree(docOf([auto, mask, layer({ id: 'R', layoutPositioning: 'absolute' })]), 'A');
+    assert.deepEqual(result.unsupported, []);
+    assert.equal(result.root.children[0].style.clipPath, 'ellipse(50px 25px at 40px 15px)');
 });
 
 test('a mask on a rotated layer is reported, and the layer is drawn unclipped', () => {
     const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
     const turned = layer({ id: 'R', rotation: 10 });
     const result = toDomTree(docOf([frame('A'), mask, turned]), 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask that is not a rectangle or ellipse, or on a rotated layer' }]);
+    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask on a rotated layer' }]);
     assert.equal(result.root.children[0].style.clipPath, undefined);
 });
 
-test('a frame stroke is an SVG layer under its content, centred on the frame edge, not a CSS border', () => {
+test('a frame stroke is an SVG layer above its fill and content, centred on the frame edge, not a CSS border', () => {
     const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233' }), layer()]), 'A').root;
     assert.equal(root.style.border, undefined);
-    assert.equal(root.children[0].style.zIndex, '-1');
-    assert.match(root.children[0].html, /stroke-width="4"/);
-    assert.equal(root.style.isolation, 'isolate');
-    assert.equal(root.children[1].nodeId, 'L');
+    assert.equal(root.children[0].nodeId, 'L');
+    const stroke = root.children[1];
+    assert.match(stroke.html, /stroke-width="4"/);
+    assert.equal(stroke.style.zIndex, undefined);
+    assert.equal(stroke.style.pointerEvents, 'none');
 });
 
 test('a per-side frame stroke draws only the sides it names', () => {
     const root = toDomTree(docOf([frame('A', { strokeWidth: 4, stroke: '#112233', strokeSides: 'top' }), layer()]), 'A').root;
-    assert.equal((root.children[0].html.match(/<rect x=/g) || []).length, 1);
+    assert.equal((root.children.at(-1).html.match(/<rect x=/g) || []).length, 1);
 });
 
 test('an inside frame stroke is clipped to the frame, and a frame with no stroke has no stroke layer', () => {
@@ -213,11 +214,33 @@ test('a centred frame stroke is drawn whole by its overlay; the frame clips with
     const root = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b' }), layer()]), 'A').root;
     assert.equal(root.style.outline, undefined);
     assert.equal(root.style.overflowClipMargin, '3px');
-    assert.match(root.children[0].html, /stroke-width="6"/);
+    assert.match(root.children.at(-1).html, /stroke-width="6"/);
 });
 
 test('an outside frame stroke on some sides only is reported: an outline cannot be per side', () => {
     const { root, unsupported } = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside', strokeSides: 'top' }), layer()]), 'A');
     assert.equal(root.style.outline, undefined);
     assert.deepEqual(unsupported, [{ nodeId: 'A', type: 'frame outside stroke on some sides' }]);
+});
+
+test('a path mask clips the layers above it as a CSS mask image: its shape, drawn in black over the layer\'s own box', () => {
+    const mask = layer({ id: 'M', type: 'path', isMask: true, x: 20, y: 30, w: 40, h: 40, pathW: 40, pathH: 40, closed: true, points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 40 }], fills: solid('#000000') });
+    const above = layer({ id: 'R', x: 10, y: 10, w: 200, h: 100 });
+    const { root, unsupported } = toDomTree(docOf([frame('A'), mask, above]), 'A');
+    assert.deepEqual(unsupported, []);
+    const image = decodeURIComponent(root.children[0].style.maskImage);
+    assert.match(image, /^url\("data:image\/svg\+xml,<svg /);
+    assert.match(image, /viewBox="0 0 200 100"/);
+    assert.match(image, /<g transform="translate\(10 20\)"><path d="M0 0L40 0L20 40L0 0Z" fill="#000"\/><\/g>/);
+    assert.equal(root.children[0].style.maskSize, '100% 100%');
+});
+
+test('in a flipped frame, a mask clips the layers after it in reading order: a colour layer under an icon mask is cut to the icon', () => {
+    const flipped = frame('A', { layout: 'row', layoutFlip: true });
+    const color = layer({ id: 'C', type: 'rect', parentId: 'A', layoutPositioning: 'absolute', x: 0, y: 0, w: 20, h: 20 });
+    const mask = layer({ id: 'M', type: 'ellipse', isMask: true, parentId: 'A', x: 0, y: 0, w: 20, h: 20 });
+    const { root, unsupported } = toDomTree(docOf([flipped, color, mask]), 'A');
+    assert.deepEqual(unsupported, []);
+    assert.equal(root.children.length, 1);
+    assert.match(root.children[0].style.clipPath ?? '', /^ellipse\(/);
 });

@@ -36,8 +36,8 @@ export function playContext({ pages, variables = {} }) {
 
 /** A top-level frame of a page: a frame with no parent, or one directly in a section. Same rule as the validator. */
 function isTopLevelFrameIn(page) {
-    const nodes = page.nodes || [];
-    return n => n.type === 'frame' && (!n.parentId || nodes.find(x => x.id === n.parentId)?.isSection);
+    const sections = new Set((page.nodes || []).filter(x => x.isSection).map(x => x.id));
+    return n => n.type === 'frame' && (!n.parentId || sections.has(n.parentId));
 }
 
 /**

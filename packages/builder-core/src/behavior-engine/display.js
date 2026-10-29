@@ -117,11 +117,12 @@ export function literalFields(template, props) {
     return out;
 }
 
-/** The placement values that make an instance icon-only (the placement prop's `iconOnly`); none when the template has none. */
-export const iconOnlyValuesOf = template => template.props[template.icon.placement]?.iconOnly ?? [];
+/** The placement values that make an instance icon-only (each def placement prop's `iconOnly`); none when no def has any. */
+export const iconOnlyValuesOf = template => template.icons.flatMap(def => def.placement ? (template.props[def.placement]?.iconOnly ?? []) : []);
 
-/** Whether the instance is icon-only: its icon is shown and its placement is an icon-only value. */
-export const iconOnlyIn = (template, props) => props[template.icon.show] === true && iconOnlyValuesOf(template).includes(String(props[template.icon.placement]));
+/** Whether the instance is icon-only: one of its defs is shown at an icon-only placement value. */
+export const iconOnlyIn = (template, props) => template.icons.some(def => def.placement !== undefined && props[def.show] === true
+    && (template.props[def.placement]?.iconOnly ?? []).includes(String(props[def.placement])));
 
 /** The anatomy slot of the label (the required text slot). */
 const labelKeyOf = template => template.anatomy.find(slot => slot.kind === 'text').id;
