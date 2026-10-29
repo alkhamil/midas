@@ -239,7 +239,18 @@ function renderButton(n, template, parent, scope) {
             }
         }
     }
-    return { tag: 'button', nodeId: n.id, attrs, style: placement(n, parent, scope.responsive), children };
+    // The stroke is the node's own, drawn as an overlay on the canvas's rules (inside, center or outside), so the component's CSS border is off.
+    if (strokeIsOn(n)) children.push(strokeBoxOf(n));
+    const style = { ...placement(n, parent, scope.responsive), borderWidth: '0px' };
+    // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
+    if (strokeIsOn(n) && !style.position) style.position = 'relative';
+    return { tag: 'button', nodeId: n.id, attrs, style, children };
+}
+
+/** A stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws it. */
+function strokeBoxOf(n) {
+    const w = n.strokeWidth, grow = { inside: 0, center: w / 2, outside: w }[n.strokeAlign ?? 'center'];
+    return { tag: 'div', attrs: {}, style: { position: 'absolute', inset: `${svgNumber(-grow)}px`, boxSizing: 'border-box', pointerEvents: 'none', border: `${svgNumber(w)}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, borderRadius: 'var(--button-radius)' }, children: [] };
 }
 
 /** @param {any} n */
