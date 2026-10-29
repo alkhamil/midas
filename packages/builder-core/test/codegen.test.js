@@ -36,7 +36,7 @@ const binding = (over = {}) => ({ version: 2, templateId: 'button', variables: {
 test('the component takes every prop of the schema, with the schema default', () => {
     const { files } = generateComponent(button, binding(), variables(), 'Button');
     const jsx = files['Button.jsx'];
-    assert.match(jsx, /export function Button\(\{ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, fullWidth = false, onClick, onHover, onFocus, onBlur \}\)/);
+    assert.match(jsx, /export function Button\(\{ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur \}\)/);
 });
 
 test('anatomy renders in order, and a managed icon only when the placement asks for it', () => {

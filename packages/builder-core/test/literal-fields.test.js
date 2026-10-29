@@ -12,11 +12,11 @@ test('the label prop writes the label layer\'s text', () => {
     ]);
 });
 
-test('fullWidth on writes the root width mode to fill, and off writes hug', () => {
-    assert.deepEqual(literalFields(button, resolveProps(button, { fullWidth: true })).filter(f => f.field === 'layoutSizingH'), [
+test('block on writes the root width mode to fill, and off writes hug', () => {
+    assert.deepEqual(literalFields(button, resolveProps(button, { block: true })).filter(f => f.field === 'layoutSizingH'), [
         { key: 'root', field: 'layoutSizingH', value: 'fill' },
     ]);
-    assert.deepEqual(literalFields(button, resolveProps(button, { fullWidth: false })).filter(f => f.field === 'layoutSizingH'), [
+    assert.deepEqual(literalFields(button, resolveProps(button, { block: false })).filter(f => f.field === 'layoutSizingH'), [
         { key: 'root', field: 'layoutSizingH', value: 'hug' },
     ]);
 });

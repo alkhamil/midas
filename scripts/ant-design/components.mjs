@@ -36,13 +36,15 @@ defineComponent({
         { name: 'icon/start/visible', type: 'boolean', values: [false, true, false, true] },
         { name: 'icon/end/visible', type: 'boolean', values: [false, false, true, false] },
         { name: 'label/visible', type: 'boolean', values: [true, true, true, false] },
-        { name: 'padding-x', type: 'number', values: [{ ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, { ref: 'Size/button/icon-only-padding-x' }] },
+        { name: 'padding-x', type: 'number', values: [{ ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, { ref: 'Size/button/padding-x' }, 0] },
+        // Icon only: a square of the control height (antd's circle shape), so the minimum width is the height.
+        { name: 'min-width', type: 'number', values: [0, 0, 0, { ref: 'Size/button/height' }] },
     ] }],
     variants: { Danger: { No: '', Yes: '-danger' }, Dashed: { No: '', Yes: '' } },
-    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 15], 'icon-only-padding-x': [5, 9, 12], gap: [4, 8, 8], 'font-size': [14, 14, 16], radius: [4, 6, 8], 'icon-size': [12, 14, 16] },
+    sizes: { height: [24, 32, 40], 'padding-x': [7, 15, 23], 'padding-y': [0, 0, 0], gap: [8, 8, 8], 'font-size': [14, 14, 16], 'line-height': [22, 22, 24], radius: [4, 6, 8], 'icon-size': [14, 14, 16] },
     text: { prop: 'Label', def: 'Button' },
     tree: ({ st, ax, sz, x, sf, v, label }) => frame('Button', {
-        dir: 'h', alignC: 'center', alignP: 'center', h: sz('height'), pad: [0, x('Button icon', 'padding-x'), 0, x('Button icon', 'padding-x')], gap: sz('gap'), radius: sz('radius'),
+        dir: 'h', alignC: 'center', alignP: 'center', h: sz('height'), minW: x('Button icon', 'min-width'), pad: [sz('padding-y'), x('Button icon', 'padding-x'), sz('padding-y'), x('Button icon', 'padding-x')], gap: sz('gap'), radius: sz('radius'),
         fill: st('bg'), stroke: st('stroke'), sw: ax('stroke/width'), dash: v.Dashed === 'Yes',
     }, [
         frame('Focus indicator', { pos: 'abs', x: 0, y: 0, w: 'fill', h: 'fill', radius: sz('radius'), stroke: b('Semantic', v.Danger === 'Yes' ? 'ring/danger' : 'ring/brand'), sw: 3, strokeAlign: 'outside', visible: sf('focus/visible') }),

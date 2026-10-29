@@ -26,7 +26,7 @@ export const BUTTON = {
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
         loading: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
-        fullWidth: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'layoutSizingH' } },
+        block: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'layoutSizingH' } },
     },
     tokens: {
         fromSize: ['fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],

@@ -13,7 +13,7 @@ test('an instance with no stored props resolves every literal prop to its schema
         icon: null,
         loading: false,
         disabled: false,
-        fullWidth: false,
+        block: false,
     });
 });
 

@@ -346,7 +346,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
     const placement = opts.iconPlacement ?? 'start';
     const loading = !!opts.loading;
     const disabled = !!opts.disabled;
-    const fullWidth = !!opts.fullWidth;
+    const block = !!opts.block;
 
     const colors = VARIANT_COLORS[variant] || VARIANT_COLORS[MODES.variant.primary];
     const metrics = SIZE_METRICS[size] || SIZE_METRICS[MODES.size.md];
@@ -357,11 +357,11 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         ...(hasIcon ? { iconPlacement: placement } : {}),
         loading,
         disabled,
-        fullWidth,
+        block,
     };
 
     const textW = Math.max(28, Math.ceil(labelText.length * metrics.fs * 0.6));
-    const estW = opts.w ?? (fullWidth ? 358 : metrics.px * 2 + textW + (hasIcon ? 16 + metrics.gap : 0));
+    const estW = opts.w ?? (block ? 358 : metrics.px * 2 + textW + (hasIcon ? 16 + metrics.gap : 0));
 
     const inst = autoFrameNode(id, name, 'horizontal', {
         parentId,
@@ -381,7 +381,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         strokeWidth: variant === MODES.variant.secondary ? 1 : 0,
         primaryAlign: 'center',
         counterAlign: 'center',
-        layoutSizingH: fullWidth ? 'fill' : 'hug',
+        layoutSizingH: block ? 'fill' : 'hug',
         layoutSizingV: 'hug',
         isInstance: true,
         varModes: { [COL_VARIANT_ID]: variant, [COL_SIZE_ID]: size },
@@ -799,7 +799,7 @@ function buildLoginPage() {
             label: 'Sign In to Kopi Kita',
             hasIcon: true,
             iconPlacement: 'end',
-            fullWidth: true,
+            block: true,
         }),
         ...buildButtonInstance(`${p}-btn-sso`, 'Continue with Passkey Button', actionsId, {
             variant: MODES.variant.secondary,
@@ -807,7 +807,7 @@ function buildLoginPage() {
             label: 'Continue with Passkey',
             hasIcon: true,
             iconPlacement: 'start',
-            fullWidth: true,
+            block: true,
         }),
         ...buildBottomTabBar(p, 'Profile'),
     ];
@@ -1149,7 +1149,7 @@ function buildCartPage() {
             label: 'Pay Now · Rp 68.000',
             hasIcon: true,
             iconPlacement: 'end',
-            fullWidth: true,
+            block: true,
         }),
         ...buildButtonInstance(`${p}-btn-syncing`, 'Syncing Promo Button', footerActionsId, {
             variant: MODES.variant.secondary,
@@ -1157,7 +1157,7 @@ function buildCartPage() {
             label: 'Verifying Voucher...',
             hasIcon: false,
             loading: true,
-            fullWidth: true,
+            block: true,
         }),
         ...buildButtonInstance(`${p}-btn-clear`, 'Clear Cart Danger Button', footerActionsId, {
             variant: MODES.variant.danger,
@@ -1245,7 +1245,7 @@ function buildProfilePage() {
             label: 'Edit Taste Profile',
             hasIcon: true,
             iconPlacement: 'start',
-            fullWidth: true,
+            block: true,
         }),
         ...buildButtonInstance(`${p}-btn-signout`, 'Sign Out Button', actionsId, {
             variant: MODES.variant.danger,
@@ -1253,7 +1253,7 @@ function buildProfilePage() {
             label: 'Sign Out of Device',
             hasIcon: true,
             iconPlacement: 'end',
-            fullWidth: true,
+            block: true,
         }),
         ...buildBottomTabBar(p, 'Profile'),
     ];

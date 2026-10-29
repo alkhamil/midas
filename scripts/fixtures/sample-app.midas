@@ -1095,7 +1095,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -1250,7 +1250,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -2699,7 +2699,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -2887,7 +2887,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -3010,7 +3010,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -4459,7 +4459,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -4869,7 +4869,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -5248,7 +5248,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -5659,7 +5659,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -6069,7 +6069,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -6447,7 +6447,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": true,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -7953,7 +7953,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -8107,7 +8107,7 @@
               "hasIcon": false,
               "loading": true,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -8230,7 +8230,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -9610,7 +9610,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -9765,7 +9765,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": true
+              "block": true
             }
           }
         },
@@ -11133,7 +11133,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -11256,7 +11256,7 @@
               "iconPlacement": "start",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -11411,7 +11411,7 @@
               "iconPlacement": "end",
               "loading": false,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -11599,7 +11599,7 @@
               "hasIcon": false,
               "loading": true,
               "disabled": false,
-              "fullWidth": false
+              "block": false
             }
           }
         },
@@ -11721,7 +11721,7 @@
               "hasIcon": false,
               "loading": false,
               "disabled": true,
-              "fullWidth": false
+              "block": false
             }
           }
         },

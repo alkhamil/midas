@@ -9439,7 +9439,7 @@ function instanceLabelOf(inst, master) {
     const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id)));
     return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
 }
-/** Literal props write their node fields: the label prop the label layer's text, fullWidth the root's width mode (see literalFields). */
+/** Literal props write their node fields: the label prop the label layer's text, block the root's width mode (see literalFields). */
 function applyLiteralFields(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;

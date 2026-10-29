@@ -70,7 +70,7 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
 
 11. **Generate code on the main master.** Select **Button**, scroll to Code, click Generate code.
     - Expected: two downloads, `Button.jsx` and `Button.css`. The browser may ask once to allow multiple downloads.
-    - Expected first line of `Button.jsx`: `export function Button({ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, fullWidth = false, onClick, onHover, onFocus, onBlur }) {`
+    - Expected first line of `Button.jsx`: `export function Button({ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur }) {`
 
 12. **Preview states, no document change.** Select **Save**. In Preview, set State to Default, Hover, Active, Disabled in turn. Read the `bg` row.
     - Expected (Primary, Small): Default `#4338ca`, Hover `#3730a3`, Active `#312e81`, Disabled `#a5b4fc`.
