@@ -185,8 +185,8 @@
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -311,7 +311,7 @@
           "sourceId": "icon-check-path",
           "overrides": {},
           "vars": {
-            "fills.0": "i-fg-v"
+            "fills.0": "v-fg"
           }
         },
         {
@@ -830,8 +830,8 @@
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -901,7 +901,7 @@
           "sourceId": "icon-arrow-path",
           "overrides": {},
           "vars": {
-            "stroke": "i-fg-v"
+            "stroke": "v-fg"
           }
         }
       ]

@@ -80,7 +80,7 @@ function iconInstance(slotId, componentId, components, disabled) {
         id: map.get(c.id), fillIndexes: (c.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!c.stroke && c.strokeWidth > 0,
     }));
     const names = Object.fromEntries(Object.entries(iconSlotTargets(BUTTON)).map(([role, target]) => [role, target.name]));
-    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, names, layers });
+    const plan = iconSlotBindings({ fg: 'v-fg', fgDisabled: 'v-fg-disabled', size: 's-iconSize', disabled, names, layers });
     const nodes = copies.map(c => {
         const bound = plan.layers.find(l => l.id === map.get(c.id)).vars;
         const isRoot = c.id === componentId;
