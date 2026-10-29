@@ -18,6 +18,7 @@ export const BUTTON = {
     icon: { show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
     props: {
         variant: { source: 'variable', collection: 'Variant' },
+        color: { source: 'variable', collection: 'Color' },
         size: { source: 'variable', collection: 'Size' },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
@@ -30,12 +31,21 @@ export const BUTTON = {
     },
     tokens: {
         fromSize: ['fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'bg-active', 'bg-disabled', 'fg-disabled', 'border-focus'],
+        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'border-focus'],
+        fromColor: [
+            'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
+            'color-bg', 'color-bg-hover', 'color-bg-active', 'color-text', 'color-text-hover', 'color-text-active',
+            'color-text-bg-hover', 'color-text-bg-active', 'color-solid', 'color-solid-hover', 'color-solid-active', 'color-solid-text',
+        ],
     },
-    // The kind of value each token holds: `length` is a number in px (line height included), `color` a CSS colour string.
+    // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
         fontSize: 'length', lineHeight: 'ratio', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
-        bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'bg-active': 'color', 'bg-disabled': 'color', 'fg-disabled': 'color', 'border-focus': 'color',
+        bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
+        'bg-disabled': 'color', 'fg-disabled': 'color', 'border-focus': 'color',
+        color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
+        'color-bg': 'color', 'color-bg-hover': 'color', 'color-bg-active': 'color', 'color-text': 'color', 'color-text-hover': 'color', 'color-text-active': 'color',
+        'color-text-bg-hover': 'color', 'color-text-bg-active': 'color', 'color-solid': 'color', 'color-solid-hover': 'color', 'color-solid-active': 'color', 'color-solid-text': 'color',
     },
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {
@@ -43,8 +53,8 @@ export const BUTTON = {
     },
     // Preview only: studio-side, colours only. Never written to the document.
     previewStates: {
-        hover: { bg: 'bg-hover' },
-        active: { bg: 'bg-active' },
+        hover: { bg: 'bg-hover', fg: 'fg-hover', border: 'border-hover' },
+        active: { bg: 'bg-active', fg: 'fg-active', border: 'border-active' },
         focus: { border: 'border-focus' },
     },
     // The CSS pseudo-class each state is written as.

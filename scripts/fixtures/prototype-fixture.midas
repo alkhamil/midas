@@ -45,16 +45,17 @@
             "templateId": "button",
             "variables": {
               "variant": "c-variant",
+              "color": "c-color",
               "size": "c-size"
             }
           },
           "vars": {
-            "fill": "i-bg-v",
-            "stroke": "i-border-v",
-            "radius": "i-radius",
-            "padH": "i-px",
-            "padV": "i-py",
-            "gap": "i-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           }
         },
         {
@@ -95,9 +96,9 @@
           "type": "text",
           "id": "main-label",
           "vars": {
-            "fill": "i-fg-v",
-            "fontSize": "i-fs",
-            "lineHeight": "i-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -143,16 +144,17 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "sm"
           },
           "vars": {
-            "fill": "i-bg-v",
-            "stroke": "i-border-v",
-            "radius": "i-radius",
-            "padH": "i-px",
-            "padV": "i-py",
-            "gap": "i-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           }
         },
         {
@@ -227,9 +229,9 @@
           "type": "text",
           "id": "inst-start-label",
           "vars": {
-            "fill": "i-fg-v",
-            "fontSize": "i-fs",
-            "lineHeight": "i-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           },
           "sourceId": "main-label"
         },
@@ -351,16 +353,17 @@
             }
           },
           "varModes": {
-            "c-variant": "danger",
+            "c-variant": "solid",
+            "c-color": "danger",
             "c-size": "lg"
           },
           "vars": {
-            "fill": "i-bg-v",
-            "stroke": "i-border-v",
-            "radius": "i-radius",
-            "padH": "i-px",
-            "padV": "i-py",
-            "gap": "i-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           }
         },
         {
@@ -401,9 +404,9 @@
           "type": "text",
           "id": "inst-plain-label",
           "vars": {
-            "fill": "i-fg-v",
-            "fontSize": "i-fs",
-            "lineHeight": "i-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           },
           "sourceId": "main-label"
         },
@@ -515,16 +518,17 @@
             "templateId": "button",
             "variables": {
               "variant": "c-variant-b",
+              "color": "c-color",
               "size": "c-size"
             }
           },
           "vars": {
-            "fill": "i-bg-b",
-            "stroke": "i-border-b",
-            "radius": "i-radius",
-            "padH": "i-px",
-            "padV": "i-py",
-            "gap": "i-gap"
+            "fill": "b-v-bg",
+            "stroke": "b-v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           }
         },
         {
@@ -565,9 +569,9 @@
           "type": "text",
           "id": "legacy-label",
           "vars": {
-            "fill": "i-fg-b",
-            "fontSize": "i-fs",
-            "lineHeight": "i-lh"
+            "fill": "b-v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -738,16 +742,17 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "sm"
           },
           "vars": {
-            "fill": "i-bg-v",
-            "stroke": "i-border-v",
-            "radius": "i-radius",
-            "padH": "i-px",
-            "padV": "i-py",
-            "gap": "i-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           }
         },
         {
@@ -788,9 +793,9 @@
           "type": "text",
           "id": "inst-cross-label",
           "vars": {
-            "fill": "i-fg-v",
-            "fontSize": "i-fs",
-            "lineHeight": "i-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           },
           "sourceId": "main-label"
         },
@@ -970,7 +975,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1027,7 +1033,8 @@
             }
           },
           "varModes": {
-            "c-variant": "danger",
+            "c-variant": "solid",
+            "c-color": "danger",
             "c-size": "lg"
           },
           "prototype": {
@@ -1083,7 +1090,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1185,7 +1193,8 @@
             }
           },
           "varModes": {
-            "c-variant": "danger",
+            "c-variant": "solid",
+            "c-color": "danger",
             "c-size": "lg"
           },
           "prototype": {
@@ -1235,7 +1244,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1292,7 +1302,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1391,7 +1402,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1446,7 +1458,8 @@
             }
           },
           "varModes": {
-            "c-variant": "danger",
+            "c-variant": "solid",
+            "c-color": "danger",
             "c-size": "lg"
           },
           "prototype": {
@@ -1525,7 +1538,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1620,7 +1634,8 @@
             }
           },
           "varModes": {
-            "c-variant": "primary",
+            "c-variant": "solid",
+            "c-color": "primary",
             "c-size": "lg"
           },
           "prototype": {
@@ -1654,23 +1669,13 @@
   "variables": {
     "collections": [
       {
-        "id": "c-variant",
-        "name": "Variant",
+        "id": "c-color",
+        "name": "Color",
         "modes": [
           {
-            "id": "primary",
-            "name": "Primary"
+            "id": "default",
+            "name": "Default"
           },
-          {
-            "id": "danger",
-            "name": "Danger"
-          }
-        ]
-      },
-      {
-        "id": "c-variant-b",
-        "name": "Variant B",
-        "modes": [
           {
             "id": "primary",
             "name": "Primary"
@@ -1696,6 +1701,66 @@
         ]
       },
       {
+        "id": "c-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "outlined",
+            "name": "Outlined"
+          },
+          {
+            "id": "dashed",
+            "name": "Dashed"
+          },
+          {
+            "id": "solid",
+            "name": "Solid"
+          },
+          {
+            "id": "filled",
+            "name": "Filled"
+          },
+          {
+            "id": "text",
+            "name": "Text"
+          },
+          {
+            "id": "link",
+            "name": "Link"
+          }
+        ]
+      },
+      {
+        "id": "c-variant-b",
+        "name": "Variant B",
+        "modes": [
+          {
+            "id": "outlined",
+            "name": "Outlined"
+          },
+          {
+            "id": "dashed",
+            "name": "Dashed"
+          },
+          {
+            "id": "solid",
+            "name": "Solid"
+          },
+          {
+            "id": "filled",
+            "name": "Filled"
+          },
+          {
+            "id": "text",
+            "name": "Text"
+          },
+          {
+            "id": "link",
+            "name": "Link"
+          }
+        ]
+      },
+      {
         "id": "col-flag",
         "name": "Flag",
         "modes": [
@@ -1712,186 +1777,205 @@
     ],
     "items": [
       {
-        "id": "i-bg-v",
-        "name": "button/bg",
+        "id": "c-color",
+        "name": "button/color",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
+          "default": "#18181b",
           "primary": "#4338ca",
           "danger": "#dc2626"
         }
       },
       {
-        "id": "i-bg-hover-v",
-        "name": "button/bg-hover",
+        "id": "c-color-hover",
+        "name": "button/color-hover",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
+          "default": "#4338ca",
           "primary": "#3730a3",
           "danger": "#b91c1c"
         }
       },
       {
-        "id": "i-bg-active-v",
-        "name": "button/bg-active",
+        "id": "c-color-active",
+        "name": "button/color-active",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
+          "default": "#312e81",
           "primary": "#312e81",
           "danger": "#991b1b"
         }
       },
       {
-        "id": "i-bg-disabled-v",
-        "name": "button/bg-disabled",
+        "id": "c-color-border",
+        "name": "button/color-border",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
-          "primary": "#a5b4fc",
-          "danger": "#fca5a5"
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
         }
       },
       {
-        "id": "i-fg-v",
-        "name": "button/fg",
+        "id": "c-color-border-hover",
+        "name": "button/color-border-hover",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
-          "primary": "#ffffff",
-          "danger": "#fde68a"
+          "default": "#4338ca",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
         }
       },
       {
-        "id": "i-fg-disabled-v",
-        "name": "button/fg-disabled",
+        "id": "c-color-border-active",
+        "name": "button/color-border-active",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
+          "default": "#312e81",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-bg",
+        "name": "button/color-bg",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#f4f4f5",
           "primary": "#e0e7ff",
           "danger": "#fee2e2"
         }
       },
       {
-        "id": "i-border-v",
-        "name": "button/border",
+        "id": "c-color-bg-hover",
+        "name": "button/color-bg-hover",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
-          "primary": "#4338ca",
-          "danger": "#dc2626"
+          "default": "#e4e4e7",
+          "primary": "#c7d2fe",
+          "danger": "#fecaca"
         }
       },
       {
-        "id": "i-border-focus-v",
-        "name": "button/border-focus",
+        "id": "c-color-bg-active",
+        "name": "button/color-bg-active",
         "type": "color",
-        "collectionId": "c-variant",
+        "collectionId": "c-color",
         "values": {
-          "primary": "#818cf8",
-          "danger": "#f87171"
-        }
-      },
-      {
-        "id": "i-bg-b",
-        "name": "button/bg",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#4338ca",
-          "danger": "#dc2626"
-        }
-      },
-      {
-        "id": "i-bg-hover-b",
-        "name": "button/bg-hover",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#3730a3"
-        }
-      },
-      {
-        "id": "i-bg-active-b",
-        "name": "button/bg-active",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#312e81",
-          "danger": "#991b1b"
-        }
-      },
-      {
-        "id": "i-bg-disabled-b",
-        "name": "button/bg-disabled",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
+          "default": "#d4d4d8",
           "primary": "#a5b4fc",
           "danger": "#fca5a5"
         }
       },
       {
-        "id": "i-fg-b",
-        "name": "button/fg",
+        "id": "c-color-text",
+        "name": "button/color-text",
         "type": "color",
-        "collectionId": "c-variant-b",
+        "collectionId": "c-color",
         "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-text-hover",
+        "name": "button/color-text-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-text-active",
+        "name": "button/color-text-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-text-bg-hover",
+        "name": "button/color-text-bg-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#f4f4f5",
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
+        "id": "c-color-text-bg-active",
+        "name": "button/color-text-bg-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#d4d4d8",
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "c-color-solid",
+        "name": "button/color-solid",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-solid-hover",
+        "name": "button/color-solid-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#3f3f46",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-solid-active",
+        "name": "button/color-solid-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#27272a",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-solid-text",
+        "name": "button/color-solid-text",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#ffffff",
           "primary": "#ffffff",
           "danger": "#ffffff"
         }
       },
       {
-        "id": "i-fg-disabled-b",
-        "name": "button/fg-disabled",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#e0e7ff",
-          "danger": "#fee2e2"
-        }
-      },
-      {
-        "id": "i-border-b",
-        "name": "button/border",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#4338ca",
-          "danger": "#dc2626"
-        }
-      },
-      {
-        "id": "i-border-focus-b",
-        "name": "button/border-focus",
-        "type": "color",
-        "collectionId": "c-variant-b",
-        "values": {
-          "primary": "#818cf8",
-          "danger": "#f87171"
-        }
-      },
-      {
-        "id": "i-card-bg-v",
-        "name": "card/bg",
-        "type": "color",
-        "collectionId": "c-variant",
-        "values": {
-          "primary": "#ffffff",
-          "danger": "#fff1f1"
-        }
-      },
-      {
-        "id": "i-card-fg-v",
-        "name": "card/fg",
-        "type": "color",
-        "collectionId": "c-variant",
-        "values": {
-          "primary": "#20202a",
-          "danger": "#20202a"
-        }
-      },
-      {
-        "id": "i-fs",
+        "id": "s-fontSize",
         "name": "button/fontSize",
         "type": "number",
         "collectionId": "c-size",
@@ -1901,17 +1985,17 @@
         }
       },
       {
-        "id": "i-lh",
+        "id": "s-lineHeight",
         "name": "button/lineHeight",
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 20,
-          "lg": 27
+          "sm": 1.5714285714285714,
+          "lg": 1.4444444444444444
         }
       },
       {
-        "id": "i-px",
+        "id": "s-paddingX",
         "name": "button/paddingX",
         "type": "number",
         "collectionId": "c-size",
@@ -1921,7 +2005,7 @@
         }
       },
       {
-        "id": "i-py",
+        "id": "s-paddingY",
         "name": "button/paddingY",
         "type": "number",
         "collectionId": "c-size",
@@ -1931,7 +2015,7 @@
         }
       },
       {
-        "id": "i-gap",
+        "id": "s-gap",
         "name": "button/gap",
         "type": "number",
         "collectionId": "c-size",
@@ -1941,7 +2025,7 @@
         }
       },
       {
-        "id": "i-radius",
+        "id": "s-radius",
         "name": "button/radius",
         "type": "number",
         "collectionId": "c-size",
@@ -1951,13 +2035,526 @@
         }
       },
       {
-        "id": "i-icon",
-        "name": "button/icon-size",
+        "id": "s-iconSize",
+        "name": "button/iconSize",
         "type": "number",
         "collectionId": "c-size",
         "values": {
           "sm": 14,
-          "lg": 18
+          "lg": 16
+        }
+      },
+      {
+        "id": "v-bg",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid"
+          },
+          "filled": {
+            "alias": "c-color-bg"
+          },
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color"
+          },
+          "dashed": {
+            "alias": "c-color"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text"
+          },
+          "link": {
+            "alias": "c-color-text"
+          }
+        }
+      },
+      {
+        "id": "v-border",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border"
+          },
+          "dashed": {
+            "alias": "c-color-border"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-hover",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid-hover"
+          },
+          "filled": {
+            "alias": "c-color-bg-hover"
+          },
+          "text": {
+            "alias": "c-color-text-bg-hover"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-hover",
+        "name": "button/fg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-hover"
+          },
+          "dashed": {
+            "alias": "c-color-hover"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-hover"
+          },
+          "link": {
+            "alias": "c-color-text-hover"
+          }
+        }
+      },
+      {
+        "id": "v-border-hover",
+        "name": "button/border-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-hover"
+          },
+          "dashed": {
+            "alias": "c-color-border-hover"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-active",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid-active"
+          },
+          "filled": {
+            "alias": "c-color-bg-active"
+          },
+          "text": {
+            "alias": "c-color-text-bg-active"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-active",
+        "name": "button/fg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-active"
+          },
+          "dashed": {
+            "alias": "c-color-active"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-active"
+          },
+          "link": {
+            "alias": "c-color-text-active"
+          }
+        }
+      },
+      {
+        "id": "v-border-active",
+        "name": "button/border-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-active"
+          },
+          "dashed": {
+            "alias": "c-color-border-active"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-disabled",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#f4f4f5",
+          "dashed": "#f4f4f5",
+          "solid": "#f4f4f5",
+          "filled": "#f4f4f5",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-disabled",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#a1a1aa",
+          "dashed": "#a1a1aa",
+          "solid": "#a1a1aa",
+          "filled": "#a1a1aa",
+          "text": "#a1a1aa",
+          "link": "#a1a1aa"
+        }
+      },
+      {
+        "id": "v-border-focus",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border"
+          },
+          "dashed": {
+            "alias": "c-color-border"
+          },
+          "solid": {
+            "alias": "c-color-border"
+          },
+          "filled": {
+            "alias": "c-color-border"
+          },
+          "text": {
+            "alias": "c-color-border"
+          },
+          "link": {
+            "alias": "c-color-border"
+          }
+        }
+      },
+      {
+        "id": "b-v-bg",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid"
+          },
+          "filled": {
+            "alias": "c-color-bg"
+          },
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-fg",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color"
+          },
+          "dashed": {
+            "alias": "c-color"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text"
+          },
+          "link": {
+            "alias": "c-color-text"
+          }
+        }
+      },
+      {
+        "id": "b-v-border",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border"
+          },
+          "dashed": {
+            "alias": "c-color-border"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-bg-hover",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "filled": {
+            "alias": "c-color-bg-hover"
+          },
+          "text": {
+            "alias": "c-color-text-bg-hover"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-fg-hover",
+        "name": "button/fg-hover",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-hover"
+          },
+          "dashed": {
+            "alias": "c-color-hover"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-hover"
+          },
+          "link": {
+            "alias": "c-color-text-hover"
+          }
+        }
+      },
+      {
+        "id": "b-v-border-hover",
+        "name": "button/border-hover",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-hover"
+          },
+          "dashed": {
+            "alias": "c-color-border-hover"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-bg-active",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid-active"
+          },
+          "filled": {
+            "alias": "c-color-bg-active"
+          },
+          "text": {
+            "alias": "c-color-text-bg-active"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-fg-active",
+        "name": "button/fg-active",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-active"
+          },
+          "dashed": {
+            "alias": "c-color-active"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-active"
+          },
+          "link": {
+            "alias": "c-color-text-active"
+          }
+        }
+      },
+      {
+        "id": "b-v-border-active",
+        "name": "button/border-active",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-active"
+          },
+          "dashed": {
+            "alias": "c-color-border-active"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-bg-disabled",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": "#f4f4f5",
+          "dashed": "#f4f4f5",
+          "solid": "#f4f4f5",
+          "filled": "#f4f4f5",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "b-v-fg-disabled",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": "#a1a1aa",
+          "dashed": "#a1a1aa",
+          "solid": "#a1a1aa",
+          "filled": "#a1a1aa",
+          "text": "#a1a1aa",
+          "link": "#a1a1aa"
+        }
+      },
+      {
+        "id": "b-v-border-focus",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "c-variant-b",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border"
+          },
+          "dashed": {
+            "alias": "c-color-border"
+          },
+          "solid": {
+            "alias": "c-color-border"
+          },
+          "filled": {
+            "alias": "c-color-border"
+          },
+          "text": {
+            "alias": "c-color-border"
+          },
+          "link": {
+            "alias": "c-color-border"
+          }
+        }
+      },
+      {
+        "id": "i-card-bg-v",
+        "name": "card/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": "#ffffff",
+          "filled": "#ffffff",
+          "text": "#ffffff",
+          "link": "#ffffff"
+        }
+      },
+      {
+        "id": "i-card-fg-v",
+        "name": "card/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#20202a",
+          "dashed": "#20202a",
+          "solid": "#20202a",
+          "filled": "#20202a",
+          "text": "#20202a",
+          "link": "#20202a"
         }
       },
       {

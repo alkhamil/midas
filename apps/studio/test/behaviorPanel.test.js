@@ -6,11 +6,11 @@ import { masterPanel, instancePanel, createBinding, TEMPLATES } from '@midas/bui
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const button = TEMPLATES.get('button');
-const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
+const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'solid', name: 'Solid' }, { id: 'outlined', name: 'Outlined' }] };
 const master = (collections = [variant]) => ({ id: 'btn', name: 'Button', component: true, behavior: createBinding(button, collections) });
 const instance = (behavior = { version: 2, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
 const masterHtml = (node, collections) => behaviorPanelHtml({ kind: 'master', panel: masterPanel(node, collections), esc });
-const instanceHtml = (node, mast, collections, modes = { variant: 'primary', size: null }) => behaviorPanelHtml({ kind: 'instance', panel: instancePanel(node, mast, collections, modes), esc });
+const instanceHtml = (node, mast, collections, modes = { variant: 'solid', size: null }) => behaviorPanelHtml({ kind: 'instance', panel: instancePanel(node, mast, collections, modes), esc });
 
 test('a master bound to Button shows the template and each variable prop with its collection', () => {
     const html = masterHtml(master([variant]), [variant]);
@@ -46,7 +46,7 @@ test('an unbound master shows the template picker and no collection rows', () =>
 test('an instance shows its variable props with the bound modes and its literal props', () => {
     const html = instanceHtml(instance(), master([variant]), [variant]);
     assert.match(html, /data-bp="value" data-bp-kind="variable" data-bp-prop="variant"/);
-    assert.match(html, /<option value="danger"\s*>Danger<\/option>/);
+    assert.match(html, /<option value="outlined"\s*>Outlined<\/option>/);
     assert.match(html, /data-bp-kind="literal" data-bp-type="string" data-bp-prop="label" value="Button"/);
     assert.match(html, /data-bp-type="boolean" data-bp-prop="loading"/);
 });

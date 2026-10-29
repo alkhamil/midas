@@ -2,41 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { buttonModel } from '../../../scripts/button-model.mjs';
 
 const button = TEMPLATES.get('button');
-const sizeColl = { id: 'c-size', name: 'Size', modes: [{ id: 'sm', name: 'Small' }] };
-const variantColl = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
-const num = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
-const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
-const sizeItems = () => [
-    num('i-fs', 'button/fontSize', 'c-size', { sm: 14 }),
-    num('i-lh', 'button/lineHeight', 'c-size', { sm: 1.5 }),
-    num('i-px', 'button/paddingX', 'c-size', { sm: 12 }),
-    num('i-py', 'button/paddingY', 'c-size', { sm: 6 }),
-    num('i-gap', 'button/gap', 'c-size', { sm: 6 }),
-    num('i-radius', 'button/radius', 'c-size', { sm: 6 }),
-    num('i-icon', 'button/iconSize', 'c-size', { sm: 14 }),
-];
-const variantItems = (skip = []) => [
-    ['bg', { primary: '#4338ca', danger: '#dc2626' }],
-    ['bg-hover', { primary: '#3730a3', danger: '#b91c1c' }],
-    ['bg-active', { primary: '#312e81', danger: '#991b1b' }],
-    ['bg-disabled', { primary: '#a5b4fc', danger: '#fca5a5' }],
-    ['fg-disabled', { primary: '#e0e7ff', danger: '#fee2e2' }],
-    ['border-focus', { primary: '#818cf8', danger: '#f87171' }],
-    ['fg', { primary: '#ffffff', danger: '#ffffff' }],
-    ['border', { primary: '#4338ca', danger: '#dc2626' }],
-].filter(([name]) => !skip.includes(name)).map(([name, values]) => col(`i-${name}`, `button/${name}`, 'c-variant', values));
-const variables = (skip = []) => ({
-    collections: [sizeColl, variantColl],
-    items: [...sizeItems(), ...variantItems(skip)],
+const model = buttonModel({
+    colors: ['primary', 'danger'],
+    variantModes: ['solid', 'outlined'],
+    sizeModes: [{ id: 'sm', name: 'Small' }],
+    sizeValues: { fontSize: { sm: 14 }, lineHeight: { sm: 1.5 }, paddingX: { sm: 12 }, paddingY: { sm: 6 }, gap: { sm: 6 }, radius: { sm: 6 }, iconSize: { sm: 14 } },
 });
-const binding = (over = {}) => ({ version: 2, templateId: 'button', variables: { size: 'c-size', variant: 'c-variant', ...over } });
+const variables = (skip = []) => ({
+    collections: model.collections,
+    items: model.items.filter(item => !skip.includes(item.name.replace('button/', ''))),
+});
+const binding = (over = {}) => ({ ...model.binding, variables: { ...model.binding.variables, ...over } });
 
 test('the component takes every prop of the schema, with the schema default', () => {
     const { files } = generateComponent(button, binding(), variables(), 'Button');
     const jsx = files['Button.jsx'];
-    assert.match(jsx, /export function Button\(\{ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur \}\)/);
+    assert.match(jsx, /export function Button\(\{ variant, color, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur \}\)/);
 });
 
 test('anatomy renders in order, and a managed icon only when the placement asks for it', () => {
@@ -53,15 +37,16 @@ test('loading and disabled block the click', () => {
     assert.match(jsx, /onClick=\{blocked \? undefined : onClick\}/);
 });
 
-test('each variant and size mode gets its base tokens on its own selector', () => {
+test('each variant, colour and size mode gets its base tokens on its own selector', () => {
     const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
-    assert.match(css, /\.button\[data-variant="primary"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-bg: #4338ca;/);
-    assert.match(css, /\.button\[data-variant="danger"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-bg: #dc2626;/);
+    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-bg: #4338ca;/);
+    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="danger"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-bg: #dc2626;/);
+    assert.match(css, /\.button\[data-variant="outlined"\]\[data-color="primary"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-border: #4338ca;/);
 });
 
 test('a state block holds only the tokens that state changes', () => {
     const css = generateComponent(button, binding(), variables(), 'Button').files['Button.css'];
-    const hover = /\.button\[data-variant="primary"\]\[data-size="sm"\]:hover:not\(:disabled\) \{\n([^}]*)\}/.exec(css);
+    const hover = /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:hover:not\(:disabled\) \{\n([^}]*)\}/.exec(css);
     assert.ok(hover, 'expected a hover block');
     assert.match(hover[1], /--button-bg: #3730a3;/);
     assert.doesNotMatch(hover[1], /--button-fg/);
@@ -73,13 +58,13 @@ test('no interaction state applies to a disabled Button: hover, active and focus
     assert.match(css, /:active:not\(:disabled\) \{/);
     assert.match(css, /:focus:not\(:disabled\) \{/);
     assert.doesNotMatch(css, /:(hover|active|focus) \{/);
-    assert.match(css, /\.button\[data-variant="primary"\]\[data-size="sm"\]:disabled \{/);
+    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:disabled \{/);
 });
 
 test('a missing state token refuses the output and names the mode and the reason', () => {
     const result = generateComponent(button, binding(), variables(['bg-hover']), 'Button');
     assert.equal(result.files, null);
-    assert.ok(result.problems.some(p => p.token === 'bg-hover' && p.reason === 'no-variable' && p.variant === 'primary'));
+    assert.ok(result.problems.some(p => p.token === 'bg-hover' && p.reason === 'no-variable' && p.variant === 'solid'));
 });
 
 test('an unbound dimension refuses the output', () => {

@@ -26,7 +26,7 @@ const button = (id, parentId, label) => ({
     id, name: label, type: 'frame', parentId, x: 0, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'main', version: 0,
     layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8,
     behavior: { version: BEHAVIOR_DATA_VERSION, props: { label, disabled: false, hasIcon: false } },
-    varModes: { 'c-variant': 'primary', 'c-size': 'lg' },
+    varModes: { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'lg' },
 });
 const square = (x, y, w, h) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
 

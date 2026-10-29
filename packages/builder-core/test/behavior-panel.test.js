@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData } from '../src/behavior-engine/panel.js';
 import { createBinding } from '../src/behavior-engine/binding.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { buttonModel } from '../../../scripts/button-model.mjs';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 
 const button = TEMPLATES.get('button');
-const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
+const variant = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections.find(c => c.name === 'Variant');
 const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] };
 const theme = { id: 'c-theme', name: 'Theme', modes: [{ id: 'light', name: 'Light' }] };
 
@@ -41,11 +42,11 @@ test('the master contract shows non-visual props, states and events, but no icon
 });
 
 test('an instance shows its variable props with the bound modes, and literal props with their defaults', () => {
-    const panel = instancePanel(instanceOf(), boundMaster([variant]), [variant], { variant: 'primary', size: null });
+    const panel = instancePanel(instanceOf(), boundMaster([variant]), [variant], { variant: 'solid', size: null });
     const variantRow = rowOf(panel, 'variant');
     assert.equal(variantRow.kind, 'variable');
     assert.equal(variantRow.disabled, false);
-    assert.deepEqual(variantRow.options, [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }]);
+    assert.deepEqual(variantRow.options, [{ id: 'solid', name: 'Solid' }, { id: 'outlined', name: 'Outlined' }]);
     assert.equal(rowOf(panel, 'label').value, 'Button');
     assert.equal(rowOf(panel, 'hasIcon').value, false);
     assert.equal(rowOf(panel, 'loading').value, false);
@@ -61,10 +62,10 @@ test('a variable prop whose collection is not bound is disabled with a hint', ()
 test('visibleIf: the icon placement row is shown only while hasIcon is on, and a hidden value is not kept', () => {
     const master = boundMaster([variant]);
     let behavior = { version: 2, props: {} };
-    assert.equal(rowOf(instancePanel(instanceOf(behavior), master, [variant], { variant: 'primary', size: null }), 'iconPlacement'), undefined);
+    assert.equal(rowOf(instancePanel(instanceOf(behavior), master, [variant], { variant: 'solid', size: null }), 'iconPlacement'), undefined);
 
     behavior = setInstanceValue(instanceOf(behavior), master, 'hasIcon', true);
-    assert.equal(rowOf(instancePanel(instanceOf(behavior), master, [variant], { variant: 'primary', size: null }), 'iconPlacement').value, 'start');
+    assert.equal(rowOf(instancePanel(instanceOf(behavior), master, [variant], { variant: 'solid', size: null }), 'iconPlacement').value, 'start');
 
     behavior = setInstanceValue(instanceOf(behavior), master, 'iconPlacement', 'end');
     behavior = setInstanceValue(instanceOf(behavior), master, 'hasIcon', false);
@@ -73,11 +74,11 @@ test('visibleIf: the icon placement row is shown only while hasIcon is on, and a
 
 test('the icon is a swap row, shown while hasIcon is on, with the id of the icon it shows', () => {
     const master = boundMaster([variant]);
-    const off = instancePanel(instanceOf(), master, [variant], { variant: 'primary', size: null });
+    const off = instancePanel(instanceOf(), master, [variant], { variant: 'solid', size: null });
     assert.equal(rowOf(off, 'icon'), undefined);
-    const on = instancePanel(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, [variant], { variant: 'primary', size: null });
+    const on = instancePanel(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, [variant], { variant: 'solid', size: null });
     assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null });
-    const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'primary', size: null });
+    const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'solid', size: null });
     assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
 });
 
@@ -90,7 +91,7 @@ test('writing a literal value on an instance goes to the instance store only', (
 });
 
 test('a variable prop is an Appearance mode: writing it on an instance is refused', () => {
-    assert.throws(() => setInstanceValue(instanceOf(), boundMaster([variant]), 'variant', 'danger'), /is an Appearance mode/);
+    assert.throws(() => setInstanceValue(instanceOf(), boundMaster([variant]), 'variant', 'outlined'), /is an Appearance mode/);
 });
 
 test('planning a collection for a variable prop binds it, and clearing it unbinds it', () => {
@@ -116,7 +117,7 @@ test('deleting a collection unbinds it from its masters; instance literal values
 
 test('a template change plans the unbinding and clears each instance value through the store', () => {
     const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]) };
-    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'danger', label: 'Save' } } };
+    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'outlined', label: 'Save' } } };
     const plan = planTemplateChange(master, [inst], null, [variant]);
     assert.equal(plan.changed, true);
     assert.equal(plan.binding, undefined);
@@ -125,7 +126,7 @@ test('a template change plans the unbinding and clears each instance value throu
 
 test('choosing the template the master already has plans nothing', () => {
     const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]) };
-    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'danger' } } };
+    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'outlined' } } };
     assert.deepEqual(planTemplateChange(master, [inst], 'button', [variant]), { changed: false, binding: undefined, updates: [] });
 });
 
@@ -139,12 +140,12 @@ test('a collection change plans only the binding: instance literal values and Ap
 
 test('applying a plan writes the binding and nothing else', () => {
     const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]) };
-    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', varModes: { 'c-variant': 'danger' }, behavior: { version: 2, props: { label: 'Save' } } };
+    const inst = { id: 'i1', isInstance: true, sourceId: 'btn', varModes: { 'c-variant': 'outlined' }, behavior: { version: 2, props: { label: 'Save' } } };
     const replacement = { id: 'c-variant-2', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }] };
     applyPlan(master, planCollectionChange(master, 'variant', 'c-variant-2', [replacement]));
     assert.equal(master.behavior.variables.variant, 'c-variant-2');
     assert.deepEqual(inst.behavior, { version: 2, props: { label: 'Save' } });
-    assert.deepEqual(inst.varModes, { 'c-variant': 'danger' });
+    assert.deepEqual(inst.varModes, { 'c-variant': 'outlined' });
 });
 
 test('a change over every page: an instance on a page that was not open is consistent after save and reopen', () => {

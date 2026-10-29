@@ -2,31 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { TEMPLATES, BEHAVIOR_DATA_VERSION } from '../src/index.js';
+import { buttonModel } from '../../../scripts/button-model.mjs';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const button = TEMPLATES.get('button');
 
-/** A variable collection and items for every token of Button, so the codegen stylesheet resolves without problems. */
-function buttonVariables() {
-    const modes = { variant: ['primary', 'danger'], size: ['sm', 'lg'] };
-    const collections = [
-        { id: 'c-variant', name: 'Variant', modes: modes.variant.map(id => ({ id, name: id })) },
-        { id: 'c-size', name: 'Size', modes: modes.size.map(id => ({ id, name: id })) },
-    ];
-    const items = [];
-    for (const [group, names] of Object.entries(button.tokens)) {
-        const dim = group.includes('Size') || group === 'fromSize' ? 'size' : 'variant';
-        for (const token of names) {
-            const isColor = !['fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'].includes(token);
-            const values = Object.fromEntries(modes[dim].map(m => [m, isColor ? '#4338ca' : token === 'lineHeight' ? 1.5 : 12]));
-            items.push({ id: `i-${token}`, name: `button/${token}`, type: isColor ? 'color' : 'number', collectionId: dim === 'variant' ? 'c-variant' : 'c-size', values });
-        }
-    }
-    return { collections, items };
-}
+const model = buttonModel({
+    colors: ['primary', 'danger'],
+    variantModes: ['solid', 'outlined'],
+    sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
+});
 
-const variables = buttonVariables();
-const buttonMaster = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } } };
+const variables = { collections: model.collections, items: model.items };
+const buttonMaster = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid('#0058CA'), radius: 8, behavior: { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables: { variant: 'c-variant', color: 'c-color', size: 'c-size' } } };
 const doc = nodes => ({ pages: [{ id: 'p', name: 'Screens', nodes }], variables });
 const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 100, fills: solid('#ffffff'), ...extra });
 const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rect', parentId, x: 0, y: 0, w: 40, h: 20, fills: solid('#ff0000'), ...extra });
@@ -115,21 +103,22 @@ test('a frame id that is not a top-level frame is refused', () => {
 });
 
 test('a Button instance is a real button with the codegen classes, mode attributes and its label', () => {
-    const instance = { id: 'i1', name: 'Save', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', disabled: false, hasIcon: false, iconPlacement: 'start' } }, varModes: { 'c-variant': 'danger', 'c-size': 'lg' } };
+    const instance = { id: 'i1', name: 'Save', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', disabled: false, hasIcon: false, iconPlacement: 'start' } }, varModes: { 'c-variant': 'solid', 'c-color': 'danger', 'c-size': 'lg' } };
     const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance] }], variables };
     const { root, styles } = toDomTree(d, 'i1');
     assert.equal(root.tag, 'button');
     assert.equal(root.attrs.class, 'button');
-    assert.equal(root.attrs['data-variant'], 'danger');
+    assert.equal(root.attrs['data-variant'], 'solid');
+    assert.equal(root.attrs['data-color'], 'danger');
     assert.equal(root.attrs['data-size'], 'lg');
     assert.equal(root.attrs.disabled, undefined);
     assert.equal(root.attrs['aria-disabled'], undefined);
     assert.deepEqual(root.children.map(c => [c.tag, c.attrs.class, c.text]), [['span', 'button-label', 'Save']]);
-    assert.match(styles, /\.button\[data-variant="danger"\]\[data-size="lg"\]/);
+    assert.match(styles, /\.button\[data-variant="solid"\]\[data-color="danger"\]\[data-size="lg"\]/);
 });
 
 test('a disabled Button instance is disabled, and the icon is shown only for its placement', () => {
-    const instance = { id: 'i2', name: 'Next', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Next', disabled: true, hasIcon: true, iconPlacement: 'end', icon: '' } }, varModes: { 'c-variant': 'primary', 'c-size': 'sm' } };
+    const instance = { id: 'i2', name: 'Next', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Next', disabled: true, hasIcon: true, iconPlacement: 'end', icon: '' } }, varModes: { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'sm' } };
     const slot = { id: 'i2-icon', name: 'iconEnd', type: 'frame', parentId: 'i2', x: 0, y: 0, w: 16, h: 16, fills: [], clip: false, behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconEnd' } };
     const d = { pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance, slot] }], variables };
     const { root } = toDomTree(d, 'i2');
@@ -164,7 +153,7 @@ test('a hugging child of an auto layout column is not stretched across the colum
 });
 
 test('a Button instance inside an auto layout frame keeps its place in the flow, and is not stretched', () => {
-    const instance = { id: 'i4', name: 'Save', type: 'frame', parentId: 'A', x: 0, y: 0, w: 120, h: 40, layoutSizingH: 'hug', layoutSizingV: 'hug', isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', disabled: false, hasIcon: false } }, varModes: { 'c-variant': 'primary', 'c-size': 'sm' } };
+    const instance = { id: 'i4', name: 'Save', type: 'frame', parentId: 'A', x: 0, y: 0, w: 120, h: 40, layoutSizingH: 'hug', layoutSizingV: 'hug', isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', disabled: false, hasIcon: false } }, varModes: { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'sm' } };
     const d = { pages: [{ id: 'p', name: 'Screens', nodes: [frame('A', { layout: 'vertical' }), buttonMaster, instance] }], variables };
     const { root } = toDomTree(d, 'A');
     assert.equal(root.children[0].tag, 'button');

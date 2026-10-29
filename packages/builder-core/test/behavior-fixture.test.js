@@ -35,20 +35,20 @@ test('the fixture passes phase 2 on a lazy open when the cross-page instance\'s 
     assert.doesNotThrow(() => assertPagesBehavior({ ...full, pages: [screens, components] }, [components.id]));
 });
 
-test('the only error in the fixture is the legacy master\'s missing hover token in Danger', () => {
+test('the only error in the fixture is the legacy master\'s missing hover token in Solid', () => {
     const errors = diagnoseDocument(buildBehaviorFixture()).filter(f => f.severity === 'error');
     assert.equal(errors.length, 1);
     assert.equal(errors[0].code, 'variable-missing-in-mode');
     assert.equal(errors[0].node, 'Button (legacy)');
     assert.equal(errors[0].variable, 'button/bg-hover');
-    assert.equal(errors[0].mode, 'Danger');
+    assert.equal(errors[0].mode, 'Solid');
 });
 
-test('binding the unbound master matches Variant and Size, and not Variant B', () => {
+test('binding the unbound master matches Variant, Color and Size, and not Variant B', () => {
     const full = buildBehaviorFixture();
     const unbound = pageNamed(full, 'Components').nodes.find(n => n.name === 'Unbound');
     const plan = planTemplateChange(unbound, [], 'button', full.variables.collections);
-    assert.deepEqual(plan.binding.variables, { variant: 'c-variant', size: 'c-size' });
+    assert.deepEqual(plan.binding.variables, { variant: 'c-variant', color: 'c-color', size: 'c-size' });
 });
 
 test('a managed layer removed from the Save instance fails the eager open, naming the page and the node', () => {

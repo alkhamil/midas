@@ -1069,7 +1069,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-lg"
           },
           "sourceId": "comp-button",
@@ -1080,12 +1081,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -1145,9 +1146,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -1192,7 +1193,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
@@ -1224,7 +1225,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -1235,12 +1237,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -1259,7 +1261,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -1291,7 +1293,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -1332,9 +1334,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -2673,7 +2675,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -2684,12 +2687,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -2781,9 +2784,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -2830,7 +2833,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
@@ -2862,7 +2865,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -2873,12 +2877,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -2896,7 +2900,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -2937,9 +2941,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -2984,7 +2988,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -2995,12 +3000,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -3060,9 +3065,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -4433,7 +4438,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -4444,12 +4450,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -4541,9 +4547,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -4844,7 +4850,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -4855,12 +4862,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -4919,9 +4926,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -5190,7 +5197,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 6,
           "opacity": 1,
@@ -5222,7 +5229,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -5233,12 +5241,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -5257,7 +5265,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -5298,9 +5306,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -5308,7 +5316,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -5633,7 +5641,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -5644,12 +5653,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -5741,9 +5750,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -6012,7 +6021,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 6,
           "opacity": 1,
@@ -6044,7 +6053,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -6055,12 +6065,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -6078,7 +6088,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -6119,9 +6129,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -6390,7 +6400,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 6,
           "opacity": 1,
@@ -6422,7 +6432,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -6433,12 +6444,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -6456,7 +6467,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -6497,9 +6508,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -7927,7 +7938,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-lg"
           },
           "sourceId": "comp-button",
@@ -7938,12 +7950,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -8003,9 +8015,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -8050,7 +8062,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
@@ -8082,7 +8094,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -8093,12 +8106,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -8116,7 +8129,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -8157,9 +8170,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -8204,7 +8217,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-danger",
+            "col-variant": "solid",
+            "col-color": "danger",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -8215,12 +8229,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -8312,9 +8326,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -9552,7 +9566,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
@@ -9584,7 +9598,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -9595,12 +9610,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -9619,7 +9634,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -9651,7 +9666,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -9692,9 +9707,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -9739,7 +9754,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-danger",
+            "col-variant": "solid",
+            "col-color": "danger",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -9750,12 +9766,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -9815,9 +9831,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -10242,18 +10258,19 @@
           "component": true,
           "isInstance": false,
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
             "templateId": "button",
             "variables": {
               "variant": "col-variant",
+              "color": "col-color",
               "size": "col-size"
             }
           }
@@ -10297,9 +10314,9 @@
           "w": 51,
           "h": 20,
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -11108,7 +11125,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-sm"
           },
           "sourceId": "comp-button",
@@ -11119,12 +11137,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -11183,9 +11201,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -11198,7 +11216,7 @@
               "visible": true
             }
           ],
-          "stroke": "#D7C4B4",
+          "stroke": "#6F4E37",
           "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
@@ -11230,7 +11248,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-secondary",
+            "col-variant": "outlined",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -11241,12 +11260,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -11265,7 +11284,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -11297,7 +11316,7 @@
           "fills": [
             {
               "type": "solid",
-              "color": "#3E2723",
+              "color": "#6F4E37",
               "opacity": 1,
               "visible": true
             }
@@ -11338,9 +11357,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -11385,7 +11404,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-danger",
+            "col-variant": "solid",
+            "col-color": "danger",
             "col-size": "mode-lg"
           },
           "sourceId": "comp-button",
@@ -11396,12 +11416,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -11461,9 +11481,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -11574,7 +11594,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-primary",
+            "col-variant": "solid",
+            "col-color": "primary",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -11585,12 +11606,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -11649,9 +11670,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -11696,7 +11717,8 @@
           "layoutSizingV": "hug",
           "isInstance": true,
           "varModes": {
-            "col-variant": "mode-danger",
+            "col-variant": "solid",
+            "col-color": "danger",
             "col-size": "mode-md"
           },
           "sourceId": "comp-button",
@@ -11707,12 +11729,12 @@
             "h": true
           },
           "vars": {
-            "fill": "var-btn-bg",
-            "stroke": "var-btn-border",
-            "radius": "var-btn-radius",
-            "padH": "var-btn-px",
-            "padV": "var-btn-py",
-            "gap": "var-btn-gap"
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap"
           },
           "behavior": {
             "version": 2,
@@ -11771,9 +11793,9 @@
             "w": true
           },
           "vars": {
-            "fill": "var-btn-fg",
-            "fontSize": "var-btn-fs",
-            "lineHeight": "var-btn-lh"
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
           }
         },
         {
@@ -12126,24 +12148,17 @@
   "variables": {
     "collections": [
       {
-        "id": "col-variant",
-        "name": "Variant",
+        "id": "col-color",
+        "name": "Color",
         "modes": [
           {
-            "id": "mode-primary",
+            "id": "primary",
             "name": "Primary"
           },
           {
-            "id": "mode-secondary",
-            "name": "Secondary"
-          },
-          {
-            "id": "mode-danger",
+            "id": "danger",
             "name": "Danger"
           }
-        ],
-        "groups": [
-          "Button"
         ]
       },
       {
@@ -12162,9 +12177,20 @@
             "id": "mode-lg",
             "name": "Large"
           }
-        ],
-        "groups": [
-          "Button"
+        ]
+      },
+      {
+        "id": "col-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "solid",
+            "name": "Solid"
+          },
+          {
+            "id": "outlined",
+            "name": "Outlined"
+          }
         ]
       },
       {
@@ -12184,199 +12210,409 @@
     ],
     "items": [
       {
-        "id": "var-btn-bg",
-        "collectionId": "col-variant",
-        "name": "Button/bg",
+        "id": "c-color",
+        "name": "button/color",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#6F4E37",
-          "mode-secondary": "#F5EBE1",
-          "mode-danger": "#DC2626"
-        },
-        "description": "Button background",
-        "hidden": false
+          "primary": "#6F4E37",
+          "danger": "#DC2626"
+        }
       },
       {
-        "id": "var-btn-fg",
-        "collectionId": "col-variant",
-        "name": "Button/fg",
+        "id": "c-color-hover",
+        "name": "button/color-hover",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#FFFFFF",
-          "mode-secondary": "#3E2723",
-          "mode-danger": "#FFFFFF"
-        },
-        "description": "Button label color",
-        "hidden": false
+          "primary": "#5C3E2A",
+          "danger": "#B91C1C"
+        }
       },
       {
-        "id": "var-btn-border",
-        "collectionId": "col-variant",
-        "name": "Button/border",
+        "id": "c-color-active",
+        "name": "button/color-active",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#6F4E37",
-          "mode-secondary": "#D7C4B4",
-          "mode-danger": "#DC2626"
-        },
-        "description": "Button border color",
-        "hidden": false
+          "primary": "#4A3121",
+          "danger": "#991B1B"
+        }
       },
       {
-        "id": "var-btn-bg-hover",
-        "collectionId": "col-variant",
-        "name": "Button/bg-hover",
+        "id": "c-color-border",
+        "name": "button/color-border",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#5C3E2A",
-          "mode-secondary": "#EADACA",
-          "mode-danger": "#B91C1C"
-        },
-        "description": "Button hover background",
-        "hidden": false
+          "primary": "#6F4E37",
+          "danger": "#DC2626"
+        }
       },
       {
-        "id": "var-btn-bg-active",
-        "collectionId": "col-variant",
-        "name": "Button/bg-active",
+        "id": "c-color-border-hover",
+        "name": "button/color-border-hover",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#4A3121",
-          "mode-secondary": "#DEC8B4",
-          "mode-danger": "#991B1B"
-        },
-        "description": "Button active background",
-        "hidden": false
+          "primary": "#5C3E2A",
+          "danger": "#B91C1C"
+        }
       },
       {
-        "id": "var-btn-bg-disabled",
-        "collectionId": "col-variant",
-        "name": "Button/bg-disabled",
+        "id": "c-color-border-active",
+        "name": "button/color-border-active",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#C8B7A6",
-          "mode-secondary": "#EFEAE4",
-          "mode-danger": "#FCA5A5"
-        },
-        "description": "Button disabled background",
-        "hidden": false
+          "primary": "#4A3121",
+          "danger": "#991B1B"
+        }
       },
       {
-        "id": "var-btn-fg-disabled",
-        "collectionId": "col-variant",
-        "name": "Button/fg-disabled",
+        "id": "c-color-bg",
+        "name": "button/color-bg",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#E8DCD0",
-          "mode-secondary": "#A8968A",
-          "mode-danger": "#FEE2E2"
-        },
-        "description": "Button disabled label color",
-        "hidden": false
+          "primary": "#F5EBE1",
+          "danger": "#FEE2E2"
+        }
       },
       {
-        "id": "var-btn-border-focus",
-        "collectionId": "col-variant",
-        "name": "Button/border-focus",
+        "id": "c-color-bg-hover",
+        "name": "button/color-bg-hover",
         "type": "color",
+        "collectionId": "col-color",
         "values": {
-          "mode-primary": "#8B6B4E",
-          "mode-secondary": "#B89A7E",
-          "mode-danger": "#F87171"
-        },
-        "description": "Button focus ring color",
-        "hidden": false
+          "primary": "#EADACA",
+          "danger": "#FECACA"
+        }
       },
       {
-        "id": "var-btn-fs",
-        "collectionId": "col-size",
-        "name": "Button/fontSize",
+        "id": "c-color-bg-active",
+        "name": "button/color-bg-active",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#DEC8B4",
+          "danger": "#FCA5A5"
+        }
+      },
+      {
+        "id": "c-color-text",
+        "name": "button/color-text",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#6F4E37",
+          "danger": "#DC2626"
+        }
+      },
+      {
+        "id": "c-color-text-hover",
+        "name": "button/color-text-hover",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#5C3E2A",
+          "danger": "#B91C1C"
+        }
+      },
+      {
+        "id": "c-color-text-active",
+        "name": "button/color-text-active",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#4A3121",
+          "danger": "#991B1B"
+        }
+      },
+      {
+        "id": "c-color-text-bg-hover",
+        "name": "button/color-text-bg-hover",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#F5EBE1",
+          "danger": "#FEE2E2"
+        }
+      },
+      {
+        "id": "c-color-text-bg-active",
+        "name": "button/color-text-bg-active",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#DEC8B4",
+          "danger": "#FCA5A5"
+        }
+      },
+      {
+        "id": "c-color-solid",
+        "name": "button/color-solid",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#6F4E37",
+          "danger": "#DC2626"
+        }
+      },
+      {
+        "id": "c-color-solid-hover",
+        "name": "button/color-solid-hover",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#5C3E2A",
+          "danger": "#B91C1C"
+        }
+      },
+      {
+        "id": "c-color-solid-active",
+        "name": "button/color-solid-active",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#4A3121",
+          "danger": "#991B1B"
+        }
+      },
+      {
+        "id": "c-color-solid-text",
+        "name": "button/color-solid-text",
+        "type": "color",
+        "collectionId": "col-color",
+        "values": {
+          "primary": "#FFFFFF",
+          "danger": "#FFFFFF"
+        }
+      },
+      {
+        "id": "s-fontSize",
+        "name": "button/fontSize",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 12,
           "mode-md": 14,
           "mode-lg": 16
-        },
-        "description": "Button font size",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-lh",
-        "collectionId": "col-size",
-        "name": "Button/lineHeight",
+        "id": "s-lineHeight",
+        "name": "button/lineHeight",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 1.6666666666666667,
           "mode-md": 1.5714285714285714,
           "mode-lg": 1.5
-        },
-        "description": "Button line height as a ratio of the font size, (fontSize + 8) / fontSize",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-px",
-        "collectionId": "col-size",
-        "name": "Button/paddingX",
+        "id": "s-paddingX",
+        "name": "button/paddingX",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 12,
           "mode-md": 16,
           "mode-lg": 20
-        },
-        "description": "Button horizontal padding",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-py",
-        "collectionId": "col-size",
-        "name": "Button/paddingY",
+        "id": "s-paddingY",
+        "name": "button/paddingY",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 6,
           "mode-md": 10,
           "mode-lg": 14
-        },
-        "description": "Button vertical padding",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-gap",
-        "collectionId": "col-size",
-        "name": "Button/gap",
+        "id": "s-gap",
+        "name": "button/gap",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 6,
           "mode-md": 8,
           "mode-lg": 10
-        },
-        "description": "Button icon-label gap",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-radius",
-        "collectionId": "col-size",
-        "name": "Button/radius",
+        "id": "s-radius",
+        "name": "button/radius",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 6,
           "mode-md": 8,
           "mode-lg": 10
-        },
-        "description": "Button corner radius",
-        "hidden": false
+        }
       },
       {
-        "id": "var-btn-icon",
-        "collectionId": "col-size",
-        "name": "Button/iconSize",
+        "id": "s-iconSize",
+        "name": "button/iconSize",
         "type": "number",
+        "collectionId": "col-size",
         "values": {
           "mode-sm": 14,
           "mode-md": 16,
           "mode-lg": 18
-        },
-        "description": "Button icon box size",
-        "hidden": false
+        }
+      },
+      {
+        "id": "v-bg",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid"
+          },
+          "outlined": "#ffffff"
+        }
+      },
+      {
+        "id": "v-fg",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "outlined": {
+            "alias": "c-color"
+          }
+        }
+      },
+      {
+        "id": "v-border",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": "#00000000",
+          "outlined": {
+            "alias": "c-color-border"
+          }
+        }
+      },
+      {
+        "id": "v-bg-hover",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-hover"
+          },
+          "outlined": "#ffffff"
+        }
+      },
+      {
+        "id": "v-fg-hover",
+        "name": "button/fg-hover",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "outlined": {
+            "alias": "c-color-hover"
+          }
+        }
+      },
+      {
+        "id": "v-border-hover",
+        "name": "button/border-hover",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": "#00000000",
+          "outlined": {
+            "alias": "c-color-border-hover"
+          }
+        }
+      },
+      {
+        "id": "v-bg-active",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-active"
+          },
+          "outlined": "#ffffff"
+        }
+      },
+      {
+        "id": "v-fg-active",
+        "name": "button/fg-active",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "outlined": {
+            "alias": "c-color-active"
+          }
+        }
+      },
+      {
+        "id": "v-border-active",
+        "name": "button/border-active",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": "#00000000",
+          "outlined": {
+            "alias": "c-color-border-active"
+          }
+        }
+      },
+      {
+        "id": "v-bg-disabled",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": "#f4f4f5",
+          "outlined": "#f4f4f5"
+        }
+      },
+      {
+        "id": "v-fg-disabled",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": "#a1a1aa",
+          "outlined": "#a1a1aa"
+        }
+      },
+      {
+        "id": "v-border-focus",
+        "name": "button/border-focus",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-border"
+          },
+          "outlined": {
+            "alias": "c-color-border"
+          }
+        }
       },
       {
         "id": "var-col-bg-app",

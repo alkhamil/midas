@@ -11,8 +11,9 @@ const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid',
 const here = dirname(fileURLToPath(import.meta.url));
 export const PROTOTYPE_FIXTURE_PATH = resolve(here, 'fixtures/prototype-fixture.midas');
 
-const PRIMARY = { id: 'c-variant', mode: 'primary' };
-const DANGER = { id: 'c-variant', mode: 'danger' };
+// The Button looks of the flow: a Variant and a Color of the shared model (see button-model.mjs).
+const PRIMARY = { variant: 'solid', color: 'primary' };
+const DANGER = { variant: 'solid', color: 'danger' };
 const SIZE = { id: 'c-size', mode: 'lg' };
 const instant = { type: 'instant', durationMs: 0 };
 
@@ -22,15 +23,15 @@ const instant = { type: 'instant', durationMs: 0 };
  * @param {string} parentId the frame it sits in
  * @param {string} name
  * @param {Record<string, unknown>} props
- * @param {{ id: string, mode: string }} variant
+ * @param {{ variant: string, color: string }} look
  * @param {any[]} [interactions]
  */
-function button(id, parentId, name, props, variant, interactions = []) {
+function button(id, parentId, name, props, look, interactions = []) {
     return {
         id, name, type: 'frame', parentId, x: 0, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'main', version: 0,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: name, disabled: false, hasIcon: false, ...props } },
-        varModes: { [variant.id]: variant.mode, [SIZE.id]: SIZE.mode },
+        varModes: { 'c-variant': look.variant, 'c-color': look.color, [SIZE.id]: SIZE.mode },
         ...(interactions.length ? { prototype: { version: 1, interactions } } : {}),
     };
 }

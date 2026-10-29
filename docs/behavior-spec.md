@@ -24,6 +24,7 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
 - Lazy open (more than three pages), decision: strict. Every page is checked when it loads (phase 1 and phase 2), before it becomes editable. A cross-page rule runs when either of its pages arrives: an instance whose master is not loaded yet waits for that master. A page that fails is not made editable, stays empty, is never written back, and its error is shown with the page and node. Save waits until every page has loaded or failed, so no page is written unchecked. Rationale: the file on the server is never overwritten with a partial document, and nothing is shown as valid before it has been checked.
 - Pasting a managed layer without its instance is refused, naming the layer (pasteSelection). A whole instance, with its managed layers, pastes and syncs in the Paste layers transaction.
 - Template rollout: Button only until the full pipeline works end to end. Next: Input, Checkbox, Select, Form, Modal, Tabs.
+- Known limit: the template resolves Semantic (the Light and Dark modes of the library) in Light only. A Button bound to the library shows its Dark values on the canvas, not in the generated code or Play. Not fixed yet.
 - Intentional deviation from antd v5: Button has `hasIcon` and `iconPlacement` props instead of antd's `icon` placement by children order. The canvas needs a boolean and a slot to create and place the managed icon layer, so the icon slot is driven by these props (`icon.show`, `icon.placement`, `icon.component` in the schema).
 - Template data declares what the engine needs: `element`, `icon`, `tokenKinds`, `statePseudo`, and a prop's `node` (the node field a literal prop writes). The engine holds no component names.
 
@@ -31,21 +32,20 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
 
 - anatomy: iconStart (optional, managed), label (text, required), iconEnd (optional, managed)
 - props:
-  - variant (variable, collection "Variant")
-  - size (variable, collection "Size")
+  - variant (variable, collection "Variant": outlined, dashed, solid, filled, text, link)
+  - color (variable, collection "Color": default, primary, danger)
+  - size (variable, collection "Size": small, middle, large)
   - label (string, "Button")
-  - hasIcon (boolean, false)
-  - iconPlacement (start|end, "start", visibleIf hasIcon)
-  - icon (iconComponent, visibleIf hasIcon)
-  - loading (boolean, false)
-  - disabled (boolean, false)
-  - block (boolean, false)
-  - No `danger` prop; it is a variant mode.
+  - hasIcon (boolean, false), iconPlacement (start | end, "start", visibleIf hasIcon), icon (iconComponent, visibleIf hasIcon)
+  - loading (boolean, false), disabled (boolean, false), block (boolean, false, node layout width fill)
+- structure: antd v5 (components/button/style). Names are ours. Variant values alias into Color, Color into Semantic (antd's global tokens).
 - tokens:
-  - fromSize: fontSize, lineHeight, paddingX, paddingY, gap, radius, iconSize
-  - fromVariant: bg, fg, border, bg-hover, bg-active, bg-disabled
+  - fromSize: fontSize, lineHeight (unitless ratio), paddingX, paddingY, gap, radius, iconSize
+  - fromVariant: bg, fg, border, bg-hover, fg-hover, border-hover, bg-active, fg-active, border-active, bg-disabled, fg-disabled, border-focus
+  - fromColor: color, color-hover, color-active, color-border(-hover, -active), color-bg(-hover, -active), color-text(-hover, -active), color-text-bg(-hover, -active), color-solid(-hover, -active, -text)
 - states: default, hover, active, focus, disabled, loading
-- stateTokens: hover { bg: bg-hover }, active { bg: bg-active }, disabled { bg: bg-disabled }. Focus and loading override nothing.
+- persistentStates: disabled { prop disabled, replaces bg with bg-disabled, fg with fg-disabled }
+- previewStates: hover { bg, fg, border with their -hover tokens }, active { the -active tokens }, focus { border with border-focus }
 - events:
   - onClick (exposeAsTrigger true)
   - onHover (exposeAsTrigger true)

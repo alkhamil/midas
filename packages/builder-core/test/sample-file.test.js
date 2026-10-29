@@ -92,11 +92,13 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
     const doc = loadSample();
     const collections = doc.variables.collections;
     const variantColl = collections.find(c => c.name === 'Variant');
+    const colorColl = collections.find(c => c.name === 'Color');
     const sizeColl = collections.find(c => c.name === 'Size');
     const stylingColl = collections.find(c => /color|typography/i.test(c.name));
 
     assert.ok(variantColl, 'Variant collection exists');
-    assert.deepEqual(variantColl.modes.map(m => m.name), ['Primary', 'Secondary', 'Danger']);
+    assert.deepEqual(variantColl.modes.map(m => m.name), ['Solid', 'Outlined']);
+    assert.deepEqual(colorColl.modes.map(m => m.name), ['Primary', 'Danger']);
     assert.ok(sizeColl, 'Size collection exists');
     assert.deepEqual(sizeColl.modes.map(m => m.name), ['Small', 'Medium', 'Large']);
     assert.ok(stylingColl, 'Colors/Typography variable collection exists');
@@ -107,7 +109,7 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
     assert.deepEqual(master.behavior, {
         version: 2,
         templateId: 'button',
-        variables: { variant: variantColl.id, size: sizeColl.id },
+        variables: { variant: variantColl.id, color: colorColl.id, size: sizeColl.id },
     });
 
     const findings = diagnoseDocument(doc);
@@ -123,7 +125,7 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
         const nodeFindings = findings.filter(f => f.nodeId === btn.id && f.severity !== 'info');
         assert.deepEqual(nodeFindings, [], `Button "${btn.name}" (${btn.id}) should have no issues`);
         if (btn.isInstance) {
-            const modes = { variant: btn.varModes?.[master.behavior.variables.variant] ?? null, size: btn.varModes?.[master.behavior.variables.size] ?? null };
+            const modes = { variant: btn.varModes?.[master.behavior.variables.variant] ?? null, color: btn.varModes?.[master.behavior.variables.color] ?? null, size: btn.varModes?.[master.behavior.variables.size] ?? null };
             const props = resolveProps(buttonTemplate, btn.behavior.props);
             for (const state of ['default', 'hover', 'active', 'focus', 'disabled']) {
                 const prev = state === 'disabled' ? previewOf(buttonTemplate, master.behavior, modes, doc.variables, { ...props, disabled: true }) : previewOf(buttonTemplate, master.behavior, modes, doc.variables, props, state);
@@ -211,10 +213,10 @@ test('screens have 390x844 top-level auto-layout frames, 3-4 level nesting, non-
         .filter(n => n.isInstance && n.sourceId === master.id);
     assert.ok(nonComponentPageInstances.length >= 6, 'instances on pages other than master page');
 
-    const variantsUsed = new Set(instances.map(i => i.varModes?.[master.behavior.variables.variant]));
+    const looksUsed = new Set(instances.map(i => `${i.varModes?.[master.behavior.variables.variant]}/${i.varModes?.[master.behavior.variables.color]}`));
     const sizesUsed = new Set(instances.map(i => i.varModes?.[master.behavior.variables.size]));
     const labelsUsed = new Set(instances.map(i => i.behavior.props.label));
-    assert.equal(variantsUsed.size, 3, 'all 3 Variant modes used');
+    assert.equal(looksUsed.size, 3, 'all 3 looks (Variant and Color) used');
     assert.equal(sizesUsed.size, 3, 'all 3 Size modes used');
     assert.ok(labelsUsed.size >= 5, 'varied button labels');
     assert.ok(instances.some(i => i.behavior.props.loading === true), 'at least one loading button');

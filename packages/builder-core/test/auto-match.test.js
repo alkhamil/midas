@@ -8,12 +8,13 @@ import { TEMPLATES } from '../src/behavior-engine/registry.js';
 
 const button = TEMPLATES.get('button');
 const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }] };
+const color = { id: 'c-color', name: 'Color', modes: [{ id: 'primary', name: 'Primary' }] };
 const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm', name: 'Small' }] };
 const unbound = () => ({ id: 'm1', name: 'Button', behavior: { version: 2, templateId: 'button', variables: { variant: null, size: null } } });
 
 test('a template bound while the collections exist matches both slots', () => {
-    const plan = planTemplateChange({ id: 'm1' }, [], 'button', [variant, size]);
-    assert.deepEqual(plan.binding.variables, { variant: 'c-variant', size: 'c-size' });
+    const plan = planTemplateChange({ id: 'm1' }, [], 'button', [variant, color, size]);
+    assert.deepEqual(plan.binding.variables, { variant: 'c-variant', color: 'c-color', size: 'c-size' });
 });
 
 test('a collection created after the bind binds the slot that is still unbound', () => {

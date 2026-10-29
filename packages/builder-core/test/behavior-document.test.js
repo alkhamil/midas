@@ -2,14 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 import { BehaviorDataError, detachBehavior } from '../src/behavior-engine/data.js';
+import { buttonModel } from '../../../scripts/button-model.mjs';
 
-const collections = [{ id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] }];
+const collections = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections;
 const master = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
 const instance = (props, varModes) => ({ id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props }, varModes });
 const docWith = (...nodes) => ({ variables: { collections }, pages: [{ id: 'p1', nodes }] });
 
 test('a valid file with a bound master and a matching instance opens', () => {
-    const doc = docWith(master, instance({ label: 'Save', hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'danger' }));
+    const doc = docWith(master, instance({ label: 'Save', hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'solid', 'c-color': 'danger' }));
     assert.doesNotThrow(() => assertBehaviorData(doc));
 });
 
@@ -45,7 +46,7 @@ const icon = (slot, parentId = 'i1', id = `icon-${slot}`) => ({ id, name: slot, 
 const withIcon = (props, varModes) => instance(props, varModes);
 
 test('an instance whose managed layers match its values opens', () => {
-    const doc = docWith(autoMaster, masterLabel, withIcon({ hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'danger' }), label, icon('iconEnd'));
+    const doc = docWith(autoMaster, masterLabel, withIcon({ hasIcon: true, iconPlacement: 'end' }, { 'c-variant': 'solid', 'c-color': 'danger' }), label, icon('iconEnd'));
     assert.doesNotThrow(() => assertBehaviorData(doc));
 });
 

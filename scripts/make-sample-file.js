@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertBehaviorData, diagnoseDocument, managedBehavior } from '@midas/builder-core';
+import { buttonModel } from './button-model.mjs';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -174,6 +175,7 @@ export function groupNode(id, name, props = {}) {
 
 // ---------- Variable collections ----------
 const COL_VARIANT_ID = 'col-variant';
+const COL_COLOR_ID = 'col-color';
 const COL_SIZE_ID = 'col-size';
 const COL_THEME_ID = 'col-theme';
 
@@ -193,28 +195,39 @@ export const MODES = {
     },
 };
 
+/** The Kopi Kita look names, each as the Variant and the Color of the shared Button model. */
+const LOOKS = {
+    [MODES.variant.primary]: { variant: 'solid', color: 'primary' },
+    [MODES.variant.secondary]: { variant: 'outlined', color: 'primary' },
+    [MODES.variant.danger]: { variant: 'solid', color: 'danger' },
+};
+
+/** The brand colours of the Color collection: the roast accent, its cream tint, and the danger red. */
+const BRAND_PALETTE = {
+    primary: { accent: '#6F4E37', accentHover: '#5C3E2A', accentActive: '#4A3121', tint: '#F5EBE1', tintHover: '#EADACA', tintActive: '#DEC8B4', text: '#6F4E37', textHover: '#5C3E2A', textActive: '#4A3121', solid: '#6F4E37', solidHover: '#5C3E2A', solidActive: '#4A3121', solidText: '#FFFFFF' },
+    danger: { accent: '#DC2626', accentHover: '#B91C1C', accentActive: '#991B1B', tint: '#FEE2E2', tintHover: '#FECACA', tintActive: '#FCA5A5', text: '#DC2626', textHover: '#B91C1C', textActive: '#991B1B', solid: '#DC2626', solidHover: '#B91C1C', solidActive: '#991B1B', solidText: '#FFFFFF' },
+};
+
 function buildVariables() {
+    const sMode = (sm, md, lg) => ({
+        [MODES.size.sm]: sm,
+        [MODES.size.md]: md,
+        [MODES.size.lg]: lg,
+    });
+    const tMode = val => ({ [MODES.theme.light]: val });
+    const button = buttonModel({
+        ids: { variant: COL_VARIANT_ID, color: COL_COLOR_ID, size: COL_SIZE_ID },
+        variantModes: ['solid', 'outlined'],
+        colors: ['primary', 'danger'],
+        palette: BRAND_PALETTE,
+        sizeModes: [{ id: MODES.size.sm, name: 'Small' }, { id: MODES.size.md, name: 'Medium' }, { id: MODES.size.lg, name: 'Large' }],
+        sizeValues: {
+            fontSize: sMode(12, 14, 16), lineHeight: sMode((12 + 8) / 12, (14 + 8) / 14, (16 + 8) / 16), paddingX: sMode(12, 16, 20),
+            paddingY: sMode(6, 10, 14), gap: sMode(6, 8, 10), radius: sMode(6, 8, 10), iconSize: sMode(14, 16, 18),
+        },
+    });
     const collections = [
-        {
-            id: COL_VARIANT_ID,
-            name: 'Variant',
-            modes: [
-                { id: MODES.variant.primary, name: 'Primary' },
-                { id: MODES.variant.secondary, name: 'Secondary' },
-                { id: MODES.variant.danger, name: 'Danger' },
-            ],
-            groups: ['Button'],
-        },
-        {
-            id: COL_SIZE_ID,
-            name: 'Size',
-            modes: [
-                { id: MODES.size.sm, name: 'Small' },
-                { id: MODES.size.md, name: 'Medium' },
-                { id: MODES.size.lg, name: 'Large' },
-            ],
-            groups: ['Button'],
-        },
+        ...button.collections,
         {
             id: COL_THEME_ID,
             name: 'Colors & Typography',
@@ -222,40 +235,9 @@ function buildVariables() {
             groups: ['color', 'typography'],
         },
     ];
-
-    const vMode = (p, s, d) => ({
-        [MODES.variant.primary]: p,
-        [MODES.variant.secondary]: s,
-        [MODES.variant.danger]: d,
-    });
-    const sMode = (sm, md, lg) => ({
-        [MODES.size.sm]: sm,
-        [MODES.size.md]: md,
-        [MODES.size.lg]: lg,
-    });
-    const tMode = val => ({ [MODES.theme.light]: val });
-
     const items = [
-        // Variant tokens (all required Button base + state tokens)
-        { id: 'var-btn-bg', collectionId: COL_VARIANT_ID, name: 'Button/bg', type: 'color', values: vMode('#6F4E37', '#F5EBE1', '#DC2626'), description: 'Button background', hidden: false },
-        { id: 'var-btn-fg', collectionId: COL_VARIANT_ID, name: 'Button/fg', type: 'color', values: vMode('#FFFFFF', '#3E2723', '#FFFFFF'), description: 'Button label color', hidden: false },
-        { id: 'var-btn-border', collectionId: COL_VARIANT_ID, name: 'Button/border', type: 'color', values: vMode('#6F4E37', '#D7C4B4', '#DC2626'), description: 'Button border color', hidden: false },
-        { id: 'var-btn-bg-hover', collectionId: COL_VARIANT_ID, name: 'Button/bg-hover', type: 'color', values: vMode('#5C3E2A', '#EADACA', '#B91C1C'), description: 'Button hover background', hidden: false },
-        { id: 'var-btn-bg-active', collectionId: COL_VARIANT_ID, name: 'Button/bg-active', type: 'color', values: vMode('#4A3121', '#DEC8B4', '#991B1B'), description: 'Button active background', hidden: false },
-        { id: 'var-btn-bg-disabled', collectionId: COL_VARIANT_ID, name: 'Button/bg-disabled', type: 'color', values: vMode('#C8B7A6', '#EFEAE4', '#FCA5A5'), description: 'Button disabled background', hidden: false },
-        { id: 'var-btn-fg-disabled', collectionId: COL_VARIANT_ID, name: 'Button/fg-disabled', type: 'color', values: vMode('#E8DCD0', '#A8968A', '#FEE2E2'), description: 'Button disabled label color', hidden: false },
-        { id: 'var-btn-border-focus', collectionId: COL_VARIANT_ID, name: 'Button/border-focus', type: 'color', values: vMode('#8B6B4E', '#B89A7E', '#F87171'), description: 'Button focus ring color', hidden: false },
-
-        // Size tokens (all required Button size tokens)
-        { id: 'var-btn-fs', collectionId: COL_SIZE_ID, name: 'Button/fontSize', type: 'number', values: sMode(12, 14, 16), description: 'Button font size', hidden: false },
-        { id: 'var-btn-lh', collectionId: COL_SIZE_ID, name: 'Button/lineHeight', type: 'number', values: sMode((12 + 8) / 12, (14 + 8) / 14, (16 + 8) / 16), description: 'Button line height as a ratio of the font size, (fontSize + 8) / fontSize', hidden: false },
-        { id: 'var-btn-px', collectionId: COL_SIZE_ID, name: 'Button/paddingX', type: 'number', values: sMode(12, 16, 20), description: 'Button horizontal padding', hidden: false },
-        { id: 'var-btn-py', collectionId: COL_SIZE_ID, name: 'Button/paddingY', type: 'number', values: sMode(6, 10, 14), description: 'Button vertical padding', hidden: false },
-        { id: 'var-btn-gap', collectionId: COL_SIZE_ID, name: 'Button/gap', type: 'number', values: sMode(6, 8, 10), description: 'Button icon-label gap', hidden: false },
-        { id: 'var-btn-radius', collectionId: COL_SIZE_ID, name: 'Button/radius', type: 'number', values: sMode(6, 8, 10), description: 'Button corner radius', hidden: false },
-        { id: 'var-btn-icon', collectionId: COL_SIZE_ID, name: 'Button/iconSize', type: 'number', values: sMode(14, 16, 18), description: 'Button icon box size', hidden: false },
-
-        // Colors & Typography collection for general app styling
+        ...button.items,
+        // Kopi Kita tokens (theme): the page colours and the type scale.
         { id: 'var-col-bg-app', collectionId: COL_THEME_ID, name: 'color/bg-app', type: 'color', values: tMode('#FAF6F2'), description: 'App warm cream background', hidden: false },
         { id: 'var-col-bg-card', collectionId: COL_THEME_ID, name: 'color/bg-card', type: 'color', values: tMode('#FFFFFF'), description: 'Card surface color', hidden: false },
         { id: 'var-col-bg-banner', collectionId: COL_THEME_ID, name: 'color/bg-banner', type: 'color', values: tMode('#3E2723'), description: 'Dark espresso banner fill', hidden: false },
@@ -269,7 +251,6 @@ function buildVariables() {
         { id: 'var-typ-body', collectionId: COL_THEME_ID, name: 'typography/body-size', type: 'number', values: tMode(14), description: 'Body copy font size', hidden: false },
         { id: 'var-typ-caption', collectionId: COL_THEME_ID, name: 'typography/caption-size', type: 'number', values: tMode(12), description: 'Caption and badge font size', hidden: false },
     ];
-
     return { collections, items };
 }
 
@@ -278,8 +259,8 @@ const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
 // The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
-const BUTTON_ROOT_VARS = { fill: 'var-btn-bg', stroke: 'var-btn-border', radius: 'var-btn-radius', padH: 'var-btn-px', padV: 'var-btn-py', gap: 'var-btn-gap' };
-const BUTTON_LABEL_VARS = { fill: 'var-btn-fg', fontSize: 'var-btn-fs', lineHeight: 'var-btn-lh' };
+const BUTTON_ROOT_VARS = { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' };
+const BUTTON_LABEL_VARS = { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
 
 function buildButtonMaster(x = 440, y = 40) {
     const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
@@ -307,6 +288,7 @@ function buildButtonMaster(x = 440, y = 40) {
             templateId: 'button',
             variables: {
                 variant: COL_VARIANT_ID,
+                color: COL_COLOR_ID,
                 size: COL_SIZE_ID,
             },
         },
@@ -326,7 +308,7 @@ function buildButtonMaster(x = 440, y = 40) {
 
 const VARIANT_COLORS = {
     [MODES.variant.primary]: { bg: '#6F4E37', fg: '#FFFFFF', border: '#6F4E37' },
-    [MODES.variant.secondary]: { bg: '#F5EBE1', fg: '#3E2723', border: '#D7C4B4' },
+    [MODES.variant.secondary]: { bg: '#F5EBE1', fg: '#6F4E37', border: '#6F4E37' },
     [MODES.variant.danger]: { bg: '#DC2626', fg: '#FFFFFF', border: '#DC2626' },
 };
 const SIZE_METRICS = {
@@ -349,6 +331,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
     const block = !!opts.block;
 
     const colors = VARIANT_COLORS[variant] || VARIANT_COLORS[MODES.variant.primary];
+    const look = LOOKS[variant];
     const metrics = SIZE_METRICS[size] || SIZE_METRICS[MODES.size.md];
 
     const behaviorProps = {
@@ -384,7 +367,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         layoutSizingH: block ? 'fill' : 'hug',
         layoutSizingV: 'hug',
         isInstance: true,
-        varModes: { [COL_VARIANT_ID]: variant, [COL_SIZE_ID]: size },
+        varModes: { [COL_VARIANT_ID]: look.variant, [COL_COLOR_ID]: look.color, [COL_SIZE_ID]: size },
         sourceId: MASTER_BUTTON_ID,
         overrides: { fill: true, radius: true, w: true, h: true },
         vars: BUTTON_ROOT_VARS,

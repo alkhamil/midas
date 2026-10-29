@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
 import { iconSlotBindings, iconSlotTargets } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
 import { BUTTON } from '../packages/builder-core/src/templates/button.js';
+import { buttonModel, BUTTON_VARIANTS } from './button-model.mjs';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,18 +33,18 @@ function node(type, props) {
     };
 }
 
-const ids = { variant: 'c-variant', variantLegacy: 'c-variant-b', size: 'c-size' };
-const modes = { primary: { id: 'primary', name: 'Primary' }, danger: { id: 'danger', name: 'Danger' }, sm: { id: 'sm', name: 'Small' }, lg: { id: 'lg', name: 'Large' } };
+const main = buttonModel();
+const legacyModel = buttonModel({ ids: { variant: 'c-variant-b' }, prefix: 'b-', shared: main.ids });
+const ids = { variant: main.ids.variant, variantLegacy: legacyModel.ids.variant, color: main.ids.color, size: main.ids.size };
 
 /**
  * The variable bindings a master (and its instances, which get them copied by sync) holds: the root and its label bound to the
- * Button variables of one Variant set. `suffix` picks the Variant items of that set.
+ * Button variables of one Variant set. `prefix` picks the Variant items of that set.
  */
-const bindings = suffix => ({
-    root: { fill: `i-bg${suffix}`, stroke: `i-border${suffix}`, radius: 'i-radius', padH: 'i-px', padV: 'i-py', gap: 'i-gap' },
-    label: { fill: `i-fg${suffix}`, fontSize: 'i-fs', lineHeight: 'i-lh' },
+const bindings = prefix => ({
+    root: { fill: `${prefix}v-bg`, stroke: `${prefix}v-border`, radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' },
+    label: { fill: `${prefix}v-fg`, fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
 });
-
 /** A Button master: a root auto layout frame with its label, bound to the template, or unbound when `binding` is null. */
 function master(id, name, x, binding, vars, y = 0) {
     const root = node('frame', {
@@ -118,72 +119,42 @@ function instance(id, name, x, sourceId, props, varModes, vars, components) {
     return [root, ...kids, ...(nested ? nested.nodes : [])];
 }
 
-const collection = (id, name, modeList) => ({ id, name, modes: modeList });
-const color = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
-const number = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
-
 /**
- * The variables. Variant and Size are bound to the main master. Variant B is bound to the legacy master, which has no
- * `button/bg-hover` value in Danger: that is the one deliberate error. The `card/` group sits in Variant too, to show that Button
- * never reads another component's variables. The icon size is the font size of each Size mode.
+ * The variables. Variant, Color and Size are bound to the main master. Variant B is bound to the legacy master, which has no
+ * `button/bg-hover` value for Solid: that is the one deliberate error. The `card/` group sits in Variant too, to show that Button
+ * never reads another component's variables.
  */
 function variables() {
-    const variantTokens = (suffix, vals) => [
-        color(`i-bg${suffix}`, 'button/bg', ids.variant, vals.bg), color(`i-bg-hover${suffix}`, 'button/bg-hover', ids.variant, vals.bgHover),
-        color(`i-bg-active${suffix}`, 'button/bg-active', ids.variant, vals.bgActive), color(`i-bg-disabled${suffix}`, 'button/bg-disabled', ids.variant, vals.bgDisabled),
-        color(`i-fg${suffix}`, 'button/fg', ids.variant, vals.fg), color(`i-fg-disabled${suffix}`, 'button/fg-disabled', ids.variant, vals.fgDisabled),
-        color(`i-border${suffix}`, 'button/border', ids.variant, vals.border), color(`i-border-focus${suffix}`, 'button/border-focus', ids.variant, vals.borderFocus),
-    ];
-    const sizeTokens = [
-        number('i-fs', 'button/fontSize', ids.size, { sm: 14, lg: 18 }), number('i-lh', 'button/lineHeight', ids.size, { sm: (14 + 8) / 14, lg: (18 + 8) / 18 }),
-        number('i-px', 'button/paddingX', ids.size, { sm: 12, lg: 16 }), number('i-py', 'button/paddingY', ids.size, { sm: 6, lg: 8 }),
-        number('i-gap', 'button/gap', ids.size, { sm: 6, lg: 8 }), number('i-radius', 'button/radius', ids.size, { sm: 6, lg: 8 }),
-        number('i-icon', 'button/icon-size', ids.size, { sm: 14, lg: 18 }),
-    ];
-    const full = variantTokens('-v', {
-        bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3', danger: '#b91c1c' },
-        bgActive: { primary: '#312e81', danger: '#991b1b' }, bgDisabled: { primary: '#a5b4fc', danger: '#fca5a5' },
-        fg: { primary: '#ffffff', danger: '#fde68a' }, fgDisabled: { primary: '#e0e7ff', danger: '#fee2e2' },
-        border: { primary: '#4338ca', danger: '#dc2626' }, borderFocus: { primary: '#818cf8', danger: '#f87171' },
-    });
-    // Variant B: no bg-hover value in Danger.
-    const legacy = variantTokens('-b', {
-        bg: { primary: '#4338ca', danger: '#dc2626' }, bgHover: { primary: '#3730a3' },
-        bgActive: { primary: '#312e81', danger: '#991b1b' }, bgDisabled: { primary: '#a5b4fc', danger: '#fca5a5' },
-        fg: { primary: '#ffffff', danger: '#ffffff' }, fgDisabled: { primary: '#e0e7ff', danger: '#fee2e2' },
-        border: { primary: '#4338ca', danger: '#dc2626' }, borderFocus: { primary: '#818cf8', danger: '#f87171' },
-    }).map(item => ({ ...item, collectionId: ids.variantLegacy }));
     const card = [
-        color('i-card-bg-v', 'card/bg', ids.variant, { primary: '#ffffff', danger: '#fff1f1' }),
-        color('i-card-fg-v', 'card/fg', ids.variant, { primary: '#20202a', danger: '#20202a' }),
+        { id: 'i-card-bg-v', name: 'card/bg', type: 'color', collectionId: ids.variant, values: Object.fromEntries(BUTTON_VARIANTS.map(m => [m, '#ffffff'])) },
+        { id: 'i-card-fg-v', name: 'card/fg', type: 'color', collectionId: ids.variant, values: Object.fromEntries(BUTTON_VARIANTS.map(m => [m, '#20202a'])) },
     ];
+    // Variant B: no bg-hover value for Solid.
+    const legacyItems = legacyModel.items.map(item => (item.id === 'b-v-bg-hover' ? { ...item, values: { ...item.values, solid: undefined } } : item));
     return {
-        collections: [
-            collection(ids.variant, 'Variant', [modes.primary, modes.danger]),
-            collection(ids.variantLegacy, 'Variant B', [modes.primary, modes.danger]),
-            collection(ids.size, 'Size', [modes.sm, modes.lg]),
-        ],
-        items: [...full, ...legacy, ...card, ...sizeTokens],
+        collections: [...main.collections, legacyModel.collections[0]].map(c => (c.id === ids.variantLegacy ? { ...c, name: 'Variant B' } : c)),
+        items: [...main.items, ...legacyItems, ...card],
     };
 }
 
-const BOUND = { templateId: 'button', variables: { variant: ids.variant, size: ids.size } };
-const LEGACY = { templateId: 'button', variables: { variant: ids.variantLegacy, size: ids.size } };
+const BOUND = main.binding;
+const LEGACY = legacyModel.binding;
+const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
 
 /** The fixture document. Five pages, so a lazy open applies (more than three pages). */
 export function buildBehaviorFixture() {
     const icons = [...iconComponent('icon-check', 'check', 800, true), ...iconComponent('icon-arrow', 'arrow', 1000, false)];
     const page1 = [
-        ...master('main', 'Button', 0, BOUND, bindings('-v')),
-        ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, bindings('-v'), icons),
-        ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel' }, { [ids.variant]: 'danger', [ids.size]: 'lg' }, bindings('-v'), icons),
+        ...master('main', 'Button', 0, BOUND, bindings('')),
+        ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, MODES('solid', 'primary', 'sm'), bindings(''), icons),
+        ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel' }, MODES('solid', 'danger', 'lg'), bindings(''), icons),
         ...master('unbound', 'Unbound', 600, null, { root: {}, label: {} }, 0),
-        ...master('legacy', 'Button (legacy)', 0, LEGACY, bindings('-b'), 240),
+        ...master('legacy', 'Button (legacy)', 0, LEGACY, bindings('b-'), 240),
         ...icons,
     ];
     // The master's root has a stroke, so the Focus preview (border) is visible on the canvas; instances copy it.
     page1[0].strokeWidth = 2;
-    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Next' }, { [ids.variant]: 'primary', [ids.size]: 'sm' }, bindings('-v'), icons);
+    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Next' }, MODES('solid', 'primary', 'sm'), bindings(''), icons);
     const pages = [
         { id: 'page-components', name: 'Components', nodes: page1 },
         { id: 'page-screens', name: 'Screens', nodes: page2 },

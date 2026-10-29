@@ -21,11 +21,11 @@ Fixture objects:
 
 | Page | Object | What it is |
 |---|---|---|
-| Components | **Button** (`main`) | Master, bound to Button. Variant = "Variant", Size = "Size". |
-| Components | **Save** (`inst-start`) | Instance of Button. Variant Primary, Size Small, Has Icon on, placement start. |
-| Components | **Cancel** (`inst-plain`) | Instance of Button. Variant Danger, Size Large, Has Icon off. |
-| Components | **Unbound** | Master, no template. Collections Variant and Size exist. |
-| Components | **Button (legacy)** | Master, bound to Button with "Variant B". Danger has no hover token. |
+| Components | **Button** (`main`) | Master, bound to Button. Variant = "Variant", Color = "Color", Size = "Size". |
+| Components | **Save** (`inst-start`) | Instance of Button. Variant Solid, Color Primary, Size Small, Has Icon on, placement start. |
+| Components | **Cancel** (`inst-plain`) | Instance of Button. Variant Solid, Color Danger, Size Large, Has Icon off. |
+| Components | **Unbound** | Master, no template. Collections Variant, Color and Size exist. |
+| Components | **Button (legacy)** | Master, bound to Button with "Variant B". Solid has no hover token. |
 | Screens | **Next** (`inst-cross`) | Instance of the Button master on the Components page. Has Icon on, placement end. |
 | Empty 3, 4, 5 | (none) | Empty pages, so the file has more than three pages. |
 
@@ -54,7 +54,7 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
    - Expected: a copy of Save appears with its iconStart layer, and no toast. The copy is one undo step named "Paste layers".
 
 7. **Auto-match on bind.** Select **Unbound**, open the Behavior tab, set Template to Button.
-   - Expected: Variant and Size each show "Auto-matched" and select their collections. Variant B is not chosen.
+   - Expected: Variant, Color and Size each show "Auto-matched" and select their collections. Variant B is not chosen.
 
 8. **Auto-match on rename.** Select **Unbound** (bound to Button from step 7). Set its Variant row to None. In the Variables window rename "Variant" to "Colour", then rename it back to "Variant".
    - Expected: after renaming back, the Variant row shows "Auto-matched" again. While it is named "Colour" the row stays None.
@@ -64,8 +64,8 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
    - Delete the second "Size" collection afterwards.
 
 10. **Diagnostics on the legacy master.** Select **Button (legacy)**, open the Behavior tab, scroll to Diagnostics.
-    - Expected Error row: `Button (legacy): state "hover" needs token "bg-hover" in mode "Danger" (no-value-in-mode).`
-    - Expected Code rows, one per size (**expected (from code)**): `Code: bg-hover in variant danger, size sm (no-value-in-mode).` and `Code: bg-hover in variant danger, size lg (no-value-in-mode).`
+    - Expected Error row: `Button (legacy): state "hover" needs token "bg-hover" in mode "Solid" (no-value-in-mode).`
+    - Expected Code rows, one per size (**expected (from code)**): `Code: bg-hover in variant solid, size sm (no-value-in-mode).` and `Code: bg-hover in variant solid, size lg (no-value-in-mode).`
     - The Generate code button is disabled, and nothing downloads.
 
 11. **Generate code on the main master.** Select **Button**, scroll to Code, click Generate code.
@@ -73,8 +73,8 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
     - Expected first line of `Button.jsx`: `export function Button({ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur }) {`
 
 12. **Preview states, no document change.** Select **Save**. In Preview, set State to Default, Hover, Active, Disabled in turn. Read the `bg` row.
-    - Expected (Primary, Small): Default `#4338ca`, Hover `#3730a3`, Active `#312e81`, Disabled `#a5b4fc`.
-    - Select **Cancel** (Danger, Large) and set Hover: expected `bg` is `#b91c1c`.
+    - Expected (Solid, Primary, Small): Default `#4338ca`, Hover `#3730a3`, Active `#312e81`, Disabled `#f4f4f5`.
+    - Select **Cancel** (Solid, Danger, Large) and set Hover: expected `bg` is `#b91c1c`.
     - Expected: changing the preview state adds no undo step. Ctrl+Z undoes the last document change, not the preview.
     - The canvas does not change. The canvas preview is not wired.
 
@@ -92,8 +92,8 @@ Open the newest **Behavior fixture** (import it again after `node scripts/make-b
    - Pick **arrow**. Expected: the slot stays first in the row, and the icon is the arrow, drawn as a stroke. Undo restores check; redo applies arrow.
 3. **Swap from the layer.** Select the icon layer inside **Save** and open its Swap chevron.
    - Expected: the same icon picker. Picking check changes the Icon row to "Icon/check".
-4. **Colour follows Variant.** On **Save**, set Variant to Danger.
-   - Expected: the icon and the label turn yellow, the Danger foreground. Set Primary: both white again.
+4. **Colour follows Color.** On **Save**, set Color to Danger.
+   - Expected: the icon and the label turn to the solid text colour of Danger. Set Primary: both white again.
 5. **Size follows Size.** On **Save**, set Size to Large.
    - Expected: the slot is 18 px. Small is 14 px. No manual size override.
 6. **Colour follows disabled.** Turn Disabled on for **Save**.
@@ -122,7 +122,7 @@ Known limits of this step: the hover and active previews change the root backgro
 
 Run after `node scripts/make-behavior-fixture.js`, import the file, then check each line. Record what you see.
 
-1. Variant and Size on Save: the Behavior panel changes the mode, the canvas follows, and the Design panel shows the same mode for the same layer (the mode lives on the instance root, `varModes`).
+1. Variant, Color and Size on Save: the Behavior panel changes the mode, the canvas follows, and the Design panel shows the same mode for the same layer (the modes live on the instance root, `varModes`).
 2. Disabled on Save: the root fill becomes `button/bg-disabled` and the label fill `button/fg-disabled`. Turn it off: both go back to `button/bg` and `button/fg`. One history step each. No `vars` override appears on the instance.
 3. Label on Save: the label layer text follows the prop (saved as `text`).
 4. Full Width on Save: the root width mode becomes Fill and goes back to Hug when off.
@@ -130,7 +130,7 @@ Run after `node scripts/make-behavior-fixture.js`, import the file, then check e
 6. Preview state Hover on Save: the badge reads "Previewing: Hover". The file is not changed (no history entry). Reload: no preview data is saved.
 7. Cancel and the Card group: Cancel is not changed by the Save edits (apart from the bindings its own modes give it). Button never reads `card/bg` or `card/fg`.
 8. Bind tokens on a master with unbound tokens: the button says how many are unbound, binds only the empty ones, and never overwrites an existing binding.
-9. Diagnostics: the legacy master shows "variable ... has no value in mode Danger" as an error. A layer set by hand while disabled shows a warning. Loading shows a Note.
+9. Diagnostics: the legacy master shows "variable ... has no value in mode Solid" as an error. A layer set by hand while disabled shows a warning. Loading shows a Note.
 
 Known and fixed (decision 1): a bound lineHeight variable is px. The editor's field is still the ratio px / font size; a value under 4 is an error. Fixture values such as 1.4 therefore draw a 2 px label. See the open questions in the report.
 
@@ -153,10 +153,10 @@ Fixture imported through the home import; each check reads the saved document th
 | Copy writes to x, y, w, h on Cancel (instrumented copy loop, removed afterwards) | 0 per toggle (before the layout rule: 2 on Cancel, 4 on its label, 6 changed in total per toggle) |
 | hasIcon off, then on | Icon layer removed, then back at the start of the row |
 | iconPlacement start to end | Icon moves after the label; label keeps its place |
-| Variant change on Save (Appearance modes) | Save's mode changes to Primary; Cancel keeps Danger; no card variable changed; no node `vars` references `card/` items |
+| Variant change on Save (Appearance modes) | Save's Variant changes to Outlined; Cancel keeps Solid; no card variable changed; no node `vars` references `card/` items |
 | Preview Hover on Save | Canvas draws the darker root background; text stays white; badge "Previewing: Hover"; no preview data in the saved document |
 | Preview reset on selection change | Selecting Cancel shows "Default" in the Preview section; selecting Save again shows "Default" |
-| Save and reopen | Preview is Default after reopen; Variant Primary is kept |
+| Save and reopen | Preview is Default after reopen; Variant Solid and Color Primary are kept |
 | Bind tokens on Button, all bound | The button reads "Bind tokens (all bound)"; no node's vars change |
 | Bind tokens on an unbound master, existing bindings kept | Not run in the browser. Covered by `bind-tokens.test.js` (never overwrites existing keys). |
 | Canvas Focus preview | Not visible on the fixture (stroke width 0). Covered by `canvasColorsOf` tests. |
