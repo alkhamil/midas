@@ -2462,7 +2462,15 @@ select.vw-text { cursor: pointer }
 .fr.fr2:has(> select.full-width) { gap: 4px }
 .fr.fr2 > select.full-width { flex: 0 0 80px; width: 80px; min-width: 0 }
 .fr.fr2 > .field { flex: 1 1 0; min-width: 60px }
+/* A numeric field in a fill/stroke row follows the 28px row controls, not the 31px standalone field. */
+.fr.fr2 > .field { height: 28px }
+.fr.fr2 > .field input { height: 26px }
 .fr.fr2 > .wh-lock { flex: none; width: 26px; height: 26px }
+/* Corner radius shares its row with a 30px button; font size with a 28px select. Gap and padding rows hold same-height fields only. */
+.rad-grid > .field { height: 30px }
+.rad-grid > .field input { height: 28px }
+.font-field-row + .field { height: 28px }
+.font-field-row + .field input { height: 26px }
 .fill-dd { position: fixed; z-index: 450; max-height: 270px; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 4px }
 .dd-item { width: 100%; display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 9px; border: 0; background: transparent; color: var(--text); border-radius: 6px; cursor: pointer; text-align: left; font-size: 12px }
 .dd-item.on { background: var(--accent-bg) }
