@@ -177,7 +177,7 @@ test('a mask on a rotated layer is reported, and the layer is drawn unclipped', 
     const mask = layer({ id: 'M', type: 'ellipse', isMask: true, x: 0, y: 0, w: 100, h: 50 });
     const turned = layer({ id: 'R', rotation: 10 });
     const result = toDomTree(docOf([frame('A'), mask, turned]), 'A');
-    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask that is not a rectangle or ellipse, or on a rotated layer' }]);
+    assert.deepEqual(result.unsupported, [{ nodeId: 'M', type: 'mask on a rotated layer' }]);
     assert.equal(result.root.children[0].style.clipPath, undefined);
 });
 
@@ -220,4 +220,16 @@ test('an outside frame stroke on some sides only is reported: an outline cannot 
     const { root, unsupported } = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside', strokeSides: 'top' }), layer()]), 'A');
     assert.equal(root.style.outline, undefined);
     assert.deepEqual(unsupported, [{ nodeId: 'A', type: 'frame outside stroke on some sides' }]);
+});
+
+test('a path mask clips the layers above it as a CSS mask image: its shape, drawn in black over the layer\'s own box', () => {
+    const mask = layer({ id: 'M', type: 'path', isMask: true, x: 20, y: 30, w: 40, h: 40, pathW: 40, pathH: 40, closed: true, points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 40 }], fills: solid('#000000') });
+    const above = layer({ id: 'R', x: 10, y: 10, w: 200, h: 100 });
+    const { root, unsupported } = toDomTree(docOf([frame('A'), mask, above]), 'A');
+    assert.deepEqual(unsupported, []);
+    const image = decodeURIComponent(root.children[0].style.maskImage);
+    assert.match(image, /^url\("data:image\/svg\+xml,<svg /);
+    assert.match(image, /viewBox="0 0 200 100"/);
+    assert.match(image, /<g transform="translate\(10 20\)"><path d="M0 0L40 0L20 40L0 0Z" fill="#000"\/><\/g>/);
+    assert.equal(root.children[0].style.maskSize, '100% 100%');
 });

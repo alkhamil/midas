@@ -135,7 +135,8 @@ function renderChildren(n, scope) {
         if (mask) {
             const clip = maskClipOf(mask, c);
             if (clip) el.style.clipPath = clip;
-            else scope.unsupported.push({ nodeId: mask.id, type: 'mask that is not a rectangle or ellipse, or on a rotated layer' });
+            else if (!mask.rotation && !c.rotation) Object.assign(el.style, maskImageOf(mask, c, scope));
+            else scope.unsupported.push({ nodeId: mask.id, type: 'mask on a rotated layer' });
         }
         if (auto && flowPosition.has(c.id)) el.style.order = String(flowPosition.get(c.id));
         out.push(el);
@@ -158,6 +159,24 @@ function maskClipOf(mask, child) {
     const right = child.w - left - mask.w, bottom = child.h - top - mask.h;
     const radii = cornerRadii(mask).map(r => `${svgNumber(r)}px`).join(' ');
     return `inset(${svgNumber(top)}px ${svgNumber(right)}px ${svgNumber(bottom)}px ${svgNumber(left)}px round ${radii})`;
+}
+
+/**
+ * A mask that is not a plain rectangle or ellipse, as a CSS mask image over the layer's own box: its shapes (a path, a group, or the
+ * children of a frame) drawn in black, at the place they hold in the frame. The layer shows only where the mask is.
+ * @param {any} mask
+ * @param {any} child
+ * @param {any} scope
+ * @returns {Record<string, string>}
+ */
+function maskImageOf(mask, child, scope) {
+    const shape = (n, dx, dy) => {
+        if (n.type === 'frame' || n.type === 'group') return scope.childrenOf(n.id).filter(k => !k.isMask && k.visible !== false).map(k => shape(k, dx + k.x, dy + k.y)).join('');
+        return `<g transform="translate(${svgNumber(dx)} ${svgNumber(dy)})">${svgShapeEl(n, svgNumber, 'fill="#000"')}</g>`;
+    };
+    const box = `width="${svgNumber(child.w)}" height="${svgNumber(child.h)}" viewBox="0 0 ${svgNumber(child.w)} ${svgNumber(child.h)}"`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" ${box}>${shape(mask, mask.x - child.x, mask.y - child.y)}</svg>`;
+    return { maskImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`, maskSize: '100% 100%', maskRepeat: 'no-repeat' };
 }
 
 /**
