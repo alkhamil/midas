@@ -6,6 +6,7 @@ import { NODE_PROPERTIES, VARIABLE_KEYS, targetKindOf } from './display.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
 import { varsWithBinding } from './edits.js';
+import { setStrokeWeight } from '../geometry/shapes.js';
 
 /** @param {string} name */
 
@@ -62,7 +63,7 @@ export function applyBindTokens(layers, ops) {
         n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
         if (op.varKey === 'fills.0') delete n.vars.fill;
         if (op.varKey === 'stroke') {
-            if (!(n.strokeWidth > 0)) n.strokeWidth = 1;
+            if (!(n.strokeWidth > 0)) setStrokeWeight(n, 1);
         }
         touched.push(n);
     }

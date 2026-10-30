@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1211,7 +1211,7 @@ function bindVariable(prop, id) {
             for (const k of prop === 'radius' ? ['rTL', 'rTR', 'rBL', 'rBR'] : prop === 'padH' ? ['padL', 'padR'] : prop === 'padV' ? ['padT', 'padB'] : [])
                 delete n.vars[k];
             if (prop === 'stroke' && !(n.strokeWidth > 0))
-                n.strokeWidth = 1;
+                setStrokeWeight(n, 1);
             if (prop === 'stroke')
                 repairBoundStroke(n);
             if (prop === 'w')
@@ -1405,7 +1405,7 @@ function strokeSectionHtml(n) {
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
-    const widthPart = field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
+    const widthPart = field('≡', 'strokeWidth', strokeWeightOf(n), { min: 0, max: 1000, title: 'Stroke width' });
     let h = `<div class="fr fr2 ${hidden ? 'off' : ''}">${sw}${hex}${op}${ops}</div>`;
     h += `<div class="fr fr2">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
     if (mode === 'custom') {
@@ -1524,16 +1524,7 @@ document.addEventListener('click', e => {
     if (strokePop && (el = t.closest('[data-st-side]'))) {
         const v = el.dataset.stSide;
         transaction('Stroke sides', () => { for (const n of selected()) {
-            n.strokeSides = v;
-            if (v === 'custom') {
-                const w = n.strokeWidth || 0;
-                n.strokeT ??= w;
-                n.strokeR ??= w;
-                n.strokeB ??= w;
-                n.strokeL ??= w;
-            }
-            if (v === 'all')
-                delete n.strokeSides;
+            setStrokeSides(n, v);
             doc.touch(n);
         } });
         closeStrokePop();
@@ -8915,7 +8906,7 @@ function lineHeightField(n) {
 function safeColor(c) { return /^#[\da-f]{3,8}$/i.test(c) ? c : '#0058CA'; }
 // Swatches in variable lists: a missing / unresolved value stays empty instead of masquerading as the brand blue.
 function previewColor(c) { return typeof c === 'string' && /^#[\da-f]{3,8}$/i.test(c) ? c : 'transparent'; }
-function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${fmt(value ?? 0)}" aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
+function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${value === null ? '' : fmt(value ?? 0)}"${value === null ? ' placeholder="Mixed"' : ''} aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
 function field(label, prop, value, opts = {}) {
     const bv = bindType(prop) ? boundVar(prop) : null;
     if (bv && bv.type === 'number')
@@ -9782,6 +9773,16 @@ function setProperty(prop, value, { live = false } = {}) {
             delete n.vars[prop];
             if (!Object.keys(n.vars).length)
                 delete n.vars;
+        }
+        if (prop === 'strokeWidth') {
+            setStrokeWeight(n, v);
+            doc.touch(n);
+            continue;
+        }
+        if (['strokeT', 'strokeR', 'strokeB', 'strokeL'].includes(prop)) {
+            setStrokeSide(n, prop, v);
+            doc.touch(n);
+            continue;
         }
         if (prop === 'gridCols')
             v = Math.max(1, Math.round(+v));
@@ -12750,8 +12751,10 @@ function inspectCSS() {
             css += `\nborder-radius: ${fmt(n.radius)}px;`;
         if (n.type === 'ellipse')
             css += '\nborder-radius: 50%;';
-        if (n.strokeWidth)
-            css += `\nborder: ${fmt(n.strokeWidth)}px solid ${n.stroke};`;
+        if (n.strokeWidth) {
+            const s = strokeSideWidths(n);
+            css += `\nborder: ${[s.t, s.r, s.b, s.l].map(v => fmt(v) + 'px').join(' ')} solid ${n.stroke};`;
+        }
     }
     if (n.opacity !== 1)
         css += `\nopacity: ${n.opacity};`;

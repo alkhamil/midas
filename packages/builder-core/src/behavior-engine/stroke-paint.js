@@ -2,12 +2,13 @@
 // the paint (opacity, visibility). A stale zero opacity or a hidden paint would keep the swatch and the canvas blank even when the
 // variable resolves to a real colour, so every bind and every mode change passes the layer through here.
 import { splitColor } from './tokens.js';
+import { setStrokeWeight } from '../geometry/shapes.js';
 
 /**
  * Leaves a layer with a bound stroke a paint that draws, unless the variable truly resolves transparent: opacity 100 when it is
  * zero, the stroke visible, and (when `ensureWidth`) a width of 1 when it has none. A colour with alpha 0, or one that is not a
  * colour, changes nothing: the transparency belongs to the variable.
- * @param {{ strokeWidth?: number, strokeOpacity?: number, strokeVisible?: boolean }} node
+ * @param {any} node
  * @param {string | null | undefined} color the colour the variable resolves to in the layer's modes
  * @param {{ ensureWidth?: boolean }} [options]
  * @returns {boolean} whether the layer changed
@@ -16,7 +17,7 @@ export function restoreStrokePaint(node, color, { ensureWidth = false } = {}) {
     const paint = typeof color === 'string' ? splitColor(color) : null;
     if (!paint || paint.alpha === 0) return false;
     let changed = false;
-    if (ensureWidth && !(node.strokeWidth > 0)) { node.strokeWidth = 1; changed = true; }
+    if (ensureWidth && !(node.strokeWidth > 0)) { setStrokeWeight(node, 1); changed = true; }
     if (node.strokeOpacity !== undefined && !(node.strokeOpacity > 0)) { node.strokeOpacity = 1; changed = true; }
     if (node.strokeVisible === false) { delete node.strokeVisible; changed = true; }
     return changed;
