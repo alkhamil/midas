@@ -42,8 +42,8 @@ const ids = { variant: main.ids.variant, variantLegacy: legacyModel.ids.variant,
  * Button variables of one Variant set. `prefix` picks the Variant items of that set.
  */
 const bindings = prefix => ({
-    root: { fill: `${prefix}v-bg`, stroke: `${prefix}v-border`, radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
-    label: { fill: `${prefix}v-fg`, fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+    root: { 'fills.0': `${prefix}v-bg`, stroke: `${prefix}v-border`, radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+    label: { 'fills.0': `${prefix}v-fg`, fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
 });
 /** A Button master: a root auto layout frame with its label, bound to the template, or unbound when `binding` is null. */
 function master(id, name, x, binding, vars, y = 0) {

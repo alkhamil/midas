@@ -32,11 +32,11 @@ function master() {
     const root = node('frame', {
         id: 'button', name: 'Button', x: 0, y: 0, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true, behavior: BOUND,
-        vars: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
     });
     const label = node('text', {
         id: 'button-label', name: 'Label', parentId: 'button', text: 'Button', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,
-        vars: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+        vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
     });
     return [root, label];
 }
@@ -48,11 +48,11 @@ function instance() {
         padding: 12, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true,
         behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: false, loading: false, disabled: false } },
         varModes: { [model.ids.variant]: 'solid', [model.ids.color]: 'primary', [model.ids.size]: 'lg' },
-        vars: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
     });
     const label = node('text', {
         id: 'button-save-label', name: 'Label', parentId: 'button-save', text: 'Save', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,
-        sourceId: 'button-label', vars: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+        sourceId: 'button-label', vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
     });
     return [root, label];
 }

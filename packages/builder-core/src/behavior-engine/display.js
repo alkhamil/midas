@@ -73,7 +73,7 @@ export const COLOUR_TOKENS = ['bg', 'fg', 'border', 'outline-color'];
  * @type {Record<string, string[]>}
  */
 export const VARIABLE_KEYS = {
-    fill: ['fill'],
+    fill: ['fills.0'],
     stroke: ['stroke'],
     radius: ['radius'],
     paddingX: ['padH'],

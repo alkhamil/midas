@@ -161,7 +161,7 @@ test('deleting a collection unbinds it from its masters; instance literal values
 });
 
 test('deleting a collection clears the node bindings to its variables, keeping the others', () => {
-    const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]), vars: { fill: 'v-bg', radius: 'other' } };
+    const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]), vars: { 'fills.0': 'v-bg', radius: 'other' } };
     forgetCollection([master], 'c-variant', [{ id: 'v-bg', collectionId: 'c-variant' }]);
     assert.equal(master.behavior.variables.variant, null);
     assert.deepEqual(master.vars, { radius: 'other' });

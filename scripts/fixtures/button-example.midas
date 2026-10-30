@@ -50,7 +50,7 @@
             }
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -97,7 +97,7 @@
           "type": "text",
           "id": "button-label",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -150,7 +150,7 @@
             "c-size": "lg"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -198,7 +198,7 @@
           "id": "button-save-label",
           "sourceId": "button-label",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }

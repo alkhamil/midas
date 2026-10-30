@@ -170,7 +170,7 @@
           "w": 98,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -282,7 +282,7 @@
           "w": 103,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -406,7 +406,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -1081,7 +1081,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -1146,7 +1146,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -1237,7 +1237,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -1334,7 +1334,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -1847,7 +1847,7 @@
           "w": 206,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -1959,7 +1959,7 @@
           "w": 164,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -2083,7 +2083,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -2687,7 +2687,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -2784,7 +2784,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -2877,7 +2877,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -2941,7 +2941,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -3000,7 +3000,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -3065,7 +3065,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -3610,7 +3610,7 @@
           "w": 173,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -3722,7 +3722,7 @@
           "w": 140,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -3846,7 +3846,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -4450,7 +4450,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -4547,7 +4547,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -4862,7 +4862,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -4926,7 +4926,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -5241,7 +5241,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -5306,7 +5306,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -5653,7 +5653,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -5750,7 +5750,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -6065,7 +6065,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -6129,7 +6129,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -6444,7 +6444,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -6508,7 +6508,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -7021,7 +7021,7 @@
           "w": 162,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -7133,7 +7133,7 @@
           "w": 164,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -7257,7 +7257,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -7950,7 +7950,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -8015,7 +8015,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -8106,7 +8106,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -8170,7 +8170,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -8229,7 +8229,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -8326,7 +8326,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -8839,7 +8839,7 @@
           "w": 119,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -8951,7 +8951,7 @@
           "w": 182,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -9075,7 +9075,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -9610,7 +9610,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -9707,7 +9707,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -9766,7 +9766,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -9831,7 +9831,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -10258,7 +10258,7 @@
           "component": true,
           "isInstance": false,
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -10315,7 +10315,7 @@
           "w": 51,
           "h": 20,
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -10481,7 +10481,7 @@
           "w": 173,
           "h": 26,
           "vars": {
-            "fill": "var-col-text-main",
+            "fills.0": "var-col-text-main",
             "fontSize": "var-typ-title"
           }
         },
@@ -10593,7 +10593,7 @@
           "w": 170,
           "h": 16,
           "vars": {
-            "fill": "var-col-text-sub"
+            "fills.0": "var-col-text-sub"
           }
         },
         {
@@ -10717,7 +10717,7 @@
           "w": 33,
           "h": 16,
           "vars": {
-            "fill": "var-col-brand"
+            "fills.0": "var-col-brand"
           }
         },
         {
@@ -11138,7 +11138,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -11202,7 +11202,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -11261,7 +11261,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -11358,7 +11358,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -11417,7 +11417,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -11482,7 +11482,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -11607,7 +11607,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -11671,7 +11671,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -11730,7 +11730,7 @@
             "h": true
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -11794,7 +11794,7 @@
             "w": true
           },
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }

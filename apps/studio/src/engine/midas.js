@@ -803,10 +803,13 @@ function varValue(d, item, node, depth = 0) {
 function writeBound(n, prop, val, type) {
     const fm = /^fills\.(\d+)$/.exec(prop);
     if (fm) {
-        const fl = Array.isArray(n.fills) ? n.fills[+fm[1]] : null;
-        if (!fl || fl.type === 'image' || fl.color === String(val))
+        // A bound fill index resolves into its fill; index 0 on a layer with no fill takes the bound colour.
+        const i = +fm[1], fills = Array.isArray(n.fills) ? n.fills : null, fl = fills?.[i] ?? null;
+        if (fl?.type === 'image' || fl?.color === String(val))
             return false;
-        fl.color = String(val);
+        if (fl) fl.color = String(val);
+        else if (i === 0) n.fills = withTopColor(fills ?? [], String(val));
+        else return false;
         return true;
     }
     const set = (k, v) => { if (n[k] === v)
@@ -870,14 +873,6 @@ function writeBound(n, prop, val, type) {
     }
     if (type === 'boolean')
         return set('visible', !!val);
-    // The bound fill colour and gradient end colour are the top fill's. A layer with no fill takes the bound colour as its fill.
-    if (type === 'color' && prop === 'fill') {
-        const top = topFillOf(getFills(n));
-        if (top?.type === 'image' || topColorOf(n) === String(val))
-            return false;
-        n.fills = withTopColor(getFills(n), String(val));
-        return true;
-    }
     if (type === 'color' && prop === 'fill2') {
         const top = topFillOf(getFills(n));
         if (!top || top.color2 === String(val))
@@ -1337,6 +1332,7 @@ function writeVarMode(nodes, collectionId, modeId) {
         doc.touch(n);
         applyVariantStroke(n);
     }
+    for (const n of nodes) if (n?.component && n.behavior && 'templateId' in n.behavior) bindMasterTokens(n);
 }
 document.addEventListener('change', e => {
     const el = e.target;
@@ -5980,8 +5976,6 @@ function scBind(g, id) {
     scApply(g, (n, u) => {
         const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
         n.vars = { ...(n.vars || {}), [prop]: id };
-        if (u.kind === 'fill' && u.i === 0)
-            delete n.vars.fill;
     });
 }
 function scDetach(g) {
@@ -5990,8 +5984,6 @@ function scDetach(g) {
             return;
         if (u.kind === 'fill') {
             delete n.vars['fills.' + u.i];
-            if (u.i === 0)
-                delete n.vars.fill;
         }
         else
             delete n.vars.stroke;
@@ -8535,6 +8527,7 @@ function autoMatchUnbound() {
     for (const { node, variables } of planAutoMatch(masters, collections)) {
         applyPlan(node, { changed: true, binding: { ...node.behavior, variables: { ...node.behavior.variables, ...variables } }, updates: [] });
         doc.touch(node);
+        bindMasterTokens(node); // the auto-matched collections resolve the tokens now
     }
 }
 // The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
@@ -9172,22 +9165,29 @@ function startPlay() {
 }
 $('#play').onclick = startPlay;
 
-/** Bind tokens: binds each unbound mapped property of a bound master's layers to its group variable. Existing bindings are kept. */
-function bindTokensTo(master) {
+/** Binds the unbound mapped properties of a bound master to their group variables (see planBindTokens), inside the
+ * caller's history step. Existing bindings are kept; a bound stroke with no width gets width 1, and a stale `fill`
+ * key goes when `fills.0` is bound (see scBind). Returns the ops applied. */
+function bindMasterTokens(master, { announce = false } = {}) {
     const binding = master?.component ? master.behavior : null;
-    if (!binding || !('templateId' in binding)) return;
+    if (!binding || !('templateId' in binding)) return 0;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
     const layers = onPage(pageOfNode(master.id)?.id, () => masterLayersOf(master, id => doc.children(id)));
     const { ops, problems } = planBindTokens({ template, binding, layers, variables: varStore() });
-    if (problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
-    if (!ops.length) return;
-    transaction('Bind tokens', () => {
-        for (const op of ops) {
-            const n = layers.find(l => l.key === op.key).node;
-            n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
-            doc.touch(n);
-        }
-    });
+    if (announce && problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
+    for (const op of ops) {
+        const n = layers.find(l => l.key === op.key).node;
+        n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
+        if (op.varKey === 'fills.0') delete n.vars.fill;
+        if (op.varKey === 'stroke' && !(n.strokeWidth > 0)) n.strokeWidth = 1;
+        doc.touch(n);
+    }
+    return ops.length;
+}
+
+/** Bind tokens: binds each unbound mapped property of a bound master to its group variable. Existing bindings are kept. */
+function bindTokensTo(master) {
+    transaction('Bind tokens', () => { bindMasterTokens(master, { announce: true }); });
 }
 /** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
 function onBehaviorClick(e) {
@@ -9230,6 +9230,7 @@ function commitPlan(label, master, plan) {
         applyPlan(master, plan);
         doc.touch(master);
         for (const u of plan.updates) doc.touch(u.node);
+        bindMasterTokens(master); // the collections just bound resolve the tokens now
         for (const inst of instancesOf(master.id)) reason ??= syncInstance(inst);
     });
     if (reason) toast(`Managed layers were not updated: ${reason}.`);
@@ -9564,7 +9565,7 @@ function onBehaviorChange(e) {
 function setBehaviorMode(inst, prop, modeId) {
     const collectionId = collectionOfProp(componentById(inst.sourceId)?.behavior, prop);
     if (!collectionId) { toast(`"${prop}" has no bound collection`); return false; }
-    transaction('Set variable mode', () => writeVarMode([inst], collectionId, modeId ?? ''));
+    transaction('Set variable mode', () => { writeVarMode([inst], collectionId, modeId ?? ''); const master = componentById(inst.sourceId); if (master) bindMasterTokens(master); });
     return true;
 }
 /** The Appearance modes of an instance per variable prop, read from the node (the same resolution Appearance uses). */

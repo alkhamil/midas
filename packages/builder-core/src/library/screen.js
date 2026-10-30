@@ -48,7 +48,7 @@ const round = v => Math.round(v * 100) / 100;
 function paint(ctx, n, prop) {
     const value = n[prop];
     if (!value || value === 'none') return null;
-    const bound = n.vars?.[prop] ?? (prop === 'fill' ? n.vars?.['fills.0'] : undefined);
+    const bound = prop === 'fill' ? n.vars?.['fills.0'] : n.vars?.[prop];
     const v = bound && ctx.vars.get(bound);
     if (v) return { css: `var(${cssVarOf(v)}, ${value})`, raw: false };
     return { css: value, raw: true };

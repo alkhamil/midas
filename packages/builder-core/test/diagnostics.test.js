@@ -33,14 +33,14 @@ const doc = (over = {}) => ({
             {
                 id: 'm1', name: 'Button', type: 'frame',
                 behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: sizeColl.id }, ...over.binding },
-                vars: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+                vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
             },
-            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' } },
+            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' } },
             {
                 id: 'i1', name: 'Button', type: 'frame', isInstance: true, sourceId: 'm1', parentId: null,
-                behavior: { version: 2, props: { ...over.props } }, vars: { fill: 'v-bg' }, ...over.instance,
+                behavior: { version: 2, props: { ...over.props } }, vars: { 'fills.0': 'v-bg' }, ...over.instance,
             },
-            { id: 'il', name: 'Label', type: 'text', parentId: 'i1', sourceId: 'mt', vars: { fill: 'v-fg' }, ...over.label },
+            { id: 'il', name: 'Label', type: 'text', parentId: 'i1', sourceId: 'mt', vars: { 'fills.0': 'v-fg' }, ...over.label },
         ],
         ...over.page,
     }],
@@ -113,7 +113,7 @@ test('a bound collection that does not exist is reported on the master, naming i
 });
 
 test('a layer the user rebound by hand while disabled is a warning, and the rebinding is kept', () => {
-    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { fill: 'v-fg' } } }));
+    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-fg' } } }));
     assert.deepEqual(found.filter(f => f.severity === 'warning' && f.code === 'rebound-by-hand'), [{
         severity: 'warning', code: 'rebound-by-hand', node: 'Button', nodeId: 'i1', layer: 'root', prop: 'fill', state: 'disabled',
         message: 'Button: root fill was set by hand, so state "disabled" does not change it.',
@@ -121,7 +121,7 @@ test('a layer the user rebound by hand while disabled is a warning, and the rebi
 });
 
 test('a layer bound to the disabled variable while disabled is not reported', () => {
-    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { fill: 'v-bg-disabled' } }, label: { vars: { fill: 'v-fg-disabled' } } }));
+    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-bg-disabled' } }, label: { vars: { 'fills.0': 'v-fg-disabled' } } }));
     assert.deepEqual(found, []);
 });
 
@@ -141,6 +141,6 @@ test('loading is an info note: stored and generated, not drawn', () => {
 });
 
 test('the same document gives the same diagnostics, in the same order', () => {
-    const d = doc({ props: { disabled: true }, instance: { vars: { fill: 'v-fg' } } });
+    const d = doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-fg' } } });
     assert.deepEqual(diagnoseDocument(d), diagnoseDocument(d));
 });

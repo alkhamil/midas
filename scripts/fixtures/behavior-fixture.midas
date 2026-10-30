@@ -50,7 +50,7 @@
             }
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -100,7 +100,7 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -153,7 +153,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -237,7 +237,7 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -366,7 +366,7 @@
             "c-size": "lg"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -416,7 +416,7 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -538,7 +538,7 @@
             }
           },
           "vars": {
-            "fill": "b-v-bg",
+            "fills.0": "b-v-bg",
             "stroke": "b-v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -588,7 +588,7 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "vars": {
-            "fill": "b-v-fg",
+            "fills.0": "b-v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -766,7 +766,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -816,7 +816,7 @@
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },

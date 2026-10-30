@@ -16,9 +16,9 @@ const variables = (over = items) => ({ collections: [variant, size], items: over
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
 
 /** A master layer pair: the root (fill bound to the base) and the label (fill bound to fg). */
-const layers = (instanceVars = { root: { fill: 'i-bg' }, label: { fill: 'i-fg' } }) => [
-    { key: 'root', instance: { id: 'i1', vars: instanceVars.root }, master: { vars: { fill: 'i-bg', stroke: 'i-border' } } },
-    { key: 'label', instance: { id: 'il', vars: instanceVars.label }, master: { vars: { fill: 'i-fg' } } },
+const layers = (instanceVars = { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } }) => [
+    { key: 'root', instance: { id: 'i1', vars: instanceVars.root }, master: { vars: { 'fills.0': 'i-bg', stroke: 'i-border' } } },
+    { key: 'label', instance: { id: 'il', vars: instanceVars.label }, master: { vars: { 'fills.0': 'i-fg' } } },
 ];
 const plan = (props, instanceVars, over) => planStateBindings({ template: button, binding, props, layers: layers(instanceVars), variables: variables(over) });
 const apply = (ops, instanceVars) => {
@@ -32,26 +32,26 @@ const apply = (ops, instanceVars) => {
 };
 
 test('disabled on: the root fill and the label fill move to the disabled variables', () => {
-    const { ops, warnings, problems } = plan({ disabled: true }, { root: { fill: 'i-bg' }, label: { fill: 'i-fg' } });
+    const { ops, warnings, problems } = plan({ disabled: true }, { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } });
     assert.deepEqual(ops, [
-        { instanceId: 'i1', prop: 'fill', value: 'i-bg-disabled' },
-        { instanceId: 'il', prop: 'fill', value: 'i-fg-disabled' },
+        { instanceId: 'i1', prop: 'fills.0', value: 'i-bg-disabled' },
+        { instanceId: 'il', prop: 'fills.0', value: 'i-fg-disabled' },
     ]);
     assert.deepEqual(warnings, []);
     assert.deepEqual(problems, []);
 });
 
 test('disabled off: the layers go back to the master\'s binding', () => {
-    const start = { root: { fill: 'i-bg-disabled' }, label: { fill: 'i-fg-disabled' } };
+    const start = { root: { 'fills.0': 'i-bg-disabled' }, label: { 'fills.0': 'i-fg-disabled' } };
     const { ops } = plan({ disabled: false }, start);
     assert.deepEqual(ops, [
-        { instanceId: 'i1', prop: 'fill', value: 'i-bg' },
-        { instanceId: 'il', prop: 'fill', value: 'i-fg' },
+        { instanceId: 'i1', prop: 'fills.0', value: 'i-bg' },
+        { instanceId: 'il', prop: 'fills.0', value: 'i-fg' },
     ]);
 });
 
 test('applying the plan and planning again gives no operations (idempotent)', () => {
-    const start = { root: { fill: 'i-bg' }, label: { fill: 'i-fg' } };
+    const start = { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } };
     const once = apply(plan({ disabled: true }, start).ops, start);
     assert.deepEqual(plan({ disabled: true }, once).ops, []);
     const back = apply(plan({ disabled: false }, once).ops, once);
@@ -60,21 +60,21 @@ test('applying the plan and planning again gives no operations (idempotent)', ()
 });
 
 test('a binding the user set by hand is never overwritten, and is reported as a warning', () => {
-    const { ops, warnings } = plan({ disabled: true }, { root: { fill: 'i-card' }, label: { fill: 'i-fg' } });
-    assert.deepEqual(ops, [{ instanceId: 'il', prop: 'fill', value: 'i-fg-disabled' }]);
+    const { ops, warnings } = plan({ disabled: true }, { root: { 'fills.0': 'i-card' }, label: { 'fills.0': 'i-fg' } });
+    assert.deepEqual(ops, [{ instanceId: 'il', prop: 'fills.0', value: 'i-fg-disabled' }]);
     assert.deepEqual(warnings, [{ key: 'root', prop: 'fill', state: 'disabled', reason: 'rebound-by-hand' }]);
 });
 
 test('a layer the user rebound while disabled is off is left alone, with no warning', () => {
-    const { ops, warnings } = plan({ disabled: false }, { root: { fill: 'i-card' }, label: { fill: 'i-fg' } });
+    const { ops, warnings } = plan({ disabled: false }, { root: { 'fills.0': 'i-card' }, label: { 'fills.0': 'i-fg' } });
     assert.deepEqual(ops, []);
     assert.deepEqual(warnings, []);
 });
 
 test('a missing state variable is an error, not a fallback to the base variable', () => {
-    const { ops, problems } = plan({ disabled: true }, { root: { fill: 'i-bg' }, label: { fill: 'i-fg' } }, items.filter(i => i.name !== 'button/bg-disabled'));
+    const { ops, problems } = plan({ disabled: true }, { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } }, items.filter(i => i.name !== 'button/bg-disabled'));
     assert.deepEqual(problems, [{ key: '*', prop: 'bg', token: 'bg-disabled', reason: 'no-variable' }]);
-    assert.deepEqual(ops, [{ instanceId: 'il', prop: 'fill', value: 'i-fg-disabled' }], 'the root is not changed to the base or any other variable');
+    assert.deepEqual(ops, [{ instanceId: 'il', prop: 'fills.0', value: 'i-fg-disabled' }], 'the root is not changed to the base or any other variable');
 });
 
 test('a state with no bound collection for its token is an error with its reason', () => {
@@ -87,10 +87,10 @@ test('a state with no bound collection for its token is an error with its reason
 test('an unbound master layer is never given a state variable it does not already show', () => {
     const noBase = [{ key: 'root', instance: { id: 'i1', vars: {} }, master: { vars: {} } }];
     const { ops } = planStateBindings({ template: button, binding, props: { disabled: true }, layers: noBase, variables: variables() });
-    assert.deepEqual(ops, [{ instanceId: 'i1', prop: 'fill', value: 'i-bg-disabled' }]);
+    assert.deepEqual(ops, [{ instanceId: 'i1', prop: 'fills.0', value: 'i-bg-disabled' }]);
 });
 
 test('the card group is never read for Button states', () => {
-    const { ops } = plan({ disabled: true }, { root: { fill: 'i-bg' }, label: { fill: 'i-fg' } }, [item('i-card-d', 'card/bg-disabled')]);
+    const { ops } = plan({ disabled: true }, { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } }, [item('i-card-d', 'card/bg-disabled')]);
     assert.deepEqual(ops, []);
 });
