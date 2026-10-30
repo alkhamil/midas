@@ -24,6 +24,33 @@ export function iconSlotTargets(template, slot) {
 }
 
 /**
+ * The collections one template's icon slots need, as { prop, dimension, collection, variables, role }: for each icon def
+ * whose show prop declares `requires`, the required dimensions with the icon variables in them (from the def's tokens).
+ * Driven entirely by schema data; no component names.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+export function iconNeedsOf(template) {
+    const out = [];
+    for (const def of iconDefsOf(template)) {
+        const requires = template.props[def.show]?.requires;
+        if (!Array.isArray(requires)) continue;
+        for (const dimension of requires) {
+            const target = template.props[dimension];
+            if (!target || target.source !== 'variable') continue;
+            const variables = [];
+            let role = null;
+            for (const [r, token] of Object.entries(def.tokens ?? {})) {
+                const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
+                if (group && dimensionOfGroup(group, template.props) === dimension) { variables.push(variableNameOf(template, token)); role ??= r; }
+            }
+            if (!variables.length) continue;
+            out.push({ prop: def.show, dimension, collection: target.collection, variables, role });
+        }
+    }
+    return out;
+}
+
+/**
  * The text that says a missing icon variable: its name, the collection it was searched in and the mode the instance has for it.
  * @param {{ name: string, collectionName: string, modeName: string }} input
  * @returns {string}

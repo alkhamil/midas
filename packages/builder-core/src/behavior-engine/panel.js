@@ -2,6 +2,7 @@
 // document. The renderer reads these models; every edit goes back through the binding model and the instance props store.
 import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
+import { iconNeedsOf } from './icon-slot.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
@@ -59,8 +60,19 @@ function missingRequires(template, binding, name) {
 export function masterPanel(master, collections) {
     const templates = [...TEMPLATES.values()].map(t => ({ id: t.id, name: t.name }));
     const bound = boundTemplate(master);
-    if (!bound) return { templateId: null, templates, rows: [], contract: null };
+    if (!bound) return { templateId: null, templates, rows: [], needs: [], contract: null };
     const { binding, template } = bound;
+    // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
+    const needs = iconNeedsOf(template).map(need => {
+        const collectionId = binding.variables[need.dimension] ?? null;
+        return {
+            ...need,
+            label: `Icon ${need.role === 'disabledColour' ? 'disabled colour' : need.role}`,
+            collectionId,
+            matched: collectionId !== null && collectionId === autoMatchCollection(need.collection, collections),
+            options: options(collections),
+        };
+    });
     const rows = variableProps(template).map(([prop, def]) => {
         const collectionId = binding.variables[prop] ?? null;
         return {
@@ -81,7 +93,7 @@ export function masterPanel(master, collections) {
         previewStates: Object.keys(template.previewStates),
         events: template.events.map(e => ({ name: e.name, exposeAsTrigger: e.exposeAsTrigger })),
     };
-    return { templateId: template.id, templates, rows, contract };
+    return { templateId: template.id, templates, rows, needs, contract };
 }
 
 /**

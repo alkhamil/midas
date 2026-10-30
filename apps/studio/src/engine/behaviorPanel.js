@@ -54,6 +54,15 @@ function masterHtml(panel, esc, findings, code) {
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
     if (!panel.templateId) return section('Template and binding', templateRow + empty('Choose a template to bind this component.'), esc);
+    // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
+    const needs = (panel.needs ?? []).map(r => {
+        const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
+        const control = `<select data-bp="collection" data-bp-prop="${esc(r.dimension)}" aria-label="${esc(r.dimension)} collection">
+            <option value="">None</option>${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.collectionId ? 'selected' : ''}` + `>${esc(o.name)}</option>`).join('')}
+        </select>${badge}`;
+        const unmatched = r.collectionId === null ? empty(`No "${r.collection}" collection matched. Pick one.`) : '';
+        return row(r.label, control, esc, r.dimension) + unmatched;
+    }).join('');
     const collections = panel.rows.map(r => {
         const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
         const control = `<select data-bp="collection" data-bp-prop="${esc(r.prop)}" aria-label="${esc(r.prop)} collection">
@@ -70,7 +79,7 @@ function masterHtml(panel, esc, findings, code) {
     ].join('');
     const generate = `<button class="wide-button full-width" data-bp-action="generate" ${code?.problems.length ? 'disabled' : ''}>Generate code</button>`;
     return section('Template and binding', templateRow, esc)
-        + block('Collections', collections + bindTokensRow(findings, esc), esc)
+        + block('Collections', needs + collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
         + diagnosticsSection(findings, code?.problems ?? [], esc);

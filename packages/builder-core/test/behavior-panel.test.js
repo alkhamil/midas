@@ -32,6 +32,21 @@ test('a master bound to Button lists its variable props, prefilled by auto-match
     assert.equal(rowOf(panel, 'size').matched, false);
 });
 
+test('the component panel lists the icon slot needs first, driven by requires and the icons defs', () => {
+    const master = boundMaster([variant, size]);
+    assert.deepEqual(masterPanel(master, [variant, size]).needs.map(n => [n.prop, n.dimension, n.collection, n.collectionId, n.variables]), [
+        ['hasIcon', 'variant', 'Variant', 'c-variant', ['button/fg', 'button/fg-disabled']],
+        ['hasIcon', 'size', 'Size', 'c-size', ['button/icon-size']],
+    ]);
+});
+
+test('an unbound icon need shows no collection, like an unbound dimension', () => {
+    const master = boundMaster([variant]);
+    const needs = masterPanel(master, [variant]).needs;
+    assert.equal(needs.find(n => n.dimension === 'size').collectionId, null);
+    assert.equal(needs.find(n => n.dimension === 'variant').collectionId, 'c-variant');
+});
+
 test('the master contract shows non-visual props, states and events, but no icon choice or placement', () => {
     const panel = masterPanel(boundMaster([variant]), [variant]);
     const names = panel.contract.props.map(p => p.name);

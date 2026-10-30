@@ -21,6 +21,20 @@ test('a master bound to Button shows the template and each variable prop with it
     assert.match(html, /Auto-matched/);
 });
 
+test('the component panel lists the icon needs first, with the same binding slots', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /<span title="size">Icon size<\/span>/);
+    assert.match(html, /<span title="variant">Icon colour<\/span>/);
+    assert.equal(html.indexOf('Icon size') < html.indexOf('data-bp-prop="size"'), true);
+    assert.equal(html.split('data-bp-prop="size"').length - 1, 2);
+    assert.match(html, /data-bp="collection" data-bp-prop="size"/);
+});
+
+test('an unbound icon need shows the miss like an unbound dimension', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /No "Size" collection matched/);
+});
+
 test('a variable prop with no matching collection shows the miss and offers the picker', () => {
     const html = masterHtml(master([variant]), [variant]);
     assert.match(html, /data-bp-prop="size"/);
