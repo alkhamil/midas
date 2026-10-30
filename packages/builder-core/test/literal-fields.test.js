@@ -19,9 +19,9 @@ test('no literal prop writes a sizing field: node sizing stays on the node', () 
 
 test('token sources and props with no node field write nothing (loading, hasIcon, disabled)', () => {
     const fields = literalFields(button, resolveProps(button, { loading: true, hasIcon: true, disabled: true }));
-    assert.deepEqual(fields.map(f => f.field).sort(), ['text', 'visible']);
+    assert.deepEqual(fields.map(f => f.field).sort(), ['text']);
 });
 
 test('the fields literal props write are named per layer: the label text only', () => {
-    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }, { key: 'label', field: 'visible' }]);
+    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }]);
 });

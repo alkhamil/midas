@@ -14,7 +14,6 @@ export const NODE_PROPERTIES = {
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
         gap: { kind: 'length', css: 'gap' },
-        minWidth: { kind: 'length', css: 'min-width' },
     },
     text: {
         fill: { kind: 'color', css: 'color' },
@@ -83,7 +82,6 @@ export const VARIABLE_KEYS = {
     fontSize: ['fontSize'],
     lineHeight: ['lineHeight'],
     size: ['w', 'h'],
-    minWidth: ['minW'],
 };
 
 /**
@@ -112,29 +110,15 @@ export function literalFields(template, props) {
         if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
         else out.push({ key, field, value: String(raw) });
     }
-    // An icon-only instance hides its label (the text slot's visible field); the icon is its only content.
-    if (iconOnlyValuesOf(template).length) out.push({ key: labelKeyOf(template), field: 'visible', value: !iconOnlyIn(template, props) });
     return out;
 }
 
-/** The placement values that make an instance icon-only (each def placement prop's `iconOnly`); none when no def has any. */
-export const iconOnlyValuesOf = template => template.icons.flatMap(def => def.placement ? (template.props[def.placement]?.iconOnly ?? []) : []);
-
-/** Whether the instance is icon-only: one of its defs is shown at an icon-only placement value. */
-export const iconOnlyIn = (template, props) => template.icons.some(def => def.placement !== undefined && props[def.show] === true
-    && (template.props[def.placement]?.iconOnly ?? []).includes(String(props[def.placement])));
-
-/** The anatomy slot of the label (the required text slot). */
-const labelKeyOf = template => template.anatomy.find(slot => slot.kind === 'text').id;
-
 /**
- * The node fields literal props write, per display key: the label text and the root width mode. These fields belong to the instance
+ * The node fields literal props write, per display key: the label text. These fields belong to the instance
  * once a prop writes them, so the copy from the master never overwrites them.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {{ key: string, field: string }[]}
  */
 export function literalFieldNames(template) {
-    const names = nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
-    if (iconOnlyValuesOf(template).length) names.push({ key: labelKeyOf(template), field: 'visible' });
-    return names;
+    return nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
 }

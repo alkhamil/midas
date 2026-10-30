@@ -199,9 +199,10 @@ function iconProblems(schema, allTokens) {
             else {
                 if (!isPlainObject(placement.slots)) out.push(`${tag} placement "${icon.placement}" has no slots`);
                 else for (const option of placement.options) {
-                    if (!managed.includes(placement.slots[option])) out.push(`${tag} placement "${option}" maps to "${placement.slots[option]}", which is not a managed anatomy slot`);
+                    for (const slot of [placement.slots[option] ?? []].flat()) {
+                        if (!managed.includes(slot)) out.push(`${tag} placement "${option}" maps to "${slot}", which is not a managed anatomy slot`);
+                    }
                 }
-                for (const value of placement.iconOnly ?? []) if (!placement.options.includes(value)) out.push(`${tag} icon-only placement "${value}" is not an option of "${icon.placement}"`);
             }
             if (icon.slot !== undefined) out.push(`${tag} names both a slot and a placement`);
         } else {

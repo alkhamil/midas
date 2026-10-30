@@ -19,28 +19,29 @@ export function iconDefsOf(template) {
     return Array.isArray(template.icons) ? template.icons : [];
 }
 
+/** The slots one placement value shows: one slot, or several (`both` shows the start and the end slot). */
+export function slotsOfValue(template, placement, value) {
+    const mapped = template.props[placement]?.slots?.[String(value)];
+    if (mapped === undefined) return [];
+    return Array.isArray(mapped) ? mapped : [mapped];
+}
+
 /** The defs that show one anatomy slot: placement defs whose slots map to it, and fixed defs that name it. */
 export function slotDefsOf(template, slot) {
     return iconDefsOf(template).filter(def => def.placement !== undefined
-        ? Object.values(template.props[def.placement]?.slots ?? {}).includes(slot)
+        ? Object.values(template.props[def.placement]?.slots ?? {}).flat().includes(slot)
         : def.slot === slot);
 }
 
 /** The placement values of one def that show a slot. */
 export function placementsOfDef(template, def, slot) {
     if (def.placement === undefined) return [];
-    return Object.entries(template.props[def.placement]?.slots ?? {}).filter(([, s]) => s === slot).map(([value]) => value);
+    return Object.entries(template.props[def.placement]?.slots ?? {}).filter(([, s]) => [s].flat().includes(slot)).map(([value]) => value);
 }
 
-/** The placement values that show a managed slot: `iconStart` is shown for `start` and `only` (see the template's `slots`). */
+/** The placement values that show a managed slot: `iconStart` is shown for `start` and `both` (see the template's `slots`). */
 export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
-}
-
-/** Whether the instance is icon-only: one of its defs is shown at an icon-only placement value. */
-export function iconOnlyOf(template, values) {
-    return iconDefsOf(template).some(def => def.placement !== undefined && values[def.show] === true
-        && (template.props[def.placement]?.iconOnly ?? []).includes(String(values[def.placement])));
 }
 
 /** The control of a template: the text slot drawn as an input, or undefined for plain labels. */
@@ -66,12 +67,14 @@ export function planAnatomy(template, values, children) {
     /** @type {{ slot: string, component: string | null }[]} */
     const wanted = [];
     for (const def of iconDefsOf(template)) {
-        const slot = def.placement !== undefined
-            ? (values[def.show] === true ? template.props[def.placement].slots[String(values[def.placement])] : null)
-            : (values[def.show] === true ? def.slot : null);
-        if (!slot || wanted.some(w => w.slot === slot)) continue;
-        if (!template.anatomy.some(s => s.id === slot && s.managed)) throw new Error(`${template.id} has no managed slot "${slot}"`);
-        wanted.push({ slot, component: typeof values[def.component] === 'string' ? values[def.component] : null });
+        const slots = def.placement !== undefined
+            ? (values[def.show] === true ? slotsOfValue(template, def.placement, values[def.placement]) : [])
+            : (values[def.show] === true && def.slot ? [def.slot] : []);
+        for (const slot of slots) {
+            if (wanted.some(w => w.slot === slot)) continue;
+            if (!template.anatomy.some(s => s.id === slot && s.managed)) throw new Error(`${template.id} has no managed slot "${slot}"`);
+            wanted.push({ slot, component: typeof values[def.component] === 'string' ? values[def.component] : null });
+        }
     }
     const want = new Set(wanted.map(w => w.slot));
     /** @type {AnatomyOp[]} */

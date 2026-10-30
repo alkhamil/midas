@@ -175,3 +175,23 @@ test('two fixed slots: a chosen icon swaps in place with its component', () => {
     const ops = planAnatomy(inputLike, { hasPrefix: true, hasSuffix: false, prefixIcon: 'comp1', suffixIcon: null }, [child('value'), child('pPre', 'prefix')]);
     assert.deepEqual(ops, [{ op: 'move', id: 'pPre', index: 0 }, { op: 'swap', id: 'pPre', component: 'comp1' }]);
 });
+
+test('both inserts a start and an end icon around the label', () => {
+    const { ops } = plan(on('both'), [child('label')]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 0 }, { op: 'insert', slot: 'iconEnd', index: 2 }]);
+});
+
+test('start to both keeps the start icon and appends the end icon', () => {
+    const { ops } = plan(on('both'), [child('iStart', 'iconStart'), child('label')]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconEnd', index: 2 }]);
+});
+
+test('both to start removes only the end icon', () => {
+    const { ops } = plan(on('start'), [child('iStart', 'iconStart'), child('label'), child('iEnd', 'iconEnd')]);
+    assert.deepEqual(ops, [{ op: 'remove', id: 'iEnd' }]);
+});
+
+test('both is steady: two icons around the label plan nothing', () => {
+    const { ops } = plan(on('both'), [child('iStart', 'iconStart'), child('label'), child('iEnd', 'iconEnd')]);
+    assert.deepEqual(ops, []);
+});

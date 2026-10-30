@@ -65,7 +65,7 @@ test('a hug or fixed label keeps its size and never squeezes, in Play', () => {
     assert.deepEqual([labelOf(fixed).style.flex, labelOf(fixed).style.flexShrink, labelOf(fixed).style.textAlign], [undefined, '0', 'right']);
 });
 
-test('Play draws the icon beside the label, and an icon-only instance with no label', () => {
+test('Play draws the icon beside the label, and both icons with placement both', () => {
     const icon = { id: 'ic', name: 'Icon/check', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
     const iconPath = { id: 'ic-p', name: 'check', type: 'path', parentId: 'ic', x: 0, y: 0, w: 24, h: 24, pathW: 24, pathH: 24, closed: true, points: [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }], fills: [], stroke: '#000000', strokeWidth: 0 };
     const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
@@ -74,9 +74,9 @@ test('Play draws the icon beside the label, and an icon-only instance with no la
     const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, withIcon, slot, nested]), 'i').root;
     assert.deepEqual(seen.children.map(c => c.attrs.class), ['button-iconStart', 'button-label']);
     assert.equal(labelOf(seen).style.textAlign, 'center');
-    const only = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'only', icon: 'ic' } } }), icon, iconPath, slot, nested]), 'i').root;
-    assert.equal(only.attrs.class, 'button button-icon-only');
-    assert.equal(only.children.some(c => c.attrs?.class === 'button-label'), false);
+    const slotEnd = { id: 'i-icon-end', name: 'iconEnd', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: false, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconEnd' } };
+    const both = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'both', icon: 'ic' } } }), icon, iconPath, slot, slotEnd, nested]), 'i').root;
+    assert.deepEqual(both.children.map(c => c.attrs.class), ['button-iconStart', 'button-label', 'button-iconEnd']);
 });
 
 test('a hug Button keeps its own size in Play and never stretches', () => {

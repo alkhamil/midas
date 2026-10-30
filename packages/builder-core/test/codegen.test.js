@@ -27,9 +27,9 @@ test('the component takes every prop of the schema, with the schema default', ()
 
 test('anatomy renders in order, and a managed icon only when the placement asks for it', () => {
     const jsx = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.jsx'];
-    const start = jsx.indexOf('{hasIcon && (iconPlacement === "start" || iconPlacement === "only") && <span className="button-iconStart">{icon}</span>}');
+    const start = jsx.indexOf('{hasIcon && (iconPlacement === "start" || iconPlacement === "both") && <span className="button-iconStart">{icon}</span>}');
     const label = jsx.indexOf('<span className="button-label">{label}</span>');
-    const end = jsx.indexOf('{hasIcon && iconPlacement === "end" && <span className="button-iconEnd">{icon}</span>}');
+    const end = jsx.indexOf('{hasIcon && (iconPlacement === "end" || iconPlacement === "both") && <span className="button-iconEnd">{icon}</span>}');
     assert.ok(start > 0 && label > start && end > label, 'expected iconStart, label, iconEnd in that order');
 });
 

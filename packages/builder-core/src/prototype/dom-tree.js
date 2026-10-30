@@ -16,7 +16,6 @@ import { generateComponent } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
-import { iconOnlyIn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -226,9 +225,6 @@ function renderButton(n, template, parent, scope) {
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
-    // An icon-only instance hides its label: the codegen class and the label child follow the same rule.
-    const iconOnly = iconOnlyIn(template, props);
-    if (iconOnly) attrs.class = `${template.id} ${template.id}-icon-only`;
     const children = [];
     // The label's layer and its parent, for the label's own width and alignment (see layout.js).
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
@@ -237,8 +233,8 @@ function renderButton(n, template, parent, scope) {
             const control = controlOf(template);
             // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
             const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
-            if (!iconOnly && control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style, children: [] });
-            else if (!iconOnly) children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+            if (control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style, children: [] });
+            else children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.

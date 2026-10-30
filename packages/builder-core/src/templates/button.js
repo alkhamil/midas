@@ -25,7 +25,7 @@ export const BUTTON = {
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
         hasIcon: { source: 'literal', type: 'boolean', default: false },
-        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'only'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', only: 'iconStart' }, iconOnly: ['only'], visibleIf: { prop: 'hasIcon', is: true } },
+        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] }, visibleIf: { prop: 'hasIcon', is: true } },
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
         loading: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
@@ -62,7 +62,7 @@ export const BUTTON = {
     statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' },
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap', minWidth: 'height' },
+        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         iconStart: { size: 'iconSize' },
         iconEnd: { size: 'iconSize' },

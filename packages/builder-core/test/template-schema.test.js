@@ -103,6 +103,15 @@ test('every state has a pseudo-class', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /state "hover" has no pseudo-class/);
 });
 
+test('a placement value can map to several managed slots', () => {
+    const both = clone(BUTTON);
+    both.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] };
+    assert.deepEqual(validateTemplateSchema(both), []);
+    const bad = clone(BUTTON);
+    bad.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'label'] };
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 placement "both" maps to "label", which is not a managed anatomy slot/);
+});
+
 test('managed icon slots come as a list of defs', () => {
     assert.ok(Array.isArray(BUTTON.icons) && BUTTON.icons.length > 0);
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
