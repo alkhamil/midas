@@ -1,6 +1,7 @@
 // Bind tokens (pure). Plans the variable bindings a bound master is missing: each mapped node property that has no variable on its
 // layer gets the variable of its token in the group (`button/bg`) from the collection of its dimension. A binding that already
-// exists is never overwritten. A token with no variable in its group, or with no bound collection, is a problem, not a guess.
+// exists is never overwritten, unless it points to a variable that no longer exists: a stale binding is rebound, never kept.
+// A token with no variable in its group, or with no bound collection, is a problem, not a guess.
 import { NODE_PROPERTIES, VARIABLE_KEYS, targetKindOf } from './display.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
@@ -34,8 +35,9 @@ export function planBindTokens({ template, binding, layers, variables }) {
             if (!collectionId) { problems.push({ key, prop, token: source, reason: 'dimension-unbound' }); continue; }
             const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(`${template.group}/${source}`));
             if (!item) { problems.push({ key, prop, token: source, reason: 'no-variable' }); continue; }
+            const known = new Set(items.map(i => i.id));
             for (const varKey of VARIABLE_KEYS[prop] || []) {
-                if (node.vars?.[varKey] !== undefined) continue;
+                if (node.vars?.[varKey] !== undefined && known.has(node.vars[varKey])) continue;
                 ops.push({ key, varKey, itemId: item.id });
             }
         }

@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { planBindTokens } from '../src/behavior-engine/bind-tokens.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { masterLayersOf } from '../src/behavior-engine/layers.js';
+import { varsWithBinding } from '../src/behavior-engine/edits.js';
 
 const button = TEMPLATES.get('button');
 const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary' }] };
@@ -56,4 +59,34 @@ test('a dimension with no bound collection is a problem for its tokens', () => {
     const unbound = { ...binding, variables: { variant: null, size: 'c-size' } };
     const { problems } = planBindTokens({ template: button, binding: unbound, layers: layers(), variables: variables() });
     assert.ok(problems.some(p => p.token === 'bg' && p.reason === 'dimension-unbound'));
+});
+
+test('a binding to a variable that no longer exists is rebound, not kept', () => {
+    const layers = [{ key: 'root', node: { vars: { fill: 'gone' } } }, { key: 'label', node: { vars: { fill: 'gone' } } }];
+    const { ops, problems } = planBindTokens({ template: button, binding, layers, variables: variables() });
+    assert.deepEqual(problems, []);
+    assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'fill' && o.itemId === 'i-bg'));
+    assert.ok(ops.some(o => o.key === 'label' && o.varKey === 'fill' && o.itemId === 'i-fg'));
+});
+
+test('with the real Button fixture: after selecting modes, root fill, stroke and label color carry variable bindings', () => {
+    const path = new URL('../../../scripts/fixtures/button-example.midas', import.meta.url);
+    const doc = JSON.parse(readFileSync(path, 'utf8'));
+    const all = doc.pages.flatMap(p => p.nodes);
+    const master = all.find(n => n.name === 'Button');
+    for (const n of all) delete n.vars;
+    master.behavior.variables = { variant: 'c-variant', color: 'c-color', size: 'c-size' };
+    const inst = all.find(n => n.isInstance);
+    inst.varModes = { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'lg' };
+    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id));
+    const { ops, problems } = planBindTokens({ template: button, binding: master.behavior, layers, variables: doc.variables });
+    assert.deepEqual(problems, []);
+    const ids = new Set(doc.variables.items.map(i => i.id));
+    const byKey = Object.fromEntries(ops.map(o => [`${o.key}.${o.varKey}`, o.itemId]));
+    assert.ok(ids.has(byKey['root.fill']), 'root fill is bound');
+    assert.ok(ids.has(byKey['root.stroke']), 'root stroke is bound');
+    assert.ok(ids.has(byKey['label.fill']), 'label color is bound');
+    const root = { vars: undefined };
+    for (const op of ops.filter(o => o.key === 'root')) root.vars = varsWithBinding(root.vars, op.varKey, op.itemId);
+    assert.equal(ids.has(root.vars.fill) && ids.has(root.vars.stroke), true);
 });

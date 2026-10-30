@@ -50,6 +50,15 @@ test('a complete document has no diagnostics', () => {
     assert.deepEqual(diagnoseDocument(doc()), []);
 });
 
+test('a binding to a variable that no longer exists is unbound, naming the token', () => {
+    const stale = doc({});
+    const master = stale.pages[0].nodes.find(n => n.id === 'm1');
+    master.vars = { fill: 'gone', stroke: 'gone' };
+    const found = diagnoseDocument(stale).filter(f => f.code === 'unbound-token');
+    assert.ok(found.some(f => f.nodeId === 'm1' && f.prop === 'fill'));
+    assert.ok(found.some(f => f.nodeId === 'm1' && f.prop === 'stroke'));
+});
+
 test('a collection no template needs is ignored: diagnostics never scans unrelated collections', () => {
     const d = doc({ variables: { collections: [...collections, { id: 'c-x', name: 'Brand', modes: [] }] } });
     assert.deepEqual(diagnoseDocument(d), []);

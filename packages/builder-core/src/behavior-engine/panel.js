@@ -253,16 +253,21 @@ export function applyPlan(master, plan) {
 }
 
 /**
- * Forgets a deleted collection in the behavior data of the given masters: each binding to it is unbound. Instance literal values
+ * Forgets a deleted collection in the behavior data of the given masters: each binding to it is unbound, and each node binding
+ * to one of its variables is cleared, so no layer keeps pointing at a variable that no longer exists. Instance literal values
  * are not touched. Mutates the nodes given (they are the document's nodes).
  * @param {any[]} nodes
  * @param {string} collectionId
  */
-export function forgetCollection(nodes, collectionId) {
+export function forgetCollection(nodes, collectionId, items = []) {
+    const gone = new Set(items.filter(i => i.collectionId === collectionId).map(i => i.id));
     for (const n of nodes) {
         const b = n.behavior;
-        if (!b || !('templateId' in b)) continue;
-        for (const prop of Object.keys(b.variables)) if (b.variables[prop] === collectionId) b.variables[prop] = null;
+        if (b && 'templateId' in b) for (const prop of Object.keys(b.variables)) if (b.variables[prop] === collectionId) b.variables[prop] = null;
+        if (n.vars) {
+            for (const key of Object.keys(n.vars)) if (gone.has(n.vars[key])) delete n.vars[key];
+            if (!Object.keys(n.vars).length) delete n.vars;
+        }
     }
 }
 

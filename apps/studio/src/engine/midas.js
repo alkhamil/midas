@@ -2413,7 +2413,7 @@ function wireVarsWindow(win) {
             e.stopPropagation();
             const id = el.dataset.vwDelColl, s = varStore();
             deleteWhenLoaded('Delete collection', () => {
-                forgetCollection(allNodes(), id);
+                forgetCollection(allNodes(), id, s.items);
                 s.collections = s.collections.filter(c => c.id !== id);
                 const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
                 s.items = s.items.filter(i => i.collectionId !== id);
@@ -12994,7 +12994,7 @@ function vwDeleteCollection(id) {
         return;
     toast(`Deleted “${c.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
     deleteWhenLoaded('Delete collection', () => {
-        forgetCollection(allNodes(), id);
+        forgetCollection(allNodes(), id, s.items);
         s.collections = s.collections.filter(x => x.id !== id);
         const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
         s.items = s.items.filter(i => i.collectionId !== id);

@@ -160,6 +160,13 @@ test('deleting a collection unbinds it from its masters; instance literal values
     assert.equal(inst.behavior.props.label, 'Save');
 });
 
+test('deleting a collection clears the node bindings to its variables, keeping the others', () => {
+    const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]), vars: { fill: 'v-bg', radius: 'other' } };
+    forgetCollection([master], 'c-variant', [{ id: 'v-bg', collectionId: 'c-variant' }]);
+    assert.equal(master.behavior.variables.variant, null);
+    assert.deepEqual(master.vars, { radius: 'other' });
+});
+
 test('a template change plans the unbinding and clears each instance value through the store', () => {
     const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]) };
     const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'outlined', label: 'Save' } } };
