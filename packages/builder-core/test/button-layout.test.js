@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
@@ -88,6 +89,14 @@ test('a fill-sized icon instance stretches to its slot in Play, whatever the ico
     const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, withIcon, slot, labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), nested]), 'i').root;
     const box = seen.children.find(c => c.attrs.class === 'button-iconStart');
     assert.deepEqual([box.children[0].style.flex, box.children[0].style.alignSelf], ['1 1 0', 'stretch']);
+});
+test('a managed icon slot adds no gap of its own in Play: the icon-label spacing is the token gap', () => {
+    const path = new URL('../../../scripts/fixtures/behavior-fixture.midas', import.meta.url);
+    const fixture = JSON.parse(readFileSync(path, 'utf8'));
+    const { root, styles } = toDomTree(fixture, 'inst-start', {});
+    const slot = root.children.find(c => c.attrs?.class === 'button-iconStart');
+    assert.equal(slot.style.columnGap, '0px');
+    assert.match(styles, /\.button\s*\{[^}]*gap:\s*var\(--button-gap\)/);
 });
 test('a hug Button keeps its own size in Play and never stretches', () => {
     const parent = { id: 'A', name: 'Row', type: 'frame', parentId: null, x: 0, y: 0, w: 400, h: 100, fills: [], layout: 'horizontal' };

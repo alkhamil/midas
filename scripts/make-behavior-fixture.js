@@ -111,7 +111,7 @@ function instance(id, name, x, sourceId, props, varModes, vars, components) {
     const iconLayer = node('frame', {
         id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
         ...(nested
-            ? { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
+            ? { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
             : { fills: solid('#8c8297'), layout: 'none' }),
         behavior: { version: BEHAVIOR_DATA_VERSION, slot },
     });

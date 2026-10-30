@@ -9328,7 +9328,7 @@ function placeIconInSlot(slot, componentId) {
 function setSlotIcon(slot, componentId) {
     doc.remove(doc.children(slot.id).map(c => c.id));
     const shown = !!componentId && placeIconInSlot(slot, componentId);
-    if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
+    if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
     else Object.assign(slot, { layout: 'none', fills: paintOf('#8c8297'), clip: false });
     doc.touch(slot);
 }
@@ -9400,7 +9400,7 @@ function syncInstance(inst) {
             else if (op.op === 'move') placeAmongChildren(inst, doc.get(op.id), op.index);
             else if (op.op === 'swap') setSlotIcon(doc.get(op.id), op.component);
             else {
-                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, clip: false, behavior: managedBehavior(op.slot) }));
+                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, gap: 0, clip: false, behavior: managedBehavior(op.slot) }));
                 setSlotIcon(n, op.component ?? null);
                 placeAmongChildren(inst, n, op.index);
             }
