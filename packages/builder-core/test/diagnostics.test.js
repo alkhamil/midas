@@ -50,9 +50,9 @@ test('a complete document has no diagnostics', () => {
     assert.deepEqual(diagnoseDocument(doc()), []);
 });
 
-test('a collection that no component binds is a warning, named', () => {
+test('a collection no template needs is ignored: diagnostics never scans unrelated collections', () => {
     const d = doc({ variables: { collections: [...collections, { id: 'c-x', name: 'Brand', modes: [] }] } });
-    assert.deepEqual(diagnoseDocument(d), [{ severity: 'warning', code: 'unused-collection', collection: 'Brand', message: 'Unused collection "Brand": excluded from preview and code generation.' }]);
+    assert.deepEqual(diagnoseDocument(d), []);
 });
 
 test('a variable with no value in one mode is an error on the master, naming the variable and the mode', () => {
@@ -91,9 +91,16 @@ test('an instance resolves its modes from its own Appearance modes, not from pro
     assert.equal(found[0].mode, 'Large');
 });
 
-test('an unbound variable dimension on the master is reported for its instances', () => {
+test('an unbound dimension is reported once, on the master, naming the collection', () => {
     const found = diagnoseDocument(doc({ binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: null } } }));
-    assert.ok(found.some(f => f.code === 'token-unresolved' && f.reason === 'dimension-unbound' && f.nodeId === 'i1'));
+    assert.deepEqual(found, [{ severity: 'error', code: 'dimension-unbound', node: 'Button', nodeId: 'm1', dimension: 'size', collection: 'Size',
+        message: 'Button: no "Size" collection is bound for "size".' }]);
+});
+
+test('a bound collection that does not exist is reported on the master, naming it', () => {
+    const found = diagnoseDocument(doc({ binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: 'c-gone' } } }));
+    assert.deepEqual(found.filter(f => f.code === 'collection-missing'), [{ severity: 'error', code: 'collection-missing', node: 'Button', nodeId: 'm1', dimension: 'size', collection: 'c-gone',
+        message: 'Button: collection "c-gone" bound for "size" does not exist.' }]);
 });
 
 test('a layer the user rebound by hand while disabled is a warning, and the rebinding is kept', () => {

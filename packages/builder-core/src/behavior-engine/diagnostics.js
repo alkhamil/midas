@@ -29,17 +29,20 @@ export function diagnoseDocument(doc) {
     /** @type {Record<string, unknown>[]} */
     const out = [];
 
-    const bound = new Set(masters.flatMap(m => Object.values(m.behavior.variables).filter(Boolean)));
-    for (const c of collections) {
-        if (!bound.has(c.id)) out.push({ severity: 'warning', code: 'unused-collection', collection: c.name, message: `Unused collection "${c.name}": excluded from preview and code generation.` });
-    }
-
     for (const m of masters) {
         const template = TEMPLATES.get(m.behavior.templateId);
         if (!template) continue;
-        for (const [dim] of variableProps(template)) {
-            const collection = collections.find(c => c.id === m.behavior.variables[dim]);
-            if (!collection) continue;
+        for (const [dim, def] of variableProps(template)) {
+            const collectionId = m.behavior.variables[dim];
+            if (!collectionId) {
+                out.push({ severity: 'error', code: 'dimension-unbound', node: m.name, nodeId: m.id, dimension: dim, collection: def.collection, message: `${m.name}: no "${def.collection}" collection is bound for "${dim}".` });
+                continue;
+            }
+            const collection = collections.find(c => c.id === collectionId);
+            if (!collection) {
+                out.push({ severity: 'error', code: 'collection-missing', node: m.name, nodeId: m.id, dimension: dim, collection: collectionId, message: `${m.name}: collection "${collectionId}" bound for "${dim}" does not exist.` });
+                continue;
+            }
             for (const [group, names] of Object.entries(template.tokens)) {
                 if (dimensionOfGroup(group, template.props) !== dim) continue;
                 for (const token of names) {
@@ -75,8 +78,8 @@ export function diagnoseDocument(doc) {
         }
         const { unresolved } = resolveTokens(template, binding, modes, variables);
         for (const u of unresolved) {
-            // A missing variable or value is reported once, on the master.
-            if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode') continue;
+            // A missing variable, value or binding is reported once, on the master.
+            if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode' || u.reason === 'dimension-unbound' || u.reason === 'collection-missing') continue;
             out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
         }
         const props = resolveProps(template, inst.behavior.props);
