@@ -259,7 +259,7 @@ const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
 // The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
-const BUTTON_ROOT_VARS = { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' };
+const BUTTON_ROOT_VARS = { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' };
 const BUTTON_LABEL_VARS = { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
 
 function buildButtonMaster(x = 440, y = 40) {

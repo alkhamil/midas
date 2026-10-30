@@ -32,7 +32,7 @@ function master() {
     const root = node('frame', {
         id: 'button', name: 'Button', x: 0, y: 0, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true, behavior: BOUND,
-        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' },
     });
     const label = node('text', {
         id: 'button-label', name: 'Label', parentId: 'button', text: 'Button', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,
@@ -48,7 +48,7 @@ function instance() {
         padding: 12, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true,
         behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: false, loading: false, disabled: false } },
         varModes: { [model.ids.variant]: 'solid', [model.ids.color]: 'primary', [model.ids.size]: 'lg' },
-        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+        vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' },
     });
     const label = node('text', {
         id: 'button-save-label', name: 'Label', parentId: 'button-save', text: 'Save', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,

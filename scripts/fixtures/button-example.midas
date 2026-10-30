@@ -55,8 +55,7 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "minW": "s-height"
+            "gap": "s-gap"
           }
         },
         {
@@ -155,8 +154,7 @@
             "radius": "s-radius",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "minW": "s-height"
+            "gap": "s-gap"
           }
         },
         {
