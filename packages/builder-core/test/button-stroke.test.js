@@ -14,20 +14,47 @@ function drawnWith(stroke) {
     return toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables: variables() }, 'i1').root;
 }
 
+const overlayOf = root => root.children.at(-1);
+
 test('a Button draws no CSS border in Play: its stroke is the node stroke, drawn as an overlay', () => {
     const root = drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'center' });
     assert.equal(root.style.borderWidth, '0px');
-    const overlay = root.children.at(-1);
+    const overlay = overlayOf(root);
     assert.equal(overlay.style.border, '2px solid #18181b');
     assert.equal(overlay.style.inset, '-1px');
 });
 
 test('an inside stroke sits inside the box, an outside stroke grows it by its full width', () => {
-    assert.equal(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' }).children.at(-1).style.inset, '0px');
-    assert.equal(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'outside' }).children.at(-1).style.inset, '-2px');
+    assert.equal(overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' })).style.inset, '0px');
+    assert.equal(overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'outside' })).style.inset, '-2px');
+});
+
+test('a Button stroke never uses a CSS outline, so the keyboard-focus ring keeps working', () => {
+    for (const strokeAlign of ['inside', 'center', 'outside']) {
+        const root = drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign });
+        assert.equal(root.style.outline, undefined);
+        assert.equal(overlayOf(root).style.border, '2px solid #18181b');
+    }
+});
+
+test('the overlay corners inherit the box corners, in every mode', () => {
+    const overlay = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'center' }));
+    assert.equal(overlay.style.borderRadius, 'inherit');
+    assert.doesNotMatch(overlay.style.borderRadius ?? '', /var\(--button-radius\)/);
+});
+
+test('a per-side stroke draws one box-sized bar per side it names', () => {
+    const html = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 4, strokeSides: 'custom', strokeT: 4, strokeR: 0, strokeB: 0, strokeL: 0 })).html;
+    assert.equal(html.match(/<rect x="0"/g).length, 1);
+    assert.match(html, /height:4px/);
+});
+
+test('a dashed stroke draws its dash array instead of a solid border', () => {
+    const html = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4 })).html;
+    assert.match(html, /stroke-dasharray="6 4"/);
 });
 
 test('a Button with no stroke draws no overlay', () => {
     const root = drawnWith({ stroke: '#00000000', strokeWidth: 0 });
-    assert.equal(root.children.some(c => c.style?.border), false);
+    assert.equal(root.children.some(c => c.style?.border || c.style?.pointerEvents === 'none'), false);
 });

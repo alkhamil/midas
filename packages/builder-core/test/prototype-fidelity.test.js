@@ -217,10 +217,12 @@ test('a centred frame stroke is drawn whole by its overlay; the frame clips with
     assert.match(root.children.at(-1).html, /stroke-width="6"/);
 });
 
-test('an outside frame stroke on some sides only is reported: an outline cannot be per side', () => {
+test('an outside frame stroke on some sides is an overlay with a clip margin of its widest side', () => {
     const { root, unsupported } = toDomTree(docOf([frame('A', { strokeWidth: 6, stroke: '#c0392b', strokeAlign: 'outside', strokeSides: 'top' }), layer()]), 'A');
+    assert.deepEqual(unsupported, []);
     assert.equal(root.style.outline, undefined);
-    assert.deepEqual(unsupported, [{ nodeId: 'A', type: 'frame outside stroke on some sides' }]);
+    assert.equal(root.style.overflowClipMargin, '6px');
+    assert.match(root.children.at(-1).html, /height:6px/);
 });
 
 test('a path mask clips the layers above it as a CSS mask image: its shape, drawn in black over the layer\'s own box', () => {

@@ -93,19 +93,18 @@ function renderNode(n, parent, scope, icon = false) {
         Object.assign(style, overflowOf(n));
     }
     if (n.type === 'group' && n.clip) style.overflow = 'hidden';
-    const outline = frameOutlineOf(n, scope);
+    const outline = frameOutlineOf(n);
     if (outline !== undefined) {
         style.outline = outline;
         style.outlineOffset = '0px';
     }
-    // An outside stroke of a frame is all outline: an overlay inside the frame would only draw the part the frame clips.
-    const fluid = !parent && scope.responsive && n.type === 'frame' && fluidStrokeOf(n);
-    const stroke = n.type === 'frame' && (n.strokeAlign ?? 'center') === 'outside' ? undefined : strokeOverlay(n, fluid);
-    if (n.type === 'frame' && stroke !== undefined) {
+    // A uniform outside stroke is an outline, which the frame's own clip does not cut; any other stroke is an overlay (see strokeOverlayEl).
+    const overlayEl = outline === undefined ? strokeOverlayEl(n) : null;
+    if (n.type === 'frame' && overlayEl) {
         // A frame's stroke is drawn above its fill and its content, as on the canvas, and takes no clicks.
-        children.push({ tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html: stroke, children: [] });
+        children.push(overlayEl);
     }
-    const html = n.type !== 'frame' ? stroke : undefined;
+    const html = n.type !== 'frame' ? strokeOverlay(n, false) : undefined;
     if (html !== undefined) style.position = style.position ?? 'relative';
     return { tag: 'div', nodeId: n.id, attrs: {}, style, ...(html !== undefined ? { html } : {}), children };
 }
@@ -256,19 +255,41 @@ function renderButton(n, template, parent, scope) {
         }
     }
     // The stroke is the node's own, drawn as an overlay on the canvas's rules (inside, center or outside), so the component's CSS border is off.
-    if (strokeIsOn(n)) children.push(strokeBoxOf(n));
+    // A CSS outline is not used for it: it would override the keyboard-focus ring. The shape comes from the master, as on the canvas.
+    const shape = { ...n };
+    if (shape.radius === undefined) shape.radius = master.radius;
+    if (shape.radii === undefined) shape.radii = master.radii;
+    const strokeEl = strokeIsOn(shape) && strokeSidesUniform(shape) && !strokeDashArray(shape).length ? borderOverlayEl(shape) : strokeOverlayEl(shape);
+    if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
-    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeIsOn(n) ? 1 : 0)), borderWidth: '0px' };
+    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)), borderWidth: '0px' };
     // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
-    if (strokeIsOn(n) && !style.position) style.position = 'relative';
+    if (strokeEl && !style.position) style.position = 'relative';
     return { tag: 'button', nodeId: n.id, attrs, style, children };
 }
 
-/** A stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws it. */
-function strokeBoxOf(n) {
+/**
+ * A uniform solid stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws
+ * it. The corners inherit the box's own, so they match in every mode; a dashed or per-side stroke has no border form (see strokeOverlayEl).
+ * @param {any} n
+ * @returns {Element}
+ */
+function borderOverlayEl(n) {
     const w = n.strokeWidth, grow = { inside: 0, center: w / 2, outside: w }[n.strokeAlign ?? 'center'];
-    return { tag: 'div', attrs: {}, style: { position: 'absolute', inset: `${svgNumber(-grow)}px`, boxSizing: 'border-box', pointerEvents: 'none', border: `${svgNumber(w)}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, borderRadius: 'var(--button-radius)' }, children: [] };
+    return { tag: 'div', attrs: {}, style: { position: 'absolute', inset: `${svgNumber(-grow)}px`, boxSizing: 'border-box', pointerEvents: 'none', border: `${svgNumber(w)}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, borderRadius: 'inherit' }, children: [] };
+}
+
+/**
+ * The overlay drawing a box's stroke above its fill and its content, or null when it has no stroke. The overlay always spans the
+ * box, so it follows hug and fill boxes; the SVG inside draws at the box size (see fluidStrokeOverlay).
+ * @param {any} n
+ * @returns {Element | null}
+ */
+function strokeOverlayEl(n) {
+    const html = strokeOverlay(n, n.type === 'frame' && fluidStrokeOf(n));
+    if (html === undefined) return null;
+    return { tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html, children: [] };
 }
 
 /** @param {any} n */
@@ -325,8 +346,9 @@ function overflowOf(n) {
     const scrollX = mode === 'horizontal' || mode === 'both', scrollY = mode === 'vertical' || mode === 'both';
     // `clip` (not `hidden`) so a centred stroke's outer half, which lies outside the box, is not cut; the margin is that half.
     const style = { overflowX: scrollX ? 'auto' : 'clip', overflowY: scrollY ? 'auto' : 'clip' };
-    const half = centredStrokeHalf(n);
-    if (half) style.overflowClipMargin = `${half}px`;
+    // The margin lets an overlay-drawn stroke's outer part show: a centred stroke's half, or a per-side outside stroke's widest side.
+    const margin = centredStrokeHalf(n) || outsideOverlayMargin(n);
+    if (margin) style.overflowClipMargin = `${margin}px`;
     return style;
 }
 
@@ -338,6 +360,17 @@ function centredStrokeHalf(n) {
     if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'center') return 0;
     const s = strokeSideWidths(n);
     return Math.max(s.t, s.r, s.b, s.l) / 2;
+}
+
+/**
+ * The clip margin an overlay-drawn outside stroke needs: its widest side, so the part beyond the box still shows. Zero for no stroke,
+ * for any other alignment, and for a uniform outside stroke, which is a CSS outline the clip does not cut.
+ * @param {any} n
+ */
+function outsideOverlayMargin(n) {
+    if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'outside' || strokeSidesUniform(n)) return 0;
+    const s = strokeSideWidths(n);
+    return Math.max(s.t, s.r, s.b, s.l);
 }
 
 /**
@@ -376,51 +409,88 @@ function strokeOverlay(n, fluid = false) {
 }
 
 /**
- * Whether a frame's stroke can be drawn to follow its box: one width on every side and one radius on every corner, so the
- * outline is a plain rectangle the box size can drive. Anything else keeps the fixed design-size overlay.
+ * Whether a frame's stroke can be drawn to follow its box. A uniform stroke is one rectangle the box size drives; a per-side stroke
+ * is one bar per side (see fluidSideBars). A uniform stroke needs one radius on every corner; anything else keeps the fixed overlay.
  * @param {any} n
  * @returns {boolean}
  */
 function fluidStrokeOf(n) {
-    if (!strokeIsOn(n) || !strokeSidesUniform(n)) return false;
+    if (!strokeIsOn(n)) return false;
+    if (!strokeSidesUniform(n)) return true;
     const radii = hasRadii(n) ? n.radii : [n.radius || 0];
     return radii.every(v => (+v || 0) === (+radii[0] || 0));
 }
 
 /**
  * A frame stroke drawn at its box, not at the design size: the SVG fills the box (no viewBox, so lengths stay in px) and the
- * rectangle spans it in full, so the stroke sits on the box edges whatever the box size. An inside stroke is clipped to the
- * box, mirroring the fixed overlay's doubled-width stroke. An outside stroke never reaches here: it is a CSS outline.
- * @param {any} n a frame with a uniform stroke on every side and corner
+ * outline spans it in full, so the stroke sits on the box edges whatever the box size. An inside stroke is clipped to the
+ * box, mirroring the fixed overlay's doubled-width stroke. A uniform outside stroke never reaches here: it is a CSS outline.
+ * @param {any} n a frame with a fluid stroke (see fluidStrokeOf)
  * @returns {string}
  */
 function fluidStrokeOverlay(n) {
+    if (!strokeSidesUniform(n)) return fluidSideBars(n);
     const w = n.strokeWidth, f = svgNumber, e = escapeAttr;
     const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
     // Raw, not design-clamped: the browser clamps against the box it draws. Lengths are px (no viewBox), so the stroke keeps its width.
     const rx = Math.max(0, +((hasRadii(n) ? n.radii[0] : n.radius) || 0));
     const rect = attrs => `<rect x="0" y="0" width="100%" height="100%" rx="${f(rx)}" ${attrs}/>`;
+    const dash = strokeDashArray(n);
+    const doubled = `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
     if ((n.strokeAlign ?? 'center') === 'inside') {
-        const dash = strokeDashArray(n);
-        const stroked = rect(`fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`);
+        const stroked = rect(doubled);
         return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><clipPath id="${prefix}k">${rect('')}</clipPath><g clip-path="url(#${prefix}k)">${stroked}</g></svg>`;
+    }
+    if ((n.strokeAlign ?? 'center') === 'outside') {
+        // A doubled stroke masked to the outside, mirroring the fixed overlay's mask; a frame never reaches here (it is an outline).
+        const stroked = rect(doubled);
+        return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><mask id="${prefix}m" maskUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="#fff"/>${rect('fill="#000"')}</mask><g mask="url(#${prefix}m)">${stroked}</g></svg>`;
     }
     return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${rect(`fill="none" ${svgStrokeAttrs(n, f, e)}`)}</svg>`;
 }
 
 /**
- * The part of a frame's stroke that lies outside its box, as a CSS outline. A frame clips its content, so an overlay cannot draw this part;
- * an outline is not cut by the frame's own clip. A stroke that is not uniform has no outline form, so its outside is reported.
+ * A per-side frame stroke drawn at its box: one bar per nonzero side, placed over the box edges the way the canvas draws its fillRect
+ * bars (see paintStroke). Lengths span the box in full, so the bars sit on the edges whatever the box size; widths stay in px, so the
+ * stroke keeps its widths. A rounded inside stroke is clipped to the box, as the canvas clips it to the path; other alignments draw
+ * their bars whole, as the canvas does.
+ * @param {any} n a frame with a per-side stroke
+ * @returns {string}
+ */
+function fluidSideBars(n) {
+    const f = svgNumber, e = escapeAttr;
+    const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
+    const { t, r, b, l } = strokeSideWidths(n);
+    const align = n.strokeAlign ?? 'center';
+    const off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v;
+    const fl = `fill="${e(n.stroke)}" fill-opacity="${f(n.strokeOpacity ?? 1)}"`;
+    const rx = Math.max(0, +((hasRadii(n) ? n.radii[0] : n.radius) || 0));
+    const bar = (key, left, top, width, height) => {
+        const clip = align === 'inside' && rx > 0 ? `<clipPath id="${prefix}s-${key}"><rect x="0" y="0" width="100%" height="100%" rx="${f(rx)}"/></clipPath>` : '';
+        const rect = `<rect x="0" y="0" width="100%" height="100%" ${fl}/>`;
+        return `<svg style="position:absolute;left:${left};top:${top};width:${width};height:${height};display:block;overflow:visible">${clip}${clip ? `<g clip-path="url(#${prefix}s-${key})">${rect}</g>` : rect}</svg>`;
+    };
+    const px = v => `${f(v)}px`, span = extra => extra > 0 ? `calc(100% + ${f(extra)}px)` : '100%', at = v => v > 0 ? `-${px(v)}` : '0px';
+    const edge = v => v > 0 ? `calc(100% - ${px(v)})` : '100%';
+    const bars = [];
+    if (t > 0) bars.push(bar('t', at(off(l)), at(off(t)), span(off(l) + off(r)), px(t)));
+    if (b > 0) bars.push(bar('b', at(off(l)), edge(b - off(b)), span(off(l) + off(r)), px(b)));
+    const sideTop = t > 0 && off(t) > 0 ? `-${px(off(t))}` : '0px';
+    const sideHeight = span((t > 0 ? off(t) : 0) + (b > 0 ? off(b) : 0));
+    if (l > 0) bars.push(bar('l', at(off(l)), sideTop, px(l), sideHeight));
+    if (r > 0) bars.push(bar('r', edge(r - off(r)), sideTop, px(r), sideHeight));
+    return bars.join('');
+}
+
+/**
+ * The part of a uniform outside frame stroke that lies outside its box, as a CSS outline. An overlay inside the frame would only draw
+ * the part the frame clips; an outline is not cut by the frame's own clip. A per-side outside stroke has no outline form: it is an
+ * overlay with a clip margin instead (see fluidSideBars and outsideOverlayMargin).
  * @param {any} n
- * @param {any} scope
  * @returns {string | undefined}
  */
-function frameOutlineOf(n, scope) {
-    if (n.type !== 'frame' || !strokeIsOn(n) || n.strokeAlign !== 'outside') return undefined;
-    if (!strokeSidesUniform(n)) {
-        scope.unsupported.push({ nodeId: n.id, type: 'frame outside stroke on some sides' });
-        return undefined;
-    }
+function frameOutlineOf(n) {
+    if (n.type !== 'frame' || !strokeIsOn(n) || n.strokeAlign !== 'outside' || !strokeSidesUniform(n)) return undefined;
     return `${strokeSideWidths(n).t}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
 }
 
