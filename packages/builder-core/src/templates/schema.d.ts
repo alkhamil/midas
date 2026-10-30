@@ -72,6 +72,8 @@ export interface ElementDef {
 
 /** A managed icon slot: the props that show it and choose its icon, and the tokens that colour and size it. A def with a
  * placement maps each placement value to a managed slot; a def without one names its fixed slot directly. */
+/** How the template recognises icon components: a component whose name starts with the prefix, or one flagged as an icon. */
+export interface IconMatch { prefix: string }
 export interface IconSlotDef {
     show: string;
     placement?: string;
@@ -102,6 +104,7 @@ export interface TemplateSchema {
     element: ElementDef;
     anatomy: AnatomySlot[];
     icons: IconSlotDef[];
+    iconMatch?: IconMatch;
     control?: ControlDef;
     props: Record<string, PropDef>;
     tokens: TokenGroups;

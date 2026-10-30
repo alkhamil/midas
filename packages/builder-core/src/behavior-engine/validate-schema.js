@@ -105,6 +105,7 @@ export function validateTemplateSchema(schema) {
     out.push(...tokenKindProblems(schema, allTokens));
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
+    if (schema.iconMatch !== undefined && (!isPlainObject(schema.iconMatch) || typeof schema.iconMatch.prefix !== 'string' || schema.iconMatch.prefix === '')) out.push('iconMatch must be an object with a non-empty prefix');
     out.push(...controlProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));

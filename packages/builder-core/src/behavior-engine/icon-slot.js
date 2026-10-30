@@ -3,6 +3,30 @@
 // instance is disabled). The engine writes these bindings with each sync of the instance; nothing here writes to a document.
 
 import { variableNameOf } from './tokens.js';
+
+/**
+ * The icon naming rule of a template: the name prefix its icon picker matches, or null when it declares none
+ * (an explicitly flagged component is still an icon).
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {{ prefix: string } | null}
+ */
+export function iconRuleOf(template) {
+    const match = template?.iconMatch;
+    return match && typeof match.prefix === 'string' && match.prefix !== '' ? { prefix: match.prefix } : null;
+}
+
+/**
+ * Whether a component is offered as an icon: flagged explicitly, or its name matches the template's icon naming rule.
+ * Plain layers are never icons.
+ * @param {{ component?: boolean, componentSet?: boolean, isIcon?: boolean, name?: string } | null | undefined} node
+ * @param {{ prefix: string } | null} rule
+ * @returns {boolean}
+ */
+export function isIconCandidate(node, rule) {
+    if (!node || (node.component !== true && node.componentSet !== true)) return false;
+    if (node.isIcon === true) return true;
+    return !!rule && typeof node.name === 'string' && node.name.startsWith(rule.prefix);
+}
 import { dimensionOfGroup } from './validate-schema.js';
 import { iconDefsOf, slotDefsOf } from './anatomy.js';
 

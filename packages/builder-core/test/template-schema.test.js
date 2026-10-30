@@ -112,6 +112,16 @@ test('a placement value can map to several managed slots', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 placement "both" maps to "label", which is not a managed anatomy slot/);
 });
 
+
+test('the button template declares an icon naming rule', () => {
+    assert.deepEqual(BUTTON.iconMatch, { prefix: 'Icon/' });
+});
+
+test('an icon naming rule needs a non-empty prefix', () => {
+    const bad = clone(BUTTON);
+    bad.iconMatch = { prefix: '' };
+    assert.match(validateTemplateSchema(bad).join('\n'), /iconMatch must be an object with a non-empty prefix/);
+});
 test('managed icon slots come as a list of defs', () => {
     assert.ok(Array.isArray(BUTTON.icons) && BUTTON.icons.length > 0);
     assert.deepEqual(validateTemplateSchema(BUTTON), []);

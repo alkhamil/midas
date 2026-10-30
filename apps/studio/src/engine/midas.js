@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconRuleOf, iconSlotBindings, isIconCandidate, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -10,7 +10,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
-import { buildIconPage, assetIdsOf, looksLikeIcon, isIconName } from '../iconSet.js';
+import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
 
 
 // ===== document.js =====
@@ -9195,7 +9195,10 @@ function onBehaviorClick(e) {
     const iconButton = e.target.closest?.('[data-bp-action="icon"]');
     if (iconButton) {
         const owner = activeNode();
-        return openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, 'icon', id)) });
+        const master = owner && componentById(owner.sourceId);
+        const template = master?.behavior && 'templateId' in master.behavior ? BEHAVIOR_TEMPLATES.get(master.behavior.templateId) : null;
+        // The picker lists every page, so it opens once the lazy pages have arrived.
+        return whenAllPagesLoaded(() => openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, rule: iconRuleOf(template), onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, 'icon', id)) }));
     }
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;
@@ -12304,6 +12307,25 @@ function pushToMain() {
 function instanceMenuItems(n) {
     return [{ label: 'Create component', action: 'createFromInstance', key: '⌥⌘K' }, { label: 'Push changes to main component', action: 'pushToMain' }, { label: 'Detach instance', action: 'detachInstance', key: '⌥⌘B' }, { label: 'Reset instance', action: 'resetOverrides' }, '-', { label: 'Union', action: 'booleanUnion', key: '⌥⇧U' }, { label: 'Subtract', action: 'booleanSubtract', key: '⌥⇧S' }, { label: 'Intersect', action: 'booleanIntersect', key: '⌥⇧I' }, { label: 'Exclude', action: 'booleanExclude', key: '⌥⇧E' }, { label: 'Flatten', action: 'flatten', key: '⌥⇧F' }];
 }
+/** Marks the selected components as icons (or unmarks them), so the icon picker offers them whatever their name. */
+function toggleIconComponent() {
+    const targets = selectedRoots().filter(n => (n.component || n.componentSet) && !n.isInstance);
+    if (!targets.length) return;
+    const on = targets[0].isIcon !== true;
+    transaction(on ? 'Mark as icon' : 'Unmark as icon', () => {
+        for (const n of targets) {
+            if (on) n.isIcon = true;
+            else delete n.isIcon;
+            doc.touch(n);
+        }
+    });
+}
+/** The Mark/Unmark as icon menu item, for a single selected component or set. */
+function iconMenuItems() {
+    const targets = state.selection.size === 1 ? selectedRoots().filter(n => (n.component || n.componentSet) && !n.isInstance) : [];
+    if (!targets.length) return [];
+    return [{ label: targets[0].isIcon === true ? 'Unmark as icon' : 'Mark as icon', action: 'toggleIcon' }, '-'];
+}
 function detachSelectedInstances() {
     const reports = [];
     transaction('Detach instance', () => {
@@ -12565,7 +12587,7 @@ function layerContextMenu(x = window.innerWidth - 295, y = 113) { const an = act
 } if (state.selection.size === 1 && an?.isInstance) {
     showMenu(instanceMenuItems(an), x, y);
     return;
-} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Unframe', action: 'unframe', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Remove auto layout', action: 'removeAutoLayout', key: '⌥⇧A' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
+} showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Unframe', action: 'unframe', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Remove auto layout', action: 'removeAutoLayout', key: '⌥⇧A' }, ...(iconMenuItems()), { label: 'Create component', action: 'component', key: '⌥⌘K' }, { label: 'Create multiple components', action: 'createMultiple' }, { label: 'Create component set', action: 'combineVariants' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: activeNode()?.isMask && state.selection.size === 1 ? 'Remove mask' : 'Use as mask', action: 'useAsMask', key: kbd('⌥⌘M', 'Ctrl+Alt+M') }, { label: 'Union', action: 'booleanUnion', key: kbd('⌥⇧U', 'Alt+Shift+U') }, { label: 'Subtract', action: 'booleanSubtract', key: kbd('⌥⇧S', 'Alt+Shift+S') }, { label: 'Intersect', action: 'booleanIntersect', key: kbd('⌥⇧I', 'Alt+Shift+I') }, { label: 'Exclude', action: 'booleanExclude', key: kbd('⌥⇧E', 'Alt+Shift+E') }, { label: 'Flatten', action: 'flatten', key: kbd('⌥⇧F', 'Alt+Shift+F') }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Select matching layers', action: 'selectMatching' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: thumbMenuLabel(), action: 'setThumbnail', disabled: !isThumbCandidate() }, { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
 function modal(content) { closeMenu(); $('#modal').innerHTML = content; modalFixHeader(); $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
 // The header stays in place; everything below it scrolls.
 function modalFixHeader() {
@@ -14596,6 +14618,10 @@ function svgThumbOf(n) {
     const url = only?.type === 'image' && doc.data.assets[only.assetId];
     return url && (/^data:image\/svg\+xml/.test(url) || url.startsWith('/api/')) ? url : null;
 }
+/** Whether the component is offered as an icon, whatever its name. One row, like the Design panel's instance props. */
+function iconToggleRow(n) {
+    return '<div class="cmp-prop2"><span title="icon">Icon component</span><div class="cmp-ctl"><label class="vsw"><input type="checkbox" role="switch" data-cmp="toggle-icon"' + (n.isIcon ? ' checked' : '') + ' aria-label="Icon component"></label><span class="vsw-spacer"></span></div></div>';
+}
 function componentBlockHtml(n) {
     if (n.isInstance && n.sourceId) {
         const src = chainComponent(n), set = src && parentSetOf(src);
@@ -14616,12 +14642,12 @@ function componentBlockHtml(n) {
     if (n.component) {
         const set = parentSetOf(n);
         if (set)
-            return `<div class="cmp-block main">${variantEditorHtml(set, n)}</div>`;
-        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div></div>`;
+            return `<div class="cmp-block main">${variantEditorHtml(set, n)}${iconToggleRow(n)}</div>`;
+        return `<div class="cmp-block main"><div class="vp-section"><div class="vp-head"><span>Properties</span>${propsAddButton()}</div>${cpropRowsHtml(n)}</div>${iconToggleRow(n)}</div>`;
     }
     if (n.componentSet) {
         const vs = setVariants(n);
-        return `<div class="cmp-block main">${variantEditorHtml(n, null)}</div>`;
+        return `<div class="cmp-block main">${variantEditorHtml(n, null)}${iconToggleRow(n)}</div>`;
     }
     if (!n.sourceId && !inComponentTree(n))
         return `<div class="cmp-block"><button class="cmp-btn wide" data-cmp="create">${icon('component', 14)} Create component</button></div>`;
@@ -14655,6 +14681,7 @@ document.addEventListener('click', async e => {
     else if (act === 'detach')
         transaction('Detach instance', () => { for (const x of selectedRoots().filter(r => r.isInstance))
             detachNodeTree(pageOfNode(x.id), x.id); });
+    else if (act === 'toggle-icon') toggleIconComponent();
     else if (act === 'place')
         instantiate(n.id);
     else if (act === 'select-instances') {
@@ -15901,14 +15928,20 @@ function swapLibEntries(have) {
 }
 const SWP = { page: '' };
 function swapMatch(e) { const v = SWP.page; return !v || (v === '@file' ? !e.libId : v.startsWith('lib:') ? e.libId === v.slice(4) : v.startsWith('page:') ? e.page === v.slice(5) : e.page === v); }
-function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
+function openSwapPicker(anchor, { current = null, onPick, icons = false, rule = null }) {
     closeVarPicker();
     const have = new Set();
     for (const p of doc.data.pages)
         for (const n of p.nodes)
             if (n.libRef && !n.parentId)
                 have.add(n.libRef);
-    const pop = document.createElement('div'), entries = [...swapEntries(), ...(icons ? [] : swapLibEntries(have))].filter(e => !icons || isIconName([...e.path, e.leaf].join('/'))), pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
+    const byId = new Map(doc.data.pages.flatMap(p => p.nodes).map(n => [n.id, n]));
+    const isIconEntry = e => {
+        if (!e.id) return false;
+        const n = byId.get(e.id), set = n && parentSetOf(n);
+        return isIconCandidate(n, rule) || isIconCandidate(set, rule);
+    };
+    const pop = document.createElement('div'), entries = [...swapEntries(), ...(icons ? [] : swapLibEntries(have))].filter(e => !icons || isIconEntry(e)), pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
     pop.id = 'var-picker';
     pop.className = 'var-picker';
     let q = '', limit = 300;
@@ -15975,7 +16008,7 @@ function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
         const lst = pop.querySelector('.vp-list'), top = lst.scrollTop;
-        lst.innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        lst.innerHTML = html || (icons && !entries.length ? '<div class="vp-empty">No icon components. Name a component Icon/... or select it and choose Mark as icon.</div>' : '<div class="vp-empty">No components match your search.</div>');
         lst.scrollTop = top;
         if (pop.isConnected)
             watchSwapThumbs(lst);
@@ -19484,7 +19517,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, removeAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, unframe: unframeSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, removeAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, unframe: unframeSelection, frameSelection: () => groupSelection(true), component: makeComponent, toggleIcon: toggleIconComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
