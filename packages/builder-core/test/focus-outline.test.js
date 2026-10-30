@@ -14,9 +14,9 @@ test('the root draws the outline at its static width and offset, in the outline-
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*outline: 2px solid var\(--button-outline-color\);\n\s*outline-offset: 1px;/);
 });
 
-test('focus sets the outline colour, and only while the Button is not disabled', () => {
-    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:focus:not\(:disabled\) \{\n\s*--button-outline-color: #4338ca33;\n\}/);
-    assert.doesNotMatch(css, /:focus \{/);
+test('focus sets the outline colour for keyboard focus only, and only while the Button is not disabled', () => {
+    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:focus-visible:not\(:disabled\) \{\n\s*--button-outline-color: #4338ca33;\n\}/);
+    assert.doesNotMatch(css, /:focus(?!-visible)/);
 });
 
 test('a disabled Button never shows the outline: its disabled block holds no outline colour', () => {

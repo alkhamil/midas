@@ -58,7 +58,7 @@ test('no interaction state applies to a disabled Button: hover, active and focus
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
     assert.match(css, /:hover:not\(:disabled\) \{/);
     assert.match(css, /:active:not\(:disabled\) \{/);
-    assert.match(css, /:focus:not\(:disabled\) \{/);
+    assert.match(css, /:focus-visible:not\(:disabled\) \{/);
     assert.doesNotMatch(css, /:(hover|active|focus) \{/);
     assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:disabled \{/);
 });

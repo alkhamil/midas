@@ -336,7 +336,7 @@ Setup: the prototype fixture, opened by import. Play from Home.
 ## Focus outline
 
 1. **Focus outline.** Tab to a Button (Save) in Play, or set the Focus preview in the Behavior panel.
-   - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour.
+   - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour. Clicking the Button with the mouse leaves no outline; Tab focus shows the ring, and clicking elsewhere clears it.
 2. **Disabled has no outline.** Turn on Disabled, then Focus.
    - Expected: no outline, and no focus colour.
 3. **Dashed.** Set the Variant of Save to Dashed.

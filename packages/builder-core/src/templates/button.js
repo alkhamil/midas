@@ -59,7 +59,7 @@ export const BUTTON = {
         focus: { 'outline-color': 'color-outline' },
     },
     // The CSS pseudo-class each state is written as.
-    statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' },
+    statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus-visible' },
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
