@@ -39,7 +39,7 @@ export const variableNameOf = (/** @type {{ group: string }} */ template, /** @t
  * @param {string} color
  * @returns {{ rgb: string, alpha: number } | null}
  */
-function splitColor(color) {
+export function splitColor(color) {
     const m = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color);
     if (!m) return null;
     const h = m[1].length <= 4 ? m[1].split('').map(c => c + c).join('') : m[1];
@@ -52,7 +52,7 @@ function splitColor(color) {
  * @param {number} percent
  * @returns {string | null}
  */
-function withOpacity(color, percent) {
+export function withOpacity(color, percent) {
     const split = splitColor(color);
     if (!split) return null;
     const a = Math.max(0, Math.min(100, Math.round(split.alpha * percent / 100)));

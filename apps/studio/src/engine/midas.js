@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -775,30 +775,9 @@ function nodeMode(d, n, coll) {
         return pm;
     return coll.modes[0]?.id;
 }
-function varValue(d, item, node, depth = 0) {
-    const store = d.data.variables, coll = store?.collections.find(c => c.id === item.collectionId);
-    if (!coll || !coll.modes.length)
-        return undefined;
-    const mode = node ? nodeMode(d, node, coll) : coll.modes[0].id;
-    let v = item.values[mode];
-    if (v === undefined)
-        v = item.values[coll.modes[0].id];
-    // No value for the default mode (Figma leaves modes unset): use the first mode that has one.
-    if (v === undefined)
-        v = coll.modes.map(m => item.values[m.id]).find(x => x !== undefined);
-    if (v && typeof v === 'object' && v.alias) {
-        const t = store.items.find(i => i.id === v.alias);
-        if (!t || t.type !== item.type || depth > 20)
-            return undefined;
-        const target = varValue(d, t, node, depth + 1);
-        // A color alias can carry its own opacity, multiplied onto the aliased color.
-        if (item.type === 'color' && typeof target === 'string' && v.opacity != null && v.opacity < 100) {
-            const { rgb, alpha } = vwSplitColor(target);
-            return vwJoinColor(rgb, alpha * v.opacity / 100);
-        }
-        return target;
-    }
-    return v;
+/** The value of a variable in the modes of a layer (the layer's own, its parents', the page's), through the engine's shared resolver. */
+function varValue(d, item, node) {
+    return variableValue(d.data.variables, item, coll => node ? nodeMode(d, node, coll) : coll.modes[0].id);
 }
 function writeBound(n, prop, val, type) {
     const fm = /^fills\.(\d+)$/.exec(prop);
@@ -1216,6 +1195,14 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
         }
     }, true), 0);
 }
+/** Leaves a layer with a bound stroke a paint that draws (opacity 100, visible) unless its variable truly resolves transparent. The
+ * variable is read in the layer's own modes, the same read that writes the stroke colour (applyVariables). */
+function repairBoundStroke(n) {
+    const item = n.vars?.stroke ? varItem(n.vars.stroke) : null;
+    if (!item || !restoreStrokePaint(n, varValue(doc, item, n))) return false;
+    doc.touch(n);
+    return true;
+}
 function bindVariable(prop, id) {
     transaction('Apply variable', () => {
         for (const n of varTargets()) {
@@ -1225,8 +1212,8 @@ function bindVariable(prop, id) {
                 delete n.vars[k];
             if (prop === 'stroke' && !(n.strokeWidth > 0))
                 n.strokeWidth = 1;
-            if (prop === 'stroke' && !(n.strokeOpacity > 0))
-                n.strokeOpacity = 1;
+            if (prop === 'stroke')
+                repairBoundStroke(n);
             if (prop === 'w')
                 n.layoutSizingH = 'fixed';
             if (prop === 'h')
@@ -1333,6 +1320,8 @@ function writeVarMode(nodes, collectionId, modeId) {
         else delete n.varModes;
         doc.touch(n);
         applyVariantStroke(n);
+        // A mode change can turn a bound stroke opaque: its paint must draw at once, on the node and under it.
+        if (n.id) for (const x of subtreeOf(n.id)) repairBoundStroke(x);
     }
     for (const n of nodes) if (n?.component && n.behavior && 'templateId' in n.behavior) bindMasterTokens(n);
 }
@@ -1412,7 +1401,7 @@ function strokeSectionHtml(n) {
     const hex = bound
         ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
-    const op = bound ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
+    const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
@@ -1437,6 +1426,7 @@ function toggleStroke() {
         }
         else {
             n.strokeWidth = 1;
+            repairBoundStroke(n);
             if (!n.stroke || n.stroke === 'none')
                 n.stroke = '#000000';
             n.strokeAlign = strokeClosed(n) ? 'inside' : 'center';
@@ -5339,7 +5329,8 @@ function swatchBg(f, hidden) {
         const stops = gradientStops(f).map(s => `${esc(s.color)} ${Math.round(s.pos * 100)}%`).join(', ');
         return f.type === 'linear' ? `linear-gradient(90deg, ${stops})` : f.type === 'angular' ? `conic-gradient(${stops})` : `radial-gradient(circle, ${stops})`;
     }
-    const [r, g, b] = hexToRgb(f.color || '#d9d9d9'), a = hidden ? 0 : (f.opacity ?? 1);
+    // A colour with its own alpha (#rrggbbaa, a variable's transparency) keeps it, over the checkerboard.
+    const { r, g, b, a } = swatchPaint(f.color, hidden ? 0 : f.opacity ?? 1);
     return `linear-gradient(rgba(${r},${g},${b},${a}), rgba(${r},${g},${b},${a})), var(--checker-sm)`;
 }
 function fillRow(n, f, i, simple) {
@@ -5978,6 +5969,8 @@ function scBind(g, id) {
     scApply(g, (n, u) => {
         const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
         n.vars = { ...(n.vars || {}), [prop]: id };
+        if (u.kind === 'stroke')
+            repairBoundStroke(n);
     });
 }
 function scDetach(g) {
@@ -9177,6 +9170,7 @@ function bindMasterTokens(master, { announce = false } = {}) {
     const { ops, problems } = planBindTokens({ template, binding, layers, variables: varStore() });
     if (announce && problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
     for (const n of applyBindTokens(layers, ops)) doc.touch(n);
+    for (const { node } of layers) repairBoundStroke(node);
     return ops.length;
 }
 

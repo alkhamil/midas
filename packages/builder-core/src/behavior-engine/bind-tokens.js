@@ -47,11 +47,8 @@ export function planBindTokens({ template, binding, layers, variables }) {
 }
 
 /**
- * Applies bind ops to their layers. A stroke op also leaves a drawable paint: width 1 when the layer has none, and opacity 100
- * when it carries none. A zero opacity comes from the importer (a zero-opacity paint) or stale data; the Design panel hides the
- * opacity control of a bound stroke, so the zero could never be seen or cleared, and the swatch and the canvas would stay blank
- * even when the variable resolves to an opaque colour. A transparency the variable itself resolves to lives in the colour, so it
- * is kept: only a non-positive opacity is repaired, never a set one.
+ * Applies bind ops to their layers. A stroke op also gives the layer a width of 1 when it has none; the rest of the stroke paint
+ * (opacity, visibility) follows the variable's colour, which the caller resolves (see restoreStrokePaint).
  * @param {{ key: string, node: any }[]} layers the master layers a display key maps to (`root`, `label`)
  * @param {{ key: string, varKey: string, itemId: string }[]} ops
  * @returns {any[]} the layers that changed
@@ -66,7 +63,6 @@ export function applyBindTokens(layers, ops) {
         if (op.varKey === 'fills.0') delete n.vars.fill;
         if (op.varKey === 'stroke') {
             if (!(n.strokeWidth > 0)) n.strokeWidth = 1;
-            if (!(n.strokeOpacity > 0)) n.strokeOpacity = 1;
         }
         touched.push(n);
     }

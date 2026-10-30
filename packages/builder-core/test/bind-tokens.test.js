@@ -136,35 +136,13 @@ test('auto-bind flow on the real fixture: collections, modes and hasIcon bind wi
     assert.deepEqual(plan.slot, { w: 's-iconSize', h: 's-iconSize' });
     assert.deepEqual(plan.layers, [{ id: 'slot', vars: { 'fills.0': 'v-fg' } }]);
 });
-
-test('a bound stroke carries opacity 100: applying the bind repairs a zero-opacity paint, and a transparent variable stays transparent', () => {
-    const path = new URL('../../../scripts/fixtures/button-example.midas', import.meta.url);
-    const doc = JSON.parse(readFileSync(path, 'utf8'));
-    const all = doc.pages.flatMap(p => p.nodes);
-    const master = all.find(n => n.name === 'Button');
-    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id));
-    const root = layers.find(l => l.key === 'root').node;
-    // A zero-opacity stroke paint, as the importer writes for a zero-opacity paint, or stale data carries.
-    delete root.vars.stroke;
-    root.strokeWidth = 1;
-    root.strokeOpacity = 0;
-    const { ops, problems } = planBindTokens({ template: button, binding: master.behavior, layers, variables: doc.variables });
-    assert.deepEqual(problems, []);
-    assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke'));
-    const touched = applyBindTokens(layers, ops);
-    assert.ok(touched.includes(root));
-    assert.equal(root.vars.stroke, doc.variables.items.find(i => i.name === 'button/border').id);
+test('binding a stroke token gives the layer a width of 1 when it has none, and keeps a width it has', () => {
+    const root = { vars: {} };
+    const ops = [{ key: 'root', varKey: 'stroke', itemId: 'i-border' }];
+    applyBindTokens([{ key: 'root', node: root }], ops);
+    assert.equal(root.vars.stroke, 'i-border');
     assert.equal(root.strokeWidth, 1);
-    assert.equal(root.strokeOpacity, 1);
-    // A set opacity is never repaired away.
-    root.strokeOpacity = 0.5;
-    applyBindTokens(layers, ops.filter(o => o.varKey === 'stroke'));
-    assert.equal(root.strokeOpacity, 0.5);
-    // button/border resolves transparent in solid and opaque in outlined: with opacity 100 the swatch and the canvas
-    // show the resolved colour, and the solid mode stays transparent because the variable says so.
-    const items = doc.variables.items;
-    const border = items.find(i => i.name === 'button/border');
-    assert.equal(border.values.solid, '#00000000');
-    const follow = value => typeof value === 'object' && value !== null && value.alias ? follow(items.find(i => i.id === value.alias).values.default) : value;
-    assert.match(follow(border.values.outlined), /^#[0-9a-f]{6}$/i);
+    root.strokeWidth = 3;
+    applyBindTokens([{ key: 'root', node: root }], ops);
+    assert.equal(root.strokeWidth, 3);
 });
