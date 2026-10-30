@@ -19,8 +19,6 @@ export const BUTTON = {
         { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
         { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
     ],
-    // The components the icon picker offers: `Icon/` names, or any component flagged as an icon.
-    iconMatch: { prefix: 'Icon/' },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     outline: { width: 2, offset: 1 },
     props: {

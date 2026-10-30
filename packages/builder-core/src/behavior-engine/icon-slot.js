@@ -5,27 +5,82 @@
 import { variableNameOf } from './tokens.js';
 
 /**
- * The icon naming rule of a template: the name prefix its icon picker matches, or null when it declares none
- * (an explicitly flagged component is still an icon).
- * @param {import('../templates/schema.js').TemplateSchema} template
- * @returns {{ prefix: string } | null}
+ * The sort rank of a page in the icon picker: a page named Icon or Icons holds the file's icons, so its entries list first
+ * under their own group. Every other page keeps document order after them.
+ * @param {string} name
+ * @returns {number}
  */
-export function iconRuleOf(template) {
-    const match = template?.iconMatch;
-    return match && typeof match.prefix === 'string' && match.prefix !== '' ? { prefix: match.prefix } : null;
+export function iconPageRank(name) {
+    return /^icons?$/i.test(String(name ?? '').trim()) ? 0 : 1;
 }
 
 /**
- * Whether a component is offered as an icon: flagged explicitly, or its name matches the template's icon naming rule.
- * Plain layers are never icons.
- * @param {{ component?: boolean, componentSet?: boolean, isIcon?: boolean, name?: string } | null | undefined} node
- * @param {{ prefix: string } | null} rule
+ * Whether a picker entry matches the search: a case-insensitive substring of its group and leaf name. An empty search matches all.
+ * @param {{ group?: string, leaf?: string }} entry
+ * @param {string} query
  * @returns {boolean}
  */
-export function isIconCandidate(node, rule) {
-    if (!node || (node.component !== true && node.componentSet !== true)) return false;
-    if (node.isIcon === true) return true;
-    return !!rule && typeof node.name === 'string' && node.name.startsWith(rule.prefix);
+export function iconEntryMatches(entry, query) {
+    const q = String(query ?? '').trim().toLowerCase();
+    if (!q) return true;
+    return `${entry.group ? entry.group + ' ' : ''}${entry.leaf ?? ''}`.toLowerCase().includes(q);
+}
+
+/**
+ * Every component the icon picker offers, from every page given: components and component sets (one entry per set, starting from
+ * its default variant), with no naming rule and no flag. Entries from a page named Icon or Icons list first (see iconPageRank).
+ * Soft-deleted components are skipped. An entry is { id, page, group, path, leaf, ids } like the component swap entries.
+ * @param {{ name?: string, nodes?: any[] }[]} pages
+ * @returns {{ id: string, page: string, group: string, path: string[], leaf: string, ids: Set<string> }[]}
+ */
+export function iconPickerEntries(pages) {
+    const all = (pages || []).flatMap(p => (p.nodes || []).map(node => ({ node, page: (p.name || '').trim() || 'Page' })));
+    const byId = new Map(all.map(e => [e.node.id, e.node]));
+    const softDeleted = n => !!n.softDeleted || (!!n.parentId && byId.get(n.parentId)?.componentSet === true && !!byId.get(n.parentId)?.softDeleted);
+    const variantsOf = set => all.filter(e => e.node.parentId === set.id && e.node.component && !softDeleted(e.node)).map(e => e.node);
+    // The variant an entry starts from: every variant property at its first value, else the first variant layer.
+    const defaultOf = set => {
+        const vs = variantsOf(set);
+        if (!vs.length) return null;
+        const props = [...new Set(vs.flatMap(v => Object.keys(v.variant || {})))];
+        if (props.length) {
+            const firstOf = p => {
+                const vals = [...new Set(vs.map(v => v.variant?.[p]).filter(x => x !== undefined))];
+                const order = set.valueOrder?.[p];
+                if (!order) return vals[0];
+                const rank = x => { const i = order.indexOf(x); return i < 0 ? order.length : i; };
+                return vals.map((x, i) => [x, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1])[0][0];
+            };
+            const want = Object.fromEntries(props.map(p => [p, firstOf(p)]));
+            const hit = vs.find(v => Object.entries(want).every(([k, x]) => v.variant?.[k] === x));
+            if (hit) return hit;
+        }
+        return vs[0];
+    };
+    const out = [];
+    const seenSets = new Set();
+    for (const { node: c, page } of all) {
+        // A set is one entry, through its variants; the set node itself is skipped, as are plain layers.
+        if (!c.component || c.componentSet || softDeleted(c)) continue;
+        const set = c.parentId && byId.get(c.parentId)?.componentSet === true ? byId.get(c.parentId) : null;
+        const def = set ? (defaultOf(set) || c) : c;
+        let group, leaf;
+        if (set) {
+            if (seenSets.has(set.id)) continue;
+            seenSets.add(set.id);
+            const parts = String(set.name || '').split('/').map(s => s.trim());
+            leaf = parts.pop();
+            group = parts.join(' / ');
+        }
+        else {
+            const parts = String(c.name || '').split('/').map(s => s.trim());
+            leaf = parts.pop();
+            group = parts.join(' / ');
+        }
+        out.push({ id: def.id, page, group, path: group ? group.split(' / ') : [], leaf, ids: set ? new Set(variantsOf(set).map(v => v.id)) : new Set([c.id]) });
+    }
+    out.sort((a, b) => iconPageRank(a.page) - iconPageRank(b.page));
+    return out;
 }
 import { dimensionOfGroup } from './validate-schema.js';
 import { iconDefsOf, slotDefsOf } from './anatomy.js';
