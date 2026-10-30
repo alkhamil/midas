@@ -32,6 +32,13 @@ function propProblems(name, def, props) {
     } else {
         out.push(`prop "${name}" has unknown source "${def.source}"`);
     }
+    if (def.requires !== undefined) {
+        if (!Array.isArray(def.requires)) out.push(`prop "${name}" requires must be a list of dimensions`);
+        else for (const dim of def.requires) {
+            const target = isPlainObject(props[dim]) && props[dim];
+            if (!target || target.source !== 'variable') out.push(`prop "${name}" requires "${dim}", which is not a variable prop`);
+        }
+    }
     if (def.visibleIf !== undefined) {
         const cond = def.visibleIf;
         const target = isPlainObject(cond) && props[cond.prop];

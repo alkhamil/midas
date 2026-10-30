@@ -58,6 +58,12 @@ test('visibleIf: the icon placement is rendered only while hasIcon is on', () =>
     assert.match(on, /data-bp-type="enum" data-bp-prop="iconPlacement"/);
 });
 
+test('hasIcon is disabled while Size is unbound, naming the collection', () => {
+    const html = instanceHtml(instance(), master([variant]), [variant]);
+    assert.match(html, /data-bp-type="boolean" data-bp-prop="hasIcon"[^>]*disabled/);
+    assert.match(html, /Bind a &quot;Size&quot; collection to the component to use Has Icon/);
+});
+
 test('a variable prop whose collection is not bound is disabled, with a hint', () => {
     const html = instanceHtml(instance(), master([]), []);
     assert.match(html, /data-bp-prop="variant" aria-label="variant" disabled/);

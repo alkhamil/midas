@@ -146,3 +146,10 @@ test("each icon def's tokens must be tokens of the template", () => {
     bad.icons = [{ ...clone(BUTTON).icons[0], tokens: { colour: 'nope', disabledColour: 'fg-disabled', size: 'iconSize' } }];
     assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 colour token "nope" is not a token/);
 });
+
+test('a prop can require collections by dimension, and an unknown dimension is refused', () => {
+    assert.deepEqual(BUTTON.props.hasIcon.requires, ['variant', 'size']);
+    const bad = clone(BUTTON);
+    bad.props.hasIcon.requires = ['variant', 'nope'];
+    assert.match(validateTemplateSchema(bad).join('\n'), /prop "hasIcon" requires "nope", which is not a variable prop/);
+});

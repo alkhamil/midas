@@ -34,6 +34,23 @@ function isIconRelated(template, name) {
 }
 
 /**
+ * Why a prop that needs collections cannot be used: the collections its schema `requires` names that are not bound
+ * on the master. Empty when nothing is missing.
+ * @param {TemplateSchema} template
+ * @param {{ variables: Record<string, string | null> }} binding the master's binding
+ * @param {string} name the literal prop
+ */
+function missingRequires(template, binding, name) {
+    const requires = template.props[name]?.requires;
+    if (!Array.isArray(requires)) return '';
+    const missing = requires.filter(dim => !binding.variables[dim]).map(dim => `"${template.props[dim].collection}"`);
+    if (!missing.length) return '';
+    const label = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+    const what = missing.length > 1 ? `${missing.join(' and ')} collections` : `a ${missing[0]} collection`;
+    return `Bind ${what} to the component to use ${label}.`;
+}
+
+/**
  * What the master's Behavior tab shows: the template to bind, the collection for each variable prop (prefilled by auto-match),
  * and the contract of the template, read-only.
  * @param {{ behavior?: any }} master
@@ -103,6 +120,9 @@ export function instancePanel(instance, master, collections, modes) {
             rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null });
             continue;
         }
+        // A prop that needs collections is disabled while one of them is unbound on the master, naming the
+        // missing collections: no silent skip.
+        const hint = missingRequires(template, binding, name);
         rows.push({
             prop: name,
             kind: 'literal',
@@ -110,6 +130,8 @@ export function instancePanel(instance, master, collections, modes) {
             type: def.type,
             value: values[name],
             options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],
+            disabled: hint !== '',
+            hint,
         });
     }
     return { templateId: template.id, rows };

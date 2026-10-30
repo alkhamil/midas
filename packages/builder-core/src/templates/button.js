@@ -24,7 +24,7 @@ export const BUTTON = {
         size: { source: 'variable', collection: 'Size' },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
-        hasIcon: { source: 'literal', type: 'boolean', default: false },
+        hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
         iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] }, visibleIf: { prop: 'hasIcon', is: true } },
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
         loading: { source: 'literal', type: 'boolean', default: false },

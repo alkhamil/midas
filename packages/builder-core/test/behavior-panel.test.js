@@ -72,6 +72,36 @@ test('visibleIf: the icon placement row is shown only while hasIcon is on, and a
     assert.equal('iconPlacement' in behavior.props, false);
 });
 
+test('hasIcon is disabled while a collection it needs is unbound, naming the collection', () => {
+    const master = boundMaster([variant]);
+    const row = rowOf(instancePanel(instanceOf(), master, [variant], { variant: 'solid', size: null }), 'hasIcon');
+    assert.equal(row.disabled, true);
+    assert.match(row.hint, /Size/);
+    const bound = boundMaster([variant, size]);
+    const ok = rowOf(instancePanel(instanceOf(), bound, [variant, size], { variant: 'solid', size: 'sm' }), 'hasIcon');
+    assert.equal(ok.disabled, false);
+    assert.equal(ok.hint, '');
+});
+
+test('hasIcon off hides the icon rows; on shows them; toggling back and forth is lossless (undo/redo)', () => {
+    const master = boundMaster([variant, size]);
+    const modes = { variant: 'solid', size: 'sm' };
+    const off = instancePanel(instanceOf(), master, [variant, size], modes);
+    assert.equal(rowOf(off, 'iconPlacement'), undefined);
+    assert.equal(rowOf(off, 'icon'), undefined);
+    const before = { version: 2, props: {} };
+    const onBehavior = setInstanceValue(instanceOf(before), master, 'hasIcon', true);
+    assert.deepEqual(before, { version: 2, props: {} }, 'the input is not mutated');
+    const on = instancePanel(instanceOf(onBehavior), master, [variant, size], modes);
+    assert.equal(rowOf(on, 'iconPlacement').value, 'start');
+    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null });
+    const back = setInstanceValue(instanceOf(onBehavior), master, 'hasIcon', false);
+    const offAgain = instancePanel(instanceOf(back), master, [variant, size], modes);
+    assert.equal(rowOf(offAgain, 'iconPlacement'), undefined);
+    const redo = setInstanceValue(instanceOf(back), master, 'hasIcon', true);
+    assert.equal(rowOf(instancePanel(instanceOf(redo), master, [variant, size], modes), 'iconPlacement').value, 'start');
+});
+
 test('the icon is a swap row, shown while hasIcon is on, with the id of the icon it shows', () => {
     const master = boundMaster([variant]);
     const off = instancePanel(instanceOf(), master, [variant], { variant: 'solid', size: null });
