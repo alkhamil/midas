@@ -191,6 +191,19 @@ test('both to start removes only the end icon', () => {
     assert.deepEqual(ops, [{ op: 'remove', id: 'iEnd' }]);
 });
 
+test('both stores each slot icon independently: swapping one leaves the other', () => {
+    const values = { hasIcon: true, iconPlacement: 'both', icon: 'ic-a', iconEnd: 'ic-b' };
+    const children = [inSlot('iStart', 'iconStart', 'ic-a'), child('label'), inSlot('iEnd', 'iconEnd', 'ic-a')];
+    assert.deepEqual(plan(values, children).ops, [{ op: 'swap', id: 'iEnd', component: 'ic-b' }]);
+    const steady = [inSlot('iStart', 'iconStart', 'ic-a'), child('label'), inSlot('iEnd', 'iconEnd', 'ic-b')];
+    assert.deepEqual(plan(values, steady).ops, []);
+});
+
+test('end to both keeps the end icon and appends a start placeholder', () => {
+    const values = { hasIcon: true, iconPlacement: 'both', icon: null, iconEnd: 'ic-b' };
+    const { ops } = plan(values, [child('label'), inSlot('iEnd', 'iconEnd', 'ic-b')]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 0 }]);
+});
 test('both is steady: two icons around the label plan nothing', () => {
     const { ops } = plan(on('both'), [child('iStart', 'iconStart'), child('label'), child('iEnd', 'iconEnd')]);
     assert.deepEqual(ops, []);

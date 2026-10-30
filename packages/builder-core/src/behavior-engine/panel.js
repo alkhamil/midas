@@ -3,6 +3,7 @@
 import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
 import { iconNeedsOf } from './icon-slot.js';
+import { iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
@@ -105,6 +106,24 @@ export function masterPanel(master, collections) {
  * @param {import('./binding.js').Collection[]} collections
  * @param {Record<string, string | null>} modes the instance's Appearance mode per variable prop (see modes.js)
  */
+/**
+ * The icon picker rows of one icon prop: one per def slot that names it, labelled by slot ("Icon start") and shown
+ * only when the placement puts that slot on. A def with no slot is one "Icon" row.
+ */
+function iconRowsOf(template, values, name) {
+    const rows = [];
+    for (const def of iconDefsOf(template).filter(d => d.component === name)) {
+        if (values[def.show] !== true) continue;
+        if (def.slot === undefined) {
+            rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon' });
+            continue;
+        }
+        if (def.placement !== undefined && !slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot)) continue;
+        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon ' + def.slot.replace(/^icon/i, '').toLowerCase() });
+    }
+    return rows;
+}
+
 export function instancePanel(instance, master, collections, modes) {
     const bound = boundTemplate(master);
     if (!bound) return { templateId: null, rows: [] };
@@ -129,7 +148,7 @@ export function instancePanel(instance, master, collections, modes) {
         }
         if (!isPropVisible(template, name, values)) continue;
         if (def.type === 'iconComponent') {
-            rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null });
+            for (const row of iconRowsOf(template, values, name)) rows.push(row);
             continue;
         }
         // A prop that needs collections is disabled while one of them is unbound on the master, naming the

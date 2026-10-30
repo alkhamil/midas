@@ -71,7 +71,7 @@ export function iconNeedsOf(template) {
             out.push({ prop: def.show, dimension, collection: target.collection, variables, role });
         }
     }
-    return out;
+    return out.filter((need, at) => out.findIndex(o => o.dimension === need.dimension) === at);
 }
 
 /**

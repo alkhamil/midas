@@ -104,19 +104,28 @@ function instance(id, name, x, sourceId, props, varModes, vars, components) {
         varModes, vars: vars.root,
     });
     const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: vars.label, sourceId: `${sourceId}-label` });
-    const icon = props.hasIcon ? props.iconPlacement : null;
-    if (!icon) return [root, label];
-    const slot = `icon${icon[0].toUpperCase()}${icon.slice(1)}`, slotId = `${id}-icon-${icon}`;
-    const nested = props.icon ? iconInstance(slotId, props.icon, components, props.disabled === true) : null;
-    const iconLayer = node('frame', {
-        id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
-        ...(nested
-            ? { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
-            : { fills: solid('#8c8297'), layout: 'none' }),
-        behavior: { version: BEHAVIOR_DATA_VERSION, slot },
-    });
-    const kids = icon === 'start' ? [iconLayer, label] : [label, iconLayer];
-    return [root, ...kids, ...(nested ? nested.nodes : [])];
+    const placement = props.hasIcon ? props.iconPlacement : null;
+    if (!placement) return [root, label];
+    const picks = placement === 'both'
+        ? [['iconStart', props.icon, 'start'], ['iconEnd', props.iconEnd, 'end']]
+        : placement === 'start'
+            ? [['iconStart', props.icon, 'start']]
+            : [['iconEnd', props.iconEnd, 'end']];
+    const slots = [], copies = [];
+    for (const [slot, componentId, side] of picks) {
+        const slotId = `${id}-icon-${side}`;
+        const nested = componentId ? iconInstance(slotId, componentId, components, props.disabled === true) : null;
+        slots.push(node('frame', {
+            id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
+            ...(nested
+                ? { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
+                : { fills: solid('#8c8297'), layout: 'none' }),
+            behavior: { version: BEHAVIOR_DATA_VERSION, slot },
+        }));
+        if (nested) copies.push(...nested.nodes);
+    }
+    const at = side => slots.find(l => l.id === `${id}-icon-${side}`);
+    return [root, at('start'), label, at('end')].filter(Boolean).concat(copies);
 }
 
 /**
@@ -148,13 +157,14 @@ export function buildBehaviorFixture() {
         ...master('main', 'Button', 0, BOUND, bindings('')),
         ...instance('inst-start', 'Save', 200, 'main', { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, MODES('solid', 'primary', 'sm'), bindings(''), icons),
         ...instance('inst-plain', 'Cancel', 400, 'main', { hasIcon: false, label: 'Cancel' }, MODES('solid', 'danger', 'lg'), bindings(''), icons),
+        ...instance('inst-both', 'Both', 400, 'main', { hasIcon: true, iconPlacement: 'both', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'Both' }, MODES('solid', 'primary', 'sm'), bindings(''), icons),
         ...master('unbound', 'Unbound', 600, null, { root: {}, label: {} }, 0),
         ...master('legacy', 'Button (legacy)', 0, LEGACY, bindings('b-'), 240),
         ...icons,
     ];
     // The master's root has a stroke, so the Focus preview (border) is visible on the canvas; instances copy it.
     page1[0].strokeWidth = 2;
-    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Next' }, MODES('solid', 'primary', 'sm'), bindings(''), icons);
+    const page2 = instance('inst-cross', 'Next', 0, 'main', { hasIcon: true, iconPlacement: 'end', iconEnd: 'icon-arrow', label: 'Next' }, MODES('solid', 'primary', 'sm'), bindings(''), icons);
     const pages = [
         { id: 'page-components', name: 'Components', nodes: page1 },
         { id: 'page-screens', name: 'Screens', nodes: page2 },

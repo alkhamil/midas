@@ -15,7 +15,10 @@ export const BUTTON = {
     ],
     // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the
     // tokens that colour and size the icon.
-    icons: [{ show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } }],
+    icons: [
+        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+    ],
     // The components the icon picker offers: `Icon/` names, or any component flagged as an icon.
     iconMatch: { prefix: 'Icon/' },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
@@ -29,6 +32,7 @@ export const BUTTON = {
         hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
         iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] }, visibleIf: { prop: 'hasIcon', is: true } },
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
+        iconEnd: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
         loading: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
     },

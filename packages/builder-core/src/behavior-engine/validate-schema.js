@@ -212,7 +212,7 @@ function iconProblems(schema, allTokens) {
                     }
                 }
             }
-            if (icon.slot !== undefined) out.push(`${tag} names both a slot and a placement`);
+            if (icon.slot !== undefined && !managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
         } else {
             if (!isName(icon.slot)) out.push(`${tag} needs a slot or a placement`);
             else if (!managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);

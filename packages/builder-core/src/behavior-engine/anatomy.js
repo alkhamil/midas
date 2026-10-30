@@ -28,9 +28,9 @@ export function slotsOfValue(template, placement, value) {
 
 /** The defs that show one anatomy slot: placement defs whose slots map to it, and fixed defs that name it. */
 export function slotDefsOf(template, slot) {
-    return iconDefsOf(template).filter(def => def.placement !== undefined
-        ? Object.values(template.props[def.placement]?.slots ?? {}).flat().includes(slot)
-        : def.slot === slot);
+    return iconDefsOf(template).filter(def => def.slot !== undefined
+        ? def.slot === slot
+        : def.placement !== undefined && Object.values(template.props[def.placement]?.slots ?? {}).flat().includes(slot));
 }
 
 /** The placement values of one def that show a slot. */
@@ -70,7 +70,7 @@ export function planAnatomy(template, values, children, flip = false) {
     const wanted = [];
     for (const def of iconDefsOf(template)) {
         const slots = def.placement !== undefined
-            ? (values[def.show] === true ? slotsOfValue(template, def.placement, values[def.placement]) : [])
+            ? (values[def.show] === true ? slotsOfValue(template, def.placement, values[def.placement]).filter(s => def.slot === undefined || s === def.slot) : [])
             : (values[def.show] === true && def.slot ? [def.slot] : []);
         for (const slot of slots) {
             if (wanted.some(w => w.slot === slot)) continue;

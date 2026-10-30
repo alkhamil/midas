@@ -22,14 +22,14 @@ const noKids = () => [];
 test('the component takes every prop of the schema, with the schema default', () => {
     const { files } = generateComponent(button, binding(), variables(), 'Button', master, noKids);
     const jsx = files['Button.jsx'];
-    assert.match(jsx, /export function Button\(\{ variant, color, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, onClick, onHover, onFocus, onBlur \}\)/);
+    assert.match(jsx, /export function Button\(\{ variant, color, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, iconEnd = null, loading = false, disabled = false, onClick, onHover, onFocus, onBlur \}\)/);
 });
 
 test('anatomy renders in order, and a managed icon only when the placement asks for it', () => {
     const jsx = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.jsx'];
     const start = jsx.indexOf('{hasIcon && (iconPlacement === "start" || iconPlacement === "both") && <span className="button-iconStart">{icon}</span>}');
     const label = jsx.indexOf('<span className="button-label">{label}</span>');
-    const end = jsx.indexOf('{hasIcon && (iconPlacement === "end" || iconPlacement === "both") && <span className="button-iconEnd">{icon}</span>}');
+    const end = jsx.indexOf('{hasIcon && (iconPlacement === "end" || iconPlacement === "both") && <span className="button-iconEnd">{iconEnd}</span>}');
     assert.ok(start > 0 && label > start && end > label, 'expected iconStart, label, iconEnd in that order');
 });
 

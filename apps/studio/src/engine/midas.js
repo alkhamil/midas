@@ -9198,7 +9198,7 @@ function onBehaviorClick(e) {
         const master = owner && componentById(owner.sourceId);
         const template = master?.behavior && 'templateId' in master.behavior ? BEHAVIOR_TEMPLATES.get(master.behavior.templateId) : null;
         // The picker lists every page, so it opens once the lazy pages have arrived.
-        return whenAllPagesLoaded(() => openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, rule: iconRuleOf(template), onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, 'icon', id)) }));
+        return whenAllPagesLoaded(() => openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, rule: iconRuleOf(template), onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, iconButton.dataset.bpProp || 'icon', id)) }));
     }
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;

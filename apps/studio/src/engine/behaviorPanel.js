@@ -125,10 +125,10 @@ function bindTokensRow(findings, esc) {
 /** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs).
  * A prop whose collections are missing on the master is disabled, with the message naming them. */
 function literalRow(r, esc) {
-    const name = esc(r.prop), label = labelOf(r.prop);
+    const name = esc(r.prop), label = r.label ?? labelOf(r.prop);
     const hint = r.hint ? `<div class="small-label">${esc(r.hint)}</div>` : '';
     if (r.kind === 'icon')
-        return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
+        return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-prop="${name}" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
     if (r.type === 'boolean')
         return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}${r.disabled ? ' disabled' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop) + hint;
     if (r.type === 'enum')

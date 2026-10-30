@@ -122,6 +122,12 @@ test('an icon naming rule needs a non-empty prefix', () => {
     bad.iconMatch = { prefix: '' };
     assert.match(validateTemplateSchema(bad).join('\n'), /iconMatch must be an object with a non-empty prefix/);
 });
+test('a placement icon def may pin one slot; an unknown slot is refused', () => {
+    assert.deepEqual(BUTTON.icons.length, 2);
+    const bad = clone(BUTTON);
+    bad.icons[0].slot = 'nope';
+    assert.match(validateTemplateSchema(bad).join('\n'), /not a managed anatomy slot/);
+});
 test('managed icon slots come as a list of defs', () => {
     assert.ok(Array.isArray(BUTTON.icons) && BUTTON.icons.length > 0);
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
