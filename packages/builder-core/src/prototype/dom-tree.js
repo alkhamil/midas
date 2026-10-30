@@ -17,6 +17,7 @@ import { generateComponent } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
+import { borderStyleOf } from '../behavior-engine/variant-style.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -223,9 +224,11 @@ function renderButton(n, template, parent, scope) {
     const master = scope.byId.get(n.sourceId);
     const binding = master.behavior;
     const attrs = { type: 'button', class: template.id };
+    /** @type {Record<string, string>} */
+    const modes = {};
     for (const [dim] of variableProps(template)) {
         const collection = (scope.variables.collections || []).find(c => c.id === binding.variables[dim]);
-        attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
+        modes[dim] = attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
@@ -259,11 +262,12 @@ function renderButton(n, template, parent, scope) {
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
-    const strokeEl = strokeIsOn(shape) && strokeSidesUniform(shape) && !strokeDashArray(shape).length ? borderOverlayEl(shape) : strokeOverlayEl(shape);
+    const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeStyle === 'dot';
+    const strokeEl = strokeIsOn(shape) ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes))) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
-    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)), borderWidth: '0px' };
+    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)), borderWidth: '0px', borderStyle: 'none', borderColor: 'transparent' };
     // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
     if (strokeEl && !style.position) style.position = 'relative';
     return { tag: 'button', nodeId: n.id, attrs, style, children };
@@ -275,9 +279,41 @@ function renderButton(n, template, parent, scope) {
  * @param {any} n
  * @returns {Element}
  */
-function borderOverlayEl(n) {
-    const w = n.strokeWidth, grow = { inside: 0, center: w / 2, outside: w }[n.strokeAlign ?? 'center'];
-    return { tag: 'div', attrs: {}, style: { position: 'absolute', inset: `${svgNumber(-grow)}px`, boxSizing: 'border-box', pointerEvents: 'none', border: `${svgNumber(w)}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`, borderRadius: 'inherit' }, children: [] };
+function borderOverlayEl(n, borderStyle = null) {
+    const { t, r, b, l } = strokeSideWidths(n);
+    const align = n.strokeAlign ?? 'center';
+    const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
+    const uniform = strokeSidesUniform(n);
+    const grow = uniform ? growOf(t) : Math.max(growOf(t), growOf(r), growOf(b), growOf(l));
+    const inset = uniform
+        ? `${svgNumber(-grow)}px`
+        : [t, r, b, l].map(w => `${svgNumber(-growOf(w))}px`).join(' ');
+    const radii = cornerRadii(n).map(rad => rad > 0 ? Math.max(0, rad + grow) : 0);
+    const borderRadius = (n.radius || hasRadii(n))
+        ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
+        : 'inherit';
+    const color = colorWithAlpha(n.stroke, n.strokeOpacity);
+    const lineStyle = borderStyle ?? (n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid');
+    /** @type {Record<string, string>} */
+    const style = {
+        position: 'absolute',
+        inset,
+        boxSizing: 'border-box',
+        background: 'transparent',
+        pointerEvents: 'none',
+        borderRadius,
+    };
+    if (uniform) {
+        style.border = `${svgNumber(t)}px ${lineStyle} ${color}`;
+    }
+    else {
+        for (const [side, w] of [['Top', t], ['Right', r], ['Bottom', b], ['Left', l]]) {
+            style[`border${side}Width`] = `${svgNumber(w)}px`;
+            style[`border${side}Style`] = w > 0 ? lineStyle : 'none';
+            style[`border${side}Color`] = color;
+        }
+    }
+    return { tag: 'div', attrs: {}, style, children: [] };
 }
 
 /**
