@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isManagedLayer, managedRefusal, managedPasteRefusal } from '../src/behavior-engine/managed-layers.js';
+import { isManagedLayer, isSlotIconInstance, managedRefusal, managedPasteRefusal } from '../src/behavior-engine/managed-layers.js';
 import { behaviorProblem } from '../src/behavior-engine/document-check.js';
 import { detachBehavior } from '../src/behavior-engine/data.js';
 
@@ -66,4 +66,15 @@ test('a payload with the instance and its managed layers is allowed', () => {
 
 test('a payload of plain layers is allowed', () => {
     assert.equal(managedPasteRefusal([{ id: 'a', parentId: null }, { id: 'b', parentId: 'a' }]), null);
+});
+
+test('only the icon instance a managed slot holds is engine-sized', () => {
+    const slot = { behavior: { version: 2, slot: 'iconStart' } };
+    const nested = { isInstance: true, sourceId: 'icon-check' };
+    assert.equal(isSlotIconInstance(nested, slot), true);
+    assert.equal(isSlotIconInstance({ type: 'path' }, slot), false);
+    assert.equal(isSlotIconInstance({ type: 'frame' }, slot), false);
+    assert.equal(isSlotIconInstance(nested, { type: 'frame' }), false);
+    assert.equal(isSlotIconInstance(nested, null), false);
+    assert.equal(isSlotIconInstance(null, slot), false);
 });

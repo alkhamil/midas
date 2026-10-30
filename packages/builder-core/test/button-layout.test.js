@@ -79,6 +79,16 @@ test('Play draws the icon beside the label, and both icons with placement both',
     assert.deepEqual(both.children.map(c => c.attrs.class), ['button-iconStart', 'button-label', 'button-iconEnd']);
 });
 
+test('a fill-sized icon instance stretches to its slot in Play, whatever the icon component sizes', () => {
+    const icon = { id: 'ic', name: 'Icon/check', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
+    const iconPath = { id: 'ic-p', name: 'check', type: 'path', parentId: 'ic', x: 0, y: 0, w: 24, h: 24, pathW: 24, pathH: 24, closed: true, points: [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }], fills: [], stroke: '#000000', strokeWidth: 0 };
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const nested = { id: 'nested', name: 'Icon/check', type: 'frame', parentId: 'i-icon', x: 0, y: 0, w: 24, h: 24, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
+    const withIcon = instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start', icon: 'ic' } } });
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, withIcon, slot, labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), nested]), 'i').root;
+    const box = seen.children.find(c => c.attrs.class === 'button-iconStart');
+    assert.deepEqual([box.children[0].style.flex, box.children[0].style.alignSelf], ['1 1 0', 'stretch']);
+});
 test('a hug Button keeps its own size in Play and never stretches', () => {
     const parent = { id: 'A', name: 'Row', type: 'frame', parentId: null, x: 0, y: 0, w: 400, h: 100, fills: [], layout: 'horizontal' };
     const hug = instance({ parentId: 'A', layoutSizingH: 'hug', layoutSizingV: 'hug' });
