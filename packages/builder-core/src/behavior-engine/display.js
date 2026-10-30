@@ -27,12 +27,12 @@ export const NODE_PROPERTIES = {
 };
 
 /**
- * The node fields a literal prop can write, per node kind: the prop type it takes and, for a boolean, the value each state writes.
- * `layoutSizingH` is the width mode of a frame: true is fill, false is hug.
+ * The node fields a literal prop can write, per node kind: the prop type it takes.
+ * Frames take none: node sizing is the node's own, never written by a template prop.
  * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
  */
 export const NODE_FIELDS = {
-    frame: { layoutSizingH: { kind: 'boolean', values: { true: 'fill', false: 'hug' } } },
+    frame: {},
     text: { text: { kind: 'string' } },
 };
 

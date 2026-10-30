@@ -46,7 +46,7 @@ function instance() {
     const root = node('frame', {
         id: 'button-save', name: 'Save', x: 200, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'button', layout: 'horizontal', gap: 6,
         padding: 12, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true,
-        behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: false, loading: false, disabled: false, block: false } },
+        behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: false, loading: false, disabled: false } },
         varModes: { [model.ids.variant]: 'solid', [model.ids.color]: 'primary', [model.ids.size]: 'lg' },
         vars: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
     });

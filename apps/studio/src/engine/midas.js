@@ -9453,7 +9453,7 @@ function instanceLabelOf(inst, master) {
     const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id)));
     return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
 }
-/** Literal props write their node fields: the label prop the label layer's text, block the root's width mode (see literalFields). */
+/** Literal props write their node fields: the label prop the label layer's text (see literalFields). */
 /**
  * A Variant with a border style (the template's `styles`, such as dashed) draws the instance's root stroke in that style. The dash
  * length is the canvas's own (the schema has no token for a border style).

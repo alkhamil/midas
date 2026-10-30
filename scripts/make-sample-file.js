@@ -340,7 +340,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         ...(hasIcon ? { iconPlacement: placement } : {}),
         loading,
         disabled,
-        block,
+
     };
 
     const textW = Math.max(28, Math.ceil(labelText.length * metrics.fs * 0.6));

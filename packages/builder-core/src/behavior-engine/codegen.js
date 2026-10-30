@@ -12,8 +12,6 @@ import { labelEntryOf } from './layers.js';
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
-/** The width a boolean prop writes when it is true and the node fills its container. */
-const FILL_WIDTH = 'width: "100%"';
 
 /**
  * The component source for a template. Problems found on the way are pushed onto `problems`.
@@ -54,15 +52,12 @@ function componentSource(template, name, problems) {
     }
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
-    const widthProps = Object.entries(template.props).filter(([, def]) => def.source === 'literal' && def.node?.field === 'layoutSizingH').map(([prop]) => prop);
-    if (widthProps.length > 1) problems.push({ reason: 'several-width-props', props: widthProps });
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
         iconOnlyValues.length ? `className={iconOnly ? "${template.id} ${template.id}-icon-only" : "${template.id}"}` : `className="${template.id}"`,
         ...dims.map(dim => `data-${dim}={${dim}}`),
         `disabled={${disabledProp}}`,
-        ...widthProps.map(prop => `style={${prop} ? { ${FILL_WIDTH} } : undefined}`),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? 'blocked ? undefined : onClick' : event.name}}`),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');

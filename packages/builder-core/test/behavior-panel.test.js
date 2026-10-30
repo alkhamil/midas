@@ -35,7 +35,7 @@ test('a master bound to Button lists its variable props, prefilled by auto-match
 test('the master contract shows non-visual props, states and events, but no icon choice or placement', () => {
     const panel = masterPanel(boundMaster([variant]), [variant]);
     const names = panel.contract.props.map(p => p.name);
-    assert.deepEqual(names, ['label', 'loading', 'disabled', 'block']);
+    assert.deepEqual(names, ['label', 'loading', 'disabled']);
     assert.deepEqual(panel.contract.persistentStates, ['disabled']);
     assert.deepEqual(panel.contract.previewStates, ['hover', 'active', 'focus']);
     assert.deepEqual(panel.contract.events.map(e => e.name), ['onClick', 'onHover', 'onFocus', 'onBlur']);

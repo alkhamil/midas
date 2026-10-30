@@ -39,7 +39,7 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
   - size (variable, collection "Size": small, middle, large)
   - label (string, "Button")
   - hasIcon (boolean, false), iconPlacement (start | end | only, "start", visibleIf hasIcon), icon (iconComponent, visibleIf hasIcon). `only` is icon-only: the label is hidden, the padding is 0, and the minimum width is the control height (`height` token).
-  - loading (boolean, false), disabled (boolean, false), block (boolean, false, node layout width fill)
+  - loading (boolean, false), disabled (boolean, false)
 - structure: antd v5 (components/button/style). Names are ours. Variant values alias into Color, Color into Semantic (antd's global tokens).
 - tokens:
   - fromSize: height, fontSize, lineHeight (unitless ratio), paddingX, paddingY, gap, radius, iconSize
@@ -114,7 +114,7 @@ Status: decisions 1-4 below are answered and being implemented. Where this secti
 5. Variant and Size controls write the instance's mode for the bound collection through the same path the Appearance section uses (`varModes`, one history step). No `variant` or `size` prop is stored in behavior data. Default is the first mode.
 6. Persistent `disabled` writes real document state and selects the `<group>/bg-disabled` and `<group>/fg-disabled` variables. Persistent states are generic in the schema, so a future Breadcrumb Item `current` (tokens `breadcrumb/fg`, `breadcrumb/fg-current`) needs no engine change.
 7. Preview-only state is a studio-side view only: never written to the document or to history, reset on selection change or file close, and shown as a "Previewing: Hover" badge. A real `disabled` wins over any preview state. A disabled Button shows only its disabled style: the generated CSS guards hover, active and focus with `:not(:disabled)`, so no interaction colour applies to it. The disabled state overrides `bg` and `fg` only; there is no `border-disabled` token, so the border stays the variant's. Turning Disabled on clears a preview state.
-8. `label` writes the label layer's text, `block` writes the root width mode. `loading` has no node representation yet: it gets a diagnostics note, not a visual.
+8. `label` writes the label layer's text. `loading` has no node representation yet: it gets a diagnostics note, not a visual.
 
 ### Audit (code as it is now)
 

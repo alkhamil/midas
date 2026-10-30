@@ -141,8 +141,7 @@
               "label": "Save",
               "hasIcon": false,
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           },
           "varModes": {

@@ -1096,8 +1096,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -1253,8 +1252,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -2704,8 +2702,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -2894,8 +2891,7 @@
               "label": "Redeem Voucher",
               "hasIcon": false,
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -3019,8 +3015,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -4470,8 +4465,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -4882,8 +4876,7 @@
               "label": "Add",
               "hasIcon": false,
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -5263,8 +5256,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -5676,8 +5668,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -6088,8 +6079,7 @@
               "label": "Add",
               "hasIcon": false,
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -6468,8 +6458,7 @@
               "label": "Sold Out",
               "hasIcon": false,
               "loading": false,
-              "disabled": true,
-              "block": false
+              "disabled": true
             }
           }
         },
@@ -7976,8 +7965,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -8132,8 +8120,7 @@
               "label": "Verifying Voucher...",
               "hasIcon": false,
               "loading": true,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -8257,8 +8244,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -9639,8 +9625,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -9796,8 +9781,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": true
+              "disabled": false
             }
           }
         },
@@ -11168,8 +11152,7 @@
               "label": "Primary S",
               "hasIcon": false,
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -11293,8 +11276,7 @@
               "hasIcon": true,
               "iconPlacement": "start",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -11450,8 +11432,7 @@
               "hasIcon": true,
               "iconPlacement": "end",
               "loading": false,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -11640,8 +11621,7 @@
               "label": "Brewing...",
               "hasIcon": false,
               "loading": true,
-              "disabled": false,
-              "block": false
+              "disabled": false
             }
           }
         },
@@ -11764,8 +11744,7 @@
               "label": "Unavailable",
               "hasIcon": false,
               "loading": false,
-              "disabled": true,
-              "block": false
+              "disabled": true
             }
           }
         },

@@ -22,7 +22,7 @@ const noKids = () => [];
 test('the component takes every prop of the schema, with the schema default', () => {
     const { files } = generateComponent(button, binding(), variables(), 'Button', master, noKids);
     const jsx = files['Button.jsx'];
-    assert.match(jsx, /export function Button\(\{ variant, color, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur \}\)/);
+    assert.match(jsx, /export function Button\(\{ variant, color, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, onClick, onHover, onFocus, onBlur \}\)/);
 });
 
 test('anatomy renders in order, and a managed icon only when the placement asks for it', () => {
