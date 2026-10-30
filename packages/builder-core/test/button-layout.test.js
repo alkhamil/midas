@@ -90,13 +90,43 @@ test('a fill-sized icon instance stretches to its slot in Play, whatever the ico
     const box = seen.children.find(c => c.attrs.class === 'button-iconStart');
     assert.deepEqual([box.children[0].style.flex, box.children[0].style.alignSelf], ['1 1 0', 'stretch']);
 });
-test('a managed icon slot adds no gap of its own in Play: the icon-label spacing is the token gap', () => {
+test('Play draws the icon at the token size and in the fg token colour, for start and end', () => {
     const path = new URL('../../../scripts/fixtures/behavior-fixture.midas', import.meta.url);
     const fixture = JSON.parse(readFileSync(path, 'utf8'));
-    const { root, styles } = toDomTree(fixture, 'inst-start', {});
-    const slot = root.children.find(c => c.attrs?.class === 'button-iconStart');
-    assert.equal(slot.style.columnGap, '0px');
-    assert.match(styles, /\.button\s*\{[^}]*gap:\s*var\(--button-gap\)/);
+    const start = toDomTree(fixture, 'inst-start', {}).root;
+    const startSlot = start.children.find(c => c.attrs?.class === 'button-iconStart');
+    assert.equal(startSlot.style.width, undefined);
+    assert.equal(startSlot.style.height, undefined);
+    assert.equal(startSlot.style.color, 'var(--button-fg)');
+    assert.match(startSlot.children[0].children[0].html, /fill="currentColor"/);
+    const end = toDomTree(fixture, 'inst-cross', {}).root;
+    const endSlot = end.children.find(c => c.attrs?.class === 'button-iconEnd');
+    assert.equal(endSlot.style.width, undefined);
+    assert.equal(endSlot.style.height, undefined);
+    assert.equal(endSlot.style.color, 'var(--button-fg)');
+    assert.match(endSlot.children[0].children[0].html, /stroke="currentColor"/);
+});
+
+test('Play keeps the literal paint of an unbound icon layer', () => {
+    const icon = { id: 'ic', name: 'Icon/plain', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
+    const copy = { id: 'nested-p', name: 'plain', type: 'path', parentId: 'nested', x: 0, y: 0, w: 24, h: 24, pathW: 24, pathH: 24, closed: true, points: [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }], fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#000000', strokeWidth: 0 };
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', gap: 0, padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const nested = { id: 'nested', name: 'Icon/plain', type: 'frame', parentId: 'i-icon', x: 0, y: 0, w: 16, h: 16, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
+    const withIcon = instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start', icon: 'ic' } } });
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), icon, withIcon, slot, labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), nested, copy]), 'i').root;
+    const box = seen.children.find(c => c.attrs?.class === 'button-iconStart');
+    assert.match(box.children[0].children[0].html, /fill="#20202a"/);
+});
+
+test('Play paints a bound icon stroke in the slot colour', () => {
+    const icon = { id: 'ic', name: 'Icon/ring', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
+    const copy = { id: 'nested-p', name: 'ring', type: 'path', parentId: 'nested', x: 2, y: 2, w: 20, h: 20, pathW: 20, pathH: 20, closed: true, points: [{ x: 2, y: 2 }, { x: 22, y: 2 }, { x: 22, y: 22 }, { x: 2, y: 22 }], fills: [], stroke: '#20202a', strokeWidth: 2, vars: { stroke: 'v-fg' } };
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', gap: 0, padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const nested = { id: 'nested', name: 'Icon/ring', type: 'frame', parentId: 'i-icon', x: 0, y: 0, w: 16, h: 16, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
+    const withIcon = instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start', icon: 'ic' } } });
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), icon, withIcon, slot, labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), nested, copy]), 'i').root;
+    const box = seen.children.find(c => c.attrs?.class === 'button-iconStart');
+    assert.match(box.children[0].children[0].html, /stroke="currentColor"/);
 });
 test('a hug Button keeps its own size in Play and never stretches', () => {
     const parent = { id: 'A', name: 'Row', type: 'frame', parentId: null, x: 0, y: 0, w: 400, h: 100, fills: [], layout: 'horizontal' };

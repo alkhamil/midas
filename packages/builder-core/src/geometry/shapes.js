@@ -230,12 +230,13 @@ export function svgShapeEl(n, f, a) {
  * @param {any} n
  * @param {(v: number) => string | number} f
  * @param {(s: string) => string} e attribute escaper
+ * @param {boolean} [icon] true inside a managed icon slot: a bound stroke paints in the slot colour
  */
-export function svgStrokeAttrs(n, f, e) {
+export function svgStrokeAttrs(n, f, e, icon = false) {
     if (!strokeIsOn(n) || strokeSvgAdvanced(n))
         return 'stroke="none" stroke-width="0"';
     const w = RECT_LIKE.includes(n.type) ? strokeSideWidths(n).t : n.strokeWidth, dash = strokeDashArray(n);
-    return `stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
+    return `stroke="${icon && n.vars?.stroke ? 'currentColor' : e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
 }
 
 /**

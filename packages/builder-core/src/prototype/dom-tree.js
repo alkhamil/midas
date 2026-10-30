@@ -10,6 +10,7 @@
 // Anything the DOM does not draw is listed in `unsupported`, never drawn silently: a boolean group with no stored result, masks inside an
 // auto layout, image fills on vector layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
+import { cssVarOf } from '../behavior-engine/tokens.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent } from '../behavior-engine/codegen.js';
@@ -57,8 +58,9 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
  * @param {any} parent
  * @param {any} scope
  * @returns {Element | null}
+ * @param {boolean} [icon] true inside a managed icon slot: bound vector paint resolves through the slot colour
  */
-function renderNode(n, parent, scope) {
+function renderNode(n, parent, scope, icon = false) {
     if (n.visible === false) return null;
     const template = templateOf(n, scope);
     if (template === undefined) return null;
@@ -78,12 +80,12 @@ function renderNode(n, parent, scope) {
     if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, scope, true) });
     if (VECTOR.includes(n.type) || arcActive(n)) {
         // The outline is an SVG placed at the box's corner: the box must be positioned, or the SVG lands on an ancestor's corner.
-        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, position: base.position ?? 'relative', ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope), children: [] };
+        return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, position: base.position ?? 'relative', ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope, icon), children: [] };
     }
     const style = { ...base, ...fillStyle(n, scope), ...radiusStyle(n), ...effectStyle(n, scope, false) };
     if (n.type === 'ellipse') style.borderRadius = '50%';
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
-    const children = renderChildren(n, scope);
+    const children = renderChildren(n, scope, icon);
     if (n.type === 'frame') {
         // The flow is the children that are not absolutely positioned: a space-between with one of them starts it, as the canvas does.
         const flowCount = children.filter(c => c.style.position !== 'absolute').length;
@@ -115,8 +117,9 @@ function renderNode(n, parent, scope) {
  * @param {any} n
  * @param {any} scope
  * @returns {any[]}
+ * @param {boolean} [icon] true inside a managed icon slot (see renderNode)
  */
-function renderChildren(n, scope) {
+function renderChildren(n, scope, icon = false) {
     const out = [];
     const auto = n.type === 'frame' && isAutoLayout(n);
     // The flow order of an auto layout's children is the canvas's (a Figma import stores them back to front); the DOM order is the paint
@@ -133,7 +136,7 @@ function renderChildren(n, scope) {
     }
     for (const c of stored) {
         if (c.isMask) continue;
-        const el = renderNode(c, n, scope);
+        const el = renderNode(c, n, scope, icon);
         if (!el) continue;
         const mask = maskFor.get(c.id);
         if (mask) {
@@ -244,10 +247,10 @@ function renderButton(n, template, parent, scope) {
             for (const def of slotDefsOf(template, slot.id)) {
                 if (props[def.show] !== true) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
-                const el = layer && renderNode(layer, n, scope);
+                const el = layer && renderNode(layer, n, scope, true);
                 if (!el) continue;
-                const { position, left, top, ...style } = el.style;
-                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style });
+                const { position, left, top, width, height, ...style } = el.style;
+                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style: { ...style, ...(def.tokens?.colour ? { color: `var(${cssVarOf(template.id, def.tokens.colour)})` } : null) } });
                 break;
             }
         }
@@ -426,10 +429,11 @@ function frameOutlineOf(n, scope) {
  * @param {any} n
  * @param {any} scope
  * @returns {string}
+ * @param {boolean} [icon] true inside a managed icon slot (see renderNode)
  */
-function vectorMarkup(n, scope) {
-    const fill = n.type === 'line' ? 'fill="none"' : fillAttrs(n, scope);
-    return svgMarkup(n, `${fill} ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
+function vectorMarkup(n, scope, icon = false) {
+    const fill = n.type === 'line' ? 'fill="none"' : fillAttrs(n, scope, icon);
+    return svgMarkup(n, `${fill} ${svgStrokeAttrs(n, svgNumber, escapeAttr, icon)}`);
 }
 
 /**
@@ -450,8 +454,9 @@ function svgMarkup(n, attrs) {
  * yet, and a second fill is not drawn; both are reported.
  * @param {any} n
  * @param {any} scope
+ * @param {boolean} [icon] true inside a managed icon slot: a bound fill paints in the slot colour
  */
-function fillAttrs(n, scope) {
+function fillAttrs(n, scope, icon = false) {
     const fills = getFills(n).filter(f => f.visible !== false);
     if (fills.length > 1) scope.unsupported.push({ nodeId: n.id, type: 'multiple fills on a vector layer' });
     const [first] = fills;
@@ -460,6 +465,7 @@ function fillAttrs(n, scope) {
         scope.unsupported.push({ nodeId: n.id, type: `${first.type} fill on a vector layer` });
         return 'fill="none"';
     }
+    if (icon && n.vars?.['fills.0']) return `fill="currentColor" fill-opacity="${svgNumber(first.opacity ?? 1)}"`;
     return `fill="${escapeAttr(first.color)}" fill-opacity="${svgNumber(first.opacity ?? 1)}"`;
 }
 
