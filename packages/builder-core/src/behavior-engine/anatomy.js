@@ -60,10 +60,12 @@ export function managedBehavior(slot) {
  * icon the instance chose: a different icon (or none, the placeholder) swaps the slot in place, keeping its position.
  * @param {TemplateSchema} template
  * @param {Record<string, unknown>} values the instance's resolved values, by prop name
- * @param {ChildLayer[]} children the instance root's children, in order
- * @returns {AnatomyOp[]}
+ * @param {ChildLayer[]} children the instance root's children, in stored order
+ * @param {boolean} [flip] true when the instance root is a flipped auto layout (its children are stored back to front,
+ * so placement means the visual start and end after the flip)
+ * @returns {AnatomyOp[]} indexes are stored indexes, for the editor to apply in place
  */
-export function planAnatomy(template, values, children) {
+export function planAnatomy(template, values, children, flip = false) {
     /** @type {{ slot: string, component: string | null }[]} */
     const wanted = [];
     for (const def of iconDefsOf(template)) {
@@ -81,6 +83,8 @@ export function planAnatomy(template, values, children) {
     const ops = [];
     /** @type {ChildLayer[]} */
     const kept = [];
+    // Positions are visual: on a flipped root the stored list reads back to front.
+    const storedIndexOf = (visual, finalLength) => (flip ? finalLength - 1 - visual : visual);
     for (const c of children) {
         const isWanted = c.slot !== null && want.has(c.slot) && !kept.some(k => k.slot === c.slot);
         if (c.slot === null || isWanted) kept.push(c);
@@ -92,20 +96,21 @@ export function planAnatomy(template, values, children) {
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
     // A slot anatomically before the label goes first; one after it goes last. Slots are placed in anatomy order.
     const afters = queue.filter(w => slotIndex(w.slot) > textIndex);
-    const working = [...kept];
+    const working = flip ? [...kept].reverse() : [...kept];
     let missing = queue.filter(w => !working.some(c => c.slot === w.slot)).length;
     let front = 0, placedAfter = 0;
     for (const w of queue) {
         const at = working.findIndex(c => c.slot === w.slot);
         const finalLength = working.length + missing;
         const index = slotIndex(w.slot) < textIndex ? front++ : finalLength - afters.length + placedAfter++;
+        const atStored = storedIndexOf(index, finalLength);
         if (at === -1) {
-            ops.push(w.component ? { op: 'insert', slot: w.slot, index, component: w.component } : { op: 'insert', slot: w.slot, index });
+            ops.push(w.component ? { op: 'insert', slot: w.slot, index: atStored, component: w.component } : { op: 'insert', slot: w.slot, index: atStored });
             working.splice(index, 0, { id: `new-${w.slot}`, slot: w.slot });
             missing--;
         }
         else {
-            if (at !== index) { ops.push({ op: 'move', id: working[at].id, index }); const [moved] = working.splice(at, 1); working.splice(index, 0, moved); }
+            if (at !== index) { ops.push({ op: 'move', id: working[at].id, index: atStored }); const [moved] = working.splice(at, 1); working.splice(index, 0, moved); }
             if ((working[index].component ?? null) !== w.component) ops.push({ op: 'swap', id: working[index].id, component: w.component });
         }
     }
@@ -118,16 +123,16 @@ export function planAnatomy(template, values, children) {
  * label cannot be resolved gets no operations and the reason.
  * @param {{
  *   binding: any, masterRoot: { isAutoLayout: boolean }, masterTree: { id: string, type: string }[],
- *   stored: Record<string, string | boolean | null> | undefined, children: ChildLayer[]
- * }} input
+ *   stored: Record<string, string | boolean | null> | undefined, children: ChildLayer[], flip?: boolean
+ * }} input `flip` is true when the instance root is a flipped auto layout (see planAnatomy)
  * @returns {{ ops: AnatomyOp[], reason?: string }}
  */
-export function planInstanceAnatomy({ binding, masterRoot, masterTree, stored, children }) {
+export function planInstanceAnatomy({ binding, masterRoot, masterTree, stored, children, flip = false }) {
     const template = binding && 'templateId' in binding ? TEMPLATES.get(binding.templateId) : undefined;
     if (!template) return { ops: children.filter(c => c.slot !== null).map(c => /** @type {AnatomyOp} */ ({ op: 'remove', id: c.id })) };
     // The label slot: the master's first text layer inside its root auto layout (tree is depth first). Nothing is guessed.
     if (!masterRoot.isAutoLayout) return { ops: [], reason: 'the master is not an auto layout frame' };
     if (!masterTree.some(n => n.type === 'text')) return { ops: [], reason: 'the master has no text layer' };
     const values = resolveProps(template, stored || {});
-    return { ops: planAnatomy(template, values, children) };
+    return { ops: planAnatomy(template, values, children, flip) };
 }

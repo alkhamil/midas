@@ -80,3 +80,16 @@ test('a detached instance opens: its behavior data and managed markers are strip
     detachBehavior(nodes);
     assert.doesNotThrow(() => assertBehaviorData(docWith(autoMaster, masterLabel, ...nodes)));
 });
+
+
+test('a flipped instance whose layers are visually right opens', () => {
+    const inst = { ...withIcon({ hasIcon: true, iconPlacement: 'start' }), layoutFlip: true };
+    const doc = docWith(autoMaster, masterLabel, inst, label, icon('iconStart'));
+    assert.doesNotThrow(() => assertBehaviorData(doc));
+});
+
+test('a flipped instance whose start icon sits first in stored order fails', () => {
+    const inst = { ...withIcon({ hasIcon: true, iconPlacement: 'start' }), layoutFlip: true };
+    const doc = docWith(autoMaster, masterLabel, inst, icon('iconStart'), label);
+    assert.throws(() => assertBehaviorData(doc), /"iconStart" is at the wrong position/);
+});

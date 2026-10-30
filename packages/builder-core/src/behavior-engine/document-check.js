@@ -113,6 +113,8 @@ function checkAnatomy(n, nodes, children, page) {
         binding: master?.behavior,
         masterRoot: { isAutoLayout: !!master && master.type === 'frame' && !!master.layout && master.layout !== 'none' },
         masterTree: master ? descendantsOf(master.id, children) : [],
+        // A flipped instance root stores its children back to front: the planner places icons at the visual start and end.
+        flip: !!n.layoutFlip,
         stored: n.behavior?.props,
         children: (children.get(n.id) || []).map(c => ({
             id: c.id, slot: c.behavior?.slot ?? null,

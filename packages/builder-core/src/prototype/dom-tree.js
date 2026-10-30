@@ -209,6 +209,8 @@ function templateOf(n, scope) {
 
 /**
  * A Button-style instance: the element the codegen exports, with its mode attributes, its disabled state and its anatomy in order.
+ * The order is the schema order, as the codegen writes it; the planner keeps the stored children at the visual positions
+ * it means, so Play draws what the canvas draws (a flipped root reads its stored children back to front).
  * @param {any} n
  * @param {any} template
  * @param {any} parent
@@ -237,7 +239,7 @@ function renderButton(n, template, parent, scope) {
             else children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
         }
         else if (slot.managed) {
-            // The slot's own layer draws the icon its nested instance holds. It flows in the button, so its stored place is dropped.
+            // The slot's own layer draws the icon its nested instance holds.
             const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
             for (const def of slotDefsOf(template, slot.id)) {
                 if (props[def.show] !== true) continue;

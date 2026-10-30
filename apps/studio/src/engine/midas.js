@@ -9260,6 +9260,7 @@ function anatomyPlanOf(inst) {
             binding: master?.behavior,
             masterRoot: { isAutoLayout: isAutoLayout(master) },
             masterTree,
+            flip: !!inst.layoutFlip,
             stored: inst.behavior?.props,
             children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, component: iconOfSlot(c) })),
         });
@@ -9445,12 +9446,12 @@ function labelIdsOfComponents() {
     for (const page of doc.data.pages)
         for (const n of page.nodes)
             if (n.component)
-                out.set(n.id, labelLayerOf(n.id, id => kids.get(id) || [])?.id ?? null);
+                out.set(n.id, labelLayerOf(n.id, id => kids.get(id) || [], n)?.id ?? null);
     return out;
 }
 /** The master's label layer (its first text layer, depth first) and the instance's layer that copies it. */
 function instanceLabelOf(inst, master) {
-    const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id)));
+    const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id), master));
     return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
 }
 /** Literal props write their node fields: the label prop the label layer's text (see literalFields). */

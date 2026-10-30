@@ -71,7 +71,7 @@ test('Play draws the icon beside the label, and both icons with placement both',
     const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
     const nested = { id: 'nested', name: 'Icon/check', type: 'frame', parentId: 'i-icon', x: 0, y: 0, w: 16, h: 16, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
     const withIcon = instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start', icon: 'ic' } } });
-    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, withIcon, slot, nested]), 'i').root;
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, withIcon, slot, labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), nested]), 'i').root;
     assert.deepEqual(seen.children.map(c => c.attrs.class), ['button-iconStart', 'button-label']);
     assert.equal(labelOf(seen).style.textAlign, 'center');
     const slotEnd = { id: 'i-icon-end', name: 'iconEnd', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: false, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconEnd' } };
@@ -113,4 +113,38 @@ test('a hug Button exports no width of its own: inline-flex keeps it natural', (
     const css = generateComponent(button, model.binding, variables, 'Button', nodes[0], kids(nodes)).files['Button.css'];
     const rootBlock = /\.button \{(.*?)\}/s.exec(css)[1];
     assert.doesNotMatch(rootBlock, /^ {2}width:/m);
+});
+
+test('Play on a flipped root draws the icon at the visual start', () => {
+    const icon = { id: 'ic', name: 'Icon/check', type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, component: true, fills: [] };
+    const iconPath = { id: 'ic-p', name: 'check', type: 'path', parentId: 'ic', x: 0, y: 0, w: 24, h: 24, pathW: 24, pathH: 24, closed: true, points: [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }], fills: [], stroke: '#000000', strokeWidth: 0 };
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const nested = { id: 'nested', name: 'Icon/check', type: 'frame', parentId: 'i-icon', x: 0, y: 0, w: 16, h: 16, fills: [], isInstance: true, sourceId: 'ic', layoutSizingH: 'fill', layoutSizingV: 'fill' };
+    const flipped = instance({ layout: 'horizontal', layoutFlip: true, behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start', icon: 'ic' } } });
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' }), labelLayer('i', { layoutSizingH: 'fill', textAlign: 'center' }), icon, iconPath, flipped, slot, nested]), 'i').root;
+    assert.deepEqual(seen.children.map(c => c.attrs.class), ['button-iconStart', 'button-label']);
+});
+
+test('Play keeps the schema order when the stored order drifts from it, like the codegen output', () => {
+    const drifted = instance({ behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start' } } });
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const seen = toDomTree(doc([master({}), labelLayer('m', { layoutSizingH: 'fill' }), labelLayer('i', { layoutSizingH: 'fill' }), drifted, slot]), 'i').root;
+    assert.deepEqual(seen.children.map(c => c.attrs.class), ['button-iconStart', 'button-label']);
+});
+
+test('the export reads the label from the visual-first text of a flipped master', () => {
+    const flipped = master({ layout: 'horizontal', layoutFlip: true, primaryAlign: 'start', counterAlign: 'center' });
+    const t1 = { id: 'm-t1', name: 'first', type: 'text', parentId: 'm', text: 'A', x: 0, y: 0, w: 40, h: 20, fills: [], textAlign: 'left' };
+    const t2 = { id: 'm-t2', name: 'second', type: 'text', parentId: 'm', text: 'B', x: 40, y: 0, w: 40, h: 20, fills: [], textAlign: 'right' };
+    const css = generateComponent(button, model.binding, variables, 'Button', flipped, id => [flipped, t1, t2].filter(n => n.parentId === id)).files['Button.css'];
+    const labelBlock = /\.button-label \{(.*?)\}/s.exec(css)[1];
+    assert.match(labelBlock, /text-align: right;/);
+});
+
+test('Play on a flipped vertical root draws the icon at the visual start of the column', () => {
+    const slot = { id: 'i-icon', name: 'iconStart', type: 'frame', parentId: 'i', x: 0, y: 0, w: 16, h: 16, fills: [], clip: true, layout: 'horizontal', behavior: { version: BEHAVIOR_DATA_VERSION, slot: 'iconStart' } };
+    const flipped = instance({ layout: 'vertical', layoutFlip: true, behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Save', hasIcon: true, iconPlacement: 'start' } } });
+    const seen = toDomTree(doc([master({ layout: 'vertical' }), labelLayer('m', {}), labelLayer('i', {}), flipped, slot]), 'i').root;
+    assert.equal(seen.style.flexDirection, 'column');
+    assert.deepEqual(seen.children.map(c => c.attrs.class), ['button-iconStart', 'button-label']);
 });
