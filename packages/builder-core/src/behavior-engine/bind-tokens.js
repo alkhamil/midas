@@ -5,6 +5,7 @@
 import { NODE_PROPERTIES, VARIABLE_KEYS, targetKindOf } from './display.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
+import { varsWithBinding } from './edits.js';
 
 /** @param {string} name */
 
@@ -45,3 +46,29 @@ export function planBindTokens({ template, binding, layers, variables }) {
     return { ops, problems };
 }
 
+/**
+ * Applies bind ops to their layers. A stroke op also leaves a drawable paint: width 1 when the layer has none, and opacity 100
+ * when it carries none. A zero opacity comes from the importer (a zero-opacity paint) or stale data; the Design panel hides the
+ * opacity control of a bound stroke, so the zero could never be seen or cleared, and the swatch and the canvas would stay blank
+ * even when the variable resolves to an opaque colour. A transparency the variable itself resolves to lives in the colour, so it
+ * is kept: only a non-positive opacity is repaired, never a set one.
+ * @param {{ key: string, node: any }[]} layers the master layers a display key maps to (`root`, `label`)
+ * @param {{ key: string, varKey: string, itemId: string }[]} ops
+ * @returns {any[]} the layers that changed
+ */
+export function applyBindTokens(layers, ops) {
+    const touched = [];
+    for (const op of ops) {
+        const layer = layers.find(l => l.key === op.key);
+        if (!layer) continue;
+        const n = layer.node;
+        n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
+        if (op.varKey === 'fills.0') delete n.vars.fill;
+        if (op.varKey === 'stroke') {
+            if (!(n.strokeWidth > 0)) n.strokeWidth = 1;
+            if (!(n.strokeOpacity > 0)) n.strokeOpacity = 1;
+        }
+        touched.push(n);
+    }
+    return touched;
+}

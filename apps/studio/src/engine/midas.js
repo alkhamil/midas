@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconRuleOf, iconSlotBindings, isIconCandidate, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconRuleOf, iconSlotBindings, isIconCandidate, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1225,6 +1225,8 @@ function bindVariable(prop, id) {
                 delete n.vars[k];
             if (prop === 'stroke' && !(n.strokeWidth > 0))
                 n.strokeWidth = 1;
+            if (prop === 'stroke' && !(n.strokeOpacity > 0))
+                n.strokeOpacity = 1;
             if (prop === 'w')
                 n.layoutSizingH = 'fixed';
             if (prop === 'h')
@@ -9165,9 +9167,8 @@ function startPlay() {
 }
 $('#play').onclick = startPlay;
 
-/** Binds the unbound mapped properties of a bound master to their group variables (see planBindTokens), inside the
- * caller's history step. Existing bindings are kept; a bound stroke with no width gets width 1, and a stale `fill`
- * key goes when `fills.0` is bound (see scBind). Returns the ops applied. */
+/** Binds the unbound mapped properties of a bound master to their group variables (see planBindTokens and applyBindTokens),
+ * inside the caller's history step. Existing bindings are kept. Returns the ops applied. */
 function bindMasterTokens(master, { announce = false } = {}) {
     const binding = master?.component ? master.behavior : null;
     if (!binding || !('templateId' in binding)) return 0;
@@ -9175,13 +9176,7 @@ function bindMasterTokens(master, { announce = false } = {}) {
     const layers = onPage(pageOfNode(master.id)?.id, () => masterLayersOf(master, id => doc.children(id)));
     const { ops, problems } = planBindTokens({ template, binding, layers, variables: varStore() });
     if (announce && problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
-    for (const op of ops) {
-        const n = layers.find(l => l.key === op.key).node;
-        n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
-        if (op.varKey === 'fills.0') delete n.vars.fill;
-        if (op.varKey === 'stroke' && !(n.strokeWidth > 0)) n.strokeWidth = 1;
-        doc.touch(n);
-    }
+    for (const n of applyBindTokens(layers, ops)) doc.touch(n);
     return ops.length;
 }
 
