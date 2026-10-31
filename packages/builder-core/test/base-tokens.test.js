@@ -195,3 +195,29 @@ test('static sizes reject a non-Semantic entry and a mismatched primitive value'
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Size', value: 1, primitive: 'size/1', source: 'test' } }), /must name a Semantic number/);
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', value: 24, primitive: 'size/24', source: 'test' } }), /wants 24 but Primitives\/size\/24 is 99/);
 });
+
+test('static line heights pair fontSize to JSON Typography steps, nearest lower when exact is missing', () => {
+    const parsed = parseTokenJson([
+        { Typography: { modes: { 'Mode 1': { font: { 'line height': { 10: num(12), 14: num(20) } } } } } },
+        { Semantic: { modes: { Light: {}, Dark: {} } } },
+    ]);
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    const plan = buildBasePlan(parsed, map, {
+        lineHeightSM: { collection: 'Semantic', fontSize: 10, source: 'test' },
+        lineHeightLG: { collection: 'Semantic', fontSize: 12, source: 'test' },
+    });
+    const sm = plan.items.find(i => i.collection === 'Semantic' && i.name === 'lineHeightSM');
+    assert.deepEqual(Object.keys(sm.values), ['Light', 'Dark']);
+    assert.deepEqual(sm.values.Light, { alias: { collection: 'Typography', name: 'font/line-height/10' } });
+    const lg = plan.items.find(i => i.collection === 'Semantic' && i.name === 'lineHeightLG');
+    assert.deepEqual(lg.values.Dark, { alias: { collection: 'Typography', name: 'font/line-height/10' } });
+    assert.ok(plan.report.derived.some(d => d.name === 'Semantic/lineHeightLG' && /nearest lower JSON step 10/.test(d.reason)), 'fallback flagged derived');
+    assert.ok(!plan.report.derived.some(d => d.name === 'Semantic/lineHeightSM'), 'exact pair not flagged');
+});
+
+test('static line heights reject a non-Semantic entry, a missing table and a fontSize below every step', () => {
+    const parsed = parseTokenJson([{ Typography: { modes: { 'Mode 1': { font: { 'line height': { 10: num(12) } } } } } }]);
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Icons', fontSize: 10, source: 'test' } }), /must name a Semantic line height/);
+    assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', fontSize: 4, source: 'test' } }), /below every JSON line-height step/);
+});

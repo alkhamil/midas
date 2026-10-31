@@ -10,7 +10,7 @@ const model = buttonModel({
     colors: ['primary', 'danger'],
     variantModes: ['solid', 'outlined'],
     sizeModes: [{ id: 'sm', name: 'Small' }],
-    sizeValues: { fontSize: { sm: 14 }, lineHeight: { sm: 1.5 }, paddingX: { sm: 12 }, paddingY: { sm: 6 }, gap: { sm: 6 }, radius: { sm: 6 }, iconSize: { sm: 14 } },
+    sizeValues: { fontSize: { sm: 14 }, lineHeight: { sm: 20 }, paddingX: { sm: 12 }, paddingY: { sm: 6 }, gap: { sm: 6 }, radius: { sm: 6 }, iconSize: { sm: 14 } },
 });
 /** The model's items, without the ones named in `drop`. */
 const items = (drop = []) => model.items.filter(item => !drop.includes(item.name));
@@ -68,6 +68,10 @@ test('the resolved props hold the stored values, and the schema default for the 
 
 test('a preview state the template does not have is refused', () => {
     assert.throws(() => draw('pressed'), /unknown preview state "pressed"/);
+});
+
+test('lineHeight resolves to px from the bound variable, never a ratio', () => {
+    assert.equal(draw().vars['--button-line-height'], '20px');
 });
 
 // The canvas draws a preview only for the root's background and border. Text colour stays in the Preview section.

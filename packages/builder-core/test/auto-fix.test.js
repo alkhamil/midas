@@ -2,7 +2,7 @@
 // the mechanism; the Button and Input templates pin the real data (derived sets, needs-value sets, zero literals).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TEMPLATES, variableProps, roleOf, planAutoFix, applyAutoFix, ROLES, diagnoseDocument } from '../src/index.js';
+import { TEMPLATES, variableProps, roleOf, planAutoFix, applyAutoFix, applyBasePlan, planFromSnapshot, BASE_SNAPSHOT, ROLES, diagnoseDocument } from '../src/index.js';
 
 const MINI = {
     id: 'mini',
@@ -109,7 +109,7 @@ test('planning is pure; applying twice is a no-op', () => {
     assert.equal(second.fixable, false);
 });
 
-const SNAPSHOT_DERIVED = ["Semantic/controlHeightXL","Semantic/fontSizeXS","Primitives/size/1.8","Semantic/lineHeightXS","Primitives/size/1.6667","Primitives/size/1.5714","Primitives/size/1.5","Primitives/size/1.4","Semantic/borderRadiusXL"];
+const SNAPSHOT_DERIVED = ["Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL"];
 const EXPECTED_DERIVED = {
     button: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryBg","Semantic/colorErrorBg","Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorPrimaryBgHover","Semantic/colorErrorBgHover","Semantic/colorPrimaryActive","Semantic/colorErrorActive","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline"],
     input: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorWarningHover","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline","Semantic/colorWarningOutline"],
@@ -181,7 +181,7 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
 test('extrapolated antd sizes are flagged derived and still resolve', () => {
     const template = TEMPLATES.get('button');
     const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
-    for (const name of ['Semantic/controlHeightXL', 'Semantic/fontSizeXS', 'Semantic/lineHeightXS', 'Semantic/borderRadiusXL']) {
+    for (const name of ['Semantic/controlHeightXL', 'Semantic/fontSizeXS', 'Semantic/lineHeightXS', 'Semantic/lineHeightHeading1', 'Semantic/lineHeightHeading2', 'Semantic/borderRadiusXL']) {
         assert.ok(plan.derived.some(d => d.name === name), name + ' flagged derived');
         const [coll, iname] = name.split('/');
         const item = plan.plan.items.find(i => i.name === iname && plan.plan.collections[i.collectionIndex].name === coll);
@@ -211,7 +211,57 @@ test('no JSON-based size mapping remains: aliases never point at Size collection
         for (const value of Object.values(v.values)) {
             if (!value.alias) continue;
             const t = atName(value.alias);
-            assert.ok(t.startsWith('Semantic/') || t.startsWith('Primitives/') || t.startsWith('Icons/') || t.startsWith('Size/'), t);
+            assert.ok(t.startsWith('Semantic/') || t.startsWith('Primitives/') || t.startsWith('Typography/') || t.startsWith('Icons/') || t.startsWith('Size/'), t);
         }
     }
+});
+test('button Size lineHeight resolves to paired px through Semantic and Typography', () => {
+    const template = TEMPLATES.get('button');
+    const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
+    const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
+    const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
+    for (const [mode, sem, step, px] of [['xs', 'lineHeightXS', 'font/line-height/10', 12], ['sm', 'lineHeightSM', 'font/line-height/12', 16], ['md', 'lineHeight', 'font/line-height/14', 20], ['lg', 'lineHeightLG', 'font/line-height/16', 24], ['xl', 'lineHeightXL', 'font/line-height/20', 28]]) {
+        const lh = plan.plan.items.find(i => i.name === 'button/lineHeight');
+        assert.equal(atName(lh.values[mode].alias), 'Semantic/' + sem, mode);
+        assert.equal(atName(findItem('Semantic', sem).values.Light.alias), 'Typography/' + step, mode);
+        assert.equal(findItem('Typography', step).values['Mode 1'].literal, px, mode);
+    }
+    const inputPlan = planAutoFix({ template: TEMPLATES.get('input'), binding: emptyBinding(TEMPLATES.get('input')), variables: { collections: [], items: [] }, layers: [] });
+    const ilh = inputPlan.plan.items.find(i => i.name === 'input/lineHeight');
+    const iname = a => inputPlan.plan.collections[a.collectionIndex].name + '/' + a.name;
+    assert.equal(iname(ilh.values.md.alias), 'Semantic/lineHeight');
+    assert.equal(iname(ilh.values.sm.alias), 'Semantic/lineHeightSM');
+});
+
+test('a ratio-valued lineHeight binding is reported with a fix that rebinds it to the paired px token', () => {
+    const template = TEMPLATES.get('button');
+    const store = { collections: [], items: [] };
+    let n = 0;
+    const uid2 = () => 't' + (++n);
+    applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), uid2);
+    const prim = store.collections.find(c => c.name === 'Primitives');
+    const ratio = { id: uid2(), collectionId: prim.id, name: 'size/1.5', type: 'number', values: { [prim.modes[0].id]: 1.5 } };
+    store.items.push(ratio);
+    const sem = store.collections.find(c => c.name === 'Semantic');
+    const sm = store.items.find(i => i.collectionId === sem.id && i.name === 'lineHeightSM');
+    sm.values[sem.modes[0].id] = { alias: ratio.id };
+    const size = { id: uid2(), name: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'].map(name => ({ id: uid2(), name })) };
+    store.collections.push(size);
+    const comp = { id: uid2(), collectionId: size.id, name: 'button/lineHeight', type: 'number', values: {} };
+    for (const m of size.modes) comp.values[m.id] = { alias: sm.id };
+    store.items.push(comp);
+    const binding = { version: 2, templateId: 'button', variables: { variant: null, color: null, size: size.id } };
+    const doc = { variables: store, pages: [{ name: 'p', nodes: [{ id: 'm', name: 'B', component: true, behavior: binding }] }] };
+    assert.equal(diagnoseDocument(doc).filter(f => f.code === 'lineheight-ratio').length, 5);
+    const plan = planAutoFix({ template, binding, variables: store, layers: [] });
+    assert.ok(plan.summary.rebound > 0, 'the repair is planned');
+    applyAutoFix(store, binding, plan, uid2);
+    assert.deepEqual(diagnoseDocument(doc).filter(f => f.code === 'lineheight-ratio'), []);
+    const second = planAutoFix({ template, binding, variables: store, layers: [] });
+    assert.equal(second.summary.rebound, 0, 'second run rebinds nothing');
+    const target = store.items.find(i => i.id === comp.values[size.modes[1].id].alias);
+    assert.equal(target.name, 'lineHeightSM');
+    const px = store.items.find(i => i.id === target.values[sem.modes[0].id].alias);
+    assert.equal(px.name, 'font/line-height/12');
+    assert.equal(px.values[Object.keys(px.values)[0]], 16);
 });

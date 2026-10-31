@@ -8,7 +8,7 @@ const model = buttonModel({
     variantModes: ['solid', 'outlined'],
     sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
     sizeValues: {
-        fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 1.5, lg: 1.5 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
+        fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 20, lg: 24 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
         gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
     },
 });
