@@ -37,16 +37,21 @@ test('a Button stroke never uses a CSS outline, so the keyboard-focus ring keeps
     }
 });
 
-test('the overlay corners inherit the box corners, in every mode', () => {
+test('the overlay corners match the box corners grown by the stroke, in every mode', () => {
     const overlay = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'center' }));
-    assert.equal(overlay.style.borderRadius, 'inherit');
+    assert.equal(overlay.style.borderRadius, '9px');
     assert.doesNotMatch(overlay.style.borderRadius ?? '', /var\(--button-radius\)/);
 });
 
-test('a per-side stroke draws one box-sized bar per side it names', () => {
-    const html = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 4, strokeSides: 'custom', strokeT: 4, strokeR: 0, strokeB: 0, strokeL: 0 })).html;
-    assert.equal(html.match(/<rect x="0"/g).length, 1);
-    assert.match(html, /height:4px/);
+test('a per-side stroke draws CSS borders per side it names, and no SVG overlay', () => {
+    const overlay = overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 4, strokeSides: 'custom', strokeT: 4, strokeR: 0, strokeB: 0, strokeL: 0 }));
+    assert.equal(overlay.html, undefined);
+    assert.equal(overlay.style.borderTopWidth, '4px');
+    assert.equal(overlay.style.borderTopStyle, 'solid');
+    assert.equal(overlay.style.borderTopColor, '#18181b');
+    assert.equal(overlay.style.borderRightStyle, 'none');
+    assert.equal(overlay.style.borderBottomStyle, 'none');
+    assert.equal(overlay.style.borderLeftStyle, 'none');
 });
 
 test('a dashed stroke draws its dash array instead of a solid border', () => {

@@ -275,7 +275,7 @@ function renderButton(n, template, parent, scope) {
 
 /**
  * A uniform solid stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws
- * it. The corners inherit the box's own, so they match in every mode; a dashed or per-side stroke has no border form (see strokeOverlayEl).
+ * it. The corners are the box's own grown by the stroke, so they match in every mode; a dashed stroke has no border form (see strokeOverlayEl).
  * @param {any} n
  * @returns {Element}
  */
