@@ -52,7 +52,7 @@
 ## Antrean
 
 - Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
-- Open: `Button Size` paddingY md/lg and `Input Size` paddingY xl read Primitive 0 / 9 in the committed snapshot; antd gives 4 and 7 for Button and Input md/lg. Needs a snapshot rebuild from the token JSON (not in the repo). Axis padding (`paddingX*`/`paddingY*`, template-qualified where Button and Input differ) is not done.
+- Button paddingY is 0 in every size: antd forces `buttonPaddingVertical = 0` (`button/style/token.ts`, `index.ts`); Input paddingY (4 md, 7 lg) comes from `paddingBlock`. Template-qualified tokens are correct. `Input Size` paddingY xl (9) is derived. The token JSON is not in the repo, so `base-snapshot.json` cannot be rebuilt here.
 
 ## Maintenance
 
