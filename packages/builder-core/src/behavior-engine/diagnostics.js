@@ -24,9 +24,11 @@ import { masterLayersOf } from './layers.js';
 function literalOf(item, modeName, items, collections, guard = new Set()) {
     if (!item || guard.has(item.id)) return undefined;
     guard.add(item.id);
-    // An alias reads in its own collection's mode: the same mode name when it has it, else the first mode.
+    // An alias reads in its own collection's mode: the same mode name when it has it, else the first
+    // mode holding a value, else the first mode (the read path variableValue falls back the same way).
     const modes = collections.find(c => c.id === item.collectionId)?.modes ?? [];
-    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id
+        ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
     const value = modeId === undefined ? undefined : item.values?.[modeId];
     if (typeof value === 'number' || typeof value === 'string') return value;
     if (value && typeof value === 'object' && typeof value.alias === 'string') {
@@ -45,13 +47,13 @@ const isRatioValue = value => typeof value === 'number' && value > 0 && value < 
 const modeKey = s => String(s ?? '').trim().toLowerCase();
 
 /**
- * Whether a token must stay transparent: its role derives a 0% alias (the rest colour of a ring). Generic:
- * any token whose role resolves to a 0%-opacity base reads this path, never a token name.
+ * Whether a token must stay transparent: its role is the transparent token (the rest colour of a ring). Generic:
+ * any token whose role resolves to the transparent base reads this path, never a token name.
  */
 const transparentToken = (template, token, modeName) => {
     const role = roleOf(template, token, modeName);
     if (!role || typeof role !== 'string' || role.includes('/')) return false;
-    return ROLES[role]?.derive?.opacity === 0;
+    return ROLES[role]?.base === 'Semantic/colorTransparent';
 };
 
 /**
@@ -63,7 +65,8 @@ function restOf(item, modeName, items, collections, guard = new Set(), trail = [
     guard.add(item.id);
     const coll = collections.find(c => c.id === item.collectionId);
     const modes = coll?.modes ?? [];
-    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id
+        ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
     const value = modeId === undefined ? undefined : item.values?.[modeId];
     const here = [...trail, coll?.name ?? null];
     if (typeof value === 'number' || typeof value === 'string') {

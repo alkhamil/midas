@@ -1,44 +1,53 @@
 // The committed base snapshot: what the build script wrote from the token JSON plus the antd size scale, pinned so
-// the studio can rely on the bundled data instead of the token file. Counts equal the importer's output (4 collections,
-// 303 variables, 6 derived, 0 needs value, 0 unresolved, 21 renamed). The Size scale follows antd-ref, not the JSON:
-// there is no Size collection and no JSON-based size mapping left. Line heights are px paired to the JSON Typography
-// table; antd supplies the names only.
+// the studio can rely on the bundled data instead of the token file. Counts equal the importer's output (3 collections,
+// 304 variables, 15 derived, 0 needs value, 0 unresolved, 0 renamed: the rebuild starts from sanitary names, so the
+// rename provenance of the first import is not carried). The Size scale follows antd-ref, not the JSON: there is no
+// Size collection and no JSON-based size mapping left. Line heights are px paired to the JSON Typography table; antd
+// supplies the names only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BASE_SNAPSHOT, planFromSnapshot, applyBasePlan } from '../src/index.js';
 
-test('the snapshot holds four collections with their modes', () => {
+test('the snapshot holds three collections with their modes', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     assert.deepEqual(plan.collections.map(c => [c.name, c.modes]), [
         ['Primitives', ['Base']],
         ['Semantic', ['Light', 'Dark']],
         ['Typography', ['Mode 1']],
-        ['Icons', ['Base']],
     ]);
 });
 
-test('the snapshot equals the importer output: 303 variables with the known report', () => {
+test('the snapshot equals the importer output: 304 variables with the known report', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 185, Typography: 31, Semantic: 55, Icons: 32 });
-    assert.equal(plan.items.length, 303);
+    assert.deepEqual(per, { Primitives: 188, Typography: 31, Semantic: 85 });
+    assert.equal(plan.items.length, 304);
     assert.deepEqual(plan.report.derived.map(d => d.name), [
+        'Primitives/transparent',
         'Semantic/controlHeightXL',
         'Semantic/fontSizeXS',
         'Semantic/lineHeightXS',
         'Semantic/lineHeightHeading1',
         'Semantic/lineHeightHeading2',
         'Semantic/borderRadiusXL',
+        'Semantic/paddingXxs',
+        'Primitives/size/15',
+        'Semantic/buttonPaddingXxl',
+        'Semantic/inputPaddingXxl',
+        'Semantic/paddingYxs',
+        'Semantic/buttonPaddingYxl',
+        'Primitives/size/9',
+        'Semantic/inputPaddingYxl',
     ]);
     assert.deepEqual(plan.report.needsValue, []);
     assert.deepEqual(plan.report.unresolved, []);
-    assert.equal(plan.report.renamed.length, 21);
+    assert.deepEqual(plan.report.renamed, []);
 });
 
 test('Semantic holds the antd size scale as aliases, no literals', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
-    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 40, 'the size scale is present');
+    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 55, 'the size scale is present');
     for (const item of plan.items.filter(i => i.collection === 'Semantic')) {
         for (const value of Object.values(item.values)) {
             assert.ok(value.alias && !value.needsValue, `${item.name} aliases a base step`);
@@ -91,7 +100,7 @@ test('the snapshot plan applies and a second run is a no-op', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const first = applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
-    assert.deepEqual(first, { collections: 4, items: 303, modes: 5, aliases: 120 });
+    assert.deepEqual(first, { collections: 3, items: 304, modes: 4, aliases: 170 });
     assert.deepEqual(applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`), { collections: 0, items: 0, modes: 0, aliases: 0 });
 });
 
@@ -99,4 +108,34 @@ test('planFromSnapshot rejects garbage with an explicit error', () => {
     for (const bad of [null, [], {}, { collections: [], items: [], report: null }, { collections: [{ name: 'X' }], items: [], report: {} }]) {
         assert.throws(() => planFromSnapshot(bad), /Base snapshot/, JSON.stringify(bad));
     }
+});
+
+test('Generate base on an empty file yields the new tokens', () => {
+    const store = { collections: [], items: [] };
+    let n = 0;
+    applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
+    assert.deepEqual(store.collections.map(c => c.name), ['Primitives', 'Semantic', 'Typography']);
+    const has = (coll, name) => {
+        const c = store.collections.find(x => x.name === coll);
+        return store.items.some(i => i.collectionId === c.id && i.name === name);
+    };
+    for (const name of ['paddingXxs', 'paddingXsm', 'buttonPaddingXmd', 'buttonPaddingXlg', 'buttonPaddingXxl',
+        'inputPaddingXmd', 'inputPaddingXlg', 'inputPaddingXxl', 'paddingYxs', 'paddingYsm',
+        'buttonPaddingYmd', 'buttonPaddingYlg', 'buttonPaddingYxl', 'inputPaddingYmd', 'inputPaddingYlg', 'inputPaddingYxl',
+        'gapXXS', 'gapXS', 'gapSM', 'gap', 'gapMD', 'gapLG', 'gapXL',
+        'colorTransparent', 'colorTextLightSolid', 'colorPrimaryHover', 'colorPrimaryActive',
+        'colorErrorHover', 'colorErrorActive', 'colorWarningHover',
+        'colorPrimaryOutline', 'colorErrorOutline', 'colorWarningOutline',
+        'colorBgContainerDisabled', 'colorPrimaryBg', 'colorPrimaryBgHover', 'colorErrorBg', 'colorErrorBgHover']) {
+        assert.ok(has('Semantic', name), `Semantic/${name} exists`);
+    }
+    assert.ok(has('Primitives', 'transparent'), 'Primitives/transparent exists');
+    assert.ok(!store.collections.some(c => c.name === 'Icons' || c.name === 'Size'), 'no Icons or Size collection');
+});
+
+test('Semantic names are unique case-insensitively', () => {
+    const plan = planFromSnapshot(BASE_SNAPSHOT);
+    const names = plan.items.filter(i => i.collection === 'Semantic').map(i => i.name.toLowerCase());
+    assert.equal(names.length, new Set(names).size, 'no two Semantic names differ by case only');
+    assert.equal(names.filter(n => n === 'paddingxxs').length, 1, 'only paddingXxs remains: generic paddingXXS is dropped as a case-only collision');
 });

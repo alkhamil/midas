@@ -12518,7 +12518,9 @@
         "type": "color",
         "collectionId": "col-variant",
         "values": {
-          "solid": "#00000000",
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
           "outlined": {
             "alias": "c-color-border"
           }
@@ -12556,7 +12558,9 @@
         "type": "color",
         "collectionId": "col-variant",
         "values": {
-          "solid": "#00000000",
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
           "outlined": {
             "alias": "c-color-border-hover"
           }
@@ -12594,7 +12598,9 @@
         "type": "color",
         "collectionId": "col-variant",
         "values": {
-          "solid": "#00000000",
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
           "outlined": {
             "alias": "c-color-border-active"
           }

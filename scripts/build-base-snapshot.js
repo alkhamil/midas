@@ -1,5 +1,5 @@
-// Builds the committed base variable snapshot from the token JSON: the five source collections (Primitives, Semantic,
-// Size, Typography, Icons) after mapping, with modes, variable paths, types, alias refs and derived flags. The ~100
+// Builds the committed base variable snapshot from the token JSON: the three base collections (Primitives, Semantic,
+// Typography) after mapping, with modes, variable paths, types, alias refs and derived flags. The ~100
 // component-specific collections are never in the snapshot. Run `node scripts/build-base-snapshot.js <token-json-path>`,
 // then commit the snapshot; the studio reads it, never the token JSON.
 import { readFileSync, writeFileSync } from 'node:fs';

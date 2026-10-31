@@ -16,8 +16,8 @@ import BASE_SNAPSHOT from '../base-tokens/base-snapshot.json' with { type: 'json
 
 export { ROLES };
 
-/** Names of the base collections Auto Fix reads aliases from. Size lives here no longer: the size scale moved to Semantic. */
-export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Typography', 'Icons'];
+/** Names of the base collections Auto Fix reads aliases from: exactly the Generate base output. */
+export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Typography'];
 
 const modeKey = (/** @type {unknown} */ s) => String(s ?? '').toLowerCase();
 const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : null;
@@ -301,7 +301,8 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         if (!item || guard.has(item.id)) return undefined;
         guard.add(item.id);
         const modes = collections.find(c => c.id === item.collectionId)?.modes ?? [];
-        const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+        const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id
+            ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
         const value = modeId === undefined ? undefined : item.values?.[modeId];
         if (typeof value === 'number' || typeof value === 'string') {
             let text = value;
@@ -389,9 +390,9 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             }
         }
     }
-    // Rest colours that must stay transparent resolve through a Semantic alias at alpha 0. A stored value that is
+    // Rest colours that must stay transparent resolve through the transparent token. A stored value that is
     // opaque or not Semantic-aliased is repaired like a ratio leftover: the value is overwritten with the role alias.
-    // The role's 0%-opacity derive marks these tokens; no token name is special-cased.
+    // The transparent base marks these tokens; no token name is special-cased.
     let transparentRepaired = 0;
     for (const [dim] of variableProps(template)) {
         if (!(dim in dimCollection)) continue;
@@ -404,7 +405,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
                 if (!have || have.type !== 'color') continue;
                 for (const mode of modesOf(dim)) {
                     const role = roleOf(template, token, mode);
-                    if (!role || typeof role !== 'string' || isRef(role) || ROLES[role]?.derive?.opacity !== 0) continue;
+                    if (!role || typeof role !== 'string' || isRef(role) || ROLES[role]?.base !== 'Semantic/colorTransparent') continue;
                     const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
                     if (!hasMode) continue;
                     const modeId = coll.modes.find(m => modeKey(m.name) === modeKey(mode))?.id;
@@ -511,7 +512,7 @@ export function applyAutoFix(store, binding, autoFix, uid) {
             : (store.collections || []).find(c => c.name === wanted.name && !usedIds.has(c.id));
         if (reuse) {
             for (const mode of wanted.modes) {
-                if (!reuse.modes.some(m => m.name === mode)) { reuse.modes.push({ id: uid(), name: mode }); stats.modes++; }
+                if (!reuse.modes.some(m => modeKey(m.name) === modeKey(mode))) { reuse.modes.push({ id: uid(), name: mode }); stats.modes++; }
             }
             usedIds.add(reuse.id);
             collIdOf.push(reuse.id);

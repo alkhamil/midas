@@ -95,7 +95,7 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
         const values = {};
         for (const mode of variantModes) {
             const spec = VARIANT_VALUES[mode][token];
-            if (spec === 'transparent') values[mode] = token === 'outline-color' ? { alias: semItem } : '#00000000';
+            if (spec === 'transparent') values[mode] = { alias: semItem };
             else if (spec.startsWith('c:')) values[mode] = { alias: `c-${spec.slice(2)}` };
             else values[mode] = spec;
         }

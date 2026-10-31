@@ -4,7 +4,15 @@
     "modes": [
       "Base"
     ],
-    "naming": "raw"
+    "naming": "raw",
+    "derived": [
+      {
+        "name": "transparent",
+        "type": "color",
+        "literal": "#00000000",
+        "reason": "antd has no transparent step: colour 000000 at 0% alpha for colorTransparent and every no-colour role"
+      }
+    ]
   },
   "Semantic": {
     "source": "Semantic",
@@ -102,6 +110,99 @@
         "Dark": "stroke/subtle",
         "role": "stroke",
         "derived": false
+      },
+      "colorPrimaryHover": {
+        "Light": "primary/600",
+        "Dark": "primary/600",
+        "role": "brand hover (roles: border-hover, brand-hover)",
+        "derived": false
+      },
+      "colorPrimaryActive": {
+        "Light": "primary/700",
+        "Dark": "primary/700",
+        "role": "brand active (roles: brand-active)",
+        "derived": false
+      },
+      "colorErrorHover": {
+        "Light": "danger/600",
+        "Dark": "danger/600",
+        "role": "danger hover (roles: danger-hover, error-hover)",
+        "derived": false
+      },
+      "colorErrorActive": {
+        "Light": "danger/700",
+        "Dark": "danger/700",
+        "role": "danger active (roles: danger-active)",
+        "derived": false
+      },
+      "colorWarningHover": {
+        "Light": "warning/600",
+        "Dark": "warning/600",
+        "role": "warning hover (roles: warning-hover)",
+        "derived": false
+      },
+      "colorPrimaryOutline": {
+        "Light": "primary/500",
+        "Dark": "primary/500",
+        "role": "primary focus halo (roles: outline)",
+        "derived": false,
+        "opacity": 20
+      },
+      "colorErrorOutline": {
+        "Light": "danger/500",
+        "Dark": "danger/500",
+        "role": "error focus halo (roles: danger-outline)",
+        "derived": false,
+        "opacity": 20
+      },
+      "colorWarningOutline": {
+        "Light": "warning/500",
+        "Dark": "warning/500",
+        "role": "warning focus halo (roles: warning-outline)",
+        "derived": false,
+        "opacity": 20
+      },
+      "colorBgContainerDisabled": {
+        "Light": "neutral/200",
+        "Dark": "neutral/200",
+        "role": "disabled fill (roles: bg-disabled)",
+        "derived": false
+      },
+      "colorPrimaryBg": {
+        "Light": "primary/50",
+        "Dark": "primary/50",
+        "role": "brand tint (roles: brand-bg)",
+        "derived": false
+      },
+      "colorPrimaryBgHover": {
+        "Light": "primary/100",
+        "Dark": "primary/100",
+        "role": "brand tint hover (roles: brand-bg-hover)",
+        "derived": false
+      },
+      "colorErrorBg": {
+        "Light": "danger/50",
+        "Dark": "danger/50",
+        "role": "danger tint (roles: danger-bg)",
+        "derived": false
+      },
+      "colorErrorBgHover": {
+        "Light": "danger/100",
+        "Dark": "danger/100",
+        "role": "danger tint hover (roles: danger-bg-hover)",
+        "derived": false
+      },
+      "colorTransparent": {
+        "Light": "transparent",
+        "Dark": "transparent",
+        "role": "no colour (roles: transparent, outline-transparent)",
+        "derived": false
+      },
+      "colorTextLightSolid": {
+        "Light": "white",
+        "Dark": "white",
+        "role": "text on brand (roles: solid-text)",
+        "derived": false
       }
     }
   },
@@ -111,66 +212,5 @@
       "Mode 1"
     ],
     "naming": "raw"
-  },
-  "Icons": {
-    "modes": [
-      "Base"
-    ],
-    "sizes": {
-      "source": "Size icons",
-      "prefix": "size/"
-    },
-    "colors": {
-      "icons/primary": {
-        "target": "colorText",
-        "role": "text",
-        "derived": false
-      },
-      "icons/secondary": {
-        "target": "colorTextSecondary",
-        "role": "text",
-        "derived": false
-      },
-      "icons/tertiary": {
-        "target": "colorTextTertiary",
-        "role": "text",
-        "derived": false
-      },
-      "icons/disabled": {
-        "target": "colorTextDisabled",
-        "role": "text",
-        "derived": false
-      },
-      "icons/brand": {
-        "target": "colorPrimary",
-        "role": "brand",
-        "derived": false
-      },
-      "icons/success": {
-        "target": "colorSuccess",
-        "role": "success",
-        "derived": false
-      },
-      "icons/warning": {
-        "target": "colorWarning",
-        "role": "warning",
-        "derived": false
-      },
-      "icons/danger": {
-        "target": "colorError",
-        "role": "danger",
-        "derived": false
-      },
-      "icons/info": {
-        "target": "colorInfo",
-        "role": "info",
-        "derived": false
-      },
-      "icons/on-brand": {
-        "target": "Primitives:white",
-        "role": "text on brand",
-        "derived": false
-      }
-    }
   }
 }

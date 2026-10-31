@@ -6,7 +6,7 @@
 import ANT_MAP from './ant-map.json' with { type: 'json' };
 import SIZES from './antd-sizes.json' with { type: 'json' };
 export { ANT_MAP, SIZES };
-export const SOURCE_ORDER = ['Primitives', 'Semantic', 'Size', 'Typography', 'Size icons'];
+export const SOURCE_ORDER = ['Primitives', 'Semantic', 'Size', 'Typography'];
 
 /** The variable type a token `$type` becomes; null when the JSON type has no variable kind. */
 export const VARIABLE_TYPE = { color: 'color', float: 'number', string: 'string', boolean: 'boolean' };
@@ -140,20 +140,20 @@ function correspondingMode(sourcesByName, collection, path, mode) {
 
 /**
  * Builds the base variable plan from parsed token sources through the Ant-name mapping. Primitives and Typography keep
- * the JSON names as literals; Semantic colors use Ant global names as aliases into the JSON; the size scale comes from
- * the static antd table (antd-sizes.json), never from the JSON Size collection; Icons takes its sizes from Size icons
- * and its colors as aliases to Semantic. Every mapping ref must resolve, or the build throws naming it (an unmappable
- * name belongs in the mapping as derived or needs-value, never as a silent literal).
+ * the JSON names as literals (plus declared Primitive literals in the mapping, e.g. the transparent colour); Semantic
+ * colors use Ant global names as aliases into the JSON, with an optional opacity on the alias; the size scale comes from
+ * the static antd table (antd-sizes.json), never from the JSON Size collection. Every mapping ref must resolve, or the
+ * build throws naming it (an unmappable name belongs in the mapping as derived or needs-value, never as a silent literal).
  * @param {{ sources: { name: string, modes: Record<string, { path: string, type: string, raw: unknown }[]> }[], renames: [string, string][], unknownTypes: unknown[] }} parsed
  * @param {any} [antMap] the mapping (defaults to the bundled ant-map.json)
  * @param {any} [sizes] the static antd size table (defaults to the bundled antd-sizes.json)
  * @returns {{ collections: { name: string, modes: string[] }[], items: { collection: string, name: string, type: string, values: Record<string, { literal: unknown } | { alias: { collection: string, name: string } } | { needsValue: true, note: string }> }[], report: { created: string[], derived: { name: string, reason: string }[], needsValue: { name: string, reason: string }[], renamed: [string, string][], unresolved: { collection: string, mode: string, path: string, ref: string }[] } }}
  */
-/** Throws for an unknown mapping section: the mapping only covers Primitives, Semantic, Typography and Icons. */
+/** Throws for an unknown mapping section: the mapping only covers Primitives, Semantic and Typography. */
 function failSection(/** @type {string} */ section) { throw new Error(`Base variables: unknown mapping section "${section}"`); }
 export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
     for (const section of Object.keys(antMap)) {
-        if (!['Primitives', 'Semantic', 'Typography', 'Icons'].includes(section)) failSection(section);
+        if (!['Primitives', 'Semantic', 'Typography'].includes(section)) failSection(section);
     }
     const only = SOURCE_ORDER.filter(n => parsed.sources.some(s => s.name === n));
     const { unresolved } = resolveTokenRefs(parsed.sources, only);
@@ -164,6 +164,16 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
     /** @type {{ name: string, reason: string }[]} */
     const derived = [], needsValue = [];
     const fail = (/** @type {string} */ what) => { throw new Error(`Base variables: ${what}`); };
+    // Declared Primitive literals (e.g. the transparent colour): they join the source so mappings can alias them,
+    // and pushRaw emits them with the rest. Flagged derived in the report.
+    for (const extra of antMap.Primitives.derived ?? []) {
+        const src = sourcesByName.get(antMap.Primitives.source);
+        const mode = antMap.Primitives.modes[0];
+        const tokens = src?.modes[mode];
+        if (!src || !tokens || tokens.some(t => t.path === extra.name)) fail(`Base variables: Primitives derived "${extra.name}" has no source mode or already exists`);
+        tokens.push({ path: extra.name, type: extra.type, raw: extra.literal, resolved: { kind: 'literal', value: extra.literal } });
+        derived.push({ name: `Primitives/${extra.name}`, reason: extra.reason });
+    }
     /** Follows a mapping ref to the generated variable it aliases, or records why it cannot. Like a token ref, the path is looked up in its own source first, then in the other sources. */
     const aliasTo = (/** @type {string} */ collection, /** @type {string} */ mode, /** @type {string} */ path, /** @type {string} */ owner) => {
         const ordered = [collection, ...only.filter(n => n !== collection)];
@@ -195,7 +205,7 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
                 const target = aliasTo(map.source, jsonMode, entry[mode], `${section}/${antName}.${mode}`);
                 if (!target) { values[mode] = { needsValue: true, note: `no literal behind ${map.source}/${entry[mode]}` }; continue; }
                 if (target.type !== wantType) fail(`${section}/${antName} reaches a ${target.type}, not a ${wantType}`);
-                values[mode] = { alias: { collection: target.collection, name: target.name } };
+                values[mode] = { alias: { collection: target.collection, name: target.name }, ...(typeof entry.opacity === 'number' ? { opacity: entry.opacity } : {}) };
             }
             items.push({ collection: section, name: antName, type: wantType, values });
             const owner = `${section}/${antName}`;
@@ -245,19 +255,8 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
         items.push({ collection: 'Semantic', name: antName, type: 'number', values });
         if (spec.derived) derived.push({ name: `Semantic/${antName}`, reason: `extrapolated antd size (${spec.source})` });
     }
-    // Icons: sizes from Size icons, colors as aliases to Semantic (single mode; aliases follow the target's mode).
-    for (const mode of antMap.Icons.modes) {
-        for (const token of sourcesByName.get(antMap.Icons.sizes.source)?.modes[mode] ?? []) {
-            items.push({ collection: 'Icons', name: `${antMap.Icons.sizes.prefix}${token.path}`, type: token.type, values: { [mode]: { literal: token.raw } } });
-        }
-    }
-    for (const [name, entry] of Object.entries(antMap.Icons.colors)) {
-        const [targetCollection, targetName] = entry.target.includes(':') ? entry.target.split(':') : ['Semantic', entry.target];
-        items.push({ collection: 'Icons', name, type: 'color', values: Object.fromEntries(antMap.Icons.modes.map(m => [m, { alias: { collection: targetCollection, name: targetName } }])) });
-        if (entry.derived) derived.push({ name: `Icons/${name}`, reason: entry.role });
-    }
     const created = [...new Set(items.map(i => `${i.collection}/${i.name}`))];
-    return { collections: ['Primitives', 'Semantic', 'Typography', 'Icons'].map(name => ({ name, modes: antMap[name].modes })), items, report: { created, derived, needsValue, renamed: parsed.renames, unresolved: inScope } };
+    return { collections: ['Primitives', 'Semantic', 'Typography'].map(name => ({ name, modes: antMap[name].modes })), items, report: { created, derived, needsValue, renamed: parsed.renames, unresolved: inScope } };
 }
 
 /**

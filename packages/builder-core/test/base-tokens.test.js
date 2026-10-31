@@ -47,11 +47,7 @@ const MINI_MAP = {
         },
     },
     Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' },
-    Icons: {
-        modes: ['Base'],
-        sizes: { source: 'Size icons', prefix: 'size/' },
-        colors: { 'icons/primary': { target: 'colorText', role: 'text', derived: false } },
-    },
+
 };
 
 test('sanitizeTokenName applies one deterministic rule', () => {
@@ -175,7 +171,7 @@ test('static antd sizes alias Primitives steps and add missing steps as derived'
         controlHeightSM: { collection: 'Semantic', value: 24, primitive: 'size/24', derived: false, source: 'test' },
         controlHeightXL: { collection: 'Semantic', value: 48, primitive: 'size/48', derived: true, source: 'test' },
     };
-    const plan = buildBasePlan(parsed, { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } }, sizes);
+    const plan = buildBasePlan(parsed, { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' } }, sizes);
     const prim = plan.items.filter(i => i.collection === 'Primitives');
     assert.deepEqual(prim.map(i => i.name), ['size/24', 'size/48']); // size/24 comes from the JSON; only size/48 is added
     assert.equal(prim[1].values.Base.literal, 48);
@@ -191,7 +187,7 @@ test('static antd sizes alias Primitives steps and add missing steps as derived'
 
 test('static sizes reject a non-Semantic entry and a mismatched primitive value', () => {
     const parsed = parseTokenJson([{ Primitives: { modes: { Base: { size: { 24: { $type: 'float', $value: 99 } } } } } }]);
-    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' } };
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Size', value: 1, primitive: 'size/1', source: 'test' } }), /must name a Semantic number/);
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', value: 24, primitive: 'size/24', source: 'test' } }), /wants 24 but Primitives\/size\/24 is 99/);
 });
@@ -201,7 +197,7 @@ test('static line heights pair fontSize to JSON Typography steps, nearest lower 
         { Typography: { modes: { 'Mode 1': { font: { 'line height': { 10: num(12), 14: num(20) } } } } } },
         { Semantic: { modes: { Light: {}, Dark: {} } } },
     ]);
-    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' } };
     const plan = buildBasePlan(parsed, map, {
         lineHeightSM: { collection: 'Semantic', fontSize: 10, source: 'test' },
         lineHeightLG: { collection: 'Semantic', fontSize: 12, source: 'test' },
@@ -217,7 +213,7 @@ test('static line heights pair fontSize to JSON Typography steps, nearest lower 
 
 test('static line heights reject a non-Semantic entry, a missing table and a fontSize below every step', () => {
     const parsed = parseTokenJson([{ Typography: { modes: { 'Mode 1': { font: { 'line height': { 10: num(12) } } } } } }]);
-    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' } };
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Icons', fontSize: 10, source: 'test' } }), /must name a Semantic line height/);
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', fontSize: 4, source: 'test' } }), /below every JSON line-height step/);
 });

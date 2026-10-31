@@ -72,7 +72,7 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
         const values = {};
         for (const mode of variantModes) {
             const spec = VARIANT_VALUES[mode][token];
-            if (spec === 'transparent') values[mode] = token === 'outline-color' ? { alias: semItem } : '#00000000';
+            if (spec === 'transparent') values[mode] = { alias: semItem };
             else if (spec.startsWith('st:')) values[mode] = { alias: `${prefix}st-${spec.slice(3)}` };
             else values[mode] = spec;
         }

@@ -18,25 +18,9 @@
       "modes": [
         "Mode 1"
       ]
-    },
-    {
-      "name": "Icons",
-      "modes": [
-        "Base"
-      ]
     }
   ],
   "items": [
-    {
-      "collection": "Primitives",
-      "name": "white",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#ffffff"
-        }
-      }
-    },
     {
       "collection": "Primitives",
       "name": "black",
@@ -44,696 +28,6 @@
       "values": {
         "Base": {
           "literal": "#000000"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f2feff"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#e3f9fb"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#c6effa"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#91daf1"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#56b1d7"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#2b80af"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00487a"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#003768"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#002957"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#001d46"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00143a"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/disabled-5pct",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "rgba(18, 84, 130, 0.05)"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/disabled-10pct",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "rgba(18, 84, 130, 0.1)"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "primary/disabled-20pct",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "rgba(18, 84, 130, 0.2)"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f2fff8"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#e3fced"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#c9fce1"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#95f9ce"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#5fedbd"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#37dcb3"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00c5a7"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00a99f"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00888d"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#006372"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "secondary/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00495e"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f2fffb"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#e3fcf4"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#c9fcef"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#95f9e9"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#5fede2"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#37dcdc"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00b5c6"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#008daa"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#006b8e"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#004c72"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "tertiary/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#00375f"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f8fef6"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#e9fbe4"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#dbf9d3"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#b3f3a8"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#7bdb76"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#4eb752"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#20872e"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#17742c"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#10612a"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#0a4e26"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "success/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#064023"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f2fbff"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#e3f5fc"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#cce9fa"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#9cd0f5"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#67a9e1"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#3f81c4"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#0f4f9e"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#0a3d87"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#072d71"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#041f5b"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "info/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#02164b"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/25",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#fcf8ef"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/50",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#fcf5e3"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/100",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#fcf2ca"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/200",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#f9e296"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/300",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#eec860"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/400",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#deac39"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/500",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#c98602"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/600",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#ac6d01"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/700",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#905601"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/800",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#744100"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "warning/900",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "#603200"
         }
       }
     },
@@ -849,6 +143,116 @@
     },
     {
       "collection": "Primitives",
+      "name": "info/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f2fbff"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#e3f5fc"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#cce9fa"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#9cd0f5"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#67a9e1"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#3f81c4"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#0f4f9e"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#0a3d87"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#072d71"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#041f5b"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "info/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#02164b"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
       "name": "neutral/25",
       "type": "color",
       "values": {
@@ -959,16 +363,6 @@
     },
     {
       "collection": "Primitives",
-      "name": "neutral/disabled-5pct",
-      "type": "color",
-      "values": {
-        "Base": {
-          "literal": "rgba(16, 24, 40, 0.05)"
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
       "name": "neutral/disabled-10pct",
       "type": "color",
       "values": {
@@ -989,157 +383,17 @@
     },
     {
       "collection": "Primitives",
-      "name": "spacing/0",
-      "type": "number",
+      "name": "neutral/disabled-5pct",
+      "type": "color",
       "values": {
         "Base": {
-          "literal": 0
+          "literal": "rgba(16, 24, 40, 0.05)"
         }
       }
     },
     {
       "collection": "Primitives",
-      "name": "spacing/2",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 2
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/3",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 3
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/4",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 4
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/6",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 6
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/7",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 7
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/8",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 8
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/10",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 10
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/12",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 12
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/14",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 14
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/16",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 16
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/20",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 20
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/24",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 24
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/28",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 28
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/32",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 32
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/40",
+      "name": "opacity/40",
       "type": "number",
       "values": {
         "Base": {
@@ -1149,171 +403,11 @@
     },
     {
       "collection": "Primitives",
-      "name": "spacing/48",
+      "name": "opacity/100",
       "type": "number",
       "values": {
         "Base": {
-          "literal": 48
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/52",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 52
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/-10",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": -10
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/-8",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": -8
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "spacing/-6",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": -6
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/0",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 0
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/2",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 2
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/4",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 4
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/6",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 6
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/8",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 8
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/10",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 10
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/12",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 12
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/14",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 14
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/16",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 16
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/18",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 18
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/20",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 20
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "radius/full",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 9999
+          "literal": 100
         }
       }
     },
@@ -1499,7 +593,147 @@
     },
     {
       "collection": "Primitives",
-      "name": "stroke/0",
+      "name": "primary/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f2feff"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#e3f9fb"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#c6effa"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#91daf1"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#56b1d7"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#2b80af"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00487a"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#003768"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#002957"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#001d46"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00143a"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/disabled-10pct",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "rgba(18, 84, 130, 0.1)"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/disabled-20pct",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "rgba(18, 84, 130, 0.2)"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "primary/disabled-5pct",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "rgba(18, 84, 130, 0.05)"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/0",
       "type": "number",
       "values": {
         "Base": {
@@ -1509,17 +743,7 @@
     },
     {
       "collection": "Primitives",
-      "name": "stroke/1",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "stroke/2",
+      "name": "radius/2",
       "type": "number",
       "values": {
         "Base": {
@@ -1529,31 +753,211 @@
     },
     {
       "collection": "Primitives",
-      "name": "stroke/3",
+      "name": "radius/4",
       "type": "number",
       "values": {
         "Base": {
-          "literal": 3
+          "literal": 4
         }
       }
     },
     {
       "collection": "Primitives",
-      "name": "stroke/1.5",
+      "name": "radius/6",
       "type": "number",
       "values": {
         "Base": {
-          "literal": 1.5
+          "literal": 6
         }
       }
     },
     {
       "collection": "Primitives",
-      "name": "stroke/1.25",
+      "name": "radius/8",
       "type": "number",
       "values": {
         "Base": {
-          "literal": 1.25
+          "literal": 8
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/10",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 10
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/12",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 12
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/14",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 14
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/16",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 16
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/18",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 18
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/20",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 20
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "radius/full",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 9999
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f2fff8"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#e3fced"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#c9fce1"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#95f9ce"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#5fedbd"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#37dcb3"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00c5a7"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00a99f"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00888d"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#006372"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "secondary/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00495e"
         }
       }
     },
@@ -1859,7 +1263,157 @@
     },
     {
       "collection": "Primitives",
-      "name": "opacity/40",
+      "name": "spacing/0",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 0
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/2",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 2
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/3",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 3
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/4",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 4
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/6",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 6
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/7",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 7
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/8",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 8
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/10",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 10
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/12",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 12
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/14",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 14
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/16",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 16
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/20",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 20
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/24",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 24
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/28",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 28
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/32",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 32
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/40",
       "type": "number",
       "values": {
         "Base": {
@@ -1869,21 +1423,461 @@
     },
     {
       "collection": "Primitives",
-      "name": "opacity/100",
+      "name": "spacing/48",
       "type": "number",
       "values": {
         "Base": {
-          "literal": 100
+          "literal": 48
         }
       }
     },
     {
-      "collection": "Typography",
-      "name": "font/family/title",
-      "type": "string",
+      "collection": "Primitives",
+      "name": "spacing/52",
+      "type": "number",
       "values": {
-        "Mode 1": {
-          "literal": "Inter"
+        "Base": {
+          "literal": 52
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/-10",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": -10
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/-6",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": -6
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "spacing/-8",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": -8
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/0",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 0
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/1",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/2",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 2
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/3",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 3
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/1.25",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.25
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "stroke/1.5",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.5
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f8fef6"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#e9fbe4"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#dbf9d3"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#b3f3a8"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#7bdb76"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#4eb752"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#20872e"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#17742c"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#10612a"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#0a4e26"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "success/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#064023"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f2fffb"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#e3fcf4"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#c9fcef"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#95f9e9"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#5fede2"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#37dcdc"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00b5c6"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#008daa"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#006b8e"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#004c72"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "tertiary/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00375f"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/25",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#fcf8ef"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/50",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#fcf5e3"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/100",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#fcf2ca"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/200",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#f9e296"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/300",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#eec860"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/400",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#deac39"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/500",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#c98602"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/600",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#ac6d01"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/700",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#905601"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/800",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#744100"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "warning/900",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#603200"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "white",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#ffffff"
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "transparent",
+      "type": "color",
+      "values": {
+        "Base": {
+          "literal": "#00000000"
         }
       }
     },
@@ -1899,41 +1893,131 @@
     },
     {
       "collection": "Typography",
-      "name": "font/weight/Regular",
+      "name": "font/family/title",
       "type": "string",
       "values": {
         "Mode 1": {
-          "literal": "Regular"
+          "literal": "Inter"
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/weight/Medium",
-      "type": "string",
+      "name": "font/letter-spacing/0",
+      "type": "number",
       "values": {
         "Mode 1": {
-          "literal": "Medium"
+          "literal": 0
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/weight/Semi-Bold",
-      "type": "string",
+      "name": "font/line-height/10",
+      "type": "number",
       "values": {
         "Mode 1": {
-          "literal": "Semi Bold"
+          "literal": 12
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/weight/Bold",
-      "type": "string",
+      "name": "font/line-height/11",
+      "type": "number",
       "values": {
         "Mode 1": {
-          "literal": "Bold"
+          "literal": 16
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/12",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 16
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/14",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 20
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/16",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 24
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/18",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 24
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/20",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 28
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/24",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 32
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/32",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 40
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/40",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 44
+        }
+      }
+    },
+    {
+      "collection": "Typography",
+      "name": "font/line-height/value/80",
+      "type": "number",
+      "values": {
+        "Mode 1": {
+          "literal": 80
         }
       }
     },
@@ -2069,121 +2153,41 @@
     },
     {
       "collection": "Typography",
-      "name": "font/line-height/10",
-      "type": "number",
+      "name": "font/weight/Bold",
+      "type": "string",
       "values": {
         "Mode 1": {
-          "literal": 12
+          "literal": "Bold"
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/line-height/11",
-      "type": "number",
+      "name": "font/weight/Medium",
+      "type": "string",
       "values": {
         "Mode 1": {
-          "literal": 16
+          "literal": "Medium"
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/line-height/12",
-      "type": "number",
+      "name": "font/weight/Regular",
+      "type": "string",
       "values": {
         "Mode 1": {
-          "literal": 16
+          "literal": "Regular"
         }
       }
     },
     {
       "collection": "Typography",
-      "name": "font/line-height/14",
-      "type": "number",
+      "name": "font/weight/Semi-Bold",
+      "type": "string",
       "values": {
         "Mode 1": {
-          "literal": 20
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/16",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 24
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/18",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 24
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/20",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 28
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/24",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 32
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/32",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 40
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/40",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 44
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/line-height/value/80",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 80
-        }
-      }
-    },
-    {
-      "collection": "Typography",
-      "name": "font/letter-spacing/0",
-      "type": "number",
-      "values": {
-        "Mode 1": {
-          "literal": 0
+          "literal": "Semi Bold"
         }
       }
     },
@@ -2468,6 +2472,297 @@
           "alias": {
             "collection": "Primitives",
             "name": "neutral/700"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorPrimaryHover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/600"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/600"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorPrimaryActive",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/700"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/700"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorErrorHover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/600"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/600"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorErrorActive",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/700"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/700"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorWarningHover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "warning/600"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "warning/600"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorPrimaryOutline",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/500"
+          },
+          "opacity": 20
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/500"
+          },
+          "opacity": 20
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorErrorOutline",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/500"
+          },
+          "opacity": 20
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/500"
+          },
+          "opacity": 20
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorWarningOutline",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "warning/500"
+          },
+          "opacity": 20
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "warning/500"
+          },
+          "opacity": 20
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorBgContainerDisabled",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "neutral/200"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "neutral/200"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorPrimaryBg",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/50"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/50"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorPrimaryBgHover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/100"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "primary/100"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorErrorBg",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/50"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/50"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorErrorBgHover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/100"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "danger/100"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorTransparent",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "transparent"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "transparent"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "colorTextLightSolid",
+      "type": "color",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "white"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "white"
           }
         }
       }
@@ -2949,25 +3244,6 @@
     },
     {
       "collection": "Semantic",
-      "name": "paddingXXS",
-      "type": "number",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/4"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/4"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
       "name": "paddingXS",
       "type": "number",
       "values": {
@@ -3082,7 +3358,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginXXS",
+      "name": "gapXXS",
       "type": "number",
       "values": {
         "Light": {
@@ -3101,7 +3377,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginXS",
+      "name": "gapXS",
       "type": "number",
       "values": {
         "Light": {
@@ -3120,7 +3396,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginSM",
+      "name": "gapSM",
       "type": "number",
       "values": {
         "Light": {
@@ -3139,7 +3415,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "margin",
+      "name": "gap",
       "type": "number",
       "values": {
         "Light": {
@@ -3158,7 +3434,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginMD",
+      "name": "gapMD",
       "type": "number",
       "values": {
         "Light": {
@@ -3177,7 +3453,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginLG",
+      "name": "gapLG",
       "type": "number",
       "values": {
         "Light": {
@@ -3196,7 +3472,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "marginXL",
+      "name": "gapXL",
       "type": "number",
       "values": {
         "Light": {
@@ -3209,6 +3485,330 @@
           "alias": {
             "collection": "Primitives",
             "name": "size/32"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingXxs",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingXsm",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "size/15",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 15
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingXmd",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingXlg",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingXxl",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/15"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingXmd",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingXlg",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingXxl",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/11"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingYxs",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingYsm",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingYmd",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingYlg",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "buttonPaddingYxl",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/0"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingYmd",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingYlg",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "size/9",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 9
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "inputPaddingYxl",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/9"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/9"
           }
         }
       }
@@ -3231,431 +3831,11 @@
           }
         }
       }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/6",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 6
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/8",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 8
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/10",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 10
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/12",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 12
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/14",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 14
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/16",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 16
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/18",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 18
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/20",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 20
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/24",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 24
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/28",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 28
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/32",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 32
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/36",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 36
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/40",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 40
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/44",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 44
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/48",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 48
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/56",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 56
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/64",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 64
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/72",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 72
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/80",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 80
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/88",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 88
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/96",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 96
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "size/112",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 112
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/primary",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorText"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/secondary",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorTextSecondary"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/tertiary",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorTextTertiary"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/disabled",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorTextDisabled"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/brand",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorPrimary"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/success",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorSuccess"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/warning",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorWarning"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/danger",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorError"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/info",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Semantic",
-            "name": "colorInfo"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Icons",
-      "name": "icons/on-brand",
-      "type": "color",
-      "values": {
-        "Base": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "white"
-          }
-        }
-      }
     }
   ],
   "report": {
     "created": [
-      "Primitives/white",
       "Primitives/black",
-      "Primitives/primary/25",
-      "Primitives/primary/50",
-      "Primitives/primary/100",
-      "Primitives/primary/200",
-      "Primitives/primary/300",
-      "Primitives/primary/400",
-      "Primitives/primary/500",
-      "Primitives/primary/600",
-      "Primitives/primary/700",
-      "Primitives/primary/800",
-      "Primitives/primary/900",
-      "Primitives/primary/disabled-5pct",
-      "Primitives/primary/disabled-10pct",
-      "Primitives/primary/disabled-20pct",
-      "Primitives/secondary/25",
-      "Primitives/secondary/50",
-      "Primitives/secondary/100",
-      "Primitives/secondary/200",
-      "Primitives/secondary/300",
-      "Primitives/secondary/400",
-      "Primitives/secondary/500",
-      "Primitives/secondary/600",
-      "Primitives/secondary/700",
-      "Primitives/secondary/800",
-      "Primitives/secondary/900",
-      "Primitives/tertiary/25",
-      "Primitives/tertiary/50",
-      "Primitives/tertiary/100",
-      "Primitives/tertiary/200",
-      "Primitives/tertiary/300",
-      "Primitives/tertiary/400",
-      "Primitives/tertiary/500",
-      "Primitives/tertiary/600",
-      "Primitives/tertiary/700",
-      "Primitives/tertiary/800",
-      "Primitives/tertiary/900",
-      "Primitives/success/25",
-      "Primitives/success/50",
-      "Primitives/success/100",
-      "Primitives/success/200",
-      "Primitives/success/300",
-      "Primitives/success/400",
-      "Primitives/success/500",
-      "Primitives/success/600",
-      "Primitives/success/700",
-      "Primitives/success/800",
-      "Primitives/success/900",
-      "Primitives/info/25",
-      "Primitives/info/50",
-      "Primitives/info/100",
-      "Primitives/info/200",
-      "Primitives/info/300",
-      "Primitives/info/400",
-      "Primitives/info/500",
-      "Primitives/info/600",
-      "Primitives/info/700",
-      "Primitives/info/800",
-      "Primitives/info/900",
-      "Primitives/warning/25",
-      "Primitives/warning/50",
-      "Primitives/warning/100",
-      "Primitives/warning/200",
-      "Primitives/warning/300",
-      "Primitives/warning/400",
-      "Primitives/warning/500",
-      "Primitives/warning/600",
-      "Primitives/warning/700",
-      "Primitives/warning/800",
-      "Primitives/warning/900",
       "Primitives/danger/25",
       "Primitives/danger/50",
       "Primitives/danger/100",
@@ -3667,6 +3847,17 @@
       "Primitives/danger/700",
       "Primitives/danger/800",
       "Primitives/danger/900",
+      "Primitives/info/25",
+      "Primitives/info/50",
+      "Primitives/info/100",
+      "Primitives/info/200",
+      "Primitives/info/300",
+      "Primitives/info/400",
+      "Primitives/info/500",
+      "Primitives/info/600",
+      "Primitives/info/700",
+      "Primitives/info/800",
+      "Primitives/info/900",
       "Primitives/neutral/25",
       "Primitives/neutral/50",
       "Primitives/neutral/100",
@@ -3678,42 +3869,11 @@
       "Primitives/neutral/700",
       "Primitives/neutral/800",
       "Primitives/neutral/900",
-      "Primitives/neutral/disabled-5pct",
       "Primitives/neutral/disabled-10pct",
       "Primitives/neutral/disabled-20pct",
-      "Primitives/spacing/0",
-      "Primitives/spacing/2",
-      "Primitives/spacing/3",
-      "Primitives/spacing/4",
-      "Primitives/spacing/6",
-      "Primitives/spacing/7",
-      "Primitives/spacing/8",
-      "Primitives/spacing/10",
-      "Primitives/spacing/12",
-      "Primitives/spacing/14",
-      "Primitives/spacing/16",
-      "Primitives/spacing/20",
-      "Primitives/spacing/24",
-      "Primitives/spacing/28",
-      "Primitives/spacing/32",
-      "Primitives/spacing/40",
-      "Primitives/spacing/48",
-      "Primitives/spacing/52",
-      "Primitives/spacing/-10",
-      "Primitives/spacing/-8",
-      "Primitives/spacing/-6",
-      "Primitives/radius/0",
-      "Primitives/radius/2",
-      "Primitives/radius/4",
-      "Primitives/radius/6",
-      "Primitives/radius/8",
-      "Primitives/radius/10",
-      "Primitives/radius/12",
-      "Primitives/radius/14",
-      "Primitives/radius/16",
-      "Primitives/radius/18",
-      "Primitives/radius/20",
-      "Primitives/radius/full",
+      "Primitives/neutral/disabled-5pct",
+      "Primitives/opacity/40",
+      "Primitives/opacity/100",
       "Primitives/padding/0",
       "Primitives/padding/1",
       "Primitives/padding/2",
@@ -3732,12 +3892,43 @@
       "Primitives/padding/32",
       "Primitives/padding/52",
       "Primitives/padding/64",
-      "Primitives/stroke/0",
-      "Primitives/stroke/1",
-      "Primitives/stroke/2",
-      "Primitives/stroke/3",
-      "Primitives/stroke/1.5",
-      "Primitives/stroke/1.25",
+      "Primitives/primary/25",
+      "Primitives/primary/50",
+      "Primitives/primary/100",
+      "Primitives/primary/200",
+      "Primitives/primary/300",
+      "Primitives/primary/400",
+      "Primitives/primary/500",
+      "Primitives/primary/600",
+      "Primitives/primary/700",
+      "Primitives/primary/800",
+      "Primitives/primary/900",
+      "Primitives/primary/disabled-10pct",
+      "Primitives/primary/disabled-20pct",
+      "Primitives/primary/disabled-5pct",
+      "Primitives/radius/0",
+      "Primitives/radius/2",
+      "Primitives/radius/4",
+      "Primitives/radius/6",
+      "Primitives/radius/8",
+      "Primitives/radius/10",
+      "Primitives/radius/12",
+      "Primitives/radius/14",
+      "Primitives/radius/16",
+      "Primitives/radius/18",
+      "Primitives/radius/20",
+      "Primitives/radius/full",
+      "Primitives/secondary/25",
+      "Primitives/secondary/50",
+      "Primitives/secondary/100",
+      "Primitives/secondary/200",
+      "Primitives/secondary/300",
+      "Primitives/secondary/400",
+      "Primitives/secondary/500",
+      "Primitives/secondary/600",
+      "Primitives/secondary/700",
+      "Primitives/secondary/800",
+      "Primitives/secondary/900",
       "Primitives/size/0",
       "Primitives/size/4",
       "Primitives/size/5",
@@ -3768,14 +3959,82 @@
       "Primitives/size/160",
       "Primitives/size/260",
       "Primitives/size/5.5",
-      "Primitives/opacity/40",
-      "Primitives/opacity/100",
-      "Typography/font/family/title",
+      "Primitives/spacing/0",
+      "Primitives/spacing/2",
+      "Primitives/spacing/3",
+      "Primitives/spacing/4",
+      "Primitives/spacing/6",
+      "Primitives/spacing/7",
+      "Primitives/spacing/8",
+      "Primitives/spacing/10",
+      "Primitives/spacing/12",
+      "Primitives/spacing/14",
+      "Primitives/spacing/16",
+      "Primitives/spacing/20",
+      "Primitives/spacing/24",
+      "Primitives/spacing/28",
+      "Primitives/spacing/32",
+      "Primitives/spacing/40",
+      "Primitives/spacing/48",
+      "Primitives/spacing/52",
+      "Primitives/spacing/-10",
+      "Primitives/spacing/-6",
+      "Primitives/spacing/-8",
+      "Primitives/stroke/0",
+      "Primitives/stroke/1",
+      "Primitives/stroke/2",
+      "Primitives/stroke/3",
+      "Primitives/stroke/1.25",
+      "Primitives/stroke/1.5",
+      "Primitives/success/25",
+      "Primitives/success/50",
+      "Primitives/success/100",
+      "Primitives/success/200",
+      "Primitives/success/300",
+      "Primitives/success/400",
+      "Primitives/success/500",
+      "Primitives/success/600",
+      "Primitives/success/700",
+      "Primitives/success/800",
+      "Primitives/success/900",
+      "Primitives/tertiary/25",
+      "Primitives/tertiary/50",
+      "Primitives/tertiary/100",
+      "Primitives/tertiary/200",
+      "Primitives/tertiary/300",
+      "Primitives/tertiary/400",
+      "Primitives/tertiary/500",
+      "Primitives/tertiary/600",
+      "Primitives/tertiary/700",
+      "Primitives/tertiary/800",
+      "Primitives/tertiary/900",
+      "Primitives/warning/25",
+      "Primitives/warning/50",
+      "Primitives/warning/100",
+      "Primitives/warning/200",
+      "Primitives/warning/300",
+      "Primitives/warning/400",
+      "Primitives/warning/500",
+      "Primitives/warning/600",
+      "Primitives/warning/700",
+      "Primitives/warning/800",
+      "Primitives/warning/900",
+      "Primitives/white",
+      "Primitives/transparent",
       "Typography/font/family/body",
-      "Typography/font/weight/Regular",
-      "Typography/font/weight/Medium",
-      "Typography/font/weight/Semi-Bold",
-      "Typography/font/weight/Bold",
+      "Typography/font/family/title",
+      "Typography/font/letter-spacing/0",
+      "Typography/font/line-height/10",
+      "Typography/font/line-height/11",
+      "Typography/font/line-height/12",
+      "Typography/font/line-height/14",
+      "Typography/font/line-height/16",
+      "Typography/font/line-height/18",
+      "Typography/font/line-height/20",
+      "Typography/font/line-height/24",
+      "Typography/font/line-height/32",
+      "Typography/font/line-height/40",
+      "Typography/font/line-height/value/80",
       "Typography/font/size/6",
       "Typography/font/size/8",
       "Typography/font/size/10",
@@ -3789,18 +4048,10 @@
       "Typography/font/size/32",
       "Typography/font/size/40",
       "Typography/font/size/60",
-      "Typography/font/line-height/10",
-      "Typography/font/line-height/11",
-      "Typography/font/line-height/12",
-      "Typography/font/line-height/14",
-      "Typography/font/line-height/16",
-      "Typography/font/line-height/18",
-      "Typography/font/line-height/20",
-      "Typography/font/line-height/24",
-      "Typography/font/line-height/32",
-      "Typography/font/line-height/40",
-      "Typography/font/line-height/value/80",
-      "Typography/font/letter-spacing/0",
+      "Typography/font/weight/Bold",
+      "Typography/font/weight/Medium",
+      "Typography/font/weight/Regular",
+      "Typography/font/weight/Semi-Bold",
       "Semantic/colorPrimary",
       "Semantic/colorSuccess",
       "Semantic/colorWarning",
@@ -3816,6 +4067,21 @@
       "Semantic/colorBgLayout",
       "Semantic/colorBorder",
       "Semantic/colorBorderSecondary",
+      "Semantic/colorPrimaryHover",
+      "Semantic/colorPrimaryActive",
+      "Semantic/colorErrorHover",
+      "Semantic/colorErrorActive",
+      "Semantic/colorWarningHover",
+      "Semantic/colorPrimaryOutline",
+      "Semantic/colorErrorOutline",
+      "Semantic/colorWarningOutline",
+      "Semantic/colorBgContainerDisabled",
+      "Semantic/colorPrimaryBg",
+      "Semantic/colorPrimaryBgHover",
+      "Semantic/colorErrorBg",
+      "Semantic/colorErrorBgHover",
+      "Semantic/colorTransparent",
+      "Semantic/colorTextLightSolid",
       "Semantic/controlHeightXS",
       "Semantic/controlHeightSM",
       "Semantic/controlHeight",
@@ -3841,55 +4107,44 @@
       "Semantic/borderRadius",
       "Semantic/borderRadiusLG",
       "Semantic/borderRadiusXL",
-      "Semantic/paddingXXS",
       "Semantic/paddingXS",
       "Semantic/paddingSM",
       "Semantic/padding",
       "Semantic/paddingMD",
       "Semantic/paddingLG",
       "Semantic/paddingXL",
-      "Semantic/marginXXS",
-      "Semantic/marginXS",
-      "Semantic/marginSM",
-      "Semantic/margin",
-      "Semantic/marginMD",
-      "Semantic/marginLG",
-      "Semantic/marginXL",
-      "Semantic/lineWidth",
-      "Icons/size/6",
-      "Icons/size/8",
-      "Icons/size/10",
-      "Icons/size/12",
-      "Icons/size/14",
-      "Icons/size/16",
-      "Icons/size/18",
-      "Icons/size/20",
-      "Icons/size/24",
-      "Icons/size/28",
-      "Icons/size/32",
-      "Icons/size/36",
-      "Icons/size/40",
-      "Icons/size/44",
-      "Icons/size/48",
-      "Icons/size/56",
-      "Icons/size/64",
-      "Icons/size/72",
-      "Icons/size/80",
-      "Icons/size/88",
-      "Icons/size/96",
-      "Icons/size/112",
-      "Icons/icons/primary",
-      "Icons/icons/secondary",
-      "Icons/icons/tertiary",
-      "Icons/icons/disabled",
-      "Icons/icons/brand",
-      "Icons/icons/success",
-      "Icons/icons/warning",
-      "Icons/icons/danger",
-      "Icons/icons/info",
-      "Icons/icons/on-brand"
+      "Semantic/gapXXS",
+      "Semantic/gapXS",
+      "Semantic/gapSM",
+      "Semantic/gap",
+      "Semantic/gapMD",
+      "Semantic/gapLG",
+      "Semantic/gapXL",
+      "Semantic/paddingXxs",
+      "Semantic/paddingXsm",
+      "Primitives/size/15",
+      "Semantic/buttonPaddingXmd",
+      "Semantic/buttonPaddingXlg",
+      "Semantic/buttonPaddingXxl",
+      "Semantic/inputPaddingXmd",
+      "Semantic/inputPaddingXlg",
+      "Semantic/inputPaddingXxl",
+      "Semantic/paddingYxs",
+      "Semantic/paddingYsm",
+      "Semantic/buttonPaddingYmd",
+      "Semantic/buttonPaddingYlg",
+      "Semantic/buttonPaddingYxl",
+      "Semantic/inputPaddingYmd",
+      "Semantic/inputPaddingYlg",
+      "Primitives/size/9",
+      "Semantic/inputPaddingYxl",
+      "Semantic/lineWidth"
     ],
     "derived": [
+      {
+        "name": "Primitives/transparent",
+        "reason": "antd has no transparent step: colour 000000 at 0% alpha for colorTransparent and every no-colour role"
+      },
       {
         "name": "Semantic/controlHeightXL",
         "reason": "extrapolated antd size (extrapolated: LG step (+8) beyond SM/base/LG)"
@@ -3913,95 +4168,42 @@
       {
         "name": "Semantic/borderRadiusXL",
         "reason": "extrapolated antd size (extrapolated: SM-base-LG step (+2) beyond borderRadiusLG)"
+      },
+      {
+        "name": "Semantic/paddingXxs",
+        "reason": "extrapolated antd size (Button paddingInlineSM (8 - lineWidth) and Input paddingInlineSM agree; xs follows the SM component formula)"
+      },
+      {
+        "name": "Primitives/size/15",
+        "reason": "antd size step 15 (no JSON match; components/button/style/token.ts: paddingInline = paddingContentHorizontal(16) - lineWidth)"
+      },
+      {
+        "name": "Semantic/buttonPaddingXxl",
+        "reason": "extrapolated antd size (xl follows the LG component formula (no antd XL button))"
+      },
+      {
+        "name": "Semantic/inputPaddingXxl",
+        "reason": "extrapolated antd size (xl follows the LG component formula (no antd XL input))"
+      },
+      {
+        "name": "Semantic/paddingYxs",
+        "reason": "extrapolated antd size (every xs vertical formula evaluates to 0 (Button prepareToken forces 0; Input SM formula on XS metrics floors at 0))"
+      },
+      {
+        "name": "Semantic/buttonPaddingYxl",
+        "reason": "extrapolated antd size (components/button/style/index.ts: buttonPaddingVertical = 0 (no antd XL button))"
+      },
+      {
+        "name": "Primitives/size/9",
+        "reason": "antd size step 9 (no JSON match; LG formula on XL metrics (controlHeightXL 48, fontSizeXL 20): ceil(((48 - 28)/2)) - 1 = 9)"
+      },
+      {
+        "name": "Semantic/inputPaddingYxl",
+        "reason": "extrapolated antd size (LG formula on XL metrics (controlHeightXL 48, fontSizeXL 20): ceil(((48 - 28)/2)) - 1 = 9)"
       }
     ],
     "needsValue": [],
-    "renamed": [
-      [
-        "Primitives/primary/disabled-5%",
-        "Primitives/primary/disabled-5pct"
-      ],
-      [
-        "Primitives/primary/disabled-10%",
-        "Primitives/primary/disabled-10pct"
-      ],
-      [
-        "Primitives/primary/disabled-20%",
-        "Primitives/primary/disabled-20pct"
-      ],
-      [
-        "Primitives/neutral/disabled-5%",
-        "Primitives/neutral/disabled-5pct"
-      ],
-      [
-        "Primitives/neutral/disabled-10%",
-        "Primitives/neutral/disabled-10pct"
-      ],
-      [
-        "Primitives/neutral/disabled-20%",
-        "Primitives/neutral/disabled-20pct"
-      ],
-      [
-        "Primitives/stroke/1,5",
-        "Primitives/stroke/1.5"
-      ],
-      [
-        "Primitives/stroke/1,25",
-        "Primitives/stroke/1.25"
-      ],
-      [
-        "Primitives/size/5,5",
-        "Primitives/size/5.5"
-      ],
-      [
-        "Typography/font/weight/Semi Bold",
-        "Typography/font/weight/Semi-Bold"
-      ],
-      [
-        "Typography/font/line height/10",
-        "Typography/font/line-height/10"
-      ],
-      [
-        "Typography/font/line height/11",
-        "Typography/font/line-height/11"
-      ],
-      [
-        "Typography/font/line height/12",
-        "Typography/font/line-height/12"
-      ],
-      [
-        "Typography/font/line height/14",
-        "Typography/font/line-height/14"
-      ],
-      [
-        "Typography/font/line height/16",
-        "Typography/font/line-height/16"
-      ],
-      [
-        "Typography/font/line height/18",
-        "Typography/font/line-height/18"
-      ],
-      [
-        "Typography/font/line height/20",
-        "Typography/font/line-height/20"
-      ],
-      [
-        "Typography/font/line height/24",
-        "Typography/font/line-height/24"
-      ],
-      [
-        "Typography/font/line height/32",
-        "Typography/font/line-height/32"
-      ],
-      [
-        "Typography/font/line height/40",
-        "Typography/font/line-height/40"
-      ],
-      [
-        "Typography/font/line height/value/80",
-        "Typography/font/line-height/value/80"
-      ]
-    ],
+    "renamed": [],
     "unresolved": []
   }
 }
