@@ -206,7 +206,33 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
     // Static sizes: antd numbers. Semantic tokens alias Primitives steps; a step with no JSON match is added
     // as a derived primitive and listed in the report.
     const primBase = sourcesByName.get(antMap.Primitives.source)?.modes[antMap.Primitives.modes[0]] ?? [];
+    // Line heights: px floats from the token JSON Typography table, paired by fontSize step. An antd-named Semantic
+    // token aliases the line-height step of its fontSize; a fontSize with no table entry uses the nearest lower step
+    // and is flagged derived. antd supplies the names only; every value comes from the JSON.
+    const tySource = antMap.Typography.source, tyMode = antMap.Typography.modes[0];
+    const lhSteps = (sourcesByName.get(tySource)?.modes[tyMode] ?? []).flatMap(t => {
+        const m = /^font\/line-height\/(\d+)$/.exec(t.path);
+        return m ? [Number(m[1])] : [];
+    }).sort((a, b) => a - b);
+    /** The JSON line-height step a fontSize pairs to: the exact key, else the nearest lower one. */
+    const lhStepOf = (/** @type {number} */ fontSize, /** @type {string} */ owner) => {
+        if (lhSteps.includes(fontSize)) return fontSize;
+        const lower = lhSteps.filter(s => s < fontSize);
+        if (!lower.length) fail(`${owner} pairs fontSize ${fontSize}, below every JSON line-height step`);
+        return lower[lower.length - 1];
+    };
     for (const [antName, spec] of Object.entries(sizes)) {
+        if (typeof spec.fontSize === 'number') {
+            if (spec.collection !== 'Semantic') fail(`Sizes/${antName} must name a Semantic line height`);
+            const step = lhStepOf(spec.fontSize, `Sizes/${antName}`);
+            const stepName = `font/line-height/${step}`;
+            if (!(sourcesByName.get(tySource)?.modes[tyMode] ?? []).some(t => t.path === stepName)) fail(`Sizes/${antName} pairs ${stepName}, which the JSON Typography table has not`);
+            const values = {};
+            for (const mode of antMap.Semantic.modes) values[mode] = { alias: { collection: 'Typography', name: stepName } };
+            items.push({ collection: 'Semantic', name: antName, type: 'number', values });
+            if (spec.derived === true || step !== spec.fontSize) derived.push({ name: `Semantic/${antName}`, reason: step !== spec.fontSize ? `nearest lower JSON step ${step} for fontSize ${spec.fontSize} (${spec.source})` : `paired to an extrapolated font size (${spec.source})` });
+            continue;
+        }
         if (spec.collection !== 'Semantic' || typeof spec.value !== 'number' || typeof spec.primitive !== 'string') fail(`Sizes/${antName} must name a Semantic number and its primitive step`);
         const have = primBase.find(t => t.path === spec.primitive);
         if (have && have.raw !== spec.value) fail(`Sizes/${antName} wants ${spec.value} but Primitives/${spec.primitive} is ${have.raw}`);

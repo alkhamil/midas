@@ -2663,41 +2663,21 @@
       }
     },
     {
-      "collection": "Primitives",
-      "name": "size/1.8",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1.8
-        }
-      }
-    },
-    {
       "collection": "Semantic",
       "name": "lineHeightXS",
       "type": "number",
       "values": {
         "Light": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.8"
+            "collection": "Typography",
+            "name": "font/line-height/10"
           }
         },
         "Dark": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.8"
+            "collection": "Typography",
+            "name": "font/line-height/10"
           }
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "size/1.6667",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1.6667
         }
       }
     },
@@ -2708,25 +2688,15 @@
       "values": {
         "Light": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.6667"
+            "collection": "Typography",
+            "name": "font/line-height/12"
           }
         },
         "Dark": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.6667"
+            "collection": "Typography",
+            "name": "font/line-height/12"
           }
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "size/1.5714",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1.5714
         }
       }
     },
@@ -2737,25 +2707,15 @@
       "values": {
         "Light": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.5714"
+            "collection": "Typography",
+            "name": "font/line-height/14"
           }
         },
         "Dark": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.5714"
+            "collection": "Typography",
+            "name": "font/line-height/14"
           }
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "size/1.5",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1.5
         }
       }
     },
@@ -2766,25 +2726,15 @@
       "values": {
         "Light": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.5"
+            "collection": "Typography",
+            "name": "font/line-height/16"
           }
         },
         "Dark": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.5"
+            "collection": "Typography",
+            "name": "font/line-height/16"
           }
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "size/1.4",
-      "type": "number",
-      "values": {
-        "Base": {
-          "literal": 1.4
         }
       }
     },
@@ -2795,14 +2745,109 @@
       "values": {
         "Light": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.4"
+            "collection": "Typography",
+            "name": "font/line-height/20"
           }
         },
         "Dark": {
           "alias": {
-            "collection": "Primitives",
-            "name": "size/1.4"
+            "collection": "Typography",
+            "name": "font/line-height/20"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightHeading1",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/32"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/32"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightHeading2",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/24"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/24"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightHeading3",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/24"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/24"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightHeading4",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/20"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/20"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightHeading5",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/16"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Typography",
+            "name": "font/line-height/16"
           }
         }
       }
@@ -3781,16 +3826,16 @@
       "Semantic/fontSize",
       "Semantic/fontSizeLG",
       "Semantic/fontSizeXL",
-      "Primitives/size/1.8",
       "Semantic/lineHeightXS",
-      "Primitives/size/1.6667",
       "Semantic/lineHeightSM",
-      "Primitives/size/1.5714",
       "Semantic/lineHeight",
-      "Primitives/size/1.5",
       "Semantic/lineHeightLG",
-      "Primitives/size/1.4",
       "Semantic/lineHeightXL",
+      "Semantic/lineHeightHeading1",
+      "Semantic/lineHeightHeading2",
+      "Semantic/lineHeightHeading3",
+      "Semantic/lineHeightHeading4",
+      "Semantic/lineHeightHeading5",
       "Semantic/borderRadiusXS",
       "Semantic/borderRadiusSM",
       "Semantic/borderRadius",
@@ -3854,28 +3899,16 @@
         "reason": "extrapolated antd size (extrapolated: SM-base step (-2) below fontSizeSM)"
       },
       {
-        "name": "Primitives/size/1.8",
-        "reason": "antd size step 1.8 (no JSON match; extrapolated: antd getLineHeight(10) = (10 + 8) / 10)"
-      },
-      {
         "name": "Semantic/lineHeightXS",
-        "reason": "extrapolated antd size (extrapolated: antd getLineHeight(10) = (10 + 8) / 10)"
+        "reason": "paired to an extrapolated font size (paired to JSON font/line-height/10 = 12px (the XS font size itself is extrapolated))"
       },
       {
-        "name": "Primitives/size/1.6667",
-        "reason": "antd size step 1.6667 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(12))"
+        "name": "Semantic/lineHeightHeading1",
+        "reason": "nearest lower JSON step 32 for fontSize 38 (antd fontSizeHeading1 38 -> nearest lower JSON step 32 -> font/line-height/32 = 40px)"
       },
       {
-        "name": "Primitives/size/1.5714",
-        "reason": "antd size step 1.5714 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(14))"
-      },
-      {
-        "name": "Primitives/size/1.5",
-        "reason": "antd size step 1.5 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(16))"
-      },
-      {
-        "name": "Primitives/size/1.4",
-        "reason": "antd size step 1.4 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(20))"
+        "name": "Semantic/lineHeightHeading2",
+        "reason": "nearest lower JSON step 24 for fontSize 30 (antd fontSizeHeading2 30 -> nearest lower JSON step 24 -> font/line-height/24 = 32px)"
       },
       {
         "name": "Semantic/borderRadiusXL",
