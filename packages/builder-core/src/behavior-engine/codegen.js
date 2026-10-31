@@ -27,14 +27,15 @@ function componentSource(template, name, problems) {
     }
     const children = [];
     for (const slot of template.anatomy) {
-        if (slot.kind === 'text') {
-            if (!template.props[slot.id]) problems.push({ slot: slot.id, reason: 'no-prop' });
+        if (slot.kind === 'text' || slot.kind === 'control') {
+            const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
+            if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
-            children.push(label);
+            children.push(slot.optional ? `{${slot.id} && ${label}}` : label);
         }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
@@ -49,6 +50,9 @@ function componentSource(template, name, problems) {
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
+    const ctl = controlOf(template);
+    if (ctl?.clear) children.push('{' + ctl.clear + ' && ' + ctl.value + " !== '' && <span className=\"" + template.id + '-clear">×</span>}');
+    if (ctl?.count) children.push('{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}');
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
     const dims = variableProps(template).map(([prop]) => prop);
@@ -56,7 +60,7 @@ function componentSource(template, name, problems) {
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
         `className="${template.id}"`,
         ...dims.map(dim => `data-${dim}={${dim}}`),
-        `disabled={${disabledProp}}`,
+        ...(ctl ? [] : [`disabled={${disabledProp}}`]),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? 'blocked ? undefined : onClick' : event.name}}`),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
@@ -109,7 +113,9 @@ function displayRules(template, master, childrenOf) {
         }
         if (!decls.length) return '';
         const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
-        return `${selector} {\n${decls.join('')}}\n`;
+        const rule = `${selector} {\n${decls.join('')}}\n`;
+        if (controlOf(template)?.slot === key && props.placeholder) return `${rule}${selector}::placeholder {\n  color: var(${cssVarOf(template.id, props.placeholder)});\n}\n`;
+        return rule;
     }).filter(Boolean);
 }
 

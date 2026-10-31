@@ -65,7 +65,7 @@ function renderNode(n, parent, scope, icon = false) {
     if (n.visible === false) return null;
     const template = templateOf(n, scope);
     if (template === undefined) return null;
-    if (template) return renderButton(n, template, parent, scope);
+    if (template) return renderTemplate(n, template, parent, scope);
     // A boolean group draws its stored result, the path the canvas computed; its operands are not drawn. Without a result there is nothing.
     if (n.booleanOp && !(n.type === 'path' && (n.points?.length || n.contours?.length))) {
         scope.unsupported.push({ nodeId: n.id, type: 'boolean' });
@@ -211,7 +211,7 @@ function templateOf(n, scope) {
 }
 
 /**
- * A Button-style instance: the element the codegen exports, with its mode attributes, its disabled state and its anatomy in order.
+ * A template instance: the element the codegen exports, with its mode attributes, its disabled state and its anatomy in order.
  * The order is the schema order, as the codegen writes it; the planner keeps the stored children at the visual positions
  * it means, so Play draws what the canvas draws (a flipped root reads its stored children back to front).
  * @param {any} n
@@ -220,10 +220,11 @@ function templateOf(n, scope) {
  * @param {any} scope
  * @returns {Element}
  */
-function renderButton(n, template, parent, scope) {
+function renderTemplate(n, template, parent, scope) {
     const master = scope.byId.get(n.sourceId);
     const binding = master.behavior;
-    const attrs = { type: 'button', class: template.id };
+    const control = controlOf(template);
+    const attrs = { ...template.element.attrs, class: template.id };
     /** @type {Record<string, string>} */
     const modes = {};
     for (const [dim] of variableProps(template)) {
@@ -231,17 +232,24 @@ function renderButton(n, template, parent, scope) {
         modes[dim] = attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
-    if (props.disabled === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
+    if (!control && props[template.element.disabledState] === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     const children = [];
     // The label's layer and its parent, for the label's own width and alignment (see layout.js).
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
     for (const slot of template.anatomy) {
-        if (slot.kind === 'text') {
-            const control = controlOf(template);
+        if (slot.kind === 'text' || slot.kind === 'control') {
+            const isControl = control && control.slot === slot.id;
             // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
             const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
-            if (control && control.slot === slot.id) children.push({ tag: 'input', attrs: { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), ...(control.placeholder ? { placeholder: String(props[control.placeholder] ?? '') } : {}) }, style, children: [] });
-            else children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+            if (isControl) {
+                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? '') };
+                if (control.placeholder && String(props[control.placeholder] ?? '') !== '') inputAttrs.placeholder = String(props[control.placeholder]);
+                if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
+                if (control.maxlength && String(props[control.maxlength] ?? '') !== '') inputAttrs.maxLength = String(props[control.maxlength]);
+                if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
+                children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
+            }
+            else if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.
@@ -259,6 +267,11 @@ function renderButton(n, template, parent, scope) {
     }
     // The stroke is the node's own. A uniform inside stroke draws on the host box (one drawer with the canvas and the codegen stylesheet); any other stroke draws as an overlay, and the host border is reset so only the overlay shows.
     // A CSS outline is not used for it: it would override the keyboard-focus ring. The shape comes from the master, as on the canvas.
+    if (control && props[control.clear] === true && String(props[control.value] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-clear` }, style: {}, text: '×', children: [] });
+    if (control && props[control.count] === true) {
+        const countMax = control.maxlength ? String(props[control.maxlength] ?? '') : '';
+        children.push({ tag: 'span', attrs: { class: `${template.id}-count` }, style: {}, text: `${String(props[control.value] ?? '').length}${countMax !== '' ? ` / ${countMax}` : ''}`, children: [] });
+    }
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
@@ -290,7 +303,7 @@ function renderButton(n, template, parent, scope) {
             borderRadius: (shape.radius || hasRadii(shape)) ? (hr.every(v => v === hr[0]) ? `${svgNumber(hr[0])}px` : hr.map(v => `${svgNumber(v)}px`).join(' ')) : 'inherit',
         });
     }
-    return { tag: 'button', nodeId: n.id, attrs, style, children };
+    return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
 
 /**
