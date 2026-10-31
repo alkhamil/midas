@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, parseTokenJson, buildBasePlan, applyBasePlan } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -13265,36 +13265,34 @@ document.addEventListener('click', e => {
     else if (e.target.closest('[data-vw-import]'))
         pickVariablesFile();
     else if (e.target.closest('[data-vw-generate-base]'))
-        pickBaseTokenFile();
+        generateBaseVariables();
 });
-/** Generates the base variable collections (Primitives, Semantic, Size, Typography, Icons) from a token JSON in one undo step. Prints the full report to the console. */
-function pickBaseTokenFile() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.onchange = async () => {
-        const file = input.files?.[0];
-        if (!file)
-            return;
-        try {
-            const text = await file.text();
-            let stats;
-            vwTx('Generate base variables', () => {
-                const plan = buildBasePlan(parseTokenJson(JSON.parse(text)));
-                stats = { ...applyBasePlan(varStore(), plan, uid), report: plan.report };
-                if (!varColl(vw.coll))
-                    vw.coll = varStore().collections[0]?.id;
-                vw.group = '';
-            });
-            const flags = [...stats.report.derived.length ? [`${stats.report.derived.length} derived`] : [], ...stats.report.needsValue.length ? [`${stats.report.needsValue.length} need values`] : [], ...stats.report.unresolved.length ? [`${stats.report.unresolved.length} unresolved`] : []];
-            toast(`Base variables: ${stats.items} new variables, ${stats.aliases} aliases${flags.length ? ` (${flags.join(', ')})` : ''}. Full report in the console.`);
-            console.log('[base variables]', stats.report);
-        }
-        catch (e) {
-            toast(e.message || 'Could not generate base variables.');
-        }
-    };
-    input.click();
+/** Generates the base variable collections (Primitives, Semantic, Size, Typography, Icons) from the bundled snapshot in one undo step. The full report opens in a result dialog. */
+function generateBaseVariables() {
+    let stats;
+    try {
+        vwTx('Generate base variables', () => {
+            const plan = planFromSnapshot(BASE_SNAPSHOT);
+            stats = { ...applyBasePlan(varStore(), plan, uid), report: plan.report };
+            if (!varColl(vw.coll))
+                vw.coll = varStore().collections[0]?.id;
+            vw.group = '';
+        });
+    }
+    catch (e) {
+        toast(e.message || 'Could not generate base variables.');
+        return;
+    }
+    const { report } = stats;
+    toast(`Base variables: ${stats.items} new variables, ${stats.aliases} aliases.`);
+    const lines = [
+        `${stats.items} new variables, ${stats.aliases} aliases in ${stats.collections} collections (${stats.modes} modes).`,
+        `Derived: ${report.derived.length ? report.derived.map(d => d.name).join(', ') : 'none'}.`,
+        `Renamed: ${report.renamed.length} names.`,
+        `Needs value: ${report.needsValue.length ? report.needsValue.map(d => d.name).join(', ') : 'none'}.`,
+        `Unresolved: ${report.unresolved.length ? report.unresolved.map(u => `${u.collection}/${u.path}`).join(', ') : 'none'}.`,
+    ];
+    choiceDialog({ title: 'Base variables generated', message: lines.join(' '), actions: [{ label: 'Close', value: true, primary: true }] });
 }
 // ===== components + instances =====
 let _cachedAllNodes = null, _cachedAllNodesRev = -1;
