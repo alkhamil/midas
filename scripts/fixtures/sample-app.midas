@@ -12407,9 +12407,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
-          "mode-sm": 1.6666666666666667,
-          "mode-md": 1.5714285714285714,
-          "mode-lg": 1.5
+          "mode-sm": 16,
+          "mode-md": 20,
+          "mode-lg": 24
         }
       },
       {
