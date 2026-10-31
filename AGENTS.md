@@ -1,5 +1,14 @@
 # Agent instructions
 
+## Principles
+
+- Values come from variables (Primitives → Semantic), never copied from elsewhere.
+- Hug/fill/fixed sizing is owned by the node; the engine never writes it.
+- The engine is generic and schema-driven; no per-component code in the engine.
+- Strict: no legacy, no migration shims; old files are regenerated.
+- Source of truth for decisions is `docs/behavior-spec.md`; it wins over the roadmap.
+- Plan: `docs/roadmap.md`.
+
 ## Permanent rules
 
 - Not a released product. No backward compatibility, migrations, legacy fallbacks, deprecated aliases, compatibility shims, or "old behavior" branches.
@@ -9,6 +18,33 @@
 - Source of truth for decisions is `docs/behavior-spec.md`. Read it before each task. Update its Status section when a stage finishes.
 - Workflow per stage: plan briefly, confirm seams, implement with `tdd`, run `code-review`, fix findings, then `handoff`.
 - Do only what is asked; no extra features.
+
+## Decisions
+
+- Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
+- Baseline green: builder-core 642 tests, studio 43 tests, 0 failing. `selColorSwatch` is not in the repo; the old known issue is closed as stale.
+- The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
+
+## Code map
+
+- Button template: `packages/builder-core/src/templates/button.js`. Engine: `packages/builder-core/src/behavior-engine/` (`codegen.js`, `preview.js`, `anatomy.js`, `icon-slot.js`, `display.js`).
+- Play DOM: `packages/builder-core/src/prototype/dom-tree.js` (`renderButton` plus codegen stylesheet). Panel: `apps/studio/src/engine/behaviorPanel.js`.
+- Button variable fixture: `scripts/button-model.mjs` (gap sm=6, lg=8 — not 16; see Antrean).
+
+## Known issues
+
+- Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
+- The roadmap names `strokeStrategyOf`/`rootLayoutOf`/`labelLayoutOf` and a `both` placement: none exist in code; if wanted, they are new features, not fixes.
+- Play shows a black ring on `.button` in default state. Suspect `--button-outline-color` resolving to a non-transparent value (currentColor/black) with no state active. Do not remove the outline from the base rule.
+
+## Antrean
+
+- Fase 1 batch 1 (Input plus `control` kind) after the Fase 0 browser exit.
+- Open: is `both` a new dual-icon placement? Is gap default 16 a new token or a fixture change? Pushing `feat/fahmi` needs an explicit instruction.
+
+## Maintenance
+
+- Before finishing any change, if it introduced or confirmed a rule, a file location, or a known issue, update this file with 1 to 3 lines. Replace outdated lines instead of appending. Do not log the bug itself.
 
 ## UI conventions
 

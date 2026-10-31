@@ -1,0 +1,156 @@
+// Builds testing.midas: a Button component with its variables, plus test instances.
+// Run `node scripts/make-testing-file.js`, then open testing.midas with Import file
+// on the home screen. The build fails if the document has diagnostics errors.
+import { writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
+import { iconSlotBindings, iconSlotTargets } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
+import { BUTTON } from '../packages/builder-core/src/templates/button.js';
+import { assertBehaviorData } from '../packages/builder-core/src/behavior-engine/document-check.js';
+import { diagnoseDocument } from '../packages/builder-core/src/behavior-engine/diagnostics.js';
+import { buttonModel } from './button-model.mjs';
+
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
+
+const here = dirname(fileURLToPath(import.meta.url));
+export const TESTING_PATH = resolve(here, '../testing.midas');
+
+const COMMON = {
+    rotation: 0, fills: solid('#0058CA'), stroke: '#000000',
+    strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0,
+};
+const TEXT = {
+    text: 'Type something', fontFamily: 'Inter', fontSize: 24, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.35,
+    letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', fills: solid('#20202a'), w: 240, h: 44,
+};
+const FRAME = { fills: solid('#ffffff'), w: 400, h: 300, clip: true };
+
+/** A node as the editor stores it. */
+function node(type, props) {
+    const name = type[0].toUpperCase() + type.slice(1);
+    return {
+        name, parentId: null, x: 0, y: 0, w: 160, h: 100, ...COMMON,
+        ...(type === 'text' ? TEXT : {}), ...(type === 'frame' ? FRAME : {}), type, ...props,
+    };
+}
+
+const model = buttonModel({ sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] });
+const ids = model.ids;
+
+const bindings = {
+    root: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+    label: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+};
+
+/** The Button master: bound root auto layout frame with its label. */
+function master() {
+    const root = node('frame', {
+        id: 'btn', name: 'Button', x: 40, y: 40, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, strokeWidth: 2,
+        behavior: { version: BEHAVIOR_DATA_VERSION, ...model.binding }, vars: bindings.root,
+    });
+    const label = node('text', {
+        id: 'btn-label', name: 'Label', parentId: 'btn', text: 'Button', w: 80, h: 24,
+        fills: solid('#ffffff'), fontSize: 14, vars: bindings.label,
+    });
+    return [root, label];
+}
+
+/** An icon component in the file, for the Button icon slots. */
+function iconComponent(id, name, x, filled) {
+    const root = node('frame', { id, name: `Icon/${name}`, x, y: 40, w: 24, h: 24, component: true, fills: [], clip: false });
+    const path = node('path', {
+        id: `${id}-path`, name, parentId: id, w: 24, h: 24, pathW: 24, pathH: 24, closed: filled,
+        points: filled ? [{ x: 4, y: 4 }, { x: 20, y: 12 }, { x: 4, y: 20 }] : [{ x: 4, y: 12 }, { x: 20, y: 12 }],
+        fills: filled ? solid('#20202a') : [], stroke: '#20202a', strokeWidth: filled ? 0 : 2,
+    });
+    return [root, path];
+}
+
+/** The nested instance a managed slot holds, with the engine's icon slot bindings. */
+function iconInstance(slotId, componentId, components, disabled) {
+    const copies = components.filter(c => c.id === componentId || c.parentId === componentId);
+    const map = new Map(copies.map(c => [c.id, `${slotId}-ic-${c.id}`]));
+    const layers = copies.map(c => ({
+        id: map.get(c.id), fillIndexes: (c.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!c.stroke && c.strokeWidth > 0,
+    }));
+    const names = Object.fromEntries(Object.entries(iconSlotTargets(BUTTON)).map(([role, target]) => [role, target.name]));
+    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, names, layers });
+    const nodes = copies.map(c => {
+        const bound = plan.layers.find(l => l.id === map.get(c.id)).vars;
+        const isRoot = c.id === componentId;
+        return {
+            ...c, id: map.get(c.id), parentId: isRoot ? slotId : map.get(c.parentId), component: false, isInstance: isRoot, sourceId: c.id,
+            overrides: {}, version: 0, ...(isRoot ? { x: 0, y: 0, layoutSizingH: 'fill', layoutSizingV: 'fill' } : {}),
+            ...(Object.keys(bound).length ? { vars: bound } : {}),
+        };
+    });
+    return { nodes, slotVars: plan.slot };
+}
+
+const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
+
+/** A Button instance with its label and optional managed icon slot. */
+function instance(id, name, x, y, props, varModes, components) {
+    const root = node('frame', {
+        id, name, x, y, w: 136, h: 48, isInstance: true, sourceId: 'btn', layout: 'horizontal', gap: 6, padding: 12,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, strokeWidth: 2,
+        behavior: { version: BEHAVIOR_DATA_VERSION, props }, varModes, vars: bindings.root,
+    });
+    const label = node('text', {
+        id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24,
+        fills: solid('#ffffff'), fontSize: 14, vars: bindings.label, sourceId: 'btn-label',
+    });
+    const icon = props.hasIcon ? props.iconPlacement : null;
+    if (!icon) return [root, label];
+    const slot = icon === 'end' ? 'iconEnd' : 'iconStart', slotId = `${id}-icon-${icon}`;
+    const nested = props.icon ? iconInstance(slotId, props.icon, components, props.disabled === true) : null;
+    const iconLayer = node('frame', {
+        id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
+        ...(nested
+            ? { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
+            : { fills: solid('#8c8297'), layout: 'none' }),
+        behavior: { version: BEHAVIOR_DATA_VERSION, slot },
+    });
+    const kids = icon === 'end' ? [label, iconLayer] : [iconLayer, label];
+    return [root, ...kids, ...(nested ? nested.nodes : [])];
+}
+
+/** The testing document: Components page (master + icons), Testing page (instances). */
+export function buildTestingFile() {
+    const icons = [...iconComponent('icon-check', 'check', 240, true), ...iconComponent('icon-arrow', 'arrow', 300, false)];
+    const components = [...master(), ...icons];
+    const testing = [
+        ...instance('t-solid', 'Simpan', 40, 40, { hasIcon: false, label: 'Simpan' }, MODES('solid', 'primary', 'sm'), icons),
+        ...instance('t-outlined', 'Batal', 40, 120, { hasIcon: false, label: 'Batal' }, MODES('outlined', 'primary', 'sm'), icons),
+        ...instance('t-dashed-icon', 'Hapus', 40, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Hapus' }, MODES('dashed', 'danger', 'lg'), icons),
+        ...instance('t-end-icon', 'Lanjut', 40, 280, { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Lanjut' }, MODES('solid', 'primary', 'lg'), icons),
+        ...instance('t-only', 'Cari', 40, 360, { hasIcon: true, iconPlacement: 'only', icon: 'icon-check', label: 'Cari' }, MODES('solid', 'primary', 'sm'), icons),
+        ...instance('t-disabled', 'Simpan', 280, 40, { hasIcon: false, label: 'Simpan', disabled: true }, MODES('solid', 'primary', 'sm'), icons),
+        ...instance('t-filled', 'Detail', 280, 120, { hasIcon: false, label: 'Detail' }, MODES('filled', 'primary', 'sm'), icons),
+        ...instance('t-text', 'Hapus teks', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
+    ];
+    return {
+        format: 'midas', version: 1, name: 'Testing', pageId: 'page-testing',
+        pages: [
+            { id: 'page-components', name: 'Components', nodes: components },
+            { id: 'page-testing', name: 'Testing', nodes: testing },
+        ],
+        tokens: { colors: [], typography: [] }, assets: {},
+        variables: { collections: model.collections, items: model.items },
+    };
+}
+
+// Run directly: validate, then write testing.midas at the repo root.
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+    const doc = buildTestingFile();
+    assertBehaviorData(doc);
+    const errors = diagnoseDocument(doc).filter(f => f.severity === 'error');
+    if (errors.length) {
+        console.error(JSON.stringify(errors, null, 2));
+        throw new Error(`testing.midas has ${errors.length} diagnostics error(s)`);
+    }
+    writeFileSync(TESTING_PATH, JSON.stringify(doc, null, 2) + '\n');
+    console.log(`Wrote ${TESTING_PATH} (0 errors)`);
+}

@@ -1,0 +1,1948 @@
+{
+  "format": "midas",
+  "version": 1,
+  "name": "Testing",
+  "pageId": "page-testing",
+  "pages": [
+    {
+      "id": "page-components",
+      "name": "Components",
+      "nodes": [
+        {
+          "name": "Button",
+          "parentId": null,
+          "x": 40,
+          "y": 40,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "btn",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "templateId": "button",
+            "variables": {
+              "variant": "c-variant",
+              "color": "c-color",
+              "size": "c-size"
+            }
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "btn",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Button",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "btn-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          }
+        },
+        {
+          "name": "Icon/check",
+          "parentId": null,
+          "x": 240,
+          "y": 40,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "icon-check",
+          "component": true
+        },
+        {
+          "name": "check",
+          "parentId": "icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ]
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": null,
+          "x": 300,
+          "y": 40,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "icon-arrow",
+          "component": true
+        },
+        {
+          "name": "arrow",
+          "parentId": "icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-testing",
+      "name": "Testing",
+      "nodes": [
+        {
+          "name": "Simpan",
+          "parentId": null,
+          "x": 40,
+          "y": 40,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-solid",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Simpan"
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-solid",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Simpan",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-solid-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Batal",
+          "parentId": null,
+          "x": 40,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-outlined",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Batal"
+            }
+          },
+          "varModes": {
+            "c-variant": "outlined",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Batal",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-outlined-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Hapus",
+          "parentId": null,
+          "x": 40,
+          "y": 200,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-dashed-icon",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "icon": "icon-check",
+              "label": "Hapus"
+            }
+          },
+          "varModes": {
+            "c-variant": "dashed",
+            "c-color": "danger",
+            "c-size": "lg"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "iconStart",
+          "parentId": "t-dashed-icon",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-dashed-icon-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "i-icon",
+            "h": "i-icon"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-dashed-icon",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Hapus",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-dashed-icon-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "t-dashed-icon-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "t-dashed-icon-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "t-dashed-icon-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "t-dashed-icon-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "i-fg-v"
+          }
+        },
+        {
+          "name": "Lanjut",
+          "parentId": null,
+          "x": 40,
+          "y": 280,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-end-icon",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "end",
+              "icon": "icon-arrow",
+              "label": "Lanjut"
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "lg"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-end-icon",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Lanjut",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-end-icon-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "iconEnd",
+          "parentId": "t-end-icon",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-end-icon-icon-end",
+          "layout": "horizontal",
+          "padding": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "i-icon",
+            "h": "i-icon"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          }
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": "t-end-icon-icon-end",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "t-end-icon-icon-end-ic-icon-arrow",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-arrow",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "arrow",
+          "parentId": "t-end-icon-icon-end-ic-icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "t-end-icon-icon-end-ic-icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-arrow-path",
+          "overrides": {},
+          "vars": {
+            "stroke": "i-fg-v"
+          }
+        },
+        {
+          "name": "Cari",
+          "parentId": null,
+          "x": 40,
+          "y": 360,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-only",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "only",
+              "icon": "icon-check",
+              "label": "Cari"
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "iconStart",
+          "parentId": "t-only",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-only-icon-only",
+          "layout": "horizontal",
+          "padding": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "i-icon",
+            "h": "i-icon"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-only",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Cari",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-only-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "t-only-icon-only",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "t-only-icon-only-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "t-only-icon-only-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "t-only-icon-only-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "i-fg-v"
+          }
+        },
+        {
+          "name": "Simpan",
+          "parentId": null,
+          "x": 280,
+          "y": 40,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-disabled",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Simpan",
+              "disabled": true
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Simpan",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-disabled-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Detail",
+          "parentId": null,
+          "x": 280,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-filled",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Detail"
+            }
+          },
+          "varModes": {
+            "c-variant": "filled",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-filled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Detail",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-filled-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
+          "name": "Hapus teks",
+          "parentId": null,
+          "x": 280,
+          "y": 200,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-text",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Hapus"
+            }
+          },
+          "varModes": {
+            "c-variant": "text",
+            "c-color": "danger",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fill": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "t-text",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Hapus",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-text-label",
+          "vars": {
+            "fill": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        }
+      ]
+    }
+  ],
+  "tokens": {
+    "colors": [],
+    "typography": []
+  },
+  "assets": {},
+  "variables": {
+    "collections": [
+      {
+        "id": "c-color",
+        "name": "Color",
+        "modes": [
+          {
+            "id": "default",
+            "name": "Default"
+          },
+          {
+            "id": "primary",
+            "name": "Primary"
+          },
+          {
+            "id": "danger",
+            "name": "Danger"
+          }
+        ]
+      },
+      {
+        "id": "c-size",
+        "name": "Size",
+        "modes": [
+          {
+            "id": "sm",
+            "name": "Small"
+          },
+          {
+            "id": "lg",
+            "name": "Large"
+          }
+        ]
+      },
+      {
+        "id": "c-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "outlined",
+            "name": "Outlined"
+          },
+          {
+            "id": "dashed",
+            "name": "Dashed"
+          },
+          {
+            "id": "solid",
+            "name": "Solid"
+          },
+          {
+            "id": "filled",
+            "name": "Filled"
+          },
+          {
+            "id": "text",
+            "name": "Text"
+          },
+          {
+            "id": "link",
+            "name": "Link"
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "c-color",
+        "name": "button/color",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-hover",
+        "name": "button/color-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#4338ca",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-active",
+        "name": "button/color-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#312e81",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-border",
+        "name": "button/color-border",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-border-hover",
+        "name": "button/color-border-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#4338ca",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-border-active",
+        "name": "button/color-border-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#312e81",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-bg",
+        "name": "button/color-bg",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#f4f4f5",
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
+        "id": "c-color-bg-hover",
+        "name": "button/color-bg-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#e4e4e7",
+          "primary": "#c7d2fe",
+          "danger": "#fecaca"
+        }
+      },
+      {
+        "id": "c-color-bg-active",
+        "name": "button/color-bg-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#d4d4d8",
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "c-color-text",
+        "name": "button/color-text",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-text-hover",
+        "name": "button/color-text-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-text-active",
+        "name": "button/color-text-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-text-bg-hover",
+        "name": "button/color-text-bg-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#f4f4f5",
+          "primary": "#e0e7ff",
+          "danger": "#fee2e2"
+        }
+      },
+      {
+        "id": "c-color-text-bg-active",
+        "name": "button/color-text-bg-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#d4d4d8",
+          "primary": "#a5b4fc",
+          "danger": "#fca5a5"
+        }
+      },
+      {
+        "id": "c-color-solid",
+        "name": "button/color-solid",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b",
+          "primary": "#4338ca",
+          "danger": "#dc2626"
+        }
+      },
+      {
+        "id": "c-color-solid-hover",
+        "name": "button/color-solid-hover",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#3f3f46",
+          "primary": "#3730a3",
+          "danger": "#b91c1c"
+        }
+      },
+      {
+        "id": "c-color-solid-active",
+        "name": "button/color-solid-active",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#27272a",
+          "primary": "#312e81",
+          "danger": "#991b1b"
+        }
+      },
+      {
+        "id": "c-color-solid-text",
+        "name": "button/color-solid-text",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#ffffff",
+          "primary": "#ffffff",
+          "danger": "#ffffff"
+        }
+      },
+      {
+        "id": "c-color-outline",
+        "name": "button/color-outline",
+        "type": "color",
+        "collectionId": "c-color",
+        "values": {
+          "default": "#18181b1a",
+          "primary": "#4338ca33",
+          "danger": "#dc262633"
+        }
+      },
+      {
+        "id": "s-height",
+        "name": "button/height",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 32,
+          "lg": 40
+        }
+      },
+      {
+        "id": "s-fontSize",
+        "name": "button/fontSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 18
+        }
+      },
+      {
+        "id": "s-lineHeight",
+        "name": "button/lineHeight",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 1.5714285714285714,
+          "lg": 1.4444444444444444
+        }
+      },
+      {
+        "id": "s-paddingX",
+        "name": "button/paddingX",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 12,
+          "lg": 16
+        }
+      },
+      {
+        "id": "s-paddingY",
+        "name": "button/paddingY",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "s-gap",
+        "name": "button/gap",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "s-radius",
+        "name": "button/radius",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 6,
+          "lg": 8
+        }
+      },
+      {
+        "id": "s-iconSize",
+        "name": "button/iconSize",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "sm": 14,
+          "lg": 16
+        }
+      },
+      {
+        "id": "v-bg",
+        "name": "button/bg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid"
+          },
+          "filled": {
+            "alias": "c-color-bg"
+          },
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg",
+        "name": "button/fg",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color"
+          },
+          "dashed": {
+            "alias": "c-color"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text"
+          },
+          "link": {
+            "alias": "c-color-text"
+          }
+        }
+      },
+      {
+        "id": "v-border",
+        "name": "button/border",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border"
+          },
+          "dashed": {
+            "alias": "c-color-border"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-hover",
+        "name": "button/bg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid-hover"
+          },
+          "filled": {
+            "alias": "c-color-bg-hover"
+          },
+          "text": {
+            "alias": "c-color-text-bg-hover"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-hover",
+        "name": "button/fg-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-hover"
+          },
+          "dashed": {
+            "alias": "c-color-hover"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-hover"
+          },
+          "link": {
+            "alias": "c-color-text-hover"
+          }
+        }
+      },
+      {
+        "id": "v-border-hover",
+        "name": "button/border-hover",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-hover"
+          },
+          "dashed": {
+            "alias": "c-color-border-hover"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-active",
+        "name": "button/bg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "dashed": "#ffffff",
+          "solid": {
+            "alias": "c-color-solid-active"
+          },
+          "filled": {
+            "alias": "c-color-bg-active"
+          },
+          "text": {
+            "alias": "c-color-text-bg-active"
+          },
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-active",
+        "name": "button/fg-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-active"
+          },
+          "dashed": {
+            "alias": "c-color-active"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color"
+          },
+          "text": {
+            "alias": "c-color-text-active"
+          },
+          "link": {
+            "alias": "c-color-text-active"
+          }
+        }
+      },
+      {
+        "id": "v-border-active",
+        "name": "button/border-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-border-active"
+          },
+          "dashed": {
+            "alias": "c-color-border-active"
+          },
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-bg-disabled",
+        "name": "button/bg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#f4f4f5",
+          "dashed": "#f4f4f5",
+          "solid": "#f4f4f5",
+          "filled": "#f4f4f5",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      },
+      {
+        "id": "v-fg-disabled",
+        "name": "button/fg-disabled",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#a1a1aa",
+          "dashed": "#a1a1aa",
+          "solid": "#a1a1aa",
+          "filled": "#a1a1aa",
+          "text": "#a1a1aa",
+          "link": "#a1a1aa"
+        }
+      },
+      {
+        "id": "v-outline-color",
+        "name": "button/outline-color",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": "#00000000",
+          "dashed": "#00000000",
+          "solid": "#00000000",
+          "filled": "#00000000",
+          "text": "#00000000",
+          "link": "#00000000"
+        }
+      }
+    ]
+  }
+}

@@ -72,6 +72,8 @@ Execute in the order listed. The numbers are stage IDs, not the execution order.
 
 Behavior rework pass (latest): layout ownership (`isLayoutOwnedField`: x/y for flow children of auto-layout parents, hug and fill axes), canvas preview for bg and border (`canvasColorsOf`), shared label rule (`labelLayerOf`, `masterLayersOf`), edit helpers (`edits.js`). Open: Kopi Kita master resize, bind-tokens browser check, Focus preview on a fixture with a stroke width, Canvas 2D fallback preview.
 
+Fase 0 triage (2026-10-31): kode stroke/label/icon-slot/disabled Button sudah jadi dan teruji (builder-core 642 + studio 43 lulus). Sisa exit Fase 0: verifikasi manual di browser. `AGENTS.md` is the single shared agent notes file (`CLAUDE.md` is only a pointer).
+
 Load rules (AGENTS.md), implemented:
 
 - Phase 1, per node: version and shape of `behavior` data (`behavior-engine/data.js`).
