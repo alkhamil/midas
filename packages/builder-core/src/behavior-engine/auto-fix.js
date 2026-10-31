@@ -64,6 +64,15 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
     /** @type {Map<string, any>} */
     const plannedItems = new Map();
     const snapshotModesOf = (/** @type {string} */ name) => baseSnapshot.collections.find((/** @type {any} */ c) => c.name === name)?.modes ?? [];
+    /**
+     * Snapshot alias values name their collection; plan aliases route by collection entry. Rebased here so every
+     * planned alias carries a collectionIndex (opacity survives the rebasing).
+     */
+    const reindexAlias = (/** @type {any} */ value) => {
+        if (!value?.alias || value.alias.collectionIndex !== undefined) return value;
+        const at = collEntry(value.alias.collection, [], 'base');
+        return { ...value, alias: { collectionIndex: at, name: value.alias.name } };
+    };
     /** The plan entry for a collection (created once per name and origin); base entries carry the snapshot modes. */
     const collEntry = (/** @type {string} */ name, /** @type {string[]} */ modes, /** @type {string} */ origin) => {
         let idx = newCollections.findIndex(c => c.name === name && c.origin === origin);
@@ -156,7 +165,8 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
                 ?? baseSnapshot.items.find((/** @type {any} */ i) => i.collection === pColl && variableKey(i.name) === variableKey(pName));
             if (!source) { needsValue.push({ name: owner, reason: `nothing behind "${derive.from}"` }); return null; }
             const values = {};
-            for (const m of snapshotModesOf(baseColl)) values[m] = { alias: { collection: pColl, name: pName }, ...(typeof derive.opacity === 'number' ? { opacity: derive.opacity } : {}) };
+            const primaries = collEntry(pColl, [], 'base');
+            for (const m of snapshotModesOf(baseColl)) values[m] = { alias: { collectionIndex: primaries, name: pName }, ...(typeof derive.opacity === 'number' ? { opacity: derive.opacity } : {}) };
             const at = collEntry(baseColl, [], 'base');
             newItems.push({ collection: baseColl, collectionIndex: at, name: baseName, type, values });
             plannedItems.set(key2(`base:${baseColl}`, baseName), true);
@@ -166,7 +176,9 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         const snap = baseSnapshot.items.find((/** @type {any} */ i) => i.collection === baseColl && variableKey(i.name) === variableKey(baseName));
         if (!snap) { needsValue.push({ name: owner, reason: `no base variable "${entry.base}"` }); return null; }
         const at = collEntry(baseColl, [], 'base');
-        newItems.push({ collection: snap.collection, collectionIndex: at, name: snap.name, type: snap.type ?? type, values: snap.values });
+        const values = {};
+        for (const [mode, value] of Object.entries(snap.values)) values[mode] = reindexAlias(value);
+        newItems.push({ collection: snap.collection, collectionIndex: at, name: snap.name, type: snap.type ?? type, values });
         plannedItems.set(key2(`base:${baseColl}`, baseName), true);
         return { collectionIndex: at, name: baseName };
     };
@@ -231,7 +243,9 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         }
         for (const i of baseSnapshot.items) {
             const at = collEntry(i.collection, [], 'base');
-            newItems.push({ collection: i.collection, collectionIndex: at, name: i.name, type: i.type, values: i.values });
+            const values = {};
+            for (const [mode, value] of Object.entries(i.values)) values[mode] = reindexAlias(value);
+            newItems.push({ collection: i.collection, collectionIndex: at, name: i.name, type: i.type, values });
             plannedItems.set(key2(`base:${i.collection}`, i.name), true);
         }
     }
@@ -321,9 +335,14 @@ export function applyAutoFix(store, binding, autoFix, uid) {
     const stats = { collections: 0, items: 0, modes: 0, aliases: 0 };
     const keyOf = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase().replace(/-/g, '');
     const usedIds = new Set();
+    const preIds = new Set((store.collections || []).map(c => c.id));
     const collIdOf = [];
     for (const wanted of autoFix.plan.collections) {
-        const reuse = (store.collections || []).find(c => c.name === wanted.name && !usedIds.has(c.id));
+        // Base entries merge into a pre-existing same-named collection; component entries consume exclusively so a
+        // component collection sharing a base name stays its own collection.
+        const reuse = wanted.origin === 'base'
+            ? (store.collections || []).find(c => c.name === wanted.name && preIds.has(c.id))
+            : (store.collections || []).find(c => c.name === wanted.name && !usedIds.has(c.id));
         if (reuse) {
             for (const mode of wanted.modes) {
                 if (!reuse.modes.some(m => m.name === mode)) { reuse.modes.push({ id: uid(), name: mode }); stats.modes++; }
@@ -347,7 +366,6 @@ export function applyAutoFix(store, binding, autoFix, uid) {
     const targetOf = (/** @type {{ collectionIndex: number, name: string }} */ alias) => {
         const cid = collIdOf[alias.collectionIndex];
         const target = cid === undefined ? undefined : findItem(cid, alias.name);
-        void byId;
         return { cid, target };
     };
     for (const wanted of autoFix.plan.items) {
