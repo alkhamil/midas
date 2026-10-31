@@ -22,10 +22,16 @@
 ## Decisions
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
-- Baseline green: builder-core 835 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
+- Baseline green: builder-core 842 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
 - Input parity: the wrapper owns all box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen); the inner control owns text only. No per-component code in the engine.
 - Icon choices are remembered per managed slot (generic engine rule: placement carry, retained icon props); the instance Preview panel shows the state select only, no resolved-token list.
-- Base collections generate from the bundled snapshot (`base-snapshot.json`, built by `scripts/build-base-snapshot.js`), no file picker; Auto Fix aliases component variables by schema role from base collections, never literals, idempotent.
+- Base collections generate from the bundled snapshot (`base-snapshot.json`, built by `scripts/build-base-snapshot.js`), no file picker; base tokens change in Generate base (`buildBasePlan`, `roles.json`, `antd-sizes.json`), then the snapshot is rebuilt. Only Primitives, Semantic and Typography exist; no Icons or Size.
+- Collections are always "<Template> <Name>" (Button Variant, Input Status), never order-dependent, no groups, no group prefix in variable names. A template never writes a default literal: a missing role fails. Auto Fix aliases component variables by schema role, never literals, idempotent.
+- Provenance: a component cell aliases Semantic (directly or through its own template's cells). Fixtures build every literal as a Primitive plus a Semantic alias (`scripts/literal-bank.mjs`).
+- Gap ladder (`gapXXS`…`gapXL`) replaces margin. Button `gap` aliases `gapXS` (antd `iconGap` = `marginXS`); Input prefix gap is `gapXXS` (antd `inputAffixPadding` = `paddingXXS`).
+- Input has no wave in antd (`components/input` imports none); Input uses the focus halo only.
+- Variables window: a file starts with no collection. Create variable makes "Collection 1" + "Mode 1" in the same transaction; nothing else auto-creates one. No Enum variable type.
+- Play starts at the top-level frame that holds the selection (a child starts its frame), overriding the flow start marker; with nothing selected, the flow start, then the first frame.
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".
 - lineHeight is px paired to fontSize from the token JSON Typography table (e.g. 14→20); antd supplies the names only. Auto Fix rebinds ratio leftovers to the paired px token.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
@@ -35,7 +41,7 @@
 
 - Button template: `packages/builder-core/src/templates/button.js`. Engine: `packages/builder-core/src/behavior-engine/` (`codegen.js`, `preview.js`, `anatomy.js`, `icon-slot.js`, `display.js`).
 - Play DOM: `packages/builder-core/src/prototype/dom-tree.js` (`renderButton` plus codegen stylesheet). Panel: `apps/studio/src/engine/behaviorPanel.js`.
-- Button variable fixture: `scripts/button-model.mjs` (gap sm=6, lg=8 — not 16; see Antrean).
+- Button variable fixture: `scripts/button-model.mjs` (gap sm=6, lg=8 in fixtures; the production gap is `gapXS`, see Decisions).
 
 ## Known issues
 
@@ -46,7 +52,7 @@
 ## Antrean
 
 - Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
-- Open: is gap default 16 a new token or a fixture change (current: sm=6, lg=8)?
+- Open: `Button Size` paddingY md/lg and `Input Size` paddingY xl read Primitive 0 / 9 in the committed snapshot; antd gives 4 and 7 for Button and Input md/lg. Needs a snapshot rebuild from the token JSON (not in the repo). Axis padding (`paddingX*`/`paddingY*`, template-qualified where Button and Input differ) is not done.
 
 ## Maintenance
 
