@@ -9,10 +9,10 @@ test('the Button schema is valid', () => {
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
 });
 
-test('a schema without a required text slot is rejected', () => {
+test('a schema without a required text or control slot is rejected', () => {
     const bad = clone(BUTTON);
     bad.anatomy = bad.anatomy.filter(s => s.kind !== 'text');
-    assert.match(validateTemplateSchema(bad).join('\n'), /text slot/);
+    assert.match(validateTemplateSchema(bad).join('\n'), /text or control slot/);
 });
 
 test('duplicate anatomy slot ids are rejected', () => {

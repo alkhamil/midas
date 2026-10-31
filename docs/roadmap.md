@@ -45,7 +45,7 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 
 | Batch | Component | Catatan |
 |---|---|---|
-| 1 | Input | Menambah kind `control` (`<input>` asli). Variant, Status, Size. Slot prefix/suffix/addon. allowClear, showCount |
+| 1 | Input | ✅ done 2026-10-31. Menambah kind `control` (`<input>` asli). Variant, Status, Size. Slot prefix/suffix/addon. allowClear, showCount |
 | 2 | Checkbox, Radio, Switch | Pakai `control`, tinggal data schema |
 | 3 | Tag, Alert | Alert butuh slot icon + close |
 | 4+ | Daftar lanjutan (Select, Modal, Tabs, dll.) | Ditentukan setelah batch 3 stabil |

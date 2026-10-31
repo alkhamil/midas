@@ -107,6 +107,103 @@
           }
         },
         {
+          "name": "Input",
+          "parentId": null,
+          "x": 420,
+          "y": 40,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "inp",
+          "component": true,
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "templateId": "input",
+            "variables": {
+              "variant": "c-input-variant",
+              "status": "c-input-status",
+              "size": "c-input-size"
+            }
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "inp",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Search",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inp-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          }
+        },
+        {
           "name": "Icon/check",
           "parentId": null,
           "x": 240,
@@ -1488,6 +1585,634 @@
             "lineHeight": "s-lineHeight"
           },
           "sourceId": "btn-label"
+        },
+        {
+          "name": "Search",
+          "parentId": null,
+          "x": 520,
+          "y": 40,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-outlined",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "Hello",
+              "placeholder": "Search"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Hello",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-outlined-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Error",
+          "parentId": null,
+          "x": 520,
+          "y": 120,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-error",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "prefixIcon": "icon-check",
+              "value": "",
+              "placeholder": "Search"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "error",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "prefix",
+          "parentId": "i-error",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-error-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "prefix"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-error",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-error-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "i-error-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "i-error-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "i-error-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "i-error-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "in-v-fg"
+          }
+        },
+        {
+          "name": "Tags",
+          "parentId": null,
+          "x": 520,
+          "y": 200,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-filled",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "Hi",
+              "allowClear": true,
+              "showCount": true,
+              "maxLength": "20"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "filled",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-filled",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Hi",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-filled-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "No edit",
+          "parentId": null,
+          "x": 520,
+          "y": 280,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-disabled",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "No edit",
+              "disabled": true
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "No edit",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-disabled-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Site",
+          "parentId": null,
+          "x": 520,
+          "y": 360,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-addon",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "midas",
+              "addonBefore": "https://",
+              "addonAfter": ".com"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "borderless",
+            "c-input-status": "default",
+            "c-input-size": "small"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-addon",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "midas",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-addon-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
         }
       ]
     }
@@ -1558,6 +2283,60 @@
           {
             "id": "link",
             "name": "Link"
+          }
+        ]
+      },
+      {
+        "id": "c-input-variant",
+        "name": "Variant",
+        "modes": [
+          {
+            "id": "outlined",
+            "name": "Outlined"
+          },
+          {
+            "id": "filled",
+            "name": "Filled"
+          },
+          {
+            "id": "borderless",
+            "name": "Borderless"
+          }
+        ]
+      },
+      {
+        "id": "c-input-status",
+        "name": "Status",
+        "modes": [
+          {
+            "id": "default",
+            "name": "Default"
+          },
+          {
+            "id": "error",
+            "name": "Error"
+          },
+          {
+            "id": "warning",
+            "name": "Warning"
+          }
+        ]
+      },
+      {
+        "id": "c-input-size",
+        "name": "Size",
+        "modes": [
+          {
+            "id": "large",
+            "name": "Large"
+          },
+          {
+            "id": "middle",
+            "name": "Middle"
+          },
+          {
+            "id": "small",
+            "name": "Small"
           }
         ]
       }
@@ -2082,6 +2861,254 @@
           "filled": "#00000000",
           "text": "#00000000",
           "link": "#00000000"
+        }
+      },
+      {
+        "id": "in-st-status-border",
+        "name": "input/status-border",
+        "type": "color",
+        "collectionId": "c-input-status",
+        "values": {
+          "default": "#d9d9d9",
+          "error": "#ff4d4f",
+          "warning": "#faad14"
+        }
+      },
+      {
+        "id": "in-st-status-border-hover",
+        "name": "input/status-border-hover",
+        "type": "color",
+        "collectionId": "c-input-status",
+        "values": {
+          "default": "#4096ff",
+          "error": "#ff4d4f",
+          "warning": "#faad14"
+        }
+      },
+      {
+        "id": "in-st-status-border-focus",
+        "name": "input/status-border-focus",
+        "type": "color",
+        "collectionId": "c-input-status",
+        "values": {
+          "default": "#4096ff",
+          "error": "#ff4d4f",
+          "warning": "#faad14"
+        }
+      },
+      {
+        "id": "in-st-status-outline",
+        "name": "input/status-outline",
+        "type": "color",
+        "collectionId": "c-input-status",
+        "values": {
+          "default": "#4096ff33",
+          "error": "#ff4d4f33",
+          "warning": "#faad1433"
+        }
+      },
+      {
+        "id": "in-s-height",
+        "name": "input/height",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 40,
+          "middle": 32,
+          "small": 24
+        }
+      },
+      {
+        "id": "in-s-fontSize",
+        "name": "input/fontSize",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 16,
+          "middle": 14,
+          "small": 14
+        }
+      },
+      {
+        "id": "in-s-lineHeight",
+        "name": "input/lineHeight",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 22,
+          "middle": 22,
+          "small": 20
+        }
+      },
+      {
+        "id": "in-s-paddingX",
+        "name": "input/paddingX",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 16,
+          "middle": 12,
+          "small": 8
+        }
+      },
+      {
+        "id": "in-s-paddingY",
+        "name": "input/paddingY",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 8,
+          "middle": 6,
+          "small": 4
+        }
+      },
+      {
+        "id": "in-s-gap",
+        "name": "input/gap",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 8,
+          "middle": 8,
+          "small": 6
+        }
+      },
+      {
+        "id": "in-s-radius",
+        "name": "input/radius",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 8,
+          "middle": 6,
+          "small": 4
+        }
+      },
+      {
+        "id": "in-s-iconSize",
+        "name": "input/iconSize",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": 16,
+          "middle": 14,
+          "small": 12
+        }
+      },
+      {
+        "id": "in-v-bg",
+        "name": "input/bg",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "filled": "#f5f5f5",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-fg",
+        "name": "input/fg",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#18181b",
+          "filled": "#18181b",
+          "borderless": "#18181b"
+        }
+      },
+      {
+        "id": "in-v-border",
+        "name": "input/border",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": {
+            "alias": "in-st-status-border"
+          },
+          "filled": "#00000000",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-placeholder",
+        "name": "input/placeholder",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#bfbfbf",
+          "filled": "#bfbfbf",
+          "borderless": "#bfbfbf"
+        }
+      },
+      {
+        "id": "in-v-bg-hover",
+        "name": "input/bg-hover",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#ffffff",
+          "filled": "#eeeeee",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-border-hover",
+        "name": "input/border-hover",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": {
+            "alias": "in-st-status-border-hover"
+          },
+          "filled": "#00000000",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-border-focus",
+        "name": "input/border-focus",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": {
+            "alias": "in-st-status-border-focus"
+          },
+          "filled": "#00000000",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-bg-disabled",
+        "name": "input/bg-disabled",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#f5f5f5",
+          "filled": "#f5f5f5",
+          "borderless": "#00000000"
+        }
+      },
+      {
+        "id": "in-v-fg-disabled",
+        "name": "input/fg-disabled",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#a1a1aa",
+          "filled": "#a1a1aa",
+          "borderless": "#a1a1aa"
+        }
+      },
+      {
+        "id": "in-v-outline-color",
+        "name": "input/outline-color",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": "#00000000",
+          "filled": "#00000000",
+          "borderless": "#00000000"
         }
       }
     ]

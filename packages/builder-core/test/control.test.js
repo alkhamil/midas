@@ -30,10 +30,10 @@ test('a control names a text slot and its value and placeholder string props', (
     assert.deepEqual(validateTemplateSchema(controlled()).filter(p => p.includes('control')), []);
     const badSlot = controlled();
     badSlot.control.slot = 'missing';
-    assert.match(validateTemplateSchema(badSlot).join('\n'), /control slot "missing" is not a text anatomy slot/);
+    assert.match(validateTemplateSchema(badSlot).join('\n'), /control slot "missing" is not a text or control anatomy slot/);
     const iconSlot = controlled();
     iconSlot.control.slot = 'iconStart';
-    assert.match(validateTemplateSchema(iconSlot).join('\n'), /control slot "iconStart" is not a text anatomy slot/);
+    assert.match(validateTemplateSchema(iconSlot).join('\n'), /control slot "iconStart" is not a text or control anatomy slot/);
     const badValue = controlled();
     badValue.control.value = 'disabled';
     assert.match(validateTemplateSchema(badValue).join('\n'), /control value "disabled" is not a string prop/);
@@ -45,7 +45,7 @@ test('a control names a text slot and its value and placeholder string props', (
 test('the component renders a control slot as an input, not a span', () => {
     const template = controlled();
     const { files } = generateComponent(template, model.binding, variables, 'Input', master(template), () => []);
-    assert.match(files['Input.jsx'], /<input className="input-label" value=\{value\} placeholder=\{placeholder\} \/>/);
+    assert.match(files['Input.jsx'], /<input className="input-label" value=\{value\} placeholder=\{placeholder\} disabled=\{disabled\} \/>/);
     assert.doesNotMatch(files['Input.jsx'], /<span className="input-label">/);
 });
 
@@ -55,7 +55,7 @@ test('a control without a placeholder omits the attribute', () => {
     delete template.control.placeholder;
     assert.deepEqual(validateTemplateSchema(template).filter(p => p.includes('control')), []);
     const { files } = generateComponent(template, model.binding, variables, 'Input', master(template), () => []);
-    assert.match(files['Input.jsx'], /<input className="input-label" value=\{value\} \/>/);
+    assert.match(files['Input.jsx'], /<input className="input-label" value=\{value\} disabled=\{disabled\} \/>/);
 });
 
 test('Play draws a control slot as an input holding the value, while the canvas keeps the text layer', async () => {

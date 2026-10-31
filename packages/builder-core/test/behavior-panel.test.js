@@ -19,7 +19,7 @@ test('an unbound master shows no template and no rows, and the template list to 
     const panel = masterPanel({ id: 'btn', isInstance: false }, [variant, size]);
     assert.equal(panel.templateId, null);
     assert.deepEqual(panel.rows, []);
-    assert.deepEqual(panel.templates, [{ id: 'button', name: 'Button' }]);
+    assert.deepEqual(panel.templates, [{ id: 'button', name: 'Button' }, { id: 'input', name: 'Input' }]);
 });
 
 test('a master bound to Button lists its variable props, prefilled by auto-match (hit and miss)', () => {

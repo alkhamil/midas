@@ -39,7 +39,7 @@
 
 ## Antrean
 
-- Fase 1 batch 1 (Input plus `control` kind) after the Fase 0 browser exit.
+- Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
 - Open: is gap default 16 a new token or a fixture change (current: sm=6, lg=8)?
 
 ## Maintenance

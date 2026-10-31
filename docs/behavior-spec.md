@@ -54,6 +54,16 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
   - onFocus (exposeAsTrigger false)
   - onBlur (exposeAsTrigger false)
 
+## Input schema
+
+- anatomy: addonBefore (text, optional), prefix (icon, optional, managed), label (control, required: drawn as the `<input>`), suffix (icon, optional, managed), addonAfter (text, optional). Addons are prop-driven text spans; only the label has a master text layer.
+- `control` kind: a label slot drawn as a real `<input>` in Play and codegen. The template's `control` names the slot and the props that fill it (value, placeholder, readonly, maxlength, clear, count). Generic engine support; no Input-specific code.
+- props: variant (variable, "Variant": outlined, filled, borderless); status (variable, "Status": default, error, warning); size (variable, "Size": large, middle, small); value/placeholder/maxLength (string); allowClear/showCount (boolean); hasIcon + iconPlacement (start | end | both) + prefixIcon/suffixIcon; addonBefore/addonAfter (string); disabled/readOnly (boolean).
+- tokens: fromSize as Button; fromVariant bg/fg/border/placeholder/bg-hover/border-hover/border-focus/bg-disabled/fg-disabled/outline-color where border* alias into fromStatus (status-border/-hover/-focus); focus-visible maps outline-color to status-outline. No Color dimension.
+- states: persistent disabled (bg/fg only); preview-only hover, focus (border), focus-visible (outline ring, `:focus-visible` only). Disabled guards every state with `:not(:disabled)`.
+- display: root as Button; label (the control slot) with fill/fontSize/lineHeight plus placeholder (its own colour, written to `::placeholder`); addons reuse the label text tokens; prefix/suffix size the icon.
+- codegen: `<span class="input">` root (no `disabled` attr; the input holds it), conditional addon spans, clear icon only with a non-empty value, showCount counter. Play mounts the same descriptor, so the input is natively editable.
+
 ## Stages
 
 Execute in the order listed. The numbers are stage IDs, not the execution order.
@@ -73,6 +83,8 @@ Execute in the order listed. The numbers are stage IDs, not the execution order.
 Behavior rework pass (latest): layout ownership (`isLayoutOwnedField`: x/y for flow children of auto-layout parents, hug and fill axes), canvas preview for bg and border (`canvasColorsOf`), shared label rule (`labelLayerOf`, `masterLayersOf`), edit helpers (`edits.js`). Open: Kopi Kita master resize, bind-tokens browser check, Focus preview on a fixture with a stroke width, Canvas 2D fallback preview.
 
 Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slot/disabled code done and tested. `AGENTS.md` is the single shared agent notes file (`CLAUDE.md` is only a pointer).
+
+Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
 Load rules (AGENTS.md), implemented:
 
