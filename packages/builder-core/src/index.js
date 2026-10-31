@@ -28,6 +28,7 @@ export * from './behavior-engine/auto-fix.js';
 export { default as ROLES } from './base-tokens/roles.json' with { type: 'json' };
 export * from './base-tokens/importer.js';
 export { default as BASE_SNAPSHOT } from './base-tokens/base-snapshot.json' with { type: 'json' };
+export { default as SIZES } from './base-tokens/antd-sizes.json' with { type: 'json' };
 export * from './prototype/data.js';
 export * from './prototype/validate.js';
 export * from './prototype/plan.js';

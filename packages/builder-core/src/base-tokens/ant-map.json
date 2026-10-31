@@ -1,66 +1,176 @@
 {
-  "Primitives": { "source": "Primitives", "modes": ["Base"], "naming": "raw" },
+  "Primitives": {
+    "source": "Primitives",
+    "modes": [
+      "Base"
+    ],
+    "naming": "raw"
+  },
   "Semantic": {
     "source": "Semantic",
-    "modes": ["Light", "Dark"],
+    "modes": [
+      "Light",
+      "Dark"
+    ],
     "items": {
-      "colorPrimary": { "Light": "bg/brand", "Dark": "bg/brand", "role": "brand", "derived": false },
-      "colorSuccess": { "Light": "bg/success", "Dark": "bg/success", "role": "success", "derived": false },
-      "colorWarning": { "Light": "bg/warning", "Dark": "bg/warning", "role": "warning", "derived": false },
-      "colorError": { "Light": "bg/danger", "Dark": "bg/danger", "role": "danger (Ant error maps to JSON danger)", "derived": false },
-      "colorInfo": { "Light": "bg/info", "Dark": "bg/info", "role": "info", "derived": false },
-      "colorLink": { "Light": "text/link", "Dark": "text/link", "role": "link", "derived": false },
-      "colorText": { "Light": "text/primary", "Dark": "text/primary", "role": "text", "derived": false },
-      "colorTextSecondary": { "Light": "text/secondary", "Dark": "text/secondary", "role": "text", "derived": false },
-      "colorTextTertiary": { "Light": "text/tertiary", "Dark": "text/tertiary", "role": "text", "derived": false },
-      "colorTextDisabled": { "Light": "text/disabled", "Dark": "text/disabled", "role": "text", "derived": false },
-      "colorBgContainer": { "Light": "bg/surface", "Dark": "bg/surface", "role": "background", "derived": false },
-      "colorBgElevated": { "Light": "bg/elevated", "Dark": "bg/elevated", "role": "background", "derived": false },
-      "colorBgLayout": { "Light": "bg/subtle", "Dark": "bg/subtle", "role": "background", "derived": false },
-      "colorBorder": { "Light": "stroke/default", "Dark": "stroke/default", "role": "stroke", "derived": false },
-      "colorBorderSecondary": { "Light": "stroke/subtle", "Dark": "stroke/subtle", "role": "stroke", "derived": false }
+      "colorPrimary": {
+        "Light": "bg/brand",
+        "Dark": "bg/brand",
+        "role": "brand",
+        "derived": false
+      },
+      "colorSuccess": {
+        "Light": "bg/success",
+        "Dark": "bg/success",
+        "role": "success",
+        "derived": false
+      },
+      "colorWarning": {
+        "Light": "bg/warning",
+        "Dark": "bg/warning",
+        "role": "warning",
+        "derived": false
+      },
+      "colorError": {
+        "Light": "bg/danger",
+        "Dark": "bg/danger",
+        "role": "danger (Ant error maps to JSON danger)",
+        "derived": false
+      },
+      "colorInfo": {
+        "Light": "bg/info",
+        "Dark": "bg/info",
+        "role": "info",
+        "derived": false
+      },
+      "colorLink": {
+        "Light": "text/link",
+        "Dark": "text/link",
+        "role": "link",
+        "derived": false
+      },
+      "colorText": {
+        "Light": "text/primary",
+        "Dark": "text/primary",
+        "role": "text",
+        "derived": false
+      },
+      "colorTextSecondary": {
+        "Light": "text/secondary",
+        "Dark": "text/secondary",
+        "role": "text",
+        "derived": false
+      },
+      "colorTextTertiary": {
+        "Light": "text/tertiary",
+        "Dark": "text/tertiary",
+        "role": "text",
+        "derived": false
+      },
+      "colorTextDisabled": {
+        "Light": "text/disabled",
+        "Dark": "text/disabled",
+        "role": "text",
+        "derived": false
+      },
+      "colorBgContainer": {
+        "Light": "bg/surface",
+        "Dark": "bg/surface",
+        "role": "background",
+        "derived": false
+      },
+      "colorBgElevated": {
+        "Light": "bg/elevated",
+        "Dark": "bg/elevated",
+        "role": "background",
+        "derived": false
+      },
+      "colorBgLayout": {
+        "Light": "bg/subtle",
+        "Dark": "bg/subtle",
+        "role": "background",
+        "derived": false
+      },
+      "colorBorder": {
+        "Light": "stroke/default",
+        "Dark": "stroke/default",
+        "role": "stroke",
+        "derived": false
+      },
+      "colorBorderSecondary": {
+        "Light": "stroke/subtle",
+        "Dark": "stroke/subtle",
+        "role": "stroke",
+        "derived": false
+      }
     }
   },
-  "Size": {
-    "source": "Size",
-    "modes": ["small", "middle", "large"],
-    "jsonModes": { "small": "sm", "middle": "md", "large": "lg" },
-    "items": {
-      "controlHeightSM": { "small": "touch-target-size", "middle": "touch-target-size", "large": "touch-target-size", "role": "minimum touch target", "derived": false },
-      "controlHeight": { "small": "height", "middle": "height", "large": "height", "role": "control height", "derived": false },
-      "controlHeightLG": { "small": "size/52", "middle": "size/52", "large": "size/52", "role": "large control height (no larger JSON metric; nearest primitive)", "derived": true },
-      "fontSizeSM": { "small": "text/caption/font-size", "middle": "text/caption/font-size", "large": "text/caption/font-size", "role": "caption text", "derived": false },
-      "fontSize": { "small": "text/body/font-size", "middle": "text/body/font-size", "large": "text/body/font-size", "role": "body text", "derived": false },
-      "fontSizeLG": { "small": "text/title/font-size", "middle": "text/title/font-size", "large": "text/title/font-size", "role": "title text", "derived": false },
-      "fontSizeXL": { "small": "text/heading/font-size", "middle": "text/heading/font-size", "large": "text/heading/font-size", "role": "heading text", "derived": false },
-      "lineHeightSM": { "small": "text/caption/line-height", "middle": "text/caption/line-height", "large": "text/caption/line-height", "role": "caption text", "derived": false },
-      "lineHeight": { "small": "text/body/line-height", "middle": "text/body/line-height", "large": "text/body/line-height", "role": "body text", "derived": false },
-      "lineHeightLG": { "small": "text/title/line-height", "middle": "text/title/line-height", "large": "text/title/line-height", "role": "title text", "derived": false },
-      "borderRadiusXS": { "small": "radius/2", "middle": "radius/2", "large": "radius/2", "role": "extra-small radius (nearest primitive)", "derived": true },
-      "borderRadiusSM": { "small": "radius/4", "middle": "radius/4", "large": "radius/4", "role": "small radius (nearest primitive)", "derived": true },
-      "borderRadius": { "small": "radius/all", "middle": "radius/all", "large": "radius/all", "role": "radius", "derived": false },
-      "borderRadiusLG": { "small": "radius/8", "middle": "radius/8", "large": "radius/8", "role": "large radius (nearest primitive)", "derived": true },
-      "paddingXS": { "small": "padding/all", "middle": "padding/all", "large": "padding/all", "role": "padding", "derived": false },
-      "paddingSM": { "small": "padding/left", "middle": "padding/left", "large": "padding/left", "role": "horizontal padding", "derived": false },
-      "marginXS": { "small": "gap", "middle": "gap", "large": "gap", "role": "item gap", "derived": false },
-      "marginSM": { "small": "spacing/16", "middle": "spacing/16", "large": "spacing/16", "role": "spacing (nearest primitive)", "derived": true }
-    }
+  "Typography": {
+    "source": "Typography",
+    "modes": [
+      "Mode 1"
+    ],
+    "naming": "raw"
   },
-  "Typography": { "source": "Typography", "modes": ["Mode 1"], "naming": "raw" },
   "Icons": {
-    "modes": ["Base"],
-    "sizes": { "source": "Size icons", "prefix": "size/" },
+    "modes": [
+      "Base"
+    ],
+    "sizes": {
+      "source": "Size icons",
+      "prefix": "size/"
+    },
     "colors": {
-      "icons/primary": { "target": "colorText", "role": "text", "derived": false },
-      "icons/secondary": { "target": "colorTextSecondary", "role": "text", "derived": false },
-      "icons/tertiary": { "target": "colorTextTertiary", "role": "text", "derived": false },
-      "icons/disabled": { "target": "colorTextDisabled", "role": "text", "derived": false },
-      "icons/brand": { "target": "colorPrimary", "role": "brand", "derived": false },
-      "icons/success": { "target": "colorSuccess", "role": "success", "derived": false },
-      "icons/warning": { "target": "colorWarning", "role": "warning", "derived": false },
-      "icons/danger": { "target": "colorError", "role": "danger", "derived": false },
-      "icons/info": { "target": "colorInfo", "role": "info", "derived": false },
-      "icons/on-brand": { "target": "Primitives:white", "role": "text on brand", "derived": false }
+      "icons/primary": {
+        "target": "colorText",
+        "role": "text",
+        "derived": false
+      },
+      "icons/secondary": {
+        "target": "colorTextSecondary",
+        "role": "text",
+        "derived": false
+      },
+      "icons/tertiary": {
+        "target": "colorTextTertiary",
+        "role": "text",
+        "derived": false
+      },
+      "icons/disabled": {
+        "target": "colorTextDisabled",
+        "role": "text",
+        "derived": false
+      },
+      "icons/brand": {
+        "target": "colorPrimary",
+        "role": "brand",
+        "derived": false
+      },
+      "icons/success": {
+        "target": "colorSuccess",
+        "role": "success",
+        "derived": false
+      },
+      "icons/warning": {
+        "target": "colorWarning",
+        "role": "warning",
+        "derived": false
+      },
+      "icons/danger": {
+        "target": "colorError",
+        "role": "danger",
+        "derived": false
+      },
+      "icons/info": {
+        "target": "colorInfo",
+        "role": "info",
+        "derived": false
+      },
+      "icons/on-brand": {
+        "target": "Primitives:white",
+        "role": "text on brand",
+        "derived": false
+      }
     }
   }
 }
