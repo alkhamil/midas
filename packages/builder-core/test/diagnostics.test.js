@@ -65,7 +65,8 @@ test('a collection no template needs is ignored: diagnostics never scans unrelat
 });
 
 test('a variable with no value in one mode is an error on the master, naming the variable and the mode', () => {
-    const items = variantItems().map(i => (i.name === 'bg-hover' ? { ...i, values: { outlined: '#ffffff' } } : i));
+    const white = variantItems().find(i => i.name === 'bg').values.outlined;
+    const items = variantItems().map(i => (i.name === 'bg-hover' ? { ...i, values: { outlined: white } } : i));
     const found = diagnoseDocument(doc({ variables: { items: [...model.items.filter(i => !variantItems().includes(i)), ...items] } }));
     assert.deepEqual(found.filter(f => f.severity === 'error'), [{
         severity: 'error', code: 'variable-missing-in-mode', node: 'Button', nodeId: 'm1', variable: 'bg-hover', mode: 'Solid',
@@ -93,7 +94,7 @@ test('an instance with a token it cannot resolve is an error, with the reason', 
 });
 
 test('an instance resolves its modes from its own Appearance modes, not from props', () => {
-    const items = sizeItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: 14 } } : i));
+    const items = sizeItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: i.values.sm } } : i));
     const d = doc({ variables: { items: [...model.items.filter(i => !sizeItems().includes(i)), ...items] }, instance: { varModes: { [sizeColl.id]: 'lg' } } });
     const found = diagnoseDocument(d);
     assert.deepEqual(found.map(f => f.code), ['variable-missing-in-mode'], 'the missing Large value is reported once, on the master');

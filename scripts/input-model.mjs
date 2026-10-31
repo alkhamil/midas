@@ -1,7 +1,8 @@
 // The Input variable model shared by the fixtures and the tests. Three collections: Variant (outlined | filled | borderless)
 // drives the box, Status (default | error | warning) drives the border and focus colours through aliases, Size
-// (large | middle | small) holds the metrics. The colour values are plain hex, so a fixture is self-contained.
-// Every fixture and every test builds its Input variables here.
+// (large | middle | small) holds the metrics. Every literal sits in a Primitive and is reached through a Semantic alias (see
+// literal-bank.mjs), so a fixture is self-contained. Every fixture and every test builds its Input variables here.
+import { literalBank } from './literal-bank.mjs';
 
 export const INPUT_VARIANTS = ['outlined', 'filled', 'borderless'];
 export const INPUT_STATUSES = ['default', 'error', 'warning'];
@@ -46,7 +47,7 @@ const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
 
 /**
  * The Input collections and variables. Item ids: `{prefix}st-<token>` (Status), `{prefix}v-<token>` (Variant),
- * `{prefix}s-<token>` (Size).
+ * `{prefix}s-<token>` (Size). Literal Primitives and Semantic items are created once per fixture.
  */
 export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANTS, statusModes = INPUT_STATUSES, sizeModes = INPUT_SIZES, sizeValues = {} } = {}) {
     const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
@@ -54,19 +55,22 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     const status = ids.status ?? 'c-status';
     const size = ids.size ?? 'c-size';
     const semantic = ids.semantic ?? 'c-semantic';
+    const primitives = ids.primitives ?? 'c-primitives';
     const semItem = `${prefix}sem-outlineTransparent`;
+    const bank = literalBank(primitives, semantic);
     const collections = [
         { id: variant, name: 'Input Variant', modes: variantModes.map(titled) },
         { id: status, name: 'Input Status', modes: statusModes.map(titled) },
         { id: size, name: 'Input Size', modes: sizeModes },
         { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] },
+        { id: primitives, name: 'Primitives', modes: [{ id: 'base', name: 'Base' }] },
     ];
-    const items = [{ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } }];
+    const items = [{ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: { alias: bank.primitiveOf('#00000000') } } }];
     for (const [token, values] of Object.entries(STATUS_VALUES)) {
-        items.push({ id: `${prefix}st-${token}`, name: token, type: 'color', collectionId: status, values: Object.fromEntries(statusModes.map(m => [m, values[m]])) });
+        items.push({ id: `${prefix}st-${token}`, name: token, type: 'color', collectionId: status, values: Object.fromEntries(statusModes.map(m => [m, { alias: bank.ref(values[m]) }])) });
     }
     for (const [token, values] of Object.entries(sizes)) {
-        items.push({ id: `${prefix}s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
+        items.push({ id: `${prefix}s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, { alias: bank.ref(values[m.id]) }])) });
     }
     for (const token of VARIANT_TOKENS) {
         const values = {};
@@ -74,9 +78,10 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
             const spec = VARIANT_VALUES[mode][token];
             if (spec === 'transparent') values[mode] = { alias: semItem };
             else if (spec.startsWith('st:')) values[mode] = { alias: `${prefix}st-${spec.slice(3)}` };
-            else values[mode] = spec;
+            else values[mode] = { alias: bank.ref(spec) };
         }
         items.push({ id: `${prefix}v-${token}`, name: token, type: 'color', collectionId: variant, values });
     }
-    return { collections, items, ids: { variant, status, size, semantic }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
+    items.unshift(...bank.items());
+    return { collections, items, ids: { variant, status, size, semantic, primitives }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
 }

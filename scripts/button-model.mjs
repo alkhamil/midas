@@ -1,7 +1,9 @@
 // The Button variable model shared by the fixtures and the tests. Three component collections, the same as the Ant Design library,
 // Color (default | primary | danger) holds the accent tokens of each colour, Variant (outlined | dashed | solid | filled | text | link)
-// aliases into Color for the colours that depend on the colour, Size holds the metrics. The colour values are plain hex, so a
-// fixture is self-contained. Every fixture and every test builds its Button variables here.
+// aliases into Color for the colours that depend on the colour, Size holds the metrics. Every literal sits in a Primitive and is
+// reached through a Semantic alias (see literal-bank.mjs), so a fixture is self-contained and follows the chain Primitives →
+// Semantic → component. Every fixture and every test builds its Button variables here.
+import { literalBank } from './literal-bank.mjs';
 
 export const BUTTON_VARIANTS = ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'];
 export const BUTTON_COLORS = ['default', 'primary', 'danger'];
@@ -67,8 +69,9 @@ const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
  * The Button collections and variables. Item ids: `c-<token>` (Color), `v-<token>` (Variant), `s-<token>` (Size), with `prefix` put in
  * front of the Variant ids, so a second Variant set can sit beside the first.
  *
- * `shared` reuses the Color and Size collections of another call (its `ids`): the second call then adds only its Variant set.
- * @param {{ ids?: { variant?: string, color?: string, size?: string }, prefix?: string, variantModes?: string[], shared?: { color: string, size: string } }} [options]
+ * `shared` reuses the Color, Size, Semantic and Primitives collections of another call (its `ids`): the second call then adds only
+ * its Variant set. The first call creates every Primitive and Semantic literal that any call can reference.
+ * @param {{ ids?: { variant?: string, color?: string, size?: string, semantic?: string, primitives?: string }, prefix?: string, variantModes?: string[], colors?: string[], palette?: typeof PALETTE, sizeModes?: { id: string, name: string }[], sizeValues?: Record<string, Record<string, number>>, shared?: { color: string, size: string, semantic: string, primitives: string, semanticItem: string } }} [options]
  */
 export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIANTS, colors = BUTTON_COLORS, palette = PALETTE, sizeModes = BUTTON_SIZES, sizeValues = {}, shared = null } = {}) {
     const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
@@ -76,20 +79,22 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
     const color = shared ? shared.color : ids.color ?? 'c-color';
     const size = shared ? shared.size : ids.size ?? 'c-size';
     const semantic = shared?.semantic ?? ids.semantic ?? 'c-semantic';
+    const primitives = shared?.primitives ?? ids.primitives ?? 'c-primitives';
     const semItem = shared?.semanticItem ?? `${prefix}sem-outlineTransparent`;
+    const bank = literalBank(primitives, semantic);
     const collections = [{ id: variant, name: 'Button Variant', modes: variantModes.map(titled) }];
     const items = [];
     if (!shared) {
         collections.unshift({ id: color, name: 'Button Color', modes: colors.map(titled) }, { id: size, name: 'Button Size', modes: sizeModes },
-            { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] });
-        items.push({ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } });
+            { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] }, { id: primitives, name: 'Primitives', modes: [{ id: 'base', name: 'Base' }] });
         for (const [token, key] of Object.entries(COLOR_TOKENS)) {
-            const values = Object.fromEntries(colors.map(c => [c, palette[c][key]]));
+            const values = Object.fromEntries(colors.map(c => [c, { alias: bank.ref(palette[c][key]) }]));
             items.push({ id: `c-${token}`, name: token, type: 'color', collectionId: color, values });
         }
         for (const [token, values] of Object.entries(sizes)) {
-            items.push({ id: `s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
+            items.push({ id: `s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, { alias: bank.ref(values[m.id]) }])) });
         }
+        items.push({ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: { alias: bank.primitiveOf('#00000000') } } });
     }
     for (const token of VARIANT_TOKENS) {
         const values = {};
@@ -97,10 +102,10 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
             const spec = VARIANT_VALUES[mode][token];
             if (spec === 'transparent') values[mode] = { alias: semItem };
             else if (spec.startsWith('c:')) values[mode] = { alias: `c-${spec.slice(2)}` };
-            else values[mode] = spec;
+            else values[mode] = { alias: bank.ref(spec) };
         }
         items.push({ id: `${prefix}v-${token}`, name: token, type: 'color', collectionId: variant, values });
     }
-    return { collections, items, ids: { variant, color, size, semantic, semanticItem: semItem }, binding: { version: 2, templateId: 'button', variables: { variant, color, size } } };
+    if (!shared) items.unshift(...bank.items());
+    return { collections, items, ids: { variant, color, size, semantic, primitives, semanticItem: semItem }, binding: { version: 2, templateId: 'button', variables: { variant, color, size } } };
 }
-

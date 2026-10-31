@@ -108,8 +108,16 @@ test('a missing outline-color-active is an error; an opaque outline-color warns 
     const docOf = store => ({ variables: store, pages: [{ name: 'p', nodes: [{ id: 'm', name: 'B', type: 'frame', component: true, behavior: bare.binding }] }] });
     const missing = diagnoseDocument(docOf({ collections: bare.collections, items: bare.items.filter(i => i.name !== 'outline-color-active') }));
     assert.ok(missing.some(f => f.code === 'variable-missing' && f.variable === 'outline-color-active'), 'missing active is an error');
+    const literal = { collections: structuredClone(bare.collections), items: structuredClone(bare.items) };
+    literal.items.find(i => i.name === 'outline-color').values.solid = '#d9d9d9';
+    assert.ok(diagnoseDocument(docOf(literal)).some(f => f.code === 'component-not-semantic' && f.variable === 'outline-color'), 'a literal rest is a provenance error');
     const murky = { collections: structuredClone(bare.collections), items: structuredClone(bare.items) };
-    murky.items.find(i => i.name === 'outline-color').values.solid = '#d9d9d9';
+    const opaque = bare.ids.primitives;
+    murky.items.push(
+        { id: 'p-opaque', name: 'opaque', type: 'color', collectionId: opaque, values: { base: '#d9d9d9' } },
+        { id: 'sem-opaque', name: 'fx-opaque', type: 'color', collectionId: bare.ids.semantic, values: { base: { alias: 'p-opaque' } } },
+    );
+    murky.items.find(i => i.name === 'outline-color').values.solid = { alias: 'sem-opaque' };
     const warned = diagnoseDocument(docOf(murky));
     assert.ok(warned.some(f => f.code === 'outline-not-transparent' && f.severity === 'warning'), 'opaque rest warns');
     const binding = structuredClone(bare.binding);

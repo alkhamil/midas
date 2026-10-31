@@ -49,13 +49,12 @@ test('missing variables are created as aliases by role, following component chai
     assert.equal(store.items.find(i => i.id === height.values[size.modes[0].id].alias).name, 'controlHeightSM');
 });
 
-test('existing values are kept; only missing mode values are filled', () => {
+test('a literal in a template collection is rebound to its role; missing mode values are filled', () => {
     const store = { collections: [{ id: 'c', name: 'Mini Variant', modes: [{ id: 'm-a', name: 'a' }] }], items: [{ id: 'v', collectionId: 'c', name: 'bg', type: 'color', values: { 'm-a': '#123456' } }] };
     const binding = { version: 2, templateId: 'mini', variables: { variant: 'c', size: null } };
     const plan = planAutoFix({ template: MINI, binding, variables: store, layers: [] });
-    const before = store.items[0].values['m-a'];
     applyAutoFix(store, binding, plan, uid);
-    assert.equal(store.items[0].values['m-a'], before);
+    assert.ok(store.items[0].values['m-a'].alias, 'the literal is replaced by its role alias, never kept');
     assert.ok(store.items[0].values[store.collections[0].modes.find(m => m.name === 'b').id].alias);
 });
 

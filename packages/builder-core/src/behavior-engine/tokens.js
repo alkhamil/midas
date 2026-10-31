@@ -110,14 +110,6 @@ function formatOf(kind, value, opacities) {
     return kind === 'length' ? `${value}px` : String(value);
 }
 
-/**
- * Resolves the base tokens of a template for one instance.
- * @param {import('../templates/schema.js').TemplateSchema} template
- * @param {{ variables: Record<string, string | null> }} binding the master's binding
- * @param {Record<string, string | null | undefined>} selectedModes the instance's selected mode per variable prop
- * @param {{ collections?: any[], items?: any[] }} variables the document's variables
- * @returns {{ vars: Record<string, string>, unresolved: { token: string, dimension: string | null, reason: string }[] }}
- */
 /** A mode name as it is matched: trimmed and lower case. */
 const modeKey = s => String(s ?? '').trim().toLowerCase();
 
@@ -149,6 +141,14 @@ export function restOf(item, modeName, items, collections, guard = new Set(), tr
     return undefined;
 }
 
+/**
+ * Resolves the base tokens of a template for one instance.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {{ variables: Record<string, string | null> }} binding the master's binding
+ * @param {Record<string, string | null | undefined>} selectedModes the instance's selected mode per variable prop
+ * @param {{ collections?: any[], items?: any[] }} variables the document's variables
+ * @returns {{ vars: Record<string, string>, unresolved: { token: string, dimension: string | null, reason: string }[] }}
+ */
 export function resolveTokens(template, binding, selectedModes, variables) {
     const collections = variables?.collections || [];
     /** @type {any[]} */
@@ -184,7 +184,8 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             if (named.length > 1) { miss('ambiguous'); continue; }
             const found = valueIn(named[0], modeOf, items);
             if ('reason' in found) { miss(found.reason); continue; }
-            if (found.item.type !== (kind === 'color' ? 'color' : 'number')) { miss('type-mismatch'); continue; }
+            const wanted = kind === 'color' ? 'color' : 'number';
+            if (named[0].type !== wanted || found.item.type !== wanted) { miss('type-mismatch'); continue; }
             const text = formatOf(kind, found.value, found.opacities);
             if (text === null) { miss('invalid-value'); continue; }
             vars[cssVarOf(template.id, token)] = text;
