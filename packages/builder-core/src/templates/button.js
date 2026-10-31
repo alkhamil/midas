@@ -19,8 +19,9 @@ export const BUTTON = {
         { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
         { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
     ],
-    // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
+    // The focus outline: its width and offset are static; outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
     outline: { width: 2, offset: 1 },
+    interaction: { focus: 'outline', wave: true },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'], styles: { dashed: { borderStyle: 'dashed' } } },
         color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'] },
@@ -36,7 +37,7 @@ export const BUTTON = {
     },
     tokens: {
         fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color'],
+        fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
         fromColor: [
             'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
             'color-bg', 'color-bg-hover', 'color-bg-active', 'color-text', 'color-text-hover', 'color-text-active',
@@ -47,7 +48,7 @@ export const BUTTON = {
     tokenKinds: {
         height: 'length', fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
-        'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color',
+        'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
         'color-bg': 'color', 'color-bg-hover': 'color', 'color-bg-active': 'color', 'color-text': 'color', 'color-text-hover': 'color', 'color-text-active': 'color',
         'color-text-bg-hover': 'color', 'color-text-bg-active': 'color', 'color-solid': 'color', 'color-solid-hover': 'color', 'color-solid-active': 'color', 'color-solid-text': 'color', 'color-outline': 'color',
@@ -72,7 +73,7 @@ export const BUTTON = {
         'bg-active': { outlined: 'bg', dashed: 'bg', solid: 'button/color-solid-active', filled: 'button/color-bg-hover', text: 'transparent', link: 'transparent', default: 'bg' },
         'fg-active': { outlined: 'button/color-text-active', dashed: 'button/color-text-active', solid: 'button/color-solid-text', filled: 'button/color', text: 'button/color-text-active', link: 'button/color-text-active', default: 'button/color-text-active' },
         'border-active': { outlined: 'button/color-border-active', dashed: 'button/color-border-active', solid: 'transparent', filled: 'transparent', text: 'transparent', link: 'transparent', default: 'button/color-border-active' },
-        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'transparent',
+        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': 'button/color-outline', 'wave-color': { outlined: 'button/color-border', dashed: 'button/color-border', solid: 'button/bg', filled: 'button/bg', text: 'button/fg', link: 'button/fg', default: 'button/color-border' },
         color: { default: 'text', primary: 'brand', danger: 'danger' },
         'color-hover': { default: 'brand-hover', primary: 'brand-hover', danger: 'danger-hover' },
         'color-active': { default: 'brand-active', primary: 'brand-active', danger: 'danger-active' },
@@ -101,7 +102,7 @@ export const BUTTON = {
     previewStates: {
         hover: { bg: 'bg-hover', fg: 'fg-hover', border: 'border-hover' },
         active: { bg: 'bg-active', fg: 'fg-active', border: 'border-active' },
-        focus: { 'outline-color': 'color-outline' },
+        focus: { 'outline-color': 'outline-color-active' },
     },
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus-visible' },

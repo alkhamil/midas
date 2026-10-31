@@ -1,4 +1,4 @@
-// The Button variable model shared by the fixtures and the tests. Three collections, the same as the Ant Design library:
+// The Button variable model shared by the fixtures and the tests. Three component collections, the same as the Ant Design library,
 // Color (default | primary | danger) holds the accent tokens of each colour, Variant (outlined | dashed | solid | filled | text | link)
 // aliases into Color for the colours that depend on the colour, Size holds the metrics. The colour values are plain hex, so a
 // fixture is self-contained. Every fixture and every test builds its Button variables here.
@@ -30,24 +30,28 @@ const OUTLINED = {
     'bg-hover': '#ffffff', 'fg-hover': 'c:color-hover', 'border-hover': 'c:color-border-hover',
     'bg-active': '#ffffff', 'fg-active': 'c:color-active', 'border-active': 'c:color-border-active',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-outline',
 };
 const SOLID = {
     bg: 'c:color-solid', fg: 'c:color-solid-text', border: 'transparent',
     'bg-hover': 'c:color-solid-hover', 'fg-hover': 'c:color-solid-text', 'border-hover': 'transparent',
     'bg-active': 'c:color-solid-active', 'fg-active': 'c:color-solid-text', 'border-active': 'transparent',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-solid-text',
 };
 const FILLED = {
     bg: 'c:color-bg', fg: 'c:color', border: 'transparent',
     'bg-hover': 'c:color-bg-hover', 'fg-hover': 'c:color', 'border-hover': 'transparent',
     'bg-active': 'c:color-bg-active', 'fg-active': 'c:color', 'border-active': 'transparent',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-text',
 };
 const TEXT = {
     bg: 'transparent', fg: 'c:color-text', border: 'transparent',
     'bg-hover': 'c:color-text-bg-hover', 'fg-hover': 'c:color-text-hover', 'border-hover': 'transparent',
     'bg-active': 'c:color-text-bg-active', 'fg-active': 'c:color-text-active', 'border-active': 'transparent',
     'bg-disabled': 'transparent', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-text',
 };
 const LINK = { ...TEXT, 'bg-hover': 'transparent', 'bg-active': 'transparent' };
 const VARIANT_VALUES = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };
@@ -71,10 +75,14 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
     const variant = ids.variant ?? 'c-variant';
     const color = shared ? shared.color : ids.color ?? 'c-color';
     const size = shared ? shared.size : ids.size ?? 'c-size';
+    const semantic = shared?.semantic ?? ids.semantic ?? 'c-semantic';
+    const semItem = shared?.semanticItem ?? `${prefix}sem-outlineTransparent`;
     const collections = [{ id: variant, name: 'Variant', modes: variantModes.map(titled) }];
     const items = [];
     if (!shared) {
-        collections.unshift({ id: color, name: 'Color', modes: colors.map(titled) }, { id: size, name: 'Size', modes: sizeModes });
+        collections.unshift({ id: color, name: 'Color', modes: colors.map(titled) }, { id: size, name: 'Size', modes: sizeModes },
+            { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] });
+        items.push({ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } });
         for (const [token, key] of Object.entries(COLOR_TOKENS)) {
             const values = Object.fromEntries(colors.map(c => [c, palette[c][key]]));
             items.push({ id: `c-${token}`, name: `button/${token}`, type: 'color', collectionId: color, values });
@@ -87,12 +95,12 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
         const values = {};
         for (const mode of variantModes) {
             const spec = VARIANT_VALUES[mode][token];
-            if (spec === 'transparent') values[mode] = '#00000000';
+            if (spec === 'transparent') values[mode] = token === 'outline-color' ? { alias: semItem } : '#00000000';
             else if (spec.startsWith('c:')) values[mode] = { alias: `c-${spec.slice(2)}` };
             else values[mode] = spec;
         }
         items.push({ id: `${prefix}v-${token}`, name: `button/${token}`, type: 'color', collectionId: variant, values });
     }
-    return { collections, items, ids: { variant, color, size }, binding: { version: 2, templateId: 'button', variables: { variant, color, size } } };
+    return { collections, items, ids: { variant, color, size, semantic, semanticItem: semItem }, binding: { version: 2, templateId: 'button', variables: { variant, color, size } } };
 }
 

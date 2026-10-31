@@ -109,6 +109,7 @@ export function validateTemplateSchema(schema) {
     out.push(...iconProblems(schema, allTokens));
     out.push(...controlProblems(schema));
     out.push(...focusTargetProblems(schema));
+    out.push(...interactionProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -275,6 +276,31 @@ function controlProblems(schema) {
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
+    return out;
+}
+
+/**
+ * Problems in the focus target: only `wrapper`, and only with a control whose state the root reflects.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+/**
+ * Problems in the interaction behaviour: `focus` is "outline" or "halo", `wave` a boolean. A halo switches the ring
+ * on :focus as well as focus-visible (mouse focus shows it); an outline switches on focus-visible only (a mouse click
+ * shows no persistent ring), so no :focus state of an outline template may switch outline-color.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function interactionProblems(schema) {
+    if (schema.interaction === undefined) return [];
+    if (!isPlainObject(schema.interaction)) return ['interaction must be an object'];
+    const out = [];
+    const { focus, wave } = schema.interaction;
+    if (focus !== 'outline' && focus !== 'halo') out.push(`interaction focus "${focus}" must be "outline" or "halo"`);
+    if (typeof wave !== 'boolean') out.push('interaction wave must be a boolean');
+    const focusRing = Object.keys(schema.previewStates ?? {}).filter(s => schema.statePseudo?.[s] === ':focus' && Object.hasOwn(schema.previewStates[s] ?? {}, 'outline-color'));
+    if (focus === 'halo' && !focusRing.length) out.push('halo focus must switch outline-color on :focus');
+    if (focus === 'outline' && focusRing.length) out.push('outline focus must not switch outline-color on :focus');
     return out;
 }
 

@@ -36,7 +36,7 @@ test('anatomy renders in order, and a managed icon only when the placement asks 
 test('loading and disabled block the click', () => {
     const jsx = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.jsx'];
     assert.match(jsx, /disabled=\{disabled\}/);
-    assert.match(jsx, /onClick=\{blocked \? undefined : onClick\}/);
+    assert.match(jsx, /onClick=\{blocked \? undefined : \(e\) => \{ if \(onClick\) onClick\(e\); waveDown\(e\.currentTarget\); \}\}/);
 });
 
 test('each variant, colour and size mode gets its base tokens on its own selector', () => {

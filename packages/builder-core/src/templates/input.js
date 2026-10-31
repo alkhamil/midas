@@ -28,6 +28,7 @@ export const INPUT = {
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
     focusTarget: 'wrapper',
+    interaction: { focus: 'halo', wave: false },
     outline: { width: 2, offset: 1 },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },
@@ -50,14 +51,14 @@ export const INPUT = {
     },
     tokens: {
         fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border', 'placeholder', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color'],
+        fromVariant: ['bg', 'fg', 'border', 'placeholder', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
         height: 'length', fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
-        'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color',
+        'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
         'status-border': 'color', 'status-border-hover': 'color', 'status-border-focus': 'color', 'status-outline': 'color',
     },
     // Which base role each token fills, per dimension mode (matched case-insensitively, `default` is the fallback).
@@ -78,7 +79,7 @@ export const INPUT = {
         'bg-hover': { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
         'border-hover': { outlined: 'input/status-border-hover', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-hover' },
         'border-focus': { outlined: 'input/status-border-focus', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-focus' },
-        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'transparent',
+        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': { outlined: 'input/status-outline', filled: 'input/status-outline', borderless: 'input/status-outline', default: 'input/status-outline' },
         'status-border': { default: 'border', error: 'error', warning: 'warning' },
         'status-border-hover': { default: 'border-hover', error: 'error-hover', warning: 'warning-hover' },
         'status-border-focus': { default: 'border-focus', error: 'error', warning: 'warning' },
@@ -91,8 +92,8 @@ export const INPUT = {
     // Preview only: studio-side, colours only. Never written to the document.
     previewStates: {
         hover: { bg: 'bg-hover', border: 'border-hover' },
-        focus: { border: 'border-focus' },
-        'focus-visible': { 'outline-color': 'status-outline' },
+        focus: { border: 'border-focus', 'outline-color': 'outline-color-active' },
+        'focus-visible': { 'outline-color': 'outline-color-active' },
     },
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },

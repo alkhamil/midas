@@ -22,7 +22,7 @@
 ## Decisions
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
-- Baseline green: builder-core 822 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
+- Baseline green: builder-core 835 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
 - Input parity: the wrapper owns all box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen); the inner control owns text only. No per-component code in the engine.
 - Icon choices are remembered per managed slot (generic engine rule: placement carry, retained icon props); the instance Preview panel shows the state select only, no resolved-token list.
 - Base collections generate from the bundled snapshot (`base-snapshot.json`, built by `scripts/build-base-snapshot.js`), no file picker; Auto Fix aliases component variables by schema role from base collections, never literals, idempotent.
@@ -41,7 +41,7 @@
 
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
 - The roadmap names `strokeStrategyOf`/`rootLayoutOf`/`labelLayoutOf` and a `both` placement: none exist in code; if wanted, they are new features, not fixes.
-- Play shows a black ring on `.button` in default state. Suspect `--button-outline-color` resolving to a non-transparent value (currentColor/black) with no state active. Do not remove the outline from the base rule.
+- Outline/ring/wave like antd: `outline-color` is always 0% at rest (alias to Semantic `outlineTransparent`, itself a 0% Primitive derive); `outline-color-active` is the interaction colour. Ring (`:focus-visible`) and wave (click, `data-wave-on`) are DOM-only behaviors configured by schema `interaction`; never drawn on canvas, no panel controls.
 
 ## Antrean
 

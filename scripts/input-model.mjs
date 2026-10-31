@@ -20,16 +20,19 @@ const OUTLINED = {
     bg: '#ffffff', fg: '#18181b', border: 'st:status-border', placeholder: '#bfbfbf',
     'bg-hover': '#ffffff', 'border-hover': 'st:status-border-hover', 'border-focus': 'st:status-border-focus',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'st:status-outline',
 };
 const FILLED = {
     bg: '#f5f5f5', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf',
     'bg-hover': '#eeeeee', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'st:status-outline',
 };
 const BORDERLESS = {
     bg: 'transparent', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf',
     'bg-hover': 'transparent', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': 'transparent', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
+    'outline-color-active': 'st:status-outline',
 };
 const VARIANT_VALUES = { outlined: OUTLINED, filled: FILLED, borderless: BORDERLESS };
 const VARIANT_TOKENS = Object.keys(OUTLINED);
@@ -50,12 +53,15 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     const variant = ids.variant ?? 'c-variant';
     const status = ids.status ?? 'c-status';
     const size = ids.size ?? 'c-size';
+    const semantic = ids.semantic ?? 'c-semantic';
+    const semItem = `${prefix}sem-outlineTransparent`;
     const collections = [
         { id: variant, name: 'Variant', modes: variantModes.map(titled) },
         { id: status, name: 'Status', modes: statusModes.map(titled) },
         { id: size, name: 'Size', modes: sizeModes },
+        { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] },
     ];
-    const items = [];
+    const items = [{ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } }];
     for (const [token, values] of Object.entries(STATUS_VALUES)) {
         items.push({ id: `${prefix}st-${token}`, name: `input/${token}`, type: 'color', collectionId: status, values: Object.fromEntries(statusModes.map(m => [m, values[m]])) });
     }
@@ -66,11 +72,11 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
         const values = {};
         for (const mode of variantModes) {
             const spec = VARIANT_VALUES[mode][token];
-            if (spec === 'transparent') values[mode] = '#00000000';
+            if (spec === 'transparent') values[mode] = token === 'outline-color' ? { alias: semItem } : '#00000000';
             else if (spec.startsWith('st:')) values[mode] = { alias: `${prefix}st-${spec.slice(3)}` };
             else values[mode] = spec;
         }
         items.push({ id: `${prefix}v-${token}`, name: `input/${token}`, type: 'color', collectionId: variant, values });
     }
-    return { collections, items, ids: { variant, status, size }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
+    return { collections, items, ids: { variant, status, size, semantic }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
 }

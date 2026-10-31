@@ -225,6 +225,7 @@ function renderTemplate(n, template, parent, scope) {
     const binding = master.behavior;
     const control = controlOf(template);
     const attrs = { ...template.element.attrs, class: template.id };
+    if (template.interaction?.wave) attrs['data-wave'] = '';
     /** @type {Record<string, string>} */
     const modes = {};
     for (const [dim] of variableProps(template)) {

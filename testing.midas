@@ -3212,6 +3212,16 @@
         ]
       },
       {
+        "id": "c-semantic",
+        "name": "Semantic",
+        "modes": [
+          {
+            "id": "base",
+            "name": "Base"
+          }
+        ]
+      },
+      {
         "id": "c-variant",
         "name": "Variant",
         "modes": [
@@ -3294,9 +3304,28 @@
             "name": "Small"
           }
         ]
+      },
+      {
+        "id": "c-semantic",
+        "name": "Semantic",
+        "modes": [
+          {
+            "id": "base",
+            "name": "Base"
+          }
+        ]
       }
     ],
     "items": [
+      {
+        "id": "sem-outlineTransparent",
+        "name": "outlineTransparent",
+        "type": "color",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": "#00000000"
+        }
+      },
       {
         "id": "c-color",
         "name": "button/color",
@@ -3810,12 +3839,85 @@
         "type": "color",
         "collectionId": "c-variant",
         "values": {
-          "outlined": "#00000000",
-          "dashed": "#00000000",
-          "solid": "#00000000",
-          "filled": "#00000000",
-          "text": "#00000000",
-          "link": "#00000000"
+          "outlined": {
+            "alias": "sem-outlineTransparent"
+          },
+          "dashed": {
+            "alias": "sem-outlineTransparent"
+          },
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "sem-outlineTransparent"
+          },
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
+        }
+      },
+      {
+        "id": "v-outline-color-active",
+        "name": "button/outline-color-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-outline"
+          },
+          "dashed": {
+            "alias": "c-color-outline"
+          },
+          "solid": {
+            "alias": "c-color-outline"
+          },
+          "filled": {
+            "alias": "c-color-outline"
+          },
+          "text": {
+            "alias": "c-color-outline"
+          },
+          "link": {
+            "alias": "c-color-outline"
+          }
+        }
+      },
+      {
+        "id": "v-wave-color",
+        "name": "button/wave-color",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-outline"
+          },
+          "dashed": {
+            "alias": "c-color-outline"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color-text"
+          },
+          "text": {
+            "alias": "c-color-text"
+          },
+          "link": {
+            "alias": "c-color-text"
+          }
+        }
+      },
+      {
+        "id": "in-sem-outlineTransparent",
+        "name": "outlineTransparent",
+        "type": "color",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": "#00000000"
         }
       },
       {
@@ -4061,9 +4163,32 @@
         "type": "color",
         "collectionId": "c-input-variant",
         "values": {
-          "outlined": "#00000000",
-          "filled": "#00000000",
-          "borderless": "#00000000"
+          "outlined": {
+            "alias": "in-sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "in-sem-outlineTransparent"
+          },
+          "borderless": {
+            "alias": "in-sem-outlineTransparent"
+          }
+        }
+      },
+      {
+        "id": "in-v-outline-color-active",
+        "name": "input/outline-color-active",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": {
+            "alias": "in-st-status-outline"
+          },
+          "filled": {
+            "alias": "in-st-status-outline"
+          },
+          "borderless": {
+            "alias": "in-st-status-outline"
+          }
         }
       }
     ]

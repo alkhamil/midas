@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES } from '@midas/builder-core';
+import { toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave } from '@midas/builder-core';
 
 const PREFS_KEY = 'midas.play';
 const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
@@ -467,6 +467,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         // A key press (Enter on a focused control) is a click with no pointer: it is not a press the chrome judges.
         if (e.detail === 0) press = null;
         finishPress();
+        const waveHost = e.target.closest?.('.play-stage [data-wave]');
+        if (waveHost) showWave(waveHost);
         const step = e.target.closest('[data-step]');
         if (step && !step.disabled) {
             const { target } = stepFrame(pageFrames, frameId, step.dataset.step);

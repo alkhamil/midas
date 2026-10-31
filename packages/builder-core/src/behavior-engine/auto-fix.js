@@ -8,7 +8,7 @@
 // identity, never by name alone, so a component collection sharing a base name (component `Size` vs base `Size`)
 // stays its own collection. Unfixable findings (structural) are reported, never touched.
 import { variableProps, sameModes, fallbackCollection } from './registry.js';
-import { variableKey } from './tokens.js';
+import { variableKey, splitColor, withOpacity } from './tokens.js';
 import { planBindTokens } from './bind-tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
@@ -204,7 +204,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             const at = collEntry(baseColl, [], 'base');
             newItems.push({ collection: baseColl, collectionIndex: at, name: baseName, type, values });
             plannedItems.set(key2(`base:${baseColl}`, baseName), true);
-            derived.push({ name: `${baseColl}/${baseName}`, reason: `alias to ${derive.from}${derive.opacity ? ` at ${derive.opacity}%` : ''}` });
+            derived.push({ name: `${baseColl}/${baseName}`, reason: `alias to ${derive.from}${typeof derive.opacity === 'number' ? ` at ${derive.opacity}%` : ''}` });
             return { collectionIndex: at, name: baseName };
         }
         const snap = baseSnapshot.items.find((/** @type {any} */ i) => i.collection === baseColl && variableKey(i.name) === variableKey(baseName));
@@ -297,20 +297,36 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         }
     }
     /** The literal a stored mode value resolves to, following aliases (each read in its own collection's mode). */
-    const storedLiteral = (item, modeName, guard = new Set()) => {
+    const storedLiteral = (item, modeName, guard = new Set(), ops = []) => {
         if (!item || guard.has(item.id)) return undefined;
         guard.add(item.id);
         const modes = collections.find(c => c.id === item.collectionId)?.modes ?? [];
         const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
         const value = modeId === undefined ? undefined : item.values?.[modeId];
-        if (typeof value === 'number' || typeof value === 'string') return value;
+        if (typeof value === 'number' || typeof value === 'string') {
+            let text = value;
+            for (let k = ops.length - 1; k >= 0; k--) {
+                if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);
+            }
+            return text;
+        }
         if (value && typeof value === 'object' && typeof value.alias === 'string') {
-            return storedLiteral(items.find(i => i.id === value.alias), modeName, guard);
+            if (value.opacity != null && value.opacity < 100) ops.push(value.opacity);
+            return storedLiteral(items.find(i => i.id === value.alias), modeName, guard, ops);
         }
         return undefined;
     };
     /** A ratio leftover: a positive number below any plausible px line height. */
     const isRatio = value => typeof value === 'number' && value > 0 && value < 4;
+    /** A stored rest colour already transparent through a Semantic alias needs no repair. */
+    const conformsTransparent = (have, current, mode) => {
+        if (!current || typeof current !== 'object' || typeof current.alias !== 'string') return false;
+        const target = items.find(i => i.id === current.alias);
+        if (!target || collections.find(c => c.id === target.collectionId)?.name !== 'Semantic') return false;
+        const text = storedLiteral(have, mode);
+        const split = typeof text === 'string' && splitColor(text);
+        return !!split && split.alpha === 0;
+    };
     // Line heights that resolve to a ratio are rebound to the paired px token. The Semantic base a role names is
     // repaired first (to the snapshot's Typography alias); the component variable then aliases the repaired base.
     // `lineHeight` is schema vocabulary shared by every template, not per-component code.
@@ -369,6 +385,35 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
                     const target = isRef(role) ? followRef(role, new Set()) : baseTarget(role, 'number', `${coll.name}/${varName}.${mode}`);
                     if (!target) continue;
                     rebind(coll.name, dimEntry[dim], varName, 'number', mode, target);
+                }
+            }
+        }
+    }
+    // Rest colours that must stay transparent resolve through a Semantic alias at alpha 0. A stored value that is
+    // opaque or not Semantic-aliased is repaired like a ratio leftover: the value is overwritten with the role alias.
+    // The role's 0%-opacity derive marks these tokens; no token name is special-cased.
+    let transparentRepaired = 0;
+    for (const [dim] of variableProps(template)) {
+        if (!(dim in dimCollection)) continue;
+        const coll = dimCollection[dim];
+        for (const [group, names] of Object.entries(template.tokens ?? {})) {
+            if (dimensionOfGroup(group, template.props) !== dim) continue;
+            for (const token of names) {
+                const varName = `${template.group}/${token}`;
+                const have = coll ? itemIn(coll.id, varName) : null;
+                if (!have || have.type !== 'color') continue;
+                for (const mode of modesOf(dim)) {
+                    const role = roleOf(template, token, mode);
+                    if (!role || typeof role !== 'string' || isRef(role) || ROLES[role]?.derive?.opacity !== 0) continue;
+                    const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
+                    if (!hasMode) continue;
+                    const modeId = coll.modes.find(m => modeKey(m.name) === modeKey(mode))?.id;
+                    const current = modeId === undefined ? undefined : have.values?.[modeId];
+                    if (conformsTransparent(have, current, mode)) continue;
+                    const target = baseTarget(role, 'color', `${coll.name}/${varName}.${mode}`);
+                    if (!target) continue;
+                    newItems.push({ collection: coll.name, collectionIndex: dimEntry[dim], name: varName, type: 'color', values: { [mode]: { alias: { collectionIndex: target.collectionIndex, name: target.name } } }, repair: true });
+                    transparentRepaired++;
                 }
             }
         }
@@ -432,6 +477,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         modes: [...new Set(newCollections.filter(c => c.origin === 'component').map(c => `${c.name} (${c.modes.join(', ')})`))],
         boundProperties,
         rebound,
+        transparentRepaired,
         derived: derived.map(d => d.name),
         needsValue: needsValue.map(n => n.name),
         unfixable: unfixable.map(u => `${u.name} (${u.reason})`),

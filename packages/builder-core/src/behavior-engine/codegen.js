@@ -10,6 +10,16 @@ import { cssVarOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf } from './layout.js';
 import { labelEntryOf } from './layers.js';
 
+// Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
+// easings have no variable type, so they live here, not in Semantic.
+// motionDurationMid + motionEaseInOut: the input transition.
+const FOCUS_TRANSITION = 'outline-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1), outline-offset 0.2s cubic-bezier(0.645, 0.045, 0.355, 1)';
+// Wave spread lands at 20% of the 2s opacity leg (0.4s), motionEaseOutCirc; the colour comes from the wave-color token.
+const WAVE_KEYFRAMES = 'midas-wave';
+const WAVE_ANIMATION = 'midas-wave 2s cubic-bezier(0.08, 0.82, 0.17, 1)';
+const WAVE_SPREAD = '6px';
+const WAVE_START_OPACITY = 0.2;
+
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
 
@@ -59,9 +69,12 @@ function componentSource(template, name, problems) {
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
         `className="${template.id}"`,
+        ...(template.interaction?.wave ? ['data-wave'] : []),
+        ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
+        ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
         ...dims.map(dim => `data-${dim}={${dim}}`),
         ...(ctl ? [] : [`disabled={${disabledProp}}`]),
-        ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? 'blocked ? undefined : onClick' : event.name}}`),
+        ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
     return [
@@ -75,6 +88,7 @@ function componentSource(template, name, problems) {
         `    </${tag}>`,
         '  );',
         '}',
+        ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
     ].join('\n');
 }
@@ -103,9 +117,10 @@ function displayRules(template, master, childrenOf) {
             ? ['  display: inline-flex;\n', ...cssDecls(rootLayoutOf(master))]
             : kind === 'text' ? cssDecls(labelLayoutOf(entry?.node, entry?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
-            decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`);
+            decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`, `  transition: ${FOCUS_TRANSITION};\n`);
         }
         if (key === 'root') decls.push('  border-width: 1px;\n', '  border-style: solid;\n');
+        if (key === 'root' && template.interaction?.wave) decls.push('  position: relative;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
         // `control` reads this path.
@@ -141,6 +156,31 @@ function displayRules(template, master, childrenOf) {
  * @param {{ collections?: any[], items?: any[] }} variables
  * @param {any[]} problems
  */
+/**
+ * The click-wave rules for a wave template: the ::after ring inherits the host radius, starts at zero spread and is
+ * transparent, and expands to the antd spread while fading when data-wave-on is set. The host colour comes from the
+ * wave-color token, so it follows the button colour per mode.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+function waveRules(template) {
+    const color = `var(${cssVarOf(template.id, 'wave-color')})`;
+    return [
+        `.${template.id}[data-wave-on]::after {\n  animation: ${WAVE_ANIMATION};\n}\n`,
+        `.${template.id}::after {\n  content: '';\n  position: absolute;\n  inset: 0;\n  border-radius: inherit;\n  pointer-events: none;\n  box-shadow: 0 0 0 0 ${color};\n  opacity: 0;\n}\n`,
+        `@keyframes ${WAVE_KEYFRAMES} {\n  0% { box-shadow: 0 0 0 0 ${color}; opacity: ${WAVE_START_OPACITY}; }\n  20% { box-shadow: 0 0 0 ${WAVE_SPREAD} ${color}; }\n  100% { box-shadow: 0 0 0 ${WAVE_SPREAD} ${color}; opacity: 0; }\n}\n`,
+    ].join('\n');
+}
+
+/**
+ * Reduced motion kills the focus transition and the wave. Emitted per template with interaction behaviour.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+function reducedMotion(template) {
+    const sel = `.${template.id}`;
+    const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
+    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}\n}\n`;
+}
+
 function stylesheet(template, binding, variables, problems, master, childrenOf) {
     const dims = variableProps(template).map(([prop]) => prop);
     /** @type {Record<string, string[]>} */
@@ -174,6 +214,11 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
                 ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
                 : previewOf(template, binding, combo, variables, defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
+            // The interaction switch reads the active variable, so status and mode colours fall out of the mode
+            // blocks; only the rest colour is resolved. Schema-driven: any template declaring the token pair.
+            const restVar = cssVarOf(template.id, 'outline-color');
+            const activeTokens = [...(template.tokens.fromVariant ?? []), ...(template.tokens.fromColor ?? []), ...(template.tokens.fromStatus ?? []), ...(template.tokens.fromSize ?? [])];
+            if (delta[restVar] !== undefined && activeTokens.includes('outline-color-active')) delta[restVar] = `var(${cssVarOf(template.id, 'outline-color-active')})`;
             // A disabled element shows only its disabled style: the other states never apply to it.
             // A wrapper focus target reflects the inner control state: the disabled rule matches
             // `:has(:disabled)`, focus matches `:has(:focus-visible)` with a `:focus-within` fallback, and the
@@ -189,6 +234,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
+    if (template.interaction?.wave) blocks.push(waveRules(template));
+    if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }
 

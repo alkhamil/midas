@@ -22,6 +22,7 @@
   "outline": { "base": "Semantic/colorPrimaryOutline", "derive": { "from": "Primitives/primary/500", "opacity": 20 } },
   "danger-outline": { "base": "Semantic/colorErrorOutline", "derive": { "from": "Primitives/danger/500", "opacity": 20 } },
   "warning-outline": { "base": "Semantic/colorWarningOutline", "derive": { "from": "Primitives/warning/500", "opacity": 20 } },
+  "outline-transparent": { "base": "Semantic/outlineTransparent", "derive": { "from": "Primitives/primary/500", "opacity": 0 } },
   "brand-bg": { "base": "Semantic/colorPrimaryBg", "derive": { "from": "Primitives/primary/50" } },
   "brand-bg-hover": { "base": "Semantic/colorPrimaryBgHover", "derive": { "from": "Primitives/primary/100" } },
   "danger-bg": { "base": "Semantic/colorErrorBg", "derive": { "from": "Primitives/danger/50" } },

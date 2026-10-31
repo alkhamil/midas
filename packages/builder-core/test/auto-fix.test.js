@@ -111,8 +111,8 @@ test('planning is pure; applying twice is a no-op', () => {
 
 const SNAPSHOT_DERIVED = ["Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL"];
 const EXPECTED_DERIVED = {
-    button: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryBg","Semantic/colorErrorBg","Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorPrimaryBgHover","Semantic/colorErrorBgHover","Semantic/colorPrimaryActive","Semantic/colorErrorActive","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline"],
-    input: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorWarningHover","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline","Semantic/colorWarningOutline"],
+    button: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryBg","Semantic/colorErrorBg","Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorPrimaryBgHover","Semantic/colorErrorBgHover","Semantic/colorPrimaryActive","Semantic/colorErrorActive","Semantic/colorBgContainerDisabled","Semantic/outlineTransparent","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline"],
+    input: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorWarningHover","Semantic/colorBgContainerDisabled","Semantic/outlineTransparent","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline","Semantic/colorWarningOutline"],
 };
 
 for (const tid of ['button', 'input']) {
@@ -152,7 +152,7 @@ for (const tid of ['button', 'input']) {
 }
 
 test('button needs value only for transparent roles; input likewise', () => {
-    for (const [tid, count] of [['button', 24], ['input', 11]]) {
+    for (const [tid, count] of [['button', 18], ['input', 8]]) {
         const template = TEMPLATES.get(tid);
         const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
         assert.equal(plan.needsValue.length, count);

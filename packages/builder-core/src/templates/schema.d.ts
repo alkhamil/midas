@@ -123,6 +123,9 @@ export interface TemplateSchema {
     /** The box that owns interaction visuals when the element itself cannot take them: `wrapper` reflects the
      * inner control focus and disabled state onto the root (only with a `control`). */
     focusTarget?: 'wrapper';
+    /** Interaction behaviour, antd parity: `focus` is the ring kind (`halo` switches the ring on focus as well as
+     * focus-visible, `outline` on focus-visible only), `wave` shows the click wave. Data only. */
+    interaction?: { focus: 'outline' | 'halo'; wave: boolean };
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

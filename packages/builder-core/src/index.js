@@ -34,6 +34,7 @@ export * from './prototype/validate.js';
 export * from './prototype/plan.js';
 export * from './prototype/player.js';
 export * from './prototype/dom-tree.js';
+export * from './prototype/wave.js';
 export * from './prototype/play.js';
 export * from './prototype/conditional.js';
 export * from './prototype/events.js';

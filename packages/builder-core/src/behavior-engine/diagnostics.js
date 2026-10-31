@@ -3,7 +3,9 @@
 // something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
-import { resolveTokens, variableKey } from './tokens.js';
+import { resolveTokens, variableKey, splitColor, withOpacity } from './tokens.js';
+import { roleOf } from './auto-fix.js';
+import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
 import { planStateBindings } from './state-bindings.js';
@@ -41,6 +43,42 @@ const isRatioValue = value => typeof value === 'number' && value > 0 && value < 
 
 /** A mode name as it is matched: trimmed and lower case. */
 const modeKey = s => String(s ?? '').trim().toLowerCase();
+
+/**
+ * Whether a token must stay transparent: its role derives a 0% alias (the rest colour of a ring). Generic:
+ * any token whose role resolves to a 0%-opacity base reads this path, never a token name.
+ */
+const transparentToken = (template, token, modeName) => {
+    const role = roleOf(template, token, modeName);
+    if (!role || typeof role !== 'string' || role.includes('/')) return false;
+    return ROLES[role]?.derive?.opacity === 0;
+};
+
+/**
+ * A stored value followed to its rest colour: the final literal and the collection holding it. Mirrors the
+ * literalOf walk, but keeps where the value came from: the rest colour must come from a Semantic variable.
+ */
+function restOf(item, modeName, items, collections, guard = new Set(), trail = [], ops = []) {
+    if (!item || guard.has(item.id)) return undefined;
+    guard.add(item.id);
+    const coll = collections.find(c => c.id === item.collectionId);
+    const modes = coll?.modes ?? [];
+    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+    const value = modeId === undefined ? undefined : item.values?.[modeId];
+    const here = [...trail, coll?.name ?? null];
+    if (typeof value === 'number' || typeof value === 'string') {
+        let text = value;
+        for (let k = ops.length - 1; k >= 0; k--) {
+            if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);
+        }
+        return { literal: text, trail: here };
+    }
+    if (value && typeof value === 'object' && typeof value.alias === 'string') {
+        if (value.opacity != null && value.opacity < 100) ops.push(value.opacity);
+        return restOf(items.find(i => i.id === value.alias), modeName, items, collections, guard, here, ops);
+    }
+    return undefined;
+}
 
 /**
  * Every finding in a document.
@@ -99,6 +137,13 @@ export function diagnoseDocument(doc) {
                         // A bound lineHeight that resolves to a ratio is a leftover of the antd-ratio base, never a px token.
                         if (token === 'lineHeight' && value !== undefined && isRatioValue(literalOf(item, mode.name, items, collections))) {
                             out.push({ severity: 'error', code: 'lineheight-ratio', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" resolves to a ratio in mode "${mode.name}", not px. Auto Fix rebinds it to the paired px token.` });
+                        }
+                        if (value !== undefined && transparentToken(template, token, mode.name)) {
+                            const rest = restOf(item, mode.name, items, collections);
+                            const split = rest && typeof rest.literal === 'string' && splitColor(rest.literal);
+                            if (!rest || !rest.trail.includes('Semantic') || !split || split.alpha > 0) {
+                                out.push({ severity: 'warning', code: 'outline-not-transparent', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" must stay transparent through a Semantic alias in mode "${mode.name}". Auto Fix rebinds it.` });
+                            }
                         }
                         if (value === undefined) {
                             out.push({ severity: 'error', code: 'variable-missing-in-mode', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" has no value in mode "${mode.name}" of "${collection.name}".` });

@@ -12160,6 +12160,16 @@
         ]
       },
       {
+        "id": "c-semantic",
+        "name": "Semantic",
+        "modes": [
+          {
+            "id": "base",
+            "name": "Base"
+          }
+        ]
+      },
+      {
         "id": "col-variant",
         "name": "Variant",
         "modes": [
@@ -12189,6 +12199,15 @@
       }
     ],
     "items": [
+      {
+        "id": "sem-outlineTransparent",
+        "name": "outlineTransparent",
+        "type": "color",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": "#00000000"
+        }
+      },
       {
         "id": "c-color",
         "name": "button/color",
@@ -12607,8 +12626,40 @@
         "type": "color",
         "collectionId": "col-variant",
         "values": {
-          "solid": "#00000000",
-          "outlined": "#00000000"
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "outlined": {
+            "alias": "sem-outlineTransparent"
+          }
+        }
+      },
+      {
+        "id": "v-outline-color-active",
+        "name": "button/outline-color-active",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-outline"
+          },
+          "outlined": {
+            "alias": "c-color-outline"
+          }
+        }
+      },
+      {
+        "id": "v-wave-color",
+        "name": "button/wave-color",
+        "type": "color",
+        "collectionId": "col-variant",
+        "values": {
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "outlined": {
+            "alias": "c-color-outline"
+          }
         }
       },
       {

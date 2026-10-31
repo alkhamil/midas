@@ -9179,7 +9179,7 @@ function fixableAutoFix(master) {
     const binding = master?.behavior;
     if (!master?.component || !binding || !('templateId' in binding) || lazyPages.size) return null;
     const findings = diagnoseDocument(doc.data).filter(f => f.nodeId === master.id || !f.nodeId);
-    if (!findings.some(f => ['variable-missing', 'variable-missing-in-mode', 'dimension-unbound', 'collection-missing', 'lineheight-ratio', 'mode-mismatch'].includes(f.code))) return null;
+    if (!findings.some(f => ['variable-missing', 'variable-missing-in-mode', 'dimension-unbound', 'collection-missing', 'lineheight-ratio', 'mode-mismatch', 'outline-not-transparent'].includes(f.code))) return null;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
     const plan = planAutoFix({ template, binding, variables: varStore(), layers: masterLayersOf(master, id => doc.children(id)) });
     if (!plan.fixable) return null;
@@ -9207,6 +9207,7 @@ async function autoFixMaster(master) {
         `Created ${result.items} variables in ${result.collections} collections (${result.modes} modes added, ${result.aliases} aliases), bound ${result.bindings} collections and ${summary.boundProperties} properties.`,
         `Derived base tokens: ${summary.derived.length ? summary.derived.join(', ') : 'none'}.`,
         `Rebound line heights: ${summary.rebound ? `${summary.rebound} values now alias px tokens` : 'none'}.`,
+        `Transparent rest colours: ${summary.transparentRepaired ? `${summary.transparentRepaired} values now alias Semantic` : 'none'}.`,
         `Needs value: ${summary.needsValue.length ? summary.needsValue.join(', ') : 'none'}.`,
         `Collections created: ${summary.createdCollections.length ? summary.createdCollections.join(', ') : 'none'}.`,
         `Rebound: ${summary.reboundDims.length ? summary.reboundDims.map(r => `${r.dim} from ${r.from ?? 'unbound'} to ${r.to}`).join('; ') : 'none'}.`,
