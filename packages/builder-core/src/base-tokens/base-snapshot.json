@@ -14,14 +14,6 @@
       ]
     },
     {
-      "name": "Size",
-      "modes": [
-        "small",
-        "middle",
-        "large"
-      ]
-    },
-    {
       "name": "Typography",
       "modes": [
         "Mode 1"
@@ -2481,23 +2473,36 @@
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
+      "name": "controlHeightXS",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "controlHeightSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "size/24"
           }
         },
-        "middle": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/24"
-          }
-        },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
             "name": "size/24"
@@ -2506,23 +2511,55 @@
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "controlHeight",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "controlHeightLG",
+      "type": "number",
+      "values": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "size/40"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/44"
+            "name": "size/40"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "controlHeightXL",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/48"
           }
         },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
             "name": "size/48"
@@ -2531,223 +2568,257 @@
       }
     },
     {
-      "collection": "Size",
-      "name": "controlHeightLG",
+      "collection": "Semantic",
+      "name": "fontSizeXS",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/52"
+            "name": "size/10"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/52"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/52"
+            "name": "size/10"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "fontSizeSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/12"
+            "collection": "Primitives",
+            "name": "size/12"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/12"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/size/14"
+            "collection": "Primitives",
+            "name": "size/12"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "fontSize",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/14"
+            "collection": "Primitives",
+            "name": "size/14"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/14"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/size/16"
+            "collection": "Primitives",
+            "name": "size/14"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "fontSizeLG",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/16"
+            "collection": "Primitives",
+            "name": "size/16"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/16"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/size/18"
+            "collection": "Primitives",
+            "name": "size/16"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "fontSizeXL",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/20"
+            "collection": "Primitives",
+            "name": "size/20"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/size/20"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/size/24"
+            "collection": "Primitives",
+            "name": "size/20"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Primitives",
+      "name": "size/1.8",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.8
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightXS",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/1.8"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/1.8"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "size/1.6667",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.6667
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "lineHeightSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/12"
+            "collection": "Primitives",
+            "name": "size/1.6667"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/12"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/14"
+            "collection": "Primitives",
+            "name": "size/1.6667"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Primitives",
+      "name": "size/1.5714",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.5714
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "lineHeight",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/14"
+            "collection": "Primitives",
+            "name": "size/1.5714"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/14"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/16"
+            "collection": "Primitives",
+            "name": "size/1.5714"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Primitives",
+      "name": "size/1.5",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.5
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "lineHeightLG",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/16"
+            "collection": "Primitives",
+            "name": "size/1.5"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/16"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Typography",
-            "name": "font/line-height/18"
+            "collection": "Primitives",
+            "name": "size/1.5"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Primitives",
+      "name": "size/1.4",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 1.4
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineHeightXL",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/1.4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/1.4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "borderRadiusXS",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/2"
           }
         },
-        "middle": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "radius/2"
-          }
-        },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/2"
@@ -2756,23 +2827,17 @@
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "borderRadiusSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/4"
           }
         },
-        "middle": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "radius/4"
-          }
-        },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/4"
@@ -2781,48 +2846,36 @@
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "borderRadius",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/6"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "radius/8"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "radius/8"
+            "name": "radius/6"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "borderRadiusLG",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/8"
           }
         },
-        "middle": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "radius/8"
-          }
-        },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
             "name": "radius/8"
@@ -2831,101 +2884,305 @@
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
+      "name": "borderRadiusXL",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "radius/10"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "radius/10"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingXXS",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "paddingXS",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "padding/10"
+            "name": "size/8"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "padding/12"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "padding/12"
+            "name": "size/8"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "paddingSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "padding/14"
+            "name": "size/12"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "padding/16"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "padding/18"
+            "name": "size/12"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
+      "name": "padding",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingMD",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/20"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/20"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingLG",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/24"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/24"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "paddingXL",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "marginXXS",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "marginXS",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "spacing/6"
+            "name": "size/8"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "spacing/8"
-          }
-        },
-        "large": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "spacing/8"
+            "name": "size/8"
           }
         }
       }
     },
     {
-      "collection": "Size",
+      "collection": "Semantic",
       "name": "marginSM",
       "type": "number",
       "values": {
-        "small": {
+        "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "spacing/16"
+            "name": "size/12"
           }
         },
-        "middle": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "spacing/16"
+            "name": "size/12"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "margin",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
           }
         },
-        "large": {
+        "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "spacing/16"
+            "name": "size/16"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "marginMD",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/20"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/20"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "marginLG",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/24"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/24"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "marginXL",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/32"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "lineWidth",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "stroke/1"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "stroke/1"
           }
         }
       }
@@ -3514,24 +3771,46 @@
       "Semantic/colorBgLayout",
       "Semantic/colorBorder",
       "Semantic/colorBorderSecondary",
-      "Size/controlHeightSM",
-      "Size/controlHeight",
-      "Size/controlHeightLG",
-      "Size/fontSizeSM",
-      "Size/fontSize",
-      "Size/fontSizeLG",
-      "Size/fontSizeXL",
-      "Size/lineHeightSM",
-      "Size/lineHeight",
-      "Size/lineHeightLG",
-      "Size/borderRadiusXS",
-      "Size/borderRadiusSM",
-      "Size/borderRadius",
-      "Size/borderRadiusLG",
-      "Size/paddingXS",
-      "Size/paddingSM",
-      "Size/marginXS",
-      "Size/marginSM",
+      "Semantic/controlHeightXS",
+      "Semantic/controlHeightSM",
+      "Semantic/controlHeight",
+      "Semantic/controlHeightLG",
+      "Semantic/controlHeightXL",
+      "Semantic/fontSizeXS",
+      "Semantic/fontSizeSM",
+      "Semantic/fontSize",
+      "Semantic/fontSizeLG",
+      "Semantic/fontSizeXL",
+      "Primitives/size/1.8",
+      "Semantic/lineHeightXS",
+      "Primitives/size/1.6667",
+      "Semantic/lineHeightSM",
+      "Primitives/size/1.5714",
+      "Semantic/lineHeight",
+      "Primitives/size/1.5",
+      "Semantic/lineHeightLG",
+      "Primitives/size/1.4",
+      "Semantic/lineHeightXL",
+      "Semantic/borderRadiusXS",
+      "Semantic/borderRadiusSM",
+      "Semantic/borderRadius",
+      "Semantic/borderRadiusLG",
+      "Semantic/borderRadiusXL",
+      "Semantic/paddingXXS",
+      "Semantic/paddingXS",
+      "Semantic/paddingSM",
+      "Semantic/padding",
+      "Semantic/paddingMD",
+      "Semantic/paddingLG",
+      "Semantic/paddingXL",
+      "Semantic/marginXXS",
+      "Semantic/marginXS",
+      "Semantic/marginSM",
+      "Semantic/margin",
+      "Semantic/marginMD",
+      "Semantic/marginLG",
+      "Semantic/marginXL",
+      "Semantic/lineWidth",
       "Icons/size/6",
       "Icons/size/8",
       "Icons/size/10",
@@ -3567,24 +3846,40 @@
     ],
     "derived": [
       {
-        "name": "Size/controlHeightLG",
-        "reason": "large control height (no larger JSON metric; nearest primitive)"
+        "name": "Semantic/controlHeightXL",
+        "reason": "extrapolated antd size (extrapolated: LG step (+8) beyond SM/base/LG)"
       },
       {
-        "name": "Size/borderRadiusXS",
-        "reason": "extra-small radius (nearest primitive)"
+        "name": "Semantic/fontSizeXS",
+        "reason": "extrapolated antd size (extrapolated: SM-base step (-2) below fontSizeSM)"
       },
       {
-        "name": "Size/borderRadiusSM",
-        "reason": "small radius (nearest primitive)"
+        "name": "Primitives/size/1.8",
+        "reason": "antd size step 1.8 (no JSON match; extrapolated: antd getLineHeight(10) = (10 + 8) / 10)"
       },
       {
-        "name": "Size/borderRadiusLG",
-        "reason": "large radius (nearest primitive)"
+        "name": "Semantic/lineHeightXS",
+        "reason": "extrapolated antd size (extrapolated: antd getLineHeight(10) = (10 + 8) / 10)"
       },
       {
-        "name": "Size/marginSM",
-        "reason": "spacing (nearest primitive)"
+        "name": "Primitives/size/1.6667",
+        "reason": "antd size step 1.6667 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(12))"
+      },
+      {
+        "name": "Primitives/size/1.5714",
+        "reason": "antd size step 1.5714 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(14))"
+      },
+      {
+        "name": "Primitives/size/1.5",
+        "reason": "antd size step 1.5 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(16))"
+      },
+      {
+        "name": "Primitives/size/1.4",
+        "reason": "antd size step 1.4 (no JSON match; components/theme/themes/shared/genFontSizes.ts: getLineHeight(20))"
+      },
+      {
+        "name": "Semantic/borderRadiusXL",
+        "reason": "extrapolated antd size (extrapolated: SM-base-LG step (+2) beyond borderRadiusLG)"
       }
     ],
     "needsValue": [],
