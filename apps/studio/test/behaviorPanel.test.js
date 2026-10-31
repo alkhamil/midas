@@ -84,6 +84,44 @@ test('a variable prop whose collection is not bound is disabled, with a hint', (
     assert.match(html, /Bind a &quot;Variant&quot; collection/);
 });
 
+test('Diagnostics lists at most 5 findings, errors first, with View all (N)', () => {
+    const findings = [
+        { severity: 'warning', message: 'w1' }, { severity: 'error', message: 'e1' },
+        { severity: 'info', message: 'n1' }, { severity: 'error', message: 'e2' },
+        { severity: 'warning', message: 'w2' }, { severity: 'error', message: 'e3' },
+        { severity: 'warning', message: 'w3' },
+    ];
+    const html = behaviorPanelHtml({ kind: 'master', panel: masterPanel(master([variant]), [variant]), esc, findings });
+    assert.match(html, /View all \(7\)/);
+    assert.doesNotMatch(html, /Show less/);
+    assert.doesNotMatch(html, /w3/);
+    assert.doesNotMatch(html, /n1/);
+    const at = m => html.indexOf(`>${m}<`);
+    assert.ok(at('e1') < at('e2') && at('e2') < at('e3') && at('e3') < at('w1') && at('w1') < at('w2'), 'errors list before warnings');
+});
+
+test('expanded Diagnostics lists every finding with Show less', () => {
+    const findings = [
+        { severity: 'warning', message: 'w1' }, { severity: 'error', message: 'e1' },
+        { severity: 'info', message: 'n1' }, { severity: 'error', message: 'e2' },
+        { severity: 'warning', message: 'w2' }, { severity: 'error', message: 'e3' },
+        { severity: 'warning', message: 'w3' },
+    ];
+    const html = behaviorPanelHtml({ kind: 'master', panel: masterPanel(master([variant]), [variant]), esc, findings, expanded: true });
+    for (const m of ['w1', 'e1', 'n1', 'e2', 'w2', 'e3', 'w3']) assert.match(html, new RegExp(`>${m}<`));
+    assert.match(html, /Show less/);
+    assert.doesNotMatch(html, /View all/);
+});
+
+test('Auto Fix sits in the Diagnostics title row while fixable findings exist', () => {
+    const panel = masterPanel(master([variant]), [variant]);
+    const findings = [{ severity: 'error', code: 'variable-missing', message: 'Button: variable "button/bg" is missing from collection "Variant".' }];
+    const withFix = behaviorPanelHtml({ kind: 'master', panel, esc, findings, autoFix: { fixable: true, count: 3 } });
+    assert.match(withFix, /section-heading"><span>Diagnostics<\/span><button[^>]*data-bp-action="auto-fix">Auto Fix \(3\)/);
+    const without = behaviorPanelHtml({ kind: 'master', panel, esc, findings });
+    assert.doesNotMatch(without, /data-bp-action="auto-fix"/);
+});
+
 test('a node with no behavior gets a plain message', () => {
     assert.match(behaviorPanelHtml({ kind: 'none', esc }), /Select a component/);
 });

@@ -4696,6 +4696,7 @@ function passwordDialog() {
 }
 async function showHome({ thumb = true } = {}) {
     behaviorPreview = 'default'; // a preview is a view of the open file: it does not outlive it
+    diagnosticsExpanded = new Set();
     await homeLibsLoad(false); // which files are libraries decides what Recents and All files show
     finishText();
     closeMenu();
@@ -8575,6 +8576,7 @@ function prototypeProblemsNow() {
 function select(ids, { reveal = true } = {}) {
     varOwnerId = null;
     behaviorPreview = 'default'; // the preview state is a studio-side view of the selection: it does not survive a selection change
+    diagnosticsExpanded = new Set(); // the expanded Diagnostics lists do not survive a selection change either
     // Selecting anything other than the main component we jumped to ends the "Return to instance" shortcut.
     if (state.returnTo && !(ids.length === 1 && ids[0] === state.returnTo.target))
         hideReturnBar();
@@ -8920,6 +8922,8 @@ function selectField(prop, value, values) { return `<select class="full-width" d
 // ----- Behavior tab (stage 5): the panel is drawn from the template schema. Edits go through the binding model and the instance store. -----
 // The preview state the Behavior tab shows an instance in. A studio-side view only: it never writes to the document or history.
 let behaviorPreview = 'default';
+/** The nodes whose Diagnostics list is expanded. A studio-side view only: it never writes to the document or history. */
+let diagnosticsExpanded = new Set();
 /** The root colours the canvas draws for the selected instance in its preview state. Read per draw, never stored in the document. */
 // The result is reused until the document changes (its revision counts every write) or the selection or preview state changes:
 // resolving tokens scans the variables, so it costs about 2.5 µs per variable and would otherwise run on every draw.
@@ -8945,7 +8949,7 @@ function behaviorTabHtml(n) {
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
         const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
-        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems }, autoFix: fixableAutoFix(n) });
+        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems }, autoFix: fixableAutoFix(n), expanded: diagnosticsExpanded.has(n.id) });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
@@ -8955,7 +8959,7 @@ function behaviorTabHtml(n) {
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     const shown = template ? previewOf(template, binding, modes, varStore(), props, behaviorPreview) : null;
     const preview = shown && { state: shown.state, vars: shown.vars, unresolved: shown.unresolved, stateTokens: Object.values(activeStateOf(template, props, behaviorPreview).overrides), templateId: template.id, textVar: cssVarOf(template.id, textColorTokenOf(template)) };
-    return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview });
+    return behaviorPanelHtml({ kind: 'instance', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id), preview, expanded: diagnosticsExpanded.has(n.id) });
 }
 /** The variables a condition can compare: the document's boolean, number and string variables. */
 function conditionVariables() {
@@ -9213,6 +9217,16 @@ async function autoFixMaster(master) {
 function onBehaviorClick(e) {
     if (e.target.closest?.('[data-bp-action="bind-tokens"]')) return bindTokensTo(activeNode());
     if (e.target.closest?.('[data-bp-action="auto-fix"]')) return autoFixMaster(activeNode());
+    const diagToggle = e.target.closest?.('[data-bp-action="diagnostics-all"], [data-bp-action="diagnostics-less"]');
+    if (diagToggle) {
+        const n = activeNode();
+        if (n) {
+            if (diagToggle.dataset.bpAction === 'diagnostics-all') diagnosticsExpanded.add(n.id);
+            else diagnosticsExpanded.delete(n.id);
+            renderInspector();
+        }
+        return;
+    }
     const iconButton = e.target.closest?.('[data-bp-action="icon"]');
     if (iconButton) {
         const owner = activeNode();

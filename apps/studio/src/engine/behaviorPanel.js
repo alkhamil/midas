@@ -15,15 +15,15 @@ const labelOfState = state => PREVIEW_STATES.find(([id]) => id === state)?.[1] ?
  * `findings` are the diagnostics of the node, or null while pages are still loading. `preview` (instance) is the resolved
  * preview with the tokens its state overrides. `code` (bound master) is the generator's problems, if any.
  */
-export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null }) {
+export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null, expanded = false }) {
     if (kind === 'none') return empty('Select a component or one of its instances to set its behavior.');
-    if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix);
-    return instanceHtml(panel, esc, findings, preview);
+    if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix, expanded);
+    return instanceHtml(panel, esc, findings, preview, expanded);
 }
 
-/** A Design section: the section header, then rows in the Design grid. */
-function section(title, rows, esc) {
-    return `<section class="inspector-section"><div class="section-heading"><span>${esc(title)}</span></div><div class="cmp-props">${rows}</div></section>`;
+/** A Design section: the section header (with an optional right-aligned heading action), then rows in the Design grid. */
+function section(title, rows, esc, head = '') {
+    return `<section class="inspector-section"><div class="section-heading"><span>${esc(title)}</span>${head}</div><div class="cmp-props">${rows}</div></section>`;
 }
 
 /** A section with rows, or nothing when there are none. */
@@ -49,7 +49,7 @@ function note(text, esc) {
     return `<div class="small-label">${esc(text)}</div>`;
 }
 
-function masterHtml(panel, esc, findings, code, autoFix = null) {
+function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
@@ -82,10 +82,10 @@ function masterHtml(panel, esc, findings, code, autoFix = null) {
         + block('Collections', needs + collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
-        + diagnosticsSection(findings, code?.problems ?? [], esc, null, autoFix);
+        + diagnosticsSection(findings, code?.problems ?? [], esc, null, autoFix, expanded);
 }
 
-function instanceHtml(panel, esc, findings, preview) {
+function instanceHtml(panel, esc, findings, preview, expanded = false) {
     if (!panel.templateId) return empty('This component has no template. Bind the main component first.');
     const variable = panel.rows.filter(r => r.kind === 'variable').map(r => {
         const name = esc(r.prop);
@@ -102,24 +102,38 @@ function instanceHtml(panel, esc, findings, preview) {
         + block('Props', props, esc)
         + block('Slots', slots, esc)
         + (preview ? section('Preview', row('State', state, esc) + (preview.state === 'default' ? '' : `<div class="badge">Previewing: ${esc(labelOfState(preview.state))}</div>`), esc) : '')
-        + diagnosticsSection(findings, [], esc, preview);
+        + diagnosticsSection(findings, [], esc, preview, null, expanded);
 }
 
 /**
  * The Diagnostics section: the node's findings, the generator's reasons (master), and the missing state tokens of the
  * previewed state (instance). Null findings means pages are still loading; nothing is reported then.
  */
-/** The Auto Fix button: shown only while at least one fixable diagnostic exists. */
-function autoFixRow(autoFix, esc) {
+/** At most this many findings list before the View-all button takes over. */
+export const DIAGNOSTICS_LIMIT = 5;
+/** Errors list before warnings; notes last. Stable within a severity (document order). */
+const severityRank = f => f.severity === 'error' ? 0 : f.severity === 'warning' ? 1 : 2;
+/** The Auto Fix button: shown only while at least one fixable diagnostic exists. It lives in the
+ * Diagnostics title row, right-aligned by the heading flex layout. */
+function autoFixHead(autoFix, esc) {
     if (!autoFix || !autoFix.fixable) return '';
-    return `<button class="wide-button full-width" data-bp-action="auto-fix">Auto Fix (${esc(String(autoFix.count))})</button>`;
+    return `<button class="wide-button" data-bp-action="auto-fix">Auto Fix (${esc(String(autoFix.count))})</button>`;
 }
 
-function diagnosticsSection(findings, problems, esc, preview = null, autoFix = null) {
+function diagnosticsSection(findings, problems, esc, preview = null, autoFix = null, expanded = false) {
     if (findings === null) return section('Diagnostics', empty('Diagnostics appear when all pages are loaded.'), esc);
-    const all = [...findings, ...codeFindings(problems), ...(preview ? stateFindings(preview.unresolved, preview.stateTokens) : [])];
-    const rows = all.length ? findingRows(all, esc) + autoFixRow(autoFix, esc) : empty('No issues');
-    return section('Diagnostics', rows, esc);
+    const all = [...findings, ...codeFindings(problems), ...(preview ? stateFindings(preview.unresolved, preview.stateTokens) : [])]
+        .sort((a, b) => severityRank(a) - severityRank(b));
+    const head = autoFixHead(autoFix, esc);
+    if (!all.length) return section('Diagnostics', empty('No issues'), esc, head);
+    const shown = expanded ? all : all.slice(0, DIAGNOSTICS_LIMIT);
+    let rows = findingRows(shown, esc);
+    if (all.length > DIAGNOSTICS_LIMIT) {
+        rows += expanded
+            ? `<button class="wide-button full-width" data-bp-action="diagnostics-less">Show less</button>`
+            : `<button class="wide-button full-width" data-bp-action="diagnostics-all">View all (${all.length})</button>`;
+    }
+    return section('Diagnostics', rows, esc, head);
 }
 
 /** The Bind tokens action: enabled while a master layer has a mapped property that is not bound to its token (unbound-token). */

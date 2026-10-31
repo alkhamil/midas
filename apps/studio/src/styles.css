@@ -1020,6 +1020,14 @@ button svg {
   margin: -4px -4px -4px 0
 }
 
+.section-heading .wide-button {
+  width: auto;
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 10px
+}
+
 .section-heading svg {
   width: 14px;
   height: 14px

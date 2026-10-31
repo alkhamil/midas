@@ -27,6 +27,14 @@ test('instance Diagnostics never show Auto Fix', () => {
     assert.ok(!html.includes('data-bp-action="auto-fix"'));
 });
 
+test('midas.js expands and collapses the full Diagnostics list per node', () => {
+    const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8');
+    assert.ok(src.includes('data-bp-action="diagnostics-all"'), 'expands the list');
+    assert.ok(src.includes('data-bp-action="diagnostics-less"'), 'collapses the list');
+    assert.ok(src.includes('diagnosticsExpanded'), 'tracks the expanded nodes studio-side');
+    assert.ok(src.includes('expanded: diagnosticsExpanded.has(n.id)'), 'renders the node expanded');
+});
+
 test('midas.js confirms once, applies in one transaction, then reports', () => {
     const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8');
     assert.equal(src.split('data-bp-action="auto-fix"').length - 1, 1); // the click handler (the button lives in behaviorPanel.js)
