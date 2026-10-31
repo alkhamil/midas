@@ -14,8 +14,8 @@ import BASE_SNAPSHOT from '../base-tokens/base-snapshot.json' with { type: 'json
 
 export { ROLES };
 
-/** Names of the base collections Auto Fix reads aliases from. */
-export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Size', 'Typography', 'Icons'];
+/** Names of the base collections Auto Fix reads aliases from. Size lives here no longer: the size scale moved to Semantic. */
+export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Typography', 'Icons'];
 
 const modeKey = (/** @type {unknown} */ s) => String(s ?? '').toLowerCase();
 const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : null;

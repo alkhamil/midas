@@ -29,7 +29,7 @@ export const INPUT = {
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },
         status: { source: 'variable', collection: 'Status', modes: ['default', 'error', 'warning'] },
-        size: { source: 'variable', collection: 'Size', modes: ['large', 'middle', 'small'] },
+        size: { source: 'variable', collection: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'] },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
         value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '' },
@@ -60,11 +60,14 @@ export const INPUT = {
     // Which base role each token fills, per dimension mode (matched case-insensitively, `default` is the fallback).
     // A value with a slash is another token variable of this template, followed through the bound collection.
     tokenRoles: {
-        height: { large: 'height-lg', middle: 'height', small: 'height-sm' },
-        fontSize: { large: 'font-lg', middle: 'font', small: 'font-sm' },
-        lineHeight: { large: 'line-lg', middle: 'line', small: 'line-sm' },
-        paddingX: 'padding-sm', paddingY: 'padding-xs', gap: 'gap', radius: 'radius',
-        iconSize: { large: 'icon', middle: 'icon', small: 'icon-sm' },
+        height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
+        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
+        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
+        paddingX: { xs: 'padding-xs', sm: 'padding-sm', md: 'padding', lg: 'padding-lg', xl: 'padding-xl', default: 'padding' },
+        paddingY: { xs: 'padding-xs', sm: 'padding-sm', md: 'padding', lg: 'padding-lg', xl: 'padding-xl', default: 'padding' },
+        gap: 'gap',
+        radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
+        iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         bg: { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
         fg: 'fg',
         border: { outlined: 'input/status-border', filled: 'transparent', borderless: 'transparent', default: 'input/status-border' },

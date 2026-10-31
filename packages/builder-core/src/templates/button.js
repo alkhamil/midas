@@ -24,7 +24,7 @@ export const BUTTON = {
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'], styles: { dashed: { borderStyle: 'dashed' } } },
         color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'] },
-        size: { source: 'variable', collection: 'Size', modes: ['sm', 'lg'] },
+        size: { source: 'variable', collection: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'] },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
         hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
@@ -55,11 +55,14 @@ export const BUTTON = {
     // Which base role each token fills, per dimension mode (matched case-insensitively, `default` is the fallback).
     // A value with a slash is another token variable of this template, followed through the bound collection.
     tokenRoles: {
-        height: { sm: 'height-sm', lg: 'height-lg' },
-        fontSize: { sm: 'font-sm', lg: 'font-lg' },
-        lineHeight: { sm: 'line-sm', lg: 'line-lg' },
-        paddingX: 'padding-sm', paddingY: 'padding-xs', gap: 'gap', radius: 'radius',
-        iconSize: { sm: 'icon-sm', lg: 'icon' },
+        height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
+        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
+        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
+        paddingX: { xs: 'padding-xs', sm: 'padding-sm', md: 'padding', lg: 'padding-lg', xl: 'padding-xl', default: 'padding' },
+        paddingY: { xs: 'padding-xs', sm: 'padding-sm', md: 'padding', lg: 'padding-lg', xl: 'padding-xl', default: 'padding' },
+        gap: 'gap',
+        radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
+        iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         bg: { outlined: 'bg', dashed: 'bg', solid: 'button/color-solid', filled: 'button/color-bg', text: 'transparent', link: 'transparent', default: 'bg' },
         fg: { outlined: 'button/color-text', dashed: 'button/color-text', solid: 'button/color-solid-text', filled: 'button/color', text: 'button/color-text', link: 'button/color-text', default: 'button/color-text' },
         border: { outlined: 'button/color-border', dashed: 'button/color-border', solid: 'transparent', filled: 'transparent', text: 'transparent', link: 'transparent', default: 'button/color-border' },
