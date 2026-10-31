@@ -44,6 +44,47 @@ export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
 }
 
+/**
+ * The prop writes that carry icons across a placement change, by prop name. The live icon moves to the newly shown
+ * slot; showing both keeps each side, duplicating the shown icon only where the other side has none. Sides the
+ * placement hides keep their props (slot memory); nothing is cleared. Pure: the caller stores the returned writes.
+ */
+export function carryPlacementIcons(template, placement, prev, next) {
+    const prevSlots = slotsOfValue(template, placement, prev[placement]);
+    const nextSlots = slotsOfValue(template, placement, next);
+    if (!prevSlots.length || !nextSlots.length) return {};
+    const liveOn = slot => {
+        for (const def of iconDefsOf(template)) {
+            if (def.show !== undefined && prev[def.show] !== true) continue;
+            if (def.slot !== undefined && def.slot !== slot) continue;
+            if (slotsOfValue(template, def.placement, prev[def.placement]).includes(slot) && typeof prev[def.component] === 'string') return prev[def.component];
+        }
+        return null;
+    };
+    const writerFor = (slot, values) => {
+        for (const def of iconDefsOf(template)) {
+            if (def.show !== undefined && values[def.show] !== true) continue;
+            if (def.slot !== undefined && def.slot !== slot) continue;
+            if (def.component && slotsOfValue(template, def.placement, values[def.placement]).includes(slot)) return def.component;
+        }
+        return null;
+    };
+    const writes = {};
+    if (prevSlots.length === 1 && nextSlots.length === 1 && prevSlots[0] !== nextSlots[0]) {
+        const target = writerFor(nextSlots[0], { ...prev, [placement]: next });
+        if (target) writes[target] = liveOn(prevSlots[0]);
+    }
+    else if (prevSlots.length === 1 && nextSlots.length > 1) {
+        const shown = liveOn(prevSlots[0]);
+        for (const slot of nextSlots) {
+            if (slot === prevSlots[0]) continue;
+            const target = writerFor(slot, { ...prev, [placement]: next });
+            if (target && !(typeof prev[target] === 'string')) writes[target] = shown;
+        }
+    }
+    return writes;
+}
+
 /** The control of a template: the text slot drawn as an input, or undefined for plain labels. */
 export function controlOf(template) {
     return template.control;

@@ -3,7 +3,7 @@
 import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
 import { iconNeedsOf } from './icon-slot.js';
-import { iconDefsOf, slotsOfValue } from './anatomy.js';
+import { carryPlacementIcons, iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
@@ -207,7 +207,14 @@ export function setInstanceValue(instance, master, prop, value) {
     if (!bound) throw new Error('The component is not bound to a template');
     const { template } = bound;
     if (!template.props[prop]) throw new Error(`Unknown prop "${prop}" on ${template.id}`);
-    return { version: BEHAVIOR_DATA_VERSION, props: setInstanceProp(template, instance?.behavior?.props ?? {}, prop, value) };
+    const prev = resolveProps(template, instance?.behavior?.props ?? {});
+    let props = setInstanceProp(template, instance?.behavior?.props ?? {}, prop, value);
+    const def = template.props[prop];
+    if (def.type === 'enum' && def.slots) {
+        // One placement change carries the live icon across slots in the same write, so one undo step covers it.
+        for (const [name, carried] of Object.entries(carryPlacementIcons(template, prop, prev, value))) props = setInstanceProp(template, props, name, carried);
+    }
+    return { version: BEHAVIOR_DATA_VERSION, props };
 }
 
 /**

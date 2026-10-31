@@ -157,7 +157,7 @@ function checkInstance(n, nodes, collections, page) {
     }
     const resolved = resolveProps(template, stored);
     for (const name of Object.keys(stored)) {
-        if (!isPropVisible(template, name, resolved)) fail(`prop "${name}" is hidden by its visibleIf but holds a value`);
+        if (!isPropVisible(template, name, resolved) && template.props[name].type !== 'iconComponent') fail(`prop "${name}" is hidden by its visibleIf but holds a value`);
     }
     // An Appearance mode the instance holds must be a mode of the collection its master binds: no silent fallback to another mode.
     for (const [dim] of variableProps(template)) {

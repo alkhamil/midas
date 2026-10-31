@@ -1,6 +1,7 @@
 // Instance props store (stage 3): an instance holds only its own literal prop values, stored sparsely as `behavior: { version, props }`.
 // Variable props (variant, size) are not stored here: an instance's mode is its Appearance mode for the bound collection (`varModes`).
-// Unset props fall back to the schema default. A prop hidden by visibleIf keeps no stored value.
+// Unset props fall back to the schema default. A prop hidden by visibleIf keeps no stored value, except an icon
+// choice: the chosen icon is remembered per slot, so it survives while its slot is hidden.
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 /** @typedef {import('../templates/schema.js').PropDef} PropDef */
 /** @typedef {Record<string, string | boolean | null>} StoredProps */
@@ -46,7 +47,7 @@ function pruneHidden(template, stored) {
     /** @type {StoredProps} */
     const out = {};
     for (const [name, value] of Object.entries(stored)) {
-        if (template.props[name] && isPropVisible(template, name, values)) out[name] = value;
+        if (template.props[name] && (isPropVisible(template, name, values) || template.props[name].type === 'iconComponent')) out[name] = value;
     }
     return out;
 }
