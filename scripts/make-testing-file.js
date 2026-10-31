@@ -128,7 +128,7 @@ function instance(id, name, x, y, props, varModes, components) {
     return [root, at('start'), label, at('end')].filter(Boolean).concat(copies);
 }
 
-const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size' }, prefix: 'in-' });
+const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
 const iids = imodel.ids;
 
 const ibindings = {

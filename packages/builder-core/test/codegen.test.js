@@ -13,7 +13,7 @@ const model = buttonModel({
 });
 const variables = (skip = []) => ({
     collections: model.collections,
-    items: model.items.filter(item => !skip.includes(item.name.replace('button/', ''))),
+    items: model.items.filter(item => !skip.includes(item.name.replace('', ''))),
 });
 const binding = (over = {}) => ({ ...model.binding, variables: { ...model.binding.variables, ...over } });
 const master = { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' };

@@ -115,11 +115,10 @@ export function diagnoseDocument(doc) {
                 out.push({ severity: 'error', code: 'collection-missing', node: m.name, nodeId: m.id, dimension: dim, collection: collectionId, message: `${m.name}: collection "${collectionId}" bound for "${dim}" does not exist.` });
                 continue;
             }
-            // Bound to a collection that serves another template with other modes: the template cannot use it.
-            // One mismatch error names the collection actually bound; the missing variables behind it are not
-            // reported again. Auto Fix binds the dimension to the template-owned fallback collection instead.
-            const boundNames = items.filter(i => i.collectionId === collection.id).map(i => String(i.name).toLowerCase());
-            const servesTemplate = !boundNames.length || boundNames.some(n => n.startsWith(template.group.toLowerCase() + '/'));
+            // Bound to another template's collection: the template cannot use it. One mismatch error names the
+            // collection actually bound; the missing variables behind it are not reported again. Auto Fix binds the
+            // dimension to the template's own "<Template> <Name>" collection instead.
+            const servesTemplate = collection.name === `${template.name} ${def.collection}`;
             const schemaModes = Array.isArray(def.modes) ? def.modes : [];
             if (!servesTemplate && !sameModes(collection.modes ?? [], schemaModes)) {
                 out.push({ severity: 'error', code: 'mode-mismatch', node: m.name, nodeId: m.id, dimension: dim, collection: collection.name,
@@ -129,7 +128,7 @@ export function diagnoseDocument(doc) {
             for (const [group, names] of Object.entries(template.tokens)) {
                 if (dimensionOfGroup(group, template.props) !== dim) continue;
                 for (const token of names) {
-                    const variable = `${template.group}/${token}`;
+                    const variable = token;
                     const item = items.find(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(variable));
                     if (!item) {
                         out.push({ severity: 'error', code: 'variable-missing', node: m.name, nodeId: m.id, variable, collection: collection.name, message: `${m.name}: variable "${variable}" is missing from collection "${collection.name}".` });
@@ -189,7 +188,7 @@ export function diagnoseDocument(doc) {
         if (!template) continue;
         const known = new Set(items.map(i => i.id));
         for (const [layer, prop, token] of unboundTokens(template, m, childrenOf, known)) {
-            out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message: `${m.name}: ${layer} ${prop} is not bound to "${template.group}/${token}".` });
+            out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message: `${m.name}: ${layer} ${prop} is not bound to "${token}".` });
         }
     }
     return out;

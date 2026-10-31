@@ -15,7 +15,7 @@ const master = tid => ({ id: 'm', name: 'Master', type: 'frame', isInstance: fal
 const inst = (props = {}) => ({ id: 'i1', name: 'Instance', type: 'frame', isInstance: true, sourceId: 'm', behavior: { version: 2, props } });
 const tree = [{ id: 't', type: 'text' }];
 const synced = (tid, props, children = []) => planInstanceAnatomy({ binding: master(tid).behavior, masterRoot: { isAutoLayout: true }, masterTree: tree, stored: props, children });
-const names = { colour: 'button/fg', disabledColour: 'button/fg-disabled', size: 'button/icon-size' };
+const names = { colour: 'fg', disabledColour: 'fg-disabled', size: 'icon-size' };
 
 test('turning hasIcon off keeps the chosen icon in the file; turning it on restores and rebinds it', () => {
     const off = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'start', icon: 'check' }), master('button'), 'hasIcon', false);

@@ -70,7 +70,7 @@ export function masterPanel(master, collections) {
             ...need,
             label: `Icon ${need.role === 'disabledColour' ? 'disabled colour' : need.role}`,
             collectionId,
-            matched: collectionId !== null && collectionId === autoMatchCollection(need.collection, collections),
+            matched: collectionId !== null && collectionId === autoMatchCollection(`${template.name} ${need.collection}`, collections),
             options: options(collections),
         };
     });
@@ -80,7 +80,7 @@ export function masterPanel(master, collections) {
             prop,
             collection: def.collection,
             collectionId,
-            matched: collectionId !== null && collectionId === autoMatchCollection(def.collection, collections),
+            matched: collectionId !== null && collectionId === autoMatchCollection(`${template.name} ${def.collection}`, collections),
             options: options(collections),
         };
     });

@@ -6,7 +6,7 @@ import { masterPanel, instancePanel, createBinding, TEMPLATES } from '@midas/bui
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const button = TEMPLATES.get('button');
-const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'solid', name: 'Solid' }, { id: 'outlined', name: 'Outlined' }] };
+const variant = { id: 'c-variant', name: 'Button Variant', modes: [{ id: 'solid', name: 'Solid' }, { id: 'outlined', name: 'Outlined' }] };
 const master = (collections = [variant]) => ({ id: 'btn', name: 'Button', component: true, behavior: createBinding(button, collections) });
 const instance = (behavior = { version: 2, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
 const masterHtml = (node, collections) => behaviorPanelHtml({ kind: 'master', panel: masterPanel(node, collections), esc });
@@ -17,7 +17,7 @@ test('a master bound to Button shows the template and each variable prop with it
     assert.match(html, /data-bp="template"/);
     assert.match(html, /<option value="button" selected>Button<\/option>/);
     assert.match(html, /data-bp="collection" data-bp-prop="variant"/);
-    assert.match(html, /<option value="c-variant" selected>Variant<\/option>/);
+    assert.match(html, /<option value="c-variant" selected>Button Variant<\/option>/);
     assert.match(html, /Auto-matched/);
 });
 
@@ -115,7 +115,7 @@ test('expanded Diagnostics lists every finding with Show less', () => {
 
 test('Auto Fix sits in the Diagnostics title row while fixable findings exist', () => {
     const panel = masterPanel(master([variant]), [variant]);
-    const findings = [{ severity: 'error', code: 'variable-missing', message: 'Button: variable "button/bg" is missing from collection "Variant".' }];
+    const findings = [{ severity: 'error', code: 'variable-missing', message: 'Button: variable "bg" is missing from collection "Variant".' }];
     const withFix = behaviorPanelHtml({ kind: 'master', panel, esc, findings, autoFix: { fixable: true, count: 3 } });
     assert.match(withFix, /section-heading"><span>Diagnostics<\/span><button[^>]*data-bp-action="auto-fix">Auto Fix \(3\)/);
     const without = behaviorPanelHtml({ kind: 'master', panel, esc, findings });

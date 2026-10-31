@@ -73,11 +73,6 @@ test('a state is persistent or preview-only, not both', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /state "disabled" is declared as both persistent and preview-only/);
 });
 
-test('a template must name its variable group', () => {
-    const bad = clone(BUTTON);
-    delete bad.group;
-    assert.match(validateTemplateSchema(bad).join('\n'), /schema has no group/);
-});
 
 test('a token with no kind is refused', () => {
     const bad = clone(BUTTON);

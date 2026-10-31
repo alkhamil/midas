@@ -26,7 +26,7 @@ export function autoMatchCollection(name, collections) {
 }
 
 /**
- * A new binding: every variable prop auto-matched by collection name.
+ * A new binding: every variable prop auto-matched by namespaced collection name.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {Collection[]} collections
  * @returns {Binding}
@@ -34,7 +34,7 @@ export function autoMatchCollection(name, collections) {
 export function createBinding(template, collections) {
     /** @type {Record<string, string | null>} */
     const variables = {};
-    for (const [prop, def] of variableProps(template)) variables[prop] = autoMatchCollection(def.collection, collections);
+    for (const [prop, def] of variableProps(template)) variables[prop] = autoMatchCollection(`${template.name} ${def.collection}`, collections);
     return { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables };
 }
 
@@ -71,7 +71,7 @@ export function planAutoMatch(masters, collections) {
         const variables = {};
         for (const [prop, def] of variableProps(template)) {
             if (binding.variables[prop] !== null) continue;
-            const id = autoMatchCollection(def.collection, collections);
+            const id = autoMatchCollection(`${template.name} ${def.collection}`, collections);
             if (id !== null) variables[prop] = id;
         }
         if (Object.keys(variables).length) out.push({ node, variables });

@@ -11,7 +11,7 @@ const button = TEMPLATES.get('button');
 const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'solid', name: 'Solid' }, { id: 'outlined', name: 'Outlined' }] };
 const master = (collections = [variant]) => ({ id: 'btn', name: 'Button', component: true, behavior: createBinding(button, collections) });
 const instance = (behavior = { version: 2, props: {} }) => ({ id: 'i1', name: 'Save', isInstance: true, sourceId: 'btn', behavior });
-const missing = [{ severity: 'error', code: 'variable-missing', nodeId: 'btn', message: 'Button: variable "button/bg" is missing from collection "Variant".' }];
+const missing = [{ severity: 'error', code: 'variable-missing', nodeId: 'btn', message: 'Button: variable "bg" is missing from collection "Variant".' }];
 
 test('the master Diagnostics show Auto Fix only while fixable findings exist', () => {
     const withFix = behaviorPanelHtml({ kind: 'master', panel: masterPanel(master(), [variant]), esc, findings: missing, autoFix: { fixable: true, count: 3 } });

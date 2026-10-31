@@ -35,7 +35,7 @@ test('a stored value for a prop hidden by visibleIf fails, naming the prop', () 
 
 test('a mode that the bound collection does not have fails, naming the mode and the collection', () => {
     const doc = docWith(master, instance({}, { 'c-variant': 'nope' }));
-    assert.throws(() => assertBehaviorData(doc), /mode "nope" is not in collection "Variant"/);
+    assert.throws(() => assertBehaviorData(doc), /mode "nope" is not in collection "Button Variant"/);
 });
 
 // Anatomy (stage 6): the instance's managed layers match its values. The master has an auto layout root with a text layer.

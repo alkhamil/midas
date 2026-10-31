@@ -40,7 +40,7 @@ export function planStateBindings({ template, binding, props, layers, variables 
         const dimension = group ? dimensionOfGroup(group, template.props) : null;
         const collectionId = dimension ? binding.variables[dimension] : null;
         if (!collectionId) { problems.push({ key: '*', prop: base, token: base, reason: 'dimension-unbound' }); continue; }
-        const stateItem = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(`${template.group}/${stateToken}`));
+        const stateItem = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(stateToken));
         if (!stateItem) { problems.push({ key: '*', prop: base, token: stateToken, reason: 'no-variable' }); continue; }
         for (const layer of layers) {
             if (layer.key !== key) continue;

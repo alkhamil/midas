@@ -1,7 +1,6 @@
-// Auto Fix across templates sharing a file: the second template's frames auto-match by name to the first
-// template's collections. A same-named collection is shared only when its modes match the schema exactly;
-// otherwise Auto Fix creates a namespaced "<Template> <Name>" collection, rebinds the frame to it, and leaves
-// the first template's collections, variables and bindings untouched.
+// Auto Fix across templates sharing a file: every template collection is always "<Template> <Name>",
+// regardless of creation order. The second template's frames never touch the first template's collections,
+// variables or bindings; a second frame of the same template reuses its collections.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -30,7 +29,7 @@ function frame(id, name, labelText) {
     return [root, label];
 }
 
-/** A bound master, auto-matched by name against the store (what binding a template does in the editor). */
+/** A bound master, auto-matched by namespaced name against the store (what binding a template does in the editor). */
 function bindMaster(store, nodes, template, id, name, labelText) {
     const [root, label] = frame(id, name, labelText);
     root.behavior = createBinding(template, store.collections);
@@ -49,64 +48,64 @@ function autoFix(store, nodes, master) {
     return plan;
 }
 
-/** What must not change when another template is fixed: the binding, the collections, the group's variables. */
-const snapshotGroup = (store, master, group) => ({
-    binding: structuredClone(master.behavior),
-    collections: structuredClone(store.collections.filter(c => Object.values(master.behavior.variables).includes(c.id))),
-    variables: structuredClone(store.items.filter(i => i.name.toLowerCase().startsWith(`${group}/`)).sort((a, b) => (a.name < b.name ? -1 : 1))),
-});
+/** What must not change when another template is fixed: the binding and the bound collections with their items. */
+const snapshotTemplate = (store, master) => {
+    const ids = new Set(Object.values(master.behavior.variables).filter(Boolean));
+    return {
+        binding: structuredClone(master.behavior),
+        collections: structuredClone(store.collections.filter(c => ids.has(c.id))),
+        variables: structuredClone(store.items.filter(i => ids.has(i.collectionId)).sort((a, b) => (a.name < b.name ? -1 : 1))),
+    };
+};
 
-test('button fixed first, then input: Size is shared, Variant is namespaced, the button is untouched', () => {
+test('button fixed first, then input: each template owns its namespaced collections, the button is untouched', () => {
     const store = emptyStore();
     generateBase(store);
     const nodes = [];
     const btn = bindMaster(store, nodes, button, 'btn', 'Button', 'Button');
-    autoFix(store, nodes, btn);
+    const btnPlan = autoFix(store, nodes, btn);
     assert.deepEqual(errorsOf(docWith(store, nodes)), [], 'the fixed button is clean');
-    const before = snapshotGroup(store, btn, 'button');
+    assert.deepEqual(btnPlan.summary.createdCollections.sort(), ['Button Color', 'Button Size', 'Button Variant']);
+    assert.deepEqual(btnPlan.summary.reboundDims, [], 'nothing rebounds: the collections are created namespaced');
+    const before = snapshotTemplate(store, btn);
 
     const inp = bindMaster(store, nodes, input, 'inp', 'Input', 'Search');
-    assert.equal(collectionName(store, inp.behavior.variables.variant), 'Variant', 'variant auto-matches by name');
-    assert.equal(collectionName(store, inp.behavior.variables.size), 'Size', 'size auto-matches by name');
-    assert.equal(inp.behavior.variables.status, null, 'status has no collection yet');
-
-    const stuck = errorsOf(docWith(store, nodes));
-    assert.ok(stuck.some(f => f.code === 'mode-mismatch' && f.collection === 'Variant'), 'the mismatch names the bound collection');
-    assert.ok(!stuck.some(f => f.variable?.startsWith('input/') && f.collection === 'Variant'), 'no consequent variable errors for the mismatched dimension');
-    assert.ok(stuck.some(f => f.code === 'variable-missing' && f.collection === 'Size'), 'the shared collection is named as bound');
-
-    const plan = autoFix(store, nodes, inp);
+    assert.deepEqual(inp.behavior.variables, { variant: null, status: null, size: null }, 'nothing auto-matches across templates');
+    const inpPlan = autoFix(store, nodes, inp);
     assert.deepEqual(errorsOf(docWith(store, nodes)), [], 'ZERO diagnostics after Auto Fix');
-    assert.deepEqual(snapshotGroup(store, btn, 'button'), before, 'the button is untouched');
-    assert.equal(collectionName(store, inp.behavior.variables.variant), 'Input Variant', 'variant rebounds to the namespaced collection');
-    assert.equal(collectionName(store, inp.behavior.variables.size), 'Size', 'size shares the button collection');
-    assert.equal(collectionName(store, inp.behavior.variables.status), 'Status', 'status binds the created collection');
-    assert.ok(plan.summary.createdCollections.includes('Input Variant'), 'the report lists the created collection');
-    assert.ok(plan.summary.reboundDims.some(r => r.dim === 'variant' && r.from === 'Variant' && r.to === 'Input Variant'), 'the report lists the rebound dimension');
+    assert.deepEqual(snapshotTemplate(store, btn), before, 'the button is untouched');
+    assert.deepEqual(inpPlan.summary.createdCollections.sort(), ['Input Size', 'Input Status', 'Input Variant']);
+    assert.equal(collectionName(store, inp.behavior.variables.variant), 'Input Variant');
+    assert.equal(collectionName(store, inp.behavior.variables.status), 'Input Status');
+    assert.equal(collectionName(store, inp.behavior.variables.size), 'Input Size');
     const second = planAutoFix({ template: input, binding: inp.behavior, variables: store, layers: [] });
     assert.equal(second.fixable, false, 'a second run is a no-op');
     assert.deepEqual(second.unfixable, []);
 });
 
-test('input fixed first, then button: the button namespaces its Variant, the input is untouched', () => {
+test('input fixed first, then button: identical names in the reverse order, the input is untouched', () => {
     const store = emptyStore();
     generateBase(store);
     const nodes = [];
     const inp = bindMaster(store, nodes, input, 'inp', 'Input', 'Search');
     autoFix(store, nodes, inp);
     assert.deepEqual(errorsOf(docWith(store, nodes)), [], 'the fixed input is clean');
-    const before = snapshotGroup(store, inp, 'input');
+    const before = snapshotTemplate(store, inp);
 
     const btn = bindMaster(store, nodes, button, 'btn', 'Button', 'Button');
-    assert.equal(collectionName(store, btn.behavior.variables.variant), 'Variant', 'variant auto-matches by name');
     autoFix(store, nodes, btn);
     assert.deepEqual(errorsOf(docWith(store, nodes)), [], 'ZERO diagnostics after Auto Fix');
-    assert.deepEqual(snapshotGroup(store, inp, 'input'), before, 'the input is untouched');
-    assert.equal(collectionName(store, btn.behavior.variables.variant), 'Button Variant', 'variant rebounds to the namespaced collection');
-    assert.equal(collectionName(store, btn.behavior.variables.size), 'Size', 'size shares the input collection');
+    assert.deepEqual(snapshotTemplate(store, inp), before, 'the input is untouched');
+    assert.equal(collectionName(store, btn.behavior.variables.variant), 'Button Variant');
+    assert.equal(collectionName(store, btn.behavior.variables.color), 'Button Color');
+    assert.equal(collectionName(store, btn.behavior.variables.size), 'Button Size');
+    for (const name of ['Button Variant', 'Button Color', 'Button Size', 'Input Variant', 'Input Status', 'Input Size']) {
+        assert.equal(store.collections.filter(c => c.name === name).length, 1, `one ${name} collection`);
+    }
+    assert.ok(!store.collections.some(c => ['Variant', 'Color', 'Size', 'Status'].includes(c.name)), 'no plain names');
 });
 
-test('two buttons share one Variant, Size and Color collection; a second fix is a no-op', () => {
+test('two buttons share Button Variant, Size and Color; a second fix is a no-op', () => {
     const store = emptyStore();
     generateBase(store);
     const nodes = [];
@@ -114,7 +113,7 @@ test('two buttons share one Variant, Size and Color collection; a second fix is 
     autoFix(store, nodes, first);
     const secondMaster = bindMaster(store, nodes, button, 'btn2', 'Button', 'Two');
     autoFix(store, nodes, secondMaster);
-    for (const name of ['Variant', 'Size', 'Color']) {
+    for (const name of ['Button Variant', 'Button Color', 'Button Size']) {
         assert.equal(store.collections.filter(c => c.name === name).length, 1, `one ${name} collection`);
     }
     assert.deepEqual(errorsOf(docWith(store, nodes)), [], 'ZERO diagnostics after Auto Fix');

@@ -77,18 +77,18 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
     const size = shared ? shared.size : ids.size ?? 'c-size';
     const semantic = shared?.semantic ?? ids.semantic ?? 'c-semantic';
     const semItem = shared?.semanticItem ?? `${prefix}sem-outlineTransparent`;
-    const collections = [{ id: variant, name: 'Variant', modes: variantModes.map(titled) }];
+    const collections = [{ id: variant, name: 'Button Variant', modes: variantModes.map(titled) }];
     const items = [];
     if (!shared) {
-        collections.unshift({ id: color, name: 'Color', modes: colors.map(titled) }, { id: size, name: 'Size', modes: sizeModes },
+        collections.unshift({ id: color, name: 'Button Color', modes: colors.map(titled) }, { id: size, name: 'Button Size', modes: sizeModes },
             { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] });
         items.push({ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } });
         for (const [token, key] of Object.entries(COLOR_TOKENS)) {
             const values = Object.fromEntries(colors.map(c => [c, palette[c][key]]));
-            items.push({ id: `c-${token}`, name: `button/${token}`, type: 'color', collectionId: color, values });
+            items.push({ id: `c-${token}`, name: token, type: 'color', collectionId: color, values });
         }
         for (const [token, values] of Object.entries(sizes)) {
-            items.push({ id: `s-${token}`, name: `button/${token}`, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
+            items.push({ id: `s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
         }
     }
     for (const token of VARIANT_TOKENS) {
@@ -99,7 +99,7 @@ export function buttonModel({ ids = {}, prefix = '', variantModes = BUTTON_VARIA
             else if (spec.startsWith('c:')) values[mode] = { alias: `c-${spec.slice(2)}` };
             else values[mode] = spec;
         }
-        items.push({ id: `${prefix}v-${token}`, name: `button/${token}`, type: 'color', collectionId: variant, values });
+        items.push({ id: `${prefix}v-${token}`, name: token, type: 'color', collectionId: variant, values });
     }
     return { collections, items, ids: { variant, color, size, semantic, semanticItem: semItem }, binding: { version: 2, templateId: 'button', variables: { variant, color, size } } };
 }

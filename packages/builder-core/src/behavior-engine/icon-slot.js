@@ -2,7 +2,6 @@
 // height follow the size variable, and the icon's colour follows the foreground variable of the variant (the disabled one while the
 // instance is disabled). The engine writes these bindings with each sync of the instance; nothing here writes to a document.
 
-import { variableNameOf } from './tokens.js';
 
 /**
  * The sort rank of a page in the icon picker: a page named Icon or Icons holds the file's icons, so its entries list first
@@ -99,7 +98,7 @@ export function iconSlotTargets(template, slot) {
         return group ? dimensionOfGroup(group, template.props) : null;
     };
     const { tokens } = def;
-    return Object.fromEntries(['colour', 'disabledColour', 'size'].map(role => [role, { name: variableNameOf(template, tokens[role]), dimension: dimensionOf(tokens[role]) }]));
+    return Object.fromEntries(['colour', 'disabledColour', 'size'].map(role => [role, { name: tokens[role], dimension: dimensionOf(tokens[role]) }]));
 }
 
 /**
@@ -120,7 +119,7 @@ export function iconNeedsOf(template) {
             let role = null;
             for (const [r, token] of Object.entries(def.tokens ?? {})) {
                 const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
-                if (group && dimensionOfGroup(group, template.props) === dimension) { variables.push(variableNameOf(template, token)); role ??= r; }
+                if (group && dimensionOfGroup(group, template.props) === dimension) { variables.push(token); role ??= r; }
             }
             if (!variables.length) continue;
             out.push({ prop: def.show, dimension, collection: target.collection, variables, role });

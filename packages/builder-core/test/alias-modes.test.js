@@ -16,14 +16,14 @@ const variantColl = { id: 'c-variant', name: 'Variant', modes: [{ id: 'solid', n
 const colorColl = { id: 'c-color', name: 'Color', modes: [{ id: 'default', name: 'Default' }, { id: 'primary', name: 'Primary' }, { id: 'danger', name: 'Danger' }] };
 const num = (id, name, collectionId, values) => ({ id, name, type: 'number', collectionId, values });
 const col = (id, name, collectionId, values) => ({ id, name, type: 'color', collectionId, values });
-const sizeItems = () => [num('i-fs', 'button/fontSize', 'c-size', { sm: 14 }), num('i-icon', 'button/iconSize', 'c-size', { sm: 14 })];
+const sizeItems = () => [num('i-fs', 'fontSize', 'c-size', { sm: 14 }), num('i-icon', 'iconSize', 'c-size', { sm: 14 })];
 const colorItems = () => [
-    col('i-color', 'button/color', 'c-color', { default: '#000000', primary: '#1677ff', danger: '#ff4d4f' }),
+    col('i-color', 'color', 'c-color', { default: '#000000', primary: '#1677ff', danger: '#ff4d4f' }),
 ];
 const variantItems = (over = {}) => [
-    col('i-bg', 'button/bg', 'c-variant', { solid: { alias: 'i-color' }, outlined: '#ffffff', ...over.bg }),
-    col('i-border', 'button/border', 'c-variant', { solid: { alias: 'i-color' }, outlined: { alias: 'i-color' }, ...over.border }),
-    col('i-fg', 'button/fg', 'c-variant', { solid: '#ffffff', outlined: { alias: 'i-color' }, ...over.fg }),
+    col('i-bg', 'bg', 'c-variant', { solid: { alias: 'i-color' }, outlined: '#ffffff', ...over.bg }),
+    col('i-border', 'border', 'c-variant', { solid: { alias: 'i-color' }, outlined: { alias: 'i-color' }, ...over.border }),
+    col('i-fg', 'fg', 'c-variant', { solid: '#ffffff', outlined: { alias: 'i-color' }, ...over.fg }),
 ];
 const variables = (items = [...sizeItems(), ...colorItems(), ...variantItems()]) => ({
     collections: [sizeColl, variantColl, colorColl],
@@ -57,7 +57,7 @@ test('an unset Color mode reads the first Color mode (default)', () => {
 });
 
 test('a Color mode the alias target has no value for is reported, not guessed', () => {
-    const items = [...sizeItems(), col('i-color', 'button/color', 'c-color', { default: '#000000', primary: '#1677ff' }), ...variantItems()];
+    const items = [...sizeItems(), col('i-color', 'color', 'c-color', { default: '#000000', primary: '#1677ff' }), ...variantItems()];
     assert.equal(reasonsOf({ variant: 'solid', color: 'danger' }, items)['bg'], 'no-value-in-mode');
 });
 

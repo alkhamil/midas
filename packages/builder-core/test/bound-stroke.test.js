@@ -21,7 +21,7 @@ const hex = ({ r, g, b }) => '#' + [r, g, b].map(v => v.toString(16).padStart(2,
 // The colour the editor writes into a bound layer's stroke: the variable in the layer's modes.
 const resolveBorder = ({ doc, byId, master, page }, modes) => {
     master.varModes = modes;
-    const border = doc.variables.items.find(i => i.name === 'button/border');
+    const border = doc.variables.items.find(i => i.name === 'border');
     return variableValue(doc.variables, border, c => resolveMode(c, master, byId, page.varModes));
 };
 

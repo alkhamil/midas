@@ -7,8 +7,8 @@ import { buttonModel } from '../../../scripts/button-model.mjs';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 
 const button = TEMPLATES.get('button');
-const variant = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections.find(c => c.name === 'Variant');
-const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] };
+const variant = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections.find(c => c.name === 'Button Variant');
+const size = { id: 'c-size', name: 'Button Size', modes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] };
 const theme = { id: 'c-theme', name: 'Theme', modes: [{ id: 'light', name: 'Light' }] };
 
 const boundMaster = collections => ({ id: 'btn', name: 'Button', isInstance: false, behavior: createBinding(button, collections) });
@@ -35,8 +35,8 @@ test('a master bound to Button lists its variable props, prefilled by auto-match
 test('the component panel lists the icon slot needs first, driven by requires and the icons defs', () => {
     const master = boundMaster([variant, size]);
     assert.deepEqual(masterPanel(master, [variant, size]).needs.map(n => [n.prop, n.dimension, n.collection, n.collectionId, n.variables]), [
-        ['hasIcon', 'variant', 'Variant', 'c-variant', ['button/fg', 'button/fg-disabled']],
-        ['hasIcon', 'size', 'Size', 'c-size', ['button/icon-size']],
+        ['hasIcon', 'variant', 'Variant', 'c-variant', ['fg', 'fg-disabled']],
+        ['hasIcon', 'size', 'Size', 'c-size', ['iconSize']],
     ]);
 });
 

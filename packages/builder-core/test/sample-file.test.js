@@ -91,9 +91,9 @@ test('passes phase-1 during lazy open and phase-2 once all pages arrive (in page
 test('Button master is bound with Variant (Primary, Secondary, Danger) and Size (Small, Medium, Large) and has no diagnostics errors', () => {
     const doc = loadSample();
     const collections = doc.variables.collections;
-    const variantColl = collections.find(c => c.name === 'Variant');
-    const colorColl = collections.find(c => c.name === 'Color');
-    const sizeColl = collections.find(c => c.name === 'Size');
+    const variantColl = collections.find(c => c.name === 'Button Variant');
+    const colorColl = collections.find(c => c.name === 'Button Color');
+    const sizeColl = collections.find(c => c.name === 'Button Size');
     const stylingColl = collections.find(c => /color|typography/i.test(c.name));
 
     assert.ok(variantColl, 'Variant collection exists');

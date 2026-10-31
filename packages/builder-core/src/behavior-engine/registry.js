@@ -34,7 +34,7 @@ export function sameModes(a, b) {
 }
 
 /**
- * The collection a template owns for a dimension when the schema-named one serves another template:
+ * The collection name for a template dimension: always "<Template> <Name>", regardless of creation order:
  * "<Template> <Name>" (e.g. "Input Variant"). Schema data (the template name and the declared collection),
  * never a guess.
  * @param {import('../templates/schema.js').TemplateSchema} template

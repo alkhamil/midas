@@ -39,7 +39,7 @@ test('size, variant and colour tokens resolve to CSS custom properties, with the
 });
 
 test('a custom size mode resolves with no special handling', () => {
-    const items = withItem('button/fontSize', i => ({ values: { ...i.values, xl: 20 } }));
+    const items = withItem('fontSize', i => ({ values: { ...i.values, xl: 20 } }));
     const { vars } = resolveTokens(button, binding(), modes({ size: 'xl' }), variables(items, [{ id: 'xl', name: 'Extra large' }]));
     assert.equal(vars['--button-font-size'], '20px');
 });
@@ -57,17 +57,17 @@ test('a dimension with no bound collection reports every token of that dimension
 });
 
 test('each unresolved reason is reported for its token', () => {
-    const without = name => baseItems().filter(i => i.name !== `button/${name}`);
+    const without = name => baseItems().filter(i => i.name !== `${name}`);
     const cases = [
         ['collection-missing', resolveTokens(button, binding({ size: 'c-gone' }), modes(), variables()), 'fontSize'],
         ['no-mode-selected', resolveTokens(button, binding(), modes({ size: undefined }), variables()), 'fontSize'],
         ['mode-missing', resolveTokens(button, binding(), modes({ size: 'nope' }), variables()), 'fontSize'],
         ['no-variable', resolveTokens(button, binding(), modes(), variables(without('gap'))), 'gap'],
-        ['no-value-in-mode', resolveTokens(button, binding(), modes({ size: 'lg' }), variables(withItem('button/fontSize', () => ({ values: { sm: 14 } })))), 'fontSize'],
-        ['ambiguous', resolveTokens(button, binding(), modes(), variables([...baseItems(), { id: 'dup-gap', name: 'button/gap', type: 'number', collectionId: model.ids.size, values: { sm: 1, lg: 1 } }])), 'gap'],
-        ['type-mismatch', resolveTokens(button, binding(), modes(), variables(withItem('button/fontSize', () => ({ type: 'color' })))), 'fontSize'],
-        ['alias-missing', resolveTokens(button, binding(), modes(), variables(withItem('button/border', () => ({ values: { solid: { alias: 'nope' }, outlined: '#ffffff' } })))), 'border'],
-        ['alias-cycle', resolveTokens(button, binding(), modes(), variables(withItem('button/bg', () => ({ values: { solid: { alias: 'v-border' }, outlined: '#ffffff' } })).map(i => (i.id === 'v-border' ? { ...i, values: { solid: { alias: 'v-bg' }, outlined: '#ffffff' } } : i)))), 'border'],
+        ['no-value-in-mode', resolveTokens(button, binding(), modes({ size: 'lg' }), variables(withItem('fontSize', () => ({ values: { sm: 14 } })))), 'fontSize'],
+        ['ambiguous', resolveTokens(button, binding(), modes(), variables([...baseItems(), { id: 'dup-gap', name: 'gap', type: 'number', collectionId: model.ids.size, values: { sm: 1, lg: 1 } }])), 'gap'],
+        ['type-mismatch', resolveTokens(button, binding(), modes(), variables(withItem('fontSize', () => ({ type: 'color' })))), 'fontSize'],
+        ['alias-missing', resolveTokens(button, binding(), modes(), variables(withItem('border', () => ({ values: { solid: { alias: 'nope' }, outlined: '#ffffff' } })))), 'border'],
+        ['alias-cycle', resolveTokens(button, binding(), modes(), variables(withItem('bg', () => ({ values: { solid: { alias: 'v-border' }, outlined: '#ffffff' } })).map(i => (i.id === 'v-border' ? { ...i, values: { solid: { alias: 'v-bg' }, outlined: '#ffffff' } } : i)))), 'border'],
     ];
     for (const [reason, result, token] of cases) {
         assert.equal(reasonsOf(result)[token], reason, `${token} should be ${reason}`);
@@ -94,12 +94,12 @@ test('the same inputs give the same output, in token order: size, then variant, 
 });
 
 test('a colour alias with its own opacity fades the aliased colour, the way the editor draws it', () => {
-    const items = withItem('button/border', () => ({ values: { solid: { alias: 'c-color', opacity: 50 }, outlined: '#ffffff' } }));
+    const items = withItem('border', () => ({ values: { solid: { alias: 'c-color', opacity: 50 }, outlined: '#ffffff' } }));
     assert.equal(resolveTokens(button, binding(), modes(), variables(items)).vars['--button-border'], '#4338ca80');
 });
 
 test('a value of the wrong form for its kind is reported as invalid, not written', () => {
-    const items = baseItems().map(i => (i.name === 'button/fontSize' ? { ...i, values: { sm: 'big', lg: 18 } } : i.name === 'button/bg' ? { ...i, values: { solid: 12, outlined: '#ffffff' } } : i));
+    const items = baseItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: 'big', lg: 18 } } : i.name === 'bg' ? { ...i, values: { solid: 12, outlined: '#ffffff' } } : i));
     const result = resolveTokens(button, binding(), modes(), variables(items));
     assert.equal(reasonsOf(result).fontSize, 'invalid-value');
     assert.equal(reasonsOf(result).bg, 'invalid-value');
@@ -107,9 +107,9 @@ test('a value of the wrong form for its kind is reported as invalid, not written
 });
 
 test('a variable is found by name the way a token is matched: case and dashes do not count', () => {
-    const items = [{ id: 's-iconSize', name: 'button/iconSize', collectionId: 'c-size' }];
-    assert.equal(variableIdNamed(items, 'c-size', 'button/icon-size'), 's-iconSize');
-    assert.equal(variableIdNamed(items, 'c-size', 'Button/ICON-SIZE'), 's-iconSize');
-    assert.equal(variableIdNamed(items, 'c-other', 'button/icon-size'), null);
-    assert.equal(variableIdNamed(items, 'c-size', 'button/icon-size-x'), null);
+    const items = [{ id: 's-iconSize', name: 'iconSize', collectionId: 'c-size' }];
+    assert.equal(variableIdNamed(items, 'c-size', 'icon-size'), 's-iconSize');
+    assert.equal(variableIdNamed(items, 'c-size', 'ICON-SIZE'), 's-iconSize');
+    assert.equal(variableIdNamed(items, 'c-other', 'icon-size'), null);
+    assert.equal(variableIdNamed(items, 'c-size', 'icon-size-x'), null);
 });

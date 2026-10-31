@@ -54,7 +54,7 @@ test('focus changes the outline colour only; loading draws the default colour', 
 });
 
 test('a missing state token leaves the base colour out, and is reported, never replaced by the base colour', () => {
-    const result = draw('hover', {}, ['button/bg-hover']);
+    const result = draw('hover', {}, ['bg-hover']);
     assert.equal('--button-bg' in result.vars, false);
     assert.equal(reasonsOf(result)['bg-hover'], 'no-variable');
 });
@@ -95,7 +95,7 @@ test('a disabled instance has no canvas preview: the persistent state wins over 
 });
 
 test('a preview colour that does not resolve gives no substitute, so nothing is drawn with a wrong colour', () => {
-    assert.deepEqual(canvasDraw('hover', {}, ['button/bg-hover']), { stroke: '#00000000' });
+    assert.deepEqual(canvasDraw('hover', {}, ['bg-hover']), { stroke: '#00000000' });
 });
 
 test('the canvas preview never carries a text colour', () => {

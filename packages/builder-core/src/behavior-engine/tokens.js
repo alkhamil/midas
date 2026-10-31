@@ -32,7 +32,6 @@ const kebab = (/** @type {string} */ token) => token.replace(/([a-z0-9])([A-Z])/
 export const cssVarOf = (templateId, token) => `--${templateId}-${kebab(token)}`;
 
 /** The variable a token is named: `<group>/<token in kebab-case>`, e.g. `button/icon-size` for `iconSize`. */
-export const variableNameOf = (/** @type {{ group: string }} */ template, /** @type {string} */ token) => `${template.group}/${kebab(token)}`;
 
 /**
  * A colour as its 6-digit form and its alpha in percent, the way the editor reads it (#rgb, #rgba, #rrggbb, #rrggbbaa).
@@ -149,7 +148,7 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             const mode = selectedModes[dimension] ?? null;
             if (mode === null) { miss('no-mode-selected'); continue; }
             if (!collection.modes?.some((/** @type {{ id: string }} */ m) => m.id === mode)) { miss('mode-missing'); continue; }
-            const named = items.filter(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(`${template.group}/${token}`));
+            const named = items.filter(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(token));
             if (named.length === 0) { miss('no-variable'); continue; }
             if (named.length > 1) { miss('ambiguous'); continue; }
             const found = valueIn(named[0], modeOf, items);

@@ -99,7 +99,6 @@ export function validateTemplateSchema(schema) {
         }
     }
 
-    if (!isName(schema.group)) out.push('schema has no group (the variable name prefix, e.g. "button")');
     const allTokens = isPlainObject(tokens) ? Object.values(tokens).flat() : [];
     out.push(...stateProblems(schema, allTokens, props || {}));
     out.push(...displayProblems(schema));
@@ -128,7 +127,7 @@ function tokenRoleProblems(schema, allTokens) {
     if (roles === undefined) return [];
     if (!isPlainObject(roles)) return ['tokenRoles must be an object'];
     const out = [];
-    const refOf = v => (typeof v === 'string' && v.includes('/')) ? v : null;
+    const refOf = v => (typeof v === 'string' && v.startsWith('./')) ? v : null;
     for (const [token, entry] of Object.entries(roles)) {
         if (!allTokens.includes(token)) { out.push(`tokenRoles names "${token}", which is not a token`); continue; }
         const values = typeof entry === 'string' ? [entry] : isPlainObject(entry) ? Object.values(entry) : null;
@@ -136,8 +135,8 @@ function tokenRoleProblems(schema, allTokens) {
         for (const value of values) {
             const ref = refOf(value);
             if (!ref) continue;
-            const [group, name] = ref.split('/');
-            if (group !== schema.group || !allTokens.includes(name)) out.push(`tokenRoles["${token}"] refers to "${ref}", which is not a token variable of this template`);
+            const name = ref.slice(2);
+            if (!allTokens.includes(name)) out.push(`tokenRoles["${token}"] refers to "${ref}", which is not a token variable of this template`);
         }
     }
     return out;

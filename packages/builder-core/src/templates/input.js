@@ -4,8 +4,6 @@
 export const INPUT = {
     id: 'input',
     name: 'Input',
-    // Variables of this component are named `input/<token>` in each collection.
-    group: 'input',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
@@ -74,12 +72,12 @@ export const INPUT = {
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         bg: { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
         fg: 'fg',
-        border: { outlined: 'input/status-border', filled: 'transparent', borderless: 'transparent', default: 'input/status-border' },
+        border: { outlined: './status-border', filled: 'transparent', borderless: 'transparent', default: './status-border' },
         placeholder: 'placeholder',
         'bg-hover': { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
-        'border-hover': { outlined: 'input/status-border-hover', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-hover' },
-        'border-focus': { outlined: 'input/status-border-focus', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-focus' },
-        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': { outlined: 'input/status-outline', filled: 'input/status-outline', borderless: 'input/status-outline', default: 'input/status-outline' },
+        'border-hover': { outlined: './status-border-hover', filled: 'transparent', borderless: 'transparent', default: './status-border-hover' },
+        'border-focus': { outlined: './status-border-focus', filled: 'transparent', borderless: 'transparent', default: './status-border-focus' },
+        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': { outlined: './status-outline', filled: './status-outline', borderless: './status-outline', default: './status-outline' },
         'status-border': { default: 'border', error: 'error', warning: 'warning' },
         'status-border-hover': { default: 'border-hover', error: 'error-hover', warning: 'warning-hover' },
         'status-border-focus': { default: 'border-focus', error: 'error', warning: 'warning' },

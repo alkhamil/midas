@@ -21,7 +21,7 @@ export interface VisibleIf {
 /** A prop whose value is a mode of a variable collection (a dimension, locked by the schema). */
 export interface VariableProp {
     source: 'variable';
-    /** Name of the variable collection the prop is auto-matched to (case-insensitive). */
+    /** Declared collection the prop binds to; the resolved name is always "<Template> <Name>". */
     collection: string;
     /** The modes Auto Fix creates when the collection is missing (by mode id). Existing collections only gain the modes they lack. */
     modes?: string[];
@@ -60,7 +60,7 @@ export type LiteralProp =
 export type PropDef = VariableProp | LiteralProp;
 
 /** Which base role a token fills, per dimension mode. A plain role holds for every mode; a map names the role per
- * mode id (matched case-insensitively, `default` is the fallback). A value with a slash (`input/status-border`) is a
+ * mode id (matched case-insensitively, `default` is the fallback). A `./token` value (`./status-border`) is a
  * reference to another token variable of the same template, followed through the bound collection. A role missing
  * from the roles table makes the variable "needs value". */
 export type TokenRole = string | Record<string, string>;
@@ -114,8 +114,6 @@ export interface EventDef {
 export interface TemplateSchema {
     id: string;
     name: string;
-    /** Variable name prefix of the component's tokens, e.g. `button` for `button/bg`. */
-    group: string;
     element: ElementDef;
     anatomy: AnatomySlot[];
     icons: IconSlotDef[];

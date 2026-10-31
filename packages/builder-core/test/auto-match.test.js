@@ -7,9 +7,9 @@ import { planTemplateChange } from '../src/behavior-engine/panel.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 
 const button = TEMPLATES.get('button');
-const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary', name: 'Primary' }] };
-const color = { id: 'c-color', name: 'Color', modes: [{ id: 'primary', name: 'Primary' }] };
-const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm', name: 'Small' }] };
+const variant = { id: 'c-variant', name: 'Button Variant', modes: [{ id: 'primary', name: 'Primary' }] };
+const color = { id: 'c-color', name: 'Button Color', modes: [{ id: 'primary', name: 'Primary' }] };
+const size = { id: 'c-size', name: 'Button Size', modes: [{ id: 'sm', name: 'Small' }] };
 const unbound = () => ({ id: 'm1', name: 'Button', behavior: { version: 2, templateId: 'button', variables: { variant: null, size: null } } });
 
 test('a template bound while the collections exist matches both slots', () => {
@@ -24,7 +24,7 @@ test('a collection created after the bind binds the slot that is still unbound',
 
 test('a collection renamed to the slot name binds it', () => {
     const master = unbound();
-    const renamed = { ...size, name: 'Size' };
+    const renamed = { ...size, name: 'Button Size' };
     const colour = { id: 'c-size', name: 'Colour', modes: size.modes };
     assert.deepEqual(planAutoMatch([master], [colour]), []);
     assert.deepEqual(planAutoMatch([master], [renamed]), [{ node: master, variables: { size: 'c-size' } }]);
@@ -46,8 +46,8 @@ test('no match stays unbound: a near name is not a match', () => {
 
 test('two collections with the slot name: neither is chosen, because the choice would be a guess', () => {
     const master = unbound();
-    const twins = [{ ...variant, id: 'c-a' }, { ...variant, id: 'c-b' }];
-    assert.equal(autoMatchCollection('Variant', twins), null);
+    const twins = [{ ...variant, id: 'c-a', name: 'Twin' }, { ...variant, id: 'c-b', name: 'Twin' }];
+    assert.equal(autoMatchCollection('Twin', twins), null);
     assert.deepEqual(planAutoMatch([master], twins), []);
 });
 

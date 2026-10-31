@@ -12129,7 +12129,7 @@
     "collections": [
       {
         "id": "col-color",
-        "name": "Color",
+        "name": "Button Color",
         "modes": [
           {
             "id": "primary",
@@ -12143,7 +12143,7 @@
       },
       {
         "id": "col-size",
-        "name": "Size",
+        "name": "Button Size",
         "modes": [
           {
             "id": "mode-sm",
@@ -12171,7 +12171,7 @@
       },
       {
         "id": "col-variant",
-        "name": "Variant",
+        "name": "Button Variant",
         "modes": [
           {
             "id": "solid",
@@ -12210,7 +12210,7 @@
       },
       {
         "id": "c-color",
-        "name": "button/color",
+        "name": "color",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12220,7 +12220,7 @@
       },
       {
         "id": "c-color-hover",
-        "name": "button/color-hover",
+        "name": "color-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12230,7 +12230,7 @@
       },
       {
         "id": "c-color-active",
-        "name": "button/color-active",
+        "name": "color-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12240,7 +12240,7 @@
       },
       {
         "id": "c-color-border",
-        "name": "button/color-border",
+        "name": "color-border",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12250,7 +12250,7 @@
       },
       {
         "id": "c-color-border-hover",
-        "name": "button/color-border-hover",
+        "name": "color-border-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12260,7 +12260,7 @@
       },
       {
         "id": "c-color-border-active",
-        "name": "button/color-border-active",
+        "name": "color-border-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12270,7 +12270,7 @@
       },
       {
         "id": "c-color-bg",
-        "name": "button/color-bg",
+        "name": "color-bg",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12280,7 +12280,7 @@
       },
       {
         "id": "c-color-bg-hover",
-        "name": "button/color-bg-hover",
+        "name": "color-bg-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12290,7 +12290,7 @@
       },
       {
         "id": "c-color-bg-active",
-        "name": "button/color-bg-active",
+        "name": "color-bg-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12300,7 +12300,7 @@
       },
       {
         "id": "c-color-text",
-        "name": "button/color-text",
+        "name": "color-text",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12310,7 +12310,7 @@
       },
       {
         "id": "c-color-text-hover",
-        "name": "button/color-text-hover",
+        "name": "color-text-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12320,7 +12320,7 @@
       },
       {
         "id": "c-color-text-active",
-        "name": "button/color-text-active",
+        "name": "color-text-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12330,7 +12330,7 @@
       },
       {
         "id": "c-color-text-bg-hover",
-        "name": "button/color-text-bg-hover",
+        "name": "color-text-bg-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12340,7 +12340,7 @@
       },
       {
         "id": "c-color-text-bg-active",
-        "name": "button/color-text-bg-active",
+        "name": "color-text-bg-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12350,7 +12350,7 @@
       },
       {
         "id": "c-color-solid",
-        "name": "button/color-solid",
+        "name": "color-solid",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12360,7 +12360,7 @@
       },
       {
         "id": "c-color-solid-hover",
-        "name": "button/color-solid-hover",
+        "name": "color-solid-hover",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12370,7 +12370,7 @@
       },
       {
         "id": "c-color-solid-active",
-        "name": "button/color-solid-active",
+        "name": "color-solid-active",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12380,7 +12380,7 @@
       },
       {
         "id": "c-color-solid-text",
-        "name": "button/color-solid-text",
+        "name": "color-solid-text",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12390,7 +12390,7 @@
       },
       {
         "id": "c-color-outline",
-        "name": "button/color-outline",
+        "name": "color-outline",
         "type": "color",
         "collectionId": "col-color",
         "values": {
@@ -12400,7 +12400,7 @@
       },
       {
         "id": "s-height",
-        "name": "button/height",
+        "name": "height",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12411,7 +12411,7 @@
       },
       {
         "id": "s-fontSize",
-        "name": "button/fontSize",
+        "name": "fontSize",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12422,7 +12422,7 @@
       },
       {
         "id": "s-lineHeight",
-        "name": "button/lineHeight",
+        "name": "lineHeight",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12433,7 +12433,7 @@
       },
       {
         "id": "s-paddingX",
-        "name": "button/paddingX",
+        "name": "paddingX",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12444,7 +12444,7 @@
       },
       {
         "id": "s-paddingY",
-        "name": "button/paddingY",
+        "name": "paddingY",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12455,7 +12455,7 @@
       },
       {
         "id": "s-gap",
-        "name": "button/gap",
+        "name": "gap",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12466,7 +12466,7 @@
       },
       {
         "id": "s-radius",
-        "name": "button/radius",
+        "name": "radius",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12477,7 +12477,7 @@
       },
       {
         "id": "s-iconSize",
-        "name": "button/iconSize",
+        "name": "iconSize",
         "type": "number",
         "collectionId": "col-size",
         "values": {
@@ -12488,7 +12488,7 @@
       },
       {
         "id": "v-bg",
-        "name": "button/bg",
+        "name": "bg",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12500,7 +12500,7 @@
       },
       {
         "id": "v-fg",
-        "name": "button/fg",
+        "name": "fg",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12514,7 +12514,7 @@
       },
       {
         "id": "v-border",
-        "name": "button/border",
+        "name": "border",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12528,7 +12528,7 @@
       },
       {
         "id": "v-bg-hover",
-        "name": "button/bg-hover",
+        "name": "bg-hover",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12540,7 +12540,7 @@
       },
       {
         "id": "v-fg-hover",
-        "name": "button/fg-hover",
+        "name": "fg-hover",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12554,7 +12554,7 @@
       },
       {
         "id": "v-border-hover",
-        "name": "button/border-hover",
+        "name": "border-hover",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12568,7 +12568,7 @@
       },
       {
         "id": "v-bg-active",
-        "name": "button/bg-active",
+        "name": "bg-active",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12580,7 +12580,7 @@
       },
       {
         "id": "v-fg-active",
-        "name": "button/fg-active",
+        "name": "fg-active",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12594,7 +12594,7 @@
       },
       {
         "id": "v-border-active",
-        "name": "button/border-active",
+        "name": "border-active",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12608,7 +12608,7 @@
       },
       {
         "id": "v-bg-disabled",
-        "name": "button/bg-disabled",
+        "name": "bg-disabled",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12618,7 +12618,7 @@
       },
       {
         "id": "v-fg-disabled",
-        "name": "button/fg-disabled",
+        "name": "fg-disabled",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12628,7 +12628,7 @@
       },
       {
         "id": "v-outline-color",
-        "name": "button/outline-color",
+        "name": "outline-color",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12642,7 +12642,7 @@
       },
       {
         "id": "v-outline-color-active",
-        "name": "button/outline-color-active",
+        "name": "outline-color-active",
         "type": "color",
         "collectionId": "col-variant",
         "values": {
@@ -12656,7 +12656,7 @@
       },
       {
         "id": "v-wave-color",
-        "name": "button/wave-color",
+        "name": "wave-color",
         "type": "color",
         "collectionId": "col-variant",
         "values": {

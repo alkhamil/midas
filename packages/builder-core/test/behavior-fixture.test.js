@@ -40,7 +40,7 @@ test('the only error in the fixture is the legacy master\'s missing hover token 
     assert.equal(errors.length, 1);
     assert.equal(errors[0].code, 'variable-missing-in-mode');
     assert.equal(errors[0].node, 'Button (legacy)');
-    assert.equal(errors[0].variable, 'button/bg-hover');
+    assert.equal(errors[0].variable, 'bg-hover');
     assert.equal(errors[0].mode, 'Solid');
 });
 

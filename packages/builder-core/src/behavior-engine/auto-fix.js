@@ -7,7 +7,7 @@
 // and the frame rebinds to it; a collection serving another template is never altered. Collections are routed by plan
 // identity, never by name alone, so a component collection sharing a base name (component `Size` vs base `Size`)
 // stays its own collection. Unfixable findings (structural) are reported, never touched.
-import { variableProps, sameModes, fallbackCollection } from './registry.js';
+import { TEMPLATES, variableProps } from './registry.js';
 import { variableKey, splitColor, withOpacity } from './tokens.js';
 import { planBindTokens } from './bind-tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
@@ -38,8 +38,8 @@ export function roleOf(template, token, modeName) {
     return typeof entry.default === 'string' ? entry.default : token;
 }
 
-/** A `group/token` reference is a component variable; anything else is a base role name. */
-const isRef = (/** @type {string} */ role) => role.includes('/');
+/** A `./token` reference is a component variable; anything else is a base role name. */
+const isRef = (/** @type {string} */ role) => typeof role === 'string' && role.startsWith('./');
 
 /**
  * Plans the Auto Fix for one bound master. Pure: the store is only read. The creation plan applies through
@@ -59,8 +59,9 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
     /** @type {Record<string, string>} */
     const bindingUpdates = {};
     const fail = (/** @type {string} */ name, /** @type {string} */ reason) => { unfixable.push({ name, reason }); };
-    const groupPrefix = template.group.toLowerCase() + '/';
     const collsNamed = (/** @type {string} */ name) => collections.filter(c => c.name === name);
+    const componentNs = [...TEMPLATES.values()].map(t => `${t.name} `);
+    const isComponentColl = (/** @type {any} */ c) => componentNs.some(ns => c.name.startsWith(ns));
     const itemIn = (/** @type {string} */ collectionId, /** @type {string} */ name) => items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(name));
     const key2 = (/** @type {string} */ c, /** @type {string} */ n) => `${c}|${n.toLowerCase()}`;
     /** @type {Map<string, any>} */
@@ -86,18 +87,12 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         }
         return idx;
     };
-    // Collection resolution is driven by the schema declaration (name and modes), not by name guessing. A collection
-    // the template owns (holding its `group/*` variables, or nothing yet) is used as is, custom modes included. A
-    // same-named collection serving another template is shared only when its modes match the schema's exactly;
-    // otherwise the template gets its own "<Template> <Name>" collection and the frame rebinds to it. An existing
-    // collection serving another template never gains, loses or renames modes: a shared one already matches exactly,
-    // and a mismatched one is left alone.
-    const varNamesOf = (/** @type {any} */ c) => items.filter(i => i.collectionId === c.id).map(i => i.name);
-    const servesGroup = (/** @type {any} */ c) => varNamesOf(c).some(n => n.toLowerCase().startsWith(groupPrefix));
-    const servesOthers = (/** @type {any} */ c) => { const names = varNamesOf(c); return names.length > 0 && !servesGroup(c); };
-    const own = (/** @type {any} */ c) => !servesOthers(c);
+    // Collection resolution is deterministic and never order-dependent: every template collection is always
+    // "<Template> <Name>", so the first frame bound and the next one resolve the same names. A bound dimension stays
+    // on its collection when it is the template's own (custom modes included); bound anywhere else it rebinds to its
+    // own. An unbound dimension reuses the single same-named collection or creates it; duplicate names fail.
+    const ownName = (/** @type {any} */ def) => `${template.name} ${def.collection}`;
     const schemaModes = (/** @type {any} */ def) => Array.isArray(def.modes) ? def.modes : [];
-    const matchesSchema = (/** @type {any} */ c, /** @type {any} */ def) => sameModes(c.modes ?? [], schemaModes(def));
     /** @type {Record<string, any>} */
     const dimCollection = {};
     /** @type {Record<string, number>} */
@@ -105,23 +100,15 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
     /** @type {{ dim: string, from: string | null, to: string }[]} */
     const reboundDims = [];
     const dimDef = (/** @type {string} */ dim) => variableProps(template).find(([d]) => d === dim)?.[1];
-    /** The fallback collection to bind: the template's own one when usable, else a new one to create. */
-    const fallbackFor = (/** @type {any} */ def) => {
-        const name = fallbackCollection(template, def);
+    /** Rebinds a dimension to the template's own collection, creating it when it does not exist yet. */
+    const toOwn = (/** @type {string} */ dim, /** @type {any} */ def, /** @type {string | null} */ from) => {
+        const name = ownName(def);
         const cands = collsNamed(name);
-        const usable = cands.find(own) ?? cands.find(c => matchesSchema(c, def));
-        if (usable) return { name: usable.name, coll: usable, create: false };
-        if (cands.length) return { name, coll: null, create: false, blocked: `"${name}" serves another template` };
-        return { name, coll: null, create: true };
-    };
-    /** Rebinds a dimension to the fallback collection, creating it when it does not exist yet. */
-    const toFallback = (/** @type {string} */ dim, /** @type {any} */ def, /** @type {string | null} */ from) => {
-        const fb = fallbackFor(def);
-        if (fb.blocked) { fail(`${template.group}/* (${dim})`, fb.blocked); return; }
-        dimEntry[dim] = collEntry(fb.name, schemaModes(def), 'component');
-        bindingUpdates[dim] = fb.name;
-        dimCollection[dim] = fb.coll;
-        reboundDims.push({ dim, from, to: fb.name });
+        if (cands.length > 1) { fail(dim, `${cands.length} collections named "${name}"`); return; }
+        dimEntry[dim] = collEntry(name, schemaModes(def), 'component');
+        bindingUpdates[dim] = name;
+        dimCollection[dim] = cands[0] ?? null;
+        reboundDims.push({ dim, from, to: name });
     };
     const useCollection = (/** @type {string} */ dim, /** @type {any} */ def, /** @type {any} */ coll) => {
         dimCollection[dim] = coll;
@@ -130,32 +117,18 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
     for (const [dim, def] of variableProps(template)) {
         const boundId = binding.variables[dim];
         const bound = boundId ? collections.find(c => c.id === boundId) : null;
-        if (bound) {
-            if (own(bound) || matchesSchema(bound, def)) { useCollection(dim, def, bound); continue; }
-            toFallback(dim, def, bound.name);
+        if (bound && bound.name === ownName(def)) { useCollection(dim, def, bound); continue; }
+        if (bound) { toOwn(dim, def, bound.name); continue; }
+        const cands = collsNamed(ownName(def));
+        if (cands.length > 1) { fail(dim, `${cands.length} collections named "${ownName(def)}"`); continue; }
+        if (cands.length === 1) {
+            bindingUpdates[dim] = cands[0].name;
+            useCollection(dim, def, cands[0]);
             continue;
         }
-        const cands = [...collsNamed(def.collection), ...collsNamed(fallbackCollection(template, def))];
-        const owned = cands.filter(own);
-        const shared = cands.filter(c => !own(c) && matchesSchema(c, def));
-        if (owned.length === 1) {
-            bindingUpdates[dim] = owned[0].name;
-            useCollection(dim, def, owned[0]);
-            continue;
-        }
-        if (owned.length === 0 && shared.length === 1) {
-            bindingUpdates[dim] = shared[0].name;
-            useCollection(dim, def, shared[0]);
-            continue;
-        }
-        if (!cands.length) {
-            dimEntry[dim] = collEntry(def.collection, schemaModes(def), 'component');
-            bindingUpdates[dim] = def.collection;
-            dimCollection[dim] = null;
-            continue;
-        }
-        if (owned.length === 0 && shared.length === 0) { toFallback(dim, def, null); continue; }
-        fail(`${template.group}/* (${dim})`, `${cands.length} collections match "${def.collection}"`);
+        dimEntry[dim] = collEntry(ownName(def), schemaModes(def), 'component');
+        bindingUpdates[dim] = ownName(def);
+        dimCollection[dim] = null;
     }
     const modesOf = (/** @type {string} */ dim) => {
         const def = dimDef(dim);
@@ -184,7 +157,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         const baseColl = entry.base.slice(0, slash), baseName = entry.base.slice(slash + 1);
         if (!BASE_COLLECTIONS.includes(baseColl)) { needsValue.push({ name: owner, reason: `unknown base collection in "${entry.base}"` }); return null; }
         const cands = collsNamed(baseColl);
-        const ordered = [...cands.filter(c => !items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix))), ...cands.filter(c => items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix)))];
+        const ordered = [...cands.filter(c => !isComponentColl(c)), ...cands.filter(isComponentColl)];
         const existing = ordered.flatMap(c => items.filter(i => i.collectionId === c.id && variableKey(i.name) === variableKey(baseName)))[0];
         if (existing) {
             if (existing.type !== type) { fail(owner, `base variable "${entry.base}" is ${existing.type}, not ${type}`); return null; }
@@ -218,21 +191,20 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         if (snapDerived && !derived.some(x => x.name === snapDerived.name)) derived.push({ ...snapDerived });
         return { collectionIndex: at, name: baseName };
     };
-    /** Follows a component reference (`group/token`) to the variable it names in its bound collection. */
+    /** Follows a component reference (`./token`) to the variable it names in its bound collection. */
     const followRef = (/** @type {string} */ ref, /** @type {Set<string>} */ guard) => {
-        const slash = ref.indexOf('/');
-        const group = ref.slice(0, slash), token = ref.slice(slash + 1);
-        if (group !== template.group || !allTokens.includes(token)) { fail(ref, `is not a token variable of this template`); return null; }
+        const token = ref.slice(2);
+        if (!allTokens.includes(token)) { fail(ref, `is not a token variable of this template`); return null; }
         if (guard.has(ref)) { fail(ref, `refers to itself`); return null; }
         const dim = dimOfToken(token);
         if (!dim || !(dim in dimCollection) || !(dim in dimEntry)) { fail(ref, `its dimension is not fixable`); return null; }
         const coll = dimCollection[dim];
-        if (plannedVar(coll, dimDef(dim)?.collection, dimEntry[dim], `${template.group}/${token}`)) return { collectionIndex: dimEntry[dim], name: `${template.group}/${token}` };
+        if (plannedVar(coll, dimDef(dim)?.collection, dimEntry[dim], token)) return { collectionIndex: dimEntry[dim], name: token };
         guard.add(ref);
         const planned = ensureVariable(dim, token, guard);
         guard.delete(ref);
         if (!planned) return null;
-        return { collectionIndex: dimEntry[dim], name: `${template.group}/${token}` };
+        return { collectionIndex: dimEntry[dim], name: token };
     };
     /** Plans one component variable (missing values only); null when it cannot be made. */
     function ensureVariable(dim, token, guard = new Set()) {
@@ -240,7 +212,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         if (!def) return null;
         const coll = dimCollection[dim];
         const collectionName = coll ? coll.name : def.collection;
-        const varName = `${template.group}/${token}`;
+        const varName = token;
         const type = template.tokenKinds?.[token] ? varTypeOf(template.tokenKinds[token]) : null;
         if (!type) { fail(varName, `token kind "${template.tokenKinds?.[token] ?? 'missing'}" has no variable type`); return null; }
         const have = coll ? itemIn(coll.id, varName) : null;
@@ -357,7 +329,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         const slash = entry.base.indexOf('/');
         const baseColl = entry.base.slice(0, slash), baseName = entry.base.slice(slash + 1);
         const cands = collsNamed(baseColl);
-        const ordered = [...cands.filter(c => !items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix))), ...cands.filter(c => items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix)))];
+        const ordered = [...cands.filter(c => !isComponentColl(c)), ...cands.filter(isComponentColl)];
         const base = ordered.flatMap(c => items.filter(i => i.collectionId === c.id && variableKey(i.name) === variableKey(baseName)))[0];
         const target = baseTarget(role, 'number', `${baseColl}/${baseName}`);
         if (!target || !base || base.type !== 'number') continue;
@@ -376,7 +348,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             if (dimensionOfGroup(group, template.props) !== dim) continue;
             for (const token of names) {
                 if (token !== 'lineHeight') continue;
-                const varName = `${template.group}/${token}`;
+                const varName = token;
                 const have = coll ? itemIn(coll.id, varName) : null;
                 if (!have || have.type !== 'number') continue;
                 for (const mode of modesOf(dim)) {
@@ -400,7 +372,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         for (const [group, names] of Object.entries(template.tokens ?? {})) {
             if (dimensionOfGroup(group, template.props) !== dim) continue;
             for (const token of names) {
-                const varName = `${template.group}/${token}`;
+                const varName = token;
                 const have = coll ? itemIn(coll.id, varName) : null;
                 if (!have || have.type !== 'color') continue;
                 for (const mode of modesOf(dim)) {
@@ -431,8 +403,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         const merged = mergedStore();
         const updated = { ...binding.variables };
         for (const [dim, name] of Object.entries(bindingUpdates)) {
-            const cands = merged.collections.filter(c => c.name === name);
-            const coll = cands.find(c => merged.items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix))) ?? cands[0];
+            const coll = merged.collections.filter(c => c.name === name)[0];
             updated[dim] = coll?.id ?? null;
         }
         return { ...binding, variables: updated };
@@ -467,8 +438,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             return false;
         }
         const cands = collsNamed(wanted.collection);
-        const isForeign = (/** @type {any} */ c) => items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix));
-        return [...cands.filter(c => !isForeign(c)), ...cands.filter(isForeign)].some(c => itemIn(c.id, wanted.name));
+        return cands.some(c => itemIn(c.id, wanted.name));
     }
     const created = newItems.filter(i => !matchingItem(i));
     const summary = {
@@ -486,7 +456,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         reboundDims,
     };
     const fixable = created.length > 0 || summary.fills > 0 || rebound > 0 || Object.keys(bindingUpdates).length > 0;
-    return { fixable, group: template.group, plan: { collections: newCollections, items: newItems }, bindingUpdates, derived, needsValue, unfixable, summary };
+    return { fixable, plan: { collections: newCollections, items: newItems }, bindingUpdates, derived, needsValue, unfixable, summary };
 }
 
 /**
@@ -495,7 +465,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
  * plan identity, so same-named collections stay separate.
  * @param {{ collections: any[], items: any[] }} store
  * @param {{ variables: Record<string, string | null> }} binding the master's binding (mutated in place)
- * @param {{ group?: string, plan: { collections: { name: string, modes: string[] }[], items: any[] }, bindingUpdates: Record<string, string> }} autoFix
+ * @param {{ plan: { collections: { name: string, modes: string[] }[], items: any[] }, bindingUpdates: Record<string, string> }} autoFix
  * @param {() => string} uid the id maker
  */
 export function applyAutoFix(store, binding, autoFix, uid) {
@@ -565,12 +535,11 @@ export function applyAutoFix(store, binding, autoFix, uid) {
         }
     }
     let bindings = 0;
-    const prefix = `${String(autoFix.group ?? '').toLowerCase()}/`;
     for (const [dim, name] of Object.entries(autoFix.bindingUpdates)) {
-        // The plan resolves every update explicitly (a fallback rebind moves a slot off a valid collection), so an
+        // The plan resolves every update explicitly (a rebind moves a slot off another template's collection), so an
         // update always wins; a slot already pointing at the resolved collection is left alone.
         const cands = (store.collections || []).filter(c => c.name === name);
-        const coll = cands.find(c => (store.items || []).some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(prefix))) ?? cands[0];
+        const coll = cands[0];
         if (!coll || binding.variables[dim] === coll.id) continue;
         binding.variables[dim] = coll.id;
         bindings++;

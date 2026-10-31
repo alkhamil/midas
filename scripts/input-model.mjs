@@ -56,17 +56,17 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     const semantic = ids.semantic ?? 'c-semantic';
     const semItem = `${prefix}sem-outlineTransparent`;
     const collections = [
-        { id: variant, name: 'Variant', modes: variantModes.map(titled) },
-        { id: status, name: 'Status', modes: statusModes.map(titled) },
-        { id: size, name: 'Size', modes: sizeModes },
+        { id: variant, name: 'Input Variant', modes: variantModes.map(titled) },
+        { id: status, name: 'Input Status', modes: statusModes.map(titled) },
+        { id: size, name: 'Input Size', modes: sizeModes },
         { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] },
     ];
     const items = [{ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: '#00000000' } }];
     for (const [token, values] of Object.entries(STATUS_VALUES)) {
-        items.push({ id: `${prefix}st-${token}`, name: `input/${token}`, type: 'color', collectionId: status, values: Object.fromEntries(statusModes.map(m => [m, values[m]])) });
+        items.push({ id: `${prefix}st-${token}`, name: token, type: 'color', collectionId: status, values: Object.fromEntries(statusModes.map(m => [m, values[m]])) });
     }
     for (const [token, values] of Object.entries(sizes)) {
-        items.push({ id: `${prefix}s-${token}`, name: `input/${token}`, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
+        items.push({ id: `${prefix}s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, values[m.id]])) });
     }
     for (const token of VARIANT_TOKENS) {
         const values = {};
@@ -76,7 +76,7 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
             else if (spec.startsWith('st:')) values[mode] = { alias: `${prefix}st-${spec.slice(3)}` };
             else values[mode] = spec;
         }
-        items.push({ id: `${prefix}v-${token}`, name: `input/${token}`, type: 'color', collectionId: variant, values });
+        items.push({ id: `${prefix}v-${token}`, name: token, type: 'color', collectionId: variant, values });
     }
     return { collections, items, ids: { variant, status, size, semantic }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
 }

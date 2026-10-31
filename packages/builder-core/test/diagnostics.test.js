@@ -13,8 +13,8 @@ const model = buttonModel({
     },
 });
 const { collections } = model;
-const sizeColl = collections.find(c => c.name === 'Size');
-const sizeItems = () => model.items.filter(i => i.name.startsWith('button/') && i.collectionId === sizeColl.id);
+const sizeColl = collections.find(c => c.name === 'Button Size');
+const sizeItems = () => model.items.filter(i => i.name.startsWith('') && i.collectionId === sizeColl.id);
 const variantItems = () => model.items.filter(i => i.collectionId === model.ids.variant);
 
 /**
@@ -65,20 +65,20 @@ test('a collection no template needs is ignored: diagnostics never scans unrelat
 });
 
 test('a variable with no value in one mode is an error on the master, naming the variable and the mode', () => {
-    const items = variantItems().map(i => (i.name === 'button/bg-hover' ? { ...i, values: { outlined: '#ffffff' } } : i));
+    const items = variantItems().map(i => (i.name === 'bg-hover' ? { ...i, values: { outlined: '#ffffff' } } : i));
     const found = diagnoseDocument(doc({ variables: { items: [...model.items.filter(i => !variantItems().includes(i)), ...items] } }));
     assert.deepEqual(found.filter(f => f.severity === 'error'), [{
-        severity: 'error', code: 'variable-missing-in-mode', node: 'Button', nodeId: 'm1', variable: 'button/bg-hover', mode: 'Solid',
-        message: 'Button: variable "button/bg-hover" has no value in mode "Solid" of "Variant".',
+        severity: 'error', code: 'variable-missing-in-mode', node: 'Button', nodeId: 'm1', variable: 'bg-hover', mode: 'Solid',
+        message: 'Button: variable "bg-hover" has no value in mode "Solid" of "Button Variant".',
     }]);
 });
 
 test('a variable missing from its collection is an error on the master, naming the variable and the collection', () => {
-    const items = variantItems().filter(i => i.name !== 'button/bg-hover');
+    const items = variantItems().filter(i => i.name !== 'bg-hover');
     const found = diagnoseDocument(doc({ variables: { items: [...model.items.filter(i => !variantItems().includes(i)), ...items] } }));
     assert.deepEqual(found.filter(f => f.severity === 'error'), [{
-        severity: 'error', code: 'variable-missing', node: 'Button', nodeId: 'm1', variable: 'button/bg-hover', collection: 'Variant',
-        message: 'Button: variable "button/bg-hover" is missing from collection "Variant".',
+        severity: 'error', code: 'variable-missing', node: 'Button', nodeId: 'm1', variable: 'bg-hover', collection: 'Button Variant',
+        message: 'Button: variable "bg-hover" is missing from collection "Button Variant".',
     }]);
 });
 
@@ -93,7 +93,7 @@ test('an instance with a token it cannot resolve is an error, with the reason', 
 });
 
 test('an instance resolves its modes from its own Appearance modes, not from props', () => {
-    const items = sizeItems().map(i => (i.name === 'button/fontSize' ? { ...i, values: { sm: 14 } } : i));
+    const items = sizeItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: 14 } } : i));
     const d = doc({ variables: { items: [...model.items.filter(i => !sizeItems().includes(i)), ...items] }, instance: { varModes: { [sizeColl.id]: 'lg' } } });
     const found = diagnoseDocument(d);
     assert.deepEqual(found.map(f => f.code), ['variable-missing-in-mode'], 'the missing Large value is reported once, on the master');
@@ -131,7 +131,7 @@ test('a master token that is not bound is a warning, naming the layer, the prope
     const found = diagnoseDocument(d);
     assert.deepEqual(found.filter(f => f.code === 'unbound-token'), [{
         severity: 'warning', code: 'unbound-token', node: 'Button', nodeId: 'm1', layer: 'root', prop: 'fill', token: 'bg',
-        message: 'Button: root fill is not bound to "button/bg".',
+        message: 'Button: root fill is not bound to "bg".',
     }]);
 });
 
@@ -141,7 +141,7 @@ test('a master whose stroke has no paint is unbound, so one bind adds and binds 
     const found = diagnoseDocument(d).filter(f => f.code === 'unbound-token');
     assert.deepEqual(found, [{
         severity: 'warning', code: 'unbound-token', node: 'Button', nodeId: 'm1', layer: 'root', prop: 'stroke', token: 'border',
-        message: 'Button: root stroke is not bound to "button/border".',
+        message: 'Button: root stroke is not bound to "border".',
     }]);
 });
 

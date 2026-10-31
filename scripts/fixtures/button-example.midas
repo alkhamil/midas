@@ -214,7 +214,7 @@
     "collections": [
       {
         "id": "c-color",
-        "name": "Color",
+        "name": "Button Color",
         "modes": [
           {
             "id": "default",
@@ -232,7 +232,7 @@
       },
       {
         "id": "c-size",
-        "name": "Size",
+        "name": "Button Size",
         "modes": [
           {
             "id": "sm",
@@ -245,8 +245,18 @@
         ]
       },
       {
+        "id": "c-semantic",
+        "name": "Semantic",
+        "modes": [
+          {
+            "id": "base",
+            "name": "Base"
+          }
+        ]
+      },
+      {
         "id": "c-variant",
-        "name": "Variant",
+        "name": "Button Variant",
         "modes": [
           {
             "id": "outlined",
@@ -277,8 +287,17 @@
     ],
     "items": [
       {
+        "id": "sem-outlineTransparent",
+        "name": "outlineTransparent",
+        "type": "color",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": "#00000000"
+        }
+      },
+      {
         "id": "c-color",
-        "name": "button/color",
+        "name": "color",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -289,7 +308,7 @@
       },
       {
         "id": "c-color-hover",
-        "name": "button/color-hover",
+        "name": "color-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -300,7 +319,7 @@
       },
       {
         "id": "c-color-active",
-        "name": "button/color-active",
+        "name": "color-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -311,7 +330,7 @@
       },
       {
         "id": "c-color-border",
-        "name": "button/color-border",
+        "name": "color-border",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -322,7 +341,7 @@
       },
       {
         "id": "c-color-border-hover",
-        "name": "button/color-border-hover",
+        "name": "color-border-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -333,7 +352,7 @@
       },
       {
         "id": "c-color-border-active",
-        "name": "button/color-border-active",
+        "name": "color-border-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -344,7 +363,7 @@
       },
       {
         "id": "c-color-bg",
-        "name": "button/color-bg",
+        "name": "color-bg",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -355,7 +374,7 @@
       },
       {
         "id": "c-color-bg-hover",
-        "name": "button/color-bg-hover",
+        "name": "color-bg-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -366,7 +385,7 @@
       },
       {
         "id": "c-color-bg-active",
-        "name": "button/color-bg-active",
+        "name": "color-bg-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -377,7 +396,7 @@
       },
       {
         "id": "c-color-text",
-        "name": "button/color-text",
+        "name": "color-text",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -388,7 +407,7 @@
       },
       {
         "id": "c-color-text-hover",
-        "name": "button/color-text-hover",
+        "name": "color-text-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -399,7 +418,7 @@
       },
       {
         "id": "c-color-text-active",
-        "name": "button/color-text-active",
+        "name": "color-text-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -410,7 +429,7 @@
       },
       {
         "id": "c-color-text-bg-hover",
-        "name": "button/color-text-bg-hover",
+        "name": "color-text-bg-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -421,7 +440,7 @@
       },
       {
         "id": "c-color-text-bg-active",
-        "name": "button/color-text-bg-active",
+        "name": "color-text-bg-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -432,7 +451,7 @@
       },
       {
         "id": "c-color-solid",
-        "name": "button/color-solid",
+        "name": "color-solid",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -443,7 +462,7 @@
       },
       {
         "id": "c-color-solid-hover",
-        "name": "button/color-solid-hover",
+        "name": "color-solid-hover",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -454,7 +473,7 @@
       },
       {
         "id": "c-color-solid-active",
-        "name": "button/color-solid-active",
+        "name": "color-solid-active",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -465,7 +484,7 @@
       },
       {
         "id": "c-color-solid-text",
-        "name": "button/color-solid-text",
+        "name": "color-solid-text",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -476,7 +495,7 @@
       },
       {
         "id": "c-color-outline",
-        "name": "button/color-outline",
+        "name": "color-outline",
         "type": "color",
         "collectionId": "c-color",
         "values": {
@@ -487,7 +506,7 @@
       },
       {
         "id": "s-height",
-        "name": "button/height",
+        "name": "height",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -497,7 +516,7 @@
       },
       {
         "id": "s-fontSize",
-        "name": "button/fontSize",
+        "name": "fontSize",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -507,7 +526,7 @@
       },
       {
         "id": "s-lineHeight",
-        "name": "button/lineHeight",
+        "name": "lineHeight",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -517,7 +536,7 @@
       },
       {
         "id": "s-paddingX",
-        "name": "button/paddingX",
+        "name": "paddingX",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -527,7 +546,7 @@
       },
       {
         "id": "s-paddingY",
-        "name": "button/paddingY",
+        "name": "paddingY",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -537,7 +556,7 @@
       },
       {
         "id": "s-gap",
-        "name": "button/gap",
+        "name": "gap",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -547,7 +566,7 @@
       },
       {
         "id": "s-radius",
-        "name": "button/radius",
+        "name": "radius",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -557,7 +576,7 @@
       },
       {
         "id": "s-iconSize",
-        "name": "button/iconSize",
+        "name": "iconSize",
         "type": "number",
         "collectionId": "c-size",
         "values": {
@@ -567,7 +586,7 @@
       },
       {
         "id": "v-bg",
-        "name": "button/bg",
+        "name": "bg",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -579,13 +598,17 @@
           "filled": {
             "alias": "c-color-bg"
           },
-          "text": "#00000000",
-          "link": "#00000000"
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-fg",
-        "name": "button/fg",
+        "name": "fg",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -611,7 +634,7 @@
       },
       {
         "id": "v-border",
-        "name": "button/border",
+        "name": "border",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -621,15 +644,23 @@
           "dashed": {
             "alias": "c-color-border"
           },
-          "solid": "#00000000",
-          "filled": "#00000000",
-          "text": "#00000000",
-          "link": "#00000000"
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "sem-outlineTransparent"
+          },
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-bg-hover",
-        "name": "button/bg-hover",
+        "name": "bg-hover",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -644,12 +675,14 @@
           "text": {
             "alias": "c-color-text-bg-hover"
           },
-          "link": "#00000000"
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-fg-hover",
-        "name": "button/fg-hover",
+        "name": "fg-hover",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -675,7 +708,7 @@
       },
       {
         "id": "v-border-hover",
-        "name": "button/border-hover",
+        "name": "border-hover",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -685,15 +718,23 @@
           "dashed": {
             "alias": "c-color-border-hover"
           },
-          "solid": "#00000000",
-          "filled": "#00000000",
-          "text": "#00000000",
-          "link": "#00000000"
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "sem-outlineTransparent"
+          },
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-bg-active",
-        "name": "button/bg-active",
+        "name": "bg-active",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -708,12 +749,14 @@
           "text": {
             "alias": "c-color-text-bg-active"
           },
-          "link": "#00000000"
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-fg-active",
-        "name": "button/fg-active",
+        "name": "fg-active",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -739,7 +782,7 @@
       },
       {
         "id": "v-border-active",
-        "name": "button/border-active",
+        "name": "border-active",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -749,15 +792,23 @@
           "dashed": {
             "alias": "c-color-border-active"
           },
-          "solid": "#00000000",
-          "filled": "#00000000",
-          "text": "#00000000",
-          "link": "#00000000"
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "sem-outlineTransparent"
+          },
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-bg-disabled",
-        "name": "button/bg-disabled",
+        "name": "bg-disabled",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -765,13 +816,17 @@
           "dashed": "#f4f4f5",
           "solid": "#f4f4f5",
           "filled": "#f4f4f5",
-          "text": "#00000000",
-          "link": "#00000000"
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
         }
       },
       {
         "id": "v-fg-disabled",
-        "name": "button/fg-disabled",
+        "name": "fg-disabled",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
@@ -785,16 +840,80 @@
       },
       {
         "id": "v-outline-color",
-        "name": "button/outline-color",
+        "name": "outline-color",
         "type": "color",
         "collectionId": "c-variant",
         "values": {
-          "outlined": "#00000000",
-          "dashed": "#00000000",
-          "solid": "#00000000",
-          "filled": "#00000000",
-          "text": "#00000000",
-          "link": "#00000000"
+          "outlined": {
+            "alias": "sem-outlineTransparent"
+          },
+          "dashed": {
+            "alias": "sem-outlineTransparent"
+          },
+          "solid": {
+            "alias": "sem-outlineTransparent"
+          },
+          "filled": {
+            "alias": "sem-outlineTransparent"
+          },
+          "text": {
+            "alias": "sem-outlineTransparent"
+          },
+          "link": {
+            "alias": "sem-outlineTransparent"
+          }
+        }
+      },
+      {
+        "id": "v-outline-color-active",
+        "name": "outline-color-active",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-outline"
+          },
+          "dashed": {
+            "alias": "c-color-outline"
+          },
+          "solid": {
+            "alias": "c-color-outline"
+          },
+          "filled": {
+            "alias": "c-color-outline"
+          },
+          "text": {
+            "alias": "c-color-outline"
+          },
+          "link": {
+            "alias": "c-color-outline"
+          }
+        }
+      },
+      {
+        "id": "v-wave-color",
+        "name": "wave-color",
+        "type": "color",
+        "collectionId": "c-variant",
+        "values": {
+          "outlined": {
+            "alias": "c-color-outline"
+          },
+          "dashed": {
+            "alias": "c-color-outline"
+          },
+          "solid": {
+            "alias": "c-color-solid-text"
+          },
+          "filled": {
+            "alias": "c-color-text"
+          },
+          "text": {
+            "alias": "c-color-text"
+          },
+          "link": {
+            "alias": "c-color-text"
+          }
         }
       }
     ]

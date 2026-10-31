@@ -15,10 +15,10 @@ const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary' }] }
 const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm' }] };
 const item = (id, name, collectionId) => ({ id, name, collectionId, values: {} });
 const items = [
-    item('i-bg', 'button/bg', 'c-variant'), item('i-border', 'button/border', 'c-variant'), item('i-fg', 'button/fg', 'c-variant'),
-    item('i-radius', 'button/radius', 'c-size'), item('i-px', 'button/paddingX', 'c-size'), item('i-py', 'button/paddingY', 'c-size'),
-    item('i-gap', 'button/gap', 'c-size'), item('i-fs', 'button/fontSize', 'c-size'), item('i-lh', 'button/lineHeight', 'c-size'),
-    item('i-icon', 'button/iconSize', 'c-size'), item('i-height', 'button/height', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
+    item('i-bg', 'bg', 'c-variant'), item('i-border', 'border', 'c-variant'), item('i-fg', 'fg', 'c-variant'),
+    item('i-radius', 'radius', 'c-size'), item('i-px', 'paddingX', 'c-size'), item('i-py', 'paddingY', 'c-size'),
+    item('i-gap', 'gap', 'c-size'), item('i-fs', 'fontSize', 'c-size'), item('i-lh', 'lineHeight', 'c-size'),
+    item('i-icon', 'iconSize', 'c-size'), item('i-height', 'height', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
 ];
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
 const variables = (over = items) => ({ collections: [variant, size], items: over });
@@ -50,13 +50,13 @@ test('a fully bound master gives no operations (idempotent)', () => {
 });
 
 test('a token with no variable in its group is a problem, not a guess', () => {
-    const { ops, problems } = planBindTokens({ template: button, binding, layers: layers(), variables: variables(items.filter(i => i.name !== 'button/bg')) });
+    const { ops, problems } = planBindTokens({ template: button, binding, layers: layers(), variables: variables(items.filter(i => i.name !== 'bg')) });
     assert.deepEqual(problems, [{ key: 'root', prop: 'fill', token: 'bg', reason: 'no-variable' }]);
     assert.equal(ops.some(o => o.varKey === 'fills.0' && o.key === 'root'), false);
 });
 
 test('a card variable is never bound to a Button property', () => {
-    const { ops } = planBindTokens({ template: button, binding, layers: layers(), variables: variables(items.filter(i => i.name !== 'button/bg')) });
+    const { ops } = planBindTokens({ template: button, binding, layers: layers(), variables: variables(items.filter(i => i.name !== 'bg')) });
     assert.equal(ops.some(o => o.itemId === 'i-card'), false);
 });
 
@@ -132,7 +132,7 @@ test('auto-bind flow on the real fixture: collections, modes and hasIcon bind wi
     assert.equal(fg, 'v-fg');
     assert.equal(fgDisabled, 'v-fg-disabled');
     assert.equal(size, 's-iconSize');
-    const plan = iconSlotBindings({ fg, fgDisabled, size, disabled: false, names: { colour: 'button/fg', disabledColour: 'button/fg-disabled', size: 'button/icon-size' }, layers: [{ id: 'slot', fillIndexes: [0], stroke: false }] });
+    const plan = iconSlotBindings({ fg, fgDisabled, size, disabled: false, names: { colour: 'fg', disabledColour: 'fg-disabled', size: 'icon-size' }, layers: [{ id: 'slot', fillIndexes: [0], stroke: false }] });
     assert.deepEqual(plan.missing, []);
     assert.deepEqual(plan.slot, { w: 's-iconSize', h: 's-iconSize' });
     assert.deepEqual(plan.layers, [{ id: 'slot', vars: { 'fills.0': 'v-fg' } }]);

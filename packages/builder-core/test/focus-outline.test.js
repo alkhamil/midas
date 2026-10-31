@@ -69,20 +69,19 @@ function alphasOf(store, varName) {
 
 test('outline-color resolves to alpha 0 in every mode of Button and Input', () => {
     const btn = fixedStore('button');
-    assert.deepEqual(alphasOf(btn.store, 'button/outline-color'), [0, 0, 0, 0, 0, 0]);
+    assert.deepEqual(alphasOf(btn.store, 'outline-color'), [0, 0, 0, 0, 0, 0]);
     const inp = fixedStore('input');
-    assert.deepEqual(alphasOf(inp.store, 'input/outline-color'), [0, 0, 0]);
+    assert.deepEqual(alphasOf(inp.store, 'outline-color'), [0, 0, 0]);
 });
 
 test('outline-color aliases Semantic: never a literal, never another component variable', () => {
     for (const templateId of ['button', 'input']) {
         const { store } = fixedStore(templateId);
-        const group = TEMPLATES.get(templateId).group;
-        const item = store.items.find(i => i.name === `${group}/outline-color`);
+        const item = store.items.find(i => i.name === 'outline-color');
         const coll = store.collections.find(c => c.id === item.collectionId);
         for (const m of coll.modes) {
             const target = store.items.find(i => i.id === item.values[m.id]?.alias);
-            assert.ok(target, `${group}/outline-color aliases in mode ${m.name}`);
+            assert.ok(target, `outline-color aliases in mode ${m.name}`);
             assert.equal(store.collections.find(c => c.id === target.collectionId).name, 'Semantic');
         }
     }
@@ -107,10 +106,10 @@ test('the ring animates; reduced motion removes transitions and the wave', () =>
 test('a missing outline-color-active is an error; an opaque outline-color warns and Auto Fix repairs it', () => {
     const bare = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
     const docOf = store => ({ variables: store, pages: [{ name: 'p', nodes: [{ id: 'm', name: 'B', type: 'frame', component: true, behavior: bare.binding }] }] });
-    const missing = diagnoseDocument(docOf({ collections: bare.collections, items: bare.items.filter(i => i.name !== 'button/outline-color-active') }));
-    assert.ok(missing.some(f => f.code === 'variable-missing' && f.variable === 'button/outline-color-active'), 'missing active is an error');
+    const missing = diagnoseDocument(docOf({ collections: bare.collections, items: bare.items.filter(i => i.name !== 'outline-color-active') }));
+    assert.ok(missing.some(f => f.code === 'variable-missing' && f.variable === 'outline-color-active'), 'missing active is an error');
     const murky = { collections: structuredClone(bare.collections), items: structuredClone(bare.items) };
-    murky.items.find(i => i.name === 'button/outline-color').values.solid = '#d9d9d9';
+    murky.items.find(i => i.name === 'outline-color').values.solid = '#d9d9d9';
     const warned = diagnoseDocument(docOf(murky));
     assert.ok(warned.some(f => f.code === 'outline-not-transparent' && f.severity === 'warning'), 'opaque rest warns');
     const binding = structuredClone(bare.binding);
@@ -147,13 +146,13 @@ test('the input halo uses the default, error and warning colours', () => {
 
 test('wave-color is created per variant and follows the button colour', () => {
     const { store } = fixedStore('button');
-    const wave = store.items.find(i => i.name === 'button/wave-color');
+    const wave = store.items.find(i => i.name === 'wave-color');
     assert.ok(wave, 'wave-color exists');
-    const bg = store.items.find(i => i.name === 'button/bg');
-    const border = store.items.find(i => i.name === 'button/border');
+    const bg = store.items.find(i => i.name === 'bg');
+    const border = store.items.find(i => i.name === 'border');
     const modeOf = (variant, color) => coll => {
         const id = name => coll.modes.find(m => m.name === name)?.id ?? coll.modes[0].id;
-        return coll.name === 'Variant' ? id(variant) : coll.name === 'Color' ? id(color) : coll.modes[0].id;
+        return coll.name === 'Button Variant' ? id(variant) : coll.name === 'Button Color' ? id(color) : coll.modes[0].id;
     };
     const solidPrimary = modeOf('solid', 'primary');
     assert.equal(variableValue(store, wave, solidPrimary), variableValue(store, bg, solidPrimary));

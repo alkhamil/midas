@@ -18,6 +18,7 @@ test('auto-match returns null when no collection has that name', () => {
 });
 
 test('a new Button binding matches Variant and leaves Color and Size unbound', () => {
-    const binding = createBinding(TEMPLATES.get('button'), collections);
+    const namespaced = [{ ...collections[0], name: 'Button Variant' }, collections[1]];
+    const binding = createBinding(TEMPLATES.get('button'), namespaced);
     assert.deepEqual(binding, { version: 2, templateId: 'button', variables: { variant: 'c-variant', color: null, size: null } });
 });

@@ -8,9 +8,9 @@ const variant = { id: 'c-variant', name: 'Variant', modes: [{ id: 'primary' }, {
 const size = { id: 'c-size', name: 'Size', modes: [{ id: 'sm' }] };
 const item = (id, name, collectionId = 'c-variant') => ({ id, name, type: 'color', collectionId, values: {} });
 const items = [
-    item('i-bg', 'button/bg'), item('i-bg-disabled', 'button/bg-disabled'),
-    item('i-fg', 'button/fg'), item('i-fg-disabled', 'button/fg-disabled'),
-    item('i-border', 'button/border'), item('i-card', 'card/bg'),
+    item('i-bg', 'bg'), item('i-bg-disabled', 'bg-disabled'),
+    item('i-fg', 'fg'), item('i-fg-disabled', 'fg-disabled'),
+    item('i-border', 'border'), item('i-card', 'card/bg'),
 ];
 const variables = (over = items) => ({ collections: [variant, size], items: over });
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
@@ -72,7 +72,7 @@ test('a layer the user rebound while disabled is off is left alone, with no warn
 });
 
 test('a missing state variable is an error, not a fallback to the base variable', () => {
-    const { ops, problems } = plan({ disabled: true }, { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } }, items.filter(i => i.name !== 'button/bg-disabled'));
+    const { ops, problems } = plan({ disabled: true }, { root: { 'fills.0': 'i-bg' }, label: { 'fills.0': 'i-fg' } }, items.filter(i => i.name !== 'bg-disabled'));
     assert.deepEqual(problems, [{ key: '*', prop: 'bg', token: 'bg-disabled', reason: 'no-variable' }]);
     assert.deepEqual(ops, [{ instanceId: 'il', prop: 'fills.0', value: 'i-fg-disabled' }], 'the root is not changed to the base or any other variable');
 });

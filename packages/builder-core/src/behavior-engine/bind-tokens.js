@@ -35,7 +35,7 @@ export function planBindTokens({ template, binding, layers, variables }) {
             const dimension = group ? dimensionOfGroup(group, template.props) : null;
             const collectionId = dimension ? binding.variables[dimension] : null;
             if (!collectionId) { problems.push({ key, prop, token: source, reason: 'dimension-unbound' }); continue; }
-            const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(`${template.group}/${source}`));
+            const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(source));
             if (!item) { problems.push({ key, prop, token: source, reason: 'no-variable' }); continue; }
             const known = new Set(items.map(i => i.id));
             for (const varKey of VARIABLE_KEYS[prop] || []) {

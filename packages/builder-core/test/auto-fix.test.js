@@ -6,14 +6,14 @@ import { TEMPLATES, variableProps, roleOf, planAutoFix, applyAutoFix, applyBaseP
 
 const MINI = {
     id: 'mini',
-    group: 'mini',
+    name: 'Mini',
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['a', 'b'] },
         size: { source: 'variable', collection: 'Size', modes: ['sm'] },
     },
     tokens: { fromVariant: ['bg', 'fg'], fromSize: ['height'] },
     tokenKinds: { bg: 'color', fg: 'color', height: 'length' },
-    tokenRoles: { bg: { a: 'bg', b: 'mini/fg' }, fg: 'fg', height: 'height-sm' },
+    tokenRoles: { bg: { a: 'bg', b: './fg' }, fg: 'fg', height: 'height-sm' },
 };
 
 const emptyBinding = template => ({ version: 2, templateId: template.id, variables: Object.fromEntries(variableProps(template).map(([d]) => [d, null])) });
@@ -23,7 +23,7 @@ const uid = () => `id${++n}`;
 test('roleOf resolves plain roles, per-mode maps, defaults and token names', () => {
     assert.equal(roleOf(MINI, 'fg', 'a'), 'fg');
     assert.equal(roleOf(MINI, 'bg', 'a'), 'bg');
-    assert.equal(roleOf(MINI, 'bg', 'B'), 'mini/fg');
+    assert.equal(roleOf(MINI, 'bg', 'B'), './fg');
     assert.equal(roleOf(MINI, 'height', 'sm'), 'height-sm');
     assert.equal(roleOf({ tokenRoles: { t: { x: 'r', default: 'd' } } }, 't', 'y'), 'd');
     assert.equal(roleOf({}, 'tok', 'm'), 'tok');
@@ -37,20 +37,20 @@ test('missing variables are created as aliases by role, following component chai
     assert.equal(plan.unfixable.length, 0);
     const stats = applyAutoFix(store, binding, plan, uid);
     assert.ok(stats.items > 0 && stats.aliases > 0 && stats.bindings === 2);
-    const variant = store.collections.find(c => c.name === 'Variant');
+    const variant = store.collections.find(c => c.name === 'Mini Variant');
     assert.deepEqual(variant.modes.map(m => m.name), ['a', 'b']);
     const byName = Object.fromEntries(store.items.filter(i => i.collectionId === variant.id).map(i => [i.name, i]));
     const modeId = mode => variant.modes.find(m => m.name === mode).id;
     const targetOf = item => store.items.find(i => i.id === item.values[modeId('b')].alias);
-    assert.equal(targetOf(byName['mini/bg']).name, 'mini/fg'); // component chain
-    assert.equal(store.items.find(i => i.id === byName['mini/fg'].values[modeId('a')].alias).name, 'colorText'); // base role
-    const size = store.collections.find(c => c.name === 'Size' && c.modes.some(m => m.name === 'sm'));
-    const height = store.items.find(i => i.collectionId === size.id && i.name === 'mini/height');
+    assert.equal(targetOf(byName['bg']).name, 'fg'); // component chain
+    assert.equal(store.items.find(i => i.id === byName['fg'].values[modeId('a')].alias).name, 'colorText'); // base role
+    const size = store.collections.find(c => c.name === 'Mini Size' && c.modes.some(m => m.name === 'sm'));
+    const height = store.items.find(i => i.collectionId === size.id && i.name === 'height');
     assert.equal(store.items.find(i => i.id === height.values[size.modes[0].id].alias).name, 'controlHeightSM');
 });
 
 test('existing values are kept; only missing mode values are filled', () => {
-    const store = { collections: [{ id: 'c', name: 'Variant', modes: [{ id: 'm-a', name: 'a' }] }], items: [{ id: 'v', collectionId: 'c', name: 'mini/bg', type: 'color', values: { 'm-a': '#123456' } }] };
+    const store = { collections: [{ id: 'c', name: 'Mini Variant', modes: [{ id: 'm-a', name: 'a' }] }], items: [{ id: 'v', collectionId: 'c', name: 'bg', type: 'color', values: { 'm-a': '#123456' } }] };
     const binding = { version: 2, templateId: 'mini', variables: { variant: 'c', size: null } };
     const plan = planAutoFix({ template: MINI, binding, variables: store, layers: [] });
     const before = store.items[0].values['m-a'];
@@ -60,7 +60,7 @@ test('existing values are kept; only missing mode values are filled', () => {
 });
 
 test('a dangling binding is rebound; an ambiguous collection is unfixable', () => {
-    const store = { collections: [{ id: 'c1', name: 'Variant', modes: [] }, { id: 'c2', name: 'Variant', modes: [] }], items: [] };
+    const store = { collections: [{ id: 'c1', name: 'Mini Variant', modes: [] }, { id: 'c2', name: 'Mini Variant', modes: [] }], items: [] };
     const binding = { version: 2, templateId: 'mini', variables: { variant: 'gone', size: null } };
     const plan = planAutoFix({ template: MINI, binding, variables: store, layers: [] });
     assert.ok(plan.unfixable.some(u => u.name.includes('variant')));
@@ -71,10 +71,10 @@ test('a dangling binding is rebound; an ambiguous collection is unfixable', () =
 test('an unknown role becomes needs value, never a literal', () => {
     const odd = { ...MINI, tokenRoles: { ...MINI.tokenRoles, fg: 'no-such-role' } };
     const plan = planAutoFix({ template: odd, binding: emptyBinding(odd), variables: { collections: [], items: [] }, layers: [] });
-    assert.ok(plan.needsValue.some(v => v.name.endsWith('/mini/fg.a') || v.name.endsWith('/mini/fg.b')));
+    assert.ok(plan.needsValue.some(v => v.name.endsWith('/fg.a') || v.name.endsWith('/fg.b')));
     const store = { collections: [], items: [] };
     applyAutoFix(store, emptyBinding(odd), plan, uid);
-    for (const item of store.items.filter(i => i.name === 'mini/fg')) {
+    for (const item of store.items.filter(i => i.name === 'fg')) {
         // Flagged needs value (a renderable placeholder, not a meaningful literal): every mode is set, nothing stays missing.
         assert.equal(item.needsValue, true);
         for (const value of Object.values(item.values)) assert.ok(value.alias || item.needsValue, 'alias or flagged, never a meaningful literal');
@@ -82,19 +82,19 @@ test('an unknown role becomes needs value, never a literal', () => {
 });
 
 test('a self-referencing role is unfixable', () => {
-    const loop = { ...MINI, tokenRoles: { ...MINI.tokenRoles, bg: 'mini/bg' } };
+    const loop = { ...MINI, tokenRoles: { ...MINI.tokenRoles, bg: './bg' } };
     const plan = planAutoFix({ template: loop, binding: emptyBinding(loop), variables: { collections: [], items: [] }, layers: [] });
-    assert.ok(plan.unfixable.some(u => u.name === 'mini/bg'));
+    assert.ok(plan.unfixable.some(u => u.name === './bg'));
 });
 
 test('a type mismatch is kept and reported, never overwritten', () => {
-    const store = { collections: [{ id: 'c', name: 'Variant', modes: [{ id: 'm-a', name: 'a' }] }], items: [{ id: 'v', collectionId: 'c', name: 'mini/bg', type: 'string', values: {} }] };
+    const store = { collections: [{ id: 'c', name: 'Mini Variant', modes: [{ id: 'm-a', name: 'a' }] }], items: [{ id: 'v', collectionId: 'c', name: 'bg', type: 'string', values: {} }] };
     const binding = { version: 2, templateId: 'mini', variables: { variant: 'c', size: null } };
     const before = structuredClone(store);
     const plan = planAutoFix({ template: MINI, binding, variables: store, layers: [] });
     applyAutoFix(store, binding, plan, uid);
     assert.equal(store.items.find(i => i.id === 'v').type, 'string');
-    assert.ok(plan.unfixable.some(u => u.name === 'mini/bg'));
+    assert.ok(plan.unfixable.some(u => u.name === 'bg'));
     assert.deepEqual(store.items.find(i => i.id === 'v'), before.items[0]);
 });
 
@@ -165,7 +165,7 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
     const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
     const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
     const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
-    const height = plan.plan.items.find(i => i.name === 'button/height');
+    const height = plan.plan.items.find(i => i.name === 'height');
     for (const [mode, semName, primName, primValue] of [['md', 'controlHeight', 'size/32', 32], ['sm', 'controlHeightSM', 'size/24', 24], ['lg', 'controlHeightLG', 'size/40', 40]]) {
         assert.equal(atName(height.values[mode].alias), 'Semantic/' + semName, mode);
         const sem = findItem('Semantic', semName);
@@ -173,7 +173,7 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
         assert.equal(findItem('Primitives', primName).values.Base.literal, primValue, mode);
     }
     const inputHeight = planAutoFix({ template: TEMPLATES.get('input'), binding: emptyBinding(TEMPLATES.get('input')), variables: { collections: [], items: [] }, layers: [] });
-    const ih = inputHeight.plan.items.find(i => i.name === 'input/height');
+    const ih = inputHeight.plan.items.find(i => i.name === 'height');
     const iname = a => inputHeight.plan.collections[a.collectionIndex].name + '/' + a.name;
     assert.equal(iname(ih.values.md.alias), 'Semantic/controlHeight');
 });
@@ -221,13 +221,13 @@ test('button Size lineHeight resolves to paired px through Semantic and Typograp
     const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
     const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
     for (const [mode, sem, step, px] of [['xs', 'lineHeightXS', 'font/line-height/10', 12], ['sm', 'lineHeightSM', 'font/line-height/12', 16], ['md', 'lineHeight', 'font/line-height/14', 20], ['lg', 'lineHeightLG', 'font/line-height/16', 24], ['xl', 'lineHeightXL', 'font/line-height/20', 28]]) {
-        const lh = plan.plan.items.find(i => i.name === 'button/lineHeight');
+        const lh = plan.plan.items.find(i => i.name === 'lineHeight' && plan.plan.collections[i.collectionIndex].name === 'Button Size');
         assert.equal(atName(lh.values[mode].alias), 'Semantic/' + sem, mode);
         assert.equal(atName(findItem('Semantic', sem).values.Light.alias), 'Typography/' + step, mode);
         assert.equal(findItem('Typography', step).values['Mode 1'].literal, px, mode);
     }
     const inputPlan = planAutoFix({ template: TEMPLATES.get('input'), binding: emptyBinding(TEMPLATES.get('input')), variables: { collections: [], items: [] }, layers: [] });
-    const ilh = inputPlan.plan.items.find(i => i.name === 'input/lineHeight');
+    const ilh = inputPlan.plan.items.find(i => i.name === 'lineHeight' && inputPlan.plan.collections[i.collectionIndex].name === 'Input Size');
     const iname = a => inputPlan.plan.collections[a.collectionIndex].name + '/' + a.name;
     assert.equal(iname(ilh.values.md.alias), 'Semantic/lineHeight');
     assert.equal(iname(ilh.values.sm.alias), 'Semantic/lineHeightSM');
@@ -247,7 +247,7 @@ test('a ratio-valued lineHeight binding is reported with a fix that rebinds it t
     sm.values[sem.modes[0].id] = { alias: ratio.id };
     const size = { id: uid2(), name: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'].map(name => ({ id: uid2(), name })) };
     store.collections.push(size);
-    const comp = { id: uid2(), collectionId: size.id, name: 'button/lineHeight', type: 'number', values: {} };
+    const comp = { id: uid2(), collectionId: size.id, name: 'lineHeight', type: 'number', values: {} };
     for (const m of size.modes) comp.values[m.id] = { alias: sm.id };
     store.items.push(comp);
     const binding = { version: 2, templateId: 'button', variables: { variant: null, color: null, size: size.id } };
