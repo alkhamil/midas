@@ -120,6 +120,9 @@ export interface TemplateSchema {
     anatomy: AnatomySlot[];
     icons: IconSlotDef[];
     control?: ControlDef;
+    /** The box that owns interaction visuals when the element itself cannot take them: `wrapper` reflects the
+     * inner control focus and disabled state onto the root (only with a `control`). */
+    focusTarget?: 'wrapper';
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

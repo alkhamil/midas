@@ -76,15 +76,16 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
-test('codegen writes the border from the variable, the placeholder rule, and status selectors guarded by not-disabled', () => {
+test('codegen writes the border from the variable, the placeholder rule, and status selectors guarded on the wrapper', () => {
     const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
     const css = files['Input.css'];
     assert.match(css, /\.input \{\n(?:.*\n)*?\s*border-color: var\(--input-border\);\n/);
     assert.match(css, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
     assert.match(css, /\[data-status="error"\]/);
-    assert.match(css, /:hover:not\(:disabled\)/);
-    assert.match(css, /:focus:not\(:disabled\)/);
-    assert.match(css, /:focus-visible:not\(:disabled\)/);
+    assert.match(css, /:hover:not\(:has\(:disabled\)\)/);
+    assert.match(css, /:has\(:focus-visible\):not\(:has\(:disabled\)\)/);
+    assert.match(css, /:focus-within:not\(:has\(:disabled\)\)/);
+    assert.match(css, /:has\(:disabled\) \{/);
 });
 
 test('Play draws a span root with the input, and a bound inside stroke emits no inline border', () => {

@@ -25,6 +25,9 @@ export const INPUT = {
     // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`).
     control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', clear: 'allowClear', count: 'showCount' },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
+    // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
+    // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
+    focusTarget: 'wrapper',
     outline: { width: 2, offset: 1 },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },

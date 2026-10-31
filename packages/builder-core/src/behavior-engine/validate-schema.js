@@ -108,6 +108,7 @@ export function validateTemplateSchema(schema) {
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...controlProblems(schema));
+    out.push(...focusTargetProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -275,6 +276,18 @@ function controlProblems(schema) {
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
     return out;
+}
+
+/**
+ * Problems in the focus target: only `wrapper`, and only with a control whose state the root reflects.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function focusTargetProblems(schema) {
+    if (schema.focusTarget === undefined) return [];
+    if (schema.focusTarget !== 'wrapper') return [`focusTarget "${schema.focusTarget}" must be "wrapper"`];
+    if (!isPlainObject(schema.control)) return ['focusTarget needs a control'];
+    return [];
 }
 
 /**

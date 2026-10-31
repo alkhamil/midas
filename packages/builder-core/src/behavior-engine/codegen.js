@@ -106,6 +106,20 @@ function displayRules(template, master, childrenOf) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`);
         }
         if (key === 'root') decls.push('  border-width: 1px;\n', '  border-style: solid;\n');
+        // A control slot draws as a native input: it owns text only, so the reset comes first and the
+        // token-driven declarations below win for colour and font metrics. Generic: any template with a
+        // `control` reads this path.
+        if (controlOf(template)?.slot === key) decls.push(
+            '  background: transparent;\n',
+            '  border: none;\n',
+            '  outline: none;\n',
+            '  box-shadow: none;\n',
+            '  padding: 0;\n',
+            '  margin: 0;\n',
+            '  border-radius: 0;\n',
+            '  appearance: none;\n',
+            '  font: inherit;\n',
+        );
         for (const [prop, source] of Object.entries(props)) {
             const css = NODE_PROPERTIES[kind][prop].css;
             if (!css || !tokens.includes(source)) continue;
@@ -161,8 +175,18 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
                 : previewOf(template, binding, combo, variables, defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
             // A disabled element shows only its disabled style: the other states never apply to it.
-            const guard = state === disabledState ? '' : `:not(${template.statePseudo[disabledState]})`;
-            if (Object.keys(delta).length) blocks.push(`${selector}${pseudo}${guard} {\n${declarations(delta)}}\n`);
+            // A wrapper focus target reflects the inner control state: the disabled rule matches
+            // `:has(:disabled)`, focus matches `:has(:focus-visible)` with a `:focus-within` fallback, and the
+            // other states are guarded by `:not(:has(:disabled))`. Plain `:focus`, `:focus-visible` and
+            // `:disabled` never match the wrapper, so no dead rule is emitted for them.
+            const wrapperTarget = template.focusTarget === 'wrapper';
+            const guard = state === disabledState ? '' : wrapperTarget ? ':not(:has(:disabled))' : `:not(${template.statePseudo[disabledState]})`;
+            if (!Object.keys(delta).length) continue;
+            const sels = !wrapperTarget ? [`${selector}${pseudo}${guard}`]
+                : state === disabledState ? [`${selector}:has(:disabled)`]
+                : pseudo === ':focus' || pseudo === ':focus-visible' ? [`${selector}:has(:focus-visible)${guard}`, `${selector}:focus-within${guard}`]
+                : [`${selector}${pseudo}${guard}`];
+            for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
     return blocks.join('\n');
