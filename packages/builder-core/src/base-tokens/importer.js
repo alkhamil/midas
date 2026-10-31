@@ -210,6 +210,20 @@ export function buildBasePlan(parsed, antMap = ANT_MAP) {
 }
 
 /**
+ * The plan stored in the committed snapshot, validated. The snapshot holds exactly what `buildBasePlan` returned
+ * (collections, items with symbolic aliases, report), so the studio applies it without the token JSON or the importer.
+ * @param {{ collections?: any, items?: any, report?: any }} snapshot
+ */
+export function planFromSnapshot(snapshot) {
+    const fail = (/** @type {string} */ what) => { throw new Error(`Base snapshot: ${what}`); };
+    if (!snapshot || typeof snapshot !== 'object') fail('is not an object');
+    if (!Array.isArray(snapshot.collections) || !snapshot.collections.every(c => typeof c?.name === 'string' && Array.isArray(c.modes))) fail('collections must name their modes');
+    if (!Array.isArray(snapshot.items) || !snapshot.items.every(i => typeof i?.collection === 'string' && typeof i?.name === 'string' && typeof i?.type === 'string' && i?.values && typeof i.values === 'object')) fail('items must name a collection, a name, a type and mode values');
+    if (!snapshot.report || typeof snapshot.report !== 'object') fail('has no report');
+    return { collections: snapshot.collections, items: snapshot.items, report: snapshot.report };
+}
+
+/**
  * Applies a base plan to a variable store (`{ collections, items }`, the document shape). Idempotent: a second run
  * creates nothing — existing collections keep their ids and modes, existing variables are never overwritten or renamed,
  * only missing mode values are filled. Runs synchronously in one pass, so the caller can wrap it in one undo step.

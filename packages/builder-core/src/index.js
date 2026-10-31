@@ -25,6 +25,7 @@ export * from './behavior-engine/edits.js';
 export * from './behavior-engine/icon-slot.js';
 export * from './behavior-engine/variant-style.js';
 export * from './base-tokens/importer.js';
+export { default as BASE_SNAPSHOT } from './base-tokens/base-snapshot.json' with { type: 'json' };
 export * from './prototype/data.js';
 export * from './prototype/validate.js';
 export * from './prototype/plan.js';
