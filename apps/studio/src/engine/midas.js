@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -8945,7 +8945,7 @@ function behaviorTabHtml(n) {
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
         const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
-        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
+        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems }, autoFix: fixableAutoFix(n) });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
@@ -9169,9 +9169,49 @@ function bindMasterTokens(master, { announce = false } = {}) {
 function bindTokensTo(master) {
     transaction('Bind tokens', () => { bindMasterTokens(master, { announce: true }); });
 }
+
+/** The Auto Fix plan for a master, or null while pages load or when nothing is fixable. Pure planning only; the click handler applies it. */
+function fixableAutoFix(master) {
+    const binding = master?.behavior;
+    if (!master?.component || !binding || !('templateId' in binding) || lazyPages.size) return null;
+    const findings = diagnoseDocument(doc.data).filter(f => f.nodeId === master.id || !f.nodeId);
+    if (!findings.some(f => ['variable-missing', 'variable-missing-in-mode', 'dimension-unbound', 'collection-missing'].includes(f.code))) return null;
+    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const plan = planAutoFix({ template, binding, variables: varStore(), layers: masterLayersOf(master, id => doc.children(id)) });
+    if (!plan.fixable) return null;
+    return { fixable: true, count: plan.summary.variables + plan.summary.fills };
+}
+
+/** Auto Fix: creates what the template requires (collections, modes, variables as aliases by role), binds the frame with the existing pipeline, and reports what was made. One undo step. */
+async function autoFixMaster(master) {
+    const binding = master?.behavior;
+    if (!master?.component || !binding || !('templateId' in binding)) return;
+    const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const plan = planAutoFix({ template, binding, variables: varStore(), layers: masterLayersOf(master, id => doc.children(id)) });
+    if (!plan.fixable) { toast('Nothing to fix.'); return; }
+    const ok = await confirmDialog({ title: `Auto Fix ${master.name}?`, message: `Create ${plan.summary.variables} variables in collections [${[...new Set(plan.summary.collections)].join(', ')}], bind ${plan.summary.boundProperties} properties.`, confirmLabel: 'Auto Fix' });
+    if (!ok) return;
+    let result;
+    transaction('Auto Fix', () => {
+        result = applyAutoFix(varStore(), binding, plan, uid);
+        bindMasterTokens(master);
+        for (const inst of instancesOf(master.id)) syncInstance(inst);
+    });
+    const { summary } = plan;
+    toast(`Auto Fix: ${result.items} variables, ${summary.boundProperties} properties bound.`);
+    const lines = [
+        `Created ${result.items} variables in ${result.collections} collections (${result.modes} modes added, ${result.aliases} aliases), bound ${result.bindings} collections and ${summary.boundProperties} properties.`,
+        `Derived base tokens: ${summary.derived.length ? summary.derived.join(', ') : 'none'}.`,
+        `Needs value: ${summary.needsValue.length ? summary.needsValue.join(', ') : 'none'}.`,
+        `Left as errors: ${summary.unfixable.length ? summary.unfixable.join('; ') : 'none'}.`,
+    ];
+    choiceDialog({ title: 'Auto Fix done', message: lines.join(' '), actions: [{ label: 'Close', value: true, primary: true }] });
+}
+
 /** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
 function onBehaviorClick(e) {
     if (e.target.closest?.('[data-bp-action="bind-tokens"]')) return bindTokensTo(activeNode());
+    if (e.target.closest?.('[data-bp-action="auto-fix"]')) return autoFixMaster(activeNode());
     const iconButton = e.target.closest?.('[data-bp-action="icon"]');
     if (iconButton) {
         const owner = activeNode();

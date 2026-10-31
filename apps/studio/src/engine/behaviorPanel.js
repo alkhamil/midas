@@ -15,9 +15,9 @@ const labelOfState = state => PREVIEW_STATES.find(([id]) => id === state)?.[1] ?
  * `findings` are the diagnostics of the node, or null while pages are still loading. `preview` (instance) is the resolved
  * preview with the tokens its state overrides. `code` (bound master) is the generator's problems, if any.
  */
-export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code }) {
+export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null }) {
     if (kind === 'none') return empty('Select a component or one of its instances to set its behavior.');
-    if (kind === 'master') return masterHtml(panel, esc, findings, code);
+    if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix);
     return instanceHtml(panel, esc, findings, preview);
 }
 
@@ -49,7 +49,7 @@ function note(text, esc) {
     return `<div class="small-label">${esc(text)}</div>`;
 }
 
-function masterHtml(panel, esc, findings, code) {
+function masterHtml(panel, esc, findings, code, autoFix = null) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
@@ -82,7 +82,7 @@ function masterHtml(panel, esc, findings, code) {
         + block('Collections', needs + collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
-        + diagnosticsSection(findings, code?.problems ?? [], esc);
+        + diagnosticsSection(findings, code?.problems ?? [], esc, null, autoFix);
 }
 
 function instanceHtml(panel, esc, findings, preview) {
@@ -109,10 +109,17 @@ function instanceHtml(panel, esc, findings, preview) {
  * The Diagnostics section: the node's findings, the generator's reasons (master), and the missing state tokens of the
  * previewed state (instance). Null findings means pages are still loading; nothing is reported then.
  */
-function diagnosticsSection(findings, problems, esc, preview = null) {
+/** The Auto Fix button: shown only while at least one fixable diagnostic exists. */
+function autoFixRow(autoFix, esc) {
+    if (!autoFix || !autoFix.fixable) return '';
+    return `<button class="wide-button full-width" data-bp-action="auto-fix">Auto Fix (${esc(String(autoFix.count))})</button>`;
+}
+
+function diagnosticsSection(findings, problems, esc, preview = null, autoFix = null) {
     if (findings === null) return section('Diagnostics', empty('Diagnostics appear when all pages are loaded.'), esc);
     const all = [...findings, ...codeFindings(problems), ...(preview ? stateFindings(preview.unresolved, preview.stateTokens) : [])];
-    return section('Diagnostics', all.length ? findingRows(all, esc) : empty('No issues'), esc);
+    const rows = all.length ? findingRows(all, esc) + autoFixRow(autoFix, esc) : empty('No issues');
+    return section('Diagnostics', rows, esc);
 }
 
 /** The Bind tokens action: enabled while a master layer has a mapped property that is not bound to its token (unbound-token). */
