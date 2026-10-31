@@ -11,7 +11,7 @@ import { assertBehaviorData } from '../packages/builder-core/src/behavior-engine
 import { diagnoseDocument } from '../packages/builder-core/src/behavior-engine/diagnostics.js';
 import { buttonModel } from './button-model.mjs';
 
-const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
+const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity: 1, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const TESTING_PATH = resolve(here, '../testing.midas');
@@ -39,20 +39,20 @@ const model = buttonModel({ sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg',
 const ids = model.ids;
 
 const bindings = {
-    root: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
-    label: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+    root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+    label: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
 };
 
 /** The Button master: bound root auto layout frame with its label. */
 function master() {
     const root = node('frame', {
         id: 'btn', name: 'Button', x: 40, y: 40, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, strokeWidth: 2,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, ...model.binding }, vars: bindings.root,
     });
     const label = node('text', {
-        id: 'btn-label', name: 'Label', parentId: 'btn', text: 'Button', w: 80, h: 24,
-        fills: solid('#ffffff'), fontSize: 14, vars: bindings.label,
+        id: 'btn-label', name: 'Label', parentId: 'btn', text: 'Button', w: 80, h: 24, autoW: true,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: bindings.label,
     });
     return [root, label];
 }
@@ -76,7 +76,7 @@ function iconInstance(slotId, componentId, components, disabled) {
         id: map.get(c.id), fillIndexes: (c.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!c.stroke && c.strokeWidth > 0,
     }));
     const names = Object.fromEntries(Object.entries(iconSlotTargets(BUTTON)).map(([role, target]) => [role, target.name]));
-    const plan = iconSlotBindings({ fg: 'i-fg-v', fgDisabled: 'i-fg-disabled-v', size: 'i-icon', disabled, names, layers });
+    const plan = iconSlotBindings({ fg: 'v-fg', fgDisabled: 'v-fg-disabled', size: 's-iconSize', disabled, names, layers });
     const nodes = copies.map(c => {
         const bound = plan.layers.find(l => l.id === map.get(c.id)).vars;
         const isRoot = c.id === componentId;
@@ -91,30 +91,39 @@ function iconInstance(slotId, componentId, components, disabled) {
 
 const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
 
-/** A Button instance with its label and optional managed icon slot. */
+/** A Button instance with its label and managed icon slots (start, end, or both). */
 function instance(id, name, x, y, props, varModes, components) {
     const root = node('frame', {
         id, name, x, y, w: 136, h: 48, isInstance: true, sourceId: 'btn', layout: 'horizontal', gap: 6, padding: 12,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, strokeWidth: 2,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, props }, varModes, vars: bindings.root,
     });
     const label = node('text', {
-        id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24,
-        fills: solid('#ffffff'), fontSize: 14, vars: bindings.label, sourceId: 'btn-label',
+        id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, autoW: true,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: bindings.label, sourceId: 'btn-label',
     });
-    const icon = props.hasIcon ? props.iconPlacement : null;
-    if (!icon) return [root, label];
-    const slot = icon === 'end' ? 'iconEnd' : 'iconStart', slotId = `${id}-icon-${icon}`;
-    const nested = props.icon ? iconInstance(slotId, props.icon, components, props.disabled === true) : null;
-    const iconLayer = node('frame', {
-        id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
-        ...(nested
-            ? { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
-            : { fills: solid('#8c8297'), layout: 'none' }),
-        behavior: { version: BEHAVIOR_DATA_VERSION, slot },
-    });
-    const kids = icon === 'end' ? [label, iconLayer] : [iconLayer, label];
-    return [root, ...kids, ...(nested ? nested.nodes : [])];
+    const placement = props.hasIcon ? props.iconPlacement : null;
+    if (!placement) return [root, label];
+    const picks = placement === 'both'
+        ? [['iconStart', props.icon, 'start'], ['iconEnd', props.iconEnd, 'end']]
+        : placement === 'start'
+            ? [['iconStart', props.icon, 'start']]
+            : [['iconEnd', props.iconEnd, 'end']];
+    const slots = [], copies = [];
+    for (const [slot, componentId, side] of picks) {
+        const slotId = `${id}-icon-${side}`;
+        const nested = componentId ? iconInstance(slotId, componentId, components, props.disabled === true) : null;
+        slots.push(node('frame', {
+            id: slotId, name: slot, parentId: id, w: 16, h: 16, clip: !!nested,
+            ...(nested
+                ? { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], vars: nested.slotVars }
+                : { fills: solid('#8c8297'), layout: 'none' }),
+            behavior: { version: BEHAVIOR_DATA_VERSION, slot },
+        }));
+        if (nested) copies.push(...nested.nodes);
+    }
+    const at = side => slots.find(l => l.id === `${id}-icon-${side}`);
+    return [root, at('start'), label, at('end')].filter(Boolean).concat(copies);
 }
 
 /** The testing document: Components page (master + icons), Testing page (instances). */
@@ -125,11 +134,11 @@ export function buildTestingFile() {
         ...instance('t-solid', 'Simpan', 40, 40, { hasIcon: false, label: 'Simpan' }, MODES('solid', 'primary', 'sm'), icons),
         ...instance('t-outlined', 'Batal', 40, 120, { hasIcon: false, label: 'Batal' }, MODES('outlined', 'primary', 'sm'), icons),
         ...instance('t-dashed-icon', 'Hapus', 40, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Hapus' }, MODES('dashed', 'danger', 'lg'), icons),
-        ...instance('t-end-icon', 'Lanjut', 40, 280, { hasIcon: true, iconPlacement: 'end', icon: 'icon-arrow', label: 'Lanjut' }, MODES('solid', 'primary', 'lg'), icons),
-        ...instance('t-only', 'Cari', 40, 360, { hasIcon: true, iconPlacement: 'only', icon: 'icon-check', label: 'Cari' }, MODES('solid', 'primary', 'sm'), icons),
+        ...instance('t-end-icon', 'Lanjut', 40, 280, { hasIcon: true, iconPlacement: 'end', iconEnd: 'icon-arrow', label: 'Lanjut' }, MODES('solid', 'primary', 'lg'), icons),
+        ...instance('t-both', 'Simpan', 40, 360, { hasIcon: true, iconPlacement: 'both', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'Simpan' }, MODES('solid', 'primary', 'sm'), icons),
         ...instance('t-disabled', 'Simpan', 280, 40, { hasIcon: false, label: 'Simpan', disabled: true }, MODES('solid', 'primary', 'sm'), icons),
         ...instance('t-filled', 'Detail', 280, 120, { hasIcon: false, label: 'Detail' }, MODES('filled', 'primary', 'sm'), icons),
-        ...instance('t-text', 'Hapus teks', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
+        ...instance('t-text', 'Hapus', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
     ];
     return {
         format: 'midas', version: 1, name: 'Testing', pageId: 'page-testing',

@@ -25,7 +25,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -50,7 +50,7 @@
             }
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -96,8 +96,11 @@
           "direction": "auto",
           "type": "text",
           "id": "btn-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -244,7 +247,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -273,7 +276,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -319,8 +322,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-solid-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -343,7 +349,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -372,7 +378,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -418,8 +424,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-outlined-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -442,7 +451,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -473,7 +482,7 @@
             "c-size": "lg"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -503,13 +512,14 @@
           "id": "t-dashed-icon-icon-start",
           "layout": "horizontal",
           "padding": 0,
+          "gap": 0,
           "padT": 0,
           "padR": 0,
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -553,8 +563,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-dashed-icon-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -634,7 +647,7 @@
           "sourceId": "icon-check-path",
           "overrides": {},
           "vars": {
-            "fills.0": "i-fg-v"
+            "fills.0": "v-fg"
           }
         },
         {
@@ -654,7 +667,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -675,7 +688,7 @@
             "props": {
               "hasIcon": true,
               "iconPlacement": "end",
-              "icon": "icon-arrow",
+              "iconEnd": "icon-arrow",
               "label": "Lanjut"
             }
           },
@@ -685,7 +698,7 @@
             "c-size": "lg"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -731,8 +744,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-end-icon-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -759,13 +775,14 @@
           "id": "t-end-icon-icon-end",
           "layout": "horizontal",
           "padding": 0,
+          "gap": 0,
           "padT": 0,
           "padR": 0,
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -835,11 +852,11 @@
           "sourceId": "icon-arrow-path",
           "overrides": {},
           "vars": {
-            "stroke": "i-fg-v"
+            "stroke": "v-fg"
           }
         },
         {
-          "name": "Cari",
+          "name": "Simpan",
           "parentId": null,
           "x": 40,
           "y": 360,
@@ -855,7 +872,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -863,7 +880,7 @@
           "clip": true,
           "version": 0,
           "type": "frame",
-          "id": "t-only",
+          "id": "t-both",
           "isInstance": true,
           "sourceId": "btn",
           "layout": "horizontal",
@@ -875,9 +892,10 @@
             "version": 2,
             "props": {
               "hasIcon": true,
-              "iconPlacement": "only",
+              "iconPlacement": "both",
               "icon": "icon-check",
-              "label": "Cari"
+              "iconEnd": "icon-arrow",
+              "label": "Simpan"
             }
           },
           "varModes": {
@@ -886,7 +904,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -897,7 +915,7 @@
         },
         {
           "name": "iconStart",
-          "parentId": "t-only",
+          "parentId": "t-both",
           "x": 0,
           "y": 0,
           "w": 16,
@@ -913,16 +931,17 @@
           "clip": true,
           "version": 0,
           "type": "frame",
-          "id": "t-only-icon-only",
+          "id": "t-both-icon-start",
           "layout": "horizontal",
           "padding": 0,
+          "gap": 0,
           "padT": 0,
           "padR": 0,
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -931,7 +950,7 @@
         },
         {
           "name": "Label",
-          "parentId": "t-only",
+          "parentId": "t-both",
           "x": 0,
           "y": 0,
           "w": 80,
@@ -953,7 +972,7 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "text": "Cari",
+          "text": "Simpan",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -965,17 +984,55 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "t-only-label",
+          "id": "t-both-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
           "sourceId": "btn-label"
         },
         {
+          "name": "iconEnd",
+          "parentId": "t-both",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-both-icon-end",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "s-iconSize",
+            "h": "s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          }
+        },
+        {
           "name": "Icon/check",
-          "parentId": "t-only-icon-only",
+          "parentId": "t-both-icon-start",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -991,7 +1048,7 @@
           "clip": false,
           "version": 0,
           "type": "frame",
-          "id": "t-only-icon-only-ic-icon-check",
+          "id": "t-both-icon-start-ic-icon-check",
           "component": false,
           "isInstance": true,
           "sourceId": "icon-check",
@@ -1001,7 +1058,7 @@
         },
         {
           "name": "check",
-          "parentId": "t-only-icon-only-ic-icon-check",
+          "parentId": "t-both-icon-start-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -1024,7 +1081,7 @@
           "clip": false,
           "version": 0,
           "type": "path",
-          "id": "t-only-icon-only-ic-icon-check-path",
+          "id": "t-both-icon-start-ic-icon-check-path",
           "pathW": 24,
           "pathH": 24,
           "closed": true,
@@ -1047,7 +1104,73 @@
           "sourceId": "icon-check-path",
           "overrides": {},
           "vars": {
-            "fills.0": "i-fg-v"
+            "fills.0": "v-fg"
+          }
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": "t-both-icon-end",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "t-both-icon-end-ic-icon-arrow",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-arrow",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "arrow",
+          "parentId": "t-both-icon-end-ic-icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "t-both-icon-end-ic-icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-arrow-path",
+          "overrides": {},
+          "vars": {
+            "stroke": "v-fg"
           }
         },
         {
@@ -1067,7 +1190,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -1097,7 +1220,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -1143,8 +1266,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-disabled-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -1167,7 +1293,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -1196,7 +1322,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -1242,15 +1368,18 @@
           "direction": "auto",
           "type": "text",
           "id": "t-filled-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
           "sourceId": "btn-label"
         },
         {
-          "name": "Hapus teks",
+          "name": "Hapus",
           "parentId": null,
           "x": 280,
           "y": 200,
@@ -1266,7 +1395,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 2,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -1295,7 +1424,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -1341,8 +1470,11 @@
           "direction": "auto",
           "type": "text",
           "id": "t-text-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -1657,8 +1789,8 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 1.5714285714285714,
-          "lg": 1.4444444444444444
+          "sm": 22,
+          "lg": 26
         }
       },
       {
