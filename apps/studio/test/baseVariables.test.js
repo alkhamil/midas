@@ -27,7 +27,7 @@ test('running generation twice creates nothing the second time', () => {
 
 test('midas.js generates base from the snapshot with no file input in one undo step', () => {
     const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8');
-    assert.equal(src.split('data-vw-generate-base').length - 1, 2); // the title-bar button and its click handler
+    assert.equal(src.split('data-vw-generate-base').length - 1, 3); // the title-bar button, the empty-state button and the click handler
     assert.ok(!src.includes('pickBaseTokenFile'), 'no file-picker flow remains');
     assert.ok(!src.includes('parseTokenJson') && !src.includes('buildBasePlan('), 'the importer stays the build script engine');
     assert.ok(src.includes('generateBaseVariables'), 'snapshot handler exists');

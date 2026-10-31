@@ -5,7 +5,7 @@ import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
-import { VAR_TYPES, VAR_CREATE, ENUM_DEFAULT_OPTIONS, varOptions } from './varTypes.js';
+import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -1014,7 +1014,7 @@ const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" st
 function varBindButton(prop, owner = null) { return withVarOwner(owner, () => bindType(prop)) ? `<button class="var-btn" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
 function varChip(prop, v, owner = null) {
     const val = varDisplayValue(v, (owner && allNodes().find(n => n.id === owner)) || activeNode());
-    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${itemGlyph(v)}</i>`;
+    const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
     return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
@@ -1038,7 +1038,6 @@ function varRow(label, prop) {
     return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
 function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
-const itemGlyph = item => varOptions(item) ? '≡' : varGlyph(item.type);
 function aliasReaches(item, targetId, depth = 0) {
     if (depth > 20)
         return true;
@@ -1101,7 +1100,7 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
                     row += `<button class="vpk-sw ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}" style="background:${esc(previewColor(val))}"></button>`;
                     continue;
                 }
-                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${itemGlyph(i)}</i>`;
+                const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
                 const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : String(val ?? '');
                 row += `<button class="vp-item vpk-item ${g ? 'in-group' : ''} ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}">${sw}<span class="vp-name">${esc(leaf)}</span><span class="vp-val">${esc(shownVal)}</span>${i.id === current ? icon('check', 12) : ''}</button>`;
             }
@@ -2029,12 +2028,12 @@ function vwSortAZ(coll) {
     coll.groupOrder = [...vwGroupsOf(coll)].sort(vwPathCmp);
 }
 const VW_TYPE_FILTERS = [['', 'All'], ['color', 'Colors'], ['number', 'Numbers'], ['string', 'Strings'], ['boolean', 'Booleans'], ['effect', 'Effects']];
-function ensureVarCollection() {
-    const s = varStore();
-    if (!s.collections.length)
-        s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
+/** What the window shows while the file holds no collection: an empty one, so the title bar and Create variable still work. */
+const NO_COLLECTION = { id: null, name: '', modes: [], groupOrder: [] };
+/** Keeps the selected collection valid. Nothing is created here: a file may hold no collection at all. */
+function selectVarCollection() {
     if (!varColl(vw.coll))
-        vw.coll = s.collections[0].id;
+        vw.coll = varStore().collections[0]?.id ?? null;
 }
 function toggleVarsWindow(force) {
     let win = document.getElementById('vars-window');
@@ -2054,7 +2053,7 @@ function toggleVarsWindow(force) {
     vw.open = open;
     win.classList.toggle('hidden', !open);
     if (open) {
-        ensureVarCollection();
+        selectVarCollection();
         renderVarsWindow();
         applyVwMode(win);
     }
@@ -2083,7 +2082,7 @@ function vwCell(item, coll, mode) {
     const alias = raw && typeof raw === 'object' && raw.alias ? varItem(raw.alias) : null;
     const aliasBtn = `<button class="vw-alias-btn" data-vw-alias="${key}" title="Apply variable alias" aria-label="Create alias">${VAR_ICON}</button>`;
     if (alias) {
-        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${itemGlyph(item)}</i>`;
+        const val = varValue(doc, alias, null), sw = item.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(item.type)}</i>`;
         // Clicking the chip opens the picker to swap the aliased variable without detaching first.
         const op = raw.opacity ?? 100, alpha = item.type === 'color' ? `<label class="vw-alpha ${op < 100 ? 'set' : ''}" title="Opacity">${icon('opacity', 12)}<input type="number" min="0" max="100" step="1" value="${op}" data-vw="${key}" data-vwt="alias-alpha" aria-label="Opacity"><span>%</span></label>` : '';
         return `<div class="vw-cell"><div class="vw-aliaschip"><button class="vw-alias-pick" data-vw-alias="${key}" title="Change variable">${sw}<span>${esc(alias.name)}</span></button><button data-vw-unalias="${key}" title="Detach alias" aria-label="Detach alias">${icon('close', 12)}</button></div>${alpha}</div>`;
@@ -2099,9 +2098,6 @@ function vwCell(item, coll, mode) {
         return `<div class="vw-cell"><input class="vw-text" type="number" step="any" value="${esc(v)}" data-vw="${key}" data-vwt="number" aria-label="Number">${aliasBtn}</div>`;
     if (item.type === 'boolean')
         return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="boolean" aria-label="Boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>${aliasBtn}</div>`;
-    const opts = varOptions(item);
-    if (opts)
-        return `<div class="vw-cell"><select class="vw-text" data-vw="${key}" data-vwt="string" aria-label="Enum">${[...new Set([...opts, String(v)])].map(o => `<option value="${esc(o)}" ${o === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>${aliasBtn}</div>`;
     return `<div class="vw-cell"><input class="vw-text" type="text" value="${esc(v)}" data-vw="${key}" data-vwt="string" spellcheck="false" aria-label="String">${aliasBtn}</div>`;
 }
 // A render error shows its message and a Retry button (the title bar stays, so the window can still be closed) instead of a blank window.
@@ -2115,8 +2111,8 @@ function renderVarsWindow() {
     });
 }
 function renderVarsWindowBody(win) {
-    ensureVarCollection();
-    const store = varStore(), coll = varColl(vw.coll), cols = 'grid-template-columns: ' + vwCols(coll);
+    selectVarCollection();
+    const store = varStore(), coll = varColl(vw.coll) ?? NO_COLLECTION, cols = 'grid-template-columns: ' + vwCols(coll);
     const side = store.collections.map(c => `<div class="vw-coll ${c.id === coll.id ? 'on' : ''} ${vw.selColls?.has(c.id) ? 'multi' : ''}" data-vw-coll="${c.id}" title="${esc(c.name)}"><span class="vw-coll-name">${esc(c.name)}</span><span class="vw-coll-count">${store.items.filter(i => i.collectionId === c.id).length}</span></div>`).join('');
     const head = `<div class="vw-row vw-head-row" style="${cols}"><div class="vw-hcell">Name<span class="vw-colres" data-vw-colres="name"></span></div>${coll.modes.map(m => `<div class="vw-hcell mode" data-vw-mode-cell="${m.id}" title="${coll.modes.length > 1 ? 'Drag to reorder' : ''}"><span class="vw-colres" data-vw-colres="${m.id}"></span><input class="vw-mode-name" value="${esc(m.name)}" data-vw-mode-name="${m.id}" spellcheck="false" aria-label="Mode name"><span class="vw-actions"><button class="vw-mini" data-vw-dup-mode="${m.id}" title="Duplicate mode" aria-label="Duplicate mode">${icon('copy', 12)}</button>${coll.modes.length > 1 ? `<button class="vw-mini" data-vw-del-mode="${m.id}" title="Delete mode" aria-label="Delete mode">${icon('close', 12)}</button>` : ''}</span></div>`).join('')}<div class="vw-hcell"><button class="vw-mini add" data-vw-add-mode title="Add mode" aria-label="Add mode">+</button></div></div>`;
     const groups = varsRows(coll);
@@ -2128,9 +2124,11 @@ function renderVarsWindowBody(win) {
         if (hidden)
             continue;
         for (const { item, leaf } of g.items)
-            body += `<div class="vw-row" style="${cols}"><div class="vw-name ${g.group ? 'indent' : ''}"><i class="vc-glyph t-${item.type}">${itemGlyph(item)}</i><input class="vw-name-input" value="${esc(g.group ? leaf : item.name)}" data-full="${esc(item.name)}" data-short="${esc(g.group ? leaf : item.name)}" data-vw-name="${item.id}" spellcheck="false" aria-label="Variable name" title="${esc(leaf)}"></div>${coll.modes.map(m => vwCell(item, coll, m)).join('')}<div class="vw-rowact"><button class="vw-mini" data-vw-detail="${item.id}" title="Details and scope" aria-label="Variable details and scope">${icon('sliders', 12)}</button><button class="vw-mini" data-vw-dup="${item.id}" title="Duplicate" aria-label="Duplicate variable">${icon('copy', 12)}</button><button class="vw-mini" data-vw-del="${item.id}" title="Delete" aria-label="Delete variable">${icon('close', 12)}</button></div></div>`;
+            body += `<div class="vw-row" style="${cols}"><div class="vw-name ${g.group ? 'indent' : ''}"><i class="vc-glyph t-${item.type}">${varGlyph(item.type)}</i><input class="vw-name-input" value="${esc(g.group ? leaf : item.name)}" data-full="${esc(item.name)}" data-short="${esc(g.group ? leaf : item.name)}" data-vw-name="${item.id}" spellcheck="false" aria-label="Variable name" title="${esc(leaf)}"></div>${coll.modes.map(m => vwCell(item, coll, m)).join('')}<div class="vw-rowact"><button class="vw-mini" data-vw-detail="${item.id}" title="Details and scope" aria-label="Variable details and scope">${icon('sliders', 12)}</button><button class="vw-mini" data-vw-dup="${item.id}" title="Duplicate" aria-label="Duplicate variable">${icon('copy', 12)}</button><button class="vw-mini" data-vw-del="${item.id}" title="Delete" aria-label="Delete variable">${icon('close', 12)}</button></div></div>`;
     }
-    if (!body)
+    if (!body && !store.collections.length)
+        body = `<div class="vw-empty">No collections yet. Create a collection, or generate the base variables.<div><button class="vw-btn" data-vw-add-coll>Create collection</button> <button class="vw-btn" data-vw-generate-base>Generate base</button></div></div>`;
+    else if (!body)
         body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
     const allGroups = vwGroupsOf(coll), inGroupCount = g => store.items.filter(i => i.collectionId === coll.id && (!g || i.name.startsWith(g + '/'))).length;
     const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''} ${vw.selGroups?.has(g) ? 'multi' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
@@ -2139,7 +2137,7 @@ function renderVarsWindowBody(win) {
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-text-btn" data-vw-generate-base title="Generate base variables from a token JSON">Generate base</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
 <div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
-<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_CREATE.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${t === 'enum' ? '≡' : varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -2404,9 +2402,7 @@ function wireVarsWindow(win) {
                     if (n.varModes)
                         delete n.varModes[id];
                 }
-                if (!s.collections.length)
-                    s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
-                vw.coll = s.collections[0].id;
+                vw.coll = s.collections[0]?.id ?? null;
             });
             return;
         }
@@ -2454,13 +2450,20 @@ function wireVarsWindow(win) {
             return;
         }
         if ((el = t.closest('[data-vw-create]'))) {
-            const isEnum = el.dataset.vwCreate === 'enum', type = isEnum ? 'string' : el.dataset.vwCreate, coll = varColl(vw.coll);
+            const type = el.dataset.vwCreate;
             vw.menu = false;
             let newId;
+            // With no collection yet, Collection 1 (one mode) is created in the same transaction as the variable: one undo step.
             vwTx('Create variable', () => {
-                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + (isEnum ? 'Enum' : VAR_TYPES.find(x => x[0] === type)[1])), type, values: {}, ...(isEnum ? { options: [...ENUM_DEFAULT_OPTIONS] } : {}) };
+                let coll = varColl(vw.coll);
+                if (!coll) {
+                    coll = { id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] };
+                    varStore().collections.push(coll);
+                    vw.coll = coll.id;
+                }
+                const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, (vw.group ? vw.group + '/' : '') + VAR_TYPES.find(x => x[0] === type)[1]), type, values: {} };
                 for (const m of coll.modes)
-                    item.values[m.id] = isEnum ? ENUM_DEFAULT_OPTIONS[0] : varDefault(type);
+                    item.values[m.id] = varDefault(type);
                 varStore().items.push(item);
                 newId = item.id;
             });
@@ -2767,8 +2770,6 @@ function vdHtml(item) {
                 ctl = `<input type="number" step="any" data-vd-val="${key}" data-vwt="number" value="${esc(v)}">`;
             else if (item.type === 'boolean')
                 ctl = `<select data-vd-val="${key}" data-vwt="boolean"><option value="false" ${!v ? 'selected' : ''}>False</option><option value="true" ${v ? 'selected' : ''}>True</option></select>`;
-            else if (varOptions(item))
-                ctl = `<select data-vd-val="${key}" data-vwt="string">${[...new Set([...varOptions(item), String(v)])].map(o => `<option value="${esc(o)}" ${o === String(v) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
             else
                 ctl = `<input type="text" data-vd-val="${key}" data-vwt="string" value="${esc(v)}" spellcheck="false">`;
             h += `<div class="vd-row"><span>${esc(m.name)}</span><div class="vd-ctl">${ctl}</div></div>`;
@@ -12872,8 +12873,6 @@ function importVariablesJSON(text) {
     }
     const list = Array.isArray(data) ? data : [data];
     const store = varStore(), stats = { collections: 0, variables: 0, updated: 0, aliases: 0, unresolved: 0 };
-    if (store.collections.length === 1 && !store.items.length && store.collections[0].name === 'Collection 1' && store.collections[0].modes.length === 1)
-        store.collections.length = 0; // drop the untouched default collection
     const pending = [];
     let found = false;
     for (const entry of list) {
@@ -13060,9 +13059,7 @@ function vwDeleteCollection(id) {
         for (const n of doc.nodes)
             if (n.varModes)
                 delete n.varModes[id];
-        if (!s.collections.length)
-            s.collections.push({ id: uid(), name: 'Collection 1', modes: [{ id: uid(), name: 'Mode 1' }] });
-        vw.coll = s.collections[0].id;
+        vw.coll = s.collections[0]?.id ?? null;
     });
 }
 function vwCollAction(act) {
@@ -18906,7 +18903,7 @@ function createEffectVariableFromNode() {
         toast('Add an effect first, then save it as a variable.');
         return;
     }
-    ensureVarCollection();
+    selectVarCollection();
     const coll = varColl(vw.coll) || varStore().collections[0];
     let name = '';
     transaction('Create effect variable', () => {
