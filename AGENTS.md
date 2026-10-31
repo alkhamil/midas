@@ -22,7 +22,8 @@
 ## Decisions
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
-- Baseline green: builder-core 754 tests, studio 46 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
+- Baseline green: builder-core 770 tests, studio 43 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
+- Icon choices are remembered per managed slot (generic engine rule: placement carry, retained icon props); the instance Preview panel shows the state select only, no resolved-token list.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
 
 ## Code map
