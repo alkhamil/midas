@@ -75,9 +75,9 @@ test('an unknown role becomes needs value, never a literal', () => {
     const store = { collections: [], items: [] };
     applyAutoFix(store, emptyBinding(odd), plan, uid);
     for (const item of store.items.filter(i => i.name === 'fg')) {
-        // Flagged needs value (a renderable placeholder, not a meaningful literal): every mode is set, nothing stays missing.
+        // A missing role is a failure, not a created literal: modes stay unset, the item is flagged.
         assert.equal(item.needsValue, true);
-        for (const value of Object.values(item.values)) assert.ok(value.alias || item.needsValue, 'alias or flagged, never a meaningful literal');
+        assert.deepEqual(Object.keys(item.values), []);
     }
 });
 

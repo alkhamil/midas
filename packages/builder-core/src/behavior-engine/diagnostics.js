@@ -3,7 +3,7 @@
 // something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
-import { resolveTokens, variableKey, splitColor, withOpacity } from './tokens.js';
+import { resolveTokens, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
 import { roleOf } from './auto-fix.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
@@ -55,33 +55,6 @@ const transparentToken = (template, token, modeName) => {
     if (!role || typeof role !== 'string' || role.includes('/')) return false;
     return ROLES[role]?.base === 'Semantic/colorTransparent';
 };
-
-/**
- * A stored value followed to its rest colour: the final literal and the collection holding it. Mirrors the
- * literalOf walk, but keeps where the value came from: the rest colour must come from a Semantic variable.
- */
-function restOf(item, modeName, items, collections, guard = new Set(), trail = [], ops = []) {
-    if (!item || guard.has(item.id)) return undefined;
-    guard.add(item.id);
-    const coll = collections.find(c => c.id === item.collectionId);
-    const modes = coll?.modes ?? [];
-    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id
-        ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
-    const value = modeId === undefined ? undefined : item.values?.[modeId];
-    const here = [...trail, coll?.name ?? null];
-    if (typeof value === 'number' || typeof value === 'string') {
-        let text = value;
-        for (let k = ops.length - 1; k >= 0; k--) {
-            if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);
-        }
-        return { literal: text, trail: here };
-    }
-    if (value && typeof value === 'object' && typeof value.alias === 'string') {
-        if (value.opacity != null && value.opacity < 100) ops.push(value.opacity);
-        return restOf(items.find(i => i.id === value.alias), modeName, items, collections, guard, here, ops);
-    }
-    return undefined;
-}
 
 /**
  * Every finding in a document.
@@ -140,10 +113,14 @@ export function diagnoseDocument(doc) {
                         if (token === 'lineHeight' && value !== undefined && isRatioValue(literalOf(item, mode.name, items, collections))) {
                             out.push({ severity: 'error', code: 'lineheight-ratio', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" resolves to a ratio in mode "${mode.name}", not px. Auto Fix rebinds it to the paired px token.` });
                         }
-                        if (value !== undefined && transparentToken(template, token, mode.name)) {
-                            const rest = restOf(item, mode.name, items, collections);
-                            const split = rest && typeof rest.literal === 'string' && splitColor(rest.literal);
-                            if (!rest || !rest.trail.includes('Semantic') || !split || split.alpha > 0) {
+                        const chain = value === undefined ? undefined : restOf(item, mode.name, items, collections);
+                        if (value !== undefined && !chain?.trail.includes('Semantic')) {
+                            const kind = (value !== null && typeof value === 'object') ? 'a non-Semantic variable' : 'a raw value';
+                            out.push({ severity: 'error', code: 'component-not-semantic', node: m.name, nodeId: m.id, variable, mode: mode.name, collection: collection.name, message: `${m.name}: variable "${variable}" must alias a Semantic token in mode "${mode.name}" of "${collection.name}", not ${kind}. Auto Fix rebinds it when its role resolves.` });
+                        }
+                        if (value !== null && typeof value === 'object' && transparentToken(template, token, mode.name)) {
+                            const split = chain && typeof chain.literal === 'string' && splitColor(chain.literal);
+                            if (!chain || !chain.trail.includes('Semantic') || !split || split.alpha > 0) {
                                 out.push({ severity: 'warning', code: 'outline-not-transparent', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" must stay transparent through a Semantic alias in mode "${mode.name}". Auto Fix rebinds it.` });
                             }
                         }

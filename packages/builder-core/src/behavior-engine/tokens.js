@@ -118,6 +118,37 @@ function formatOf(kind, value, opacities) {
  * @param {{ collections?: any[], items?: any[] }} variables the document's variables
  * @returns {{ vars: Record<string, string>, unresolved: { token: string, dimension: string | null, reason: string }[] }}
  */
+/** A mode name as it is matched: trimmed and lower case. */
+const modeKey = s => String(s ?? '').trim().toLowerCase();
+
+/**
+ * A stored value followed to its rest colour: the final literal and the collection names along the way
+ * (the same mode name when a collection has it, else the first mode holding a value, else the first mode).
+ * The rest colour must come through a Semantic variable; anything else is a provenance error.
+ */
+export function restOf(item, modeName, items, collections, guard = new Set(), trail = [], ops = []) {
+    if (!item || guard.has(item.id)) return undefined;
+    guard.add(item.id);
+    const coll = collections.find(c => c.id === item.collectionId);
+    const modes = coll?.modes ?? [];
+    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id
+        ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
+    const value = modeId === undefined ? undefined : item.values?.[modeId];
+    const here = [...trail, coll?.name ?? null];
+    if (typeof value === 'number' || typeof value === 'string') {
+        let text = value;
+        for (let k = ops.length - 1; k >= 0; k--) {
+            if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);
+        }
+        return { literal: text, trail: here };
+    }
+    if (value && typeof value === 'object' && typeof value.alias === 'string') {
+        if (value.opacity != null && value.opacity < 100) ops.push(value.opacity);
+        return restOf(items.find(i => i.id === value.alias), modeName, items, collections, guard, here, ops);
+    }
+    return undefined;
+}
+
 export function resolveTokens(template, binding, selectedModes, variables) {
     const collections = variables?.collections || [];
     /** @type {any[]} */

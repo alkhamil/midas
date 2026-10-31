@@ -8,7 +8,7 @@
 // identity, never by name alone, so a component collection sharing a base name (component `Size` vs base `Size`)
 // stays its own collection. Unfixable findings (structural) are reported, never touched.
 import { TEMPLATES, variableProps } from './registry.js';
-import { variableKey, splitColor, withOpacity } from './tokens.js';
+import { variableKey, splitColor, withOpacity, restOf } from './tokens.js';
 import { planBindTokens } from './bind-tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
@@ -291,15 +291,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
     };
     /** A ratio leftover: a positive number below any plausible px line height. */
     const isRatio = value => typeof value === 'number' && value > 0 && value < 4;
-    /** A stored rest colour already transparent through a Semantic alias needs no repair. */
-    const conformsTransparent = (have, current, mode) => {
-        if (!current || typeof current !== 'object' || typeof current.alias !== 'string') return false;
-        const target = items.find(i => i.id === current.alias);
-        if (!target || collections.find(c => c.id === target.collectionId)?.name !== 'Semantic') return false;
-        const text = storedLiteral(have, mode);
-        const split = typeof text === 'string' && splitColor(text);
-        return !!split && split.alpha === 0;
-    };
+
     // Line heights that resolve to a ratio are rebound to the paired px token. The Semantic base a role names is
     // repaired first (to the snapshot's Typography alias); the component variable then aliases the repaired base.
     // `lineHeight` is schema vocabulary shared by every template, not per-component code.
@@ -381,12 +373,46 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
                     const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
                     if (!hasMode) continue;
                     const modeId = coll.modes.find(m => modeKey(m.name) === modeKey(mode))?.id;
-                    const current = modeId === undefined ? undefined : have.values?.[modeId];
-                    if (conformsTransparent(have, current, mode)) continue;
+                    const chain = modeId === undefined ? undefined : restOf(have, mode, items, collections);
+                    if (!chain?.trail.includes('Semantic')) continue;
+                    const split = typeof chain.literal === 'string' && splitColor(chain.literal);
+                    if (split && split.alpha === 0) continue;
                     const target = baseTarget(role, 'color', `${coll.name}/${varName}.${mode}`);
                     if (!target) continue;
                     newItems.push({ collection: coll.name, collectionIndex: dimEntry[dim], name: varName, type: 'color', values: { [mode]: { alias: { collectionIndex: target.collectionIndex, name: target.name } } }, repair: true });
                     transparentRepaired++;
+                }
+            }
+        }
+    }
+    // Provenance: every other set component value resolves through Semantic. One that does not is rebound
+    // to its role alias (a ref role follows the template chain, like creation does); a missing role stays
+    // missing and is reported, never defaulted. Schema vocabulary only: no token name is special-cased.
+    let provenanceRepaired = 0;
+    for (const [dim] of variableProps(template)) {
+        if (!(dim in dimCollection)) continue;
+        const coll = dimCollection[dim];
+        for (const [group, names] of Object.entries(template.tokens ?? {})) {
+            if (dimensionOfGroup(group, template.props) !== dim) continue;
+            for (const token of names) {
+                const varName = token;
+                const have = coll ? itemIn(coll.id, varName) : null;
+                const kind = template.tokenKinds?.[token];
+                const type = kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : null;
+                if (!have || !type || have.type !== type) continue;
+                for (const mode of modesOf(dim)) {
+                    if (token === 'lineHeight' && isRatio(storedLiteral(have, mode))) continue;
+                    const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
+                    if (!hasMode) continue;
+                    const modeId = coll.modes.find(m => modeKey(m.name) === modeKey(mode))?.id;
+                    if (modeId === undefined || have.values?.[modeId] === undefined) continue;
+                    if (restOf(have, mode, items, collections)?.trail.includes('Semantic')) continue;
+                    const role = roleOf(template, token, mode);
+                    if (!role || typeof role !== 'string') continue;
+                    const target = isRef(role) ? followRef(role, new Set()) : baseTarget(role, type, `${coll.name}/${varName}.${mode}`);
+                    if (!target) continue;
+                    newItems.push({ collection: coll.name, collectionIndex: dimEntry[dim], name: varName, type, values: { [mode]: { alias: { collectionIndex: target.collectionIndex, name: target.name } } }, repair: true });
+                    provenanceRepaired++;
                 }
             }
         }
@@ -449,6 +475,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         boundProperties,
         rebound,
         transparentRepaired,
+        provenanceRepaired,
         derived: derived.map(d => d.name),
         needsValue: needsValue.map(n => n.name),
         unfixable: unfixable.map(u => `${u.name} (${u.reason})`),
@@ -522,7 +549,7 @@ export function applyAutoFix(store, binding, autoFix, uid) {
         for (const [mode, value] of Object.entries(wanted.values)) {
             const id = coll && modeIdOf(coll, mode);
             if (!id || (item.values[id] !== undefined && wanted.repair !== true)) continue;
-            if (value.needsValue) { item.values[id] = { color: '#d9d9d9', number: 0, string: '', boolean: false }[wanted.type] ?? null; item.needsValue = true; }
+            if (value.needsValue) { item.needsValue = true; }
             else if (value.literal !== undefined) item.values[id] = value.literal;
             else if (value.alias) {
                 const { cid: tcid, target } = targetOf(value.alias);
