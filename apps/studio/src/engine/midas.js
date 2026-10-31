@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, behaviorProblem, isManagedLayer, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varsWithBinding, varModesWith, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -10,7 +10,7 @@ import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
-import { buildIconPage, assetIdsOf, looksLikeIcon, isIconName } from '../iconSet.js';
+import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
 
 
 // ===== document.js =====
@@ -775,38 +775,20 @@ function nodeMode(d, n, coll) {
         return pm;
     return coll.modes[0]?.id;
 }
-function varValue(d, item, node, depth = 0) {
-    const store = d.data.variables, coll = store?.collections.find(c => c.id === item.collectionId);
-    if (!coll || !coll.modes.length)
-        return undefined;
-    const mode = node ? nodeMode(d, node, coll) : coll.modes[0].id;
-    let v = item.values[mode];
-    if (v === undefined)
-        v = item.values[coll.modes[0].id];
-    // No value for the default mode (Figma leaves modes unset): use the first mode that has one.
-    if (v === undefined)
-        v = coll.modes.map(m => item.values[m.id]).find(x => x !== undefined);
-    if (v && typeof v === 'object' && v.alias) {
-        const t = store.items.find(i => i.id === v.alias);
-        if (!t || t.type !== item.type || depth > 20)
-            return undefined;
-        const target = varValue(d, t, node, depth + 1);
-        // A color alias can carry its own opacity, multiplied onto the aliased color.
-        if (item.type === 'color' && typeof target === 'string' && v.opacity != null && v.opacity < 100) {
-            const { rgb, alpha } = vwSplitColor(target);
-            return vwJoinColor(rgb, alpha * v.opacity / 100);
-        }
-        return target;
-    }
-    return v;
+/** The value of a variable in the modes of a layer (the layer's own, its parents', the page's), through the engine's shared resolver. */
+function varValue(d, item, node) {
+    return variableValue(d.data.variables, item, coll => node ? nodeMode(d, node, coll) : coll.modes[0].id);
 }
 function writeBound(n, prop, val, type) {
     const fm = /^fills\.(\d+)$/.exec(prop);
     if (fm) {
-        const fl = Array.isArray(n.fills) ? n.fills[+fm[1]] : null;
-        if (!fl || fl.type === 'image' || fl.color === String(val))
+        // A bound fill index resolves into its fill; index 0 on a layer with no fill takes the bound colour.
+        const i = +fm[1], fills = Array.isArray(n.fills) ? n.fills : null, fl = fills?.[i] ?? null;
+        if (fl?.type === 'image' || fl?.color === String(val))
             return false;
-        fl.color = String(val);
+        if (fl) fl.color = String(val);
+        else if (i === 0) n.fills = withTopColor(fills ?? [], String(val));
+        else return false;
         return true;
     }
     const set = (k, v) => { if (n[k] === v)
@@ -870,14 +852,6 @@ function writeBound(n, prop, val, type) {
     }
     if (type === 'boolean')
         return set('visible', !!val);
-    // The bound fill colour and gradient end colour are the top fill's. A layer with no fill takes the bound colour as its fill.
-    if (type === 'color' && prop === 'fill') {
-        const top = topFillOf(getFills(n));
-        if (top?.type === 'image' || topColorOf(n) === String(val))
-            return false;
-        n.fills = withTopColor(getFills(n), String(val));
-        return true;
-    }
     if (type === 'color' && prop === 'fill2') {
         const top = topFillOf(getFills(n));
         if (!top || top.color2 === String(val))
@@ -1221,6 +1195,14 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
         }
     }, true), 0);
 }
+/** Leaves a layer with a bound stroke a paint that draws (opacity 100, visible) unless its variable truly resolves transparent. The
+ * variable is read in the layer's own modes, the same read that writes the stroke colour (applyVariables). */
+function repairBoundStroke(n) {
+    const item = n.vars?.stroke ? varItem(n.vars.stroke) : null;
+    if (!item || !restoreStrokePaint(n, varValue(doc, item, n))) return false;
+    doc.touch(n);
+    return true;
+}
 function bindVariable(prop, id) {
     transaction('Apply variable', () => {
         for (const n of varTargets()) {
@@ -1229,7 +1211,9 @@ function bindVariable(prop, id) {
             for (const k of prop === 'radius' ? ['rTL', 'rTR', 'rBL', 'rBR'] : prop === 'padH' ? ['padL', 'padR'] : prop === 'padV' ? ['padT', 'padB'] : [])
                 delete n.vars[k];
             if (prop === 'stroke' && !(n.strokeWidth > 0))
-                n.strokeWidth = 1;
+                setStrokeWeight(n, 1);
+            if (prop === 'stroke')
+                repairBoundStroke(n);
             if (prop === 'w')
                 n.layoutSizingH = 'fixed';
             if (prop === 'h')
@@ -1336,7 +1320,10 @@ function writeVarMode(nodes, collectionId, modeId) {
         else delete n.varModes;
         doc.touch(n);
         applyVariantStroke(n);
+        // A mode change can turn a bound stroke opaque: its paint must draw at once, on the node and under it.
+        if (n.id) for (const x of subtreeOf(n.id)) repairBoundStroke(x);
     }
+    for (const n of nodes) if (n?.component && n.behavior && 'templateId' in n.behavior) bindMasterTokens(n);
 }
 document.addEventListener('change', e => {
     const el = e.target;
@@ -1414,13 +1401,13 @@ function strokeSectionHtml(n) {
     const hex = bound
         ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
-    const op = bound ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
+    const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
     const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
-    const widthPart = mode === 'custom' ? '<span class="small-label">Per side</span>' : field('≡', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000, title: 'Stroke width' });
+    const widthPart = field('≡', 'strokeWidth', strokeWeightOf(n), { min: 0, max: 1000, title: 'Stroke width' });
     let h = `<div class="fr fr2 ${hidden ? 'off' : ''}">${sw}${hex}${op}${ops}</div>`;
-    h += `<div class="st-row">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
+    h += `<div class="fr fr2">${alignSel}${widthPart}<button class="wh-lock" data-st-settings title="Stroke settings" aria-label="Stroke settings">${icon('sliders', 14)}</button>${rl ? `<button class="wh-lock ${mode !== 'all' ? 'active' : ''}" data-st-sides title="Stroke sides" aria-label="Stroke sides">${STROKE_ICON.sides}</button>` : '<span></span>'}</div>`;
     if (mode === 'custom') {
         const s = strokeSideWidths(n);
         h += `<div class="property-grid st-custom">${field('L', 'strokeL', s.l, { min: 0, title: 'Left stroke' })}${field('T', 'strokeT', s.t, { min: 0, title: 'Top stroke' })}${field('R', 'strokeR', s.r, { min: 0, title: 'Right stroke' })}${field('B', 'strokeB', s.b, { min: 0, title: 'Bottom stroke' })}</div>`;
@@ -1439,6 +1426,7 @@ function toggleStroke() {
         }
         else {
             n.strokeWidth = 1;
+            repairBoundStroke(n);
             if (!n.stroke || n.stroke === 'none')
                 n.stroke = '#000000';
             n.strokeAlign = strokeClosed(n) ? 'inside' : 'center';
@@ -1536,16 +1524,7 @@ document.addEventListener('click', e => {
     if (strokePop && (el = t.closest('[data-st-side]'))) {
         const v = el.dataset.stSide;
         transaction('Stroke sides', () => { for (const n of selected()) {
-            n.strokeSides = v;
-            if (v === 'custom') {
-                const w = n.strokeWidth || 0;
-                n.strokeT ??= w;
-                n.strokeR ??= w;
-                n.strokeB ??= w;
-                n.strokeL ??= w;
-            }
-            if (v === 'all')
-                delete n.strokeSides;
+            setStrokeSides(n, v);
             doc.touch(n);
         } });
         closeStrokePop();
@@ -2413,7 +2392,7 @@ function wireVarsWindow(win) {
             e.stopPropagation();
             const id = el.dataset.vwDelColl, s = varStore();
             deleteWhenLoaded('Delete collection', () => {
-                forgetCollection(allNodes(), id);
+                forgetCollection(allNodes(), id, s.items);
                 s.collections = s.collections.filter(c => c.id !== id);
                 const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
                 s.items = s.items.filter(i => i.collectionId !== id);
@@ -5341,7 +5320,8 @@ function swatchBg(f, hidden) {
         const stops = gradientStops(f).map(s => `${esc(s.color)} ${Math.round(s.pos * 100)}%`).join(', ');
         return f.type === 'linear' ? `linear-gradient(90deg, ${stops})` : f.type === 'angular' ? `conic-gradient(${stops})` : `radial-gradient(circle, ${stops})`;
     }
-    const [r, g, b] = hexToRgb(f.color || '#d9d9d9'), a = hidden ? 0 : (f.opacity ?? 1);
+    // A colour with its own alpha (#rrggbbaa, a variable's transparency) keeps it, over the checkerboard.
+    const { r, g, b, a } = swatchPaint(f.color, hidden ? 0 : f.opacity ?? 1);
     return `linear-gradient(rgba(${r},${g},${b},${a}), rgba(${r},${g},${b},${a})), var(--checker-sm)`;
 }
 function fillRow(n, f, i, simple) {
@@ -5980,8 +5960,8 @@ function scBind(g, id) {
     scApply(g, (n, u) => {
         const prop = u.kind === 'fill' ? 'fills.' + u.i : 'stroke';
         n.vars = { ...(n.vars || {}), [prop]: id };
-        if (u.kind === 'fill' && u.i === 0)
-            delete n.vars.fill;
+        if (u.kind === 'stroke')
+            repairBoundStroke(n);
     });
 }
 function scDetach(g) {
@@ -5990,8 +5970,6 @@ function scDetach(g) {
             return;
         if (u.kind === 'fill') {
             delete n.vars['fills.' + u.i];
-            if (u.i === 0)
-                delete n.vars.fill;
         }
         else
             delete n.vars.stroke;
@@ -8300,7 +8278,7 @@ function syncComponents(activeOnly = true) {
             const ownedFields = ownedFieldsOf(n, id => pmap.get(id), components, labels);
             for (const [k, v0] of far ? [] : Object.entries(src)) {
                 // A field bound through vars takes its value from its variable, so the master's value is not copied onto it.
-                if (omitted.has(k) || ownedFields.includes(k) || (k !== 'vars' && !isCopiedField(k, n.vars)) || isLayoutOwnedField(n, pmap.get(n.parentId), k) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
+                if (omitted.has(k) || ownedFields.includes(k) || (k !== 'vars' && !isCopiedField(k, n.vars)) || isLayoutOwnedField(n, pmap.get(n.parentId), k) || (isSlotIconInstance(n, pmap.get(n.parentId)) && (k === 'layoutSizingH' || k === 'layoutSizingV')) || Object.hasOwn(controlled, k) || Object.hasOwn(n.overrides || {}, k))
                     continue;
                 // The copy keeps the layer's own owned bindings (the derived disabled colour) and takes the rest from the master.
                 const v = k === 'vars' && owned.length ? mergeCopiedVars(v0, n.vars, owned) : v0;
@@ -8535,6 +8513,7 @@ function autoMatchUnbound() {
     for (const { node, variables } of planAutoMatch(masters, collections)) {
         applyPlan(node, { changed: true, binding: { ...node.behavior, variables: { ...node.behavior.variables, ...variables } }, updates: [] });
         doc.touch(node);
+        bindMasterTokens(node); // the auto-matched collections resolve the tokens now
     }
 }
 // The backstop, run after every post-commit step so it sees the state that would be saved. A change that leaves the file unable
@@ -8927,7 +8906,7 @@ function lineHeightField(n) {
 function safeColor(c) { return /^#[\da-f]{3,8}$/i.test(c) ? c : '#0058CA'; }
 // Swatches in variable lists: a missing / unresolved value stays empty instead of masquerading as the brand blue.
 function previewColor(c) { return typeof c === 'string' && /^#[\da-f]{3,8}$/i.test(c) ? c : 'transparent'; }
-function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${fmt(value ?? 0)}" aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
+function fieldBase(label, prop, value, opts = {}) { return `<label class="field" title="${esc(opts.title || prop)}"><span>${label}</span><input type="number" data-prop="${prop}" value="${value === null ? '' : fmt(value ?? 0)}"${value === null ? ' placeholder="Mixed"' : ''} aria-label="${esc(opts.title || prop)}" step="${opts.step || 1}" ${opts.min !== undefined ? `min="${opts.min}"` : ''} ${opts.max !== undefined ? `max="${opts.max}"` : ''}>${opts.unit ? `<i class="unit">${opts.unit}</i>` : ''}</label>`; }
 function field(label, prop, value, opts = {}) {
     const bv = bindType(prop) ? boundVar(prop) : null;
     if (bv && bv.type === 'number')
@@ -8965,7 +8944,7 @@ function behaviorTabHtml(n) {
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
-        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name) : null;
+        const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
         return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems } });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
@@ -9172,22 +9151,23 @@ function startPlay() {
 }
 $('#play').onclick = startPlay;
 
-/** Bind tokens: binds each unbound mapped property of a bound master's layers to its group variable. Existing bindings are kept. */
-function bindTokensTo(master) {
+/** Binds the unbound mapped properties of a bound master to their group variables (see planBindTokens and applyBindTokens),
+ * inside the caller's history step. Existing bindings are kept. Returns the ops applied. */
+function bindMasterTokens(master, { announce = false } = {}) {
     const binding = master?.component ? master.behavior : null;
-    if (!binding || !('templateId' in binding)) return;
+    if (!binding || !('templateId' in binding)) return 0;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
     const layers = onPage(pageOfNode(master.id)?.id, () => masterLayersOf(master, id => doc.children(id)));
     const { ops, problems } = planBindTokens({ template, binding, layers, variables: varStore() });
-    if (problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
-    if (!ops.length) return;
-    transaction('Bind tokens', () => {
-        for (const op of ops) {
-            const n = layers.find(l => l.key === op.key).node;
-            n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
-            doc.touch(n);
-        }
-    });
+    if (announce && problems.length) toast(`Not bound: ${problems.map(p => `${p.key} ${p.prop} (${p.token}, ${p.reason})`).join('; ')}.`);
+    for (const n of applyBindTokens(layers, ops)) doc.touch(n);
+    for (const { node } of layers) repairBoundStroke(node);
+    return ops.length;
+}
+
+/** Bind tokens: binds each unbound mapped property of a bound master to its group variable. Existing bindings are kept. */
+function bindTokensTo(master) {
+    transaction('Bind tokens', () => { bindMasterTokens(master, { announce: true }); });
 }
 /** The Generate code button: writes Button.jsx and Button.css from the bound master. A refusal downloads nothing; its reasons are in Diagnostics. */
 function onBehaviorClick(e) {
@@ -9195,13 +9175,14 @@ function onBehaviorClick(e) {
     const iconButton = e.target.closest?.('[data-bp-action="icon"]');
     if (iconButton) {
         const owner = activeNode();
-        return openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, 'icon', id)) });
+        // The picker lists every component on every page, so it opens once the lazy pages have arrived.
+        return whenAllPagesLoaded(() => openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, scopePage: pageOfNode(owner)?.name ?? null, onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, iconButton.dataset.bpProp || 'icon', id)) }));
     }
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
-    const result = generateComponent(template, binding, varStore(), template.name);
+    const result = generateComponent(template, binding, varStore(), template.name, n, id => doc.children(id));
     for (const file of codeDownloads(result)) download(new Blob([file.text], { type: 'text/plain' }), file.name);
 }
 /** Waits until every page of the file is here. False when a page did not come, or another file was opened meanwhile. */
@@ -9230,6 +9211,7 @@ function commitPlan(label, master, plan) {
         applyPlan(master, plan);
         doc.touch(master);
         for (const u of plan.updates) doc.touch(u.node);
+        bindMasterTokens(master); // the collections just bound resolve the tokens now
         for (const inst of instancesOf(master.id)) reason ??= syncInstance(inst);
     });
     if (reason) toast(`Managed layers were not updated: ${reason}.`);
@@ -9260,6 +9242,7 @@ function anatomyPlanOf(inst) {
             binding: master?.behavior,
             masterRoot: { isAutoLayout: isAutoLayout(master) },
             masterTree,
+            flip: !!inst.layoutFlip,
             stored: inst.behavior?.props,
             children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, component: iconOfSlot(c) })),
         });
@@ -9323,15 +9306,14 @@ function placeIconInSlot(slot, componentId) {
 function setSlotIcon(slot, componentId) {
     doc.remove(doc.children(slot.id).map(c => c.id));
     const shown = !!componentId && placeIconInSlot(slot, componentId);
-    if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
+    if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
     else Object.assign(slot, { layout: 'none', fills: paintOf('#8c8297'), clip: false });
     doc.touch(slot);
 }
 /** The variable a name names in the collection an instance's master binds to a dimension of the template (Variant or Size). */
 function iconVariableId(binding, dimension, name) {
     const collectionId = binding.variables?.[dimension];
-    const item = collectionId && varStore().items?.find(i => i.collectionId === collectionId && String(i.name).trim().toLowerCase() === name);
-    return item ? item.id : null;
+    return collectionId ? variableIdNamed(varStore().items ?? [], collectionId, name) : null;
 }
 /**
  * The icon bindings of every managed slot of an instance: the slot's size, and the colour of each layer of the icon (the disabled
@@ -9342,19 +9324,30 @@ function applyIconSlotBindings(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return [];
-    const targets = iconSlotTargets(template);
-    const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+    // What a missing variable is called in the toast: its collection and the instance's mode for it, the place the lookup searched.
+    const where = target => {
+        const collectionId = binding.variables?.[target.dimension];
+        const collection = varStore().collections?.find(c => c.id === collectionId);
+        const mode = collection?.modes?.find(m => m.id === inst.varModes?.[collectionId]);
+        return missingIconVariable({ name: target.name, collectionName: collection?.name ?? target.dimension, modeName: mode?.name ?? 'none selected' });
+    };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
     for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
+        const targets = iconSlotTargets(template, slot.behavior.slot);
+        const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
+        const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
         const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
+    if (icon && (icon.layoutSizingH !== 'fill' || icon.layoutSizingV !== 'fill')) {
+        icon.layoutSizingH = 'fill'; icon.layoutSizingV = 'fill'; doc.touch(icon);
+    }
         const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
         const plan = iconSlotBindings({
             fg: iconVariableId(binding, targets.colour.dimension, names.colour),
             fgDisabled: iconVariableId(binding, targets.disabledColour.dimension, names.disabledColour),
             size: iconVariableId(binding, targets.size.dimension, names.size),
             disabled,
-            names,
+            names: described,
             layers,
         });
         plan.missing.forEach(m => missing.add(m));
@@ -9385,7 +9378,7 @@ function syncInstance(inst) {
             else if (op.op === 'move') placeAmongChildren(inst, doc.get(op.id), op.index);
             else if (op.op === 'swap') setSlotIcon(doc.get(op.id), op.component);
             else {
-                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, clip: false, behavior: managedBehavior(op.slot) }));
+                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, gap: 0, clip: false, behavior: managedBehavior(op.slot) }));
                 setSlotIcon(n, op.component ?? null);
                 placeAmongChildren(inst, n, op.index);
             }
@@ -9398,7 +9391,7 @@ function syncInstance(inst) {
         applyLiteralFields(inst);
         applyVariantStroke(inst);
         const missingIconVars = applyIconSlotBindings(inst);
-        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')} in its collections.`);
+        if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
     });
     return reason ?? null;
 }
@@ -9438,15 +9431,15 @@ function labelIdsOfComponents() {
     for (const page of doc.data.pages)
         for (const n of page.nodes)
             if (n.component)
-                out.set(n.id, labelLayerOf(n.id, id => kids.get(id) || [])?.id ?? null);
+                out.set(n.id, labelLayerOf(n.id, id => kids.get(id) || [], n)?.id ?? null);
     return out;
 }
 /** The master's label layer (its first text layer, depth first) and the instance's layer that copies it. */
 function instanceLabelOf(inst, master) {
-    const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id)));
+    const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id), master));
     return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
 }
-/** Literal props write their node fields: the label prop the label layer's text, block the root's width mode (see literalFields). */
+/** Literal props write their node fields: the label prop the label layer's text (see literalFields). */
 /**
  * A Variant with a border style (the template's `styles`, such as dashed) draws the instance's root stroke in that style. The dash
  * length is the canvas's own (the schema has no token for a border style).
@@ -9556,7 +9549,7 @@ function onBehaviorChange(e) {
 function setBehaviorMode(inst, prop, modeId) {
     const collectionId = collectionOfProp(componentById(inst.sourceId)?.behavior, prop);
     if (!collectionId) { toast(`"${prop}" has no bound collection`); return false; }
-    transaction('Set variable mode', () => writeVarMode([inst], collectionId, modeId ?? ''));
+    transaction('Set variable mode', () => { writeVarMode([inst], collectionId, modeId ?? ''); const master = componentById(inst.sourceId); if (master) bindMasterTokens(master); });
     return true;
 }
 /** The Appearance modes of an instance per variable prop, read from the node (the same resolution Appearance uses). */
@@ -9572,14 +9565,15 @@ function instanceModesOf(inst, binding) {
 function renderInspector() {
     if (state.editing && isInput(document.activeElement) && document.activeElement !== $('#text-editor'))
         return;
-    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
     const ns = selected(), n = ns[0];
-    if (state.inspectorTab === 'behavior') {
-        $('#inspector').innerHTML = behaviorTabHtml(n);
-        return;
-    }
+    // The Prototype tab reads interactions, not sizes: it does not lay the page out.
     if (state.inspectorTab === 'prototype') {
         $('#inspector').innerHTML = prototypeTabHtml(n);
+        return;
+    }
+    doc.scene(); // lays the page out first: W / H show the size on the canvas, not the one from before the last change
+    if (state.inspectorTab === 'behavior') {
+        $('#inspector').innerHTML = behaviorTabHtml(n);
         return;
     }
     let html = '';
@@ -9779,6 +9773,16 @@ function setProperty(prop, value, { live = false } = {}) {
             delete n.vars[prop];
             if (!Object.keys(n.vars).length)
                 delete n.vars;
+        }
+        if (prop === 'strokeWidth') {
+            setStrokeWeight(n, v);
+            doc.touch(n);
+            continue;
+        }
+        if (['strokeT', 'strokeR', 'strokeB', 'strokeL'].includes(prop)) {
+            setStrokeSide(n, prop, v);
+            doc.touch(n);
+            continue;
         }
         if (prop === 'gridCols')
             v = Math.max(1, Math.round(+v));
@@ -12747,8 +12751,10 @@ function inspectCSS() {
             css += `\nborder-radius: ${fmt(n.radius)}px;`;
         if (n.type === 'ellipse')
             css += '\nborder-radius: 50%;';
-        if (n.strokeWidth)
-            css += `\nborder: ${fmt(n.strokeWidth)}px solid ${n.stroke};`;
+        if (n.strokeWidth) {
+            const s = strokeSideWidths(n);
+            css += `\nborder: ${[s.t, s.r, s.b, s.l].map(v => fmt(v) + 'px').join(' ')} solid ${n.stroke};`;
+        }
     }
     if (n.opacity !== 1)
         css += `\nopacity: ${n.opacity};`;
@@ -12985,7 +12991,7 @@ function vwDeleteCollection(id) {
         return;
     toast(`Deleted “${c.name}”. Press ${kbd('⌘Z', 'Ctrl+Z')} to undo.`);
     deleteWhenLoaded('Delete collection', () => {
-        forgetCollection(allNodes(), id);
+        forgetCollection(allNodes(), id, s.items);
         s.collections = s.collections.filter(x => x.id !== id);
         const gone = new Set(s.items.filter(i => i.collectionId === id).map(i => i.id));
         s.items = s.items.filter(i => i.collectionId !== id);
@@ -14722,7 +14728,7 @@ document.addEventListener('click', e => {
     const n = b && activeNode();
     if (!n)
         return;
-    openSwapPicker(b, { current: chainComponent(n)?.id, icons: managedOwnerOf(n) !== null && managedOwnerOf(n) !== n, onPick: id => swapInstanceTo(n, id) });
+    openSwapPicker(b, { current: chainComponent(n)?.id, icons: managedOwnerOf(n) !== null && managedOwnerOf(n) !== n, scopePage: pageOfNode(n)?.name ?? null, onPick: id => swapInstanceTo(n, id) });
 });
 function kindOf(n) { return n.type === 'group' ? 'group' : n.type === 'frame' ? (n.isSection ? 'section' : 'frame') : null; }
 function convertKind(kind) {
@@ -15891,19 +15897,20 @@ function swapLibEntries(have) {
 }
 const SWP = { page: '' };
 function swapMatch(e) { const v = SWP.page; return !v || (v === '@file' ? !e.libId : v.startsWith('lib:') ? e.libId === v.slice(4) : v.startsWith('page:') ? e.page === v.slice(5) : e.page === v); }
-function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
+function openSwapPicker(anchor, { current = null, onPick, icons = false, scopePage = null }) {
     closeVarPicker();
     const have = new Set();
     for (const p of doc.data.pages)
         for (const n of p.nodes)
             if (n.libRef && !n.parentId)
                 have.add(n.libRef);
-    const pop = document.createElement('div'), entries = [...swapEntries(), ...(icons ? [] : swapLibEntries(have))].filter(e => !icons || isIconName([...e.path, e.leaf].join('/'))), pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
+    // The icon picker lists every component on every page (libraries hold no icons); the component picker is unchanged.
+    const pop = document.createElement('div'), entries = icons ? iconPickerEntries(doc.data.pages) : [...swapEntries(), ...swapLibEntries(have)], pages = [...new Set(entries.filter(e => !e.libId).map(e => e.page))], libIds = [...new Set(entries.filter(e => e.libId).map(e => e.libId))];
     pop.id = 'var-picker';
     pop.className = 'var-picker';
     let q = '', limit = 300;
     const cur = current && entries.find(e => e.ids.has(current));
-    if (SWP.page && (SWP.page.startsWith('page:') && !pages.includes(SWP.page.slice(5)) || SWP.page.startsWith('lib:') && !libIds.includes(SWP.page.slice(4)) || !['@file'].includes(SWP.page) && !/^(page|lib):/.test(SWP.page) || cur && !swapMatch(cur)))
+    if (SWP.page && (SWP.page.startsWith('page:') && !pages.includes(SWP.page.slice(5)) || SWP.page.startsWith('lib:') && !libIds.includes(SWP.page.slice(4)) || !['@file'].includes(SWP.page) && !/^(page|lib):/.test(SWP.page) || icons && SWP.page.startsWith('page:') && SWP.page.slice(5) !== scopePage || cur && !swapMatch(cur)))
         SWP.page = '';
     // A component set is listed once (its first variant): the entry holding the current variant is the selected one.
     if (cur)
@@ -15929,7 +15936,7 @@ function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
         for (const e of entries) {
             if (!swapMatch(e))
                 continue;
-            if (ql && !(e.group + ' ' + e.leaf).toLowerCase().includes(ql))
+            if (!iconEntryMatches(e, q))
                 continue;
             let node = roots.get(e.page);
             if (!node)
@@ -15965,12 +15972,16 @@ function openSwapPicker(anchor, { current = null, onPick, icons = false }) {
         if (hidden)
             html += `<button class="vpk-more" data-vpk-more>Show ${hidden.toLocaleString()} more…</button>`;
         const lst = pop.querySelector('.vp-list'), top = lst.scrollTop;
-        lst.innerHTML = html || '<div class="vp-empty">No components match your search.</div>';
+        lst.innerHTML = html || (!entries.length ? '<div class="vp-empty">No components in this file.</div>' : '<div class="vp-empty">No components match your search.</div>');
         lst.scrollTop = top;
         if (pop.isConnected)
             watchSwapThumbs(lst);
     };
-    pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-swp-page aria-label="Library or page"><option value="">All libraries</option><option value="@file" ${SWP.page === '@file' ? 'selected' : ''}>Created in this file</option>${libIds.map(id => `<option value="lib:${esc(id)}" ${SWP.page === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}<optgroup label="Pages">${pages.map(p => `<option value="page:${esc(p)}" ${SWP.page === 'page:' + p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</optgroup></select>${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
+    // The icon picker scopes to the current page or all pages; the component picker scopes to libraries and pages.
+    const scopeSelect = icons
+        ? `<select data-swp-page aria-label="Page scope"><option value="">All pages</option>${scopePage ? `<option value="page:${esc(scopePage)}" ${SWP.page === 'page:' + scopePage ? 'selected' : ''}>Current page</option>` : ''}</select>`
+        : `<select data-swp-page aria-label="Library or page"><option value="">All libraries</option><option value="@file" ${SWP.page === '@file' ? 'selected' : ''}>Created in this file</option>${libIds.map(id => `<option value="lib:${esc(id)}" ${SWP.page === 'lib:' + id ? 'selected' : ''}>${esc(libName(id))}</option>`).join('')}<optgroup label="Pages">${pages.map(p => `<option value="page:${esc(p)}" ${SWP.page === 'page:' + p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</optgroup></select>`;
+    pop.innerHTML = `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search placeholder="Search" value="" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib">${scopeSelect}${icon('chevronDown', 10)}</label></div></div><div class="vp-list"></div>`;
     list();
     document.body.appendChild(pop);
     watchSwapThumbs(pop.querySelector('.vp-list'));

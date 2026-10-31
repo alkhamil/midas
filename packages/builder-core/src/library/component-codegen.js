@@ -50,7 +50,7 @@ export function generateComponent({ ctx, mapping, types = 'generated', iconOf = 
     const paintOf = (n, key) => {
         const raw = key === 'stroke' ? n.stroke : n.fill;
         if (!raw || raw === 'none') return null;
-        const item = ctx.vars.get(key === 'stroke' ? n.vars?.stroke : n.vars?.['fills.0'] ?? n.vars?.fill);
+        const item = ctx.vars.get(key === 'stroke' ? n.vars?.stroke : n.vars?.['fills.0']);
         return item ? `var(${cssVarOf(item)}, ${raw})` : raw;
     };
     const vectorJsx = (layer, node, pad) => {
@@ -70,7 +70,7 @@ export function generateComponent({ ctx, mapping, types = 'generated', iconOf = 
         const queue = [...(ctx.kids.get(inst.id) || [])];
         for (let n = queue.shift(); n && !color; n = queue.shift()) {
             if (n.type === 'path' || n.type === 'rect' || n.type === 'ellipse') {
-                const item = ctx.vars.get(n.vars?.['fills.0'] ?? n.vars?.fill);
+                const item = ctx.vars.get(n.vars?.['fills.0']);
                 color = item ? `var(${cssVarOf(item)}, ${n.fill})` : (n.fill && n.fill !== 'none' ? n.fill : null);
             }
             else queue.push(...(ctx.kids.get(n.id) || []));

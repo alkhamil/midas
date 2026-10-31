@@ -63,3 +63,10 @@ test('the managed-layer clipboard payload is refused by the paste guard, naming 
     assert.equal(payload.format, 'midas-clipboard');
     assert.equal(managedPasteRefusal(payload.nodes), '"iconStart" is managed by its instance: pasting it without that instance is not allowed.');
 });
+
+test('every variable the fixture binds exists in its variables, so the icon follows fg and Size', () => {
+    const doc = buildBehaviorFixture();
+    const ids = new Set(doc.variables.items.map(i => i.id));
+    const dangling = doc.pages.flatMap(p => p.nodes.flatMap(n => Object.values(n.vars || {}).filter(id => !ids.has(id)).map(id => `${n.id}:${id}`)));
+    assert.deepEqual(dangling, []);
+});

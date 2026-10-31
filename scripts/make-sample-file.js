@@ -259,8 +259,8 @@ const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
 // The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
-const BUTTON_ROOT_VARS = { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' };
-const BUTTON_LABEL_VARS = { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
+const BUTTON_ROOT_VARS = { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' };
+const BUTTON_LABEL_VARS = { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
 
 function buildButtonMaster(x = 440, y = 40) {
     const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
@@ -340,7 +340,7 @@ function buildButtonInstance(id, name, parentId, opts = {}) {
         ...(hasIcon ? { iconPlacement: placement } : {}),
         loading,
         disabled,
-        block,
+
     };
 
     const textW = Math.max(28, Math.ceil(labelText.length * metrics.fs * 0.6));
@@ -477,7 +477,7 @@ function buildHeaderBar(prefix, title, subtitle) {
             fontSize: 18,
             fontWeight: 700,
             fills: solid('#231815'),
-            vars: { fill: 'var-col-text-main', fontSize: 'var-typ-title' },
+            vars: { 'fills.0': 'var-col-text-main', fontSize: 'var-typ-title' },
         }),
         autoFrameNode(pillId, 'Outlet Status Pill', 'horizontal', {
             parentId: leftId,
@@ -507,7 +507,7 @@ function buildHeaderBar(prefix, title, subtitle) {
             fontSize: 11,
             fontWeight: 500,
             fills: solid('#6D5D53'),
-            vars: { fill: 'var-col-text-sub' },
+            vars: { 'fills.0': 'var-col-text-sub' },
         }),
         autoFrameNode(rightId, 'Header Profile Cluster', 'horizontal', {
             parentId: headerId,
@@ -541,7 +541,7 @@ function buildHeaderBar(prefix, title, subtitle) {
             fontSize: 11,
             fontWeight: 600,
             fills: solid('#6F4E37'),
-            vars: { fill: 'var-col-brand' },
+            vars: { 'fills.0': 'var-col-brand' },
         }),
         ellipseNode(`${prefix}-avatar`, 'Member Avatar', {
             parentId: rightId,

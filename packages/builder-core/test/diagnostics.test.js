@@ -33,14 +33,14 @@ const doc = (over = {}) => ({
             {
                 id: 'm1', name: 'Button', type: 'frame',
                 behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: sizeColl.id }, ...over.binding },
-                vars: { fill: 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+                vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
             },
-            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { fill: 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' } },
+            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' } },
             {
                 id: 'i1', name: 'Button', type: 'frame', isInstance: true, sourceId: 'm1', parentId: null,
-                behavior: { version: 2, props: { ...over.props } }, vars: { fill: 'v-bg' }, ...over.instance,
+                behavior: { version: 2, props: { ...over.props } }, vars: { 'fills.0': 'v-bg' }, ...over.instance,
             },
-            { id: 'il', name: 'Label', type: 'text', parentId: 'i1', sourceId: 'mt', vars: { fill: 'v-fg' }, ...over.label },
+            { id: 'il', name: 'Label', type: 'text', parentId: 'i1', sourceId: 'mt', vars: { 'fills.0': 'v-fg' }, ...over.label },
         ],
         ...over.page,
     }],
@@ -50,9 +50,18 @@ test('a complete document has no diagnostics', () => {
     assert.deepEqual(diagnoseDocument(doc()), []);
 });
 
-test('a collection that no component binds is a warning, named', () => {
+test('a binding to a variable that no longer exists is unbound, naming the token', () => {
+    const stale = doc({});
+    const master = stale.pages[0].nodes.find(n => n.id === 'm1');
+    master.vars = { fill: 'gone', stroke: 'gone' };
+    const found = diagnoseDocument(stale).filter(f => f.code === 'unbound-token');
+    assert.ok(found.some(f => f.nodeId === 'm1' && f.prop === 'fill'));
+    assert.ok(found.some(f => f.nodeId === 'm1' && f.prop === 'stroke'));
+});
+
+test('a collection no template needs is ignored: diagnostics never scans unrelated collections', () => {
     const d = doc({ variables: { collections: [...collections, { id: 'c-x', name: 'Brand', modes: [] }] } });
-    assert.deepEqual(diagnoseDocument(d), [{ severity: 'warning', code: 'unused-collection', collection: 'Brand', message: 'Unused collection "Brand": excluded from preview and code generation.' }]);
+    assert.deepEqual(diagnoseDocument(d), []);
 });
 
 test('a variable with no value in one mode is an error on the master, naming the variable and the mode', () => {
@@ -91,13 +100,20 @@ test('an instance resolves its modes from its own Appearance modes, not from pro
     assert.equal(found[0].mode, 'Large');
 });
 
-test('an unbound variable dimension on the master is reported for its instances', () => {
+test('an unbound dimension is reported once, on the master, naming the collection', () => {
     const found = diagnoseDocument(doc({ binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: null } } }));
-    assert.ok(found.some(f => f.code === 'token-unresolved' && f.reason === 'dimension-unbound' && f.nodeId === 'i1'));
+    assert.deepEqual(found, [{ severity: 'error', code: 'dimension-unbound', node: 'Button', nodeId: 'm1', dimension: 'size', collection: 'Size',
+        message: 'Button: no "Size" collection is bound for "size".' }]);
+});
+
+test('a bound collection that does not exist is reported on the master, naming it', () => {
+    const found = diagnoseDocument(doc({ binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: 'c-gone' } } }));
+    assert.deepEqual(found.filter(f => f.code === 'collection-missing'), [{ severity: 'error', code: 'collection-missing', node: 'Button', nodeId: 'm1', dimension: 'size', collection: 'c-gone',
+        message: 'Button: collection "c-gone" bound for "size" does not exist.' }]);
 });
 
 test('a layer the user rebound by hand while disabled is a warning, and the rebinding is kept', () => {
-    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { fill: 'v-fg' } } }));
+    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-fg' } } }));
     assert.deepEqual(found.filter(f => f.severity === 'warning' && f.code === 'rebound-by-hand'), [{
         severity: 'warning', code: 'rebound-by-hand', node: 'Button', nodeId: 'i1', layer: 'root', prop: 'fill', state: 'disabled',
         message: 'Button: root fill was set by hand, so state "disabled" does not change it.',
@@ -105,7 +121,7 @@ test('a layer the user rebound by hand while disabled is a warning, and the rebi
 });
 
 test('a layer bound to the disabled variable while disabled is not reported', () => {
-    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { fill: 'v-bg-disabled' } }, label: { vars: { fill: 'v-fg-disabled' } } }));
+    const found = diagnoseDocument(doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-bg-disabled' } }, label: { vars: { 'fills.0': 'v-fg-disabled' } } }));
     assert.deepEqual(found, []);
 });
 
@@ -125,6 +141,6 @@ test('loading is an info note: stored and generated, not drawn', () => {
 });
 
 test('the same document gives the same diagnostics, in the same order', () => {
-    const d = doc({ props: { disabled: true }, instance: { vars: { fill: 'v-fg' } } });
+    const d = doc({ props: { disabled: true }, instance: { vars: { 'fills.0': 'v-fg' } } });
     assert.deepEqual(diagnoseDocument(d), diagnoseDocument(d));
 });

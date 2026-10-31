@@ -13,9 +13,12 @@ export const BUTTON = {
         { id: 'label', kind: 'text' },
         { id: 'iconEnd', kind: 'icon', optional: true, managed: true },
     ],
-    // The managed icon slot: `show` turns it on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the tokens
-    // that colour and size the icon.
-    icon: { show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+    // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the
+    // tokens that colour and size the icon.
+    icons: [
+        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+    ],
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     outline: { width: 2, offset: 1 },
     props: {
@@ -24,12 +27,12 @@ export const BUTTON = {
         size: { source: 'variable', collection: 'Size' },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
-        hasIcon: { source: 'literal', type: 'boolean', default: false },
-        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'only'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', only: 'iconStart' }, iconOnly: ['only'], visibleIf: { prop: 'hasIcon', is: true } },
+        hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
+        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] }, visibleIf: { prop: 'hasIcon', is: true } },
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
+        iconEnd: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
         loading: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
-        block: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'layoutSizingH' } },
     },
     tokens: {
         fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
@@ -42,7 +45,7 @@ export const BUTTON = {
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', fontSize: 'length', lineHeight: 'ratio', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        height: 'length', fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
@@ -60,10 +63,10 @@ export const BUTTON = {
         focus: { 'outline-color': 'color-outline' },
     },
     // The CSS pseudo-class each state is written as.
-    statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus' },
+    statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus-visible' },
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap', minWidth: 'height' },
+        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         iconStart: { size: 'iconSize' },
         iconEnd: { size: 'iconSize' },

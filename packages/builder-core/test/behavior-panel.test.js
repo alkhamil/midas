@@ -32,10 +32,25 @@ test('a master bound to Button lists its variable props, prefilled by auto-match
     assert.equal(rowOf(panel, 'size').matched, false);
 });
 
+test('the component panel lists the icon slot needs first, driven by requires and the icons defs', () => {
+    const master = boundMaster([variant, size]);
+    assert.deepEqual(masterPanel(master, [variant, size]).needs.map(n => [n.prop, n.dimension, n.collection, n.collectionId, n.variables]), [
+        ['hasIcon', 'variant', 'Variant', 'c-variant', ['button/fg', 'button/fg-disabled']],
+        ['hasIcon', 'size', 'Size', 'c-size', ['button/icon-size']],
+    ]);
+});
+
+test('an unbound icon need shows no collection, like an unbound dimension', () => {
+    const master = boundMaster([variant]);
+    const needs = masterPanel(master, [variant]).needs;
+    assert.equal(needs.find(n => n.dimension === 'size').collectionId, null);
+    assert.equal(needs.find(n => n.dimension === 'variant').collectionId, 'c-variant');
+});
+
 test('the master contract shows non-visual props, states and events, but no icon choice or placement', () => {
     const panel = masterPanel(boundMaster([variant]), [variant]);
     const names = panel.contract.props.map(p => p.name);
-    assert.deepEqual(names, ['label', 'loading', 'disabled', 'block']);
+    assert.deepEqual(names, ['label', 'loading', 'disabled']);
     assert.deepEqual(panel.contract.persistentStates, ['disabled']);
     assert.deepEqual(panel.contract.previewStates, ['hover', 'active', 'focus']);
     assert.deepEqual(panel.contract.events.map(e => e.name), ['onClick', 'onHover', 'onFocus', 'onBlur']);
@@ -72,12 +87,42 @@ test('visibleIf: the icon placement row is shown only while hasIcon is on, and a
     assert.equal('iconPlacement' in behavior.props, false);
 });
 
+test('hasIcon is disabled while a collection it needs is unbound, naming the collection', () => {
+    const master = boundMaster([variant]);
+    const row = rowOf(instancePanel(instanceOf(), master, [variant], { variant: 'solid', size: null }), 'hasIcon');
+    assert.equal(row.disabled, true);
+    assert.match(row.hint, /Size/);
+    const bound = boundMaster([variant, size]);
+    const ok = rowOf(instancePanel(instanceOf(), bound, [variant, size], { variant: 'solid', size: 'sm' }), 'hasIcon');
+    assert.equal(ok.disabled, false);
+    assert.equal(ok.hint, '');
+});
+
+test('hasIcon off hides the icon rows; on shows them; toggling back and forth is lossless (undo/redo)', () => {
+    const master = boundMaster([variant, size]);
+    const modes = { variant: 'solid', size: 'sm' };
+    const off = instancePanel(instanceOf(), master, [variant, size], modes);
+    assert.equal(rowOf(off, 'iconPlacement'), undefined);
+    assert.equal(rowOf(off, 'icon'), undefined);
+    const before = { version: 2, props: {} };
+    const onBehavior = setInstanceValue(instanceOf(before), master, 'hasIcon', true);
+    assert.deepEqual(before, { version: 2, props: {} }, 'the input is not mutated');
+    const on = instancePanel(instanceOf(onBehavior), master, [variant, size], modes);
+    assert.equal(rowOf(on, 'iconPlacement').value, 'start');
+    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null, label: 'Icon start' });
+    const back = setInstanceValue(instanceOf(onBehavior), master, 'hasIcon', false);
+    const offAgain = instancePanel(instanceOf(back), master, [variant, size], modes);
+    assert.equal(rowOf(offAgain, 'iconPlacement'), undefined);
+    const redo = setInstanceValue(instanceOf(back), master, 'hasIcon', true);
+    assert.equal(rowOf(instancePanel(instanceOf(redo), master, [variant, size], modes), 'iconPlacement').value, 'start');
+});
+
 test('the icon is a swap row, shown while hasIcon is on, with the id of the icon it shows', () => {
     const master = boundMaster([variant]);
     const off = instancePanel(instanceOf(), master, [variant], { variant: 'solid', size: null });
     assert.equal(rowOf(off, 'icon'), undefined);
     const on = instancePanel(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, [variant], { variant: 'solid', size: null });
-    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null });
+    assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null, label: 'Icon start' });
     const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'solid', size: null });
     assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
 });
@@ -113,6 +158,13 @@ test('deleting a collection unbinds it from its masters; instance literal values
     forgetCollection([master, inst], 'c-variant');
     assert.equal(master.behavior.variables.variant, null);
     assert.equal(inst.behavior.props.label, 'Save');
+});
+
+test('deleting a collection clears the node bindings to its variables, keeping the others', () => {
+    const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]), vars: { 'fills.0': 'v-bg', radius: 'other' } };
+    forgetCollection([master], 'c-variant', [{ id: 'v-bg', collectionId: 'c-variant' }]);
+    assert.equal(master.behavior.variables.variant, null);
+    assert.deepEqual(master.vars, { radius: 'other' });
 });
 
 test('a template change plans the unbinding and clears each instance value through the store', () => {
@@ -168,4 +220,32 @@ test('after a library update removes a collection, the bindings to it are cleare
     pruneBehaviorData(nodes, []);
     assert.equal(master.behavior.variables.variant, null);
     assert.equal(onPageTwo.behavior.props.label, 'Save');
+});
+
+test('placement both shows an Icon start and an Icon end row, each storing its own icon', () => {
+    const master = boundMaster([variant, size]);
+    const modes = { variant: 'solid', size: 'sm' };
+    const on = instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true));
+    const placed = instanceOf(setInstanceValue(on, master, 'iconPlacement', 'both'));
+    const both = instanceOf(setInstanceValue(placed, master, 'icon', 'ic-a'));
+    const panel = instancePanel(both, master, [variant, size], modes);
+    assert.deepEqual(rowOf(panel, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: 'ic-a', label: 'Icon start' });
+    assert.deepEqual(rowOf(panel, 'iconEnd'), { prop: 'iconEnd', kind: 'icon', slot: true, value: null, label: 'Icon end' });
+    const end = instancePanel(instanceOf(setInstanceValue(both, master, 'iconEnd', 'ic-b')), master, [variant, size], modes);
+    assert.equal(rowOf(end, 'icon').value, 'ic-a');
+    assert.equal(rowOf(end, 'iconEnd').value, 'ic-b');
+});
+
+test('placement end shows only the Icon end row, start shows only Icon start', () => {
+    const master = boundMaster([variant, size]);
+    const modes = { variant: 'solid', size: 'sm' };
+    const on = instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true));
+    const placedEnd = instanceOf(setInstanceValue(on, master, 'iconPlacement', 'end'));
+    const end = instancePanel(placedEnd, master, [variant, size], modes);
+    assert.equal(rowOf(end, 'icon'), undefined);
+    assert.equal(rowOf(end, 'iconEnd').label, 'Icon end');
+    const placedStart = instanceOf(setInstanceValue(on, master, 'iconPlacement', 'start'));
+    const start = instancePanel(placedStart, master, [variant, size], modes);
+    assert.equal(rowOf(start, 'iconEnd'), undefined);
+    assert.equal(rowOf(start, 'icon').label, 'Icon start');
 });

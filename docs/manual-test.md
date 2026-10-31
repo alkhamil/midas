@@ -70,7 +70,7 @@ Clipboard file: `scripts/fixtures/managed-layer-clipboard.json`. Its one layer i
 
 11. **Generate code on the main master.** Select **Button**, scroll to Code, click Generate code.
     - Expected: two downloads, `Button.jsx` and `Button.css`. The browser may ask once to allow multiple downloads.
-    - Expected first line of `Button.jsx`: `export function Button({ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, block = false, onClick, onHover, onFocus, onBlur }) {`
+    - Expected first line of `Button.jsx`: `export function Button({ variant, size, label = "Button", hasIcon = false, iconPlacement = "start", icon = null, loading = false, disabled = false, onClick, onHover, onFocus, onBlur }) {`
 
 12. **Preview states, no document change.** Select **Save**. In Preview, set State to Default, Hover, Active, Disabled in turn. Read the `bg` row.
     - Expected (Solid, Primary, Small): Default `#4338ca`, Hover `#3730a3`, Active `#312e81`, Disabled `#f4f4f5`.
@@ -125,12 +125,11 @@ Run after `node scripts/make-behavior-fixture.js`, import the file, then check e
 1. Variant, Color and Size on Save: the Behavior panel changes the mode, the canvas follows, and the Design panel shows the same mode for the same layer (the modes live on the instance root, `varModes`).
 2. Disabled on Save: the root fill becomes `button/bg-disabled` and the label fill `button/fg-disabled`. Turn it off: both go back to `button/bg` and `button/fg`. One history step each. No `vars` override appears on the instance.
 3. Label on Save: the label layer text follows the prop (saved as `text`).
-4. Full Width on Save: the root width mode becomes Fill and goes back to Hug when off.
-5. Undo after Full Width: exactly one step is reverted, and the label change stays.
-6. Preview state Hover on Save: the badge reads "Previewing: Hover". The file is not changed (no history entry). Reload: no preview data is saved.
-7. Cancel and the Card group: Cancel is not changed by the Save edits (apart from the bindings its own modes give it). Button never reads `card/bg` or `card/fg`.
-8. Bind tokens on a master with unbound tokens: the button says how many are unbound, binds only the empty ones, and never overwrites an existing binding.
-9. Diagnostics: the legacy master shows "variable ... has no value in mode Solid" as an error. A layer set by hand while disabled shows a warning. Loading shows a Note.
+4. Width mode on Save: Fill and Hug still apply from the Design panel (node sizing, one undo step each).
+5. Preview state Hover on Save: the badge reads "Previewing: Hover". The file is not changed (no history entry). Reload: no preview data is saved.
+6. Cancel and the Card group: Cancel is not changed by the Save edits (apart from the bindings its own modes give it). Button never reads `card/bg` or `card/fg`.
+7. Bind tokens on a master with unbound tokens: the button says how many are unbound, binds only the empty ones, and never overwrites an existing binding.
+8. Diagnostics: the legacy master shows "variable ... has no value in mode Solid" as an error. A layer set by hand while disabled shows a warning. Loading shows a Note.
 
 Known and fixed (decision 1): a bound lineHeight variable is px. The editor's field is still the ratio px / font size; a value under 4 is an error. Fixture values such as 1.4 therefore draw a 2 px label. See the open questions in the report.
 
@@ -324,20 +323,20 @@ Setup: the prototype fixture, opened by import. Play from Home.
 | Play: Tab from Delete | Focus skips Unavailable and lands on the next control |
 | Editor: Delete, Preview State Hover, then Disabled on | Preview State reads Default, "Previewing: Disabled"; no hover look |
 
-## Icon-only Button
+## Both icons
 
-1. **Icon-only.** On **Save** (Has Icon on, placement start), set the placement to Only.
-   - Expected: the label disappears, the icon stays, the button is as wide as its height at least, and the padding is 0.
-   - Expected: the generated `Button.jsx` hides the label child (`{!iconOnly && …}`) and adds the `button-icon-only` class.
+1. **Both.** On **Save** (Has Icon on, placement start), set the placement to Both.
+   - Expected: the same icon shows before and after the label; the label stays.
+   - Expected: the generated `Button.jsx` renders `iconStart` for start or both and `iconEnd` for end or both.
 2. **Back to start.** Set the placement to Start.
-   - Expected: the label comes back, the icon moves to the start, and the padding returns.
-3. **Play.** Open Play on a frame with an icon-only Button.
-   - Expected: the Button draws with the icon-only class and no label element.
+   - Expected: the end icon is removed, the start icon stays first, and the label keeps its place.
+3. **Play.** Open Play on a frame with a Both Button.
+   - Expected: the Button draws the icon, the label, then the icon again, in that order.
 
 ## Focus outline
 
 1. **Focus outline.** Tab to a Button (Save) in Play, or set the Focus preview in the Behavior panel.
-   - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour.
+   - Expected: a 2 px outline, 1 px from the edge, in the Primary outline colour. Danger shows the error outline colour. Clicking the Button with the mouse leaves no outline; Tab focus shows the ring, and clicking elsewhere clears it.
 2. **Disabled has no outline.** Turn on Disabled, then Focus.
    - Expected: no outline, and no focus colour.
 3. **Dashed.** Set the Variant of Save to Dashed.

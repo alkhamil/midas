@@ -8,9 +8,10 @@
 // - Running the plan again on its own result gives no operations.
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
+import { VARIABLE_KEYS } from './display.js';
 
 /** @typedef {{ key: string, instance: { id: string, vars?: Record<string, string> }, master: { vars?: Record<string, string> } | null }} LayerPair */
-/** @typedef {{ instanceId: string, prop: string, value: string | null }} BindingOp */
+/** @typedef {{ instanceId: string, prop: string, value: string | null }} BindingOp `prop` is the vars key the binding is written through */
 
 /** @param {string} name */
 
@@ -43,14 +44,15 @@ export function planStateBindings({ template, binding, props, layers, variables 
         if (!stateItem) { problems.push({ key: '*', prop: base, token: stateToken, reason: 'no-variable' }); continue; }
         for (const layer of layers) {
             if (layer.key !== key) continue;
-            const baseId = layer.master?.vars?.[prop] ?? null;
-            const current = layer.instance.vars?.[prop] ?? null;
+            const varKey = VARIABLE_KEYS[prop]?.[0] ?? prop;
+            const baseId = layer.master?.vars?.[varKey] ?? null;
+            const current = layer.instance.vars?.[varKey] ?? null;
             if (on) {
                 if (current === stateItem.id) continue;
-                if (current === baseId) ops.push({ instanceId: layer.instance.id, prop, value: stateItem.id });
+                if (current === baseId) ops.push({ instanceId: layer.instance.id, prop: varKey, value: stateItem.id });
                 else warnings.push({ key, prop, state, reason: 'rebound-by-hand' });
             } else if (current === stateItem.id) {
-                ops.push({ instanceId: layer.instance.id, prop, value: baseId });
+                ops.push({ instanceId: layer.instance.id, prop: varKey, value: baseId });
             }
         }
     }
@@ -85,6 +87,6 @@ function derivedNodeProps(template) {
  * @returns {string[]}
  */
 export function ownedVarKeys(template) {
-    return [...new Set(derivedNodeProps(template).map(d => d.prop))];
+    return [...new Set(derivedNodeProps(template).map(d => VARIABLE_KEYS[d.prop]?.[0] ?? d.prop))];
 }
 

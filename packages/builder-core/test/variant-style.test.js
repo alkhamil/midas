@@ -22,7 +22,7 @@ test('a template with no variant styles has no border style to set', () => {
 });
 
 test('the stylesheet sets the dashed border style on the dashed Variant, and the root has a 1px solid border', () => {
-    const css = generateComponent(button, model.binding, variables, 'Button').files['Button.css'];
+    const css = generateComponent(button, model.binding, variables, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.css'];
     assert.match(css, /\.button\[data-variant="dashed"\] \{\n  border-style: dashed;\n\}/);
     assert.doesNotMatch(css, /\.button\[data-variant="solid"\] \{\n  border-style/);
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-width: 1px;\n\s*border-style: solid;/);

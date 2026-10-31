@@ -24,6 +24,16 @@ test('the label of a master that is itself text is none: only layers inside it c
     assert.equal(labelLayerOf('deep', childrenOf), null);
 });
 
+test('the label of a flipped master is the first text layer in visual order', () => {
+    const flipped = { id: 'root', type: 'frame', layout: 'horizontal', layoutFlip: true };
+    assert.equal(labelLayerOf('root', childrenOf, flipped).id, 'second');
+});
+
+test('masterLayersOf follows the visual order of a flipped master', () => {
+    const flipped = { id: 'root', type: 'frame', layout: 'horizontal', layoutFlip: true };
+    assert.deepEqual(masterLayersOf(flipped, childrenOf).map(l => [l.key, l.node.id]), [['root', 'root'], ['label', 'second']]);
+});
+
 test('masterLayersOf gives the root, and the label when there is one', () => {
     const root = nodes[0];
     assert.deepEqual(masterLayersOf(root, childrenOf).map(l => [l.key, l.node.id]), [['root', 'root'], ['label', 'deep']]);

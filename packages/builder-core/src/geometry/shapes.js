@@ -185,6 +185,70 @@ export function strokeSideWidths(n) {
     return { t: m === 'top' ? w : 0, r: m === 'right' ? w : 0, b: m === 'bottom' ? w : 0, l: m === 'left' ? w : 0 };
 }
 
+const SIDE_KEYS = /** @type {const} */ (['strokeT', 'strokeR', 'strokeB', 'strokeL']);
+
+/** The widest of the four side widths. */
+const widest = (/** @type {{ t: number, r: number, b: number, l: number }} */ s) => Math.max(s.t, s.r, s.b, s.l);
+
+/**
+ * The weight the Stroke panel shows: the uniform width, or in per-side mode the width every side shares. Null when the sides differ
+ * ("Mixed"), so the weight field never shows a number the sides do not have.
+ * @param {any} n
+ * @returns {number | null}
+ */
+export function strokeWeightOf(n) {
+    if (n.strokeSides !== 'custom') return n.strokeWidth || 0;
+    const s = strokeSideWidths(n);
+    return s.t === s.r && s.r === s.b && s.b === s.l ? s.t : null;
+}
+
+/**
+ * Sets the uniform stroke weight. In per-side mode every side takes it, so the weight and the sides never disagree.
+ * @param {any} n
+ * @param {number} width
+ */
+export function setStrokeWeight(n, width) {
+    n.strokeWidth = width;
+    if (n.strokeSides === 'custom') for (const k of SIDE_KEYS) n[k] = width;
+}
+
+/**
+ * Sets the width of one side (`strokeT`, `strokeR`, `strokeB`, `strokeL`) in per-side mode. The uniform width follows the widest
+ * side, so the stroke stays on while any side has a width.
+ * @param {any} n
+ * @param {'strokeT' | 'strokeR' | 'strokeB' | 'strokeL'} key
+ * @param {number} width
+ */
+export function setStrokeSide(n, key, width) {
+    n[key] = width;
+    n.strokeWidth = widest(strokeSideWidths(n));
+}
+
+/**
+ * Switches the sides a stroke draws on. Per-side (`custom`) seeds all four sides from the current weight, never from 0 (a side
+ * that is not drawn is not seeded). Leaving per-side collapses the sides back into the uniform weight: the shared width, or the
+ * widest side (the chosen side's own width for a single side), and the side widths are removed.
+ * @param {any} n
+ * @param {'all' | 'top' | 'right' | 'bottom' | 'left' | 'custom'} mode
+ */
+export function setStrokeSides(n, mode) {
+    const was = n.strokeSides || 'all', sides = strokeSideWidths(n);
+    if (mode === was) return;
+    if (mode === 'custom') {
+        const width = n.strokeWidth || widest(sides);
+        n.strokeSides = 'custom';
+        n.strokeWidth = width;
+        for (const k of SIDE_KEYS) n[k] = width;
+        return;
+    }
+    if (was === 'custom') {
+        const own = mode === 'all' ? 0 : sides[/** @type {'t' | 'r' | 'b' | 'l'} */ (mode[0])];
+        n.strokeWidth = own > 0 ? own : widest(sides);
+        for (const k of SIDE_KEYS) delete n[k];
+    }
+    if (mode === 'all') delete n.strokeSides;
+    else n.strokeSides = mode;
+}
 /** @param {any} n */
 export function strokeSidesUniform(n) {
     if (!RECT_LIKE.includes(n.type)) return true;
@@ -230,12 +294,13 @@ export function svgShapeEl(n, f, a) {
  * @param {any} n
  * @param {(v: number) => string | number} f
  * @param {(s: string) => string} e attribute escaper
+ * @param {boolean} [icon] true inside a managed icon slot: a bound stroke paints in the slot colour
  */
-export function svgStrokeAttrs(n, f, e) {
+export function svgStrokeAttrs(n, f, e, icon = false) {
     if (!strokeIsOn(n) || strokeSvgAdvanced(n))
         return 'stroke="none" stroke-width="0"';
     const w = RECT_LIKE.includes(n.type) ? strokeSideWidths(n).t : n.strokeWidth, dash = strokeDashArray(n);
-    return `stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
+    return `stroke="${icon && n.vars?.stroke ? 'currentColor' : e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
 }
 
 /**

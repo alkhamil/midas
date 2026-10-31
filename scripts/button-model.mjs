@@ -54,7 +54,7 @@ const VARIANT_VALUES = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, fil
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
     height: { sm: 32, lg: 40 },
-    fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 22 / 14, lg: 26 / 18 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
+    fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 22, lg: 26 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
     gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
 };
 const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });

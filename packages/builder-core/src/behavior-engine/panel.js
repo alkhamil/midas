@@ -2,6 +2,8 @@
 // document. The renderer reads these models; every edit goes back through the binding model and the instance props store.
 import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
+import { iconNeedsOf } from './icon-slot.js';
+import { iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
@@ -34,6 +36,23 @@ function isIconRelated(template, name) {
 }
 
 /**
+ * Why a prop that needs collections cannot be used: the collections its schema `requires` names that are not bound
+ * on the master. Empty when nothing is missing.
+ * @param {TemplateSchema} template
+ * @param {{ variables: Record<string, string | null> }} binding the master's binding
+ * @param {string} name the literal prop
+ */
+function missingRequires(template, binding, name) {
+    const requires = template.props[name]?.requires;
+    if (!Array.isArray(requires)) return '';
+    const missing = requires.filter(dim => !binding.variables[dim]).map(dim => `"${template.props[dim].collection}"`);
+    if (!missing.length) return '';
+    const label = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+    const what = missing.length > 1 ? `${missing.join(' and ')} collections` : `a ${missing[0]} collection`;
+    return `Bind ${what} to the component to use ${label}.`;
+}
+
+/**
  * What the master's Behavior tab shows: the template to bind, the collection for each variable prop (prefilled by auto-match),
  * and the contract of the template, read-only.
  * @param {{ behavior?: any }} master
@@ -42,8 +61,19 @@ function isIconRelated(template, name) {
 export function masterPanel(master, collections) {
     const templates = [...TEMPLATES.values()].map(t => ({ id: t.id, name: t.name }));
     const bound = boundTemplate(master);
-    if (!bound) return { templateId: null, templates, rows: [], contract: null };
+    if (!bound) return { templateId: null, templates, rows: [], needs: [], contract: null };
     const { binding, template } = bound;
+    // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
+    const needs = iconNeedsOf(template).map(need => {
+        const collectionId = binding.variables[need.dimension] ?? null;
+        return {
+            ...need,
+            label: `Icon ${need.role === 'disabledColour' ? 'disabled colour' : need.role}`,
+            collectionId,
+            matched: collectionId !== null && collectionId === autoMatchCollection(need.collection, collections),
+            options: options(collections),
+        };
+    });
     const rows = variableProps(template).map(([prop, def]) => {
         const collectionId = binding.variables[prop] ?? null;
         return {
@@ -64,7 +94,7 @@ export function masterPanel(master, collections) {
         previewStates: Object.keys(template.previewStates),
         events: template.events.map(e => ({ name: e.name, exposeAsTrigger: e.exposeAsTrigger })),
     };
-    return { templateId: template.id, templates, rows, contract };
+    return { templateId: template.id, templates, rows, needs, contract };
 }
 
 /**
@@ -76,13 +106,31 @@ export function masterPanel(master, collections) {
  * @param {import('./binding.js').Collection[]} collections
  * @param {Record<string, string | null>} modes the instance's Appearance mode per variable prop (see modes.js)
  */
+/**
+ * The icon picker rows of one icon prop: one per def slot that names it, labelled by slot ("Icon start") and shown
+ * only when the placement puts that slot on. A def with no slot is one "Icon" row.
+ */
+function iconRowsOf(template, values, name) {
+    const rows = [];
+    for (const def of iconDefsOf(template).filter(d => d.component === name)) {
+        if (values[def.show] !== true) continue;
+        if (def.slot === undefined) {
+            rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon' });
+            continue;
+        }
+        if (def.placement !== undefined && !slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot)) continue;
+        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon ' + def.slot.replace(/^icon/i, '').toLowerCase() });
+    }
+    return rows;
+}
+
 export function instancePanel(instance, master, collections, modes) {
     const bound = boundTemplate(master);
     if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
-    // The props that drive the managed icon slot: they are listed under Slots.
-    const slotProps = [template.icon.show, template.icon.placement, template.icon.component];
+    // The props that drive the managed icon slots: they are listed under Slots.
+    const slotProps = template.icons.flatMap(def => [def.show, def.placement, def.component].filter(Boolean));
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         if (def.source === 'variable') {
@@ -100,9 +148,12 @@ export function instancePanel(instance, master, collections, modes) {
         }
         if (!isPropVisible(template, name, values)) continue;
         if (def.type === 'iconComponent') {
-            rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null });
+            for (const row of iconRowsOf(template, values, name)) rows.push(row);
             continue;
         }
+        // A prop that needs collections is disabled while one of them is unbound on the master, naming the
+        // missing collections: no silent skip.
+        const hint = missingRequires(template, binding, name);
         rows.push({
             prop: name,
             kind: 'literal',
@@ -110,6 +161,8 @@ export function instancePanel(instance, master, collections, modes) {
             type: def.type,
             value: values[name],
             options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],
+            disabled: hint !== '',
+            hint,
         });
     }
     return { templateId: template.id, rows };
@@ -219,16 +272,21 @@ export function applyPlan(master, plan) {
 }
 
 /**
- * Forgets a deleted collection in the behavior data of the given masters: each binding to it is unbound. Instance literal values
+ * Forgets a deleted collection in the behavior data of the given masters: each binding to it is unbound, and each node binding
+ * to one of its variables is cleared, so no layer keeps pointing at a variable that no longer exists. Instance literal values
  * are not touched. Mutates the nodes given (they are the document's nodes).
  * @param {any[]} nodes
  * @param {string} collectionId
  */
-export function forgetCollection(nodes, collectionId) {
+export function forgetCollection(nodes, collectionId, items = []) {
+    const gone = new Set(items.filter(i => i.collectionId === collectionId).map(i => i.id));
     for (const n of nodes) {
         const b = n.behavior;
-        if (!b || !('templateId' in b)) continue;
-        for (const prop of Object.keys(b.variables)) if (b.variables[prop] === collectionId) b.variables[prop] = null;
+        if (b && 'templateId' in b) for (const prop of Object.keys(b.variables)) if (b.variables[prop] === collectionId) b.variables[prop] = null;
+        if (n.vars) {
+            for (const key of Object.keys(n.vars)) if (gone.has(n.vars[key])) delete n.vars[key];
+            if (!Object.keys(n.vars).length) delete n.vars;
+        }
     }
 }
 

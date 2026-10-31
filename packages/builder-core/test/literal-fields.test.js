@@ -12,20 +12,16 @@ test('the label prop writes the label layer\'s text', () => {
     ]);
 });
 
-test('block on writes the root width mode to fill, and off writes hug', () => {
-    assert.deepEqual(literalFields(button, resolveProps(button, { block: true })).filter(f => f.field === 'layoutSizingH'), [
-        { key: 'root', field: 'layoutSizingH', value: 'fill' },
-    ]);
-    assert.deepEqual(literalFields(button, resolveProps(button, { block: false })).filter(f => f.field === 'layoutSizingH'), [
-        { key: 'root', field: 'layoutSizingH', value: 'hug' },
-    ]);
+test('no literal prop writes a sizing field: node sizing stays on the node', () => {
+    const fields = literalFields(button, resolveProps(button, { label: 'Save', loading: true, hasIcon: true, disabled: true }));
+    assert.deepEqual(fields.filter(f => f.field === 'layoutSizingH'), []);
 });
 
 test('token sources and props with no node field write nothing (loading, hasIcon, disabled)', () => {
     const fields = literalFields(button, resolveProps(button, { loading: true, hasIcon: true, disabled: true }));
-    assert.deepEqual(fields.map(f => f.field).sort(), ['layoutSizingH', 'text', 'visible']);
+    assert.deepEqual(fields.map(f => f.field).sort(), ['text']);
 });
 
-test('the fields literal props write are named per layer: the label text and the root width mode', () => {
-    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }, { key: 'root', field: 'layoutSizingH' }, { key: 'label', field: 'visible' }]);
+test('the fields literal props write are named per layer: the label text only', () => {
+    assert.deepEqual(literalFieldNames(button), [{ key: 'label', field: 'text' }]);
 });

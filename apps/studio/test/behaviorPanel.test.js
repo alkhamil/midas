@@ -21,6 +21,20 @@ test('a master bound to Button shows the template and each variable prop with it
     assert.match(html, /Auto-matched/);
 });
 
+test('the component panel lists the icon needs first, with the same binding slots', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /<span title="size">Icon size<\/span>/);
+    assert.match(html, /<span title="variant">Icon colour<\/span>/);
+    assert.equal(html.indexOf('Icon size') < html.indexOf('data-bp-prop="size"'), true);
+    assert.equal(html.split('data-bp-prop="size"').length - 1, 2);
+    assert.match(html, /data-bp="collection" data-bp-prop="size"/);
+});
+
+test('an unbound icon need shows the miss like an unbound dimension', () => {
+    const html = masterHtml(master([variant]), [variant]);
+    assert.match(html, /No "Size" collection matched/);
+});
+
 test('a variable prop with no matching collection shows the miss and offers the picker', () => {
     const html = masterHtml(master([variant]), [variant]);
     assert.match(html, /data-bp-prop="size"/);
@@ -56,6 +70,12 @@ test('visibleIf: the icon placement is rendered only while hasIcon is on', () =>
     assert.doesNotMatch(off, /data-bp-prop="iconPlacement"/);
     const on = instanceHtml(instance({ version: 2, props: { hasIcon: true } }), master([variant]), [variant]);
     assert.match(on, /data-bp-type="enum" data-bp-prop="iconPlacement"/);
+});
+
+test('hasIcon is disabled while Size is unbound, naming the collection', () => {
+    const html = instanceHtml(instance(), master([variant]), [variant]);
+    assert.match(html, /data-bp-type="boolean" data-bp-prop="hasIcon"[^>]*disabled/);
+    assert.match(html, /Bind a &quot;Size&quot; collection to the component to use Has Icon/);
 });
 
 test('a variable prop whose collection is not bound is disabled, with a hint', () => {

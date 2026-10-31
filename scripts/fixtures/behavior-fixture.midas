@@ -50,7 +50,7 @@
             }
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -96,8 +96,11 @@
           "direction": "auto",
           "type": "text",
           "id": "main-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -150,7 +153,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -180,13 +183,14 @@
           "id": "inst-start-icon-start",
           "layout": "horizontal",
           "padding": 0,
+          "gap": 0,
           "padT": 0,
           "padR": 0,
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -230,8 +234,11 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-start-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -311,7 +318,7 @@
           "sourceId": "icon-check-path",
           "overrides": {},
           "vars": {
-            "fills.0": "i-fg-v"
+            "fills.0": "v-fg"
           }
         },
         {
@@ -360,7 +367,7 @@
             "c-size": "lg"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -406,12 +413,333 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-plain-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
           "sourceId": "main-label"
+        },
+        {
+          "name": "Both",
+          "parentId": null,
+          "x": 400,
+          "y": 120,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#0058CA",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-both",
+          "isInstance": true,
+          "sourceId": "main",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "both",
+              "icon": "icon-check",
+              "iconEnd": "icon-arrow",
+              "label": "Both"
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fills.0": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "iconStart",
+          "parentId": "inst-both",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-both-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "s-iconSize",
+            "h": "s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          }
+        },
+        {
+          "name": "Label",
+          "parentId": "inst-both",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Both",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inst-both-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "main-label"
+        },
+        {
+          "name": "iconEnd",
+          "parentId": "inst-both",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-both-icon-end",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "s-iconSize",
+            "h": "s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          }
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "inst-both-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-both-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "inst-both-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "inst-both-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "v-fg"
+          }
+        },
+        {
+          "name": "Icon/arrow",
+          "parentId": "inst-both-icon-end",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "inst-both-icon-end-ic-icon-arrow",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-arrow",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "arrow",
+          "parentId": "inst-both-icon-end-ic-icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "inst-both-icon-end-ic-icon-arrow-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-arrow-path",
+          "overrides": {},
+          "vars": {
+            "stroke": "v-fg"
+          }
         },
         {
           "name": "Unbound",
@@ -482,7 +810,10 @@
           "textCase": "none",
           "direction": "auto",
           "type": "text",
-          "id": "unbound-label"
+          "id": "unbound-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug"
         },
         {
           "name": "Button (legacy)",
@@ -526,7 +857,7 @@
             }
           },
           "vars": {
-            "fill": "b-v-bg",
+            "fills.0": "b-v-bg",
             "stroke": "b-v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -572,8 +903,11 @@
           "direction": "auto",
           "type": "text",
           "id": "legacy-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "b-v-fg",
+            "fills.0": "b-v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           }
@@ -741,7 +1075,7 @@
             "props": {
               "hasIcon": true,
               "iconPlacement": "end",
-              "icon": "icon-arrow",
+              "iconEnd": "icon-arrow",
               "label": "Next"
             }
           },
@@ -751,7 +1085,7 @@
             "c-size": "sm"
           },
           "vars": {
-            "fill": "v-bg",
+            "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
             "padH": "s-paddingX",
@@ -797,8 +1131,11 @@
           "direction": "auto",
           "type": "text",
           "id": "inst-cross-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
           "vars": {
-            "fill": "v-fg",
+            "fills.0": "v-fg",
             "fontSize": "s-fontSize",
             "lineHeight": "s-lineHeight"
           },
@@ -825,13 +1162,14 @@
           "id": "inst-cross-icon-end",
           "layout": "horizontal",
           "padding": 0,
+          "gap": 0,
           "padT": 0,
           "padR": 0,
           "padB": 0,
           "padL": 0,
           "vars": {
-            "w": "i-icon",
-            "h": "i-icon"
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "behavior": {
             "version": 2,
@@ -901,7 +1239,7 @@
           "sourceId": "icon-arrow-path",
           "overrides": {},
           "vars": {
-            "stroke": "i-fg-v"
+            "stroke": "v-fg"
           }
         }
       ]
@@ -1258,8 +1596,8 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
-          "sm": 1.5714285714285714,
-          "lg": 1.4444444444444444
+          "sm": 22,
+          "lg": 26
         }
       },
       {

@@ -34,12 +34,22 @@ export interface NodeField {
     field: string;
 }
 
+/** A text slot drawn as an input: the schema names the slot and its value and placeholder props. Data only: the engine renders it, the canvas keeps the text layer. */
+export interface ControlDef {
+    slot: string;
+    value: string;
+    placeholder?: string;
+}
+
+/** Dimensions a literal prop needs: the variable props whose collections must be bound on the master (data only). */
+export interface RequiresCols { requires?: string[] }
+
 /** A prop whose value is a literal stored on the instance. */
 export type LiteralProp =
-    | { source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf }
-    | { source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf }
-    | { source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string>; visibleIf?: VisibleIf }
-    | { source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf };
+    | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf } & RequiresCols);
 
 export type PropDef = VariableProp | LiteralProp;
 
@@ -60,10 +70,12 @@ export interface ElementDef {
     blockClickProps: string[];
 }
 
-/** The managed icon slot: the props that show it, place it and choose its icon, and the tokens that colour and size it. */
+/** A managed icon slot: the props that show it and choose its icon, and the tokens that colour and size it. A def with a
+ * placement maps each placement value to a managed slot; a def without one names its fixed slot directly. */
 export interface IconSlotDef {
     show: string;
-    placement: string;
+    placement?: string;
+    slot?: string;
     component: string;
     tokens: { colour: string; disabledColour: string; size: string };
 }
@@ -89,7 +101,8 @@ export interface TemplateSchema {
     group: string;
     element: ElementDef;
     anatomy: AnatomySlot[];
-    icon: IconSlotDef;
+    icons: IconSlotDef[];
+    control?: ControlDef;
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

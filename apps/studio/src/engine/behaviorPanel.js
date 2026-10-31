@@ -54,6 +54,15 @@ function masterHtml(panel, esc, findings, code) {
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
     if (!panel.templateId) return section('Template and binding', templateRow + empty('Choose a template to bind this component.'), esc);
+    // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
+    const needs = (panel.needs ?? []).map(r => {
+        const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
+        const control = `<select data-bp="collection" data-bp-prop="${esc(r.dimension)}" aria-label="${esc(r.dimension)} collection">
+            <option value="">None</option>${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.collectionId ? 'selected' : ''}` + `>${esc(o.name)}</option>`).join('')}
+        </select>${badge}`;
+        const unmatched = r.collectionId === null ? empty(`No "${r.collection}" collection matched. Pick one.`) : '';
+        return row(r.label, control, esc, r.dimension) + unmatched;
+    }).join('');
     const collections = panel.rows.map(r => {
         const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
         const control = `<select data-bp="collection" data-bp-prop="${esc(r.prop)}" aria-label="${esc(r.prop)} collection">
@@ -70,7 +79,7 @@ function masterHtml(panel, esc, findings, code) {
     ].join('');
     const generate = `<button class="wide-button full-width" data-bp-action="generate" ${code?.problems.length ? 'disabled' : ''}>Generate code</button>`;
     return section('Template and binding', templateRow, esc)
-        + block('Collections', collections + bindTokensRow(findings, esc), esc)
+        + block('Collections', needs + collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
         + diagnosticsSection(findings, code?.problems ?? [], esc);
@@ -113,19 +122,21 @@ function bindTokensRow(findings, esc) {
     return `<button class="wide-button full-width" data-bp-action="bind-tokens" ${unbound ? '' : 'disabled'}>${esc(label)}</button>`;
 }
 
-/** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs). */
+/** A row for a literal prop. Only the types the schema knows get a control; anything else gets none (no stubs).
+ * A prop whose collections are missing on the master is disabled, with the message naming them. */
 function literalRow(r, esc) {
-    const name = esc(r.prop), label = labelOf(r.prop);
+    const name = esc(r.prop), label = r.label ?? labelOf(r.prop);
+    const hint = r.hint ? `<div class="small-label">${esc(r.hint)}</div>` : '';
     if (r.kind === 'icon')
-        return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
+        return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-prop="${name}" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
     if (r.type === 'boolean')
-        return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop);
+        return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}${r.disabled ? ' disabled' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop) + hint;
     if (r.type === 'enum')
-        return row(label, `<select data-bp="value" data-bp-kind="literal" data-bp-type="enum" data-bp-prop="${name}" aria-label="${name}">
+        return row(label, `<select data-bp="value" data-bp-kind="literal" data-bp-type="enum" data-bp-prop="${name}" aria-label="${name}"${r.disabled ? ' disabled' : ''}>
                 ${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
-            </select>`, esc, r.prop);
+            </select>`, esc, r.prop) + hint;
     if (r.type === 'string')
-        return row(label, `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${name}" value="${esc(r.value)}">`, esc, r.prop);
+        return row(label, `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${name}" value="${esc(r.value)}"${r.disabled ? ' disabled' : ''}>`, esc, r.prop) + hint;
     return '';
 }
 

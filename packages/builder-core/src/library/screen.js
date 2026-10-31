@@ -7,6 +7,8 @@
 //   { kind: 'text', text, style, nodeId, name }
 //   { kind: 'unsupported', nodeId, name, box, reason }                       — tidak di-generate (→ Issue)
 
+import { strokeSideWidths } from '../geometry/shapes.js';
+
 export const CRUD_ROLES = ['list', 'create', 'edit', 'view'];
 export const ROLE_LABEL = { list: 'List', create: 'Create', edit: 'Edit', view: 'View', custom: 'Custom', dialog: 'Dialog' };
 export const FORM_FIELD_COMPONENTS = ['TextField', 'TextAreaField', 'PasswordField', 'SelectField', 'SwitchField'];
@@ -48,7 +50,7 @@ const round = v => Math.round(v * 100) / 100;
 function paint(ctx, n, prop) {
     const value = n[prop];
     if (!value || value === 'none') return null;
-    const bound = n.vars?.[prop] ?? (prop === 'fill' ? n.vars?.['fills.0'] : undefined);
+    const bound = prop === 'fill' ? n.vars?.['fills.0'] : n.vars?.[prop];
     const v = bound && ctx.vars.get(bound);
     if (v) return { css: `var(${cssVarOf(v)}, ${value})`, raw: false };
     return { css: value, raw: true };
@@ -134,9 +136,7 @@ function frameStyle(ctx, n, issues) {
     }
     if (n.strokeWidth > 0 && n.stroke && n.stroke !== 'none' && n.strokeVisible !== false) {
         const stroke = paint(ctx, n, 'stroke');
-        const m = n.strokeSides || 'all', w = n.strokeWidth;
-        const sides = m === 'custom' || m === true ? [n.strokeT ?? w, n.strokeR ?? w, n.strokeB ?? w, n.strokeL ?? w]
-            : m === 'all' ? [w, w, w, w] : ['top', 'right', 'bottom', 'left'].map(k => (m === k ? w : 0));
+        const { t, r, b, l } = strokeSideWidths(n), sides = [t, r, b, l];
         s.borderStyle = 'solid';
         s.borderColor = stroke.css;
         s.borderWidth = sides.map(x => `${x}px`).join(' ');

@@ -14,7 +14,6 @@ export const NODE_PROPERTIES = {
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
         gap: { kind: 'length', css: 'gap' },
-        minWidth: { kind: 'length', css: 'min-width' },
     },
     text: {
         fill: { kind: 'color', css: 'color' },
@@ -27,12 +26,12 @@ export const NODE_PROPERTIES = {
 };
 
 /**
- * The node fields a literal prop can write, per node kind: the prop type it takes and, for a boolean, the value each state writes.
- * `layoutSizingH` is the width mode of a frame: true is fill, false is hug.
+ * The node fields a literal prop can write, per node kind: the prop type it takes.
+ * Frames take none: node sizing is the node's own, never written by a template prop.
  * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
  */
 export const NODE_FIELDS = {
-    frame: { layoutSizingH: { kind: 'boolean', values: { true: 'fill', false: 'hug' } } },
+    frame: {},
     text: { text: { kind: 'string' } },
 };
 
@@ -74,7 +73,7 @@ export const COLOUR_TOKENS = ['bg', 'fg', 'border', 'outline-color'];
  * @type {Record<string, string[]>}
  */
 export const VARIABLE_KEYS = {
-    fill: ['fill'],
+    fill: ['fills.0'],
     stroke: ['stroke'],
     radius: ['radius'],
     paddingX: ['padH'],
@@ -83,7 +82,6 @@ export const VARIABLE_KEYS = {
     fontSize: ['fontSize'],
     lineHeight: ['lineHeight'],
     size: ['w', 'h'],
-    minWidth: ['minW'],
 };
 
 /**
@@ -112,28 +110,15 @@ export function literalFields(template, props) {
         if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
         else out.push({ key, field, value: String(raw) });
     }
-    // An icon-only instance hides its label (the text slot's visible field); the icon is its only content.
-    if (iconOnlyValuesOf(template).length) out.push({ key: labelKeyOf(template), field: 'visible', value: !iconOnlyIn(template, props) });
     return out;
 }
 
-/** The placement values that make an instance icon-only (the placement prop's `iconOnly`); none when the template has none. */
-export const iconOnlyValuesOf = template => template.props[template.icon.placement]?.iconOnly ?? [];
-
-/** Whether the instance is icon-only: its icon is shown and its placement is an icon-only value. */
-export const iconOnlyIn = (template, props) => props[template.icon.show] === true && iconOnlyValuesOf(template).includes(String(props[template.icon.placement]));
-
-/** The anatomy slot of the label (the required text slot). */
-const labelKeyOf = template => template.anatomy.find(slot => slot.kind === 'text').id;
-
 /**
- * The node fields literal props write, per display key: the label text and the root width mode. These fields belong to the instance
+ * The node fields literal props write, per display key: the label text. These fields belong to the instance
  * once a prop writes them, so the copy from the master never overwrites them.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {{ key: string, field: string }[]}
  */
 export function literalFieldNames(template) {
-    const names = nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
-    if (iconOnlyValuesOf(template).length) names.push({ key: labelKeyOf(template), field: 'visible' });
-    return names;
+    return nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
 }

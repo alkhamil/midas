@@ -32,6 +32,13 @@ function propProblems(name, def, props) {
     } else {
         out.push(`prop "${name}" has unknown source "${def.source}"`);
     }
+    if (def.requires !== undefined) {
+        if (!Array.isArray(def.requires)) out.push(`prop "${name}" requires must be a list of dimensions`);
+        else for (const dim of def.requires) {
+            const target = isPlainObject(props[dim]) && props[dim];
+            if (!target || target.source !== 'variable') out.push(`prop "${name}" requires "${dim}", which is not a variable prop`);
+        }
+    }
     if (def.visibleIf !== undefined) {
         const cond = def.visibleIf;
         const target = isPlainObject(cond) && props[cond.prop];
@@ -98,6 +105,7 @@ export function validateTemplateSchema(schema) {
     out.push(...tokenKindProblems(schema, allTokens));
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
+    out.push(...controlProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -174,35 +182,65 @@ function elementProblems(schema) {
 }
 
 /**
- * Problems in the managed icon slot: its show, placement and component props, its colour and size tokens, and the anatomy slot each
- * placement value maps to (a managed icon slot).
+ * Problems in the managed icon slots: each def names a boolean show prop and an icon component prop, and either a placement enum
+ * (each value maps to a managed anatomy slot) or a fixed managed slot. Each def names the colour and size tokens of its slot.
  * @param {any} schema
  * @param {string[]} allTokens
  * @returns {string[]}
  */
 function iconProblems(schema, allTokens) {
-    const icon = schema.icon;
-    if (!isPlainObject(icon)) return ['schema has no icon slot'];
+    const icons = schema.icons;
+    if (!Array.isArray(icons) || icons.length === 0) return ['schema has no icons list (managed icon slot defs)'];
     const props = isPlainObject(schema.props) ? schema.props : {};
+    const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed).map(s => s.id);
     const out = [];
-    const show = props[icon.show], placement = props[icon.placement], component = props[icon.component];
-    if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`icon show "${icon.show}" is not a boolean prop`);
-    if (!placement || placement.source !== 'literal' || placement.type !== 'enum') out.push(`icon placement "${icon.placement}" is not an enum prop`);
-    if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`icon component "${icon.component}" is not an icon prop`);
-    if (placement && placement.type === 'enum') {
-        if (!isPlainObject(placement.slots)) out.push(`icon placement "${icon.placement}" has no slots`);
-        else {
-            const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed).map(s => s.id);
-            for (const option of placement.options) {
-                if (!managed.includes(placement.slots[option])) out.push(`icon placement "${option}" maps to "${placement.slots[option]}", which is not a managed anatomy slot`);
+    icons.forEach((icon, i) => {
+        const tag = `icon def ${i}`;
+        if (!isPlainObject(icon)) { out.push(`${tag} must be an object`); return; }
+        const show = props[icon.show], component = props[icon.component];
+        if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
+        if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
+        if (icon.placement !== undefined) {
+            const placement = props[icon.placement];
+            if (!placement || placement.source !== 'literal' || placement.type !== 'enum') out.push(`${tag} placement "${icon.placement}" is not an enum prop`);
+            else {
+                if (!isPlainObject(placement.slots)) out.push(`${tag} placement "${icon.placement}" has no slots`);
+                else for (const option of placement.options) {
+                    for (const slot of [placement.slots[option] ?? []].flat()) {
+                        if (!managed.includes(slot)) out.push(`${tag} placement "${option}" maps to "${slot}", which is not a managed anatomy slot`);
+                    }
+                }
             }
+            if (icon.slot !== undefined && !managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
+        } else {
+            if (!isName(icon.slot)) out.push(`${tag} needs a slot or a placement`);
+            else if (!managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
         }
-    }
-    if (placement && placement.type === 'enum') {
-        for (const value of placement.iconOnly ?? []) if (!placement.options.includes(value)) out.push(`icon-only placement "${value}" is not an option of "${icon.placement}"`);
-    }
-    for (const role of ['colour', 'disabledColour', 'size']) {
-        if (!allTokens.includes(icon.tokens?.[role])) out.push(`icon ${role} token "${icon.tokens?.[role]}" is not a token`);
+        for (const role of ['colour', 'disabledColour', 'size']) {
+            if (!allTokens.includes(icon.tokens?.[role])) out.push(`${tag} ${role} token "${icon.tokens?.[role]}" is not a token`);
+        }
+    });
+    return out;
+}
+
+/**
+ * Problems in the control: it names a text anatomy slot and the string props that fill its value and placeholder.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function controlProblems(schema) {
+    const control = schema.control;
+    if (control === undefined) return [];
+    if (!isPlainObject(control)) return ['control must be an object'];
+    const out = [];
+    const text = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.kind === 'text').map(s => s.id);
+    if (!text.includes(control.slot)) out.push(`control slot "${control.slot}" is not a text anatomy slot`);
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const value = props[control.value];
+    if (!value || value.source !== 'literal' || value.type !== 'string') out.push(`control value "${control.value}" is not a string prop`);
+    if (control.placeholder !== undefined) {
+        const placeholder = props[control.placeholder];
+        if (!placeholder || placeholder.source !== 'literal' || placeholder.type !== 'string') out.push(`control placeholder "${control.placeholder}" is not a string prop`);
     }
     return out;
 }

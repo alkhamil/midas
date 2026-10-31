@@ -88,7 +88,7 @@ test('a token with no kind is refused', () => {
 test('an icon placement must map to a managed anatomy slot', () => {
     const bad = clone(BUTTON);
     bad.props.iconPlacement.slots.end = 'label';
-    assert.match(validateTemplateSchema(bad).join('\n'), /icon placement "end" maps to "label", which is not a managed anatomy slot/);
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 placement "end" maps to "label", which is not a managed anatomy slot/);
 });
 
 test('the element must name a persistent state that disables it', () => {
@@ -101,4 +101,61 @@ test('every state has a pseudo-class', () => {
     const bad = clone(BUTTON);
     delete bad.statePseudo.hover;
     assert.match(validateTemplateSchema(bad).join('\n'), /state "hover" has no pseudo-class/);
+});
+
+test('a placement value can map to several managed slots', () => {
+    const both = clone(BUTTON);
+    both.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] };
+    assert.deepEqual(validateTemplateSchema(both), []);
+    const bad = clone(BUTTON);
+    bad.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'label'] };
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 placement "both" maps to "label", which is not a managed anatomy slot/);
+});
+
+test('a placement icon def may pin one slot; an unknown slot is refused', () => {
+    assert.deepEqual(BUTTON.icons.length, 2);
+    const bad = clone(BUTTON);
+    bad.icons[0].slot = 'nope';
+    assert.match(validateTemplateSchema(bad).join('\n'), /not a managed anatomy slot/);
+});
+test('managed icon slots come as a list of defs', () => {
+    assert.ok(Array.isArray(BUTTON.icons) && BUTTON.icons.length > 0);
+    assert.deepEqual(validateTemplateSchema(BUTTON), []);
+});
+
+test('a schema without an icons list is rejected', () => {
+    const single = clone(BUTTON);
+    single.icons = { show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: BUTTON.icons[0].tokens };
+    assert.match(validateTemplateSchema(single).join('\n'), /schema has no icons list/);
+    const gone = clone(BUTTON);
+    delete gone.icons;
+    assert.match(validateTemplateSchema(gone).join('\n'), /schema has no icons list/);
+});
+
+test('a fixed icon def names its managed slot directly, with no placement', () => {
+    const fixed = clone(BUTTON);
+    fixed.icons = [{ show: 'hasIcon', slot: 'iconStart', component: 'icon', tokens: BUTTON.icons[0].tokens }];
+    assert.deepEqual(validateTemplateSchema(fixed), []);
+});
+
+test('a fixed icon def with an unknown or missing slot is rejected', () => {
+    const unknown = clone(BUTTON);
+    unknown.icons = [{ show: 'hasIcon', slot: 'nope', component: 'icon', tokens: BUTTON.icons[0].tokens }];
+    assert.match(validateTemplateSchema(unknown).join('\n'), /icon def 0 slot "nope" is not a managed anatomy slot/);
+    const missing = clone(BUTTON);
+    missing.icons = [{ show: 'hasIcon', component: 'icon', tokens: BUTTON.icons[0].tokens }];
+    assert.match(validateTemplateSchema(missing).join('\n'), /icon def 0 needs a slot or a placement/);
+});
+
+test("each icon def's tokens must be tokens of the template", () => {
+    const bad = clone(BUTTON);
+    bad.icons = [{ ...clone(BUTTON).icons[0], tokens: { colour: 'nope', disabledColour: 'fg-disabled', size: 'iconSize' } }];
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 colour token "nope" is not a token/);
+});
+
+test('a prop can require collections by dimension, and an unknown dimension is refused', () => {
+    assert.deepEqual(BUTTON.props.hasIcon.requires, ['variant', 'size']);
+    const bad = clone(BUTTON);
+    bad.props.hasIcon.requires = ['variant', 'nope'];
+    assert.match(validateTemplateSchema(bad).join('\n'), /prop "hasIcon" requires "nope", which is not a variable prop/);
 });

@@ -25,6 +25,17 @@ export function isManagedLayer(node) {
 }
 
 /**
+ * Whether the engine owns a node sizing: the icon instance a managed slot holds fills its slot on every side, so the
+ * copy from the icon component never overwrites its sizing. Nothing else is engine-sized: the Button root and the label
+ * keep the sizing the user chose, and the icon inner layers stay faithful copies of the component.
+ * @param {any} node
+ * @param {any} parent its parent layer
+ */
+export function isSlotIconInstance(node, parent) {
+    return !!node && node.isInstance === true && !!parent && isManagedLayer(parent);
+}
+
+/**
  * Why `action` is refused for the nodes it would touch, or null when none of them is managed.
  * @param {keyof typeof WHAT} action
  * @param {any[]} nodes the top-level layers the action would touch

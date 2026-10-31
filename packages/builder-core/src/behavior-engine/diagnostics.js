@@ -1,6 +1,6 @@
 // Diagnostics (pure). A document in, a list of findings out, in document order. An error means preview or generated code would be
 // wrong (a variable missing from a collection or a mode, a token that cannot be resolved for an instance's modes). A warning means
-// something is left out or set by hand (a collection no component binds, a master token not bound, a layer rebound by hand). An
+// something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps } from './registry.js';
 import { resolveTokens, variableKey } from './tokens.js';
@@ -29,17 +29,20 @@ export function diagnoseDocument(doc) {
     /** @type {Record<string, unknown>[]} */
     const out = [];
 
-    const bound = new Set(masters.flatMap(m => Object.values(m.behavior.variables).filter(Boolean)));
-    for (const c of collections) {
-        if (!bound.has(c.id)) out.push({ severity: 'warning', code: 'unused-collection', collection: c.name, message: `Unused collection "${c.name}": excluded from preview and code generation.` });
-    }
-
     for (const m of masters) {
         const template = TEMPLATES.get(m.behavior.templateId);
         if (!template) continue;
-        for (const [dim] of variableProps(template)) {
-            const collection = collections.find(c => c.id === m.behavior.variables[dim]);
-            if (!collection) continue;
+        for (const [dim, def] of variableProps(template)) {
+            const collectionId = m.behavior.variables[dim];
+            if (!collectionId) {
+                out.push({ severity: 'error', code: 'dimension-unbound', node: m.name, nodeId: m.id, dimension: dim, collection: def.collection, message: `${m.name}: no "${def.collection}" collection is bound for "${dim}".` });
+                continue;
+            }
+            const collection = collections.find(c => c.id === collectionId);
+            if (!collection) {
+                out.push({ severity: 'error', code: 'collection-missing', node: m.name, nodeId: m.id, dimension: dim, collection: collectionId, message: `${m.name}: collection "${collectionId}" bound for "${dim}" does not exist.` });
+                continue;
+            }
             for (const [group, names] of Object.entries(template.tokens)) {
                 if (dimensionOfGroup(group, template.props) !== dim) continue;
                 for (const token of names) {
@@ -75,8 +78,8 @@ export function diagnoseDocument(doc) {
         }
         const { unresolved } = resolveTokens(template, binding, modes, variables);
         for (const u of unresolved) {
-            // A missing variable or value is reported once, on the master.
-            if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode') continue;
+            // A missing variable, value or binding is reported once, on the master.
+            if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode' || u.reason === 'dimension-unbound' || u.reason === 'collection-missing') continue;
             out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
         }
         const props = resolveProps(template, inst.behavior.props);
@@ -90,7 +93,8 @@ export function diagnoseDocument(doc) {
     for (const m of masters) {
         const template = TEMPLATES.get(m.behavior.templateId);
         if (!template) continue;
-        for (const [layer, prop, token] of unboundTokens(template, m, childrenOf)) {
+        const known = new Set(items.map(i => i.id));
+        for (const [layer, prop, token] of unboundTokens(template, m, childrenOf, known)) {
             out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message: `${m.name}: ${layer} ${prop} is not bound to "${template.group}/${token}".` });
         }
     }
@@ -114,11 +118,13 @@ function instanceLayers(inst, master, childrenOf) {
 
 /**
  * The master's mapped properties that are not bound to their token, as [layer, prop, token] triples.
+ * A binding to a variable that no longer exists counts as unbound, so a deleted collection never reads as bound.
  * @param {any} template
  * @param {any} master
  * @param {(id: string) => any[]} childrenOf
+ * @param {Set<string>} known the ids of the variables that still exist
  */
-function unboundTokens(template, master, childrenOf) {
+function unboundTokens(template, master, childrenOf, known) {
     const tokens = Object.values(template.tokens).flat();
     const layers = new Map(masterLayersOf(master, childrenOf).map(({ key, node }) => [key, node]));
     /** @type {[string, string, string][]} */
@@ -128,7 +134,7 @@ function unboundTokens(template, master, childrenOf) {
         if (!layer) continue;
         for (const [prop, source] of Object.entries(props)) {
             if (!tokens.includes(source)) continue;
-            for (const varKey of VARIABLE_KEYS[prop] || []) if (!layer.vars?.[varKey]) out.push([key, prop, source]);
+            for (const varKey of VARIABLE_KEYS[prop] || []) if (layer.vars?.[varKey] === undefined || !known.has(layer.vars[varKey])) out.push([key, prop, source]);
         }
     }
     return out;
