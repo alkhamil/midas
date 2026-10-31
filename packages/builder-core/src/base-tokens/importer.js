@@ -123,16 +123,17 @@ function targetOf(sourcesByName, collection, path, mode, guard = []) {
     const token = source?.modes[mode]?.find(t => t.path === path);
     if (!token || !token.resolved) return null;
     if (token.resolved.kind === 'literal') return { collection, name: path, type: token.type, literal: token.raw };
-    const next = correspondingMode(sourcesByName, token.resolved.collection, mode);
+    const next = correspondingMode(sourcesByName, token.resolved.collection, token.resolved.path, mode);
     if (!next) return null;
     return targetOf(sourcesByName, token.resolved.collection, token.resolved.path, next, [...guard, key]);
 }
 
-/** The JSON mode a ref target is read in: the same mode name when the target has it, else its single mode. */
-function correspondingMode(sourcesByName, collection, mode) {
-    const modes = Object.keys(sourcesByName.get(collection)?.modes ?? {});
-    if (modes.includes(mode)) return mode;
-    if (modes.length === 1) return modes[0];
+/** The JSON mode a ref target is read in: the same mode name when the target has it, else the one mode holding the path. */
+function correspondingMode(sourcesByName, collection, path, mode) {
+    const modes = sourcesByName.get(collection)?.modes ?? {};
+    if (modes[mode]?.some(t => t.path === path)) return mode;
+    const holders = Object.keys(modes).filter(m => modes[m].some(t => t.path === path));
+    if (holders.length === 1) return holders[0];
     return null;
 }
 
