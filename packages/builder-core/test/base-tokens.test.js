@@ -46,10 +46,6 @@ const MINI_MAP = {
             colorMissing: { Light: 'text/gone', Dark: 'text/gone', role: 'nothing fits', derived: false, needsValue: true, reason: 'no fitting JSON value' },
         },
     },
-    Size: {
-        source: 'Size', modes: ['small', 'middle'], jsonModes: { small: 'sm', middle: 'md' },
-        items: { gapBase: { small: 'gap', middle: 'gap', role: 'gap', derived: false } },
-    },
     Typography: { source: 'Typography', modes: ['Mode 1'], naming: 'raw' },
     Icons: {
         modes: ['Base'],
@@ -98,7 +94,7 @@ test('resolveTokenRefs reports missing and ambiguous refs, never literals', () =
 });
 
 test('buildBasePlan keeps Light/Dark keys identical and aliases resolve through chains', () => {
-    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP);
+    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP, {});
     const sem = plan.items.filter(i => i.collection === 'Semantic');
     for (const item of sem) assert.deepEqual(Object.keys(item.values), ['Light', 'Dark']);
     const text = sem.find(i => i.name === 'colorText');
@@ -107,7 +103,7 @@ test('buildBasePlan keeps Light/Dark keys identical and aliases resolve through 
 });
 
 test('buildBasePlan flags derived aliases and needs-value names, never literals', () => {
-    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP);
+    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP, {});
     assert.deepEqual(plan.report.derived, [{ name: 'Semantic/colorNear', reason: 'nearest primitive' }]);
     const near = plan.items.find(i => i.name === 'colorNear');
     assert.deepEqual(near.values.Light, { alias: { collection: 'Primitives', name: 'clay/500' } });
@@ -118,17 +114,18 @@ test('buildBasePlan flags derived aliases and needs-value names, never literals'
 
 test('buildBasePlan throws on a map ref with no JSON behind it', () => {
     const bad = structuredClone(MINI_MAP);
-    bad.Size.items.gapBase.small = 'nope/nothing';
-    assert.throws(() => buildBasePlan(parseTokenJson(MINI), bad), /points at missing Size\/sm\/nope\/nothing/);
+    bad.Semantic.items.colorText.Light = 'nope/nothing';
+    assert.throws(() => buildBasePlan(parseTokenJson(MINI), bad, {}), /points at missing Semantic\/Light\/nope\/nothing/);
 });
 
 test('buildBasePlan is deterministic', () => {
-    const a = buildBasePlan(parseTokenJson(MINI), MINI_MAP);
-    const b = buildBasePlan(parseTokenJson(MINI), MINI_MAP);
+    const a = buildBasePlan(parseTokenJson(MINI), MINI_MAP, {});
+    const b = buildBasePlan(parseTokenJson(MINI), MINI_MAP, {});
     assert.deepEqual(a, b);
 });
 
 test('the bundled ant-map is well-formed', () => {
+    assert.ok(!('Size' in ANT_MAP), 'no JSON-based size mapping remains');
     for (const [section, map] of Object.entries(ANT_MAP)) {
         assert.ok(Array.isArray(map.modes) && map.modes.length, section + ' modes');
         for (const [name, entry] of Object.entries(map.items ?? map.colors ?? {})) {
@@ -141,7 +138,7 @@ test('the bundled ant-map is well-formed', () => {
 test('applyBasePlan assigns ids, links aliases and resolves through variableValue', () => {
     const store = { collections: [], items: [] };
     let n = 0;
-    const stats = applyBasePlan(store, buildBasePlan(parseTokenJson(MINI), MINI_MAP), () => `id${++n}`);
+    const stats = applyBasePlan(store, buildBasePlan(parseTokenJson(MINI), MINI_MAP, {}), () => `id${++n}`);
     assert.ok(stats.items > 0 && stats.aliases > 0);
     const sem = store.collections.find(c => c.name === 'Semantic');
     const text = store.items.find(i => i.collectionId === sem.id && i.name === 'colorText');
@@ -155,7 +152,7 @@ test('applyBasePlan is idempotent and never overwrites or renames', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const uid = () => `id${++n}`;
-    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP);
+    const plan = buildBasePlan(parseTokenJson(MINI), MINI_MAP, {});
     applyBasePlan(store, plan, uid);
     const before = structuredClone(store);
     const second = applyBasePlan(store, plan, uid);
@@ -167,4 +164,34 @@ test('applyBasePlan is idempotent and never overwrites or renames', () => {
     const again = applyBasePlan(store, plan, uid);
     assert.equal(store.items.filter(i => i.name === 'colorText').length, 2);
     assert.deepEqual(again, { collections: 0, items: 0, modes: 0, aliases: 0 });
+});
+
+test('static antd sizes alias Primitives steps and add missing steps as derived', () => {
+    const parsed = parseTokenJson([
+        { Primitives: { modes: { Base: { size: { 24: { $type: 'float', $value: 24 } } } } } },
+        { Semantic: { modes: { Light: {}, Dark: {} } } },
+    ]);
+    const sizes = {
+        controlHeightSM: { collection: 'Semantic', value: 24, primitive: 'size/24', derived: false, source: 'test' },
+        controlHeightXL: { collection: 'Semantic', value: 48, primitive: 'size/48', derived: true, source: 'test' },
+    };
+    const plan = buildBasePlan(parsed, { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } }, sizes);
+    const prim = plan.items.filter(i => i.collection === 'Primitives');
+    assert.deepEqual(prim.map(i => i.name), ['size/24', 'size/48']); // size/24 comes from the JSON; only size/48 is added
+    assert.equal(prim[1].values.Base.literal, 48);
+    for (const name of ['controlHeightSM', 'controlHeightXL']) {
+        const item = plan.items.find(i => i.collection === 'Semantic' && i.name === name);
+        assert.deepEqual(Object.keys(item.values), ['Light', 'Dark']);
+        assert.ok(item.values.Light.alias && item.values.Dark.alias, name + ' is an alias, never a literal');
+    }
+    assert.ok(plan.report.derived.some(d => d.name === 'Primitives/size/48')), 'added step listed as derived';
+    assert.ok(plan.report.derived.some(d => d.name === 'Semantic/controlHeightXL'), 'extrapolated token flagged derived');
+    assert.ok(!plan.report.derived.some(d => d.name === 'Semantic/controlHeightSM'), 'antd token not flagged');
+});
+
+test('static sizes reject a non-Semantic entry and a mismatched primitive value', () => {
+    const parsed = parseTokenJson([{ Primitives: { modes: { Base: { size: { 24: { $type: 'float', $value: 99 } } } } } }]);
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' }, Icons: { modes: [], sizes: { source: 'Size icons', prefix: 'size/' }, colors: {} } };
+    assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Size', value: 1, primitive: 'size/1', source: 'test' } }), /must name a Semantic number/);
+    assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', value: 24, primitive: 'size/24', source: 'test' } }), /wants 24 but Primitives\/size\/24 is 99/);
 });
