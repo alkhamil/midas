@@ -13,6 +13,36 @@ import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
 
 /**
+ * Follows a stored mode value through aliases (by item id) to its literal, or undefined when it never lands on one.
+ * @param {any} item
+ * @param {string} modeId
+ * @param {any[]} items
+ * @param {Set<string>} [guard]
+ */
+function literalOf(item, modeName, items, collections, guard = new Set()) {
+    if (!item || guard.has(item.id)) return undefined;
+    guard.add(item.id);
+    // An alias reads in its own collection's mode: the same mode name when it has it, else the first mode.
+    const modes = collections.find(c => c.id === item.collectionId)?.modes ?? [];
+    const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+    const value = modeId === undefined ? undefined : item.values?.[modeId];
+    if (typeof value === 'number' || typeof value === 'string') return value;
+    if (value && typeof value === 'object' && typeof value.alias === 'string') {
+        return literalOf(items.find(i => i.id === value.alias), modeName, items, collections, guard);
+    }
+    return undefined;
+}
+
+/**
+ * Whether a stored value is a ratio leftover: a positive number below any plausible px line height.
+ * @param {unknown} value
+ */
+const isRatioValue = value => typeof value === 'number' && value > 0 && value < 4;
+
+/** A mode name as it is matched: trimmed and lower case. */
+const modeKey = s => String(s ?? '').trim().toLowerCase();
+
+/**
  * Every finding in a document.
  * @param {{ variables?: { collections?: any[], items?: any[] }, pages?: { varModes?: Record<string, string>, nodes?: any[] }[] }} doc
  * @returns {Record<string, unknown>[]}
@@ -55,6 +85,10 @@ export function diagnoseDocument(doc) {
                     }
                     for (const mode of collection.modes || []) {
                         const value = item.values?.[mode.id];
+                        // A bound lineHeight that resolves to a ratio is a leftover of the antd-ratio base, never a px token.
+                        if (token === 'lineHeight' && value !== undefined && isRatioValue(literalOf(item, mode.name, items, collections))) {
+                            out.push({ severity: 'error', code: 'lineheight-ratio', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" resolves to a ratio in mode "${mode.name}", not px. Auto Fix rebinds it to the paired px token.` });
+                        }
                         if (value === undefined) {
                             out.push({ severity: 'error', code: 'variable-missing-in-mode', node: m.name, nodeId: m.id, variable, mode: mode.name, message: `${m.name}: variable "${variable}" has no value in mode "${mode.name}" of "${collection.name}".` });
                         }

@@ -262,6 +262,83 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             for (const token of names) ensureVariable(dim, token);
         }
     }
+    /** The literal a stored mode value resolves to, following aliases (each read in its own collection's mode). */
+    const storedLiteral = (item, modeName, guard = new Set()) => {
+        if (!item || guard.has(item.id)) return undefined;
+        guard.add(item.id);
+        const modes = collections.find(c => c.id === item.collectionId)?.modes ?? [];
+        const modeId = modes.find(m => modeKey(m.name) === modeKey(modeName))?.id ?? modes[0]?.id;
+        const value = modeId === undefined ? undefined : item.values?.[modeId];
+        if (typeof value === 'number' || typeof value === 'string') return value;
+        if (value && typeof value === 'object' && typeof value.alias === 'string') {
+            return storedLiteral(items.find(i => i.id === value.alias), modeName, guard);
+        }
+        return undefined;
+    };
+    /** A ratio leftover: a positive number below any plausible px line height. */
+    const isRatio = value => typeof value === 'number' && value > 0 && value < 4;
+    // Line heights that resolve to a ratio are rebound to the paired px token. The Semantic base a role names is
+    // repaired first (to the snapshot's Typography alias); the component variable then aliases the repaired base.
+    // `lineHeight` is schema vocabulary shared by every template, not per-component code.
+    let rebound = 0;
+    /** Plans overwriting one mode value with an alias; the applier writes repair entries even when a value is set. */
+    const rebind = (collectionName, collectionIndex, name, type, mode, target) => {
+        newItems.push({ collection: collectionName, collectionIndex, name, type, values: { [mode]: { alias: { collectionIndex: target.collectionIndex, name: target.name } } }, repair: true });
+        rebound++;
+    };
+    const lineRoles = new Map();
+    for (const [dim] of variableProps(template)) {
+        if (!(dim in dimCollection)) continue;
+        for (const [group, names] of Object.entries(template.tokens ?? {})) {
+            if (dimensionOfGroup(group, template.props) !== dim) continue;
+            for (const token of names) {
+                if (token !== 'lineHeight') continue;
+                for (const mode of modesOf(dim)) {
+                    const role = roleOf(template, token, mode);
+                    if (!isRef(role) && !lineRoles.has(role)) lineRoles.set(role, true);
+                }
+            }
+        }
+    }
+    for (const role of lineRoles.keys()) {
+        const entry = roles[role];
+        if (!entry || typeof entry.base !== 'string') continue;
+        const slash = entry.base.indexOf('/');
+        const baseColl = entry.base.slice(0, slash), baseName = entry.base.slice(slash + 1);
+        const cands = collsNamed(baseColl);
+        const ordered = [...cands.filter(c => !items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix))), ...cands.filter(c => items.some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(groupPrefix)))];
+        const base = ordered.flatMap(c => items.filter(i => i.collectionId === c.id && variableKey(i.name) === variableKey(baseName)))[0];
+        const target = baseTarget(role, 'number', `${baseColl}/${baseName}`);
+        if (!target || !base || base.type !== 'number') continue;
+        const snap = baseSnapshot.items.find(i => i.collection === baseColl && variableKey(i.name) === variableKey(baseName));
+        for (const m of baseSnapshot.collections.find(c => c.name === baseColl)?.modes ?? []) {
+            const hasMode = ordered.find(c => c.id === base.collectionId)?.modes.some(mm => modeKey(mm.name) === modeKey(m));
+            if (hasMode && isRatio(storedLiteral(base, m)) && snap?.values[m]?.alias) {
+                rebind(baseColl, collEntry(baseColl, [], 'base'), baseName, 'number', m, { collectionIndex: collEntry('Typography', [], 'base'), name: snap.values[m].alias.name });
+            }
+        }
+    }
+    for (const [dim] of variableProps(template)) {
+        if (!(dim in dimCollection)) continue;
+        const coll = dimCollection[dim];
+        for (const [group, names] of Object.entries(template.tokens ?? {})) {
+            if (dimensionOfGroup(group, template.props) !== dim) continue;
+            for (const token of names) {
+                if (token !== 'lineHeight') continue;
+                const varName = `${template.group}/${token}`;
+                const have = coll ? itemIn(coll.id, varName) : null;
+                if (!have || have.type !== 'number') continue;
+                for (const mode of modesOf(dim)) {
+                    const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
+                    if (!hasMode || !isRatio(storedLiteral(have, mode))) continue;
+                    const role = roleOf(template, token, mode);
+                    const target = isRef(role) ? followRef(role, new Set()) : baseTarget(role, 'number', `${coll.name}/${varName}.${mode}`);
+                    if (!target) continue;
+                    rebind(coll.name, dimEntry[dim], varName, 'number', mode, target);
+                }
+            }
+        }
+    }
     // The layer bindings the existing auto-bind pipeline would write against the fixed store, for the confirm count.
     let boundProperties = 0;
     if (layers.length) {
@@ -320,11 +397,12 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         collections: [...new Set(newItems.map(i => i.collection))],
         modes: [...new Set(newCollections.filter(c => c.origin === 'component').map(c => `${c.name} (${c.modes.join(', ')})`))],
         boundProperties,
+        rebound,
         derived: derived.map(d => d.name),
         needsValue: needsValue.map(n => n.name),
         unfixable: unfixable.map(u => `${u.name} (${u.reason})`),
     };
-    const fixable = created.length > 0 || summary.fills > 0 || Object.keys(bindingUpdates).length > 0;
+    const fixable = created.length > 0 || summary.fills > 0 || rebound > 0 || Object.keys(bindingUpdates).length > 0;
     return { fixable, group: template.group, plan: { collections: newCollections, items: newItems }, bindingUpdates, derived, needsValue, unfixable, summary };
 }
 
@@ -390,7 +468,7 @@ export function applyAutoFix(store, binding, autoFix, uid) {
         const coll = (store.collections || []).find(c => c.id === cid);
         for (const [mode, value] of Object.entries(wanted.values)) {
             const id = coll && modeIdOf(coll, mode);
-            if (!id || item.values[id] !== undefined) continue;
+            if (!id || (item.values[id] !== undefined && wanted.repair !== true)) continue;
             if (value.needsValue) { item.values[id] = { color: '#d9d9d9', number: 0, string: '', boolean: false }[wanted.type] ?? null; item.needsValue = true; }
             else if (value.literal !== undefined) item.values[id] = value.literal;
             else if (value.alias) {
