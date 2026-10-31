@@ -113,8 +113,6 @@ export function resolveTokenRefs(sources, only = sources.map(s => s.name)) {
     return { unresolved };
 }
 
-/** The placeholder value of a variable flagged "needs value" (mirrors the studio's empty-variable defaults). */
-export const NEEDS_VALUE_DEFAULT = { color: '#d9d9d9', number: 0, string: '', boolean: false };
 
 /** A resolved literal or alias target: `{ collection, name, type }`, or null when it cannot become a variable. */
 function targetOf(sourcesByName, collection, path, mode, guard = []) {
@@ -309,7 +307,7 @@ export function applyBasePlan(store, plan, uid) {
         for (const [mode, value] of Object.entries(wanted.values)) {
             const id = modeIdOf(coll, mode);
             if (!id || item.values[id] !== undefined) continue;
-            if (value.needsValue) { item.values[id] = NEEDS_VALUE_DEFAULT[wanted.type] ?? null; item.needsValue = true; }
+            if (value.needsValue) { item.needsValue = true; }
             else if (value.literal !== undefined) item.values[id] = value.literal;
         }
     }

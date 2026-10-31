@@ -140,3 +140,53 @@ test('two Buttons share Button Variant, Button Color and Button Size; outline-co
         assert.equal(splitColor(rest.literal).alpha, 0, `outline-color is 0% in ${mode.name}`);
     }
 });
+
+/** Button and Input fixed on an empty file with the base generated: the store the axis, gap and halo checks read. */
+function fixedBoth() {
+    const store = emptyStore();
+    generateBase(store);
+    const nodes = [];
+    const btn = bindMaster(store, nodes, button, 'btn', 'Button');
+    autoFix(store, nodes, btn);
+    const inp = bindMaster(store, nodes, input, 'inp', 'Input');
+    autoFix(store, nodes, inp);
+    return { store, btn, inp };
+}
+
+const sizeItem = (store, collectionName, token) => {
+    const coll = store.collections.find(c => c.name === collectionName);
+    return { coll, item: store.items.find(i => i.collectionId === coll.id && i.name === token) };
+};
+
+test('paddingX and paddingY differ in every mode of Button and Input; Button paddingY is zero, Input paddingY is not', () => {
+    const { store } = fixedBoth();
+    for (const [name, axisX, axisY] of [['Button Size', 'paddingX', 'paddingY'], ['Input Size', 'paddingX', 'paddingY']]) {
+        const x = sizeItem(store, name, axisX), y = sizeItem(store, name, axisY);
+        for (const mode of x.coll.modes) {
+            const px = restOf(x.item, mode.name, store.items, store.collections).literal;
+            const py = restOf(y.item, mode.name, store.items, store.collections).literal;
+            assert.notEqual(px, py, `${name} ${mode.name}: paddingX ${px} and paddingY ${py} differ`);
+            if (name === 'Button Size') assert.equal(py, 0, `Button ${mode.name}: paddingY is zero (antd buttonPaddingVertical)`);
+        }
+    }
+});
+
+test('every component gap resolves to the gap ladder, never to a margin or a padding step', () => {
+    const { store } = fixedBoth();
+    for (const name of ['Button Size', 'Input Size']) {
+        const { coll, item } = sizeItem(store, name, 'gap');
+        for (const mode of coll.modes) {
+            const target = store.items.find(i => i.id === item.values[mode.id].alias);
+            assert.ok(/^gap/.test(target.name), `${name} ${mode.name} gap aliases ${target.name}`);
+        }
+    }
+});
+
+test('a needs-value base variable is flagged and left unset, never filled with a literal', () => {
+    const store = emptyStore();
+    const plan = { collections: [{ name: 'Semantic', modes: ['Base'] }], items: [{ collection: 'Semantic', name: 'probe', type: 'color', values: { Base: { needsValue: true, note: 'test' } } }], report: { needsValue: [] } };
+    applyBasePlan(store, plan, uid);
+    const item = store.items.find(i => i.name === 'probe');
+    assert.equal(item.needsValue, true);
+    assert.deepEqual(Object.keys(item.values), [], 'no mode value is written');
+});
