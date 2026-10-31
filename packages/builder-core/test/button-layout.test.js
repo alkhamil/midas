@@ -52,11 +52,11 @@ test('Play draws a left-aligned Button with the label at the row start', () => {
     assert.equal(labelOf(root).style.textAlign, 'left');
 });
 
-test('Play justifies the root from the master, including end and column', () => {
-    const end = toDomTree(doc([master({ primaryAlign: 'end', counterAlign: 'center' }), labelLayer('m', { layoutSizingH: 'hug' }), labelLayer('i', { layoutSizingH: 'hug' }), instance()]), 'i').root;
-    assert.equal(end.style.justifyContent, 'flex-end');
+test('Play justifies the root from the master, including end and column; the Button cross axis is always its centre line', () => {
+    const end = toDomTree(doc([master({ primaryAlign: 'end', counterAlign: 'start' }), labelLayer('m', { layoutSizingH: 'hug' }), labelLayer('i', { layoutSizingH: 'hug' }), instance()]), 'i').root;
+    assert.deepEqual([end.style.justifyContent, end.style.alignItems], ['flex-end', 'center']);
     const column = toDomTree(doc([master({ layout: 'vertical', primaryAlign: 'center', counterAlign: 'end' }), labelLayer('m', { layoutSizingH: 'hug' }), instance()]), 'i').root;
-    assert.deepEqual([column.style.flexDirection, column.style.justifyContent, column.style.alignItems], ['column', 'center', 'flex-end']);
+    assert.deepEqual([column.style.flexDirection, column.style.justifyContent, column.style.alignItems], ['column', 'center', 'center']);
 });
 
 test('a hug or fixed label keeps its size and never squeezes, in Play', () => {
@@ -139,15 +139,15 @@ test('a hug Button keeps its own size in Play and never stretches', () => {
 test('the export lays the root out like the canvas frame, as inline-flex', () => {
     const nodes = [master({ primaryAlign: 'center', counterAlign: 'center' }), labelLayer('m', { layoutSizingH: 'fill', textAlign: 'center' })];
     const css = generateComponent(button, model.binding, variables, 'Button', nodes[0], kids(nodes)).files['Button.css'];
-    assert.match(css, /\.button \{\n  display: inline-flex;\n  flex-direction: row;\n(?:.*\n)*?\s*justify-content: center;\n(?:.*\n)*?\s*align-items: center;\n/);
+    assert.match(css, /\.button \{\n  display: inline-flex;\n  box-sizing: border-box;\n  flex-direction: row;\n(?:.*\n)*?\s*justify-content: center;\n(?:.*\n)*?\s*align-items: center;\n/);
     assert.doesNotMatch(css, /display: flex;/);
     assert.match(css, /\.button-label \{\n(?:.*\n)*?\s*flex: 1 1 0;\n(?:.*\n)*?\s*text-align: center;\n/);
 });
 
-test('absent master alignments export as the start, and a hug label keeps its size', () => {
+test('absent master justification exports as the start; the Button cross axis is centred, and a hug label keeps its size', () => {
     const nodes = [master({}), labelLayer('m', { layoutSizingH: 'hug', w: 60, textAlign: 'left' })];
     const css = generateComponent(button, model.binding, variables, 'Button', nodes[0], kids(nodes)).files['Button.css'];
-    assert.match(css, /\.button \{\n(?:.*\n)*?\s*justify-content: flex-start;\n(?:.*\n)*?\s*align-items: flex-start;\n/);
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*justify-content: flex-start;\n(?:.*\n)*?\s*align-items: center;\n/);
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*gap: var\(--button-gap\);\n/);
     assert.doesNotMatch(css, /^ {2}gap: \d+px;/m);
     assert.doesNotMatch(css, /^ {2}padding: \d+px/m);

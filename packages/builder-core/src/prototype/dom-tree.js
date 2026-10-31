@@ -286,7 +286,7 @@ function renderTemplate(n, template, parent, scope) {
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
-    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)) };
+    const style = { display: 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0), template.rootAlign) };
     // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
     if (strategy === 'overlay') {
         // The host draws nothing: the overlay is the only drawer.

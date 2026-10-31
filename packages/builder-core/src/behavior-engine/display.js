@@ -14,6 +14,7 @@ export const NODE_PROPERTIES = {
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
         gap: { kind: 'length', css: 'gap' },
+        height: { kind: 'length', css: 'height' },
     },
     text: {
         fill: { kind: 'color', css: 'color' },

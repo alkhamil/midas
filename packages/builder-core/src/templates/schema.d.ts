@@ -132,6 +132,8 @@ export interface TemplateSchema {
     persistentStates: Record<string, PersistentState>;
     /** Preview-only states: the base colour tokens each one replaces. */
     previewStates: Record<string, Record<string, string>>;
+    /** The cross-axis alignment of the root (start, center or end); it overrides the master's. */
+    rootAlign?: 'start' | 'center' | 'end';
     /** The CSS pseudo-class each state is written as. */
     statePseudo: Record<string, string>;
     /** Which token drives which property of which node (root, or an anatomy slot). */

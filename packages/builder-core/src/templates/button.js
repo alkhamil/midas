@@ -54,13 +54,13 @@ export const BUTTON = {
     // Which base role each token fills, per dimension mode (matched case-insensitively, `default` is the fallback).
     // A value with a slash is another token variable of this template, followed through the bound collection.
     tokenRoles: {
-        height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
-        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
-        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
-        paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'button-padding-x-md', lg: 'button-padding-x-lg', xl: 'button-padding-x-xl', default: 'button-padding-x-md' },
-        paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
-        gap: 'gap',
-        radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
+        height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
+        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
+        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
+        paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'button-padding-x-md', lg: 'button-padding-x-lg', xl: 'button-padding-x-xl', default: 'button-padding-x-md' },
+        paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
+        gap: 'gap',
+        radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         bg: { outlined: 'bg', dashed: 'bg', solid: './color-solid', filled: './color-bg', text: 'transparent', link: 'transparent', default: 'bg' },
         fg: { outlined: './color-text', dashed: './color-text', solid: './color-solid-text', filled: './color', text: './color-text', link: './color-text', default: './color-text' },
@@ -104,9 +104,12 @@ export const BUTTON = {
     },
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', active: ':active', focus: ':focus-visible' },
+    // The cross-axis alignment of the root: the label and the icon slots share one centre line, and the height is the Size token.
+    // Padding excludes the 1px border (antd's lineWidth is subtracted in the token), and the root is border-box, so the box is exactly `height`.
+    rootAlign: 'center',
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
+        root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         iconStart: { size: 'iconSize' },
         iconEnd: { size: 'iconSize' },

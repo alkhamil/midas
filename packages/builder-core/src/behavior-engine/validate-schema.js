@@ -105,6 +105,7 @@ export function validateTemplateSchema(schema) {
     out.push(...tokenKindProblems(schema, allTokens));
     out.push(...tokenRoleProblems(schema, allTokens));
     out.push(...elementProblems(schema));
+    if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...controlProblems(schema));
     out.push(...focusTargetProblems(schema));
