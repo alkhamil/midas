@@ -72,21 +72,37 @@ export function defaultNavigate(id, destinationId) {
 }
 
 /**
- * The frame Play starts on: the first flow of the active page, else the selected top-level frame, else the first top-level frame of
- * the active page. Null when the page has no top-level frame.
+ * The top-level frame that holds a node: the node itself when it is one, else the nearest ancestor that is. Null when the node sits
+ * outside every frame (a loose node on the page) or is not on the page.
+ */
+function topLevelFrameOf(page, id) {
+    const byId = new Map((page.nodes || []).map(n => [n.id, n]));
+    const topLevel = isTopLevelFrameIn(page);
+    let node = byId.get(id);
+    for (let steps = 0; node && steps <= byId.size; steps++) {
+        if (topLevel(node)) return node.id;
+        node = byId.get(node.parentId);
+    }
+    return null;
+}
+
+/**
+ * The frame Play starts on: the top-level frame that holds the selection (a selected child starts its frame; a selected frame starts
+ * itself), else the first flow of the active page, else the first top-level frame of the active page. A selection overrides the flow
+ * start marker. Null when the page has no top-level frame.
  * @param {{ id: string, nodes?: any[], prototype?: any }[]} pages
  * @param {string} activePageId
- * @param {string | null} selectedId
+ * @param {string | null} selectedId the first selected node
  * @returns {string | null}
  */
 export function playStartOf(pages, activePageId, selectedId) {
     const page = pages.find(p => p.id === activePageId);
     if (!page) return null;
-    const topLevel = (page.nodes || []).filter(isTopLevelFrameIn(page));
+    const selectedFrame = selectedId ? topLevelFrameOf(page, selectedId) : null;
+    if (selectedFrame) return selectedFrame;
     const flow = page.prototype?.flows?.[0];
     if (flow) return flow.startFrameId;
-    if (topLevel.some(n => n.id === selectedId)) return selectedId;
-    return topLevel[0]?.id ?? null;
+    return (page.nodes || []).find(isTopLevelFrameIn(page))?.id ?? null;
 }
 
 /** Triggers that hold while the pointer is over or down. Navigation and back cannot run on them. */

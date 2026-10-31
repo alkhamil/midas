@@ -31,14 +31,28 @@ test('the default interaction is an on-click navigate-to with an instant transit
     assert.deepEqual(defaultNavigate('i9', 'frame-home'), { id: 'i9', trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId: 'frame-home', transition: { type: 'instant', durationMs: 0 } } });
 });
 
-test('Play starts at the flow of the active page, else the selected top-level frame, else the first top-level frame', () => {
+test('Play starts at the selection\'s top-level frame, else the flow of the active page, else the first top-level frame', () => {
     const doc = buildPrototypeFixture();
     assert.equal(playStartOf(doc.pages, 'page-flow', null), 'frame-home');
-    assert.equal(playStartOf(doc.pages, 'page-flow', 'frame-done'), 'frame-home');
+    assert.equal(playStartOf(doc.pages, 'page-flow', 'frame-done'), 'frame-done', 'a selected frame overrides the flow start');
     const plain = [{ id: 'p', name: 'P', nodes: [{ id: 'A', type: 'frame', parentId: null }, { id: 'B', type: 'frame', parentId: null }] }];
     assert.equal(playStartOf(plain, 'p', 'B'), 'B');
     assert.equal(playStartOf(plain, 'p', null), 'A');
     assert.equal(playStartOf([{ id: 'e', name: 'E', nodes: [] }], 'e', null), null);
+});
+
+test('a selected child starts its top-level frame; a loose node outside every frame keeps the default', () => {
+    const page = { id: 'p', name: 'P', nodes: [
+        { id: 'A', type: 'frame', parentId: null },
+        { id: 'B', type: 'frame', parentId: null },
+        { id: 'Bc', type: 'text', parentId: 'B' },
+        { id: 'Bg', type: 'group', parentId: 'B' },
+        { id: 'Bgc', type: 'rectangle', parentId: 'Bg' },
+        { id: 'loose', type: 'rectangle', parentId: null },
+    ] };
+    assert.equal(playStartOf([page], 'p', 'Bc'), 'B', 'a text child starts the frame that holds it');
+    assert.equal(playStartOf([page], 'p', 'Bgc'), 'B', 'a nested child starts its top-level frame');
+    assert.equal(playStartOf([page], 'p', 'loose'), 'A', 'a loose node keeps the first-frame default');
 });
 
 test('a trigger edit sets the trigger, and after-delay starts with a delay of 500 ms that other triggers drop', () => {
