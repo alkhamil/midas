@@ -273,7 +273,12 @@ export function applyBasePlan(store, plan, uid) {
             if (!id || item.values[id] !== undefined || !value.alias) continue;
             const targetColl = collByName.get(value.alias.collection);
             const target = targetColl && findItem(targetColl.id, value.alias.name);
-            if (target && target.type === item.type && target.id !== item.id) { item.values[id] = { alias: target.id }; stats.aliases++; }
+            if (target && target.type === item.type && target.id !== item.id) {
+                const applied = { alias: target.id };
+                if (typeof value.opacity === 'number') applied.opacity = value.opacity;
+                item.values[id] = applied;
+                stats.aliases++;
+            }
         }
     }
     return stats;
