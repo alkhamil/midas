@@ -25,6 +25,7 @@
 - Baseline green: builder-core 770 tests, studio 43 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
 - Icon choices are remembered per managed slot (generic engine rule: placement carry, retained icon props); the instance Preview panel shows the state select only, no resolved-token list.
 - Base collections generate from the bundled snapshot (`base-snapshot.json`, built by `scripts/build-base-snapshot.js`), no file picker; Auto Fix aliases component variables by schema role from base collections, never literals, idempotent.
+- Size numbers follow antd-ref (seed + map formulas + Button/Input component tokens), aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
 
 ## Code map
