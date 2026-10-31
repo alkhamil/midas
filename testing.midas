@@ -2213,6 +2213,961 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "Large",
+          "parentId": null,
+          "x": 760,
+          "y": 40,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-lg",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "prefixIcon": "icon-check",
+              "placeholder": "large size"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "large"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "prefix",
+          "parentId": "i-size-lg",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-lg-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "prefix"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-size-lg",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-lg-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "i-size-lg-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-lg-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "i-size-lg-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "i-size-lg-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "in-v-fg"
+          }
+        },
+        {
+          "name": "Default",
+          "parentId": null,
+          "x": 760,
+          "y": 120,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-md",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "prefixIcon": "icon-check",
+              "placeholder": "default size"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "prefix",
+          "parentId": "i-size-md",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-md-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "prefix"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-size-md",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-md-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "i-size-md-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-md-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "i-size-md-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "i-size-md-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "in-v-fg"
+          }
+        },
+        {
+          "name": "Small",
+          "parentId": null,
+          "x": 760,
+          "y": 200,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-sm",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "prefixIcon": "icon-check",
+              "placeholder": "small size"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "small"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "prefix",
+          "parentId": "i-size-sm",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-sm-icon-start",
+          "layout": "horizontal",
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
+          },
+          "behavior": {
+            "version": 2,
+            "slot": "prefix"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-size-sm",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-sm-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Icon/check",
+          "parentId": "i-size-sm-icon-start",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "frame",
+          "id": "i-size-sm-icon-start-ic-icon-check",
+          "component": false,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {},
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill"
+        },
+        {
+          "name": "check",
+          "parentId": "i-size-sm-icon-start-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "type": "path",
+          "id": "i-size-sm-icon-start-ic-icon-check-path",
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "in-v-fg"
+          }
+        },
+        {
+          "name": "Username",
+          "parentId": null,
+          "x": 760,
+          "y": 280,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-value",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "Kopi Kita",
+              "placeholder": "Username"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-value",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Kopi Kita",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-value-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Off",
+          "parentId": null,
+          "x": 760,
+          "y": 360,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-state-disabled",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "Disabled text",
+              "placeholder": "Disabled",
+              "disabled": true
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "default",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-state-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Disabled text",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-disabled-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
+        },
+        {
+          "name": "Oops",
+          "parentId": null,
+          "x": 760,
+          "y": 440,
+          "w": 200,
+          "h": 40,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "i-state-error",
+          "isInstance": true,
+          "sourceId": "inp",
+          "layout": "horizontal",
+          "gap": 8,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "value": "",
+              "placeholder": "Something wrong"
+            }
+          },
+          "varModes": {
+            "c-input-variant": "outlined",
+            "c-input-status": "error",
+            "c-input-size": "middle"
+          },
+          "vars": {
+            "fills.0": "in-v-bg",
+            "stroke": "in-v-border",
+            "radius": "in-s-radius",
+            "padH": "in-s-paddingX",
+            "padV": "in-s-paddingY",
+            "gap": "in-s-gap"
+          }
+        },
+        {
+          "name": "Value",
+          "parentId": "i-state-error",
+          "x": 0,
+          "y": 0,
+          "w": 120,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-error-value",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "sourceId": "inp-value"
         }
       ]
     }

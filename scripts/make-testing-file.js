@@ -205,6 +205,14 @@ export function buildTestingFile() {
         ...inputInstance('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: '20' }, IMODES('filled', 'default', 'middle'), icons),
         ...inputInstance('i-disabled', 'No edit', 520, 280, { value: 'No edit', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
         ...inputInstance('i-addon', 'Site', 520, 360, { value: 'midas', addonBefore: 'https://', addonAfter: '.com' }, IMODES('borderless', 'default', 'small'), icons),
+        // Parity set mirroring the antd size demo: three prefix-icon inputs (large, default, small), one with a
+        // value, one disabled, one error. Placeholders are the demo labels, not antd values.
+        ...inputInstance('i-size-lg', 'Large', 760, 40, { hasIcon: true, iconPlacement: 'start', prefixIcon: 'icon-check', placeholder: 'large size' }, IMODES('outlined', 'default', 'large'), icons),
+        ...inputInstance('i-size-md', 'Default', 760, 120, { hasIcon: true, iconPlacement: 'start', prefixIcon: 'icon-check', placeholder: 'default size' }, IMODES('outlined', 'default', 'middle'), icons),
+        ...inputInstance('i-size-sm', 'Small', 760, 200, { hasIcon: true, iconPlacement: 'start', prefixIcon: 'icon-check', placeholder: 'small size' }, IMODES('outlined', 'default', 'small'), icons),
+        ...inputInstance('i-value', 'Username', 760, 280, { value: 'Kopi Kita', placeholder: 'Username' }, IMODES('outlined', 'default', 'middle'), icons),
+        ...inputInstance('i-state-disabled', 'Off', 760, 360, { value: 'Disabled text', placeholder: 'Disabled', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
+        ...inputInstance('i-state-error', 'Oops', 760, 440, { value: '', placeholder: 'Something wrong' }, IMODES('outlined', 'error', 'middle'), icons),
     ];
     return {
         format: 'midas', version: 1, name: 'Testing', pageId: 'page-testing',
