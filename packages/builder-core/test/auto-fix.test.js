@@ -109,9 +109,10 @@ test('planning is pure; applying twice is a no-op', () => {
     assert.equal(second.fixable, false);
 });
 
+const SNAPSHOT_DERIVED = ["Semantic/controlHeightXL","Semantic/fontSizeXS","Primitives/size/1.8","Semantic/lineHeightXS","Primitives/size/1.6667","Primitives/size/1.5714","Primitives/size/1.5","Primitives/size/1.4","Semantic/borderRadiusXL"];
 const EXPECTED_DERIVED = {
-    button: ['Semantic/colorPrimaryBg', 'Semantic/colorErrorBg', 'Semantic/colorPrimaryHover', 'Semantic/colorErrorHover', 'Semantic/colorPrimaryBgHover', 'Semantic/colorErrorBgHover', 'Semantic/colorPrimaryActive', 'Semantic/colorErrorActive', 'Semantic/colorBgContainerDisabled', 'Semantic/colorPrimaryOutline', 'Semantic/colorErrorOutline'],
-    input: ['Semantic/colorPrimaryHover', 'Semantic/colorErrorHover', 'Semantic/colorWarningHover', 'Semantic/colorBgContainerDisabled', 'Semantic/colorPrimaryOutline', 'Semantic/colorErrorOutline', 'Semantic/colorWarningOutline'],
+    button: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryBg","Semantic/colorErrorBg","Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorPrimaryBgHover","Semantic/colorErrorBgHover","Semantic/colorPrimaryActive","Semantic/colorErrorActive","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline"],
+    input: [...SNAPSHOT_DERIVED, "Semantic/colorPrimaryHover","Semantic/colorErrorHover","Semantic/colorWarningHover","Semantic/colorBgContainerDisabled","Semantic/colorPrimaryOutline","Semantic/colorErrorOutline","Semantic/colorWarningOutline"],
 };
 
 for (const tid of ['button', 'input']) {
@@ -156,5 +157,61 @@ test('button needs value only for transparent roles; input likewise', () => {
         const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
         assert.equal(plan.needsValue.length, count);
         for (const n of plan.needsValue) assert.ok(n.reason.length > 0);
+    }
+});
+
+test('button Size md/sm/lg height resolves to antd controlHeight through Semantic and Primitives', () => {
+    const template = TEMPLATES.get('button');
+    const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
+    const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
+    const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
+    const height = plan.plan.items.find(i => i.name === 'button/height');
+    for (const [mode, semName, primName, primValue] of [['md', 'controlHeight', 'size/32', 32], ['sm', 'controlHeightSM', 'size/24', 24], ['lg', 'controlHeightLG', 'size/40', 40]]) {
+        assert.equal(atName(height.values[mode].alias), 'Semantic/' + semName, mode);
+        const sem = findItem('Semantic', semName);
+        assert.equal(atName(sem.values.Light.alias), 'Primitives/' + primName, mode);
+        assert.equal(findItem('Primitives', primName).values.Base.literal, primValue, mode);
+    }
+    const inputHeight = planAutoFix({ template: TEMPLATES.get('input'), binding: emptyBinding(TEMPLATES.get('input')), variables: { collections: [], items: [] }, layers: [] });
+    const ih = inputHeight.plan.items.find(i => i.name === 'input/height');
+    const iname = a => inputHeight.plan.collections[a.collectionIndex].name + '/' + a.name;
+    assert.equal(iname(ih.values.md.alias), 'Semantic/controlHeight');
+});
+
+test('extrapolated antd sizes are flagged derived and still resolve', () => {
+    const template = TEMPLATES.get('button');
+    const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
+    for (const name of ['Semantic/controlHeightXL', 'Semantic/fontSizeXS', 'Semantic/lineHeightXS', 'Semantic/borderRadiusXL']) {
+        assert.ok(plan.derived.some(d => d.name === name), name + ' flagged derived');
+        const [coll, iname] = name.split('/');
+        const item = plan.plan.items.find(i => i.name === iname && plan.plan.collections[i.collectionIndex].name === coll);
+        assert.ok(item, name + ' created');
+        for (const value of Object.values(item.values)) assert.ok(value.alias, name + ' is an alias, never a literal');
+    }
+    const xsh = plan.plan.items.find(i => i.name === 'controlHeightXL' && plan.plan.collections[i.collectionIndex].name === 'Semantic');
+    assert.equal(xsh.values.Light.alias.name, 'size/48');
+});
+
+test('no JSON-based size mapping remains: aliases never point at Size collection metrics', () => {
+    const template = TEMPLATES.get('input');
+    const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
+    const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
+    for (const item of plan.plan.items) {
+        for (const value of Object.values(item.values)) {
+            if (!value.alias) continue;
+            const target = atName(value.alias);
+            assert.ok(!target.startsWith('Size/'), target + ' must not come from the JSON Size collection');
+        }
+    }
+    const sizeVars = plan.plan.items.filter(i => {
+        const coll = plan.plan.collections[i.collectionIndex].name;
+        return coll !== 'Primitives' && coll !== 'Typography' && coll !== 'Icons' && i.type === 'number';
+    });
+    for (const v of sizeVars) {
+        for (const value of Object.values(v.values)) {
+            if (!value.alias) continue;
+            const t = atName(value.alias);
+            assert.ok(t.startsWith('Semantic/') || t.startsWith('Primitives/') || t.startsWith('Icons/') || t.startsWith('Size/'), t);
+        }
     }
 });
