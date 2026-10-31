@@ -180,6 +180,8 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         for (const [mode, value] of Object.entries(snap.values)) values[mode] = reindexAlias(value);
         newItems.push({ collection: snap.collection, collectionIndex: at, name: snap.name, type: snap.type ?? type, values });
         plannedItems.set(key2(`base:${baseColl}`, baseName), true);
+        const snapDerived = (baseSnapshot.report?.derived ?? []).find(d => d.name === `${baseColl}/${baseName}`);
+        if (snapDerived && !derived.some(x => x.name === snapDerived.name)) derived.push({ ...snapDerived });
         return { collectionIndex: at, name: baseName };
     };
     /** Follows a component reference (`group/token`) to the variable it names in its bound collection. */
@@ -235,7 +237,8 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         plannedItems.set(pkey, entry);
         return { planned: true };
     }
-    // Base collections the aliases read from: when any is missing, the same base generation runs first, in full.
+    // Base collections the aliases read from: when any is missing, the same base generation runs first, in full
+    // (its derived entries travel with it, so the report lists what is new).
     if (BASE_COLLECTIONS.some(n => !collsNamed(n).length)) {
         for (const c of baseSnapshot.collections) {
             const at = collEntry(c.name, c.modes, 'base');
@@ -247,6 +250,9 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
             for (const [mode, value] of Object.entries(i.values)) values[mode] = reindexAlias(value);
             newItems.push({ collection: i.collection, collectionIndex: at, name: i.name, type: i.type, values });
             plannedItems.set(key2(`base:${i.collection}`, i.name), true);
+        }
+        for (const d of baseSnapshot.report?.derived ?? []) {
+            if (!derived.some(x => x.name === d.name)) derived.push({ ...d });
         }
     }
     for (const [dim] of variableProps(template)) {
