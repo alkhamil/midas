@@ -22,7 +22,7 @@
 ## Decisions
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
-- Baseline green: builder-core 642 tests, studio 43 tests, 0 failing. `selColorSwatch` is not in the repo; the old known issue is closed as stale.
+- Baseline green: builder-core 748 tests, studio 46 tests, 0 failing. The three tests red on origin (button-stroke x2, selColorSwatch) are fixed; testing.midas regenerates via `scripts/make-testing-file.js`.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
 
 ## Code map
@@ -40,7 +40,7 @@
 ## Antrean
 
 - Fase 1 batch 1 (Input plus `control` kind) after the Fase 0 browser exit.
-- Open: is `both` a new dual-icon placement? Is gap default 16 a new token or a fixture change? Pushing `feat/fahmi` needs an explicit instruction.
+- Open: is gap default 16 a new token or a fixture change (current: sm=6, lg=8)?
 
 ## Maintenance
 
