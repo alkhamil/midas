@@ -48,7 +48,7 @@ const bindings = prefix => ({
 /** A Button master: a root auto layout frame with its label, bound to the template, or unbound when `binding` is null. */
 function master(id, name, x, binding, vars, y = 0) {
     const root = node('frame', {
-        id, name, x, y, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug',
+        id, name, x, y, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug', strokeWidth: 1, strokeAlign: 'inside',
         layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8, ...(binding ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...binding }, vars: vars.root } : {}),
     });
     const label = node('text', { id: `${id}-label`, name: 'Label', parentId: id, text: 'Button', w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, ...(binding ? { vars: vars.label } : {}) });

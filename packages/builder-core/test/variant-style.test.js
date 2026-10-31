@@ -43,3 +43,9 @@ test('a variant style names a border style the schema can draw: a wavy one is re
     bad.props.variant.styles = { dashed: { borderStyle: 'wavy' } };
     assert.match(validateTemplateSchema(bad).join('\n'), /style for mode "dashed" has no border style/);
 });
+
+test('the base rule draws the border from the variable, and a transparent-border variant still emits the border rule with the variable', () => {
+    const css = generateComponent(button, model.binding, variables, 'Button', { id: 'm', type: 'frame', layout: 'horizontal' }, () => []).files['Button.css'];
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-color: var\(--button-border\);\n/);
+    assert.match(css, /\[data-variant="solid"\][^\{]*\{\n(?:.*\n)*?\s*--button-border: #00000000;\n/);
+});

@@ -282,6 +282,8 @@ function buildButtonMaster(x = 440, y = 40) {
         layoutSizingV: 'hug',
         component: true,
         isInstance: false,
+        strokeWidth: 1,
+        strokeAlign: 'inside',
         vars: BUTTON_ROOT_VARS,
         behavior: {
             version: 2,

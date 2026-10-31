@@ -46,7 +46,7 @@ const bindings = {
 /** The Button master: bound root auto layout frame with its label. */
 function master() {
     const root = node('frame', {
-        id: 'btn', name: 'Button', x: 40, y: 40, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
+        id: 'btn', name: 'Button', x: 40, y: 40, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, strokeWidth: 1, strokeAlign: 'inside',
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, ...model.binding }, vars: bindings.root,
     });
@@ -94,7 +94,7 @@ const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: 
 /** A Button instance with its label and managed icon slots (start, end, or both). */
 function instance(id, name, x, y, props, varModes, components) {
     const root = node('frame', {
-        id, name, x, y, w: 136, h: 48, isInstance: true, sourceId: 'btn', layout: 'horizontal', gap: 6, padding: 12,
+        id, name, x, y, w: 136, h: 48, isInstance: true, sourceId: 'btn', layout: 'horizontal', gap: 6, padding: 12, strokeWidth: 1, strokeAlign: 'inside',
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8,
         behavior: { version: BEHAVIOR_DATA_VERSION, props }, varModes, vars: bindings.root,
     });

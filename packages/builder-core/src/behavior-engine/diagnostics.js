@@ -8,6 +8,7 @@ import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
 import { planStateBindings } from './state-bindings.js';
 import { VARIABLE_KEYS } from './display.js';
+import { strokePaintMissing } from '../geometry/shapes.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
 
@@ -117,7 +118,7 @@ function instanceLayers(inst, master, childrenOf) {
 }
 
 /**
- * The master's mapped properties that are not bound to their token, as [layer, prop, token] triples.
+ * The master's mapped properties that are not bound to their token, as [layer, prop, token] triples; a mapped stroke with no paint counts as unbound, so one Bind tokens click adds and binds it.
  * A binding to a variable that no longer exists counts as unbound, so a deleted collection never reads as bound.
  * @param {any} template
  * @param {any} master
@@ -134,7 +135,7 @@ function unboundTokens(template, master, childrenOf, known) {
         if (!layer) continue;
         for (const [prop, source] of Object.entries(props)) {
             if (!tokens.includes(source)) continue;
-            for (const varKey of VARIABLE_KEYS[prop] || []) if (layer.vars?.[varKey] === undefined || !known.has(layer.vars[varKey])) out.push([key, prop, source]);
+            for (const varKey of VARIABLE_KEYS[prop] || []) if (layer.vars?.[varKey] === undefined || !known.has(layer.vars[varKey]) || (prop === 'stroke' && strokePaintMissing(layer))) out.push([key, prop, source]);
         }
     }
     return out;

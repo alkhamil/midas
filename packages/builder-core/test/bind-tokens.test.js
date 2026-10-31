@@ -22,8 +22,9 @@ const items = [
 ];
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
 const variables = (over = items) => ({ collections: [variant, size], items: over });
-const layers = (root = {}, label = {}) => [
-    { key: 'root', node: { id: 'm', vars: root } },
+const paint = { stroke: '#000000', strokeWidth: 1, strokeAlign: 'inside' };
+const layers = (root = {}, label = {}, rootPaint = paint) => [
+    { key: 'root', node: { id: 'm', vars: root, ...rootPaint } },
     { key: 'label', node: { id: 'ml', vars: label } },
 ];
 
@@ -145,4 +146,17 @@ test('binding a stroke token gives the layer a width of 1 when it has none, and 
     root.strokeWidth = 3;
     applyBindTokens([{ key: 'root', node: root }], ops);
     assert.equal(root.strokeWidth, 3);
+});
+
+test('a master with a bound stroke but no paint still gets a stroke op, and applying it adds the template-owned paint', () => {
+    const { ops } = planBindTokens({ template: button, binding, layers: layers({ 'fills.0': 'i-bg', stroke: 'i-border' }, {}, {}), variables: variables() });
+    assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'i-border'));
+    const node = { vars: { 'fills.0': 'i-bg', stroke: 'i-border' } };
+    applyBindTokens([{ key: 'root', node }], ops.filter(o => o.key === 'root' && o.varKey === 'stroke'));
+    assert.equal(node.strokeWidth, 1);
+    assert.equal(node.strokeAlign, 'inside');
+    const centred = { vars: { stroke: 'i-border' }, strokeWidth: 2, strokeAlign: 'center' };
+    applyBindTokens([{ key: 'root', node: centred }], [{ key: 'root', varKey: 'stroke', itemId: 'i-border' }]);
+    assert.equal(centred.strokeWidth, 2);
+    assert.equal(centred.strokeAlign, 'center');
 });

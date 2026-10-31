@@ -108,3 +108,10 @@ test('the text colour token is the one the label layer draws its fill with', () 
 test('a template with no label fill has no text colour token', () => {
     assert.equal(textColorTokenOf({ ...button, display: { ...button.display, label: {} } }), null);
 });
+
+test('a bound stroke resolves its state colours: border, border-hover and border-active', () => {
+    const at = preview => previewOf(button, binding(), { size: 'sm', variant: 'outlined', color: 'primary' }, variables(), props(), preview).vars;
+    assert.equal(at('default')['--button-border'], '#4338ca');
+    assert.equal(at('hover')['--button-border'], '#3730a3');
+    assert.equal(at('active')['--button-border'], '#312e81');
+});

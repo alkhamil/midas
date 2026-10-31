@@ -31,7 +31,7 @@ const doc = (over = {}) => ({
     pages: [{
         nodes: [
             {
-                id: 'm1', name: 'Button', type: 'frame',
+                id: 'm1', name: 'Button', type: 'frame', stroke: '#000000', strokeWidth: 1, strokeAlign: 'inside',
                 behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: sizeColl.id }, ...over.binding },
                 vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
             },
@@ -132,6 +132,16 @@ test('a master token that is not bound is a warning, naming the layer, the prope
     assert.deepEqual(found.filter(f => f.code === 'unbound-token'), [{
         severity: 'warning', code: 'unbound-token', node: 'Button', nodeId: 'm1', layer: 'root', prop: 'fill', token: 'bg',
         message: 'Button: root fill is not bound to "button/bg".',
+    }]);
+});
+
+test('a master whose stroke has no paint is unbound, so one bind adds and binds it', () => {
+    const d = doc();
+    d.pages[0].nodes[0].strokeWidth = 0;
+    const found = diagnoseDocument(d).filter(f => f.code === 'unbound-token');
+    assert.deepEqual(found, [{
+        severity: 'warning', code: 'unbound-token', node: 'Button', nodeId: 'm1', layer: 'root', prop: 'stroke', token: 'border',
+        message: 'Button: root stroke is not bound to "button/border".',
     }]);
 });
 

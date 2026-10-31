@@ -25,7 +25,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -40,6 +40,7 @@
           "padding": 12,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "templateId": "button",

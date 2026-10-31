@@ -6,7 +6,7 @@ import { NODE_PROPERTIES, VARIABLE_KEYS, targetKindOf } from './display.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
 import { varsWithBinding } from './edits.js';
-import { setStrokeWeight } from '../geometry/shapes.js';
+import { setStrokeWeight, strokePaintMissing } from '../geometry/shapes.js';
 
 /** @param {string} name */
 
@@ -42,14 +42,19 @@ export function planBindTokens({ template, binding, layers, variables }) {
                 if (node.vars?.[varKey] !== undefined && known.has(node.vars[varKey])) continue;
                 ops.push({ key, varKey, itemId: item.id });
             }
+            if (prop === 'stroke' && strokePaintMissing(node) && !ops.some(o => o.key === key && o.varKey === 'stroke')) {
+                // The template owns the stroke: a master with no paint still gets the stroke op, so one bind adds and binds it.
+                ops.push({ key, varKey: 'stroke', itemId: item.id });
+            }
         }
     }
     return { ops, problems };
 }
 
 /**
- * Applies bind ops to their layers. A stroke op also gives the layer a width of 1 when it has none; the rest of the stroke paint
- * (opacity, visibility) follows the variable's colour, which the caller resolves (see restoreStrokePaint).
+ * Applies bind ops to their layers. A stroke op also gives the layer the template-owned paint when it has none (width 1,
+ * align inside); the rest of the stroke paint (opacity, visibility) follows the variable's colour, which the caller
+ * resolves (see restoreStrokePaint).
  * @param {{ key: string, node: any }[]} layers the master layers a display key maps to (`root`, `label`)
  * @param {{ key: string, varKey: string, itemId: string }[]} ops
  * @returns {any[]} the layers that changed
@@ -64,6 +69,7 @@ export function applyBindTokens(layers, ops) {
         if (op.varKey === 'fills.0') delete n.vars.fill;
         if (op.varKey === 'stroke') {
             if (!(n.strokeWidth > 0)) setStrokeWeight(n, 1);
+            if (n.strokeAlign === undefined) n.strokeAlign = 'inside';
         }
         touched.push(n);
     }

@@ -10210,7 +10210,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -10241,6 +10241,7 @@
           "layoutSizingV": "hug",
           "component": true,
           "isInstance": false,
+          "strokeAlign": "inside",
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",

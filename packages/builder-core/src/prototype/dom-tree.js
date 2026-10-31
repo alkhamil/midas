@@ -18,7 +18,7 @@ import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anato
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { borderStyleOf } from '../behavior-engine/variant-style.js';
-import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, strokeStrategyOf, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
 import { layoutOrder } from '../geometry/autolayout.js';
@@ -257,19 +257,39 @@ function renderButton(n, template, parent, scope) {
             }
         }
     }
-    // The stroke is the node's own, drawn as an overlay on the canvas's rules (inside, center or outside), so the component's CSS border is off.
+    // The stroke is the node's own. A uniform inside stroke draws on the host box (one drawer with the canvas and the codegen stylesheet); any other stroke draws as an overlay, and the host border is reset so only the overlay shows.
     // A CSS outline is not used for it: it would override the keyboard-focus ring. The shape comes from the master, as on the canvas.
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
     const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeStyle === 'dot';
-    const strokeEl = strokeIsOn(shape) ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes))) : null;
+    const hasStroke = strokeIsOn(shape);
+    const strategy = hasStroke ? strokeStrategyOf(shape) : 'host';
+    const known = new Set((scope.variables.items || []).map(i => i.id));
+    const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
+    let strokeEl = null;
+    if (strategy === 'overlay' && hasStroke) strokeEl = customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes));
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
-    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)), borderWidth: '0px', borderStyle: 'none', borderColor: 'transparent' };
+    const style = { display: 'flex', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0)) };
     // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
-    if (strokeEl && !style.position) style.position = 'relative';
+    if (strategy === 'overlay') {
+        // The host draws nothing: the overlay is the only drawer.
+        Object.assign(style, { borderWidth: '0px', borderStyle: 'none', borderColor: 'transparent' });
+        // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
+        if (!style.position) style.position = 'relative';
+    }
+    else if (hasStroke && !bound) {
+        // A literal stroke draws on the host, from the node paint. A bound stroke draws from the class rule alone.
+        const hr = cornerRadii(shape);
+        Object.assign(style, {
+            borderWidth: `${svgNumber(strokeSideWidths(shape).t)}px`,
+            borderStyle: borderStyleOf(template, modes) ?? 'solid',
+            borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity),
+            borderRadius: (shape.radius || hasRadii(shape)) ? (hr.every(v => v === hr[0]) ? `${svgNumber(hr[0])}px` : hr.map(v => `${svgNumber(v)}px`).join(' ')) : 'inherit',
+        });
+    }
     return { tag: 'button', nodeId: n.id, attrs, style, children };
 }
 

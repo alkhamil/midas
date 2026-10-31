@@ -31,7 +31,7 @@ const BOUND = { version: BEHAVIOR_DATA_VERSION, templateId: 'button', variables:
 function master() {
     const root = node('frame', {
         id: 'button', name: 'Button', x: 0, y: 0, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true, behavior: BOUND,
+        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#4338ca'), radius: 8, clip: true, strokeWidth: 1, strokeAlign: 'inside', behavior: BOUND,
         vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' },
     });
     const label = node('text', {
