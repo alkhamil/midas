@@ -18,6 +18,7 @@ function propProblems(name, def, props) {
     if (!isPlainObject(def)) return [`prop "${name}" must be an object`];
     if (def.source === 'variable') {
         if (!isName(def.collection)) out.push(`prop "${name}" is variable but names no collection`);
+        if (def.modes !== undefined && (!Array.isArray(def.modes) || def.modes.length === 0 || !def.modes.every(isName))) out.push(`prop "${name}" modes must be a non-empty list of mode names`);
         for (const [mode, rule] of Object.entries(def.styles ?? {})) {
             if (!['solid', 'dashed', 'dotted'].includes(rule?.borderStyle)) out.push(`prop "${name}" style for mode "${mode}" has no border style (solid, dashed or dotted)`);
         }
@@ -103,6 +104,7 @@ export function validateTemplateSchema(schema) {
     out.push(...stateProblems(schema, allTokens, props || {}));
     out.push(...displayProblems(schema));
     out.push(...tokenKindProblems(schema, allTokens));
+    out.push(...tokenRoleProblems(schema, allTokens));
     out.push(...elementProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...controlProblems(schema));
@@ -111,6 +113,31 @@ export function validateTemplateSchema(schema) {
     if (!Array.isArray(schema.events)) out.push('events must be a list');
     else for (const ev of schema.events) if (!isPlainObject(ev) || !isName(ev.name) || typeof ev.exposeAsTrigger !== 'boolean') out.push('event needs a name and exposeAsTrigger');
 
+    return out;
+}
+
+/**
+ * Problems in the token roles: every key is a token, every value a role or a per-mode role map. A value with
+ * a slash is a reference to another token variable of the same template (`<group>/<token>`).
+ * @param {string[]} allTokens
+ */
+function tokenRoleProblems(schema, allTokens) {
+    const roles = schema.tokenRoles;
+    if (roles === undefined) return [];
+    if (!isPlainObject(roles)) return ['tokenRoles must be an object'];
+    const out = [];
+    const refOf = v => (typeof v === 'string' && v.includes('/')) ? v : null;
+    for (const [token, entry] of Object.entries(roles)) {
+        if (!allTokens.includes(token)) { out.push(`tokenRoles names "${token}", which is not a token`); continue; }
+        const values = typeof entry === 'string' ? [entry] : isPlainObject(entry) ? Object.values(entry) : null;
+        if (!values || !values.every(isName)) { out.push(`tokenRoles["${token}"] must be a role or a map of mode to role`); continue; }
+        for (const value of values) {
+            const ref = refOf(value);
+            if (!ref) continue;
+            const [group, name] = ref.split('/');
+            if (group !== schema.group || !allTokens.includes(name)) out.push(`tokenRoles["${token}"] refers to "${ref}", which is not a token variable of this template`);
+        }
+    }
     return out;
 }
 

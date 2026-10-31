@@ -27,9 +27,9 @@ export const INPUT = {
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     outline: { width: 2, offset: 1 },
     props: {
-        variant: { source: 'variable', collection: 'Variant' },
-        status: { source: 'variable', collection: 'Status' },
-        size: { source: 'variable', collection: 'Size' },
+        variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },
+        status: { source: 'variable', collection: 'Status', modes: ['default', 'error', 'warning'] },
+        size: { source: 'variable', collection: 'Size', modes: ['large', 'middle', 'small'] },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
         value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '' },
@@ -56,6 +56,27 @@ export const INPUT = {
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color',
         'status-border': 'color', 'status-border-hover': 'color', 'status-border-focus': 'color', 'status-outline': 'color',
+    },
+    // Which base role each token fills, per dimension mode (matched case-insensitively, `default` is the fallback).
+    // A value with a slash is another token variable of this template, followed through the bound collection.
+    tokenRoles: {
+        height: { large: 'height-lg', middle: 'height', small: 'height-sm' },
+        fontSize: { large: 'font-lg', middle: 'font', small: 'font-sm' },
+        lineHeight: { large: 'line-lg', middle: 'line', small: 'line-sm' },
+        paddingX: 'padding-sm', paddingY: 'padding-xs', gap: 'gap', radius: 'radius',
+        iconSize: { large: 'icon', middle: 'icon', small: 'icon-sm' },
+        bg: { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
+        fg: 'fg',
+        border: { outlined: 'input/status-border', filled: 'transparent', borderless: 'transparent', default: 'input/status-border' },
+        placeholder: 'placeholder',
+        'bg-hover': { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
+        'border-hover': { outlined: 'input/status-border-hover', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-hover' },
+        'border-focus': { outlined: 'input/status-border-focus', filled: 'transparent', borderless: 'transparent', default: 'input/status-border-focus' },
+        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'transparent',
+        'status-border': { default: 'border', error: 'error', warning: 'warning' },
+        'status-border-hover': { default: 'border-hover', error: 'error-hover', warning: 'warning-hover' },
+        'status-border-focus': { default: 'border-focus', error: 'error', warning: 'warning' },
+        'status-outline': { default: 'outline', error: 'danger-outline', warning: 'warning-outline' },
     },
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {

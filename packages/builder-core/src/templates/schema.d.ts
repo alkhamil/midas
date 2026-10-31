@@ -23,6 +23,8 @@ export interface VariableProp {
     source: 'variable';
     /** Name of the variable collection the prop is auto-matched to (case-insensitive). */
     collection: string;
+    /** The modes Auto Fix creates when the collection is missing (by mode id). Existing collections only gain the modes they lack. */
+    modes?: string[];
     /** How the root is drawn in one mode, by mode id: its border style. Modes without a rule are solid. */
     styles?: Record<string, { borderStyle: 'solid' | 'dashed' | 'dotted' }>;
     visibleIf?: VisibleIf;
@@ -56,6 +58,17 @@ export type LiteralProp =
     | ({ source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf } & RequiresCols);
 
 export type PropDef = VariableProp | LiteralProp;
+
+/** Which base role a token fills, per dimension mode. A plain role holds for every mode; a map names the role per
+ * mode id (matched case-insensitively, `default` is the fallback). A value with a slash (`input/status-border`) is a
+ * reference to another token variable of the same template, followed through the bound collection. A role missing
+ * from the roles table makes the variable "needs value". */
+export type TokenRole = string | Record<string, string>;
+
+/** The role of every token variable: `tokenRoles[token]` is its role or per-mode role map. */
+export interface TokenRoles {
+    [token: string]: TokenRole;
+}
 
 /** Token groups: `from<Dimension>` holds the tokens that draw from the variable prop of that name. */
 export interface TokenGroups {
@@ -110,6 +123,8 @@ export interface TemplateSchema {
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;
+    /** The base role of every token variable, for Auto Fix. Tokens without an entry resolve by their own name. */
+    tokenRoles?: TokenRoles;
     persistentStates: Record<string, PersistentState>;
     /** Preview-only states: the base colour tokens each one replaces. */
     previewStates: Record<string, Record<string, string>>;
