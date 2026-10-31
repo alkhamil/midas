@@ -64,6 +64,17 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
 - display: root as Button; label (the control slot) with fill/fontSize/lineHeight plus placeholder (its own colour, written to `::placeholder`); addons reuse the label text tokens; prefix/suffix size the icon.
 - codegen: `<span class="input">` root (no `disabled` attr; the input holds it), conditional addon spans, clear icon only with a non-empty value, showCount counter. Play mounts the same descriptor, so the input is natively editable.
 
+### Input wrapper audit (addendum: antd affix case vs Midas Play/codegen)
+
+One box owns every box visual: bare `input` without affix, affix wrapper with affix. Midas always renders the
+wrapper case. One row per difference found; values stay in the roles table.
+
+| antd | Midas before | Midas after |
+|---|---|---|
+| Inner `input` is reset: no border, transparent bg, no outline, radius 0, padding 0 (`input/style/index.ts` affix block) | Browser-default pill: bordered, white, rounded; its UA outline was the only focus ring | `.input-label` reset (background, border, outline, shadow, padding, margin, radius, appearance, font); text colour and metrics stay token-driven |
+| Focus ring (box-shadow) on the focused box: `&:focus, &:focus-within` (variants), borderless `:has(input:focus-visible)` | Dead `.input:focus-visible` rule (a `span` never matches); the ring appeared on the inner input | `focusTarget: "wrapper"`: `:has(:focus-visible)` with a `:focus-within` fallback on the wrapper; the global outline ring stays the mechanism, no box-shadow |
+| Disabled paints the box and guards hover (`:hover:not([disabled])`) | Dead `.input:disabled` rule; UA grey on the inner input only | Disabled matches `:has(:disabled)` on the wrapper; other states guarded by `:not(:has(:disabled))`; no ring when disabled |
+| Prefix-to-text gap is `inputAffixPadding` (4), constant per size; prefix/suffix are `flex: none` and centered | `gap` token from the generic scale | Unchanged here: values belong to the roles table, not this fix |
 ## Stages
 
 Execute in the order listed. The numbers are stage IDs, not the execution order.
