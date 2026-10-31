@@ -97,6 +97,8 @@ Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slo
 
 Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
+Input wrapper parity (2026-10-31): the wrapper owns box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen), the inner control owns text only; the testing fixture mirrors the antd size demo.
+
 Base variables: the token JSON generates Primitives (raw literals), Semantic colors (Ant names as aliases through `ant-map.json`), Typography (raw) and Icons (sizes + color aliases to Semantic). Sizes ignore the JSON: `antd-sizes.json` resolves antd seed/map/component numbers (xs/sm/md/lg/xl; extrapolated XL/XS flagged derived, missing Primitives steps added as derived) into Semantic aliases to Primitives steps. Line heights are the exception inside the exception: antd names only, values paired from the JSON Typography table in px. The snapshot is committed (`base-snapshot.json`); Generate base applies it in one transaction, idempotent. Auto Fix: per the schema `tokenRoles` and `roles.json`, missing component variables alias base variables (component chains allowed, transparent stays needs value); Button and Input both pass with the same generic code; one transaction, idempotent, diagnostics re-run once after.
 
 Load rules (AGENTS.md), implemented:
