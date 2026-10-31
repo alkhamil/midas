@@ -86,7 +86,7 @@ Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slo
 
 Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
-Base variables: the token JSON generates Primitives (raw literals), Semantic and Size (Ant global names as aliases through `ant-map.json`), Typography (raw) and Icons (sizes + color aliases to Semantic). One transaction, idempotent; unresolved refs are reported, never literals. Auto Fix (component collections) reads from these next.
+Base variables: the token JSON generates Primitives (raw literals), Semantic and Size (Ant global names as aliases through `ant-map.json`), Typography (raw) and Icons (sizes + color aliases to Semantic). The snapshot is committed (`base-snapshot.json`); Generate base applies it in one transaction, idempotent. Auto Fix: per the schema `tokenRoles` and `roles.json`, missing component variables alias base variables (component chains allowed, transparent stays needs value); Button and Input both pass with the same generic code; one transaction, idempotent, diagnostics re-run once after.
 
 Load rules (AGENTS.md), implemented:
 
