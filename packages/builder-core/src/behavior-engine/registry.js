@@ -22,6 +22,29 @@ function createTemplateRegistry(schemas) {
 export const TEMPLATES = createTemplateRegistry([BUTTON, INPUT]);
 
 /**
+ * Whether two mode lists name the same modes: same count, matched case-insensitively, in any order.
+ * Entries may be mode names or `{ name }` mode objects.
+ * @param {(string | { name: string })[]} a
+ * @param {(string | { name: string })[]} b
+ */
+export function sameModes(a, b) {
+    const keys = list => list.map(m => String(typeof m === 'string' ? m : m?.name ?? '').trim().toLowerCase());
+    const ka = keys(a), kb = keys(b);
+    return ka.length === kb.length && kb.every(k => ka.includes(k));
+}
+
+/**
+ * The collection a template owns for a dimension when the schema-named one serves another template:
+ * "<Template> <Name>" (e.g. "Input Variant"). Schema data (the template name and the declared collection),
+ * never a guess.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {import('../templates/schema.js').VariableProp} def
+ */
+export function fallbackCollection(template, def) {
+    return `${template.name} ${def.collection}`;
+}
+
+/**
  * [propName, def] for every variable prop of a template (the dimensions a binding may name).
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {[string, import('../templates/schema.js').VariableProp][]}

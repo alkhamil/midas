@@ -1,11 +1,13 @@
 // Auto Fix (pure). Plans and applies what a bound master is missing: required collections, modes and variables per
 // the template schema, with values that alias base variables by role. Component variables alias base variables (or
 // other component variables of the same template, followed through the bound collection); never Primitives, never
-// literals. Nothing existing is overwritten or renamed: same-named collections, modes, variables and bindings are kept,
-// missing mode values are only filled. Collections are routed by plan identity, never by name alone, so a component
-// collection sharing a base name (component `Size` vs base `Size`) stays its own collection. Unfixable findings
-// (structural) are reported, never touched.
-import { variableProps } from './registry.js';
+// literals. Nothing existing is overwritten or renamed: modes, variables and bindings are kept, missing mode values
+// are only filled. Collections resolve by the schema declaration (name and modes): a same-named collection is shared
+// only when its modes match the schema's exactly, otherwise the template gets its own "<Template> <Name>" collection
+// and the frame rebinds to it; a collection serving another template is never altered. Collections are routed by plan
+// identity, never by name alone, so a component collection sharing a base name (component `Size` vs base `Size`)
+// stays its own collection. Unfixable findings (structural) are reported, never touched.
+import { variableProps, sameModes, fallbackCollection } from './registry.js';
 import { variableKey } from './tokens.js';
 import { planBindTokens } from './bind-tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
@@ -84,44 +86,76 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         }
         return idx;
     };
-    // A same-named collection already holding `group/*` variables (or nothing yet) is the component's; otherwise the
-    // one same-named collection there is reused as is, even when it is a base collection sharing the name. Only
-    // several same-named collections with no single component one are ambiguous.
-    const isComponent = (/** @type {any} */ c) => {
-        const names = items.filter(i => i.collectionId === c.id).map(i => i.name);
-        return !names.length || names.some(n => n.toLowerCase().startsWith(groupPrefix));
-    };
+    // Collection resolution is driven by the schema declaration (name and modes), not by name guessing. A collection
+    // the template owns (holding its `group/*` variables, or nothing yet) is used as is, custom modes included. A
+    // same-named collection serving another template is shared only when its modes match the schema's exactly;
+    // otherwise the template gets its own "<Template> <Name>" collection and the frame rebinds to it. An existing
+    // collection serving another template never gains, loses or renames modes: a shared one already matches exactly,
+    // and a mismatched one is left alone.
+    const varNamesOf = (/** @type {any} */ c) => items.filter(i => i.collectionId === c.id).map(i => i.name);
+    const servesGroup = (/** @type {any} */ c) => varNamesOf(c).some(n => n.toLowerCase().startsWith(groupPrefix));
+    const servesOthers = (/** @type {any} */ c) => { const names = varNamesOf(c); return names.length > 0 && !servesGroup(c); };
+    const own = (/** @type {any} */ c) => !servesOthers(c);
+    const schemaModes = (/** @type {any} */ def) => Array.isArray(def.modes) ? def.modes : [];
+    const matchesSchema = (/** @type {any} */ c, /** @type {any} */ def) => sameModes(c.modes ?? [], schemaModes(def));
     /** @type {Record<string, any>} */
     const dimCollection = {};
     /** @type {Record<string, number>} */
     const dimEntry = {};
+    /** @type {{ dim: string, from: string | null, to: string }[]} */
+    const reboundDims = [];
     const dimDef = (/** @type {string} */ dim) => variableProps(template).find(([d]) => d === dim)?.[1];
+    /** The fallback collection to bind: the template's own one when usable, else a new one to create. */
+    const fallbackFor = (/** @type {any} */ def) => {
+        const name = fallbackCollection(template, def);
+        const cands = collsNamed(name);
+        const usable = cands.find(own) ?? cands.find(c => matchesSchema(c, def));
+        if (usable) return { name: usable.name, coll: usable, create: false };
+        if (cands.length) return { name, coll: null, create: false, blocked: `"${name}" serves another template` };
+        return { name, coll: null, create: true };
+    };
+    /** Rebinds a dimension to the fallback collection, creating it when it does not exist yet. */
+    const toFallback = (/** @type {string} */ dim, /** @type {any} */ def, /** @type {string | null} */ from) => {
+        const fb = fallbackFor(def);
+        if (fb.blocked) { fail(`${template.group}/* (${dim})`, fb.blocked); return; }
+        dimEntry[dim] = collEntry(fb.name, schemaModes(def), 'component');
+        bindingUpdates[dim] = fb.name;
+        dimCollection[dim] = fb.coll;
+        reboundDims.push({ dim, from, to: fb.name });
+    };
+    const useCollection = (/** @type {string} */ dim, /** @type {any} */ def, /** @type {any} */ coll) => {
+        dimCollection[dim] = coll;
+        dimEntry[dim] = collEntry(coll.name, schemaModes(def), 'component');
+    };
     for (const [dim, def] of variableProps(template)) {
         const boundId = binding.variables[dim];
         const bound = boundId ? collections.find(c => c.id === boundId) : null;
         if (bound) {
-            const names = items.filter(i => i.collectionId === bound.id).map(i => i.name);
-            if (names.length && !names.some(n => n.toLowerCase().startsWith(groupPrefix))) { fail(`${template.group}/* (${dim})`, `collection "${bound.name}" holds no ${template.group}/* variables`); continue; }
-            dimCollection[dim] = bound;
-            dimEntry[dim] = collEntry(bound.name, Array.isArray(def.modes) ? def.modes : [], 'component');
+            if (own(bound) || matchesSchema(bound, def)) { useCollection(dim, def, bound); continue; }
+            toFallback(dim, def, bound.name);
             continue;
         }
-        const required = collsNamed(def.collection);
-        const mine = required.filter(isComponent);
-        const pick = required.length === 1 ? required[0] : mine.length === 1 ? mine[0] : null;
-        if (!pick) {
-            if (!required.length) {
-                dimEntry[dim] = collEntry(def.collection, Array.isArray(def.modes) ? def.modes : [], 'component');
-                bindingUpdates[dim] = def.collection;
-                dimCollection[dim] = null;
-                continue;
-            }
-            fail(`${template.group}/* (${dim})`, `${required.length} collections are named "${def.collection}"`);
+        const cands = [...collsNamed(def.collection), ...collsNamed(fallbackCollection(template, def))];
+        const owned = cands.filter(own);
+        const shared = cands.filter(c => !own(c) && matchesSchema(c, def));
+        if (owned.length === 1) {
+            bindingUpdates[dim] = owned[0].name;
+            useCollection(dim, def, owned[0]);
             continue;
         }
-        bindingUpdates[dim] = pick.name;
-        dimCollection[dim] = pick;
-        dimEntry[dim] = collEntry(pick.name, Array.isArray(def.modes) ? def.modes : [], 'component');
+        if (owned.length === 0 && shared.length === 1) {
+            bindingUpdates[dim] = shared[0].name;
+            useCollection(dim, def, shared[0]);
+            continue;
+        }
+        if (!cands.length) {
+            dimEntry[dim] = collEntry(def.collection, schemaModes(def), 'component');
+            bindingUpdates[dim] = def.collection;
+            dimCollection[dim] = null;
+            continue;
+        }
+        if (owned.length === 0 && shared.length === 0) { toFallback(dim, def, null); continue; }
+        fail(`${template.group}/* (${dim})`, `${cands.length} collections match "${def.collection}"`);
     }
     const modesOf = (/** @type {string} */ dim) => {
         const def = dimDef(dim);
@@ -401,6 +435,8 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         derived: derived.map(d => d.name),
         needsValue: needsValue.map(n => n.name),
         unfixable: unfixable.map(u => `${u.name} (${u.reason})`),
+        createdCollections: [...new Set(newCollections.filter(c => c.origin === 'component' && !collections.some(e => e.name === c.name)).map(c => c.name))],
+        reboundDims,
     };
     const fixable = created.length > 0 || summary.fills > 0 || rebound > 0 || Object.keys(bindingUpdates).length > 0;
     return { fixable, group: template.group, plan: { collections: newCollections, items: newItems }, bindingUpdates, derived, needsValue, unfixable, summary };
@@ -484,11 +520,11 @@ export function applyAutoFix(store, binding, autoFix, uid) {
     let bindings = 0;
     const prefix = `${String(autoFix.group ?? '').toLowerCase()}/`;
     for (const [dim, name] of Object.entries(autoFix.bindingUpdates)) {
-        const current = binding.variables[dim];
-        if (current != null && (store.collections || []).some(c => c.id === current)) continue;
+        // The plan resolves every update explicitly (a fallback rebind moves a slot off a valid collection), so an
+        // update always wins; a slot already pointing at the resolved collection is left alone.
         const cands = (store.collections || []).filter(c => c.name === name);
         const coll = cands.find(c => (store.items || []).some(i => i.collectionId === c.id && i.name.toLowerCase().startsWith(prefix))) ?? cands[0];
-        if (!coll) continue;
+        if (!coll || binding.variables[dim] === coll.id) continue;
         binding.variables[dim] = coll.id;
         bindings++;
     }

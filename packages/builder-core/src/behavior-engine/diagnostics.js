@@ -2,7 +2,7 @@
 // wrong (a variable missing from a collection or a mode, a token that cannot be resolved for an instance's modes). A warning means
 // something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
-import { TEMPLATES, variableProps } from './registry.js';
+import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
 import { resolveTokens, variableKey } from './tokens.js';
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
@@ -72,6 +72,17 @@ export function diagnoseDocument(doc) {
             const collection = collections.find(c => c.id === collectionId);
             if (!collection) {
                 out.push({ severity: 'error', code: 'collection-missing', node: m.name, nodeId: m.id, dimension: dim, collection: collectionId, message: `${m.name}: collection "${collectionId}" bound for "${dim}" does not exist.` });
+                continue;
+            }
+            // Bound to a collection that serves another template with other modes: the template cannot use it.
+            // One mismatch error names the collection actually bound; the missing variables behind it are not
+            // reported again. Auto Fix binds the dimension to the template-owned fallback collection instead.
+            const boundNames = items.filter(i => i.collectionId === collection.id).map(i => String(i.name).toLowerCase());
+            const servesTemplate = !boundNames.length || boundNames.some(n => n.startsWith(template.group.toLowerCase() + '/'));
+            const schemaModes = Array.isArray(def.modes) ? def.modes : [];
+            if (!servesTemplate && !sameModes(collection.modes ?? [], schemaModes)) {
+                out.push({ severity: 'error', code: 'mode-mismatch', node: m.name, nodeId: m.id, dimension: dim, collection: collection.name,
+                    message: `${m.name}: collection "${collection.name}" bound for "${dim}" has modes (${(collection.modes ?? []).map(m => m.name).join(', ')}), not the schema modes (${schemaModes.join(', ')}). Auto Fix binds "${dim}" to "${fallbackCollection(template, def)}" instead.` });
                 continue;
             }
             for (const [group, names] of Object.entries(template.tokens)) {

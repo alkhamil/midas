@@ -28,6 +28,7 @@
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".
 - lineHeight is px paired to fontSize from the token JSON Typography table (e.g. 14→20); antd supplies the names only. Auto Fix rebinds ratio leftovers to the paired px token.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
+- Dev needs `infra:up` with Docker Desktop running before `dev:server`, else the seed fails with ECONNREFUSED on postgres (5433); on Windows run `dev:server` and `dev:studio` separately.
 
 ## Code map
 
