@@ -1,5 +1,6 @@
 import { validateTemplateSchema } from './validate-schema.js';
 import { BUTTON } from '../templates/button.js';
+import { INPUT } from '../templates/input.js';
 
 /**
  * Validate every template and index it by id. An invalid schema throws: the registry never holds a broken template.
@@ -18,7 +19,7 @@ function createTemplateRegistry(schemas) {
 }
 
 /** Every template the engine ships. Button is the only one until the pipeline works end to end. */
-export const TEMPLATES = createTemplateRegistry([BUTTON]);
+export const TEMPLATES = createTemplateRegistry([BUTTON, INPUT]);
 
 /**
  * [propName, def] for every variable prop of a template (the dimensions a binding may name).

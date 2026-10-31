@@ -78,12 +78,12 @@ export function validateTemplateSchema(schema) {
         if (!isPlainObject(slot) || !isName(slot.id)) { out.push('anatomy slot has no id'); continue; }
         if (seen.has(slot.id)) out.push(`duplicate anatomy slot "${slot.id}"`);
         seen.add(slot.id);
-        if (!['text', 'icon'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
+        if (!['text', 'control', 'icon'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
         if (slot.managed && slot.kind !== 'icon') out.push(`anatomy slot "${slot.id}" is managed but not an icon`);
         if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
-    const text = anatomy.filter(s => isPlainObject(s) && s.kind === 'text' && !s.optional);
-    if (text.length === 0) out.push('anatomy needs a required text slot');
+    const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    if (text.length === 0) out.push('anatomy needs a required text or control slot');
 
     const props = isPlainObject(schema.props) ? schema.props : null;
     if (!props) out.push('props must be an object');
@@ -233,14 +233,19 @@ function controlProblems(schema) {
     if (control === undefined) return [];
     if (!isPlainObject(control)) return ['control must be an object'];
     const out = [];
-    const text = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.kind === 'text').map(s => s.id);
-    if (!text.includes(control.slot)) out.push(`control slot "${control.slot}" is not a text anatomy slot`);
+    const text = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control')).map(s => s.id);
+    if (!text.includes(control.slot)) out.push(`control slot "${control.slot}" is not a text or control anatomy slot`);
     const props = isPlainObject(schema.props) ? schema.props : {};
     const value = props[control.value];
     if (!value || value.source !== 'literal' || value.type !== 'string') out.push(`control value "${control.value}" is not a string prop`);
     if (control.placeholder !== undefined) {
         const placeholder = props[control.placeholder];
         if (!placeholder || placeholder.source !== 'literal' || placeholder.type !== 'string') out.push(`control placeholder "${control.placeholder}" is not a string prop`);
+    }
+    for (const [field, kind] of [['maxlength', 'string'], ['readonly', 'boolean'], ['clear', 'boolean'], ['count', 'boolean']]) {
+        if (control[field] === undefined) continue;
+        const def = props[control[field]];
+        if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
     return out;
 }

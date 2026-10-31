@@ -91,7 +91,7 @@ export function planAnatomy(template, values, children, flip = false) {
         else ops.push({ op: 'remove', id: c.id });
     }
     if (!wanted.length) return ops;
-    const textIndex = template.anatomy.findIndex(s => s.kind === 'text');
+    const textIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
     const slotIndex = slot => template.anatomy.findIndex(s => s.id === slot);
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
     // A slot anatomically before the label goes first; one after it goes last. Slots are placed in anatomy order.

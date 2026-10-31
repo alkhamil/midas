@@ -4,8 +4,8 @@
 /** Anatomy slot: one named position in the rendered structure, in render order. */
 export interface AnatomySlot {
     id: string;
-    /** `text` holds a label; `icon` holds an icon component. */
-    kind: 'text' | 'icon';
+    /** `text` holds a label, `control` a label drawn as an input; `icon` holds an icon component. */
+    kind: 'text' | 'control' | 'icon';
     /** Optional slots may be absent on an instance. */
     optional?: boolean;
     /** Managed slots are inserted and removed by Behavior from the instance's props. */
@@ -34,11 +34,15 @@ export interface NodeField {
     field: string;
 }
 
-/** A text slot drawn as an input: the schema names the slot and its value and placeholder props. Data only: the engine renders it, the canvas keeps the text layer. */
+/** A text or control slot drawn as an input: the schema names the slot and the props that fill it. Data only: the engine renders it, the canvas keeps the text layer. */
 export interface ControlDef {
     slot: string;
     value: string;
     placeholder?: string;
+    readonly?: string;
+    maxlength?: string;
+    clear?: string;
+    count?: string;
 }
 
 /** Dimensions a literal prop needs: the variable props whose collections must be bound on the master (data only). */

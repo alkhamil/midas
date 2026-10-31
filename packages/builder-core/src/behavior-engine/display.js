@@ -19,6 +19,7 @@ export const NODE_PROPERTIES = {
         fill: { kind: 'color', css: 'color' },
         fontSize: { kind: 'length', css: 'font-size' },
         lineHeight: { kind: 'ratio', css: 'line-height' },
+        placeholder: { kind: 'color', css: null },
     },
     icon: {
         size: { kind: 'length', css: ['width', 'height'] },
@@ -40,7 +41,7 @@ export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';
     const slot = Array.isArray(template.anatomy) ? template.anatomy.find(s => s.id === key) : undefined;
     if (!slot) return null;
-    return slot.kind === 'text' ? 'text' : 'icon';
+    return slot.kind === 'icon' ? 'icon' : 'text';
 };
 
 /**
