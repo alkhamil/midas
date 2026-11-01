@@ -37,7 +37,7 @@
 - Typography is a composite variable type (colour excluded): Primitives hold raw styles, Semantic styles alias them whole per mode, component typography aliases Semantic per Size mode; text parts declare `typography: <role>`; lineHeight is px only.
 - Typography editor: the Variables cell opens a floating window (one mode, typed pickers per member, whole-style alias, weight names per family, ratio lineHeight refused). Design panel: attach and detach act on every selected text layer in one undo step each; attached fields are read-only; attach links the style collection to the layer's modes.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
-- Visibility contract: every template declares `parts` (canvas nodes, each with `shownWhen`; `canvas: false` needs a reason) and `playOnly` (each with a reason); static parts are nodes. Browser check: `npm run test:browser --workspace @midas/studio`, then look at `.artifacts/` screenshots before reporting. Open drift: the Play host border adds 1px per side (canvas stroke is inside the padding), and an empty Input's canvas row keeps the value's 8px gap.
+- Visibility contract: every template declares `parts` (canvas nodes, each with `shownWhen`; `canvas: false` needs a reason) and `playOnly` (each with a reason); static parts are nodes. Browser check: `npm run test:browser --workspace @midas/studio`, then look at `.artifacts/` screenshots before reporting. Open drift: the Play host border shifts children by 1px (canvas stroke is inside the padding); hug text boxes carry 1px slack (hugText), so a label is 1px wider than Play; an empty Input keeps the value's 8px gap, and its placeholder has no Play element.
 - Dev needs `infra:up` with Docker Desktop running before `dev:server`, else the seed fails with ECONNREFUSED on postgres (5433); on Windows run `dev:server` and `dev:studio` separately.
 
 ## Code map
@@ -56,6 +56,7 @@
 ## Antrean
 
 - Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
+- A template root that maps `height` binds the Size `height` variable to h and is fixed vertically (bind-tokens `height: ['h']`, template-master `rootSizingV`).
 - Button paddingY is 0 in every size: antd forces `buttonPaddingVertical = 0` (`button/style/token.ts`, `index.ts`); Input paddingY (4 md, 7 lg) comes from `paddingBlock`. Template-qualified tokens are correct. `Input Size` paddingY xl (9) is derived. The token JSON is not in the repo, so `base-snapshot.json` cannot be rebuilt here.
 
 ## Maintenance
