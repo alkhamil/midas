@@ -63,9 +63,21 @@ export async function openImportedFile(browser, filePath) {
     // The import replaces the document asynchronously: wait until it has landed (the busy overlay is gone and the file's name is open),
     // so a click or a selection made next is not wiped by the load.
     await page.waitForFunction(([id, name]) => window.midas?.ready && !!window.midas.doc.get(id) && window.midas.doc.data.name === name && !document.getElementById('busy-overlay'), [probeId, data.name]);
-    await page.waitForTimeout(300);
     await page.waitForTimeout(400);
+    await settleFonts(page);
     return { page, errors };
+}
+
+/**
+ * Waits until the page's webfonts are loaded: a glyph measured before its face arrives differs by a couple of pixels, so every
+ * measurement waits for the faces the templates use (Inter at the weights the Sizes and states set).
+ */
+export function settleFonts(page) {
+    return page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all([400, 500, 600, 700].map(w => document.fonts.load(`${w} 14px Inter`, 'Aa')));
+        await document.fonts.ready;
+    });
 }
 
 /** Every node of the open document, depth first, as { id, name, parentId, type }. */
