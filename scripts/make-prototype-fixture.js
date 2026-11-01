@@ -52,7 +52,7 @@ const navigate = (id, destinationId, trigger = { type: 'on-click' }, transition 
  * @param {{ broken?: boolean }} [options]
  */
 export function buildPrototypeFixture({ broken = false } = {}) {
-    const doc = buildBehaviorFixture();
+    const doc = buildBehaviorFixture({ legacy: false });
     doc.name = 'Prototype fixture';
     // A boolean variable with two modes. A conditional reads it through the mode of the node it sits on.
     doc.variables.collections.push({ id: 'col-flag', name: 'Flag', modes: [{ id: 'mode-on', name: 'On' }, { id: 'mode-off', name: 'Off' }] });

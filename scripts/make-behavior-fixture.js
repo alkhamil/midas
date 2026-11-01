@@ -49,6 +49,11 @@ function variables() {
 }
 
 const VARIABLES = variables();
+
+/** The variables without Variant B and its values: the documents that do not carry the legacy master. */
+function withoutLegacy(vars) {
+    return { collections: vars.collections.filter(c => c.id !== ids.variantLegacy), items: vars.items.filter(i => i.collectionId !== ids.variantLegacy) };
+}
 const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
 
 /** The main master: bound to the Variant, Color and Size collections, with a stroke so the Focus preview is visible on the canvas. */
@@ -84,7 +89,8 @@ export function buildManagedLayerClipboard(fixture = buildBehaviorFixture()) {
 }
 
 /** The fixture document. Five pages, so a lazy open applies (more than three pages). */
-export function buildBehaviorFixture() {
+export function buildBehaviorFixture({ legacy = true } = {}) {
+    const variables = legacy ? VARIABLES : withoutLegacy(VARIABLES);
     const page1 = [
         ...MAIN,
         ...instanceOfMain('inst-start', 200, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, MODES('solid', 'primary', 'sm')),
@@ -93,7 +99,7 @@ export function buildBehaviorFixture() {
         // Not bound and not a template: a plain frame with its own label, for the Behavior tab's bind action.
         node('frame', { id: 'unbound', name: 'Unbound', x: 600, y: 0, w: 136, h: 48, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8 }),
         node('text', { id: 'unbound-label', name: 'Label', parentId: 'unbound', text: 'Button', w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14 }),
-        ...LEGACY,
+        ...(legacy ? LEGACY : []),
         ...ICONS,
     ];
     const page2 = instanceOfMain('inst-cross', 0, 120, { hasIcon: true, iconPlacement: 'end', iconEnd: 'icon-arrow', label: 'Next' }, MODES('solid', 'primary', 'sm'));
@@ -106,7 +112,7 @@ export function buildBehaviorFixture() {
     ];
     return {
         format: 'midas', version: 1, name: 'Behavior fixture', pageId: 'page-components', pages,
-        tokens: { colors: [], typography: [] }, assets: {}, variables: VARIABLES,
+        tokens: { colors: [], typography: [] }, assets: {}, variables,
     };
 }
 

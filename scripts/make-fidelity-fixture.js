@@ -159,7 +159,7 @@ const FEATURES = [
  * @returns {Record<string, any>}
  */
 export function buildFidelityFixture() {
-    const base = buildBehaviorFixture();
+    const base = buildBehaviorFixture({ legacy: false });
     const nodes = FEATURES.flatMap((feature, index) => {
         const id = `frame-${index}`;
         return [frame(id, feature.name, index, feature.frame), ...feature.layers(id)];
