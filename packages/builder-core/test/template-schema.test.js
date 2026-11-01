@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
 import { BUTTON } from '../src/templates/button.js';
+import { INPUT } from '../src/templates/input.js';
 
 const clone = o => structuredClone(o);
 
@@ -153,4 +154,27 @@ test('a prop can require collections by dimension, and an unknown dimension is r
     const bad = clone(BUTTON);
     bad.props.hasIcon.requires = ['variant', 'nope'];
     assert.match(validateTemplateSchema(bad).join('\n'), /prop "hasIcon" requires "nope", which is not a variable prop/);
+});
+
+test('a shownWhen names a real literal prop, with a condition the prop can hold', () => {
+    assert.deepEqual(validateTemplateSchema(INPUT), []);
+    const typo = clone(INPUT);
+    typo.anatomy.find(s => s.id === 'prefixText').shownWhen.all[0].prop = 'hasPrefx';
+    assert.match(validateTemplateSchema(typo).join('\n'), /shownWhen refers to unknown prop "hasPrefx"/);
+    const wrongKind = clone(INPUT);
+    wrongKind.anatomy.find(s => s.id === 'prefixText').shownWhen.all[1].empty = 'no';
+    assert.match(validateTemplateSchema(wrongKind).join('\n'), /with "empty", which needs a string prop and a boolean/);
+    const notText = clone(INPUT);
+    notText.anatomy.find(s => s.id === 'prefix').shownWhen = { prop: 'hasPrefix', is: true };
+    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefix" has shownWhen but is not a text slot/);
+});
+
+test('remembered is a boolean on a prop a visibleIf hides, and is refused elsewhere', () => {
+    assert.equal(INPUT.props.prefixText.remembered, true);
+    const notBoolean = clone(INPUT);
+    notBoolean.props.prefixText.remembered = 'yes';
+    assert.match(validateTemplateSchema(notBoolean).join('\n'), /prop "prefixText" remembered must be a boolean/);
+    const noSwitch = clone(INPUT);
+    delete noSwitch.props.prefixText.visibleIf;
+    assert.match(validateTemplateSchema(noSwitch).join('\n'), /prop "prefixText" is remembered but has no visibleIf/);
 });

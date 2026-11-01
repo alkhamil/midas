@@ -46,6 +46,49 @@ function propProblems(name, def, props) {
         if (!target) out.push(`prop "${name}" visibleIf refers to unknown prop "${isPlainObject(cond) ? cond.prop : cond}"`);
         else if (target.source !== 'literal' || !['boolean', 'enum'].includes(target.type)) out.push(`prop "${name}" visibleIf must test a boolean or enum prop, not "${cond.prop}"`);
     }
+    // A remembered prop keeps its value while a switch hides it, so it only means something on a prop that a visibleIf hides.
+    if (def.remembered !== undefined) {
+        if (typeof def.remembered !== 'boolean') out.push(`prop "${name}" remembered must be a boolean`);
+        else if (def.remembered && def.visibleIf === undefined) out.push(`prop "${name}" is remembered but has no visibleIf: only a prop a switch hides is remembered`);
+    }
+    return out;
+}
+
+/**
+ * Problems in a condition (a `shownWhen` on an anatomy slot): `all` is a non-empty list of conditions; a test names a literal prop
+ * that exists, with `is` on a boolean or enum prop, or `empty` (a boolean) on a string prop.
+ * @param {any} cond
+ * @param {Record<string, any>} props
+ * @param {string} where names the condition in the messages
+ * @returns {string[]}
+ */
+function conditionProblems(cond, props, where) {
+    if (!isPlainObject(cond)) return [`${where} must be an object`];
+    if ('all' in cond) {
+        if (!Array.isArray(cond.all) || cond.all.length === 0) return [`${where} "all" must be a non-empty list of conditions`];
+        return cond.all.flatMap(c => conditionProblems(c, props, where));
+    }
+    const target = isPlainObject(props[cond.prop]) ? props[cond.prop] : null;
+    if (!target) return [`${where} refers to unknown prop "${cond.prop}"`];
+    if (target.source !== 'literal') return [`${where} tests "${cond.prop}", which is not a literal prop`];
+    if ('is' in cond) return ['boolean', 'enum'].includes(target.type) ? [] : [`${where} tests "${cond.prop}" with "is", which needs a boolean or enum prop`];
+    if ('empty' in cond) return typeof cond.empty === 'boolean' && target.type === 'string' ? [] : [`${where} tests "${cond.prop}" with "empty", which needs a string prop and a boolean`];
+    return [`${where} has neither "is" nor "empty"`];
+}
+
+/**
+ * Problems in the `shownWhen` of the anatomy slots: only a text slot has one, and its condition must hold on the template's props.
+ * @param {any} schema
+ * @param {Record<string, any>} props
+ * @returns {string[]}
+ */
+function shownWhenProblems(schema, props) {
+    const out = [];
+    for (const slot of Array.isArray(schema.anatomy) ? schema.anatomy : []) {
+        if (!isPlainObject(slot) || slot.shownWhen === undefined) continue;
+        if (slot.kind !== 'text') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text slot`);
+        out.push(...conditionProblems(slot.shownWhen, props, `anatomy slot "${slot.id}" shownWhen`));
+    }
     return out;
 }
 
@@ -108,6 +151,7 @@ export function validateTemplateSchema(schema) {
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...controlProblems(schema));
+    out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
     out.push(...interactionProblems(schema));
     out.push(...nodeProblems(schema));
