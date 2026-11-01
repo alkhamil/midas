@@ -43,7 +43,7 @@ const model = buttonModel({ sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg',
 const ids = model.ids;
 
 const bindings = {
-    root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+    root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' },
     label: { 'fills.0': 'v-fg', typography: 's-labelTypography' },
 };
 

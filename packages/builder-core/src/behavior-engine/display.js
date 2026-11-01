@@ -121,6 +121,7 @@ export const VARIABLE_KEYS = {
     fontSize: ['fontSize'],
     lineHeight: ['lineHeight'],
     typography: ['typography'],
+    height: ['h'],
     size: ['w', 'h'],
 };
 

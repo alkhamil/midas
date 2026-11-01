@@ -58,7 +58,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -155,7 +155,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {
@@ -289,7 +289,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -391,7 +391,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -493,7 +493,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -595,7 +595,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -697,7 +697,7 @@
       "padH": "s-paddingX",
       "padV": "s-paddingY",
       "gap": "s-gap",
-      "minW": "s-height"
+      "h": "s-height"
      }
     },
     {
@@ -798,7 +798,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {
@@ -899,7 +899,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {
@@ -1000,7 +1000,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {
@@ -1101,7 +1101,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {
@@ -1202,7 +1202,7 @@
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap",
-      "minW": "in-s-height"
+      "h": "in-s-height"
      }
     },
     {

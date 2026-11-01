@@ -32,11 +32,11 @@ const SIZE_VALUES = Object.fromEntries(Object.entries(SIZING).map(([token, value
 const button = buttonModel({ sizeModes: SIZES, sizeValues: SIZE_VALUES });
 const input = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-', sizeModes: SIZES, sizeValues: SIZE_VALUES });
 const BTN = {
-    root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
+    root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' },
     label: { 'fills.0': 'v-fg', typography: 's-labelTypography' },
 };
 const INP = {
-    root: { 'fills.0': 'in-v-bg', stroke: 'in-v-border', radius: 'in-s-radius', padH: 'in-s-paddingX', padV: 'in-s-paddingY', gap: 'in-s-gap', minW: 'in-s-height' },
+    root: { 'fills.0': 'in-v-bg', stroke: 'in-v-border', radius: 'in-s-radius', padH: 'in-s-paddingX', padV: 'in-s-paddingY', gap: 'in-s-gap', h: 'in-s-height' },
     label: { 'fills.0': 'in-v-fg', typography: 'in-s-valueTypography' },
 };
 

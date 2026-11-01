@@ -58,6 +58,15 @@ for (const template of TEMPLATES.values()) {
         assert.deepEqual(diagnoseDocument(doc).filter(f => f.severity === 'error'), []);
     });
 
+    test(`${template.id}: a root that binds a height is fixed vertically and carries the Size height variable`, () => {
+        if (!('height' in (template.display.root ?? {}))) return;
+        const { variables, binding } = MODELS[template.id]();
+        const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };
+        applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
+        assert.equal(frame.layoutSizingV, 'fixed', 'the box is the Size height, not its content');
+        assert.ok(frame.vars?.h, 'the root height is bound to a variable');
+    });
+
     test(`${template.id}: a second run creates nothing and the tree is unchanged; a user layer survives`, () => {
         const { variables, binding } = MODELS[template.id]();
         const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };

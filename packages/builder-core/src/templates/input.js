@@ -115,7 +115,7 @@ export const INPUT = {
     ],
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
+        root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
         addonBefore: { fill: 'fg', typography: 'addonTypography' },
         addonAfter: { fill: 'fg', typography: 'addonTypography' },

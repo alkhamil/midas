@@ -15,6 +15,9 @@ function slotShown(template, slotId, resolved) {
     return slotDefsOf(template, slotId).some(def => resolved[def.show] === true && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
 
+/** The vertical sizing of a root that binds a height token: fixed, so the Size height is the box; any other root hugs its content. */
+const rootSizingV = template => (template.display.root && 'height' in template.display.root ? 'fixed' : 'hug');
+
 /** A solid paint, as the document stores it. */
 const solid = color => [{ type: 'solid', color, opacity: 1, visible: true }];
 
@@ -50,7 +53,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
     if (spec.role === 'root') {
         return { ...LAYER, id, name: template.name, type: 'frame', parentId: null, component: true, x: 0, y: 0, w: 0, h: 0, layout: 'horizontal', gap: 0, padding: 0,
-            layoutSizingH: 'hug', layoutSizingV: 'hug', counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: false,
+            layoutSizingH: 'hug', layoutSizingV: rootSizingV(template), counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: false,
             behavior: { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } } };
     }
     if (spec.type === 'text') {
@@ -96,7 +99,7 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     const specs = layerSpecsOf(template);
     frame.component = true;
     // A master lays its parts out as an auto layout frame, the way the canvas lays out a component; a frame that is already auto layout keeps its own.
-    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug', layoutSizingV: 'hug' });
+    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug', layoutSizingV: rootSizingV(template) });
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
     const layer = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {
