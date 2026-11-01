@@ -6,12 +6,18 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, shotNode } from './harness.mjs';
 
 const TESTING = resolve(ROOT, 'testing.midas');
 const MATRIX = resolve(ROOT, 'scripts/fixtures/typography-matrix.midas');
 
 const fieldSize = (page, id) => page.evaluate(id => window.midas.doc.get(id).fontSize, id);
+
+/** The ink a canvas layer shows on the screen: its own screenshot at the canvas scale, read in device pixels. */
+async function layerInk(page, browser, id, name) {
+    const shot = await shotNode(page, id, name, 0);
+    return inkIn(browser, shot.file, { x: 0, y: 0, w: Math.round(shot.rect.w * 2), h: Math.round(shot.rect.h * 2) });
+}
 
 test('the editor window changes a member, the chip follows, and a ratio line height is refused', async t => {
     const stop = await ensureDevServers();
@@ -55,6 +61,8 @@ test('a style attached to two text nodes resolves per Size mode; switching the m
     await page.locator('.var-picker .vp-item[title="labelTypography"]').click();
     await page.waitForTimeout(300);
     assert.equal(await fieldSize(page, 'plain-a'), 10, 'xs resolves to textXs (10px)');
+    const inkXs = await layerInk(page, browser, 'plain-a', 'typo-plain-a-xs');
+    assert.ok(inkXs > 0, 'the xs text is drawn on the screen');
     assert.equal(await fieldSize(page, 'plain-b'), 16, 'lg resolves to textLg (16px)');
     assert.match(await page.locator('.typo-row').textContent(), /labelTypography/);
     assert.equal(await page.locator('.typo-ro').count(), 1, 'the fields are read-only while attached');
@@ -66,6 +74,9 @@ test('a style attached to two text nodes resolves per Size mode; switching the m
     await page.locator('select[data-var-mode="c-size"]').selectOption('md');
     await page.waitForTimeout(300);
     assert.equal(await fieldSize(page, 'plain-a'), 14, 'the Medium mode resolves to 14px');
+    // On the screen: the larger size draws more ink in the same layer.
+    const inkMd = await layerInk(page, browser, 'plain-a', 'typo-plain-a-md');
+    assert.ok(inkMd > inkXs, `the Medium text draws more ink on the screen (${inkXs} at xs, ${inkMd} at md)`);
     assert.equal(await fieldSize(page, 'plain-b'), 16, 'the other node keeps its own mode');
     await shotNode(page, 'm-frame', 'typo-attached-canvas');
 

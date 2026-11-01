@@ -217,6 +217,28 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
 }
 
 /**
+ * The number of ink pixels (luminance under 200) in a rectangle of a screenshot, in device pixels: a glyph or a drawn icon has ink, an
+ * empty box has none.
+ */
+export async function inkIn(browser, file, rect) {
+    const page = await browser.newPage();
+    try {
+        return await page.evaluate(async ([src, r]) => {
+            const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; });
+            const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+            const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+            const d = g.getImageData(r.x, r.y, r.w, r.h).data;
+            let ink = 0;
+            for (let i = 0; i < d.length; i += 4) if (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < 200) ink++;
+            return ink;
+        }, [dataUrlOf(file), rect]);
+    }
+    finally {
+        await page.close();
+    }
+}
+
+/**
  * The outline's position in both images. Each side's inner edge is found from the interior fill: scanning from the white inside of the
  * box outwards through a short window around the nominal edge, the first pixel that is darker than halfway to the stroke's darkest
  * pixel is the inner edge of the stroke (interpolated to a fraction of a pixel). The windows sit at the edges, where the text is not, so

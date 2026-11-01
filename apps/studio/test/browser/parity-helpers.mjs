@@ -16,8 +16,14 @@ export const DIFF_LIMIT = 0.08;
  * The testing file with its stage moved to an isolated page: the Testing page keeps one empty frame far from the canvas's centre, so
  * the components made for the test sit on nothing else. Returns the path of the written file.
  */
-export function isolatedStage() {
+export function isolatedStage({ icons = true, name = 'strict-parity.midas' } = {}) {
     const data = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+    // Without the icon library, the Components page keeps no Icon/ component (nor anything inside one).
+    if (!icons) {
+        const components = data.pages.find(p => p.name === 'Components');
+        const iconIds = new Set(components.nodes.filter(n => n.name.startsWith('Icon/')).map(n => n.id));
+        components.nodes = components.nodes.filter(n => !iconIds.has(n.id) && !iconIds.has(n.parentId));
+    }
     for (const page of data.pages) {
         if (page.name !== 'Testing') continue;
         const stage = page.nodes.find(n => n.parentId == null && n.type === 'frame');
@@ -25,7 +31,7 @@ export function isolatedStage() {
         data.pageId = page.id;
     }
     mkdirSync(ARTIFACTS, { recursive: true });
-    const file = resolve(ARTIFACTS, 'strict-parity.midas');
+    const file = resolve(ARTIFACTS, name);
     writeFileSync(file, JSON.stringify(data));
     return file;
 }

@@ -13,7 +13,7 @@ import { fontFamilyCss } from '../../../../packages/builder-core/src/behavior-en
 const FIXTURE = resolve(ROOT, 'scripts/fixtures/typography-matrix.midas');
 const TOLERANCE_PX = 1;
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl'];
-const TARGETS = [...SIZES.map(s => ({ kind: 'Button', id: `b-${s}-label` })), ...SIZES.map(s => ({ kind: 'Input', id: `i-${s}-value` }))];
+const TARGETS = [...SIZES.map(s => ({ kind: 'Button', id: `b-${s}-label` })), ...SIZES.map(s => ({ kind: 'Input', id: `i-${s}-label` }))];
 
 /** The canvas text of a node: its family, size, numeric weight, line height in px, its world box, and its glyph advance. */
 const canvasText = (page, id, stack) => page.evaluate(([id, stack]) => {
