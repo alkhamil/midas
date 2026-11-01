@@ -4,6 +4,22 @@
 import { splitColor, withOpacity } from './tokens.js';
 
 /**
+ * The stored value of a variable in the mode its collection is read in, falling back to the first mode, then to the first mode that has one.
+ * @param {{ collections: any[] } | undefined} variables
+ * @param {any} item
+ * @param {(collection: any) => string | undefined} modeOf
+ * @returns {any}
+ */
+export function valueInMode(variables, item, modeOf) {
+    const collection = variables?.collections.find(c => c.id === item.collectionId);
+    if (!variables || !collection || !collection.modes.length) return undefined;
+    let value = item.values[/** @type {string} */ (modeOf(collection))];
+    if (value === undefined) value = item.values[collection.modes[0].id];
+    if (value === undefined) value = collection.modes.map((/** @type {{ id: string }} */ m) => item.values[m.id]).find((/** @type {unknown} */ x) => x !== undefined);
+    return value;
+}
+
+/**
  * Follows a variable to its value. Every variable, including the targets of aliases, is read in the mode its own collection takes
  * (`modeOf`): an alias into another collection is read in that collection's mode, never the source's. A collection with no value
  * in that mode falls back to its first mode, then to the first mode that has one (Figma leaves modes unset). A colour alias can
@@ -16,11 +32,8 @@ import { splitColor, withOpacity } from './tokens.js';
  * @returns {unknown}
  */
 export function variableValue(variables, item, modeOf, depth = 0) {
-    const collection = variables?.collections.find(c => c.id === item.collectionId);
-    if (!variables || !collection || !collection.modes.length) return undefined;
-    let value = item.values[/** @type {string} */ (modeOf(collection))];
-    if (value === undefined) value = item.values[collection.modes[0].id];
-    if (value === undefined) value = collection.modes.map((/** @type {{ id: string }} */ m) => item.values[m.id]).find((/** @type {unknown} */ x) => x !== undefined);
+    if (!variables) return undefined;
+    const value = valueInMode(variables, item, modeOf);
     if (!value || typeof value !== 'object' || !('alias' in value)) return value;
     const target = variables.items.find(i => i.id === value.alias);
     if (!target || target.type !== item.type || depth > 20) return undefined;

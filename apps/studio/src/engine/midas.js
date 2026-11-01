@@ -973,7 +973,8 @@ function cleanVariables(v) {
     const out = { collections: [], items: [] };
     if (!v || !Array.isArray(v.collections) || !Array.isArray(v.items))
         return out;
-    const types = new Set(VAR_TYPES.map(t => t[0]));
+    // Typography is stored (its editor is not in the Create menu yet); a file with it must keep its items.
+    const types = new Set([...VAR_TYPES.map(t => t[0]), 'typography']);
     for (const c of v.collections) {
         if (typeof c?.id !== 'string' || !Array.isArray(c.modes) || !c.modes.length)
             continue;
