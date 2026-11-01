@@ -44,7 +44,7 @@ const ids = model.ids;
 
 const bindings = {
     root: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
-    label: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+    label: { 'fills.0': 'v-fg', typography: 's-labelTypography' },
 };
 
 /** The Button master: bound root auto layout frame with its label. */
@@ -162,7 +162,7 @@ const iids = imodel.ids;
 
 const ibindings = {
     root: { 'fills.0': 'in-v-bg', stroke: 'in-v-border', radius: 'in-s-radius', padH: 'in-s-paddingX', padV: 'in-s-paddingY', gap: 'in-s-gap' },
-    label: { 'fills.0': 'in-v-fg', fontSize: 'in-s-fontSize', lineHeight: 'in-s-lineHeight' },
+    label: { 'fills.0': 'in-v-fg', typography: 'in-s-valueTypography' },
 };
 
 const IMODES = (variant, status, size) => ({ [iids.variant]: variant, [iids.status]: status, [iids.size]: size });
@@ -188,8 +188,8 @@ function inputParts() {
         id: `inp-${part}`, name, parentId: 'inp', text: name, w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug',
         fills: solid(fill), fontSize: 14, vars, behavior: { version: BEHAVIOR_DATA_VERSION, part },
     });
-    const placeholderVars = { 'fills.0': 'in-v-placeholder', fontSize: 'in-s-fontSize', lineHeight: 'in-s-lineHeight' };
-    const fgVars = { 'fills.0': 'in-v-fg', fontSize: 'in-s-fontSize', lineHeight: 'in-s-lineHeight' };
+    const placeholderVars = { 'fills.0': 'in-v-placeholder', typography: 'in-s-placeholderTypography' };
+    const fgVars = { 'fills.0': 'in-v-fg', typography: 'in-s-valueTypography' };
     return [
         text('placeholder', 'Placeholder', placeholderVars, '#8c8297'),
         text('clear', '×', fgVars, '#20202a'),

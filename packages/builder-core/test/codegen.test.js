@@ -85,6 +85,6 @@ test('the stylesheet applies each mapped token to its node, from the display map
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
     assert.match(css, /^\.button \{\n(?:.*\n)*?\s*background-color: var\(--button-bg\);/);
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-radius: var\(--button-radius\);/);
-    assert.match(css, /\.button-label \{\n\s*color: var\(--button-fg\);\n\s*font-size: var\(--button-font-size\);\n\s*line-height: var\(--button-line-height\);\n\}/);
+    assert.match(css, /\.button-label \{\n\s*color: var\(--button-fg\);\n\s*font-family: var\(--button-label-typography-font-family\);\n\s*font-size: var\(--button-label-typography-font-size\);\n\s*font-weight: var\(--button-label-typography-font-weight\);\n\s*line-height: var\(--button-label-typography-line-height\);\n\s*letter-spacing: var\(--button-label-typography-letter-spacing\);\n\}/);
     assert.match(css, /\.button-iconStart \{\n\s*width: var\(--button-icon-size\);\n\s*height: var\(--button-icon-size\);\n\}/);
 });

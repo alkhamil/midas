@@ -13,6 +13,9 @@ import { planBindTokens } from './bind-tokens.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import BASE_SNAPSHOT from '../base-tokens/base-snapshot.json' with { type: 'json' };
+import { planFromSnapshot } from '../base-tokens/importer.js';
+/** The bundled base as a plan: the snapshot with the Semantic text styles, the same items Generate base applies. */
+const BASE_PLAN = planFromSnapshot(BASE_SNAPSHOT);
 
 export { ROLES };
 
@@ -20,7 +23,7 @@ export { ROLES };
 export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Typography'];
 
 const modeKey = (/** @type {unknown} */ s) => String(s ?? '').toLowerCase();
-const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : null;
+const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : kind === 'typography' ? 'typography' : null;
 
 /**
  * The role a token fills in one collection mode: the schema entry (a plain role, or a per-mode map matched
@@ -47,7 +50,7 @@ const isRef = (/** @type {string} */ role) => typeof role === 'string' && role.s
  * the existing auto-bind pipeline then writes, for the confirm message.
  * @param {{ template: any, binding: { variables: Record<string, string | null> }, variables: { collections?: any[], items?: any[] }, layers?: any[], roles?: any, baseSnapshot?: any }} input
  */
-export function planAutoFix({ template, binding, variables, layers = [], roles = ROLES, baseSnapshot = BASE_SNAPSHOT }) {
+export function planAutoFix({ template, binding, variables, layers = [], roles = ROLES, baseSnapshot = BASE_PLAN }) {
     const collections = variables.collections || [];
     const items = variables.items || [];
     /** @type {{ name: string, modes: string[], origin: string }[]} */
@@ -289,71 +292,6 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         }
         return undefined;
     };
-    /** A ratio leftover: a positive number below any plausible px line height. */
-    const isRatio = value => typeof value === 'number' && value > 0 && value < 4;
-
-    // Line heights that resolve to a ratio are rebound to the paired px token. The Semantic base a role names is
-    // repaired first (to the snapshot's Typography alias); the component variable then aliases the repaired base.
-    // `lineHeight` is schema vocabulary shared by every template, not per-component code.
-    let rebound = 0;
-    /** Plans overwriting one mode value with an alias; the applier writes repair entries even when a value is set. */
-    const rebind = (collectionName, collectionIndex, name, type, mode, target) => {
-        newItems.push({ collection: collectionName, collectionIndex, name, type, values: { [mode]: { alias: { collectionIndex: target.collectionIndex, name: target.name } } }, repair: true });
-        rebound++;
-    };
-    const lineRoles = new Map();
-    for (const [dim] of variableProps(template)) {
-        if (!(dim in dimCollection)) continue;
-        for (const [group, names] of Object.entries(template.tokens ?? {})) {
-            if (dimensionOfGroup(group, template.props) !== dim) continue;
-            for (const token of names) {
-                if (token !== 'lineHeight') continue;
-                for (const mode of modesOf(dim)) {
-                    const role = roleOf(template, token, mode);
-                    if (!isRef(role) && !lineRoles.has(role)) lineRoles.set(role, true);
-                }
-            }
-        }
-    }
-    for (const role of lineRoles.keys()) {
-        const entry = roles[role];
-        if (!entry || typeof entry.base !== 'string') continue;
-        const slash = entry.base.indexOf('/');
-        const baseColl = entry.base.slice(0, slash), baseName = entry.base.slice(slash + 1);
-        const cands = collsNamed(baseColl);
-        const ordered = [...cands.filter(c => !isComponentColl(c)), ...cands.filter(isComponentColl)];
-        const base = ordered.flatMap(c => items.filter(i => i.collectionId === c.id && variableKey(i.name) === variableKey(baseName)))[0];
-        const target = baseTarget(role, 'number', `${baseColl}/${baseName}`);
-        if (!target || !base || base.type !== 'number') continue;
-        const snap = baseSnapshot.items.find(i => i.collection === baseColl && variableKey(i.name) === variableKey(baseName));
-        for (const m of baseSnapshot.collections.find(c => c.name === baseColl)?.modes ?? []) {
-            const hasMode = ordered.find(c => c.id === base.collectionId)?.modes.some(mm => modeKey(mm.name) === modeKey(m));
-            if (hasMode && isRatio(storedLiteral(base, m)) && snap?.values[m]?.alias) {
-                rebind(baseColl, collEntry(baseColl, [], 'base'), baseName, 'number', m, { collectionIndex: collEntry('Typography', [], 'base'), name: snap.values[m].alias.name });
-            }
-        }
-    }
-    for (const [dim] of variableProps(template)) {
-        if (!(dim in dimCollection)) continue;
-        const coll = dimCollection[dim];
-        for (const [group, names] of Object.entries(template.tokens ?? {})) {
-            if (dimensionOfGroup(group, template.props) !== dim) continue;
-            for (const token of names) {
-                if (token !== 'lineHeight') continue;
-                const varName = token;
-                const have = coll ? itemIn(coll.id, varName) : null;
-                if (!have || have.type !== 'number') continue;
-                for (const mode of modesOf(dim)) {
-                    const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
-                    if (!hasMode || !isRatio(storedLiteral(have, mode))) continue;
-                    const role = roleOf(template, token, mode);
-                    const target = isRef(role) ? followRef(role, new Set()) : baseTarget(role, 'number', `${coll.name}/${varName}.${mode}`);
-                    if (!target) continue;
-                    rebind(coll.name, dimEntry[dim], varName, 'number', mode, target);
-                }
-            }
-        }
-    }
     // Rest colours that must stay transparent resolve through the transparent token. A stored value that is
     // opaque or not Semantic-aliased is repaired like a ratio leftover: the value is overwritten with the role alias.
     // The transparent base marks these tokens; no token name is special-cased.
@@ -401,7 +339,6 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
                 const type = kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : null;
                 if (!have || !type || have.type !== type) continue;
                 for (const mode of modesOf(dim)) {
-                    if (token === 'lineHeight' && isRatio(storedLiteral(have, mode))) continue;
                     const hasMode = coll.modes.some(m => modeKey(m.name) === modeKey(mode));
                     if (!hasMode) continue;
                     const modeId = coll.modes.find(m => modeKey(m.name) === modeKey(mode))?.id;
@@ -473,7 +410,6 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         collections: [...new Set(newItems.map(i => i.collection))],
         modes: [...new Set(newCollections.filter(c => c.origin === 'component').map(c => `${c.name} (${c.modes.join(', ')})`))],
         boundProperties,
-        rebound,
         transparentRepaired,
         provenanceRepaired,
         derived: derived.map(d => d.name),
@@ -482,7 +418,7 @@ export function planAutoFix({ template, binding, variables, layers = [], roles =
         createdCollections: [...new Set(newCollections.filter(c => c.origin === 'component' && !collections.some(e => e.name === c.name)).map(c => c.name))],
         reboundDims,
     };
-    const fixable = created.length > 0 || summary.fills > 0 || rebound > 0 || Object.keys(bindingUpdates).length > 0;
+    const fixable = created.length > 0 || summary.fills > 0 || Object.keys(bindingUpdates).length > 0;
     return { fixable, plan: { collections: newCollections, items: newItems }, bindingUpdates, derived, needsValue, unfixable, summary };
 }
 

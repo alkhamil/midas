@@ -18,8 +18,8 @@ export const NODE_PROPERTIES = {
     },
     text: {
         fill: { kind: 'color', css: 'color' },
-        fontSize: { kind: 'length', css: 'font-size' },
-        lineHeight: { kind: 'length', css: 'line-height' },
+        // A typography token drives every member: one custom property per member, each read in its own name (perMember).
+        typography: { kind: 'typography', css: ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing'], perMember: true },
         placeholder: { kind: 'color', css: null },
     },
     icon: {
@@ -120,6 +120,7 @@ export const VARIABLE_KEYS = {
     gap: ['gap'],
     fontSize: ['fontSize'],
     lineHeight: ['lineHeight'],
+    typography: ['typography'],
     size: ['w', 'h'],
 };
 

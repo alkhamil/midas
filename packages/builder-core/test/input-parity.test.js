@@ -89,8 +89,8 @@ test('wrapper height and font metrics differ per Size mode', () => {
     const large = varsOf('large'), middle = varsOf('middle'), small = varsOf('small');
     assert.ok(large.height && middle.height && small.height, 'height is set per size');
     assert.ok(new Set([large.height, middle.height, small.height]).size === 3, 'heights differ');
-    assert.ok(new Set([large['font-size'], middle['font-size'], small['font-size']]).size >= 2, 'font sizes differ');
-    assert.ok(new Set([large['line-height'], middle['line-height'], small['line-height']]).size >= 2, 'line heights differ');
+    assert.ok(new Set([large['value-typography-font-size'], middle['value-typography-font-size'], small['value-typography-font-size']]).size >= 2, 'font sizes differ');
+    assert.ok(new Set([large['value-typography-line-height'], middle['value-typography-line-height'], small['value-typography-line-height']]).size >= 2, 'line heights differ');
 });
 
 test('status switches the wrapper colours and focus keeps the status colour', () => {

@@ -70,8 +70,8 @@ test('a preview state the template does not have is refused', () => {
     assert.throws(() => draw('pressed'), /unknown preview state "pressed"/);
 });
 
-test('lineHeight resolves to px from the bound variable, never a ratio', () => {
-    assert.equal(draw().vars['--button-line-height'], '20px');
+test('the label line height resolves to px from its typography style, never a ratio', () => {
+    assert.equal(draw().vars['--button-label-typography-line-height'], '16px');
 });
 
 // The canvas draws a preview only for the root's background and border. Text colour stays in the Preview section.

@@ -2,7 +2,7 @@
 // drives the box, Status (default | error | warning) drives the border and focus colours through aliases, Size
 // (large | middle | small) holds the metrics. Every literal sits in a Primitive and is reached through a Semantic alias (see
 // literal-bank.mjs), so a fixture is self-contained. Every fixture and every test builds its Input variables here.
-import { literalBank } from './literal-bank.mjs';
+import { literalBank, textStyleBank } from './literal-bank.mjs';
 
 export const INPUT_VARIANTS = ['outlined', 'filled', 'borderless'];
 export const INPUT_STATUSES = ['default', 'error', 'warning'];
@@ -39,10 +39,12 @@ const VARIANT_VALUES = { outlined: OUTLINED, filled: FILLED, borderless: BORDERL
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
     height: { large: 40, middle: 32, small: 24 },
-    fontSize: { large: 16, middle: 14, small: 14 }, lineHeight: { large: 22, middle: 22, small: 20 },
     paddingX: { large: 16, middle: 12, small: 8 }, paddingY: { large: 8, middle: 6, small: 4 },
     gap: { large: 8, middle: 8, small: 6 }, radius: { large: 8, middle: 6, small: 4 }, iconSize: { large: 16, middle: 14, small: 12 },
 };
+/** The Size modes of the Input's typography tokens (value, addon, placeholder, clear, count), as the Semantic text style each takes. */
+const INPUT_TYPOGRAPHY_STYLE = { large: 'textLg', middle: 'textBase', small: 'textSm' };
+const INPUT_TYPOGRAPHY = ['valueTypography', 'addonTypography', 'placeholderTypography', 'clearTypography', 'countTypography'];
 const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
 
 /**
@@ -58,6 +60,7 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     const primitives = ids.primitives ?? 'c-primitives';
     const semItem = `${prefix}sem-outlineTransparent`;
     const bank = literalBank(primitives, semantic);
+    const text = textStyleBank(primitives, semantic, prefix);
     const collections = [
         { id: variant, name: 'Input Variant', modes: variantModes.map(titled) },
         { id: status, name: 'Input Status', modes: statusModes.map(titled) },
@@ -72,6 +75,9 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     for (const [token, values] of Object.entries(sizes)) {
         items.push({ id: `${prefix}s-${token}`, name: token, type: 'number', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, { alias: bank.ref(values[m.id]) }])) });
     }
+    for (const token of INPUT_TYPOGRAPHY) {
+        items.push({ id: `${prefix}s-${token}`, name: token, type: 'typography', collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, { alias: text.ref(INPUT_TYPOGRAPHY_STYLE[m.id]) }])) });
+    }
     for (const token of VARIANT_TOKENS) {
         const values = {};
         for (const mode of variantModes) {
@@ -82,6 +88,6 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
         }
         items.push({ id: `${prefix}v-${token}`, name: token, type: 'color', collectionId: variant, values });
     }
-    items.unshift(...bank.items());
+    items.unshift(...bank.items(), ...text.items);
     return { collections, items, ids: { variant, status, size, semantic, primitives }, binding: { version: 2, templateId: 'input', variables: { variant, status, size } } };
 }

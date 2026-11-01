@@ -43,7 +43,7 @@ const ids = { variant: main.ids.variant, variantLegacy: legacyModel.ids.variant,
  */
 const bindings = prefix => ({
     root: { 'fills.0': `${prefix}v-bg`, stroke: `${prefix}v-border`, radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
-    label: { 'fills.0': `${prefix}v-fg`, fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+    label: { 'fills.0': `${prefix}v-fg`, typography: 's-labelTypography' },
 });
 /** A Button master: a root auto layout frame with its label, bound to the template, or unbound when `binding` is null. */
 function master(id, name, x, binding, vars, y = 0) {

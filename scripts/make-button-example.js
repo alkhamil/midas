@@ -36,7 +36,7 @@ function master() {
     });
     const label = node('text', {
         id: 'button-label', name: 'Label', parentId: 'button', text: 'Button', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,
-        vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+        vars: { 'fills.0': 'v-fg', typography: 's-labelTypography' },
     });
     return [root, label];
 }
@@ -52,7 +52,7 @@ function instance() {
     });
     const label = node('text', {
         id: 'button-save-label', name: 'Label', parentId: 'button-save', text: 'Save', w: 80, h: 24, fills: solid('#ffffff'), fontSize: 14,
-        sourceId: 'button-label', vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' },
+        sourceId: 'button-label', vars: { 'fills.0': 'v-fg', typography: 's-labelTypography' },
     });
     return [root, label];
 }

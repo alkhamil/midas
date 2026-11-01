@@ -8,7 +8,7 @@ const model = buttonModel({
     variantModes: ['solid', 'outlined'],
     sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
     sizeValues: {
-        fontSize: { sm: 14, lg: 18 }, lineHeight: { sm: 20, lg: 24 }, paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
+        paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
         gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
     },
 });
@@ -35,7 +35,7 @@ const doc = (over = {}) => ({
                 behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: sizeColl.id }, ...over.binding },
                 vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', minW: 's-height' },
             },
-            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' } },
+            { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', typography: 's-labelTypography' } },
             {
                 id: 'i1', name: 'Button', type: 'frame', isInstance: true, sourceId: 'm1', parentId: null,
                 behavior: { version: 2, props: { ...over.props } }, vars: { 'fills.0': 'v-bg' }, ...over.instance,
@@ -86,7 +86,7 @@ test('a variable missing from its collection is an error on the master, naming t
 test('an instance with a token it cannot resolve is an error, with the reason', () => {
     const d = doc({ variables: { collections: collections.map(c => (c.id === sizeColl.id ? { ...c, modes: [] } : c)) } });
     const found = diagnoseDocument(d);
-    const fontSize = found.find(f => f.token === 'fontSize');
+    const fontSize = found.find(f => f.token === 'labelTypography');
     assert.equal(fontSize.severity, 'error');
     assert.equal(fontSize.code, 'token-unresolved');
     assert.equal(fontSize.reason, 'no-mode-selected');
@@ -94,7 +94,7 @@ test('an instance with a token it cannot resolve is an error, with the reason', 
 });
 
 test('an instance resolves its modes from its own Appearance modes, not from props', () => {
-    const items = sizeItems().map(i => (i.name === 'fontSize' ? { ...i, values: { sm: i.values.sm } } : i));
+    const items = sizeItems().map(i => (i.name === 'labelTypography' ? { ...i, values: { sm: i.values.sm } } : i));
     const d = doc({ variables: { items: [...model.items.filter(i => !sizeItems().includes(i)), ...items] }, instance: { varModes: { [sizeColl.id]: 'lg' } } });
     const found = diagnoseDocument(d);
     assert.deepEqual(found.map(f => f.code), ['variable-missing-in-mode'], 'the missing Large value is reported once, on the master');

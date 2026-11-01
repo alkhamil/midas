@@ -1146,8 +1146,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -1333,8 +1332,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -2782,8 +2780,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -2938,8 +2935,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -3061,8 +3057,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -4542,8 +4537,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -4920,8 +4914,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -5299,8 +5292,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -5742,8 +5734,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -6120,8 +6111,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -6498,8 +6488,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -8004,8 +7993,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -8158,8 +8146,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -8313,8 +8300,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -9693,8 +9679,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -9816,8 +9801,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -10300,8 +10284,7 @@
           "h": 20,
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -11186,8 +11169,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -11341,8 +11323,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -11464,8 +11445,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -11652,8 +11632,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -11774,8 +11753,7 @@
           },
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -12590,26 +12568,6 @@
         }
       },
       {
-        "id": "p-n14",
-        "name": "n14",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 14
-        }
-      },
-      {
-        "id": "sem-n14",
-        "name": "fx-n14",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n14"
-          }
-        }
-      },
-      {
         "id": "p-n16",
         "name": "n16",
         "type": "number",
@@ -12650,26 +12608,6 @@
         }
       },
       {
-        "id": "p-n24",
-        "name": "n24",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 24
-        }
-      },
-      {
-        "id": "sem-n24",
-        "name": "fx-n24",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n24"
-          }
-        }
-      },
-      {
         "id": "p-n6",
         "name": "n6",
         "type": "number",
@@ -12706,6 +12644,26 @@
         "values": {
           "base": {
             "alias": "p-n10"
+          }
+        }
+      },
+      {
+        "id": "p-n14",
+        "name": "n14",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 14
+        }
+      },
+      {
+        "id": "sem-n14",
+        "name": "fx-n14",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n14"
           }
         }
       },
@@ -12826,6 +12784,396 @@
         "values": {
           "base": {
             "alias": "p-ha1a1aa"
+          }
+        }
+      },
+      {
+        "id": "tp-text/xs",
+        "name": "text/xs",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "Regular",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/sm",
+        "name": "text/sm",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "Regular",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/base",
+        "name": "text/base",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "Regular",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/lg",
+        "name": "text/lg",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "Regular",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xl",
+        "name": "text/xl",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "Regular",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/1",
+        "name": "heading/1",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 38,
+            "fontWeight": "SemiBold",
+            "lineHeight": 40,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/2",
+        "name": "heading/2",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 30,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/3",
+        "name": "heading/3",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 24,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/4",
+        "name": "heading/4",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/5",
+        "name": "heading/5",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xs-strong",
+        "name": "text/xs-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "SemiBold",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/sm-strong",
+        "name": "text/sm-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "SemiBold",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/base-strong",
+        "name": "text/base-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "SemiBold",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/lg-strong",
+        "name": "text/lg-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xl-strong",
+        "name": "text/xl-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "ts-textXs",
+        "name": "textXs",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xs"
+          }
+        }
+      },
+      {
+        "id": "ts-textSm",
+        "name": "textSm",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/sm"
+          }
+        }
+      },
+      {
+        "id": "ts-textBase",
+        "name": "textBase",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/base"
+          }
+        }
+      },
+      {
+        "id": "ts-textLg",
+        "name": "textLg",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/lg"
+          }
+        }
+      },
+      {
+        "id": "ts-textXl",
+        "name": "textXl",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xl"
+          }
+        }
+      },
+      {
+        "id": "ts-heading1",
+        "name": "heading1",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/1"
+          }
+        }
+      },
+      {
+        "id": "ts-heading2",
+        "name": "heading2",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/2"
+          }
+        }
+      },
+      {
+        "id": "ts-heading3",
+        "name": "heading3",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/3"
+          }
+        }
+      },
+      {
+        "id": "ts-heading4",
+        "name": "heading4",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/4"
+          }
+        }
+      },
+      {
+        "id": "ts-heading5",
+        "name": "heading5",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/5"
+          }
+        }
+      },
+      {
+        "id": "ts-textXsStrong",
+        "name": "textXsStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xs-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textSmStrong",
+        "name": "textSmStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/sm-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textBaseStrong",
+        "name": "textBaseStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/base-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textLgStrong",
+        "name": "textLgStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/lg-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textXlStrong",
+        "name": "textXlStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xl-strong"
           }
         }
       },
@@ -13113,40 +13461,6 @@
         }
       },
       {
-        "id": "s-fontSize",
-        "name": "fontSize",
-        "type": "number",
-        "collectionId": "col-size",
-        "values": {
-          "mode-sm": {
-            "alias": "sem-n12"
-          },
-          "mode-md": {
-            "alias": "sem-n14"
-          },
-          "mode-lg": {
-            "alias": "sem-n16"
-          }
-        }
-      },
-      {
-        "id": "s-lineHeight",
-        "name": "lineHeight",
-        "type": "number",
-        "collectionId": "col-size",
-        "values": {
-          "mode-sm": {
-            "alias": "sem-n16"
-          },
-          "mode-md": {
-            "alias": "sem-n20"
-          },
-          "mode-lg": {
-            "alias": "sem-n24"
-          }
-        }
-      },
-      {
         "id": "s-paddingX",
         "name": "paddingX",
         "type": "number",
@@ -13228,6 +13542,23 @@
           },
           "mode-lg": {
             "alias": "sem-n18"
+          }
+        }
+      },
+      {
+        "id": "s-labelTypography",
+        "name": "labelTypography",
+        "type": "typography",
+        "collectionId": "col-size",
+        "values": {
+          "mode-sm": {
+            "alias": "ts-textSm"
+          },
+          "mode-md": {
+            "alias": "ts-textBase"
+          },
+          "mode-lg": {
+            "alias": "ts-textLg"
           }
         }
       },
@@ -13431,10 +13762,10 @@
         "collectionId": "col-variant",
         "values": {
           "solid": {
-            "alias": "c-color-solid-text"
+            "alias": "c-color-solid"
           },
           "outlined": {
-            "alias": "c-color-outline"
+            "alias": "c-color-border"
           }
         }
       },

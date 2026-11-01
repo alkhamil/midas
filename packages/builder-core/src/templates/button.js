@@ -8,7 +8,7 @@ export const BUTTON = {
     element: { tag: 'button', attrs: { type: 'button' }, disabledState: 'disabled', blockClickProps: ['disabled', 'loading'] },
     anatomy: [
         { id: 'iconStart', kind: 'icon', optional: true, managed: true },
-        { id: 'label', kind: 'text' },
+        { id: 'label', kind: 'text', typography: 'label' },
         { id: 'iconEnd', kind: 'icon', optional: true, managed: true },
     ],
     // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the
@@ -34,7 +34,7 @@ export const BUTTON = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
+        fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
         fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
         fromColor: [
             'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
@@ -44,7 +44,7 @@ export const BUTTON = {
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        height: 'length', labelTypography: 'typography', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
@@ -55,8 +55,7 @@ export const BUTTON = {
     // A value with a slash is another token variable of this template, followed through the bound collection.
     tokenRoles: {
         height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
-        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
-        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
+        labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'button-padding-x-md', lg: 'button-padding-x-lg', xl: 'button-padding-x-xl', default: 'button-padding-x-md' },
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
         gap: 'gap',
@@ -121,7 +120,7 @@ export const BUTTON = {
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
-        label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
+        label: { fill: 'fg', typography: 'labelTypography' },
         iconStart: { size: 'iconSize' },
         iconEnd: { size: 'iconSize' },
         spinner: { stroke: 'fg' },

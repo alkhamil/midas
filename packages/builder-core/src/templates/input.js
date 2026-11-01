@@ -7,11 +7,11 @@ export const INPUT = {
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
-        { id: 'addonBefore', kind: 'text', optional: true },
+        { id: 'addonBefore', kind: 'text', optional: true, typography: 'addon' },
         { id: 'prefix', kind: 'icon', optional: true, managed: true },
-        { id: 'label', kind: 'control' },
+        { id: 'label', kind: 'control', typography: 'value' },
         { id: 'suffix', kind: 'icon', optional: true, managed: true },
-        { id: 'addonAfter', kind: 'text', optional: true },
+        { id: 'addonAfter', kind: 'text', optional: true, typography: 'addon' },
     ],
     // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. The
     // placement rules are the Button's: start shows the prefix icon, end the suffix icon, both shows both at once.
@@ -48,13 +48,14 @@ export const INPUT = {
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['height', 'fontSize', 'lineHeight', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
+        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'clearTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
         fromVariant: ['bg', 'fg', 'border', 'placeholder', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', fontSize: 'length', lineHeight: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', clearTypography: 'typography', countTypography: 'typography',
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
         'status-border': 'color', 'status-border-hover': 'color', 'status-border-focus': 'color', 'status-outline': 'color',
@@ -63,8 +64,11 @@ export const INPUT = {
     // A value with a slash is another token variable of this template, followed through the bound collection.
     tokenRoles: {
         height: { xs: 'height-xs', sm: 'height-sm', md: 'height', lg: 'height-lg', xl: 'height-xl', default: 'height' },
-        fontSize: { xs: 'font-xs', sm: 'font-sm', md: 'font', lg: 'font-lg', xl: 'font-xl', default: 'font' },
-        lineHeight: { xs: 'line-xs', sm: 'line-sm', md: 'line', lg: 'line-lg', xl: 'line-xl', default: 'line' },
+        valueTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
+        addonTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
+        placeholderTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
+        clearTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
+        countTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'input-padding-x-md', lg: 'input-padding-x-lg', xl: 'input-padding-x-xl', default: 'input-padding-x-md' },
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'input-padding-y-md', lg: 'input-padding-y-lg', xl: 'input-padding-y-xl', default: 'input-padding-y-md' },
         gap: 'gap-xxs',
@@ -98,9 +102,9 @@ export const INPUT = {
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
     // The text part `count` shows the value's length (see counterLabel); `clear` is a glyph. Play renders each part from its node.
     parts: [
-        { id: 'placeholder', kind: 'text', shownWhen: { prop: 'value', empty: true } },
-        { id: 'clear', kind: 'text', shownWhen: { all: [{ prop: 'allowClear', is: true }, { prop: 'value', empty: false }] }, text: '×' },
-        { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } } },
+        { id: 'placeholder', kind: 'text', shownWhen: { prop: 'value', empty: true }, typography: 'placeholder' },
+        { id: 'clear', kind: 'text', shownWhen: { all: [{ prop: 'allowClear', is: true }, { prop: 'value', empty: false }] }, text: '×', typography: 'clear' },
+        { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } }, typography: 'count' },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props above.
     playOnly: [
@@ -112,12 +116,12 @@ export const INPUT = {
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
-        label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight', placeholder: 'placeholder' },
-        addonBefore: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
-        addonAfter: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
-        placeholder: { fill: 'placeholder', fontSize: 'fontSize', lineHeight: 'lineHeight' },
-        clear: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
-        count: { fill: 'placeholder', fontSize: 'fontSize', lineHeight: 'lineHeight' },
+        label: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
+        addonBefore: { fill: 'fg', typography: 'addonTypography' },
+        addonAfter: { fill: 'fg', typography: 'addonTypography' },
+        placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
+        clear: { fill: 'fg', typography: 'clearTypography' },
+        count: { fill: 'placeholder', typography: 'countTypography' },
         prefix: { size: 'iconSize' },
         suffix: { size: 'iconSize' },
     },

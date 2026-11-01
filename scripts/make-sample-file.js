@@ -221,8 +221,10 @@ function buildVariables() {
         colors: ['primary', 'danger'],
         palette: BRAND_PALETTE,
         sizeModes: [{ id: MODES.size.sm, name: 'Small' }, { id: MODES.size.md, name: 'Medium' }, { id: MODES.size.lg, name: 'Large' }],
+        // The Size modes take the Semantic text styles (textSm, textBase, textLg), not literal font sizes.
+        typography: { labelTypography: { [MODES.size.sm]: 'textSm', [MODES.size.md]: 'textBase', [MODES.size.lg]: 'textLg' } },
         sizeValues: {
-            height: sMode(30, 40, 48), fontSize: sMode(12, 14, 16), lineHeight: sMode(16, 20, 24), paddingX: sMode(12, 16, 20),
+            height: sMode(30, 40, 48), paddingX: sMode(12, 16, 20),
             paddingY: sMode(6, 10, 14), gap: sMode(6, 8, 10), radius: sMode(6, 8, 10), iconSize: sMode(14, 16, 18),
         },
     });
@@ -260,7 +262,7 @@ const MASTER_LABEL_ID = 'comp-button-label';
 
 // The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
 const BUTTON_ROOT_VARS = { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap' };
-const BUTTON_LABEL_VARS = { 'fills.0': 'v-fg', fontSize: 's-fontSize', lineHeight: 's-lineHeight' };
+const BUTTON_LABEL_VARS = { 'fills.0': 'v-fg', typography: 's-labelTypography' };
 
 function buildButtonMaster(x = 440, y = 40) {
     const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {

@@ -139,8 +139,9 @@ function displayRules(template, master, childrenOf) {
             '  font: inherit;\n',
         );
         for (const [prop, source] of Object.entries(props)) {
-            const css = NODE_PROPERTIES[kind][prop].css;
+            const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
+            if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
             for (const name of [css].flat()) decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`);
         }
         if (!decls.length) return '';

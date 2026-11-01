@@ -2,6 +2,7 @@
 // document's variables in, CSS custom properties and the unresolved tokens (with the reason) out. Nothing is guessed.
 import { variableProps } from './registry.js';
 import { dimensionOfGroup } from './validate-schema.js';
+import { typographyCss, typographyOf } from './typography.js';
 
 /** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
 const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase();
@@ -127,7 +128,7 @@ export function restOf(item, modeName, items, collections, guard = new Set(), tr
         ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
     const value = modeId === undefined ? undefined : item.values?.[modeId];
     const here = [...trail, coll?.name ?? null];
-    if (typeof value === 'number' || typeof value === 'string') {
+    if (typeof value === 'number' || typeof value === 'string' || (item.type === 'typography' && value && typeof value === 'object' && !('alias' in value))) {
         let text = value;
         for (let k = ops.length - 1; k >= 0; k--) {
             if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);
@@ -182,6 +183,14 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             const named = items.filter(i => i.collectionId === collection.id && variableKey(i.name) === variableKey(token));
             if (named.length === 0) { miss('no-variable'); continue; }
             if (named.length > 1) { miss('ambiguous'); continue; }
+            // A typography token is a whole style: one custom property per member, each in the mode the collection is read in.
+            if (kind === 'typography') {
+                if (named[0].type !== 'typography') { miss('type-mismatch'); continue; }
+                const { style, problems } = typographyOf(variables, named[0], coll => modeOf(coll.id));
+                if (!style) { miss(problems[0]); continue; }
+                for (const [css, text] of Object.entries(typographyCss(style))) vars[`${cssVarOf(template.id, token)}-${css}`] = text;
+                continue;
+            }
             const found = valueIn(named[0], modeOf, items);
             if ('reason' in found) { miss(found.reason); continue; }
             const wanted = kind === 'color' ? 'color' : 'number';

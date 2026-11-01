@@ -17,7 +17,7 @@ const item = (id, name, collectionId) => ({ id, name, collectionId, values: {} }
 const items = [
     item('i-bg', 'bg', 'c-variant'), item('i-border', 'border', 'c-variant'), item('i-fg', 'fg', 'c-variant'),
     item('i-radius', 'radius', 'c-size'), item('i-px', 'paddingX', 'c-size'), item('i-py', 'paddingY', 'c-size'),
-    item('i-gap', 'gap', 'c-size'), item('i-fs', 'fontSize', 'c-size'), item('i-lh', 'lineHeight', 'c-size'),
+    item('i-gap', 'gap', 'c-size'), { id: 'i-labelTypography', name: 'labelTypography', type: 'typography', collectionId: 'c-size', values: {} },
     item('i-icon', 'iconSize', 'c-size'), item('i-height', 'height', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
 ];
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
@@ -34,7 +34,7 @@ test('an unbound master binds every mapped property to its group variable', () =
     assert.deepEqual(ops.filter(o => o.key === 'root').map(o => [o.varKey, o.itemId]), [
         ['fills.0', 'i-bg'], ['stroke', 'i-border'], ['radius', 'i-radius'], ['padH', 'i-px'], ['padV', 'i-py'], ['gap', 'i-gap'],
     ]);
-    assert.deepEqual(ops.filter(o => o.key === 'label').map(o => [o.varKey, o.itemId]), [['fills.0', 'i-fg'], ['fontSize', 'i-fs'], ['lineHeight', 'i-lh']]);
+    assert.deepEqual(ops.filter(o => o.key === 'label').map(o => [o.varKey, o.itemId]), [['fills.0', 'i-fg'], ['typography', 'i-labelTypography']]);
 });
 
 test('a binding that already exists is never overwritten', () => {
@@ -45,7 +45,7 @@ test('a binding that already exists is never overwritten', () => {
 
 test('a fully bound master gives no operations (idempotent)', () => {
     const root = { 'fills.0': 'i-bg', stroke: 'i-border', radius: 'i-radius', padH: 'i-px', padV: 'i-py', gap: 'i-gap' };
-    const label = { 'fills.0': 'i-fg', fontSize: 'i-fs', lineHeight: 'i-lh' };
+    const label = { 'fills.0': 'i-fg', typography: 'i-labelTypography' };
     assert.deepEqual(planBindTokens({ template: button, binding, layers: layers(root, label), variables: variables() }).ops, []);
 });
 
@@ -122,7 +122,7 @@ test('auto-bind flow on the real fixture: collections, modes and hasIcon bind wi
     assert.deepEqual(problems, []);
     const ids = new Set(doc.variables.items.map(i => i.id));
     const byKey = Object.fromEntries(ops.map(o => [`${o.key}.${o.varKey}`, o.itemId]));
-    for (const key of ['root.fills.0', 'root.stroke', 'root.radius', 'root.padH', 'root.padV', 'root.gap', 'label.fills.0', 'label.fontSize', 'label.lineHeight'])
+    for (const key of ['root.fills.0', 'root.stroke', 'root.radius', 'root.padH', 'root.padV', 'root.gap', 'label.fills.0', 'label.typography'])
         assert.ok(ids.has(byKey[key]), `${key} is bound`);
     // The icon slot resolves its colour and size in the bound collections and binds them.
     const targets = iconSlotTargets(button, 'iconStart');

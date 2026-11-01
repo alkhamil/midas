@@ -134,8 +134,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           }
         },
         {
@@ -231,8 +230,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -281,8 +279,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           }
         },
         {
@@ -327,8 +324,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -377,8 +373,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -671,8 +666,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -810,8 +804,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -986,8 +979,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -1204,8 +1196,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -1482,8 +1473,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -1800,8 +1790,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -1939,8 +1928,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -2078,8 +2066,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -2218,8 +2205,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "v-fg",
-            "fontSize": "s-fontSize",
-            "lineHeight": "s-lineHeight"
+            "typography": "s-labelTypography"
           },
           "sourceId": "btn-label"
         },
@@ -2320,8 +2306,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -2374,8 +2359,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -2421,8 +2405,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -2475,8 +2458,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -2622,8 +2604,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -2676,8 +2657,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -2723,8 +2703,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -2777,8 +2756,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -2965,8 +2943,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3019,8 +2996,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -3066,8 +3042,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -3120,8 +3095,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3229,8 +3203,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3283,8 +3256,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -3330,8 +3302,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -3384,8 +3355,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3494,8 +3464,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3548,8 +3517,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -3595,8 +3563,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -3649,8 +3616,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3795,8 +3761,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -3849,8 +3814,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -3896,8 +3860,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -3950,8 +3913,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4173,8 +4135,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4227,8 +4188,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -4274,8 +4234,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -4328,8 +4287,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4551,8 +4509,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4605,8 +4562,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -4652,8 +4608,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -4706,8 +4661,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4892,8 +4846,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -4946,8 +4899,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -4993,8 +4945,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -5047,8 +4998,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -5157,8 +5107,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -5211,8 +5160,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -5258,8 +5206,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -5312,8 +5259,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -5421,8 +5367,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -5475,8 +5420,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "sourceId": "inp-value"
         },
@@ -5522,8 +5466,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-fg",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-valueTypography"
           },
           "behavior": {
             "version": 2,
@@ -5576,8 +5519,7 @@
           "layoutSizingV": "hug",
           "vars": {
             "fills.0": "in-v-placeholder",
-            "fontSize": "in-s-fontSize",
-            "lineHeight": "in-s-lineHeight"
+            "typography": "in-s-placeholderTypography"
           },
           "behavior": {
             "version": 2,
@@ -6237,86 +6179,6 @@
         }
       },
       {
-        "id": "p-n14",
-        "name": "n14",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 14
-        }
-      },
-      {
-        "id": "sem-n14",
-        "name": "fx-n14",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n14"
-          }
-        }
-      },
-      {
-        "id": "p-n18",
-        "name": "n18",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 18
-        }
-      },
-      {
-        "id": "sem-n18",
-        "name": "fx-n18",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n18"
-          }
-        }
-      },
-      {
-        "id": "p-n22",
-        "name": "n22",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 22
-        }
-      },
-      {
-        "id": "sem-n22",
-        "name": "fx-n22",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n22"
-          }
-        }
-      },
-      {
-        "id": "p-n26",
-        "name": "n26",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 26
-        }
-      },
-      {
-        "id": "sem-n26",
-        "name": "fx-n26",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n26"
-          }
-        }
-      },
-      {
         "id": "p-n12",
         "name": "n12",
         "type": "number",
@@ -6397,6 +6259,26 @@
         }
       },
       {
+        "id": "p-n14",
+        "name": "n14",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 14
+        }
+      },
+      {
+        "id": "sem-n14",
+        "name": "fx-n14",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n14"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
         "name": "h00000000",
         "type": "color",
@@ -6433,6 +6315,396 @@
         "values": {
           "base": {
             "alias": "p-ha1a1aa"
+          }
+        }
+      },
+      {
+        "id": "tp-text/xs",
+        "name": "text/xs",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "Regular",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/sm",
+        "name": "text/sm",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "Regular",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/base",
+        "name": "text/base",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "Regular",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/lg",
+        "name": "text/lg",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "Regular",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xl",
+        "name": "text/xl",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "Regular",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/1",
+        "name": "heading/1",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 38,
+            "fontWeight": "SemiBold",
+            "lineHeight": 40,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/2",
+        "name": "heading/2",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 30,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/3",
+        "name": "heading/3",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 24,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/4",
+        "name": "heading/4",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-heading/5",
+        "name": "heading/5",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xs-strong",
+        "name": "text/xs-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "SemiBold",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/sm-strong",
+        "name": "text/sm-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "SemiBold",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/base-strong",
+        "name": "text/base-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "SemiBold",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/lg-strong",
+        "name": "text/lg-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "tp-text/xl-strong",
+        "name": "text/xl-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "ts-textXs",
+        "name": "textXs",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xs"
+          }
+        }
+      },
+      {
+        "id": "ts-textSm",
+        "name": "textSm",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/sm"
+          }
+        }
+      },
+      {
+        "id": "ts-textBase",
+        "name": "textBase",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/base"
+          }
+        }
+      },
+      {
+        "id": "ts-textLg",
+        "name": "textLg",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/lg"
+          }
+        }
+      },
+      {
+        "id": "ts-textXl",
+        "name": "textXl",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xl"
+          }
+        }
+      },
+      {
+        "id": "ts-heading1",
+        "name": "heading1",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/1"
+          }
+        }
+      },
+      {
+        "id": "ts-heading2",
+        "name": "heading2",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/2"
+          }
+        }
+      },
+      {
+        "id": "ts-heading3",
+        "name": "heading3",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/3"
+          }
+        }
+      },
+      {
+        "id": "ts-heading4",
+        "name": "heading4",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/4"
+          }
+        }
+      },
+      {
+        "id": "ts-heading5",
+        "name": "heading5",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-heading/5"
+          }
+        }
+      },
+      {
+        "id": "ts-textXsStrong",
+        "name": "textXsStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xs-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textSmStrong",
+        "name": "textSmStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/sm-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textBaseStrong",
+        "name": "textBaseStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/base-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textLgStrong",
+        "name": "textLgStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/lg-strong"
+          }
+        }
+      },
+      {
+        "id": "ts-textXlStrong",
+        "name": "textXlStrong",
+        "type": "typography",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "tp-text/xl-strong"
           }
         }
       },
@@ -6774,34 +7046,6 @@
         }
       },
       {
-        "id": "s-fontSize",
-        "name": "fontSize",
-        "type": "number",
-        "collectionId": "c-size",
-        "values": {
-          "sm": {
-            "alias": "sem-n14"
-          },
-          "lg": {
-            "alias": "sem-n18"
-          }
-        }
-      },
-      {
-        "id": "s-lineHeight",
-        "name": "lineHeight",
-        "type": "number",
-        "collectionId": "c-size",
-        "values": {
-          "sm": {
-            "alias": "sem-n22"
-          },
-          "lg": {
-            "alias": "sem-n26"
-          }
-        }
-      },
-      {
         "id": "s-paddingX",
         "name": "paddingX",
         "type": "number",
@@ -6868,6 +7112,20 @@
           },
           "lg": {
             "alias": "sem-n16"
+          }
+        }
+      },
+      {
+        "id": "s-labelTypography",
+        "name": "labelTypography",
+        "type": "typography",
+        "collectionId": "c-size",
+        "values": {
+          "sm": {
+            "alias": "ts-textSm"
+          },
+          "lg": {
+            "alias": "ts-textLg"
           }
         }
       },
@@ -7487,66 +7745,6 @@
         }
       },
       {
-        "id": "p-n14",
-        "name": "n14",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 14
-        }
-      },
-      {
-        "id": "sem-n14",
-        "name": "fx-n14",
-        "type": "number",
-        "collectionId": "c-input-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n14"
-          }
-        }
-      },
-      {
-        "id": "p-n22",
-        "name": "n22",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 22
-        }
-      },
-      {
-        "id": "sem-n22",
-        "name": "fx-n22",
-        "type": "number",
-        "collectionId": "c-input-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n22"
-          }
-        }
-      },
-      {
-        "id": "p-n20",
-        "name": "n20",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 20
-        }
-      },
-      {
-        "id": "sem-n20",
-        "name": "fx-n20",
-        "type": "number",
-        "collectionId": "c-input-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n20"
-          }
-        }
-      },
-      {
         "id": "p-n12",
         "name": "n12",
         "type": "number",
@@ -7623,6 +7821,26 @@
         "values": {
           "base": {
             "alias": "p-n4"
+          }
+        }
+      },
+      {
+        "id": "p-n14",
+        "name": "n14",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 14
+        }
+      },
+      {
+        "id": "sem-n14",
+        "name": "fx-n14",
+        "type": "number",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n14"
           }
         }
       },
@@ -7747,6 +7965,396 @@
         }
       },
       {
+        "id": "in-tp-text/xs",
+        "name": "text/xs",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "Regular",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/sm",
+        "name": "text/sm",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "Regular",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/base",
+        "name": "text/base",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "Regular",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/lg",
+        "name": "text/lg",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "Regular",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/xl",
+        "name": "text/xl",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "Regular",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-heading/1",
+        "name": "heading/1",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 38,
+            "fontWeight": "SemiBold",
+            "lineHeight": 40,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-heading/2",
+        "name": "heading/2",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 30,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-heading/3",
+        "name": "heading/3",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 24,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-heading/4",
+        "name": "heading/4",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-heading/5",
+        "name": "heading/5",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/xs-strong",
+        "name": "text/xs-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "SemiBold",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/sm-strong",
+        "name": "text/sm-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "SemiBold",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/base-strong",
+        "name": "text/base-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "SemiBold",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/lg-strong",
+        "name": "text/lg-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-tp-text/xl-strong",
+        "name": "text/xl-strong",
+        "type": "typography",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      },
+      {
+        "id": "in-ts-textXs",
+        "name": "textXs",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/xs"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textSm",
+        "name": "textSm",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/sm"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textBase",
+        "name": "textBase",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/base"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textLg",
+        "name": "textLg",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/lg"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textXl",
+        "name": "textXl",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/xl"
+          }
+        }
+      },
+      {
+        "id": "in-ts-heading1",
+        "name": "heading1",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-heading/1"
+          }
+        }
+      },
+      {
+        "id": "in-ts-heading2",
+        "name": "heading2",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-heading/2"
+          }
+        }
+      },
+      {
+        "id": "in-ts-heading3",
+        "name": "heading3",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-heading/3"
+          }
+        }
+      },
+      {
+        "id": "in-ts-heading4",
+        "name": "heading4",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-heading/4"
+          }
+        }
+      },
+      {
+        "id": "in-ts-heading5",
+        "name": "heading5",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-heading/5"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textXsStrong",
+        "name": "textXsStrong",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/xs-strong"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textSmStrong",
+        "name": "textSmStrong",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/sm-strong"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textBaseStrong",
+        "name": "textBaseStrong",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/base-strong"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textLgStrong",
+        "name": "textLgStrong",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/lg-strong"
+          }
+        }
+      },
+      {
+        "id": "in-ts-textXlStrong",
+        "name": "textXlStrong",
+        "type": "typography",
+        "collectionId": "c-input-semantic",
+        "values": {
+          "base": {
+            "alias": "in-tp-text/xl-strong"
+          }
+        }
+      },
+      {
         "id": "in-sem-outlineTransparent",
         "name": "outlineTransparent",
         "type": "color",
@@ -7843,40 +8451,6 @@
         }
       },
       {
-        "id": "in-s-fontSize",
-        "name": "fontSize",
-        "type": "number",
-        "collectionId": "c-input-size",
-        "values": {
-          "large": {
-            "alias": "sem-n16"
-          },
-          "middle": {
-            "alias": "sem-n14"
-          },
-          "small": {
-            "alias": "sem-n14"
-          }
-        }
-      },
-      {
-        "id": "in-s-lineHeight",
-        "name": "lineHeight",
-        "type": "number",
-        "collectionId": "c-input-size",
-        "values": {
-          "large": {
-            "alias": "sem-n22"
-          },
-          "middle": {
-            "alias": "sem-n22"
-          },
-          "small": {
-            "alias": "sem-n20"
-          }
-        }
-      },
-      {
         "id": "in-s-paddingX",
         "name": "paddingX",
         "type": "number",
@@ -7958,6 +8532,91 @@
           },
           "small": {
             "alias": "sem-n12"
+          }
+        }
+      },
+      {
+        "id": "in-s-valueTypography",
+        "name": "valueTypography",
+        "type": "typography",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": {
+            "alias": "in-ts-textLg"
+          },
+          "middle": {
+            "alias": "in-ts-textBase"
+          },
+          "small": {
+            "alias": "in-ts-textSm"
+          }
+        }
+      },
+      {
+        "id": "in-s-addonTypography",
+        "name": "addonTypography",
+        "type": "typography",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": {
+            "alias": "in-ts-textLg"
+          },
+          "middle": {
+            "alias": "in-ts-textBase"
+          },
+          "small": {
+            "alias": "in-ts-textSm"
+          }
+        }
+      },
+      {
+        "id": "in-s-placeholderTypography",
+        "name": "placeholderTypography",
+        "type": "typography",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": {
+            "alias": "in-ts-textLg"
+          },
+          "middle": {
+            "alias": "in-ts-textBase"
+          },
+          "small": {
+            "alias": "in-ts-textSm"
+          }
+        }
+      },
+      {
+        "id": "in-s-clearTypography",
+        "name": "clearTypography",
+        "type": "typography",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": {
+            "alias": "in-ts-textLg"
+          },
+          "middle": {
+            "alias": "in-ts-textBase"
+          },
+          "small": {
+            "alias": "in-ts-textSm"
+          }
+        }
+      },
+      {
+        "id": "in-s-countTypography",
+        "name": "countTypography",
+        "type": "typography",
+        "collectionId": "c-input-size",
+        "values": {
+          "large": {
+            "alias": "in-ts-textLg"
+          },
+          "middle": {
+            "alias": "in-ts-textBase"
+          },
+          "small": {
+            "alias": "in-ts-textSm"
           }
         }
       },
