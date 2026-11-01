@@ -50,12 +50,13 @@ const FILLED = {
 };
 const TEXT = {
     bg: 'transparent', fg: 'c:color-text', border: 'transparent',
-    'bg-hover': 'c:color-text-bg-hover', 'fg-hover': 'c:color-text-hover', 'border-hover': 'transparent',
-    'bg-active': 'c:color-text-bg-active', 'fg-active': 'c:color-text-active', 'border-active': 'transparent',
+    // The Text hover and active backgrounds stay transparent (the token roles): the state is the text colour alone.
+    'bg-hover': 'transparent', 'fg-hover': 'c:color-text-hover', 'border-hover': 'transparent',
+    'bg-active': 'transparent', 'fg-active': 'c:color-text-active', 'border-active': 'transparent',
     'bg-disabled': 'transparent', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-text',
 };
-const LINK = { ...TEXT, 'bg-hover': 'transparent', 'bg-active': 'transparent' };
+const LINK = { ...TEXT };
 const VARIANT_VALUES = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {

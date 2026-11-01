@@ -5,7 +5,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertBehaviorData, diagnoseDocument, managedBehavior } from '@midas/builder-core';
+import { assertBehaviorData, diagnoseDocument } from '@midas/builder-core';
+import { BUTTON } from '../packages/builder-core/src/templates/button.js';
+import { generatedInstance, generatedMaster, iconComponent, withIcons } from './generated-part.mjs';
 import { buttonModel } from './button-model.mjs';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
@@ -260,158 +262,49 @@ function buildVariables() {
 const MASTER_BUTTON_ID = 'comp-button';
 const MASTER_LABEL_ID = 'comp-button-label';
 
-// The Button variables the master and its instances are bound to (Bind tokens). Instances copy these, as sync does.
-const BUTTON_ROOT_VARS = { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' };
-const BUTTON_LABEL_VARS = { 'fills.0': 'v-fg', typography: 's-labelTypography' };
+// The Button master is the part generator's: a frame the generator completes, bound to the Variant, Color and Size collections (the
+// layers are the generator's, with the ids below). Its instances are copies of it for their props, with the icons the props place.
+let SAMPLE_VARIABLES = null;
+let SAMPLE_BUTTON = null;
+let SAMPLE_ICON_NODES = [];
 
-function buildButtonMaster(x = 440, y = 40) {
-    const master = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
-        x,
-        y,
-        w: 112,
-        h: 40,
-        padding: 16,
-        padT: 10,
-        padR: 16,
-        padB: 10,
-        padL: 16,
-        gap: 8,
-        radius: 8,
-        fills: solid('#6F4E37'),
-        primaryAlign: 'center',
-        counterAlign: 'center',
-        layoutSizingH: 'hug',
-        layoutSizingV: 'hug',
-        component: true,
-        isInstance: false,
-        strokeWidth: 1,
-        strokeAlign: 'inside',
-        vars: BUTTON_ROOT_VARS,
-        behavior: {
-            version: 2,
-            templateId: 'button',
-            variables: {
-                variant: COL_VARIANT_ID,
-                color: COL_COLOR_ID,
-                size: COL_SIZE_ID,
-            },
-        },
+function buildButtonNodes(variables) {
+    const frame = autoFrameNode(MASTER_BUTTON_ID, 'Button', 'horizontal', {
+        x: 440, y: 40, w: 112, h: 40, padding: 16, gap: 8, radius: 8, primaryAlign: 'center', counterAlign: 'center',
+        layoutSizingH: 'hug', layoutSizingV: 'fixed', component: true, isInstance: false, strokeWidth: 1, strokeAlign: 'inside', fills: [],
     });
-    const label = textNode(MASTER_LABEL_ID, 'Label', 'Button', {
-        parentId: MASTER_BUTTON_ID,
-        x: 16,
-        y: 10,
-        fontSize: 14,
-        fontWeight: 600,
-        lineHeight: 1.4,
-        fills: solid('#FFFFFF'),
-    });
-    label.vars = BUTTON_LABEL_VARS;
-    return [master, label];
+    return generatedMaster({ template: BUTTON, frame, binding: { variables: { variant: COL_VARIANT_ID, color: COL_COLOR_ID, size: COL_SIZE_ID } }, variables });
 }
 
-const VARIANT_COLORS = {
-    [MODES.variant.primary]: { bg: '#6F4E37', fg: '#FFFFFF', border: '#6F4E37' },
-    [MODES.variant.secondary]: { bg: '#F5EBE1', fg: '#6F4E37', border: '#6F4E37' },
-    [MODES.variant.danger]: { bg: '#DC2626', fg: '#FFFFFF', border: '#DC2626' },
-};
-const SIZE_METRICS = {
-    [MODES.size.sm]: { fs: 12, px: 12, py: 6, gap: 6, radius: 6, h: 30 },
-    [MODES.size.md]: { fs: 14, px: 16, py: 10, gap: 8, radius: 8, h: 40 },
-    [MODES.size.lg]: { fs: 16, px: 20, py: 14, gap: 10, radius: 10, h: 48 },
-};
+/** The Button master placed at (x, y): the master's own layers, with the position the caller gives. */
+function buildButtonMaster(x = 440, y = 40) {
+    const [master, ...layers] = SAMPLE_BUTTON;
+    return [{ ...master, x, y }, ...layers];
+}
 
-/**
- * Builds a Button instance and its child layers (including managed iconStart / iconEnd when hasIcon is true).
- */
+const SAMPLE_ICON = { start: 'icon-check', end: 'icon-arrow' };
+
 function buildButtonInstance(id, name, parentId, opts = {}) {
     const variant = opts.variant ?? MODES.variant.primary;
     const size = opts.size ?? MODES.size.md;
-    const labelText = opts.label ?? 'Button';
     const hasIcon = !!opts.hasIcon;
     const placement = opts.iconPlacement ?? 'start';
-    const loading = !!opts.loading;
-    const disabled = !!opts.disabled;
     const block = !!opts.block;
-
-    const colors = VARIANT_COLORS[variant] || VARIANT_COLORS[MODES.variant.primary];
-    const look = LOOKS[variant];
-    const metrics = SIZE_METRICS[size] || SIZE_METRICS[MODES.size.md];
-
-    const behaviorProps = {
-        label: labelText,
+    const look = LOOKS[variant] ?? LOOKS[MODES.variant.primary];
+    const props = {
+        label: opts.label ?? 'Button',
         hasIcon,
         ...(hasIcon ? { iconPlacement: placement } : {}),
-        loading,
-        disabled,
-
+        ...(hasIcon && placement !== 'end' ? { icon: SAMPLE_ICON.start } : {}),
+        ...(hasIcon && placement !== 'start' ? { iconEnd: SAMPLE_ICON.end } : {}),
+        loading: !!opts.loading,
+        disabled: !!opts.disabled,
     };
-
-    const textW = Math.max(28, Math.ceil(labelText.length * metrics.fs * 0.6));
-    const estW = opts.w ?? (block ? 358 : metrics.px * 2 + textW + (hasIcon ? 16 + metrics.gap : 0));
-
-    const inst = autoFrameNode(id, name, 'horizontal', {
-        parentId,
-        x: opts.x ?? 0,
-        y: opts.y ?? 0,
-        w: estW,
-        h: metrics.h,
-        padding: metrics.px,
-        padT: metrics.py,
-        padR: metrics.px,
-        padB: metrics.py,
-        padL: metrics.px,
-        gap: metrics.gap,
-        radius: metrics.radius,
-        fills: solid(disabled ? '#C8B7A6' : colors.bg),
-        stroke: colors.border,
-        strokeWidth: variant === MODES.variant.secondary ? 1 : 0,
-        primaryAlign: 'center',
-        counterAlign: 'center',
-        layoutSizingH: block ? 'fill' : 'hug',
-        layoutSizingV: 'hug',
-        isInstance: true,
-        varModes: { [COL_VARIANT_ID]: look.variant, [COL_COLOR_ID]: look.color, [COL_SIZE_ID]: size },
-        sourceId: MASTER_BUTTON_ID,
-        overrides: { fill: true, radius: true, w: true, h: true },
-        vars: BUTTON_ROOT_VARS,
-        behavior: {
-            version: 2,
-            props: behaviorProps,
-        },
-    });
-
-    const labelNode = textNode(`${id}-label`, 'Label', labelText, {
-        parentId: id,
-        sourceId: MASTER_LABEL_ID,
-        x: metrics.px + (hasIcon && placement === 'start' ? 16 + metrics.gap : 0),
-        y: metrics.py,
-        w: textW,
-        h: Math.ceil(metrics.fs * 1.4),
-        fontSize: metrics.fs,
-        fontWeight: 600,
-        lineHeight: 1.4,
-        fills: solid(colors.fg),
-        overrides: { text: true, fill: true, fontSize: true, w: true },
-    });
-    labelNode.vars = BUTTON_LABEL_VARS;
-
-    if (!hasIcon) return [inst, labelNode];
-
-    const slot = placement === 'end' ? 'iconEnd' : 'iconStart';
-    const managedIcon = frameNode(`${id}-${slot}`, slot, {
-        parentId: id,
-        x: placement === 'start' ? metrics.px : metrics.px + textW + metrics.gap,
-        y: Math.round((metrics.h - 16) / 2),
-        w: 16,
-        h: 16,
-        radius: 4,
-        fills: solid(colors.fg),
-        clip: false,
-        behavior: managedBehavior(slot),
-    });
-
-    return placement === 'start' ? [inst, managedIcon, labelNode] : [inst, labelNode, managedIcon];
+    const varModes = { [COL_VARIANT_ID]: look.variant, [COL_COLOR_ID]: look.color, [COL_SIZE_ID]: size };
+    const copies = generatedInstance({ template: BUTTON, master: SAMPLE_BUTTON, props, id, varModes, x: opts.x ?? 0, y: opts.y ?? 0, parentId });
+    const nodes = withIcons(copies, [{ slot: 'iconStart', component: props.icon ?? null }, { slot: 'iconEnd', component: props.iconEnd ?? null }], id, SAMPLE_ICON_NODES, BUTTON, props.disabled, 'v-fg', 'v-fg-disabled', 's-iconSize');
+    if (block) Object.assign(nodes[0], { layoutSizingH: 'fill', w: opts.w ?? 358 });
+    return nodes;
 }
 
 // ---------- Shared screen chrome builders ----------
@@ -1340,13 +1233,16 @@ function buildComponentsPage() {
 }
 
 export function buildSampleApp() {
+    SAMPLE_VARIABLES = buildVariables();
+    SAMPLE_ICON_NODES = [...iconComponent('icon-check', 'check', 240, true), ...iconComponent('icon-arrow', 'arrow', 300, false)];
+    SAMPLE_BUTTON = buildButtonNodes(SAMPLE_VARIABLES);
     const pages = [
         { id: 'page-login', name: 'Login', parentId: null, nodes: buildLoginPage() },
         { id: 'page-home', name: 'Home', parentId: null, nodes: buildHomePage() },
         { id: 'page-menu', name: 'Menu', parentId: null, nodes: buildMenuPage() },
         { id: 'page-cart', name: 'Cart', parentId: null, nodes: buildCartPage() },
         { id: 'page-profile', name: 'Profile', parentId: null, nodes: buildProfilePage() },
-        { id: 'page-components', name: 'Components', parentId: null, nodes: buildComponentsPage() },
+        { id: 'page-components', name: 'Components', parentId: null, nodes: [...buildComponentsPage(), ...SAMPLE_ICON_NODES] },
     ];
 
     const doc = {
@@ -1356,7 +1252,7 @@ export function buildSampleApp() {
         pageId: pages[0].id,
         pages,
         tokens: { colors: [], typography: [] },
-        variables: buildVariables(),
+        variables: SAMPLE_VARIABLES,
         guideStyles: [],
         created: 1793159000000,
         assets: {},
