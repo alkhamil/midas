@@ -19,6 +19,7 @@ export * from './behavior-engine/bind-tokens.js';
 export * from './behavior-engine/stroke-paint.js';
 export * from './behavior-engine/variable-value.js';
 export * from './behavior-engine/typography.js';
+export * from './behavior-engine/typography-edit.js';
 export * from './behavior-engine/display.js';
 export * from './behavior-engine/instance-vars.js';
 export * from './behavior-engine/layers.js';
