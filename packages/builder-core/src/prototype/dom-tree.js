@@ -320,7 +320,10 @@ function renderTemplate(n, template, parent, scope) {
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
-    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound)) : null;
+    // A bound inside stroke takes the fill with it: the fill is clipped inside the stroke, so its anti-aliased edge sits under the stroke
+    // and not outside it (a fill on the host would show a light ring just outside the stroke's corners).
+    const fill = bound && !customDash && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside' ? `var(${cssVarOf(template.id, 'bg')})` : null;
+    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound, fill)) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
@@ -331,6 +334,7 @@ function renderTemplate(n, template, parent, scope) {
         Object.assign(style, { borderWidth: '0px' });
         if (!style.position) style.position = 'relative';
     }
+    if (fill) style.background = 'transparent';
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
 
@@ -340,7 +344,7 @@ function renderTemplate(n, template, parent, scope) {
  * @param {any} n
  * @returns {Element}
  */
-function borderOverlayEl(n, borderStyle = null, bound = false) {
+function borderOverlayEl(n, borderStyle = null, bound = false, fill = null) {
     const { t, r, b, l } = strokeSideWidths(n);
     const align = n.strokeAlign ?? 'center';
     const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
@@ -365,6 +369,8 @@ function borderOverlayEl(n, borderStyle = null, bound = false) {
         pointerEvents: 'none',
         borderRadius,
     };
+    // The fill sits behind the children, inside the stroke: the stroke's own edge is the only edge at the box.
+    if (fill) Object.assign(style, { background: fill, backgroundClip: 'padding-box', zIndex: '-1' });
     if (uniform && bound) {
         Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: 'inherit', borderColor: 'inherit' });
     }
