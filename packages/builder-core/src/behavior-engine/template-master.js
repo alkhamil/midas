@@ -7,11 +7,12 @@
 import { canvasPartsOf, literalFields, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf, placementsOfDef, slotDefsOf } from './anatomy.js';
+import { controlOf, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
 /** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
 function slotShown(template, slotId, resolved) {
+    if (replacedSlotsOf(template, resolved).includes(slotId)) return false;
     return slotDefsOf(template, slotId).some(def => resolved[def.show] === true && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
 
@@ -168,11 +169,16 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         out.push(next);
     }
     // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
+    const stubs = [];
     for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
         if (!slotShown(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
-        out.push({ ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } });
+        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
     }
-    return out;
+    // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label, after it otherwise.
+    const labelIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    const before = stubs.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
+    const after = stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
+    return [root, ...before, ...out.slice(1), ...after];
 }

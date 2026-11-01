@@ -4,6 +4,7 @@
 import { TEMPLATES } from './registry.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { resolveProps } from './instance-props.js';
+import { conditionHolds } from './display.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
 /** @typedef {{ id: string, slot: string | null, component?: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker; component is the icon component the slot shows (null for the placeholder) */
@@ -106,15 +107,27 @@ export function managedBehavior(slot) {
  * so placement means the visual start and end after the flip)
  * @returns {AnatomyOp[]} indexes are stored indexes, for the editor to apply in place
  */
+/**
+ * The managed slots a shown canvas part replaces: a part with `replaces` takes its slot's place while it is shown (the spinner takes the
+ * start icon's place while loading), so that slot is not drawn.
+ * @param {any} template
+ * @param {Record<string, unknown>} values the resolved props
+ * @returns {string[]}
+ */
+export function replacedSlotsOf(template, values) {
+    return (template.parts ?? []).filter(part => part.replaces && conditionHolds(part.shownWhen, values)).map(part => part.replaces);
+}
+
 export function planAnatomy(template, values, children, flip = false) {
     /** @type {{ slot: string, component: string | null }[]} */
     const wanted = [];
+    const replaced = new Set(replacedSlotsOf(template, values));
     for (const def of iconDefsOf(template)) {
         const slots = def.placement !== undefined
             ? (values[def.show] === true ? slotsOfValue(template, def.placement, values[def.placement]).filter(s => def.slot === undefined || s === def.slot) : [])
             : (values[def.show] === true && def.slot ? [def.slot] : []);
         for (const slot of slots) {
-            if (wanted.some(w => w.slot === slot)) continue;
+            if (replaced.has(slot) || wanted.some(w => w.slot === slot)) continue;
             if (!template.anatomy.some(s => s.id === slot && s.managed)) throw new Error(`${template.id} has no managed slot "${slot}"`);
             wanted.push({ slot, component: typeof values[def.component] === 'string' ? values[def.component] : null });
         }

@@ -51,7 +51,7 @@ export const targetKindOf = (template, key) => {
 export const counterLabel = (value, max) => `${String(value ?? '').length}${max !== undefined && String(max) !== '' ? ` / ${max}` : ''}`;
 
 /** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), or `{ all: [...] }`. */
-function conditionHolds(cond, props) {
+export function conditionHolds(cond, props) {
     if (cond.all) return cond.all.every(c => conditionHolds(c, props));
     const raw = props[cond.prop];
     if ('is' in cond) return raw === cond.is;
