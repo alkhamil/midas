@@ -5,3 +5,4 @@ data/
 .DS_Store
 .gen-test/
 .env.render
+.artifacts/
