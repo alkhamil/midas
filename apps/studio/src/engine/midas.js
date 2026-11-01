@@ -8974,7 +8974,7 @@ function canvasPreviewOf() {
 }
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
-    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: n.type === 'frame' ? 'frame' : 'none', esc, templates: templateChoices() });
+    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: n?.type === 'frame' ? 'frame' : 'none', esc, templates: templateChoices() });
     // Diagnostics need every page; while pages are still loading they are not shown (null).
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {

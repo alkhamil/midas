@@ -1,10 +1,11 @@
 // Strict parity for generator-built components: a Button and an Input created from the Components panel are measured on the canvas
-// and in Play at every Size mode and each key state (Loading, Allow Clear, Show Count). Every visible canvas node must be a Play element
-// whose box matches the canvas box within 0.5px (relative to the component root), and Play must draw nothing in the component that has
-// no node. Writes .artifacts/strict-parity.json (every row measured) and screenshots of the canvas and Play for each size.
+// and in Play at every Size mode and each key state. Every visible canvas node must be a Play element whose box matches the canvas box
+// within 0.5px (relative to the component root), and Play must draw nothing in the component that has no node. The components are
+// made on an isolated stage (the testing file's own nodes would show through the crops), with nothing selected or hovered for the
+// canvas shots. Writes .artifacts/strict-parity.json and one canvas/Play pair per template, Size and state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
@@ -12,11 +13,37 @@ import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode } from '.
 const FIXTURE = resolve(ROOT, 'testing.midas');
 const TOLERANCE_PX = 0.5;
 
-/** The states each template is measured in, after its Size modes: the prop it toggles and the value it takes. Rest is always measured. */
+/** The states each template is measured in, after its Size modes: the props that state sets. */
 const STATES = {
-    button: [{ name: 'rest' }, { name: 'loading', prop: 'loading', value: true }],
-    input: [{ name: 'rest' }, { name: 'allowClear', prop: 'allowClear', value: true }, { name: 'showCount', prop: 'showCount', value: true }],
+    button: [
+        { name: 'rest', props: { loading: false } },
+        { name: 'loading', props: { loading: true } },
+    ],
+    input: [
+        { name: 'placeholder', props: { value: '', allowClear: false, showCount: false } },
+        { name: 'value', props: { value: 'Hello', allowClear: false, showCount: false } },
+        { name: 'allowClear', props: { value: 'Hello', allowClear: true, showCount: false } },
+        { name: 'showCount', props: { value: 'Hello', allowClear: false, showCount: true } },
+    ],
 };
+
+/**
+ * The testing file with its stage moved to an isolated page: the Testing page keeps one empty frame far from the canvas's centre, so
+ * the components made for the test sit on nothing else. Returns the path of the written file.
+ */
+function isolatedStage() {
+    const data = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+    for (const page of data.pages) {
+        if (page.name !== 'Testing') continue;
+        const stage = page.nodes.find(n => n.parentId == null && n.type === 'frame');
+        page.nodes = [{ ...stage, id: 'strict-stage', name: 'Stage', x: -5000, y: -5000, w: 100, h: 100, clip: true, component: false, isInstance: false, sourceId: undefined, parentId: null, layout: 'none', behavior: undefined, vars: undefined, varModes: undefined }];
+        data.pageId = page.id;
+    }
+    mkdirSync(ARTIFACTS, { recursive: true });
+    const file = resolve(ARTIFACTS, 'strict-parity.midas');
+    writeFileSync(file, JSON.stringify(data));
+    return file;
+}
 
 /** Creates a template component from the Components panel, and waits for its instance to be selected. */
 async function createFromPanel(page, templateId) {
@@ -25,6 +52,21 @@ async function createFromPanel(page, templateId) {
     await page.locator(`[data-create-template="${templateId}"]`).click();
     await page.waitForFunction(() => window.midas.state.selection.size === 1, null, { timeout: 5000 });
     return page.evaluate(() => [...window.midas.state.selection][0]);
+}
+
+/** Sets a prop in the Behavior tab: a checkbox for a boolean, a text field for the value. */
+async function setProp(page, name, value) {
+    await page.locator('#inspector-tab-behavior').click();
+    const field = page.locator(`[data-bp-prop="${name}"]`).first();
+    if (typeof value === 'boolean') {
+        if (value) await field.check({ force: true });
+        else await field.uncheck({ force: true });
+    }
+    else {
+        await field.fill(value);
+        await field.press('Enter');
+    }
+    await page.waitForTimeout(200);
 }
 
 /** Every node of an instance, its root first, with the canvas box relative to the root and whether it is shown. */
@@ -43,8 +85,12 @@ const canvasTree = (page, rootId) => page.evaluate(rootId => {
     return out;
 }, rootId);
 
-/** Opens Play on the selection, measures the instance's elements (relative to its root), and closes Play. Animations are read at rest. */
-async function playTree(page, rootId) {
+/**
+ * Opens Play on the instance (selected), measures its elements relative to its root, saves a screenshot of the root's Play element to
+ * `name`, and closes Play. Animations are read at rest.
+ */
+async function playTree(page, rootId, name) {
+    await page.evaluate(id => window.midas.select([id]), rootId);
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
     await page.waitForTimeout(500);
@@ -70,6 +116,7 @@ async function playTree(page, rootId) {
         }
         return { rootWidth: r0.width, rootHeight: r0.height, boxes, unmapped };
     }, rootId);
+    if (measured) await page.locator(`.play-overlay [data-node-id="${rootId}"]`).screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`) });
     await page.locator('[aria-label="Close (Esc)"]').click();
     await page.waitForSelector('.play-overlay', { state: 'detached' });
     return measured;
@@ -98,7 +145,7 @@ test('a created Button and Input measure the same on the canvas and in Play at e
     mkdirSync(ARTIFACTS, { recursive: true });
     const browser = await chromium.launch();
     t.after(() => browser.close());
-    const { page, errors } = await openImportedFile(browser, FIXTURE);
+    const { page, errors } = await openImportedFile(browser, isolatedStage());
 
     const report = [];
     const failures = [];
@@ -108,34 +155,31 @@ test('a created Button and Input measure the same on the canvas and in Play at e
         const sizeColl = master.behavior.variables.size;
         const modes = await page.evaluate(sizeColl => window.midas.doc.data.variables.collections.find(c => c.id === sizeColl).modes, sizeColl);
         for (const mode of modes) {
-            // The Size mode is an Appearance mode, on the Design tab; the key states are props, on the Behavior tab.
+            // The Size mode is an Appearance mode, on the Design tab.
             await page.locator('[data-inspector-tab="design"]').click();
             await page.selectOption(`select[data-var-mode="${sizeColl}"]`, mode.id);
             await page.waitForTimeout(200);
             for (const state of STATES[templateId]) {
-                if (state.prop) {
-                    await page.locator('#inspector-tab-behavior').click();
-                    await page.locator(`input[aria-label="${state.prop}"]`).first().check({ force: true });
-                    await page.waitForTimeout(200);
-                }
-                const canvas = await canvasTree(page, id);
-                const play = await playTree(page, id);
-                assert.ok(play, `${templateId} ${mode.name} ${state.name}: Play draws the component`);
-                const { rows, unmapped } = compare(canvas, play);
+                for (const [name, value] of Object.entries(state.props)) await setProp(page, name, value);
                 const label = `${templateId} ${mode.name} ${state.name}`;
+                const pair = `pair-${templateId}-${mode.name.toLowerCase()}-${state.name.toLowerCase()}`;
+                await page.evaluate(() => window.midas.select([]));
+                await page.mouse.move(2, 2);
+                await page.waitForTimeout(150);
+                await shotNode(page, id, `${pair}-canvas`, 0);
+                const canvas = await canvasTree(page, id);
+                const play = await playTree(page, id, pair);
+                assert.ok(play, `${label}: Play draws the component`);
+                const { rows, unmapped } = compare(canvas, play);
                 report.push({ label, rows, unmapped });
                 for (const row of rows) {
                     if (row.missing) failures.push(`${label}: ${row.name} is on the canvas but not in Play`);
                     else if (row.delta > TOLERANCE_PX) failures.push(`${label}: ${row.name} differs by ${row.delta}px`);
                 }
                 for (const u of unmapped) failures.push(`${label}: Play draws ${u} with no node`);
-                if (state.prop) {
-                    await page.locator('#inspector-tab-behavior').click();
-                    await page.locator(`input[aria-label="${state.prop}"]`).first().uncheck({ force: true });
-                    await page.waitForTimeout(200);
-                }
             }
-            await shotNode(page, id, `strict-${templateId}-${mode.name.toLowerCase()}-canvas`);
+            // Back to the rest state before the next Size mode, so each mode starts from the same props.
+            for (const [name, value] of Object.entries(STATES[templateId][0].props)) await setProp(page, name, value);
         }
     }
     writeFileSync(resolve(ARTIFACTS, 'strict-parity.json'), JSON.stringify(report, null, 2));
