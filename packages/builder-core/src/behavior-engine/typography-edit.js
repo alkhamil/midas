@@ -37,7 +37,7 @@ export function literalFor(member, literal) {
     if (member === 'fontSize' && number <= 0) return { error: 'A font size is above zero' };
     if (member === 'lineHeight') {
         if (number <= 0) return { error: 'A line height is above zero' };
-        if (number < RATIO_CEILING) return { error: `A line height of ${number} is a ratio. Enter pixels (about ${Math.round(number * 14)} for 14px text).` };
+        if (number < RATIO_CEILING) return { error: `A line height of ${number} is a ratio. Enter pixels.` };
     }
     return { value: number };
 }
