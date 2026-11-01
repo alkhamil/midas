@@ -1250,6 +1250,91 @@
       "typography": "in-s-valueTypography"
      },
      "sourceId": "inp-value"
+    },
+    {
+     "name": "plain-a",
+     "parentId": "m-frame",
+     "x": 440,
+     "y": 40,
+     "w": 160,
+     "h": 24,
+     "rotation": 0,
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "text": "Plain text",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "type": "text",
+     "id": "plain-a",
+     "autoW": false,
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed"
+    },
+    {
+     "name": "plain-b",
+     "parentId": "m-frame",
+     "x": 440,
+     "y": 120,
+     "w": 160,
+     "h": 24,
+     "rotation": 0,
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "text": "Plain text",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "type": "text",
+     "id": "plain-b",
+     "autoW": false,
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "varModes": {
+      "c-size": "lg"
+     }
     }
    ]
   }

@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1008,7 +1008,7 @@ function cleanVariables(v) {
             out.items.push({ id: i.id, collectionId: i.collectionId, name: String(i.name ?? 'Variable'), type: i.type, values: i.values, description: String(i.description ?? ''), ...(typeof i.libId === 'string' ? { libId: i.libId } : {}), hidden: !!i.hidden, ...(i.type === 'string' && Array.isArray(i.options) && i.options.length ? { options: [...new Set(i.options.map(String))] } : {}), ...(i.type === 'number' && i.range && typeof i.range === 'object' && Number.isFinite(+i.range.min) && Number.isFinite(+i.range.max) ? { range: { min: +i.range.min, max: +i.range.max, step: +i.range.step > 0 ? +i.range.step : 1 } } : {}), scope: Array.isArray(i.scope) ? (i.type === 'number' && i.scope.includes('font') ? [...new Set([...i.scope.filter(k => k !== 'font').map(String), 'fontSize', 'lineHeight', 'letterSpacing', 'fontWeight'])] : i.type === 'string' && i.scope.length === 1 && i.scope[0] === 'fontFamily' && /weight|style/i.test(String(i.name)) ? ['fontStyle'] : i.scope.map(String)) : undefined });
     return out.collections.every(c => c.modes.length) ? out : { collections: [], items: [] };
 }
-function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : ''; }
+function varDefault(type) { return type === 'color' ? '#d9d9d9' : type === 'number' ? 0 : type === 'boolean' ? false : type === 'effect' ? [fxDefaults('drop')] : type === 'typography' ? structuredClone(DEFAULT_TYPOGRAPHY) : ''; }
 function varDisplayValue(item, node = null) { return varValue(doc, item, node); }
 // A single-fill layer without a fills list keeps its colour binding under "fill"; the Fill row reads it as "fills.0".
 // The combined horizontal / vertical padding fields read as bound when both sides carry the same variable (as imported).
@@ -1060,7 +1060,7 @@ function varRow(label, prop) {
     // A layer can be bound to a component property and to a variable at the same time: both chips show.
     return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
-function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : '◐'; }
+function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : type === 'typography' ? 'Aa' : '◐'; }
 function aliasReaches(item, targetId, depth = 0) {
     if (depth > 20)
         return true;
@@ -1124,7 +1124,7 @@ function varListHtml({ types, filter = () => true, q = '', current = null, attr 
                     continue;
                 }
                 const sw = i.type === 'color' ? `<i class="vw-sw" style="background:${esc(previewColor(val))}"></i>` : `<i class="vc-glyph">${varGlyph(i.type)}</i>`;
-                const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : String(val ?? '');
+                const shownVal = i.type === 'color' ? '' : i.type === 'effect' ? fxSummary(val) : i.type === 'typography' ? typoSummaryOf(i) : String(val ?? '');
                 row += `<button class="vp-item vpk-item ${g ? 'in-group' : ''} ${i.id === current ? 'on' : ''}" ${attr}="${i.id}" title="${esc(i.name)}">${sw}<span class="vp-name">${esc(leaf)}</span><span class="vp-val">${esc(shownVal)}</span>${i.id === current ? icon('check', 12) : ''}</button>`;
             }
             if (row)
@@ -2050,7 +2050,7 @@ function vwSortAZ(coll) {
     slots.forEach((idx, k) => { store.items[idx] = mine[k]; });
     coll.groupOrder = [...vwGroupsOf(coll)].sort(vwPathCmp);
 }
-const VW_TYPE_FILTERS = [['', 'All'], ['color', 'Colors'], ['number', 'Numbers'], ['string', 'Strings'], ['boolean', 'Booleans'], ['effect', 'Effects']];
+const VW_TYPE_FILTERS = [['', 'All'], ['color', 'Colors'], ['number', 'Numbers'], ['string', 'Strings'], ['boolean', 'Booleans'], ['effect', 'Effects'], ['typography', 'Typography']];
 /** What the window shows while the file holds no collection: an empty one, so the title bar and Create variable still work. */
 const NO_COLLECTION = { id: null, name: '', modes: [], groupOrder: [] };
 /** Keeps the selected collection valid. Nothing is created here: a file may hold no collection at all. */
@@ -2111,6 +2111,13 @@ function vwCell(item, coll, mode) {
         return `<div class="vw-cell"><div class="vw-aliaschip"><button class="vw-alias-pick" data-vw-alias="${key}" title="Change variable">${sw}<span>${esc(alias.name)}</span></button><button data-vw-unalias="${key}" title="Detach alias" aria-label="Detach alias">${icon('close', 12)}</button></div>${alpha}</div>`;
     }
     const v = raw === undefined ? varDefault(item.type) : raw;
+    if (item.type === 'typography') {
+        // The chip summarises the style in this mode; a member that is an alias shows its variable's name.
+        const own = coll => (coll.id === item.collectionId ? mode.id : coll.modes[0]?.id), res = typographyOf(varStore(), item, own), v = raw ?? {};
+        const names = Object.fromEntries(TE_MEMBERS.filter(([m]) => isAliasMember(v[m])).map(([m]) => [m, varItem(v[m].alias)?.name ?? 'missing']));
+        const text = res.style ? summaryOf(res.style, names) : 'Unresolved';
+        return `<div class="vw-cell"><button class="vw-typo" data-vw-typo="${key}" title="${esc(res.problems.join('; ') || text)}">${esc(text)}</button>${aliasBtn}</div>`;
+    }
     if (item.type === 'effect')
         return `<div class="vw-cell"><button class="vw-fx" data-vw-fx="${key}" title="Edit effect">${esc(fxSummary(v))}</button>${aliasBtn}</div>`;
     if (item.type === 'color') {
@@ -9691,7 +9698,7 @@ function renderInspector() {
             html += section('Arc', `<div class="arc-row"><div class="arc-cell"><span class="small-label">Start</span>${field('', 'arcStart', n.arcStart || 0, { unit: '°', title: 'Arc start angle' })}</div><div class="arc-cell"><span class="small-label">Sweep</span>${field('', 'arcSweep', n.arcSweep ?? 100, { unit: '%', min: 0, max: 100, title: 'Arc sweep' })}</div><div class="arc-cell"><span class="small-label">Ratio</span>${field('', 'arcRatio', n.arcRatio || 0, { unit: '%', min: 0, max: 99, title: 'Arc ratio (inner radius)' })}</div></div>`);
         if (ns.every(x => x.type === 'text')) {
             const vAlign = n.textAlignV || 'top';
-            html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented">${[['top', 'Align top'], ['center', 'Align middle'], ['bottom', 'Align bottom']].map(([a, t]) => `<button data-text-valign="${a}" class="${vAlign === a ? 'active' : ''}" title="${t}" aria-label="${t}">${TX_VALIGN_ICONS[a]}</button>`).join('')}</div></div><div class="property-grid"><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div><div class="tx-set-row"><button class="wh-lock ${textSettingsActive(n) ? 'active' : ''}" data-text-settings title="Text settings" aria-label="Text settings">${icon('sliders', 14)}</button></div></div><div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
+            html += section('Typography', `<div class="stack">${varRow('Text content', 'text')}${typoRowHtml(ns)}${typoAttached(ns) ? typoReadonlyHtml(ns) : typoFieldsHtml(n)}<div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented">${[['top', 'Align top'], ['center', 'Align middle'], ['bottom', 'Align bottom']].map(([a, t]) => `<button data-text-valign="${a}" class="${vAlign === a ? 'active' : ''}" title="${t}" aria-label="${t}">${TX_VALIGN_ICONS[a]}</button>`).join('')}</div></div><div class="property-grid"><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div><div class="tx-set-row"><button class="wh-lock ${textSettingsActive(n) ? 'active' : ''}" data-text-settings title="Text settings" aria-label="Text settings">${icon('sliders', 14)}</button></div></div><div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
         }
         if (n.type !== 'group')
             html += fillsSection(n);
@@ -18707,6 +18714,92 @@ function fontFieldHtml(n) {
         return `${label}<div class="font-field-row bound"><button class="font-field" data-var-bind="fontFamily" title="${esc(v.name)}" aria-label="Font family bound to ${esc(v.name)}"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span></button>${varBindButton('fontFamily')}</div>`;
     return `${label}<div class="font-field-row"><button class="font-field" data-font-picker title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>${varBindButton('fontFamily')}</div>`;
 }
+// ===== typography on text nodes: the Design panel row (attach, detach; the fields are read-only while a style is attached) =====
+const typoIdsOf = ns => [...new Set(ns.map(n => n.vars?.typography ?? null))];
+/** Whether every selected text node has a typography style attached. */
+function typoAttached(ns) { return ns.length > 0 && ns.every(n => n.vars?.typography); }
+function typoSelectedText() { return selected().filter(n => n.type === 'text'); }
+/** The row at the top of the Text section: the attached style's name, or None, and the Detach action. */
+function typoRowHtml(ns) {
+    const ids = typoIdsOf(ns), one = ids.length === 1 ? ids[0] : null;
+    const name = ids.length !== 1 ? 'Mixed' : one ? (varItem(one)?.name ?? 'Missing style') : 'None';
+    return `<div class="typo-row"><span class="field-label"><span>Text style</span></span><div class="font-field-row"><button class="font-field" data-typo-open aria-haspopup="listbox" title="Text style"><span class="ff-name">${esc(name)}</span></button>${one ? '<button class="cmp-btn" data-typo-detach>Detach</button>' : ''}</div></div>`;
+}
+/** The fields while a style is attached: the resolved values, read-only. */
+function typoReadonlyHtml(ns) {
+    const n = ns[0], weight = Object.keys(WEIGHT_NUMBER).find(k => WEIGHT_NUMBER[k] === n.fontWeight) ?? String(n.fontWeight);
+    const rows = [['Family', n.fontFamily], ['Weight', weight], ['Size', `${n.fontSize} px`], ['Line height', `${+(n.lineHeight * n.fontSize).toFixed(2)} px`], ['Letter spacing', `${n.letterSpacing} px`]];
+    return `<div class="typo-ro">${rows.map(([label, value]) => `<div class="typo-ro-row"><span class="small-label">${label}</span><span class="typo-ro-value">${esc(String(value))}</span></div>`).join('')}</div>`;
+}
+/** The editable fields of a text node with no style attached. */
+function typoFieldsHtml(n) {
+    return `${fontFieldHtml(n)}<div class="property-grid">${fontWeightFieldHtml(n)}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${lineHeightField(n)}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div>`;
+}
+/** Re-measures one text node after its metrics changed (the same rule as the bound-variable pass). */
+function remeasureText(n) {
+    if (n.autoW)
+        hugText(n);
+    else if (n.layoutSizingV === 'hug')
+        n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, layoutText(n).height));
+    else
+        n.h = Math.max(n.h, layoutText(n).height);
+}
+/** One line for a style in the picker: its summary in the first mode of its collection. */
+function typoSummaryOf(item) {
+    const res = typographyOf(varStore(), item, c => c.modes[0]?.id);
+    return res.style ? summaryOf(res.style) : 'Unresolved';
+}
+/** Attaches a style to every selected text node in one step: the per-field bindings it replaces are cleared. */
+function typoAttach(id) {
+    const ns = typoSelectedText();
+    if (!ns.length || !varItem(id))
+        return;
+    history.begin('Attach text style');
+    // The style's collection becomes one of the node's modes, at its first mode unless the node already has one, so the Size mode shows in Appearance.
+    const coll = varStore().collections.find(c => c.id === varItem(id).collectionId);
+    for (const n of ns) {
+        if (coll && !(coll.id in (n.varModes ?? {})))
+            n.varModes = { ...(n.varModes ?? {}), [coll.id]: coll.modes[0]?.id };
+        n.vars = attachedVars(n.vars, id);
+    }
+    doc.touch();
+    if (history.commit())
+        saveSoon();
+    invalidate();
+    renderInspector();
+}
+/** Detaches the style from the selected text nodes: their resolved values stay as literals, in one step. */
+function typoDetach() {
+    const ns = typoSelectedText().filter(n => n.vars?.typography);
+    if (!ns.length)
+        return;
+    history.begin('Detach text style');
+    for (const n of ns) {
+        const item = varItem(n.vars.typography), style = item ? typographyOf(varStore(), item, c => nodeMode(doc, n, c)).style : null;
+        if (style) {
+            Object.assign(n, nodeFieldsOf(style));
+            remeasureText(n);
+        }
+        n.vars = detachedVars(n.vars);
+        if (!Object.keys(n.vars).length)
+            delete n.vars;
+    }
+    doc.touch();
+    if (history.commit())
+        saveSoon();
+    invalidate();
+    renderInspector();
+}
+document.addEventListener('click', e => {
+    const open = e.target.closest('[data-typo-open]');
+    if (open) {
+        const ids = typoIdsOf(typoSelectedText());
+        openVarPicker(open, { type: 'typography', current: ids.length === 1 ? ids[0] : null, onPick: id => typoAttach(id) });
+        return;
+    }
+    if (e.target.closest('[data-typo-detach]'))
+        typoDetach();
+});
 // --- picker ---
 function gfPreview(names) {
     const todo = names.filter(n => gfInfo(n) && !GF.previewDone.has(n));
@@ -19079,6 +19172,224 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && VE.el) {
     closeEffectVarEditor();
     e.stopPropagation();
 } }, true);
+
+// ===== typography variable editor: one mode of a typography variable, in a floating window (the effect editor's pattern) =====
+const TE = { key: null, el: null, error: '', note: '' };
+const TE_MEMBERS = [['fontFamily', 'Family', 'string'], ['fontWeight', 'Weight', 'string'], ['fontSize', 'Size', 'number'], ['lineHeight', 'Line height', 'number'], ['letterSpacing', 'Letter spacing', 'number']];
+function closeTypographyEditor() {
+    TE.el?.remove();
+    TE.el = null;
+    TE.key = null;
+    TE.error = '';
+    TE.note = '';
+}
+/** The item, mode and resolved style the window shows, or null when the key no longer names a typography variable. */
+function teCtx() {
+    if (!TE.key)
+        return null;
+    const [id, mode] = TE.key.split('|'), item = varItem(id);
+    if (!item || item.type !== 'typography')
+        return null;
+    const coll = varStore().collections.find(c => c.id === item.collectionId) ?? null;
+    const raw = item.values[mode];
+    const res = typographyOf(varStore(), item, c => (c.id === item.collectionId ? mode : c.modes[0]?.id));
+    return { item, mode, coll, raw, res, whole: !!raw && typeof raw === 'object' && 'alias' in raw };
+}
+function teWeightNames(family) {
+    const info = gfInfo(family);
+    return info ? weightNamesOf(gfWeights(info, false)) : null;
+}
+function teWrite(style) { vwSetValue(TE.key, style, false); }
+/** A member set to a literal from the window: the family also moves the weight to one the family has, with a note. */
+function teMember(member, next) {
+    const c = teCtx();
+    if (!c || c.whole)
+        return;
+    const r = setMember(c.raw, member, next);
+    if (r.error) {
+        TE.error = r.error;
+        TE.note = '';
+        teRender();
+        return;
+    }
+    TE.error = '';
+    TE.note = '';
+    if (member === 'fontFamily' && typeof r.style.fontWeight === 'string') {
+        const w = weightForFamily(r.style.fontFamily, r.style.fontWeight, teWeightNames(r.style.fontFamily));
+        r.style.fontWeight = w.weight;
+        TE.note = w.note ?? '';
+    }
+    teWrite(r.style);
+    teRender();
+}
+function teSetWhole(id) {
+    teWrite({ alias: id });
+    TE.error = '';
+    TE.note = '';
+    teRender();
+}
+/** Whole-style alias off: the style's resolved values stay on the variable as literals. */
+function teUnwhole() {
+    const c = teCtx();
+    if (!c)
+        return;
+    if (!c.res.style) {
+        TE.error = c.res.problems.join('; ');
+        teRender();
+        return;
+    }
+    teWrite({ ...c.res.style });
+    TE.error = '';
+    teRender();
+}
+function teAliasMember(member, on, anchor) {
+    const c = teCtx();
+    if (!c || c.whole)
+        return;
+    if (!on) {
+        const r = unaliasMember(c.raw, member, c.res.style ?? {});
+        if (r.error) {
+            TE.error = r.error;
+            teRender();
+            return;
+        }
+        teWrite(r.style);
+        TE.error = '';
+        teRender();
+        return;
+    }
+    const type = TE_MEMBERS.find(m => m[0] === member)[2];
+    openVarPicker(anchor, { type, onPick: id => {
+        const now = teCtx();
+        if (!now)
+            return;
+        const r = setMember(now.raw, member, { alias: id });
+        if (r.error) {
+            TE.error = r.error;
+        }
+        else {
+            teWrite(r.style);
+            TE.error = '';
+        }
+        teRender();
+    } });
+}
+const teFmt = v => (typeof v === 'number' ? fmt(v) : String(v ?? ''));
+function teMemberRow(c, member, label, type) {
+    const raw = c.raw[member], st = c.res.style ?? {}, alias = isAliasMember(raw);
+    const target = alias ? varItem(raw.alias) : null;
+    let control;
+    if (alias)
+        control = `<span class="te-target" title="${esc(target?.name ?? 'missing')}">${esc(target?.name ?? 'missing')}</span><span class="te-res">= ${esc(teFmt(st[member]))}</span>`;
+    else if (member === 'fontFamily')
+        control = `<input class="te-input" type="text" list="te-fonts" value="${esc(raw)}" data-te-member="fontFamily" aria-label="Font family">`;
+    else if (member === 'fontWeight') {
+        const names = teWeightNames(st.fontFamily ?? raw) ?? Object.keys(WEIGHT_NUMBER);
+        const value = typeof raw === 'string' ? raw : '';
+        control = `<select class="te-input" data-te-member="fontWeight" aria-label="Weight">${names.map(n => `<option value="${esc(n)}" ${n === value ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+    }
+    else
+        control = `<input class="te-input" type="number" step="any" value="${esc(teFmt(raw))}" data-te-member="${member}" data-te-type="${type}" aria-label="${esc(label)}">`;
+    return `<div class="te-row"><span class="te-l">${esc(label)}</span><div class="te-c">${control}<button class="te-alias ${alias ? 'on' : ''}" data-te-alias="${member}" title="${alias ? 'Detach alias' : 'Alias to a variable'}" aria-label="${alias ? 'Detach alias' : 'Alias to a variable'}">${VAR_ICON}</button></div></div>`;
+}
+function teHtml() {
+    const c = teCtx();
+    if (!c)
+        return '';
+    const modes = c.coll?.modes ?? [];
+    const modeSel = `<select class="te-mode" data-te-mode aria-label="Mode">${modes.map(m => `<option value="${m.id}" ${m.id === c.mode ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>`;
+    const st = c.res.style;
+    const styleRow = c.whole
+        ? `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><span class="te-target">${esc(varItem(c.raw.alias)?.name ?? 'missing')}</span><button class="cmp-btn" data-te-unwhole>Use literal values</button></div></div>`
+        : `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><button class="cmp-btn" data-te-whole-pick>Alias a style</button></div></div>`;
+    const members = c.whole ? '' : TE_MEMBERS.map(([m, label, type]) => teMemberRow(c, m, label, type)).join('');
+    const preview = st
+        ? `<div class="te-preview" style="font-family:${esc(fontFamilyCss(st.fontFamily))};font-size:${st.fontSize}px;font-weight:${WEIGHT_NUMBER[st.fontWeight]};line-height:${st.lineHeight}px">Simpan Kopi Kita</div><div class="te-summary">${esc(summaryOf(st))}</div>`
+        : `<div class="te-err">${esc(c.res.problems.join('; '))}</div>`;
+    const families = `<datalist id="te-fonts">${gfList().map(f => `<option value="${esc(f.name)}"></option>`).join('')}</datalist>`;
+    return `<div class="ve-title"><b>${esc(c.item.name)}</b>${modeSel}<button class="icon-button small" data-te-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${styleRow}${members}${TE.error ? `<div class="te-err">${esc(TE.error)}</div>` : ''}${TE.note ? `<div class="te-note">${esc(TE.note)}</div>` : ''}${preview}${families}</div>`;
+}
+function teRender() {
+    if (!TE.el)
+        return;
+    if (!teCtx()) {
+        closeTypographyEditor();
+        return;
+    }
+    TE.el.innerHTML = teHtml();
+}
+function openTypographyEditor(key, anchor) {
+    const same = TE.key === key;
+    closeTypographyEditor();
+    if (same)
+        return;
+    TE.key = key;
+    if (!teCtx()) {
+        TE.key = null;
+        return;
+    }
+    const el = TE.el = document.createElement('div');
+    el.className = 've-pop te-pop';
+    el.addEventListener('change', e => {
+        const t = e.target;
+        if (t.matches('[data-te-mode]')) {
+            TE.key = `${TE.key.split('|')[0]}|${t.value}`;
+            TE.error = '';
+            TE.note = '';
+            teRender();
+        }
+        else if (t.dataset.teMember) {
+            const member = t.dataset.teMember;
+            const type = TE_MEMBERS.find(m => m[0] === member)[2];
+            teMember(member, { literal: type === 'string' ? t.value : Number(t.value) });
+        }
+    });
+    el.addEventListener('click', e => {
+        const b = e.target.closest('button');
+        if (!b)
+            return;
+        if (b.matches('[data-te-close]'))
+            closeTypographyEditor();
+        else if (b.dataset.teAlias)
+            teAliasMember(b.dataset.teAlias, !isAliasMember(teCtx()?.raw[b.dataset.teAlias]), b);
+        else if (b.matches('[data-te-whole-pick]'))
+            openVarPicker(b, { type: 'typography', onPick: id => teSetWhole(id) });
+        else if (b.matches('[data-te-unwhole]'))
+            teUnwhole();
+    });
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            closeTypographyEditor();
+        }
+        else if (e.key === 'Enter' && e.target.tagName === 'INPUT')
+            e.target.blur();
+    });
+    document.body.appendChild(el);
+    teRender();
+    const r = anchor.getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left)) + 'px';
+    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
+        if (!TE.el || !document.body.contains(TE.el)) {
+            document.removeEventListener('pointerdown', away, true);
+            return;
+        }
+        if (!TE.el.contains(ev.target) && !ev.target.closest('[data-vw-typo], .var-picker')) {
+            closeTypographyEditor();
+            document.removeEventListener('pointerdown', away, true);
+        }
+    }, true), 0);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && TE.el) {
+    closeTypographyEditor();
+    e.stopPropagation();
+} }, true);
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-vw-typo]');
+    if (b)
+        openTypographyEditor(b.dataset.vwTypo, b);
+});
 
 // ===== plugins =====
 const PLUGIN_KEY = 'midas-plugins';

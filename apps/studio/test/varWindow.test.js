@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import { VAR_TYPES } from '../src/engine/varTypes.js';
 import { errorBoundaryHtml, guarded, errorMessage } from '../src/engine/errorBoundary.js';
 
-test('Create variable menu offers the five variable types, no Enum', () => {
-    assert.deepEqual(VAR_TYPES.map(t => t[0]), ['color', 'number', 'string', 'boolean', 'effect']);
+test('Create variable menu offers the six variable types, no Enum', () => {
+    assert.deepEqual(VAR_TYPES.map(t => t[0]), ['color', 'number', 'string', 'boolean', 'effect', 'typography']);
 });
 
 test('midas.js imports only the varTypes names it uses, and no Enum helper exists', () => {

@@ -74,6 +74,15 @@ function inputNodes() {
     return [...master, ...instances];
 }
 
+/**
+ * Two plain text layers in the matrix frame, not template parts: nothing is attached to them, so the Design panel shows None.
+ * The second has its own Size mode (Large), so one attached style resolves to a different size on each.
+ */
+function plainTexts() {
+    const plain = (id, y, varModes) => node('text', { id, name: id, parentId: 'm-frame', text: 'Plain text', x: 440, y, w: 160, h: 24, autoW: false, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#18181b'), fontSize: 14, varModes });
+    return [plain('plain-a', 40, undefined), plain('plain-b', 120, { [button.ids.size]: 'lg' })];
+}
+
 /** The matrix document: the Button and Input masters on the Components page, the instances in one top-level frame. */
 export function buildMatrixFile() {
     const frame = node('frame', { id: 'm-frame', name: 'Matrix', x: 0, y: 0, w: 640, h: 560, fills: solid('#ffffff'), clip: true });
@@ -83,7 +92,7 @@ export function buildMatrixFile() {
         format: 'midas', version: 1, name: 'Typography matrix', pageId: 'page-matrix',
         pages: [
             { id: 'page-components', name: 'Components', nodes: all.filter(n => !isInstance(n)) },
-            { id: 'page-matrix', name: 'Matrix', nodes: [frame, ...all.filter(isInstance)] },
+            { id: 'page-matrix', name: 'Matrix', nodes: [frame, ...all.filter(isInstance), ...plainTexts()] },
         ],
         tokens: { colors: [], typography: [] }, assets: {},
         variables: { collections: [...button.collections, ...input.collections], items: [...button.items, ...input.items] },
