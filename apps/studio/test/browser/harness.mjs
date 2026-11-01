@@ -139,7 +139,8 @@ export async function shotNode(page, id, name, pad = 16, zoom = SHOT_ZOOM) {
     await frameNode(page, id, zoom);
     await page.waitForTimeout(250);
     const r = await screenRect(page, id);
-    const clip = { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: r.w + pad * 2, height: r.h + pad * 2 };
+    // The size is rounded to whole pixels the way Play's shot is (parity-helpers.mjs): a root 0.01px off an integer must not crop a pixel apart.
+    const clip = { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: Math.round(r.w + pad * 2), height: Math.round(r.h + pad * 2) };
     const file = resolve(ARTIFACTS, `${name}.png`);
     await page.screenshot({ path: file, clip });
     return { file, rect: r };

@@ -18,11 +18,15 @@ const STATES = {
         { name: 'rest', props: { loading: false } },
         { name: 'loading', props: { loading: true } },
     ],
+    // The affix switches come before their texts: a text row is shown only while its switch is on.
     input: [
-        { name: 'placeholder', props: { value: '', allowClear: false, showCount: false } },
-        { name: 'value', props: { value: 'Hello', allowClear: false, showCount: false } },
-        { name: 'allowClear', props: { value: 'Hello', allowClear: true, showCount: false } },
-        { name: 'showCount', props: { value: 'Hello', allowClear: false, showCount: true } },
+        { name: 'placeholder', props: { hasPrefix: false, hasSuffix: false, value: '', allowClear: false, showCount: false } },
+        { name: 'value', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
+        { name: 'allowClear', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: true, showCount: false } },
+        { name: 'showCount', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
+        { name: 'prefix', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
+        { name: 'suffix', props: { hasPrefix: false, hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: false, showCount: false } },
+        { name: 'both', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: true, showCount: true } },
     ],
 };
 

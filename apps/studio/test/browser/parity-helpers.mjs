@@ -118,7 +118,7 @@ export async function playTree(page, rootId, name) {
     }, rootId);
     if (measured) {
         const r = await page.locator(`.play-overlay [data-node-id="${rootId}"]`).boundingBox();
-        await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { x: r.x - PAD, y: r.y - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 } });
+        await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { x: r.x - PAD, y: r.y - PAD, width: Math.round(r.width + PAD * 2), height: Math.round(r.height + PAD * 2) } });
     }
     await page.locator('[aria-label="Close (Esc)"]').click();
     await page.waitForSelector('.play-overlay', { state: 'detached' });
