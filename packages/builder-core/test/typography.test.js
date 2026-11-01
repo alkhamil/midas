@@ -19,8 +19,8 @@ function fixture() {
         item('lh-md', 'c-sem', 'number', { 'c-sem-Base': 22 }),
         item('family', 'c-sem', 'string', { 'c-sem-Base': 'Inter' }),
         item('style-sm', 'c-size', 'typography', {
-            'c-size-sm': { fontFamily: { alias: 'family' }, fontSize: { alias: 'fs-sm' }, fontWeight: 400, lineHeight: { alias: 'lh-sm' }, letterSpacing: 0 },
-            'c-size-md': { fontFamily: { alias: 'family' }, fontSize: { alias: 'fs-md' }, fontWeight: 400, lineHeight: { alias: 'lh-md' }, letterSpacing: 0 },
+            'c-size-sm': { fontFamily: { alias: 'family' }, fontSize: { alias: 'fs-sm' }, fontWeight: 'Regular', lineHeight: { alias: 'lh-sm' }, letterSpacing: 0 },
+            'c-size-md': { fontFamily: { alias: 'family' }, fontSize: { alias: 'fs-md' }, fontWeight: 'Regular', lineHeight: { alias: 'lh-md' }, letterSpacing: 0 },
         }),
     ];
     return { collections: [semantic, size], items };
@@ -28,16 +28,16 @@ function fixture() {
 
 test('a literal typography resolves to its members in the mode read', () => {
     const variables = { collections: [coll('c', 'Button Size', ['sm'])], items: [] };
-    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 400, lineHeight: 22, letterSpacing: 0 } });
+    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 22, letterSpacing: 0 } });
     variables.items.push(style);
     const out = typographyOf(variables, style, modeOfNamed({ c: 'c-sm' }));
-    assert.deepEqual(out, { style: { fontFamily: 'Inter', fontSize: 14, fontWeight: 400, lineHeight: 22, letterSpacing: 0 }, problems: [] });
+    assert.deepEqual(out, { style: { fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 22, letterSpacing: 0 }, problems: [] });
 });
 
 test('member aliases follow scalars of their type, read in the mode of the mode they are in', () => {
     const variables = fixture();
     const style = variables.items.find(i => i.id === 'style-sm');
-    assert.deepEqual(typographyOf(variables, style, modeOfNamed({ 'c-size': 'c-size-sm', 'c-sem': 'c-sem-Base' })).style, { fontFamily: 'Inter', fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: 0 });
+    assert.deepEqual(typographyOf(variables, style, modeOfNamed({ 'c-size': 'c-size-sm', 'c-sem': 'c-sem-Base' })).style, { fontFamily: 'Inter', fontSize: 12, fontWeight: 'Regular', lineHeight: 20, letterSpacing: 0 });
     assert.equal(typographyOf(variables, style, modeOfNamed({ 'c-size': 'c-size-md', 'c-sem': 'c-sem-Base' })).style.fontSize, 14, 'the md mode alias');
 });
 
@@ -52,7 +52,7 @@ test('a whole-style alias follows another typography variable and its mode', () 
 
 test('a member that aliases a variable of another type is a problem, not a value', () => {
     const variables = fixture();
-    variables.items.push(item('bad', 'c-size', 'typography', { 'c-size-sm': { fontFamily: 'Inter', fontSize: { alias: 'family' }, fontWeight: 400, lineHeight: 20, letterSpacing: 0 }, 'c-size-md': {} }));
+    variables.items.push(item('bad', 'c-size', 'typography', { 'c-size-sm': { fontFamily: 'Inter', fontSize: { alias: 'family' }, fontWeight: 'Regular', lineHeight: 20, letterSpacing: 0 }, 'c-size-md': {} }));
     const out = typographyOf(variables, variables.items.find(i => i.id === 'bad'), modeOfNamed({ 'c-size': 'c-size-sm', 'c-sem': 'c-sem-Base' }));
     assert.equal(out.style, null);
     assert.match(out.problems.join(), /fontSize alias is missing or not a number/);
@@ -60,7 +60,7 @@ test('a member that aliases a variable of another type is a problem, not a value
 
 test('lineHeight is px only: a ratio is refused with a problem', () => {
     const variables = { collections: [coll('c', 'Size', ['sm'])], items: [] };
-    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 400, lineHeight: 1.5, letterSpacing: 0 } });
+    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 1.5, letterSpacing: 0 } });
     variables.items.push(style);
     const out = typographyOf(variables, style, modeOfNamed({ c: 'c-sm' }));
     assert.equal(out.style, null);
@@ -77,7 +77,7 @@ test('a cycle between typography aliases stops with a problem', () => {
 
 test('a missing mode value is a problem', () => {
     const variables = { collections: [coll('c', 'Size', ['sm', 'md'])], items: [] };
-    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 400, lineHeight: 22, letterSpacing: 0 } });
+    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 22, letterSpacing: 0 } });
     variables.items.push(style);
     // The fallback is the first mode, so md reads sm; an item with no value in any mode is the problem.
     assert.deepEqual(typographyOf(variables, style, modeOfNamed({ c: 'c-md' })).problems, []);
@@ -86,8 +86,15 @@ test('a missing mode value is a problem', () => {
     assert.match(typographyOf(variables, empty, modeOfNamed({ c: 'c-md' })).problems.join(), /no value in this mode/);
 });
 
+test('a weight name the CSS does not know is a problem', () => {
+    const variables = { collections: [coll('c', 'Size', ['sm'])], items: [] };
+    const style = item('t', 'c', 'typography', { 'c-sm': { fontFamily: 'Inter', fontSize: 14, fontWeight: 'Heavyish', lineHeight: 22, letterSpacing: 0 } });
+    variables.items.push(style);
+    assert.match(typographyOf(variables, style, modeOfNamed({ c: 'c-sm' })).problems.join(), /fontWeight "Heavyish" is not a known weight/);
+});
+
 test('the CSS of a style is px for lengths and the family as written', () => {
-    assert.deepEqual(typographyCss({ fontFamily: 'Inter', fontSize: 14, fontWeight: 400, lineHeight: 22, letterSpacing: 0 }), {
+    assert.deepEqual(typographyCss({ fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 22, letterSpacing: 0 }), {
         'font-family': 'Inter', 'font-size': '14px', 'font-weight': '400', 'line-height': '22px', 'letter-spacing': '0px',
     });
 });

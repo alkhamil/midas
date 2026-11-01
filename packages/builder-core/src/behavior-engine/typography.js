@@ -3,8 +3,11 @@
 // variable. Colour is not part of it. lineHeight is px only: a ratio is a problem, never a value.
 import { variableValue, valueInMode } from './variable-value.js';
 
-/** The members of a typography value, and the variable type each takes. */
-export const TYPOGRAPHY_MEMBERS = { fontFamily: 'string', fontSize: 'number', fontWeight: 'number', lineHeight: 'number', letterSpacing: 'number' };
+/** The members of a typography value, and the variable type each takes. The weight is a name the font family has ("SemiBold"). */
+export const TYPOGRAPHY_MEMBERS = { fontFamily: 'string', fontSize: 'number', fontWeight: 'string', lineHeight: 'number', letterSpacing: 'number' };
+
+/** The CSS number of each weight name. A name not here is refused: the CSS has no number for it. */
+export const WEIGHT_NUMBER = { Thin: 100, ExtraLight: 200, Light: 300, Regular: 400, Medium: 500, SemiBold: 600, Bold: 700, ExtraBold: 800, Black: 900 };
 
 /** A px line height is at least this; below it the value is a ratio (1.5, say) and is refused. */
 const RATIO_CEILING = 4;
@@ -39,6 +42,7 @@ export function typographyOf(variables, item, modeOf, depth = 0) {
             if (!target || target.type !== type) { problems.push(`${member} alias is missing or not a ${type}`); continue; }
             value = variableValue(variables, target, modeOf, depth + 1);
         }
+        if (member === 'fontWeight' && !(value in WEIGHT_NUMBER)) { problems.push(`fontWeight "${value}" is not a known weight`); continue; }
         if (type === 'string' ? typeof value !== 'string' : typeof value !== 'number' || !Number.isFinite(value)) {
             problems.push(`${member} has no ${type} value`);
             continue;
@@ -58,7 +62,7 @@ export function typographyCss(style) {
     return {
         'font-family': String(style.fontFamily),
         'font-size': `${style.fontSize}px`,
-        'font-weight': String(style.fontWeight),
+        'font-weight': String(WEIGHT_NUMBER[style.fontWeight]),
         'line-height': `${style.lineHeight}px`,
         'letter-spacing': `${style.letterSpacing}px`,
     };
