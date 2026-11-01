@@ -33,7 +33,12 @@ test('Input visibility matrix: placeholder while the value is empty, clear with 
         [{ value: 'a', showCount: true, maxLength: '20' }, { placeholder: false, clear: false, count: true }],
         [{ value: '', allowClear: true, showCount: true }, { placeholder: true, clear: false, count: true }],
     ];
-    for (const [props, expected] of cases) assert.deepEqual(visibleOf(INPUT, props), expected, JSON.stringify(props));
+    for (const [props, expected] of cases) {
+        const got = visibleOf(INPUT, props);
+        assert.deepEqual({ placeholder: got.placeholder, clear: got.clear, count: got.count }, expected, JSON.stringify(props));
+        // The value layer shows only while the value is not empty, so the placeholder takes its place and no more.
+        assert.equal(got.label, !!props.value, `label while the value is ${props.value ? 'set' : 'empty'}`);
+    }
 });
 
 test('Input count text is the value length, with the maximum when there is one', () => {

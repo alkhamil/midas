@@ -21,11 +21,12 @@ test('a template with no variant styles has no border style to set', () => {
     assert.equal(borderStyleOf(plain, { variant: 'dashed' }), null);
 });
 
-test('the stylesheet sets the dashed border style on the dashed Variant, and the root has a 1px solid border', () => {
+test('the stylesheet sets the dashed border style on the dashed Variant; the root has no border width and the overlay inherits the style', () => {
     const css = generateComponent(button, model.binding, variables, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.css'];
     assert.match(css, /\.button\[data-variant="dashed"\] \{\n  border-style: dashed;\n\}/);
     assert.doesNotMatch(css, /\.button\[data-variant="solid"\] \{\n  border-style/);
-    assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-width: 1px;\n\s*border-style: solid;/);
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*border-width: 0;\n\s*border-style: solid;/);
+    assert.match(css, /\.button::before \{\n(?:.*\n)*?\s*border-style: inherit;/);
 });
 
 test('Play draws a dashed Button with the same stylesheet, so its border is dashed too', async () => {

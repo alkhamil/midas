@@ -9508,7 +9508,10 @@ function ownedFieldsOf(n, getNode, components, labels) {
     }
     const template = ownedTemplateOf(n, getNode, components, labels);
     const role = n.isInstance ? 'root' : 'label';
-    return template ? literalFieldNames(template).filter(f => f.key === role).map(f => f.field) : [];
+    if (!template) return [];
+    // The value layer's visibility follows the value (partWrites), so the master's copy never overwrites it.
+    const shownByValue = !n.isInstance && template.control?.hideWhenEmpty ? ['visible'] : [];
+    return [...literalFieldNames(template).filter(f => f.key === role).map(f => f.field), ...shownByValue];
 }
 /** The template of the bound instance a node belongs to (the instance root, or its label layer); null otherwise. */
 function ownedTemplateOf(n, getNode, components, labels) {
@@ -12260,7 +12263,8 @@ function hugText(n) {
     const l = layoutText(n), ctx = measureCanvas.getContext('2d');
     ctx.font = fontSpec(n);
     ctx.letterSpacing = `${n.letterSpacing || 0}px`;
-    n.w = Math.max(1, Math.ceil(Math.max(0, ...l.lines.map(t => ctx.measureText(t).width))) + 1);
+    // The box is the text width as measured, not rounded: Play sizes the same text by its own width.
+    n.w = Math.max(1, Math.max(0, ...l.lines.map(t => ctx.measureText(t).width)));
     n.h = Math.ceil(Math.max(n.fontSize * n.lineHeight, l.height));
 }
 function startPendingText(x, y, parentId, fill) {

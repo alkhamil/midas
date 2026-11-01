@@ -169,16 +169,6 @@ function ellipseArcD(c, f) {
 export function strokeIsOn(n) { return !['group'].includes(n.type) && n.strokeWidth > 0 && n.strokeVisible !== false && !!n.stroke && n.stroke !== 'none'; }
 
 /**
- * Where a stroke draws: on the host box when it is uniform and inside (one drawer with the canvas and the codegen
- * stylesheet), as an overlay otherwise. Only the placement decides; bound and literal strokes share it.
- * @param {any} n
- * @returns {'host' | 'overlay'}
- */
-export function strokeStrategyOf(n) {
-    return strokeSidesUniform(n) && (n.strokeAlign ?? 'center') === 'inside' ? 'host' : 'overlay';
-}
-
-/**
  * The template-owned paint is absent (not merely hidden): no live stroke and no explicit suppression. A suppressed
  * stroke (hidden or zero opacity) is stale paint the mode change repairs, so bind leaves it alone.
  * @param {any} n

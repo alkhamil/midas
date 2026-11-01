@@ -122,8 +122,9 @@ function displayRules(template, master, childrenOf) {
         if (key === 'root' && template.outline) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`, `  transition: ${FOCUS_TRANSITION};\n`);
         }
-        if (key === 'root') decls.push('  border-width: 1px;\n', '  border-style: solid;\n');
-        if (key === 'root' && template.interaction?.wave) decls.push('  position: relative;\n');
+        // The root draws no border: its stroke is the ::before overlay (see strokeRules), so the children sit inside the padding.
+        if (key === 'root') decls.push('  border-width: 0;\n', '  border-style: solid;\n');
+        if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
         // `control` reads this path.
@@ -160,6 +161,16 @@ function displayRules(template, master, childrenOf) {
  * @param {{ collections?: any[], items?: any[] }} variables
  * @param {any[]} problems
  */
+/**
+ * The root stroke rule: the ::before overlay takes the host's colour, style and radius, and is inside the box (no layout).
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+function strokeRules(template) {
+    if (!('stroke' in (template.display.root ?? {}))) return '';
+    // The stroke is inside the box and takes no space: an absolutely positioned overlay with the host's colour, style and radius.
+    return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: 0;\n  box-sizing: border-box;\n  border: 1px solid;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: inherit;\n  pointer-events: none;\n}\n`;
+}
+
 /**
  * The click-wave rules for a wave template: the ::after ring inherits the host radius, starts at zero spread and is
  * transparent, and expands to the antd spread while fading when data-wave-on is set. The host colour comes from the
@@ -240,6 +251,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     }
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
+    const stroke = strokeRules(template);
+    if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

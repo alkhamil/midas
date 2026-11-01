@@ -96,7 +96,7 @@ test('Play draws a span root with the input, and a bound inside stroke emits no 
     const input = root.children.find(c => c.tag === 'input');
     assert.equal(input.attrs.class, 'input-label');
     assert.equal(input.attrs.value, '');
-    assert.equal(root.style.borderWidth, undefined);
+    assert.equal(root.style.borderWidth, '0px');
     assert.equal(root.style.borderStyle, undefined);
     assert.equal(root.style.borderColor, undefined);
     assert.match(styles, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);

@@ -19,7 +19,7 @@ import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-eng
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { canvasPartsOf } from '../behavior-engine/display.js';
 import { borderStyleOf } from '../behavior-engine/variant-style.js';
-import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, strokeStrategyOf, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
 import { layoutOrder } from '../geometry/autolayout.js';
@@ -256,12 +256,14 @@ function renderTemplate(n, template, parent, scope) {
             const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
             if (isControl) {
                 // The input is a transparent text layer over the label node: the placeholder shown is the placeholder part's node text.
-                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': labelEntry?.node?.id };
                 const placeholder = partLayerOf(n, 'placeholder', scope);
-                const showsPlaceholder = !!placeholder && placeholder.visible !== false && String(placeholder.text ?? '') !== '';
-                if (showsPlaceholder) inputAttrs.placeholder = String(placeholder.text);
-                // The input is the box of the text layer it covers, the placeholder while it shows, so its size is the canvas's, not the browser's.
-                const covered = showsPlaceholder && inputAttrs.value === '' ? placeholder : labelEntry?.node;
+                const showsPlaceholder = !!placeholder && placeholder.visible !== false;
+                // The input is the one box of the value or the placeholder that shows: while the value is empty and the placeholder shows, the
+                // input is the placeholder's box (its node id is the placeholder's), otherwise the value layer's. Its size is the canvas's.
+                const covered = showsPlaceholder && String(props[control.value] ?? '') === '' ? placeholder : labelEntry?.node;
+                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': covered?.id };
+                if (showsPlaceholder && String(placeholder.text ?? '') !== '') inputAttrs.placeholder = String(placeholder.text);
+                Object.assign(style, labelLayoutOf(covered, covered === placeholder ? n : labelEntry?.parent ?? n));
                 if (covered && covered.layoutSizingH !== 'fill') style.width = `${covered.w}px`;
                 if (covered && covered.layoutSizingV !== 'fill') style.height = `${covered.h}px`;
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
@@ -299,38 +301,25 @@ function renderTemplate(n, template, parent, scope) {
             }
         }
     }
-    // The stroke is the node's own. A uniform inside stroke draws on the host box (one drawer with the canvas and the codegen stylesheet); any other stroke draws as an overlay, and the host border is reset so only the overlay shows.
-    // A CSS outline is not used for it: it would override the keyboard-focus ring. The shape comes from the master, as on the canvas.
+    // The stroke is the node's own, drawn as an overlay over the box. An overlay is not laid out, so the children sit where the padding
+    // puts them, as on the canvas (the stroke is inside the box). A CSS outline is not used for it: it would override the focus ring.
+    // The shape comes from the master, as on the canvas. A bound stroke takes its colour and style from the host (the class rules).
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
     const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeStyle === 'dot';
     const hasStroke = strokeIsOn(shape);
-    const strategy = hasStroke ? strokeStrategyOf(shape) : 'host';
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
-    let strokeEl = null;
-    if (strategy === 'overlay' && hasStroke) strokeEl = customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes));
+    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound)) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
     const style = { display: 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0), template.rootAlign) };
-    // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
-    if (strategy === 'overlay') {
-        // The host draws nothing: the overlay is the only drawer.
-        Object.assign(style, { borderWidth: '0px', borderStyle: 'none', borderColor: 'transparent' });
-        // The stroke overlay is placed on the button's box, so the box is a positioning context when it has a stroke.
+    // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
+    if (hasStroke) {
+        Object.assign(style, { borderWidth: '0px' });
         if (!style.position) style.position = 'relative';
-    }
-    else if (hasStroke && !bound) {
-        // A literal stroke draws on the host, from the node paint. A bound stroke draws from the class rule alone.
-        const hr = cornerRadii(shape);
-        Object.assign(style, {
-            borderWidth: `${svgNumber(strokeSideWidths(shape).t)}px`,
-            borderStyle: borderStyleOf(template, modes) ?? 'solid',
-            borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity),
-            borderRadius: (shape.radius || hasRadii(shape)) ? (hr.every(v => v === hr[0]) ? `${svgNumber(hr[0])}px` : hr.map(v => `${svgNumber(v)}px`).join(' ')) : 'inherit',
-        });
     }
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
@@ -341,7 +330,7 @@ function renderTemplate(n, template, parent, scope) {
  * @param {any} n
  * @returns {Element}
  */
-function borderOverlayEl(n, borderStyle = null) {
+function borderOverlayEl(n, borderStyle = null, bound = false) {
     const { t, r, b, l } = strokeSideWidths(n);
     const align = n.strokeAlign ?? 'center';
     const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
@@ -354,8 +343,9 @@ function borderOverlayEl(n, borderStyle = null) {
     const borderRadius = (n.radius || hasRadii(n))
         ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
         : 'inherit';
-    const color = colorWithAlpha(n.stroke, n.strokeOpacity);
-    const lineStyle = borderStyle ?? (n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid');
+    // A bound stroke inherits its colour and style from the host, which the class rules set per mode and state.
+    const color = bound ? 'inherit' : colorWithAlpha(n.stroke, n.strokeOpacity);
+    const lineStyle = bound ? 'inherit' : borderStyle ?? (n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid');
     /** @type {Record<string, string>} */
     const style = {
         position: 'absolute',
@@ -365,7 +355,10 @@ function borderOverlayEl(n, borderStyle = null) {
         pointerEvents: 'none',
         borderRadius,
     };
-    if (uniform) {
+    if (uniform && bound) {
+        Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: 'inherit', borderColor: 'inherit' });
+    }
+    else if (uniform) {
         style.border = `${svgNumber(t)}px ${lineStyle} ${color}`;
     }
     else {

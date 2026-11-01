@@ -75,6 +75,7 @@ export const canvasPartsOf = template => (template.parts ?? []).filter(p => p.ca
 export function partWrites(template, props) {
     /** @type {{ key: string, field: string, value: unknown }[]} */
     const out = [];
+    if (template.control?.hideWhenEmpty) out.push({ key: template.control.slot, field: 'visible', value: String(props[template.control.value] ?? '') !== '' });
     for (const part of canvasPartsOf(template)) {
         out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) });
         if (part.text?.counter) out.push({ key: part.id, field: 'text', value: counterLabel(props[part.text.counter.value], props[part.text.counter.max]) });

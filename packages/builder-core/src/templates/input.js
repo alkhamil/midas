@@ -20,8 +20,9 @@ export const INPUT = {
         { show: 'hasIcon', placement: 'iconPlacement', slot: 'suffix', component: 'suffixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
     ],
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `clear` is
-    // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`).
-    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', clear: 'allowClear', count: 'showCount' },
+    // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`). `hideWhenEmpty`: the
+    // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
+    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', clear: 'allowClear', count: 'showCount', hideWhenEmpty: true },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.

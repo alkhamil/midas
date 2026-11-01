@@ -24,12 +24,10 @@ test('a Button draws no CSS border in Play: its stroke is the node stroke, drawn
     assert.equal(overlay.style.inset, '-1px');
 });
 
-test('a uniform inside stroke draws on the host, an outside stroke grows its overlay by its full width', () => {
-    const host = drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' });
-    assert.equal(host.style.borderWidth, '2px');
-    assert.equal(host.style.borderStyle, 'solid');
-    assert.equal(host.style.borderColor, '#18181b');
-    assert.equal(host.children.some(c => c.style?.position === 'absolute'), false);
+test('a uniform inside stroke is an overlay inset to the box, so it takes no layout space; an outside stroke grows by its full width', () => {
+    const inside = drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' });
+    assert.equal(inside.style.borderWidth, '0px');
+    assert.equal(overlayOf(inside).style.inset, '0px');
     assert.equal(overlayOf(drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'outside' })).style.inset, '-2px');
 });
 
@@ -41,7 +39,7 @@ test('a Button stroke never uses a CSS outline, so the keyboard-focus ring keeps
     }
     const host = drawnWith({ stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' });
     assert.equal(host.style.outline, undefined);
-    assert.equal(host.style.borderWidth, '2px');
+    assert.equal(overlayOf(host).style.border, '2px solid #18181b');
 });
 
 test('the overlay corners match the box corners grown by the stroke, in every mode', () => {
@@ -71,22 +69,22 @@ test('a Button with no stroke draws no overlay', () => {
     assert.equal(root.children.some(c => c.style?.border || c.style?.pointerEvents === 'none'), false);
 });
 
-test('a bound uniform inside stroke emits no inline border props; the class rule draws it', () => {
+test('a bound uniform inside stroke draws its overlay with the host colour and style; the host has no border width', () => {
     const master = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid, radius: 8, x: 0, y: 0, w: 120, h: 40, behavior: { version: 2, templateId: 'button', variables: model.binding.variables } };
     const instance = { id: 'i1', name: 'Add', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { label: 'Add' } }, varModes: { 'c-variant': 'outlined', 'c-color': 'primary', 'c-size': 'sm' }, fills: solid, vars: { stroke: 'v-border' }, stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' };
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables: variables() }, 'i1');
-    assert.equal(root.style.borderWidth, undefined);
+    assert.equal(root.style.borderWidth, '0px');
     assert.equal(root.style.borderStyle, undefined);
     assert.equal(root.style.borderColor, undefined);
-    assert.equal(root.children.some(c => c.style?.position === 'absolute'), false);
+    assert.deepEqual([overlayOf(root).style.borderWidth, overlayOf(root).style.borderColor, overlayOf(root).style.borderStyle], ['2px', 'inherit', 'inherit']);
 });
 
-test('a dashed variant emits no inline border and the class rule carries border-style: dashed', () => {
+test('a dashed variant has no host border width; the class rule carries border-style: dashed and the overlay inherits it', () => {
     const dashed = buttonModel({ colors: ['primary'], variantModes: ['dashed'], sizeModes: [{ id: 'sm', name: 'Small' }] });
     const master = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid, radius: 8, x: 0, y: 0, w: 120, h: 40, behavior: { version: 2, templateId: 'button', variables: dashed.binding.variables } };
     const instance = { id: 'i1', name: 'Add', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { label: 'Add' } }, varModes: { 'c-variant': 'dashed', 'c-color': 'primary', 'c-size': 'sm' }, fills: solid, vars: { stroke: 'v-border' }, stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' };
     const { root, styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables: { collections: dashed.collections, items: dashed.items } }, 'i1');
     assert.equal(root.attrs['data-variant'], 'dashed');
-    assert.equal(root.style.borderWidth, undefined);
+    assert.equal(root.style.borderWidth, '0px');
     assert.match(styles, /\.button\[data-variant="dashed"\] \{\n  border-style: dashed;\n\}/);
 });
