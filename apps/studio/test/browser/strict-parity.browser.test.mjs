@@ -8,10 +8,15 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, pixelDiff, shotNode } from './harness.mjs';
 
 const FIXTURE = resolve(ROOT, 'testing.midas');
 const TOLERANCE_PX = 0.5;
+// The pair crops: the root's box plus this padding, the same in both shots. Both are taken at zoom 1 (one document unit per CSS pixel).
+const PAD = 8;
+// The largest share of the component's pixels that may differ between the canvas and Play. What remains is the rounded corners of the stroke
+// and sub-pixel glyph positions; a dropped stroke, a shifted box or a wrong glyph is far above it.
+const DIFF_LIMIT = 0.08;
 
 /** The states each template is measured in, after its Size modes: the props that state sets. */
 const STATES = {
@@ -93,6 +98,15 @@ async function playTree(page, rootId, name) {
     await page.evaluate(id => window.midas.select([id]), rootId);
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
+    // Actual size (1:1), so Play and the canvas are the same scale. The default fits the window. The viewport is white: Play's default
+    // dark background would hide a dark stroke, and the pixels compared are the component's own box.
+    await page.locator('.play-overlay [aria-label="View options"]').click();
+    await page.locator('.play-overlay [data-background]').evaluate(el => {
+        el.value = '#ffffff';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.locator('.play-overlay [data-mode="actual-size"]').click();
     await page.waitForTimeout(500);
     await page.evaluate(() => document.getAnimations().forEach(anim => anim.cancel()));
     const measured = await page.evaluate(rootId => {
@@ -116,7 +130,10 @@ async function playTree(page, rootId, name) {
         }
         return { rootWidth: r0.width, rootHeight: r0.height, boxes, unmapped };
     }, rootId);
-    if (measured) await page.locator(`.play-overlay [data-node-id="${rootId}"]`).screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`) });
+    if (measured) {
+        const r = await page.locator(`.play-overlay [data-node-id="${rootId}"]`).boundingBox();
+        await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { x: r.x - PAD, y: r.y - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 } });
+    }
     await page.locator('[aria-label="Close (Esc)"]').click();
     await page.waitForSelector('.play-overlay', { state: 'detached' });
     return measured;
@@ -166,12 +183,15 @@ test('a created Button and Input measure the same on the canvas and in Play at e
                 await page.evaluate(() => window.midas.select([]));
                 await page.mouse.move(2, 2);
                 await page.waitForTimeout(150);
-                await shotNode(page, id, `${pair}-canvas`, 0);
+                await shotNode(page, id, `${pair}-canvas`, PAD, 1);
                 const canvas = await canvasTree(page, id);
                 const play = await playTree(page, id, pair);
                 assert.ok(play, `${label}: Play draws the component`);
                 const { rows, unmapped } = compare(canvas, play);
-                report.push({ label, rows, unmapped });
+                const diff = await pixelDiff(browser, resolve(ARTIFACTS, `${pair}-canvas.png`), resolve(ARTIFACTS, `${pair}-play.png`), resolve(ARTIFACTS, `${pair}-diff.png`), { inset: PAD * 2, tolerance: 24 });
+                report.push({ label, rows, unmapped, diff });
+                if (diff.sizeA.join() !== diff.sizeB.join()) failures.push(`${label}: canvas and Play crops differ in size`);
+                else if (diff.changed / diff.pixels > DIFF_LIMIT) failures.push(`${label}: ${(100 * diff.changed / diff.pixels).toFixed(1)}% of pixels differ`);
                 for (const row of rows) {
                     if (row.missing) failures.push(`${label}: ${row.name} is on the canvas but not in Play`);
                     else if (row.delta > TOLERANCE_PX) failures.push(`${label}: ${row.name} differs by ${row.delta}px`);

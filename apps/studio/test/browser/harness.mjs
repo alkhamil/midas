@@ -1,7 +1,7 @@
 // Browser harness for the studio: starts the dev servers when they are down, signs in as the local seed admin, imports a .midas
 // file and reads the canvas. Screenshots go to .artifacts/ at the repo root. Used by the *.browser.test.mjs files.
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -121,7 +121,7 @@ export function screenRect(page, id) {
 
 /** Centres the node on the canvas at a fixed zoom, so every screenshot has the same scale. */
 const SHOT_ZOOM = 4;
-export function frameNode(page, id) {
+export function frameNode(page, id, zoom = SHOT_ZOOM) {
     return page.evaluate(([id, zoom]) => {
         const { camera } = window.midas.state;
         const canvas = document.getElementById('scene').getBoundingClientRect();
@@ -130,13 +130,13 @@ export function frameNode(page, id) {
         camera.x = canvas.width / 2 - (box.x + box.w / 2) * zoom;
         camera.y = canvas.height / 2 - (box.y + box.h / 2) * zoom;
         window.midas.render();
-    }, [id, SHOT_ZOOM]);
+    }, [id, zoom]);
 }
 
 /** Frames the node on the canvas and saves a screenshot of its area to .artifacts/<name>.png. Returns the file path and the rect. */
-export async function shotNode(page, id, name, pad = 16) {
+export async function shotNode(page, id, name, pad = 16, zoom = SHOT_ZOOM) {
     mkdirSync(ARTIFACTS, { recursive: true });
-    await frameNode(page, id);
+    await frameNode(page, id, zoom);
     await page.waitForTimeout(250);
     const r = await screenRect(page, id);
     const clip = { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: r.w + pad * 2, height: r.h + pad * 2 };
@@ -156,4 +156,62 @@ export async function selectByClick(page, id) {
     await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2);
     await page.waitForTimeout(150);
     return page.evaluate(() => [...window.midas.state.selection]);
+}
+
+/**
+ * Compares two PNG screenshots pixel by pixel in the browser. Returns the size, how many pixels differ by more than `tolerance` in any
+ * channel, the largest channel difference, and writes a diff image (differing pixels red over the canvas image, the rest faded).
+ */
+const dataUrlOf = file => 'data:image/png;base64,' + readFileSync(file).toString('base64');
+
+export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16, inset = 0 } = {}) {
+    const page = await browser.newPage();
+    try {
+        const result = await page.evaluate(async ([a, b, tol, inset]) => {
+            const load = src => new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
+            const [ia, ib] = await Promise.all([load(a), load(b)]);
+            const w = Math.max(ia.width, ib.width), h = Math.max(ia.height, ib.height);
+            const draw = img => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0); return x.getImageData(0, 0, w, h); };
+            const da = draw(ia), db = draw(ib);
+            const out = new ImageData(w, h);
+            let changed = 0, max = 0;
+            // Glyph edges are rasterised differently by the canvas and by the DOM, so each side is compared after a 3x3 mean of its
+            // luminance: a shifted or misplaced edge still differs, anti-aliasing noise does not.
+            const luma = (d, j) => 0.299 * d.data[j] + 0.587 * d.data[j + 1] + 0.114 * d.data[j + 2];
+            const blurred = d => {
+                const out = new Float32Array(w * h);
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                    let sum = 0, n = 0;
+                    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+                        const xx = x + ox, yy = y + oy;
+                        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                        sum += luma(d, (yy * w + xx) * 4); n++;
+                    }
+                    out[y * w + x] = sum / n;
+                }
+                return out;
+            };
+            const la = blurred(da), lb = blurred(db);
+            let pixels = 0;
+            for (let p = 0; p < w * h; p++) {
+                const x = p % w, y = Math.floor(p / w);
+                const i = p * 4;
+                const inside = x >= inset && y >= inset && x < w - inset && y < h - inset;
+                if (!inside) { out.data.set([da.data[i], da.data[i + 1], da.data[i + 2], 80], i); continue; }
+                pixels++;
+                const d = Math.abs(la[p] - lb[p]);
+                max = Math.max(max, d);
+                if (d > tol) { changed++; out.data.set([255, 0, 0, 255], i); }
+                else { out.data.set([da.data[i], da.data[i + 1], da.data[i + 2], 80], i); }
+            }
+            const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(out, 0, 0);
+            return { w, h, sizeA: [ia.width, ia.height], sizeB: [ib.width, ib.height], changed, max, pixels, png: c.toDataURL('image/png') };
+        }, [dataUrlOf(fileA), dataUrlOf(fileB), tolerance, inset]);
+        writeFileSync(fileOut, Buffer.from(result.png.split(',')[1], 'base64'));
+        const { png, ...rest } = result;
+        return rest;
+    }
+    finally {
+        await page.close();
+    }
 }
