@@ -1,0 +1,556 @@
+{
+  "collections": [
+    {
+      "name": "Primitives",
+      "modes": [
+        "Base"
+      ]
+    },
+    {
+      "name": "Semantic",
+      "modes": [
+        "Light",
+        "Dark"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "collection": "Primitives",
+      "name": "text/xs",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "Regular",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/sm",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "Regular",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/base",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "Regular",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/lg",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "Regular",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/xl",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "Regular",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "heading/1",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 38,
+            "fontWeight": "SemiBold",
+            "lineHeight": 40,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "heading/2",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 30,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "heading/3",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 24,
+            "fontWeight": "SemiBold",
+            "lineHeight": 32,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "heading/4",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "heading/5",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/xs-strong",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "SemiBold",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/sm-strong",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "SemiBold",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/base-strong",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "SemiBold",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/lg-strong",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "SemiBold",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/xl-strong",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "SemiBold",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXs",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textSm",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textBase",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textLg",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXl",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "heading1",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/1"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/1"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "heading2",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/2"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/2"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "heading3",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/3"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/3"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "heading4",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "heading5",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/5"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "heading/5"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXsStrong",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs-strong"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs-strong"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textSmStrong",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm-strong"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm-strong"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textBaseStrong",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base-strong"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base-strong"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textLgStrong",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg-strong"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg-strong"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXlStrong",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl-strong"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl-strong"
+          }
+        }
+      }
+    }
+  ],
+  "report": {
+    "derived": [
+      {
+        "name": "Primitives/heading/1",
+        "reason": "font size 38 has no line-height step; nearest lower step 32 (40px)"
+      },
+      {
+        "name": "Primitives/heading/2",
+        "reason": "font size 30 has no line-height step; nearest lower step 24 (32px)"
+      }
+    ]
+  }
+}

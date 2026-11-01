@@ -5,6 +5,7 @@
 // reported, never replaced with literals.
 import ANT_MAP from './ant-map.json' with { type: 'json' };
 import SIZES from './antd-sizes.json' with { type: 'json' };
+import TEXT_STYLES from './text-styles.json' with { type: 'json' };
 export { ANT_MAP, SIZES };
 export const SOURCE_ORDER = ['Primitives', 'Semantic', 'Size', 'Typography'];
 
@@ -268,7 +269,15 @@ export function planFromSnapshot(snapshot) {
     if (!Array.isArray(snapshot.collections) || !snapshot.collections.every(c => typeof c?.name === 'string' && Array.isArray(c.modes))) fail('collections must name their modes');
     if (!Array.isArray(snapshot.items) || !snapshot.items.every(i => typeof i?.collection === 'string' && typeof i?.name === 'string' && typeof i?.type === 'string' && i?.values && typeof i.values === 'object')) fail('items must name a collection, a name, a type and mode values');
     if (!snapshot.report || typeof snapshot.report !== 'object') fail('has no report');
-    return { collections: snapshot.collections, items: snapshot.items, report: snapshot.report };
+    // The Semantic text styles (scripts/build-text-styles.js) join the snapshot: their Primitives and aliases are raw data too.
+    const names = new Set(snapshot.items.map(i => `${i.collection}/${i.name}`));
+    const clash = TEXT_STYLES.items.find(i => names.has(`${i.collection}/${i.name}`));
+    if (clash) fail(`text style ${clash.collection}/${clash.name} is already in the snapshot`);
+    return {
+        collections: snapshot.collections,
+        items: [...snapshot.items, ...TEXT_STYLES.items],
+        report: { ...snapshot.report, derived: [...snapshot.report.derived, ...TEXT_STYLES.report.derived] },
+    };
 }
 
 /**
@@ -308,7 +317,7 @@ export function applyBasePlan(store, plan, uid) {
             const id = modeIdOf(coll, mode);
             if (!id || item.values[id] !== undefined) continue;
             if (value.needsValue) { item.needsValue = true; }
-            else if (value.literal !== undefined) item.values[id] = value.literal;
+            else if (value.literal !== undefined) item.values[id] = structuredClone(value.literal);
         }
     }
     for (const wanted of plan.items) {
