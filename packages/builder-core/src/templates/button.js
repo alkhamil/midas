@@ -102,6 +102,8 @@ export const BUTTON = {
         { id: 'active', reason: 'pointer press; the canvas shows the rest state and the Preview panel shows active' },
         { id: 'focus-ring', reason: 'keyboard focus ring follows focus; the canvas shows the rest state' },
         { id: 'wave', reason: 'click wave is an animation on click; the canvas has no click' },
+        { id: 'spin', reason: 'the spinner turns while loading: an animation, so the canvas draws the spinner at rest' },
+        { id: 'loading-click', reason: 'a loading Button fires no click and draws no wave: a click is an interaction the canvas does not have' },
     ],
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {

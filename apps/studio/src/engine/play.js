@@ -469,7 +469,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         if (e.detail === 0) press = null;
         finishPress();
         const waveHost = e.target.closest?.('.play-stage [data-wave]');
-        if (waveHost) showWave(waveHost);
+        if (waveHost && !waveHost.hasAttribute('data-blocked')) showWave(waveHost);
         const step = e.target.closest('[data-step]');
         if (step && !step.disabled) {
             const { target } = stepFrame(pageFrames, frameId, step.dataset.step);

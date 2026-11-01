@@ -246,6 +246,8 @@ function renderTemplate(n, template, parent, scope) {
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (!control && props[template.element.disabledState] === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
+    // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
+    if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
     const children = [];
     // The label's layer and its parent, for the label's own width and alignment (see layout.js).
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);

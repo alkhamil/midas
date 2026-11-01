@@ -24,7 +24,7 @@ export function eventFromDom(domType, nodeId) {
  * @returns {boolean}
  */
 export function isDisabledTarget(node, ancestors) {
-    return [...ancestors, node].some(d => d.attrs?.disabled === true);
+    return [...ancestors, node].some(d => d.attrs?.disabled === true || d.attrs?.['data-blocked'] === true);
 }
 
 /**
