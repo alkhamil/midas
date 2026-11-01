@@ -2,11 +2,15 @@
 // tab's props, the canvas and Play measurements, and the comparison of the two. Used by strict-parity and export-parity.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARTIFACTS, ROOT, pixelDiff } from './harness.mjs';
+import { ARTIFACTS, ROOT, edgeCheck, pixelDiff, shotNode } from './harness.mjs';
 
 export const FIXTURE = resolve(ROOT, 'testing.midas');
 // The pair crops: the root's box plus this padding, the same in both shots. Both are taken at zoom 1 (one document unit per CSS pixel).
 export const PAD = 8;
+// The gates: a layer's box, the outline and the root width, in CSS pixels. The pixel share is recorded under a loose ceiling.
+export const TOLERANCE_PX = 0.5;
+export const ROOT_WIDTH_TOLERANCE_PX = 0.1;
+export const DIFF_LIMIT = 0.08;
 
 /**
  * The testing file with its stage moved to an isolated page: the Testing page keeps one empty frame far from the canvas's centre, so
@@ -133,3 +137,34 @@ export function compare(canvas, play) {
     return { rows, unmapped: play.unmapped };
 }
 
+
+/**
+ * Measures one pair at the state the components are in: the canvas shot and the Play shot at the same crop, the geometry of every shown
+ * layer, the outline on each side, the root width and the pixel share. Returns the measurements and the gate failures (empty when the
+ * pair passes); the pair images are written under the pair name.
+ */
+export async function measurePair(page, browser, id, label, pair) {
+    await page.evaluate(() => window.midas.select([]));
+    await page.mouse.move(2, 2);
+    await page.waitForTimeout(150);
+    await shotNode(page, id, pair + '-canvas', PAD, 1);
+    const canvas = await canvasTree(page, id);
+    const play = await playTree(page, id, pair);
+    if (!play) return { failures: [label + ': Play draws no component'] };
+    const { rows, unmapped } = compare(canvas, play);
+    const diff = await pixelDiff(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), resolve(ARTIFACTS, pair + '-diff.png'), { inset: PAD * 2, tolerance: 24 });
+    const edges = await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 });
+    const failures = [];
+    if (!edges.found) failures.push(label + ': the outline is not found on both shots');
+    else if (edges.delta > TOLERANCE_PX) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');
+    const rootRow = rows[0];
+    if (Math.abs(rootRow.canvas.w - rootRow.play.w) > ROOT_WIDTH_TOLERANCE_PX) failures.push(label + ': root width ' + rootRow.canvas.w.toFixed(4) + ' on the canvas, ' + rootRow.play.w.toFixed(4) + ' in Play');
+    if (diff.sizeA.join() !== diff.sizeB.join()) failures.push(label + ': canvas and Play crops differ in size');
+    else if (diff.changed / diff.pixels > DIFF_LIMIT) failures.push(label + ': ' + (100 * diff.changed / diff.pixels).toFixed(1) + '% of pixels differ');
+    for (const row of rows) {
+        if (row.missing) failures.push(label + ': ' + row.name + ' is on the canvas but not in Play');
+        else if (row.delta > TOLERANCE_PX) failures.push(label + ': ' + row.name + ' differs by ' + row.delta + 'px');
+    }
+    for (const u of unmapped) failures.push(label + ': Play draws ' + u + ' with no node');
+    return { rows, unmapped, diff, edges, failures };
+}
