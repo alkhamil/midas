@@ -15,8 +15,9 @@ const labelOfState = state => PREVIEW_STATES.find(([id]) => id === state)?.[1] ?
  * `findings` are the diagnostics of the node, or null while pages are still loading. `preview` (instance) is the resolved
  * preview with the tokens its state overrides. `code` (bound master) is the generator's problems, if any.
  */
-export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null, expanded = false }) {
+export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null, expanded = false, templates = [] }) {
     if (kind === 'none') return empty('Select a component or one of its instances to set its behavior.');
+    if (kind === 'frame') return frameHtml(templates, esc);
     if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix, expanded);
     return instanceHtml(panel, esc, findings, preview, expanded);
 }
@@ -49,6 +50,13 @@ function note(text, esc) {
     return `<div class="small-label">${esc(text)}</div>`;
 }
 
+/** A plain frame: its Template dropdown. Choosing a template builds its parts on the frame; nothing it has is removed. */
+function frameHtml(templates, esc) {
+    const templateRow = row('Template', `<select data-bp="frame-template" aria-label="Template">
+        <option value="">None</option>${templates.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}
+    </select>`, esc);
+    return section('Template and binding', templateRow + note('Choosing a template builds its parts on this frame. Layers it already has are kept.', esc), esc);
+}
 function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}

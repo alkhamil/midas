@@ -173,7 +173,7 @@ export function instancePanel(instance, master, collections, modes) {
  * @param {string | null} templateId
  * @param {import('./binding.js').Collection[]} collections
  */
-function setMasterTemplate(templateId, collections) {
+export function setMasterTemplate(templateId, collections) {
     if (templateId === null) return undefined;
     const template = TEMPLATES.get(templateId);
     if (!template) throw new Error(`No template "${templateId}"`);

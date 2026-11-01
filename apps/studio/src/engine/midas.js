@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -8974,7 +8974,7 @@ function canvasPreviewOf() {
 }
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
-    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: 'none', esc });
+    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: n.type === 'frame' ? 'frame' : 'none', esc, templates: templateChoices() });
     // Diagnostics need every page; while pages are still loading they are not shown (null).
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {
@@ -9631,6 +9631,10 @@ function onBehaviorChange(e) {
     }
     whenAllPagesLoaded(() => {
         if (kind === 'template') bindTemplateTo(n, t.value || null);
+        else if (kind === 'frame-template') {
+            if (t.value)
+                frameApplyTemplate(n, t.value);
+        }
         else if (kind === 'collection') bindCollectionTo(n, t.dataset.bpProp, t.value || null);
         else if (kind === 'value' && t.dataset.bpKind === 'variable') {
             if (!setBehaviorMode(n, t.dataset.bpProp, t.value || null)) renderInspector();
@@ -14659,7 +14663,7 @@ function renderAssets() {
     const head = `<div class="asset-head"><button class="wide-button asset-create" data-cmp="create">${icon('component', 14)} Create component</button><button class="wide-button asset-create" data-cmp="import-icons" title="Import a folder of SVG icons, e.g. wds/<style>/<category>/<name>.svg">${icon('upload', 14)} Import icons</button></div><div class="lib-slot">${LIBS.useFile === lib.fileId ? libPanelHtml() + libComponentsHtml() : ''}</div>`;
     entries.splice(0, entries.length, ...entries.filter(en => !en.comp.libRef));
     if (!entries.length) {
-        $('#assets-panel').innerHTML = head + `<p class="small-label">No components yet. Select a layer and click “Create component” (⌥⌘K). Instances you place stay linked to the main component.</p>`;
+        $('#assets-panel').innerHTML = head + templateCreateRow() + `<p class="small-label">No components yet. Select a layer and click “Create component” (⌥⌘K). Instances you place stay linked to the main component.</p>`;
         return;
     }
     // Ikon (page "Icons" / nama "Icon/…") dikelompokkan dan baru digambar saat grupnya dibuka: design system
@@ -14673,7 +14677,7 @@ function renderAssets() {
     };
     const iconsOpen = state.assetIconsOpen === true;
     const iconGroup = iconEntries.length ? `<div class="asset-group"><button class="lib-group-head" data-asset-icons>${icon(iconsOpen ? 'chevronDown' : 'chevronRight', 10)}<span>Icons</span><small>${iconEntries.length}</small></button>${iconsOpen ? `<div class="asset-icon-grid">${iconEntries.map(card).join('')}</div>` : ''}</div>` : '';
-    $('#assets-panel').innerHTML = head + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + compEntries.map(card).join('') + iconGroup;
+    $('#assets-panel').innerHTML = head + templateCreateRow() + `<p class="small-label">Drag a component onto the canvas to place an instance, or double-click it.</p>` + compEntries.map(card).join('') + iconGroup;
     watchAssetThumbs([...compEntries, ...(iconsOpen ? iconEntries : [])]);
 }
 // Thumbnail komponen mahal (tiap thumbnail merender layer-nya, dan komponen di page lain mengharuskan pindah page sementara),
@@ -19389,6 +19393,71 @@ document.addEventListener('click', e => {
     const b = e.target.closest('[data-vw-typo]');
     if (b)
         openTypographyEditor(b.dataset.vwTypo, b);
+});
+
+// ===== template parts: the part generator (builder-core) builds every master and its parts; these actions are its only callers =====
+/** The templates the Template dropdown lists: every registered schema, by id and name. */
+function templateChoices() {
+    return [...BEHAVIOR_TEMPLATES.values()].map(t => ({ id: t.id, name: t.name }));
+}
+/**
+ * Applies a template to a frame through the generator: the frame becomes the master, its missing parts are created and bound, and
+ * nothing it already has is removed. Works inside the caller's transaction.
+ */
+function applyTemplateNodes(frame, template) {
+    const binding = setMasterTemplate(template.id, varStore().collections || []);
+    const out = applyTemplateToFrame(template, { frame, children: doc.children(frame.id), binding, variables: varStore(), idOf: () => uid() });
+    for (const n of out.created)
+        doc.add(n);
+    doc.touch(frame);
+    for (const n of out.created)
+        doc.touch(n);
+    bindMasterTokens(frame);
+    return out;
+}
+/** The Template dropdown on a plain frame: one transaction, so one undo step. */
+function frameApplyTemplate(frame, templateId) {
+    const template = BEHAVIOR_TEMPLATES.get(templateId);
+    if (!template)
+        return;
+    let out = null;
+    transaction(`Apply ${template.name} template`, () => { out = applyTemplateNodes(frame, template); });
+    if (out && out.created.length === 0 && out.matched.length === 0)
+        toast(`${frame.name} has nothing to build for ${template.name}.`);
+}
+/**
+ * Create <Template>: a master frame built by the generator, and one instance of it placed beside it. One transaction, one undo step;
+ * the instance is selected afterwards, so the Behavior panel opens on it.
+ */
+function createTemplateComponent(templateId) {
+    const template = BEHAVIOR_TEMPLATES.get(templateId);
+    if (!template)
+        return;
+    const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
+    let placed = null;
+    transaction(`Create ${template.name}`, () => {
+        const master = doc.add(node('frame', { name: template.name, x: Math.round(c.x - 80), y: Math.round(c.y - 16), w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
+        applyTemplateNodes(master, template);
+        const subtree = doc.descendants(master.id);
+        const copies = instanceOf(template, master, subtree, {}, { id: () => uid() });
+        copies[0].x = master.x + master.w + 48;
+        copies[0].y = master.y;
+        for (const n of copies)
+            doc.add(n);
+        doc.touch(copies[0]);
+        placed = copies[0];
+    });
+    if (placed)
+        select([placed.id]);
+}
+/** The Create actions of the Assets panel: one button per registered template. */
+function templateCreateRow() {
+    return `<div class="asset-create">${templateChoices().map(t => `<button class="cmp-btn" data-create-template="${esc(t.id)}">Create ${esc(t.name)}</button>`).join('')}</div>`;
+}
+document.addEventListener('click', e => {
+    const b = e.target.closest('[data-create-template]');
+    if (b)
+        createTemplateComponent(b.dataset.createTemplate);
 });
 
 // ===== plugins =====
