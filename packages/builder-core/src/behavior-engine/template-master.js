@@ -7,8 +7,13 @@
 import { canvasPartsOf, literalFields, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf } from './anatomy.js';
+import { controlOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
+
+/** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
+function slotShown(template, slotId, resolved) {
+    return slotDefsOf(template, slotId).some(def => resolved[def.show] === true && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
+}
 
 /** A solid paint, as the document stores it. */
 const solid = color => [{ type: 'solid', color, opacity: 1, visible: true }];
@@ -25,7 +30,8 @@ export function layerSpecsOf(template) {
     const specs = [{ key: 'root', role: 'root', type: 'frame' }];
     const control = controlOf(template);
     for (const slot of template.anatomy) {
-        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: !!slot.optional });
+        // A managed icon slot is a layer of the instance only, shown while its props say so (instanceOf); a master holds none.
+        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: true });
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional });
     }
     for (const part of canvasPartsOf(template)) {
@@ -146,9 +152,17 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const key = n.behavior?.part ?? n.name;
         const visible = writes.find(w => w.key === key && w.field === 'visible');
         if (visible) next.visible = visible.value;
+        if (n.behavior?.slot !== undefined) next.visible = slotShown(template, n.behavior.slot, resolved);
         const text = writes.find(w => w.key === key && w.field === 'text');
         if (text && 'text' in next) next.text = text.value;
         out.push(next);
+    }
+    // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
+    for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
+        if (!slotShown(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
+            continue;
+        const stub = { id: `slot-${slot.id}`, name: slot.id };
+        out.push({ ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } });
     }
     return out;
 }
