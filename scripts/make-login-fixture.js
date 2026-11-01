@@ -6,7 +6,10 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildPrototypeFixture } from './make-prototype-fixture.js';
-import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
+import { BUTTON } from '../packages/builder-core/src/templates/button.js';
+import { buttonModel } from './button-model.mjs';
+import { generatedInstance } from './generated-part.mjs';
+import { MAIN } from './make-behavior-fixture.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const LOGIN_FIXTURE_PATH = resolve(here, 'fixtures/login-fixture.midas');
@@ -21,12 +24,11 @@ const text = (id, parentId, content, extra = {}) => base(id, content, 'text', pa
 const box = (id, parentId, name, extra = {}) => base(id, name, 'frame', parentId, { clip: false, ...extra });
 /** A vector path from points in its own box. */
 const vector = (id, parentId, name, contours, extra = {}) => base(id, name, 'path', parentId, { w: 24, h: 24, pathW: 24, pathH: 24, closed: true, ...contours, ...extra });
-/** The Button master of the prototype fixture, instanced with a label. */
-const button = (id, parentId, label) => ({
-    id, name: label, type: 'frame', parentId, x: 0, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'main', version: 0,
-    layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8,
-    behavior: { version: BEHAVIOR_DATA_VERSION, props: { label, disabled: false, hasIcon: false } },
-    varModes: { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'lg' },
+const model = buttonModel();
+/** A Button instance of the behavior fixture's master, instanced with a label: the part generator's copies, the root first. */
+const button = (id, parentId, label) => generatedInstance({
+    template: BUTTON, master: MAIN, props: { label, disabled: false, hasIcon: false }, id, parentId, name: label,
+    varModes: { [model.ids.variant]: 'solid', [model.ids.color]: 'primary', [model.ids.size]: 'lg' },
 });
 const square = (x, y, w, h) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
 
@@ -77,7 +79,7 @@ export function buildLoginFixture() {
     const done = button('login-done', 'login-cta', 'Done');
     // Stored back to front: the last visual child first. The card's flow is the reverse of this list.
     const stored = [cta, icons, forgot, password, email, subtitle, title, logo];
-    const storedPrimitives = [done];
+    const storedPrimitives = done;
     const nodes = [card, ...stored, ...storedPrimitives, emailText, passwordText, eye, eyePath, dashed, square, zigzag, dots].filter((n, i, all) => all.indexOf(n) === i);
     doc.pages.push({ id: 'page-login', name: 'Login', nodes });
     return doc;

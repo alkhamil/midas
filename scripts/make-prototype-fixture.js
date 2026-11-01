@@ -4,8 +4,10 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
-import { buildBehaviorFixture } from './make-behavior-fixture.js';
+import { BUTTON } from '../packages/builder-core/src/templates/button.js';
+import { buttonModel } from './button-model.mjs';
+import { generatedInstance } from './generated-part.mjs';
+import { MAIN, buildBehaviorFixture } from './make-behavior-fixture.js';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -15,10 +17,12 @@ export const PROTOTYPE_FIXTURE_PATH = resolve(here, 'fixtures/prototype-fixture.
 const PRIMARY = { variant: 'solid', color: 'primary' };
 const DANGER = { variant: 'solid', color: 'danger' };
 const SIZE = { id: 'c-size', mode: 'lg' };
+const model = buttonModel();
 const instant = { type: 'instant', durationMs: 0 };
 
 /**
- * A Button instance of the fixture master, inside a frame, with its props, Appearance modes and interactions.
+ * A Button instance of the fixture master, inside a frame, with its props, Appearance modes and interactions: the part generator's
+ * copies of the master, the root first.
  * @param {string} id
  * @param {string} parentId the frame it sits in
  * @param {string} name
@@ -27,13 +31,12 @@ const instant = { type: 'instant', durationMs: 0 };
  * @param {any[]} [interactions]
  */
 function button(id, parentId, name, props, look, interactions = []) {
-    return {
-        id, name, type: 'frame', parentId, x: 0, y: 0, w: 136, h: 48, isInstance: true, sourceId: 'main', version: 0,
-        layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8,
-        behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: name, disabled: false, hasIcon: false, ...props } },
-        varModes: { 'c-variant': look.variant, 'c-color': look.color, [SIZE.id]: SIZE.mode },
-        ...(interactions.length ? { prototype: { version: 1, interactions } } : {}),
-    };
+    const copies = generatedInstance({
+        template: BUTTON, master: MAIN, props: { label: name, disabled: false, hasIcon: false, ...props }, id, parentId, name,
+        varModes: { [model.ids.variant]: look.variant, [model.ids.color]: look.color, [model.ids.size]: SIZE.mode },
+    });
+    if (interactions.length) copies[0] = { ...copies[0], prototype: { version: 1, interactions } };
+    return copies;
 }
 
 /** A top-level frame, as a node: an auto layout column that holds its buttons. */
@@ -56,23 +59,23 @@ export function buildPrototypeFixture({ broken = false } = {}) {
     doc.variables.items.push({ id: 'var-flag', name: 'Flag', type: 'boolean', collectionId: 'col-flag', values: { 'mode-on': true, 'mode-off': false } });
     const nodes = [
         screen('frame-home', 'Home', 0),
-        button('home-next', 'frame-home', 'Next', {}, PRIMARY, [navigate('home-next-go', 'frame-details', { type: 'on-click' }, { type: 'slide-in', direction: 'left', durationMs: 300, easing: 'ease-out' })]),
-        button('home-delete', 'frame-home', 'Delete', {}, DANGER, [navigate('home-delete-go', 'frame-confirm', { type: 'mouse-enter' }, { type: 'dissolve', durationMs: 200, easing: 'linear' })]),
-        button('home-off', 'frame-home', 'Unavailable', { disabled: true }, PRIMARY, [navigate('home-off-go', 'frame-details')]),
+        ...button('home-next', 'frame-home', 'Next', {}, PRIMARY, [navigate('home-next-go', 'frame-details', { type: 'on-click' }, { type: 'slide-in', direction: 'left', durationMs: 300, easing: 'ease-out' })]),
+        ...button('home-delete', 'frame-home', 'Delete', {}, DANGER, [navigate('home-delete-go', 'frame-confirm', { type: 'mouse-enter' }, { type: 'dissolve', durationMs: 200, easing: 'linear' })]),
+        ...button('home-off', 'frame-home', 'Unavailable', { disabled: true }, PRIMARY, [navigate('home-off-go', 'frame-details')]),
         // A plain layer shown in the mode On and hidden in the mode Off: it binds Flag, so Home's mode for Flag can be set.
         { id: 'home-flag', name: 'Flag marker', type: 'rect', parentId: 'frame-home', x: 0, y: 0, w: 40, h: 8, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), vars: { visible: 'var-flag' }, version: 0 },
         screen('frame-details', 'Details', 480),
-        button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
-        button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),
+        ...button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
+        ...button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),
         // Navigate to a frame on another page (the Cart page).
-        button('details-cart', 'frame-details', 'Checkout', {}, PRIMARY, [navigate('details-cart-go', 'frame-checkout')]),
+        ...button('details-cart', 'frame-details', 'Checkout', {}, PRIMARY, [navigate('details-cart-go', 'frame-checkout')]),
         // A fixed-size layer wider than a phone frame: clipped by default, scrolled when the frame's Scroll behaviour opens the horizontal axis.
         { id: 'details-bar', name: 'Wide bar', type: 'rect', parentId: 'frame-details', x: 0, y: 0, w: 600, h: 40, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), version: 0 },
         screen('frame-confirm', 'Confirm', 960),
-        button('confirm-done', 'frame-confirm', 'Done', {}, PRIMARY, [navigate('confirm-done-go', 'frame-done')]),
-        button('confirm-cancel', 'frame-confirm', 'Cancel', {}, DANGER, [navigate('confirm-cancel-go', 'frame-home', { type: 'on-click' }, { type: 'dissolve', durationMs: 150, easing: 'linear' })]),
+        ...button('confirm-done', 'frame-confirm', 'Done', {}, PRIMARY, [navigate('confirm-done-go', 'frame-done')]),
+        ...button('confirm-cancel', 'frame-confirm', 'Cancel', {}, DANGER, [navigate('confirm-cancel-go', 'frame-home', { type: 'on-click' }, { type: 'dissolve', durationMs: 150, easing: 'linear' })]),
         screen('frame-done', 'Done', 1440),
-        button('done-home', 'frame-done', 'Back home', {}, PRIMARY, [navigate('done-home-go', 'frame-home', { type: 'after-delay', delayMs: 1200 })]),
+        ...button('done-home', 'frame-done', 'Back home', {}, PRIMARY, [navigate('done-home-go', 'frame-home', { type: 'after-delay', delayMs: 1200 })]),
     ];
     doc.pages.push({
         id: 'page-flow', name: 'Flow', nodes,
@@ -80,7 +83,7 @@ export function buildPrototypeFixture({ broken = false } = {}) {
     });
     doc.pages.push({
         id: 'page-cart', name: 'Cart',
-        nodes: [screen('frame-checkout', 'Checkout', 0), button('checkout-pay', 'frame-checkout', 'Pay', {}, PRIMARY, [navigate('checkout-pay-go', 'frame-home')])],
+        nodes: [screen('frame-checkout', 'Checkout', 0), ...button('checkout-pay', 'frame-checkout', 'Pay', {}, PRIMARY, [navigate('checkout-pay-go', 'frame-home')])],
     });
     return doc;
 }

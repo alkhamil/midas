@@ -52,7 +52,7 @@ const VARIABLES = variables();
 const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
 
 /** The main master: bound to the Variant, Color and Size collections, with a stroke so the Focus preview is visible on the canvas. */
-const MAIN = generatedMaster({
+export const MAIN = generatedMaster({
     template: BUTTON,
     frame: node('frame', { id: 'main', name: 'Button', x: 0, y: 0, w: 136, h: 48, component: true, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug', layoutSizingV: 'fixed', strokeWidth: 2, strokeAlign: 'inside', fills: solid('#0058CA'), radius: 8 }),
     binding: main.binding, variables: VARIABLES,
