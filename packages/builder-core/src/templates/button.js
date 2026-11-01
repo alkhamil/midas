@@ -93,7 +93,7 @@ export const BUTTON = {
     },
     // The parts the canvas draws: the spinner is an arc node before the label, shown while `loading` is set.
     parts: [
-        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true },
+        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true, arc: { size: 14, start: -90, sweep: 25, width: 1 } },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props and states above.
     playOnly: [
