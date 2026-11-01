@@ -91,7 +91,9 @@ Execute in the order listed. The numbers are stage IDs, not the execution order.
 
 ## Status
 
-Behavior rework pass (latest): layout ownership (`isLayoutOwnedField`: x/y for flow children of auto-layout parents, hug and fill axes), canvas preview for bg and border (`canvasColorsOf`), shared label rule (`labelLayerOf`, `masterLayersOf`), edit helpers (`edits.js`). Open: Kopi Kita master resize, bind-tokens browser check, Focus preview on a fixture with a stroke width, Canvas 2D fallback preview.
+Visibility contract (latest): Input placeholder, count and clear, and the Button loading spinner are canvas parts (`parts`, `playOnly`), shown from props and rendered in Play from their nodes; `test:browser` compares Play with the canvas. Open: host border adds 1px per side in Play; an empty Input's canvas row keeps the value gap.
+
+Behavior rework pass (earlier): layout ownership (`isLayoutOwnedField`: x/y for flow children of auto-layout parents, hug and fill axes), canvas preview for bg and border (`canvasColorsOf`), shared label rule (`labelLayerOf`, `masterLayersOf`), edit helpers (`edits.js`). Open: Kopi Kita master resize, bind-tokens browser check, Focus preview on a fixture with a stroke width, Canvas 2D fallback preview.
 
 Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slot/disabled code done and tested. `AGENTS.md` is the single shared agent notes file (`CLAUDE.md` is only a pointer).
 

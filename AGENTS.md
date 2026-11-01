@@ -2,6 +2,7 @@
 
 ## Principles
 
+- Canvas is the source of truth; Play derives from the node tree; antd is a structure reference only (variants, props, states, sizes, slots, token names); never replicate antd pixel/DOM.
 - Values come from variables (Primitives → Semantic), never copied from elsewhere.
 - Hug/fill/fixed sizing is owned by the node; the engine never writes it.
 - The engine is generic and schema-driven; no per-component code in the engine.
@@ -35,6 +36,7 @@
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".
 - lineHeight is px paired to fontSize from the token JSON Typography table (e.g. 14→20); antd supplies the names only. Auto Fix rebinds ratio leftovers to the paired px token.
 - The base `.button` rule keeps its 2px transparent outline (see the focus-outline test); never remove the outline from the base rule.
+- Visibility contract: every template declares `parts` (canvas nodes, each with `shownWhen`; `canvas: false` needs a reason) and `playOnly` (each with a reason); static parts are nodes. Browser check: `npm run test:browser --workspace @midas/studio`, then look at `.artifacts/` screenshots before reporting. Open drift: the Play host border adds 1px per side (canvas stroke is inside the padding), and an empty Input's canvas row keeps the value's 8px gap.
 - Dev needs `infra:up` with Docker Desktop running before `dev:server`, else the seed fails with ECONNREFUSED on postgres (5433); on Windows run `dev:server` and `dev:studio` separately.
 
 ## Code map
@@ -47,7 +49,7 @@
 
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
 - The roadmap names `strokeStrategyOf`/`rootLayoutOf`/`labelLayoutOf` and a `both` placement: none exist in code; if wanted, they are new features, not fixes.
-- Outline/ring/wave like antd: `outline-color` is always 0% at rest (alias to Semantic `outlineTransparent`, itself a 0% Primitive derive); `outline-color-active` is the interaction colour. Ring (`:focus-visible`) and wave (click, `data-wave-on`) are DOM-only behaviors configured by schema `interaction`; never drawn on canvas, no panel controls.
+- Outline/ring/wave: `outline-color` is always 0% at rest (alias to Semantic `outlineTransparent`, itself a 0% Primitive derive); `outline-color-active` is the interaction colour. Ring (`:focus-visible`) and wave (click, `data-wave-on`) are DOM-only behaviors configured by schema `interaction`; never drawn on canvas, no panel controls.
 
 ## Antrean
 
