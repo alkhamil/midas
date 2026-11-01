@@ -175,14 +175,14 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
             const da = draw(ia), db = draw(ib);
             const out = new ImageData(w, h);
             let changed = 0, max = 0;
-            // Glyph edges are rasterised differently by the canvas and by the DOM, so each side is compared after a 3x3 mean of its
+            // Glyph edges are rasterised differently by the canvas and by the DOM, so each side is compared after a 5x5 mean of its
             // luminance: a shifted or misplaced edge still differs, anti-aliasing noise does not.
             const luma = (d, j) => 0.299 * d.data[j] + 0.587 * d.data[j + 1] + 0.114 * d.data[j + 2];
             const blurred = d => {
                 const out = new Float32Array(w * h);
                 for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
                     let sum = 0, n = 0;
-                    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+                    for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
                         const xx = x + ox, yy = y + oy;
                         if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
                         sum += luma(d, (yy * w + xx) * 4); n++;
@@ -210,6 +210,65 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
         writeFileSync(fileOut, Buffer.from(result.png.split(',')[1], 'base64'));
         const { png, ...rest } = result;
         return rest;
+    }
+    finally {
+        await page.close();
+    }
+}
+
+/**
+ * The outline's position in both images. Each side's inner edge is found from the interior fill: scanning from the white inside of the
+ * box outwards through a short window around the nominal edge, the first pixel that is darker than halfway to the stroke's darkest
+ * pixel is the inner edge of the stroke (interpolated to a fraction of a pixel). The windows sit at the edges, where the text is not, so
+ * the glyphs do not count. Compared are the box's width and height from the inner edges, and the centre of the box in each image.
+ * Returns { width, height, centreX, centreY } per image, each with the difference and the tolerance-free values in device pixels.
+ */
+export async function edgeCheck(browser, fileA, fileB, { inset, dsf = 2 }) {
+    const page = await browser.newPage();
+    try {
+        const result = await page.evaluate(async ([a, b, inset]) => {
+            const load = src => new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
+            const data = async src => {
+                const img = await load(src);
+                const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+                const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0);
+                return { w: img.width, h: img.height, d: x.getImageData(0, 0, img.width, img.height).data };
+            };
+            const lum = (im, x, y) => { const i = (y * im.w + x) * 4; return 0.299 * im.d[i] + 0.587 * im.d[i + 1] + 0.114 * im.d[i + 2]; };
+            // The inner edge along a window: pixel(t) for t = 0 (inside, the fill) upwards; coord gives the axis value of a pixel.
+            const innerEdge = (im, pixel, n, coord) => {
+                const samples = Array.from({ length: n }, (_, t) => { const [x, y] = pixel(t); return { c: coord(x, y), l: lum(im, x, y) }; });
+                const base = samples[0].l;
+                const darkest = Math.min(...samples.map(s => s.l));
+                const threshold = (base + darkest) / 2;
+                for (let t = 1; t < n; t++) {
+                    const prev = samples[t - 1], cur = samples[t];
+                    if (cur.l < threshold) return prev.c + (cur.c - prev.c) * ((prev.l - threshold) / (prev.l - cur.l));
+                }
+                return null;
+            };
+            const measure = im => {
+                const midX = Math.floor(im.w / 2), midY = Math.floor(im.h / 2);
+                const W = im.w, H = im.h;
+                // Windows start in the interior (t = 0 is 8 pixels inside the nominal edge) and run 6 pixels past it.
+                const left = innerEdge(im, t => [inset + 8 - t, midY], 14, x => x);
+                const right = innerEdge(im, t => [W - inset - 8 + t, midY], 20, x => x);
+                const top = innerEdge(im, t => [midX, inset + 8 - t], 14, (_, y) => y);
+                const bottom = innerEdge(im, t => [midX, H - inset - 8 + t], 20, (_, y) => y);
+                if ([left, right, top, bottom].includes(null)) return null;
+                return { width: right - left, height: bottom - top, centreX: (left + right) / 2 - W / 2, centreY: (top + bottom) / 2 - H / 2 };
+            };
+            const [ia, ib] = await Promise.all([data(a), data(b)]);
+            return { a: measure(ia), b: measure(ib) };
+        }, [dataUrlOf(fileA), dataUrlOf(fileB), inset]);
+        if (!result.a || !result.b) return { found: false, a: result.a, b: result.b };
+        const out = { found: true, a: {}, b: {} };
+        for (const k of ['width', 'height', 'centreX', 'centreY']) {
+            out.a[k] = result.a[k] / dsf;
+            out.b[k] = result.b[k] / dsf;
+        }
+        out.delta = Math.max(...['width', 'height', 'centreX', 'centreY'].map(k => Math.abs(out.a[k] - out.b[k])));
+        return out;
     }
     finally {
         await page.close();
