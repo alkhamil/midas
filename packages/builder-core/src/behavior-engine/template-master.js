@@ -23,7 +23,7 @@ const rootSizingV = template => (template.display.root && 'height' in template.d
 const solid = color => [{ type: 'solid', color, opacity: 1, visible: true }];
 
 /** The fields every layer has, as the editor stores them. */
-const LAYER = { rotation: 0, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0 };
+const LAYER = { x: 0, y: 0, rotation: 0, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0 };
 
 /**
  * The layers a template is made of, in schema order: the root, then each anatomy slot, then each canvas part. Each spec says what the

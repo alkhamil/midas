@@ -36,6 +36,8 @@ const doc = (over = {}) => ({
                 vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' },
             },
             { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', typography: 's-labelTypography' } },
+            // The spinner is the Button's canvas part: the generator gives every master one (a template's required layers are not optional).
+            { id: 'm1-spinner', name: 'spinner', type: 'ellipse', parentId: 'm1', fills: [], behavior: { version: 2, part: 'spinner' } },
             {
                 id: 'i1', name: 'Button', type: 'frame', isInstance: true, sourceId: 'm1', parentId: null,
                 behavior: { version: 2, props: { ...over.props } }, vars: { 'fills.0': 'v-bg' }, ...over.instance,

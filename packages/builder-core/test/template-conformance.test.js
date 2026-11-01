@@ -78,4 +78,25 @@ for (const template of TEMPLATES.values()) {
         assert.deepEqual(children.map(n => `${n.name}:${n.type}`), [...first.created, user].map(n => `${n.name}:${n.type}`), 'the tree is unchanged');
         assert.ok(children.includes(user) && user.text === 'kept', 'the user layer survives untouched');
     });
+
+    test(`${template.id}: a generated master has no missing-part warning; a master without a required layer is reported, and the generator adds it`, () => {
+        const { variables, binding } = MODELS[template.id]();
+        const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };
+        const first = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
+        const doc = nodes => ({ variables, pages: [{ name: 'p', nodes: [frame, ...nodes] }] });
+        const missing = (nodes) => diagnoseDocument(doc(nodes)).filter(f => f.code === 'part-missing');
+        assert.deepEqual(missing(first.created), [], 'a generated master is complete');
+        const user = { id: 'user-layer', name: 'Note', type: 'text', parentId: 'master', text: 'kept' };
+        const required = requiredKeys(template)[requiredKeys(template).length - 1];
+        const without = first.created.filter(n => n.name !== required && n.behavior?.part !== required);
+        assert.ok(without.length < first.created.length, `${template.id} has a layer for ${required} to remove`);
+        assert.ok(missing([...without, user]).some(f => f.layer === required), `${required} is reported missing`);
+        const children = [...without, user];
+        const second = applyTemplateToFrame(template, { frame, children, binding, variables, idOf });
+        assert.ok(second.created.some(n => n.name === required || n.behavior?.part === required), 'the generator adds the missing layer');
+        const rest = [...children, ...second.created];
+        assert.deepEqual(missing(rest), [], 'no missing-part warning after the generator ran');
+        assert.ok(rest.includes(user) && user.text === 'kept', 'the user layer is kept');
+        assert.deepEqual(applyTemplateToFrame(template, { frame, children: rest, binding, variables, idOf }).created, [], 'a second run creates nothing');
+    });
 }

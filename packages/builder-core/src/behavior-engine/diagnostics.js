@@ -13,6 +13,7 @@ import { VARIABLE_KEYS } from './display.js';
 import { strokePaintMissing } from '../geometry/shapes.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
+import { layerSpecsOf, masterLayersByKey } from './template-master.js';
 
 /**
  * Follows a stored mode value through aliases (by item id) to its literal, or undefined when it never lands on one.
@@ -152,6 +153,11 @@ export function diagnoseDocument(doc) {
             if (u.reason === 'no-variable' || u.reason === 'no-value-in-mode' || u.reason === 'dimension-unbound' || u.reason === 'collection-missing') continue;
             out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
         }
+        // A managed icon slot the props show holds an icon when one is chosen; an empty one keeps its box and draws nothing, and is reported.
+        for (const slot of childrenOf(inst.id).filter(c => c.behavior?.slot !== undefined)) {
+            if (childrenOf(slot.id).length) continue;
+            out.push({ severity: 'warning', code: 'icon-slot-empty', node: inst.name, nodeId: inst.id, slot: slot.behavior.slot, message: `${inst.name}: the ${slot.behavior.slot} icon slot is empty: no icon is chosen.` });
+        }
         const props = resolveProps(template, inst.behavior.props);
         const { warnings } = planStateBindings({ template, binding, props, layers: instanceLayers(inst, master, childrenOf), variables });
         for (const w of warnings) {
@@ -162,6 +168,12 @@ export function diagnoseDocument(doc) {
     for (const m of masters) {
         const template = TEMPLATES.get(m.behavior.templateId);
         if (!template) continue;
+        // A layer the template requires (a non-optional anatomy slot, or a canvas part) that the master lacks: Auto Fix has the generator add it.
+        const present = new Set(masterLayersByKey(template, m, nodes).map(l => l.key));
+        for (const spec of layerSpecsOf(template).slice(1)) {
+            if (spec.role === 'slot' || spec.optional || present.has(spec.key)) continue;
+            out.push({ severity: 'warning', code: 'part-missing', node: m.name, nodeId: m.id, layer: spec.key, message: `${m.name}: the ${spec.key} layer is missing: ${template.name} needs it. Auto Fix adds it.` });
+        }
         const known = new Set(items.map(i => i.id));
         for (const [layer, prop, token] of unboundTokens(template, m, childrenOf, known)) {
             // A text part is bound to its typography role (the token minus its suffix), and Auto Fix binds it.
