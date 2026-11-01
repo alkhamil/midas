@@ -17,11 +17,15 @@ import { TEMPLATES } from '../../../../packages/builder-core/src/behavior-engine
 const EXPORT_DIR = resolve(ARTIFACTS, 'export');
 
 /** The states the export is checked in: the props each sets, and the node the control box is in Play (placeholder or value). */
+// The affix switches come before their texts (a text row is shown only while its switch is on), and every state sets both switches.
 const STATES = [
-    { name: 'empty', props: { value: '', allowClear: false, showCount: false } },
-    { name: 'value', props: { value: 'Hello', allowClear: false, showCount: false } },
-    { name: 'showCount', props: { value: 'Hello', allowClear: false, showCount: true } },
-    { name: 'allowClear', props: { value: 'Hello', allowClear: true, showCount: false } },
+    { name: 'empty', props: { hasPrefix: false, hasSuffix: false, value: '', allowClear: false, showCount: false } },
+    { name: 'value', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
+    { name: 'showCount', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
+    { name: 'allowClear', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: true, showCount: false } },
+    { name: 'prefix', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
+    { name: 'suffix', props: { hasPrefix: false, hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: false, showCount: false } },
+    { name: 'both', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: true, showCount: true } },
 ];
 
 /** The document's master of the instance, its descendants and the variables, as plain data the generator reads. */
@@ -63,6 +67,8 @@ const renderExport = (page, props) => page.evaluate(props => {
             control: box(root.querySelector('input.input-label')),
             count: box(root.querySelector('.input-count')),
             clear: box(root.querySelector('.input-clear')),
+            prefix: box(root.querySelector('.input-prefixText')),
+            suffix: box(root.querySelector('.input-suffixText')),
         });
     })));
 }, props);
@@ -106,19 +112,26 @@ test('the exported Input renders its input, clear and counter where Play draws t
             const playRoot = { w: play.rootWidth, h: play.rootHeight };
             const playControl = play.boxes[controlId] && { x: play.boxes[controlId].dx, y: play.boxes[controlId].dy, w: play.boxes[controlId].w, h: play.boxes[controlId].h };
             const playCount = ids.count && play.boxes[ids.count.id] ? { x: play.boxes[ids.count.id].dx, y: play.boxes[ids.count.id].dy, w: play.boxes[ids.count.id].w, h: play.boxes[ids.count.id].h } : null;
+            const playAffix = name => ids[name] && play.boxes[ids[name].id] ? { x: play.boxes[ids[name].id].dx, y: play.boxes[ids[name].id].dy, w: play.boxes[ids[name].id].w, h: play.boxes[ids[name].id].h } : null;
+            const playPrefix = state.props.hasPrefix ? playAffix('prefixText') : null;
+            const playSuffix = state.props.hasSuffix ? playAffix('suffixText') : null;
             const label = `input ${mode.name} ${state.name}`;
             const deltas = {
                 root: Math.max(Math.abs(got.root.w - playRoot.w), Math.abs(got.root.h - playRoot.h)),
                 control: playControl && got.control ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.control[k] - playControl[k]))) : null,
                 count: state.props.showCount ? (playCount && got.count ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.count[k] - playCount[k]))) : null) : null,
                 clear: state.props.allowClear ? (play.boxes[ids.clear?.id] && got.clear ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.clear[k] - { x: play.boxes[ids.clear.id].dx, y: play.boxes[ids.clear.id].dy, w: play.boxes[ids.clear.id].w, h: play.boxes[ids.clear.id].h }[k]))) : null) : null,
+                prefix: state.props.hasPrefix ? (playPrefix && got.prefix ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.prefix[k] - playPrefix[k]))) : null) : null,
+                suffix: state.props.hasSuffix ? (playSuffix && got.suffix ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.suffix[k] - playSuffix[k]))) : null) : null,
             };
-            rows.push({ label, exported: got, play: { root: playRoot, control: playControl, count: playCount }, deltas });
+            rows.push({ label, exported: got, play: { root: playRoot, control: playControl, count: playCount, prefix: playPrefix, suffix: playSuffix }, deltas });
             if (deltas.root > TOLERANCE_PX) failures.push(`${label}: the exported root is ${deltas.root.toFixed(2)} px from Play's`);
             if (deltas.control === null) failures.push(`${label}: the input is not on both`);
             else if (deltas.control > TOLERANCE_PX) failures.push(`${label}: the exported input is ${deltas.control.toFixed(2)} px from Play's box`);
             if (state.props.showCount && (deltas.count === null || deltas.count > TOLERANCE_PX)) failures.push(`${label}: the exported counter is ${deltas.count} px from Play's`);
             if (state.props.allowClear && (deltas.clear === null || deltas.clear > TOLERANCE_PX)) failures.push(`${label}: the exported clear is ${deltas.clear} px from Play's`);
+            if (state.props.hasPrefix && (deltas.prefix === null || deltas.prefix > TOLERANCE_PX)) failures.push(`${label}: the exported prefix is ${deltas.prefix} px from Play's`);
+            if (state.props.hasSuffix && (deltas.suffix === null || deltas.suffix > TOLERANCE_PX)) failures.push(`${label}: the exported suffix is ${deltas.suffix} px from Play's`);
         }
     }
     writeFileSync(resolve(ARTIFACTS, 'export-parity.json'), JSON.stringify({ tolerancePx: TOLERANCE_PX, rows }, null, 2));

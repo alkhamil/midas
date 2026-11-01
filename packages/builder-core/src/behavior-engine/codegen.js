@@ -49,6 +49,12 @@ function componentSource(template, name, problems) {
         return `{${part.shownWhen.prop} === true && (<svg className="${template.id}-${part.id}" width={${size}} height={${size}} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} /></svg>)}`;
     };
     const framed = canvasPartsOf(template).filter(part => part.kind === 'frame' && part.arc);
+    const ctl = controlOf(template);
+    // The clear and the counter follow the input, as the canvas and Play order them: a text affix after the input comes after them.
+    const controlPartsJsx = () => [
+        ...(ctl?.clear ? ['{' + ctl.clear + ' && ' + ctl.value + " !== '' && <span className=\"" + template.id + '-clear">×</span>}'] : []),
+        ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
+    ];
     let framePlaced = false;
     for (const slot of template.anatomy) {
         if (slot.kind === 'text' || slot.kind === 'control') {
@@ -61,6 +67,7 @@ function componentSource(template, name, problems) {
                 ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
+            if (isControl) children.push(...controlPartsJsx());
         }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
@@ -76,9 +83,6 @@ function componentSource(template, name, problems) {
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
     if (!framePlaced) children.push(...framed.map(framePartJsx));
-    const ctl = controlOf(template);
-    if (ctl?.clear) children.push('{' + ctl.clear + ' && ' + ctl.value + " !== '' && <span className=\"" + template.id + '-clear">×</span>}');
-    if (ctl?.count) children.push('{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}');
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
     const dims = variableProps(template).map(([prop]) => prop);
