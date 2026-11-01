@@ -6940,7 +6940,11 @@ function layoutText(n, ctx = measureCanvas.getContext('2d')) {
         }
         lines.push(...res);
     }
-    const lh = (n.fontSize || 16) * (n.lineHeight || 1.35), ascent = (n.fontSize || 16) * .82;
+    const lh = (n.fontSize || 16) * (n.lineHeight || 1.35);
+    // The font's own ascent and descent, as the browser lays a line box out (a DOM line is centred on them): the baseline is where the DOM puts it.
+    const metrics = ctx.measureText('Hg');
+    // Whole pixels, as the browser rounds them: a baseline on a fractional pixel draws the glyphs soft.
+    const ascent = Math.round(metrics.fontBoundingBoxAscent ?? (n.fontSize || 16) * .82), descent = Math.round(metrics.fontBoundingBoxDescent ?? (n.fontSize || 16) * .18);
     // Truncate (with Max lines, default 1) cuts the text and end the
     // last visible line with an ellipsis, even when only a single character did not fit.
     const limit = n.textTruncate ? Math.max(1, Math.floor(+n.maxLines) || 1) : Infinity;
@@ -6954,7 +6958,7 @@ function layoutText(n, ctx = measureCanvas.getContext('2d')) {
     const contentH = Math.max(lh, lines.length * lh);
     // Vertical alignment only matters when the box is taller than its text.
     const free = Math.max(0, (n.h || 0) - contentH), dy = n.textAlignV === 'center' ? free / 2 : n.textAlignV === 'bottom' ? free : 0;
-    return { lines, lineHeight: lh, height: contentH, baseline: (lh - (n.fontSize || 16)) / 2 + ascent + dy };
+    return { lines, lineHeight: lh, height: contentH, baseline: Math.floor((lh - (ascent + descent)) / 2) + ascent + dy };
 }
 function fontSpecSpan(s, base) {
     const style = s.fontStyle || base.fontStyle || 'normal';
