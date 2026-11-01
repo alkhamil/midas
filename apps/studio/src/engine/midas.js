@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -733,7 +733,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== variables =====
-const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', effects: 'effect', text: 'string', visible: 'boolean' };
+const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', typography: 'typography', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 function vpropType(name) {
@@ -778,6 +778,18 @@ function nodeMode(d, n, coll) {
 /** The value of a variable in the modes of a layer (the layer's own, its parents', the page's), through the engine's shared resolver. */
 function varValue(d, item, node) {
     return variableValue(d.data.variables, item, coll => node ? nodeMode(d, node, coll) : coll.modes[0].id);
+}
+/** The text fields a typography style writes. The canvas keeps a line height as a ratio of the size, and a weight as a CSS number. */
+const TYPOGRAPHY_FIELDS = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'];
+function writeTypography(n, style) {
+    if (!style)
+        return false;
+    let changed = false;
+    const next = { fontFamily: style.fontFamily, fontSize: style.fontSize, fontWeight: WEIGHT_NUMBER[style.fontWeight], letterSpacing: style.letterSpacing };
+    for (const [k, v] of Object.entries(next)) if (n[k] !== v) { n[k] = v; changed = true; }
+    const ratio = clamp(style.lineHeight / style.fontSize, .05, 20);
+    if (n.lineHeight !== ratio) { n.lineHeight = ratio; changed = true; }
+    return changed;
 }
 function writeBound(n, prop, val, type) {
     const fm = /^fills\.(\d+)$/.exec(prop);
@@ -946,6 +958,16 @@ function applyVariables(d) {
                 touched.add(n);
                 continue;
             }
+            if (prop === 'typography') {
+                if (writeTypography(n, typographyOf(d.data.variables, item, coll => nodeMode(d, n, coll)).style)) {
+                    touched.add(n);
+                    remeasure.add(n);
+                }
+                continue;
+            }
+            // A bound typography style wins over the per-field text bindings, which are not written while it is bound.
+            if (n.vars.typography && TYPOGRAPHY_FIELDS.includes(prop))
+                continue;
             const val = varValue(d, item, n);
             if (val === undefined || val === null)
                 continue;

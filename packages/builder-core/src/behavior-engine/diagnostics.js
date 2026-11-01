@@ -164,7 +164,9 @@ export function diagnoseDocument(doc) {
         if (!template) continue;
         const known = new Set(items.map(i => i.id));
         for (const [layer, prop, token] of unboundTokens(template, m, childrenOf, known)) {
-            out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message: `${m.name}: ${layer} ${prop} is not bound to "${token}".` });
+            // A text part is bound to its typography role (the token minus its suffix), and Auto Fix binds it.
+            const message = prop === 'typography' ? `${m.name}: text ${layer} is not bound to ${token.replace(/Typography$/, '')}.` : `${m.name}: ${layer} ${prop} is not bound to "${token}".`;
+            out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message });
         }
     }
     return out;
