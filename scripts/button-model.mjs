@@ -32,21 +32,21 @@ const OUTLINED = {
     'bg-hover': '#ffffff', 'fg-hover': 'c:color-hover', 'border-hover': 'c:color-border-hover',
     'bg-active': '#ffffff', 'fg-active': 'c:color-active', 'border-active': 'c:color-border-active',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
-    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-outline',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-border',
 };
 const SOLID = {
     bg: 'c:color-solid', fg: 'c:color-solid-text', border: 'transparent',
     'bg-hover': 'c:color-solid-hover', 'fg-hover': 'c:color-solid-text', 'border-hover': 'transparent',
     'bg-active': 'c:color-solid-active', 'fg-active': 'c:color-solid-text', 'border-active': 'transparent',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
-    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-solid-text',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-solid',
 };
 const FILLED = {
     bg: 'c:color-bg', fg: 'c:color', border: 'transparent',
     'bg-hover': 'c:color-bg-hover', 'fg-hover': 'c:color', 'border-hover': 'transparent',
     'bg-active': 'c:color-bg-active', 'fg-active': 'c:color', 'border-active': 'transparent',
     'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
-    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color-text',
+    'outline-color-active': 'c:color-outline', 'wave-color': 'c:color',
 };
 const TEXT = {
     bg: 'transparent', fg: 'c:color-text', border: 'transparent',

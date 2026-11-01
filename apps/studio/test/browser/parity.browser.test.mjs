@@ -65,6 +65,8 @@ test('canvas parts are in Play within 1px, and Play draws nothing without a node
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
     await page.waitForTimeout(800);
+    // Measure layout boxes: a spinning part is read at rest, not at the angle of the moment.
+    await page.evaluate(() => document.getAnimations().forEach(anim => anim.cancel()));
     const frame = await frameRect(page);
     const report = { tolerancePx: TOLERANCE_PX, parts: {}, unmapped: await unmappedInFrame(page) };
     for (const id of PARTS) {

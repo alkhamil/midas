@@ -115,8 +115,8 @@ function partCopies(id, template, props, masterParts) {
 
 /** The Button's canvas parts as master nodes: the loading spinner, a ring in the foreground colour. */
 function buttonParts() {
-    return [node('frame', {
-        id: 'btn-spinner', name: 'Spinner', parentId: 'btn', w: 14, h: 14, fills: [], stroke: '#20202a', strokeWidth: 2, strokeAlign: 'inside', radius: 8,
+    return [node('ellipse', {
+        id: 'btn-spinner', name: 'Spinner', parentId: 'btn', w: 14, h: 14, fills: [], stroke: '#20202a', strokeWidth: 1, strokeAlign: 'inside', arcStart: -90, arcSweep: 25,
         layoutSizingH: 'fixed', layoutSizingV: 'fixed', vars: { stroke: 'v-fg' }, behavior: { version: BEHAVIOR_DATA_VERSION, part: 'spinner' },
     })];
 }

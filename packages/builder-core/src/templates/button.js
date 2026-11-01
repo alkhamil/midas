@@ -71,7 +71,7 @@ export const BUTTON = {
         'bg-active': { outlined: 'bg', dashed: 'bg', solid: './color-solid-active', filled: './color-bg-hover', text: 'transparent', link: 'transparent', default: 'bg' },
         'fg-active': { outlined: './color-text-active', dashed: './color-text-active', solid: './color-solid-text', filled: './color', text: './color-text-active', link: './color-text-active', default: './color-text-active' },
         'border-active': { outlined: './color-border-active', dashed: './color-border-active', solid: 'transparent', filled: 'transparent', text: 'transparent', link: 'transparent', default: './color-border-active' },
-        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': './color-outline', 'wave-color': { outlined: './color-border', dashed: './color-border', solid: './bg', filled: './bg', text: './fg', link: './fg', default: './color-border' },
+        'bg-disabled': 'bg-disabled', 'fg-disabled': 'fg-disabled', 'outline-color': 'outline-transparent', 'outline-color-active': './color-outline', 'wave-color': { outlined: './color-border', dashed: './color-border', solid: './bg', filled: './fg', text: './fg', link: './fg', default: './color-border' },
         color: { default: 'text', primary: 'brand', danger: 'danger' },
         'color-hover': { default: 'brand-hover', primary: 'brand-hover', danger: 'danger-hover' },
         'color-active': { default: 'brand-active', primary: 'brand-active', danger: 'danger-active' },
@@ -92,13 +92,12 @@ export const BUTTON = {
         'color-solid-text': 'solid-text',
         'color-outline': { default: 'outline', primary: 'outline', danger: 'danger-outline' },
     },
-    // The parts the canvas draws: the spinner is a ring node before the label, shown while `loading` is set.
+    // The parts the canvas draws: the spinner is an arc node before the label, shown while `loading` is set.
     parts: [
-        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true } },
+        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props and states above.
     playOnly: [
-        { id: 'spin', reason: 'the spinner rotates in Play; a full ring looks the same at every angle, so the static ring is the canvas end state' },
         { id: 'hover', reason: 'pointer state; the canvas shows the rest state and the Preview panel shows hover' },
         { id: 'active', reason: 'pointer press; the canvas shows the rest state and the Preview panel shows active' },
         { id: 'focus-ring', reason: 'keyboard focus ring follows focus; the canvas shows the rest state' },

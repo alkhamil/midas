@@ -13,7 +13,7 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { cssVarOf } from '../behavior-engine/tokens.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
-import { generateComponent } from '../behavior-engine/codegen.js';
+import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
@@ -278,7 +278,9 @@ function renderTemplate(n, template, parent, scope) {
                 for (const part of canvasPartsOf(template)) {
                     if (part.kind !== 'frame') continue;
                     const el = partElement(n, part.id, scope);
-                    if (el) children.push(el);
+                    if (!el) continue;
+                    if (part.spin) el.style.animation = SPIN_ANIMATION;
+                    children.push(el);
                 }
                 if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }

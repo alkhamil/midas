@@ -19,6 +19,9 @@ const WAVE_KEYFRAMES = 'midas-wave';
 const WAVE_ANIMATION = 'midas-wave 2s cubic-bezier(0.08, 0.82, 0.17, 1)';
 const WAVE_SPREAD = '6px';
 const WAVE_START_OPACITY = 0.2;
+// A part declared `spin` turns about its centre; the arc it draws is what shows the turn.
+export const SPIN_KEYFRAMES = 'midas-spin';
+export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
@@ -234,6 +237,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
+    if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');
