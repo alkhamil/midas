@@ -19,7 +19,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -55,28 +55,48 @@
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
      }
     },
     {
-     "name": "Label",
-     "parentId": "btn",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "btn-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "btn",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     }
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -85,6 +105,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "btn-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "btn",
      "text": "Button",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -96,11 +120,19 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "btn-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
@@ -152,28 +184,16 @@
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
      }
     },
     {
-     "name": "Value",
-     "parentId": "inp",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -182,7 +202,11 @@
      "locked": false,
      "clip": false,
      "version": 0,
-     "text": "Search",
+     "id": "inp-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "inp",
+     "text": "",
      "fontFamily": "Inter",
      "fontSize": 14,
      "fontWeight": 400,
@@ -193,14 +217,169 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "inp-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
+     }
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "inp-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "inp",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     }
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "inp-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "inp",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     }
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": true,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "inp-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "inp",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
      }
     }
    ]
@@ -237,7 +416,7 @@
      "id": "m-frame"
     },
     {
-     "name": "Button xs",
+     "name": "Button",
      "parentId": "m-frame",
      "x": 40,
      "y": 40,
@@ -247,7 +426,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -262,8 +441,7 @@
      "version": 0,
      "type": "frame",
      "id": "b-xs",
-     "isInstance": true,
-     "sourceId": "btn",
+     "component": false,
      "layout": "horizontal",
      "gap": 6,
      "padding": 12,
@@ -274,40 +452,70 @@
      "behavior": {
       "version": 2,
       "props": {
-       "label": "Simpan"
+       "label": "Simpan",
+       "hasIcon": false,
+       "loading": false,
+       "disabled": false
       }
-     },
-     "varModes": {
-      "c-variant": "solid",
-      "c-color": "primary",
-      "c-size": "xs"
      },
      "vars": {
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
+     },
+     "sourceId": "btn",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-variant": "solid",
+      "c-color": "primary",
+      "c-size": "xs"
      }
     },
     {
-     "name": "Label",
-     "parentId": "b-xs",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "b-xs-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "b-xs",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     },
+     "sourceId": "btn-spinner",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -316,6 +524,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "b-xs-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "b-xs",
      "text": "Simpan",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -327,19 +539,30 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "b-xs-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
      },
-     "sourceId": "btn-label"
+     "sourceId": "btn-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Button sm",
+     "name": "Button",
      "parentId": "m-frame",
      "x": 40,
      "y": 140,
@@ -349,7 +572,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -364,8 +587,7 @@
      "version": 0,
      "type": "frame",
      "id": "b-sm",
-     "isInstance": true,
-     "sourceId": "btn",
+     "component": false,
      "layout": "horizontal",
      "gap": 6,
      "padding": 12,
@@ -376,40 +598,70 @@
      "behavior": {
       "version": 2,
       "props": {
-       "label": "Simpan"
+       "label": "Simpan",
+       "hasIcon": false,
+       "loading": false,
+       "disabled": false
       }
-     },
-     "varModes": {
-      "c-variant": "solid",
-      "c-color": "primary",
-      "c-size": "sm"
      },
      "vars": {
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
+     },
+     "sourceId": "btn",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-variant": "solid",
+      "c-color": "primary",
+      "c-size": "sm"
      }
     },
     {
-     "name": "Label",
-     "parentId": "b-sm",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "b-sm-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "b-sm",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     },
+     "sourceId": "btn-spinner",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -418,6 +670,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "b-sm-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "b-sm",
      "text": "Simpan",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -429,19 +685,30 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "b-sm-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
      },
-     "sourceId": "btn-label"
+     "sourceId": "btn-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Button md",
+     "name": "Button",
      "parentId": "m-frame",
      "x": 40,
      "y": 240,
@@ -451,7 +718,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -466,8 +733,7 @@
      "version": 0,
      "type": "frame",
      "id": "b-md",
-     "isInstance": true,
-     "sourceId": "btn",
+     "component": false,
      "layout": "horizontal",
      "gap": 6,
      "padding": 12,
@@ -478,40 +744,70 @@
      "behavior": {
       "version": 2,
       "props": {
-       "label": "Simpan"
+       "label": "Simpan",
+       "hasIcon": false,
+       "loading": false,
+       "disabled": false
       }
-     },
-     "varModes": {
-      "c-variant": "solid",
-      "c-color": "primary",
-      "c-size": "md"
      },
      "vars": {
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
+     },
+     "sourceId": "btn",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-variant": "solid",
+      "c-color": "primary",
+      "c-size": "md"
      }
     },
     {
-     "name": "Label",
-     "parentId": "b-md",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "b-md-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "b-md",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     },
+     "sourceId": "btn-spinner",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -520,6 +816,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "b-md-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "b-md",
      "text": "Simpan",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -531,19 +831,30 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "b-md-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
      },
-     "sourceId": "btn-label"
+     "sourceId": "btn-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Button lg",
+     "name": "Button",
      "parentId": "m-frame",
      "x": 40,
      "y": 340,
@@ -553,7 +864,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -568,8 +879,7 @@
      "version": 0,
      "type": "frame",
      "id": "b-lg",
-     "isInstance": true,
-     "sourceId": "btn",
+     "component": false,
      "layout": "horizontal",
      "gap": 6,
      "padding": 12,
@@ -580,40 +890,70 @@
      "behavior": {
       "version": 2,
       "props": {
-       "label": "Simpan"
+       "label": "Simpan",
+       "hasIcon": false,
+       "loading": false,
+       "disabled": false
       }
-     },
-     "varModes": {
-      "c-variant": "solid",
-      "c-color": "primary",
-      "c-size": "lg"
      },
      "vars": {
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
+     },
+     "sourceId": "btn",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-variant": "solid",
+      "c-color": "primary",
+      "c-size": "lg"
      }
     },
     {
-     "name": "Label",
-     "parentId": "b-lg",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "b-lg-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "b-lg",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     },
+     "sourceId": "btn-spinner",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -622,6 +962,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "b-lg-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "b-lg",
      "text": "Simpan",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -633,19 +977,30 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "b-lg-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
      },
-     "sourceId": "btn-label"
+     "sourceId": "btn-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Button xl",
+     "name": "Button",
      "parentId": "m-frame",
      "x": 40,
      "y": 440,
@@ -655,7 +1010,7 @@
      "fills": [
       {
        "type": "solid",
-       "color": "#4338ca",
+       "color": "#ffffff",
        "opacity": 1,
        "visible": true
       }
@@ -670,8 +1025,7 @@
      "version": 0,
      "type": "frame",
      "id": "b-xl",
-     "isInstance": true,
-     "sourceId": "btn",
+     "component": false,
      "layout": "horizontal",
      "gap": 6,
      "padding": 12,
@@ -682,40 +1036,70 @@
      "behavior": {
       "version": 2,
       "props": {
-       "label": "Simpan"
+       "label": "Simpan",
+       "hasIcon": false,
+       "loading": false,
+       "disabled": false
       }
-     },
-     "varModes": {
-      "c-variant": "solid",
-      "c-color": "primary",
-      "c-size": "xl"
      },
      "vars": {
       "fills.0": "v-bg",
       "stroke": "v-border",
       "radius": "s-radius",
+      "h": "s-height",
       "padH": "s-paddingX",
       "padV": "s-paddingY",
-      "gap": "s-gap",
-      "h": "s-height"
+      "gap": "s-gap"
+     },
+     "sourceId": "btn",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-variant": "solid",
+      "c-color": "primary",
+      "c-size": "xl"
      }
     },
     {
-     "name": "Label",
-     "parentId": "b-xl",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#ffffff",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
+     "stroke": "#18181b",
+     "strokeWidth": 1,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "b-xl-spinner",
+     "name": "spinner",
+     "type": "ellipse",
+     "parentId": "b-xl",
+     "w": 14,
+     "h": 14,
+     "arcStart": -90,
+     "arcSweep": 25,
+     "fills": [],
+     "strokeAlign": "inside",
+     "layoutSizingH": "fixed",
+     "layoutSizingV": "fixed",
+     "behavior": {
+      "version": 2,
+      "part": "spinner"
+     },
+     "vars": {
+      "stroke": "v-fg"
+     },
+     "sourceId": "btn-spinner",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -724,6 +1108,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "b-xl-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "b-xl",
      "text": "Simpan",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -735,19 +1123,30 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "b-xl-label",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "v-fg",
       "typography": "s-labelTypography"
      },
-     "sourceId": "btn-label"
+     "sourceId": "btn-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Input xs",
+     "name": "Input",
      "parentId": "m-frame",
      "x": 320,
      "y": 40,
@@ -772,8 +1171,7 @@
      "version": 0,
      "type": "frame",
      "id": "i-xs",
-     "isInstance": true,
-     "sourceId": "inp",
+     "component": false,
      "layout": "horizontal",
      "gap": 8,
      "padding": 12,
@@ -783,40 +1181,32 @@
      "behavior": {
       "version": 2,
       "props": {
-       "value": "Kopi Kita"
+       "value": "Kopi Kita",
+       "placeholder": ""
       }
-     },
-     "varModes": {
-      "c-input-variant": "outlined",
-      "c-input-status": "default",
-      "c-input-size": "xs"
      },
      "vars": {
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
+     },
+     "sourceId": "inp",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-input-variant": "outlined",
+      "c-input-status": "default",
+      "c-input-size": "xs"
      }
     },
     {
-     "name": "Value",
-     "parentId": "i-xs",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -825,6 +1215,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "i-xs-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "i-xs",
      "text": "Kopi Kita",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -836,19 +1230,189 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "i-xs-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
      },
-     "sourceId": "inp-value"
+     "sourceId": "inp-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Input sm",
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xs-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "i-xs",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     },
+     "sourceId": "inp-placeholder",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xs-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "i-xs",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     },
+     "sourceId": "inp-clear",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xs-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "i-xs",
+     "text": "9",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
+     },
+     "sourceId": "inp-count",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "name": "Input",
      "parentId": "m-frame",
      "x": 320,
      "y": 140,
@@ -873,8 +1437,7 @@
      "version": 0,
      "type": "frame",
      "id": "i-sm",
-     "isInstance": true,
-     "sourceId": "inp",
+     "component": false,
      "layout": "horizontal",
      "gap": 8,
      "padding": 12,
@@ -884,40 +1447,32 @@
      "behavior": {
       "version": 2,
       "props": {
-       "value": "Kopi Kita"
+       "value": "Kopi Kita",
+       "placeholder": ""
       }
-     },
-     "varModes": {
-      "c-input-variant": "outlined",
-      "c-input-status": "default",
-      "c-input-size": "sm"
      },
      "vars": {
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
+     },
+     "sourceId": "inp",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-input-variant": "outlined",
+      "c-input-status": "default",
+      "c-input-size": "sm"
      }
     },
     {
-     "name": "Value",
-     "parentId": "i-sm",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -926,6 +1481,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "i-sm-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "i-sm",
      "text": "Kopi Kita",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -937,19 +1496,189 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "i-sm-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
      },
-     "sourceId": "inp-value"
+     "sourceId": "inp-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Input md",
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-sm-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "i-sm",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     },
+     "sourceId": "inp-placeholder",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-sm-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "i-sm",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     },
+     "sourceId": "inp-clear",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-sm-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "i-sm",
+     "text": "9",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
+     },
+     "sourceId": "inp-count",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "name": "Input",
      "parentId": "m-frame",
      "x": 320,
      "y": 240,
@@ -974,8 +1703,7 @@
      "version": 0,
      "type": "frame",
      "id": "i-md",
-     "isInstance": true,
-     "sourceId": "inp",
+     "component": false,
      "layout": "horizontal",
      "gap": 8,
      "padding": 12,
@@ -985,40 +1713,32 @@
      "behavior": {
       "version": 2,
       "props": {
-       "value": "Kopi Kita"
+       "value": "Kopi Kita",
+       "placeholder": ""
       }
-     },
-     "varModes": {
-      "c-input-variant": "outlined",
-      "c-input-status": "default",
-      "c-input-size": "md"
      },
      "vars": {
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
+     },
+     "sourceId": "inp",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-input-variant": "outlined",
+      "c-input-status": "default",
+      "c-input-size": "md"
      }
     },
     {
-     "name": "Value",
-     "parentId": "i-md",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -1027,6 +1747,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "i-md-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "i-md",
      "text": "Kopi Kita",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -1038,19 +1762,189 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "i-md-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
      },
-     "sourceId": "inp-value"
+     "sourceId": "inp-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Input lg",
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-md-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "i-md",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     },
+     "sourceId": "inp-placeholder",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-md-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "i-md",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     },
+     "sourceId": "inp-clear",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-md-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "i-md",
+     "text": "9",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
+     },
+     "sourceId": "inp-count",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "name": "Input",
      "parentId": "m-frame",
      "x": 320,
      "y": 340,
@@ -1075,8 +1969,7 @@
      "version": 0,
      "type": "frame",
      "id": "i-lg",
-     "isInstance": true,
-     "sourceId": "inp",
+     "component": false,
      "layout": "horizontal",
      "gap": 8,
      "padding": 12,
@@ -1086,40 +1979,32 @@
      "behavior": {
       "version": 2,
       "props": {
-       "value": "Kopi Kita"
+       "value": "Kopi Kita",
+       "placeholder": ""
       }
-     },
-     "varModes": {
-      "c-input-variant": "outlined",
-      "c-input-status": "default",
-      "c-input-size": "lg"
      },
      "vars": {
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
+     },
+     "sourceId": "inp",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-input-variant": "outlined",
+      "c-input-status": "default",
+      "c-input-size": "lg"
      }
     },
     {
-     "name": "Value",
-     "parentId": "i-lg",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -1128,6 +2013,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "i-lg-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "i-lg",
      "text": "Kopi Kita",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -1139,19 +2028,189 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "i-lg-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
      },
-     "sourceId": "inp-value"
+     "sourceId": "inp-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
-     "name": "Input xl",
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-lg-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "i-lg",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     },
+     "sourceId": "inp-placeholder",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-lg-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "i-lg",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     },
+     "sourceId": "inp-clear",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-lg-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "i-lg",
+     "text": "9",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
+     },
+     "sourceId": "inp-count",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "name": "Input",
      "parentId": "m-frame",
      "x": 320,
      "y": 440,
@@ -1176,8 +2235,7 @@
      "version": 0,
      "type": "frame",
      "id": "i-xl",
-     "isInstance": true,
-     "sourceId": "inp",
+     "component": false,
      "layout": "horizontal",
      "gap": 8,
      "padding": 12,
@@ -1187,40 +2245,32 @@
      "behavior": {
       "version": 2,
       "props": {
-       "value": "Kopi Kita"
+       "value": "Kopi Kita",
+       "placeholder": ""
       }
-     },
-     "varModes": {
-      "c-input-variant": "outlined",
-      "c-input-status": "default",
-      "c-input-size": "xl"
      },
      "vars": {
       "fills.0": "in-v-bg",
       "stroke": "in-v-border",
       "radius": "in-s-radius",
+      "h": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
-      "gap": "in-s-gap",
-      "h": "in-s-height"
+      "gap": "in-s-gap"
+     },
+     "sourceId": "inp",
+     "isInstance": true,
+     "overrides": {},
+     "varModes": {
+      "c-input-variant": "outlined",
+      "c-input-status": "default",
+      "c-input-size": "xl"
      }
     },
     {
-     "name": "Value",
-     "parentId": "i-xl",
      "x": 0,
      "y": 0,
-     "w": 120,
-     "h": 24,
      "rotation": 0,
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -1229,6 +2279,10 @@
      "locked": false,
      "clip": false,
      "version": 0,
+     "id": "i-xl-label",
+     "name": "label",
+     "type": "text",
+     "parentId": "i-xl",
      "text": "Kopi Kita",
      "fontFamily": "Inter",
      "fontSize": 14,
@@ -1240,16 +2294,186 @@
      "textDecoration": "none",
      "textCase": "none",
      "direction": "auto",
-     "type": "text",
-     "id": "i-xl-value",
+     "w": 0,
+     "h": 0,
      "autoW": true,
      "layoutSizingH": "hug",
      "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
      "vars": {
       "fills.0": "in-v-fg",
       "typography": "in-s-valueTypography"
      },
-     "sourceId": "inp-value"
+     "sourceId": "inp-label",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xl-placeholder",
+     "name": "placeholder",
+     "type": "text",
+     "parentId": "i-xl",
+     "text": "",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "placeholder"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-placeholderTypography"
+     },
+     "sourceId": "inp-placeholder",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xl-clear",
+     "name": "clear",
+     "type": "text",
+     "parentId": "i-xl",
+     "text": "×",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "clear"
+     },
+     "vars": {
+      "fills.0": "in-v-fg",
+      "typography": "in-s-clearTypography"
+     },
+     "sourceId": "inp-clear",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "rotation": 0,
+     "stroke": "#000000",
+     "strokeWidth": 0,
+     "radius": 0,
+     "opacity": 1,
+     "visible": false,
+     "locked": false,
+     "clip": false,
+     "version": 0,
+     "id": "i-xl-count",
+     "name": "count",
+     "type": "text",
+     "parentId": "i-xl",
+     "text": "9",
+     "fontFamily": "Inter",
+     "fontSize": 14,
+     "fontWeight": 400,
+     "fontStyle": "normal",
+     "lineHeight": 1.4,
+     "letterSpacing": 0,
+     "textAlign": "left",
+     "textDecoration": "none",
+     "textCase": "none",
+     "direction": "auto",
+     "w": 0,
+     "h": 0,
+     "autoW": true,
+     "layoutSizingH": "hug",
+     "layoutSizingV": "hug",
+     "fills": [
+      {
+       "type": "solid",
+       "color": "#18181b",
+       "opacity": 1,
+       "visible": true
+      }
+     ],
+     "behavior": {
+      "version": 2,
+      "part": "count"
+     },
+     "vars": {
+      "fills.0": "in-v-placeholder",
+      "typography": "in-s-countTypography"
+     },
+     "sourceId": "inp-count",
+     "component": false,
+     "isInstance": false,
+     "overrides": {}
     },
     {
      "name": "plain-a",
@@ -3286,7 +4510,7 @@
       "alias": "c-color-bg-hover"
      },
      "text": {
-      "alias": "c-color-text-bg-hover"
+      "alias": "sem-outlineTransparent"
      },
      "link": {
       "alias": "sem-outlineTransparent"
@@ -3364,7 +4588,7 @@
       "alias": "c-color-bg-active"
      },
      "text": {
-      "alias": "c-color-text-bg-active"
+      "alias": "sem-outlineTransparent"
      },
      "link": {
       "alias": "sem-outlineTransparent"

@@ -54,7 +54,7 @@ test('binding the unbound master matches Variant, Color and Size, and not Varian
 test('a managed layer removed from the Save instance fails the eager open, naming the page and the node', () => {
     const broken = clone(buildBehaviorFixture());
     const page = pageNamed(broken, 'Components');
-    page.nodes = page.nodes.filter(n => n.id !== 'inst-start-icon-start');
+    page.nodes = page.nodes.filter(n => n.id !== 'inst-start-iconStart');
     assert.throws(() => assertBehaviorData(broken), /on "Save" \(inst-start\) on page "Components" is invalid: managed layer "iconStart" is missing/);
 });
 

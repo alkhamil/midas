@@ -10,6 +10,7 @@
       "nodes": [
         {
           "name": "Button",
+          "type": "frame",
           "parentId": null,
           "x": 0,
           "y": 0,
@@ -32,14 +33,13 @@
           "locked": false,
           "clip": true,
           "version": 0,
-          "type": "frame",
           "id": "button",
           "component": true,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "strokeAlign": "inside",
           "behavior": {
             "version": 2,
@@ -54,27 +54,48 @@
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
             "gap": "s-gap"
           }
         },
         {
-          "name": "Label",
-          "parentId": "button",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "button-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "button",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -83,6 +104,10 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "button-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "button",
           "text": "Button",
           "fontFamily": "Inter",
           "fontSize": 14,
@@ -94,8 +119,19 @@
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "button-label",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
@@ -103,6 +139,7 @@
         },
         {
           "name": "Save",
+          "type": "frame",
           "parentId": null,
           "x": 200,
           "y": 0,
@@ -118,22 +155,21 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 1,
           "radius": 8,
           "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": true,
           "version": 0,
-          "type": "frame",
           "id": "button-save",
-          "isInstance": true,
-          "sourceId": "button",
+          "component": false,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "props": {
@@ -143,36 +179,64 @@
               "disabled": false
             }
           },
-          "varModes": {
-            "c-variant": "solid",
-            "c-color": "primary",
-            "c-size": "lg"
-          },
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
             "gap": "s-gap"
+          },
+          "sourceId": "button",
+          "isInstance": true,
+          "overrides": {},
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "lg"
           }
         },
         {
-          "name": "Label",
-          "parentId": "button-save",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "button-save-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "button-save",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "sourceId": "button-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -181,6 +245,10 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "button-save-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "button-save",
           "text": "Save",
           "fontFamily": "Inter",
           "fontSize": 14,
@@ -192,13 +260,27 @@
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "button-save-label",
-          "sourceId": "button-label",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
-          }
+          },
+          "sourceId": "button-label",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         }
       ]
     }
@@ -1833,7 +1915,7 @@
             "alias": "c-color-bg-hover"
           },
           "text": {
-            "alias": "c-color-text-bg-hover"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"
@@ -1911,7 +1993,7 @@
             "alias": "c-color-bg-active"
           },
           "text": {
-            "alias": "c-color-text-bg-active"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"

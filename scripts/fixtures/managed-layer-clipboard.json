@@ -1,38 +1,47 @@
 {
   "format": "midas-clipboard",
   "rootIds": [
-    "clip-icon-start"
+    "inst-start-iconStart"
   ],
   "nodes": [
     {
-      "name": "iconStart",
-      "parentId": null,
       "x": 0,
       "y": 0,
-      "w": 16,
-      "h": 16,
       "rotation": 0,
-      "fills": [
-        {
-          "type": "solid",
-          "color": "#ffffff",
-          "opacity": 1,
-          "visible": true
-        }
-      ],
       "stroke": "#000000",
       "strokeWidth": 0,
       "radius": 0,
       "opacity": 1,
       "visible": true,
       "locked": false,
-      "clip": false,
+      "clip": true,
       "version": 0,
+      "id": "inst-start-iconStart",
+      "name": "iconStart",
       "type": "frame",
-      "id": "clip-icon-start",
+      "parentId": "inst-start",
+      "isInstance": false,
+      "component": false,
+      "overrides": {},
+      "w": 16,
+      "h": 16,
+      "layout": "horizontal",
+      "fills": [],
+      "layoutSizingH": "hug",
+      "layoutSizingV": "hug",
       "behavior": {
         "version": 2,
         "slot": "iconStart"
+      },
+      "padding": 0,
+      "gap": 0,
+      "padT": 0,
+      "padR": 0,
+      "padB": 0,
+      "padL": 0,
+      "vars": {
+        "w": "s-iconSize",
+        "h": "s-iconSize"
       }
     }
   ],

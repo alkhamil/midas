@@ -39,8 +39,8 @@
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
+          "layoutSizingV": "fixed",
           "strokeAlign": "inside",
-          "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
             "templateId": "button",
@@ -54,28 +54,48 @@
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
           }
         },
         {
-          "name": "Label",
-          "parentId": "main",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "main-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "main",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -84,22 +104,34 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "main-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "main",
           "text": "Button",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "main-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
@@ -122,7 +154,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 2,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -131,13 +163,13 @@
           "version": 0,
           "type": "frame",
           "id": "inst-start",
-          "isInstance": true,
-          "sourceId": "main",
+          "component": false,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "props": {
@@ -147,30 +179,28 @@
               "label": "Save"
             }
           },
-          "varModes": {
-            "c-variant": "solid",
-            "c-color": "primary",
-            "c-size": "sm"
-          },
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
+          },
+          "sourceId": "main",
+          "isInstance": true,
+          "overrides": {},
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
           }
         },
         {
-          "name": "iconStart",
-          "parentId": "inst-start",
           "x": 0,
           "y": 0,
-          "w": 16,
-          "h": 16,
           "rotation": 0,
-          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -179,9 +209,23 @@
           "locked": false,
           "clip": true,
           "version": 0,
+          "id": "inst-start-iconStart",
+          "name": "iconStart",
           "type": "frame",
-          "id": "inst-start-icon-start",
+          "parentId": "inst-start",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
           "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          },
           "padding": 0,
           "gap": 0,
           "padT": 0,
@@ -191,28 +235,48 @@
           "vars": {
             "w": "s-iconSize",
             "h": "s-iconSize"
-          },
-          "behavior": {
-            "version": 2,
-            "slot": "iconStart"
           }
         },
         {
-          "name": "Label",
-          "parentId": "inst-start",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "inst-start-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "inst-start",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "sourceId": "main-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -221,80 +285,81 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "inst-start-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "inst-start",
           "text": "Save",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "inst-start-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
           },
-          "sourceId": "main-label"
+          "sourceId": "main-label",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
+          "id": "inst-start-iconStart-ic-icon-check",
           "name": "Icon/check",
-          "parentId": "inst-start-icon-start",
+          "type": "frame",
+          "parentId": "inst-start-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
+          "rotation": 0,
           "version": 0,
-          "type": "frame",
-          "id": "inst-start-icon-start-ic-icon-check",
-          "component": false,
           "isInstance": true,
           "sourceId": "icon-check",
-          "overrides": {},
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill"
+          "overrides": {}
         },
         {
+          "id": "inst-start-iconStart-ic-icon-check-path",
           "name": "check",
-          "parentId": "inst-start-icon-start-ic-icon-check",
+          "type": "path",
+          "parentId": "inst-start-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#20202a",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "stroke": "#20202a",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "inst-start-icon-start-ic-icon-check-path",
           "pathW": 24,
           "pathH": 24,
           "closed": true,
@@ -312,6 +377,23 @@
               "y": 20
             }
           ],
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
           "component": false,
           "isInstance": false,
           "sourceId": "icon-check-path",
@@ -337,7 +419,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 2,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -346,13 +428,13 @@
           "version": 0,
           "type": "frame",
           "id": "inst-plain",
-          "isInstance": true,
-          "sourceId": "main",
+          "component": false,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "props": {
@@ -360,37 +442,64 @@
               "label": "Cancel"
             }
           },
-          "varModes": {
-            "c-variant": "solid",
-            "c-color": "danger",
-            "c-size": "lg"
-          },
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
+          },
+          "sourceId": "main",
+          "isInstance": true,
+          "overrides": {},
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "danger",
+            "c-size": "lg"
           }
         },
         {
-          "name": "Label",
-          "parentId": "inst-plain",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "inst-plain-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "inst-plain",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "sourceId": "main-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -399,27 +508,42 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "inst-plain-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "inst-plain",
           "text": "Cancel",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "inst-plain-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
           },
-          "sourceId": "main-label"
+          "sourceId": "main-label",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Both",
@@ -438,7 +562,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 2,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -447,13 +571,13 @@
           "version": 0,
           "type": "frame",
           "id": "inst-both",
-          "isInstance": true,
-          "sourceId": "main",
+          "component": false,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "props": {
@@ -464,30 +588,28 @@
               "label": "Both"
             }
           },
-          "varModes": {
-            "c-variant": "solid",
-            "c-color": "primary",
-            "c-size": "sm"
-          },
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
+          },
+          "sourceId": "main",
+          "isInstance": true,
+          "overrides": {},
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
           }
         },
         {
-          "name": "iconStart",
-          "parentId": "inst-both",
           "x": 0,
           "y": 0,
-          "w": 16,
-          "h": 16,
           "rotation": 0,
-          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -496,9 +618,23 @@
           "locked": false,
           "clip": true,
           "version": 0,
+          "id": "inst-both-iconStart",
+          "name": "iconStart",
           "type": "frame",
-          "id": "inst-both-icon-start",
+          "parentId": "inst-both",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
           "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "iconStart"
+          },
           "padding": 0,
           "gap": 0,
           "padT": 0,
@@ -508,28 +644,48 @@
           "vars": {
             "w": "s-iconSize",
             "h": "s-iconSize"
-          },
-          "behavior": {
-            "version": 2,
-            "slot": "iconStart"
           }
         },
         {
-          "name": "Label",
-          "parentId": "inst-both",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "inst-both-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "inst-both",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "sourceId": "main-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -538,37 +694,47 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "inst-both-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "inst-both",
           "text": "Both",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "inst-both-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
           },
-          "sourceId": "main-label"
+          "sourceId": "main-label",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
-          "name": "iconEnd",
-          "parentId": "inst-both",
           "x": 0,
           "y": 0,
-          "w": 16,
-          "h": 16,
           "rotation": 0,
-          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -577,9 +743,23 @@
           "locked": false,
           "clip": true,
           "version": 0,
+          "id": "inst-both-iconEnd",
+          "name": "iconEnd",
           "type": "frame",
-          "id": "inst-both-icon-end",
+          "parentId": "inst-both",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
           "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          },
           "padding": 0,
           "gap": 0,
           "padT": 0,
@@ -589,64 +769,46 @@
           "vars": {
             "w": "s-iconSize",
             "h": "s-iconSize"
-          },
-          "behavior": {
-            "version": 2,
-            "slot": "iconEnd"
           }
         },
         {
+          "id": "inst-both-iconStart-ic-icon-check",
           "name": "Icon/check",
-          "parentId": "inst-both-icon-start",
+          "type": "frame",
+          "parentId": "inst-both-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
+          "rotation": 0,
           "version": 0,
-          "type": "frame",
-          "id": "inst-both-icon-start-ic-icon-check",
-          "component": false,
           "isInstance": true,
           "sourceId": "icon-check",
-          "overrides": {},
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill"
+          "overrides": {}
         },
         {
+          "id": "inst-both-iconStart-ic-icon-check-path",
           "name": "check",
-          "parentId": "inst-both-icon-start-ic-icon-check",
+          "type": "path",
+          "parentId": "inst-both-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#20202a",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "stroke": "#20202a",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "inst-both-icon-start-ic-icon-check-path",
           "pathW": 24,
           "pathH": 24,
           "closed": true,
@@ -664,6 +826,23 @@
               "y": 20
             }
           ],
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
           "component": false,
           "isInstance": false,
           "sourceId": "icon-check-path",
@@ -673,50 +852,43 @@
           }
         },
         {
+          "id": "inst-both-iconEnd-ic-icon-arrow",
           "name": "Icon/arrow",
-          "parentId": "inst-both-icon-end",
+          "type": "frame",
+          "parentId": "inst-both-iconEnd",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
+          "rotation": 0,
           "version": 0,
-          "type": "frame",
-          "id": "inst-both-icon-end-ic-icon-arrow",
-          "component": false,
           "isInstance": true,
           "sourceId": "icon-arrow",
-          "overrides": {},
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill"
+          "overrides": {}
         },
         {
+          "id": "inst-both-iconEnd-ic-icon-arrow-path",
           "name": "arrow",
-          "parentId": "inst-both-icon-end-ic-icon-arrow",
+          "type": "path",
+          "parentId": "inst-both-iconEnd-ic-icon-arrow",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [],
-          "stroke": "#20202a",
-          "strokeWidth": 2,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "inst-both-icon-end-ic-icon-arrow-path",
           "pathW": 24,
           "pathH": 24,
           "closed": false,
@@ -730,6 +902,16 @@
               "y": 12
             }
           ],
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
           "component": false,
           "isInstance": false,
           "sourceId": "icon-arrow-path",
@@ -755,7 +937,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 1,
+          "strokeWidth": 0,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -764,12 +946,10 @@
           "version": 0,
           "type": "frame",
           "id": "unbound",
-          "component": true,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "strokeAlign": "inside",
           "layoutSizingV": "hug"
         },
         {
@@ -844,8 +1024,8 @@
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
+          "layoutSizingV": "fixed",
           "strokeAlign": "inside",
-          "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
             "templateId": "button",
@@ -859,28 +1039,48 @@
             "fills.0": "b-v-bg",
             "stroke": "b-v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
           }
         },
         {
-          "name": "Label",
-          "parentId": "legacy",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "legacy-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "legacy",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "b-v-fg"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -889,74 +1089,74 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "legacy-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "legacy",
           "text": "Button",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "legacy-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "b-v-fg",
             "typography": "s-labelTypography"
           }
         },
         {
+          "id": "icon-check",
           "name": "Icon/check",
+          "type": "frame",
           "parentId": null,
           "x": 800,
-          "y": 0,
+          "y": 40,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": true,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "frame",
-          "id": "icon-check",
-          "component": true
+          "rotation": 0,
+          "version": 0
         },
         {
+          "id": "icon-check-path",
           "name": "check",
+          "type": "path",
           "parentId": "icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#20202a",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "stroke": "#20202a",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "icon-check-path",
           "pathW": 24,
           "pathH": 24,
           "closed": true,
@@ -973,48 +1173,60 @@
               "x": 4,
               "y": 20
             }
-          ]
+          ],
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0
         },
         {
+          "id": "icon-arrow",
           "name": "Icon/arrow",
+          "type": "frame",
           "parentId": null,
           "x": 1000,
-          "y": 0,
+          "y": 40,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": true,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "frame",
-          "id": "icon-arrow",
-          "component": true
+          "rotation": 0,
+          "version": 0
         },
         {
+          "id": "icon-arrow-path",
           "name": "arrow",
+          "type": "path",
           "parentId": "icon-arrow",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [],
-          "stroke": "#20202a",
-          "strokeWidth": 2,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "icon-arrow-path",
           "pathW": 24,
           "pathH": 24,
           "closed": false,
@@ -1027,7 +1239,17 @@
               "x": 20,
               "y": 12
             }
-          ]
+          ],
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0
         }
       ]
     },
@@ -1052,7 +1274,7 @@
             }
           ],
           "stroke": "#000000",
-          "strokeWidth": 0,
+          "strokeWidth": 2,
           "radius": 8,
           "opacity": 1,
           "visible": true,
@@ -1061,13 +1283,13 @@
           "version": 0,
           "type": "frame",
           "id": "inst-cross",
-          "isInstance": true,
-          "sourceId": "main",
+          "component": false,
           "layout": "horizontal",
           "gap": 6,
           "padding": 12,
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
+          "strokeAlign": "inside",
           "behavior": {
             "version": 2,
             "props": {
@@ -1077,37 +1299,64 @@
               "label": "Next"
             }
           },
-          "varModes": {
-            "c-variant": "solid",
-            "c-color": "primary",
-            "c-size": "sm"
-          },
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
             "radius": "s-radius",
+            "h": "s-height",
             "padH": "s-paddingX",
             "padV": "s-paddingY",
-            "gap": "s-gap",
-            "h": "s-height"
+            "gap": "s-gap"
+          },
+          "sourceId": "main",
+          "isInstance": true,
+          "overrides": {},
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
           }
         },
         {
-          "name": "Label",
-          "parentId": "inst-cross",
           "x": 0,
           "y": 0,
-          "w": 80,
-          "h": 24,
           "rotation": 0,
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#ffffff",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
+          "stroke": "#18181b",
+          "strokeWidth": 1,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "inst-cross-spinner",
+          "name": "spinner",
+          "type": "ellipse",
+          "parentId": "inst-cross",
+          "w": 14,
+          "h": 14,
+          "arcStart": -90,
+          "arcSweep": 25,
+          "fills": [],
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "sourceId": "main-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -1116,37 +1365,47 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "inst-cross-label",
+          "name": "label",
+          "type": "text",
+          "parentId": "inst-cross",
           "text": "Next",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
           "fontStyle": "normal",
-          "lineHeight": 1.35,
+          "lineHeight": 1.4,
           "letterSpacing": 0,
           "textAlign": "left",
           "textDecoration": "none",
           "textCase": "none",
           "direction": "auto",
-          "type": "text",
-          "id": "inst-cross-label",
+          "w": 0,
+          "h": 0,
           "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "vars": {
             "fills.0": "v-fg",
             "typography": "s-labelTypography"
           },
-          "sourceId": "main-label"
+          "sourceId": "main-label",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
-          "name": "iconEnd",
-          "parentId": "inst-cross",
           "x": 0,
           "y": 0,
-          "w": 16,
-          "h": 16,
           "rotation": 0,
-          "fills": [],
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
@@ -1155,9 +1414,23 @@
           "locked": false,
           "clip": true,
           "version": 0,
+          "id": "inst-cross-iconEnd",
+          "name": "iconEnd",
           "type": "frame",
-          "id": "inst-cross-icon-end",
+          "parentId": "inst-cross",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
           "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "iconEnd"
+          },
           "padding": 0,
           "gap": 0,
           "padT": 0,
@@ -1167,57 +1440,46 @@
           "vars": {
             "w": "s-iconSize",
             "h": "s-iconSize"
-          },
-          "behavior": {
-            "version": 2,
-            "slot": "iconEnd"
           }
         },
         {
+          "id": "inst-cross-iconEnd-ic-icon-arrow",
           "name": "Icon/arrow",
-          "parentId": "inst-cross-icon-end",
+          "type": "frame",
+          "parentId": "inst-cross-iconEnd",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
           "fills": [],
+          "clip": false,
           "stroke": "#000000",
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": false,
+          "rotation": 0,
           "version": 0,
-          "type": "frame",
-          "id": "inst-cross-icon-end-ic-icon-arrow",
-          "component": false,
           "isInstance": true,
           "sourceId": "icon-arrow",
-          "overrides": {},
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill"
+          "overrides": {}
         },
         {
+          "id": "inst-cross-iconEnd-ic-icon-arrow-path",
           "name": "arrow",
-          "parentId": "inst-cross-icon-end-ic-icon-arrow",
+          "type": "path",
+          "parentId": "inst-cross-iconEnd-ic-icon-arrow",
           "x": 0,
           "y": 0,
           "w": 24,
           "h": 24,
-          "rotation": 0,
-          "fills": [],
-          "stroke": "#20202a",
-          "strokeWidth": 2,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "type": "path",
-          "id": "inst-cross-icon-end-ic-icon-arrow-path",
           "pathW": 24,
           "pathH": 24,
           "closed": false,
@@ -1231,6 +1493,16 @@
               "y": 12
             }
           ],
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
           "component": false,
           "isInstance": false,
           "sourceId": "icon-arrow-path",
@@ -2917,7 +3189,7 @@
             "alias": "c-color-bg-hover"
           },
           "text": {
-            "alias": "c-color-text-bg-hover"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"
@@ -2995,7 +3267,7 @@
             "alias": "c-color-bg-active"
           },
           "text": {
-            "alias": "c-color-text-bg-active"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"
@@ -3278,7 +3550,7 @@
             "alias": "c-color-bg-hover"
           },
           "text": {
-            "alias": "c-color-text-bg-hover"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"
@@ -3356,7 +3628,7 @@
             "alias": "c-color-bg-active"
           },
           "text": {
-            "alias": "c-color-text-bg-active"
+            "alias": "sem-outlineTransparent"
           },
           "link": {
             "alias": "sem-outlineTransparent"

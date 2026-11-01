@@ -18,9 +18,9 @@ export function generatedMaster({ template, frame, binding, variables }) {
 /**
  * An instance of a master for these props: copies of the master's layers with the visibility and text the props say, the root at (x, y)
  * under `parentId`. The copies' ids follow the master's: the root is `id`, a layer `<id>-<key>`, and a managed slot `<id>-<slot>`.
- * @param {{ template: any, master: any[], props: Record<string, unknown>, id: string, varModes?: Record<string, string>, x?: number, y?: number, parentId?: string | null }} opts
+ * @param {{ template: any, master: any[], props: Record<string, unknown>, id: string, varModes?: Record<string, string>, x?: number, y?: number, parentId?: string | null, name?: string }} opts
  */
-export function generatedInstance({ template, master, props, id, varModes = {}, x = 0, y = 0, parentId = null }) {
+export function generatedInstance({ template, master, props, id, varModes = {}, x = 0, y = 0, parentId = null, name = null }) {
     const [root, ...layers] = master;
     const idFor = src => {
         if (typeof src === 'object') return `${id}-${src.name}`;
@@ -28,7 +28,7 @@ export function generatedInstance({ template, master, props, id, varModes = {}, 
         return `${id}-${src.slice(root.id.length + 1)}`;
     };
     const copies = instanceOf(template, root, layers, props, { id: idFor, varModes });
-    copies[0] = { ...copies[0], x, y, parentId };
+    copies[0] = { ...copies[0], x, y, parentId, ...(name ? { name } : {}) };
     return copies;
 }
 
