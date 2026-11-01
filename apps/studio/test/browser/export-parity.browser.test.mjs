@@ -9,19 +9,19 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { build } from 'esbuild';
 import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile } from './harness.mjs';
-import { FIXTURE, canvasTree, createFromPanel, isolatedStage, playTree, setProp } from './parity-helpers.mjs';
+import { canvasTree, createFromPanel, isolatedStage, playTree, setProp, TOLERANCE_PX } from './parity-helpers.mjs';
 import { generateComponent } from '../../../../packages/builder-core/src/behavior-engine/codegen.js';
 import { resolveProps } from '../../../../packages/builder-core/src/behavior-engine/instance-props.js';
 import { TEMPLATES } from '../../../../packages/builder-core/src/behavior-engine/registry.js';
 
-const TOLERANCE_PX = 0.5;
 const EXPORT_DIR = resolve(ARTIFACTS, 'export');
 
 /** The states the export is checked in: the props each sets, and the node the control box is in Play (placeholder or value). */
 const STATES = [
-    { name: 'empty', props: { value: '', showCount: false } },
-    { name: 'value', props: { value: 'Hello', showCount: false } },
-    { name: 'showCount', props: { value: 'Hello', showCount: true } },
+    { name: 'empty', props: { value: '', allowClear: false, showCount: false } },
+    { name: 'value', props: { value: 'Hello', allowClear: false, showCount: false } },
+    { name: 'showCount', props: { value: 'Hello', allowClear: false, showCount: true } },
+    { name: 'allowClear', props: { value: 'Hello', allowClear: true, showCount: false } },
 ];
 
 /** The document's master of the instance, its descendants and the variables, as plain data the generator reads. */
@@ -111,15 +111,98 @@ test('the exported Input renders its input, clear and counter where Play draws t
                 root: Math.max(Math.abs(got.root.w - playRoot.w), Math.abs(got.root.h - playRoot.h)),
                 control: playControl && got.control ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.control[k] - playControl[k]))) : null,
                 count: state.props.showCount ? (playCount && got.count ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.count[k] - playCount[k]))) : null) : null,
+                clear: state.props.allowClear ? (play.boxes[ids.clear?.id] && got.clear ? Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(got.clear[k] - { x: play.boxes[ids.clear.id].dx, y: play.boxes[ids.clear.id].dy, w: play.boxes[ids.clear.id].w, h: play.boxes[ids.clear.id].h }[k]))) : null) : null,
             };
             rows.push({ label, exported: got, play: { root: playRoot, control: playControl, count: playCount }, deltas });
             if (deltas.root > TOLERANCE_PX) failures.push(`${label}: the exported root is ${deltas.root.toFixed(2)} px from Play's`);
             if (deltas.control === null) failures.push(`${label}: the input is not on both`);
             else if (deltas.control > TOLERANCE_PX) failures.push(`${label}: the exported input is ${deltas.control.toFixed(2)} px from Play's box`);
             if (state.props.showCount && (deltas.count === null || deltas.count > TOLERANCE_PX)) failures.push(`${label}: the exported counter is ${deltas.count} px from Play's`);
+            if (state.props.allowClear && (deltas.clear === null || deltas.clear > TOLERANCE_PX)) failures.push(`${label}: the exported clear is ${deltas.clear} px from Play's`);
         }
     }
     writeFileSync(resolve(ARTIFACTS, 'export-parity.json'), JSON.stringify({ tolerancePx: TOLERANCE_PX, rows }, null, 2));
     assert.deepEqual(errors, [], 'console errors while rendering the export');
     assert.deepEqual(failures, [], 'the export and Play differ');
+});
+
+/** The Button's states the export is checked in: its icon, its loading, and the props that show them. */
+const BUTTON_STATES = [
+    { name: 'plain', props: { hasIcon: false, iconPlacement: 'start', loading: false } },
+    { name: 'loading', props: { hasIcon: false, iconPlacement: 'start', loading: true } },
+    { name: 'icon-start', props: { hasIcon: true, iconPlacement: 'start', loading: false } },
+    { name: 'icon-start-loading', props: { hasIcon: true, iconPlacement: 'start', loading: true } },
+    { name: 'icon-end', props: { hasIcon: true, iconPlacement: 'end', loading: false } },
+];
+
+/** The exported Button's root, spinner, icon slots and label, measured relative to its root (CSS px). */
+const renderButtonExport = (page, props) => page.evaluate(props => {
+    document.getElementById('export-host')?.remove();
+    const host = document.createElement('div');
+    host.id = 'export-host';
+    Object.assign(host.style, { position: 'fixed', left: '40px', top: '40px', zIndex: '10000', background: '#ffffff', padding: '0' });
+    document.body.append(host);
+    window.renderExport(props, host);
+    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const root = host.querySelector('.button');
+        const r0 = root.getBoundingClientRect();
+        const box = sel => { const el = root.querySelector(sel); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x - r0.x, y: r.y - r0.y, w: r.width, h: r.height }; };
+        resolve({ root: { w: r0.width, h: r0.height }, spinner: box('svg.button-spinner'), label: box('.button-label'), iconStart: box('.button-iconStart'), iconEnd: box('.button-iconEnd') });
+    })));
+}, props);
+
+test('the exported Button draws its spinner, icon slots and label where Play draws them, at every Size and icon and loading state', async t => {
+    const stop = await ensureDevServers();
+    t.after(stop);
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const { page, errors } = await openImportedFile(browser, isolatedStage());
+    const id = await createFromPanel(page, 'button');
+    const data = await masterData(page, id);
+    const template = TEMPLATES.get('button');
+    const exported = generateComponent(template, data.binding, data.variables, 'Button', data.master, parent => data.nodes.filter(n => n.parentId === parent));
+    assert.equal(exported.problems.length, 0, 'the Button exports without problems');
+    await page.addStyleTag({ content: exported.files['Button.css'] });
+    await page.addScriptTag({ content: await bundleExport(exported.files['Button.jsx'], 'Button') });
+    const sizeColl = data.binding.variables.size;
+    const modes = await page.evaluate(sizeColl => window.midas.doc.data.variables.collections.find(c => c.id === sizeColl).modes, sizeColl);
+    const rows = [];
+    const failures = [];
+    for (const mode of modes) {
+        await page.locator('[data-inspector-tab="design"]').click();
+        await page.selectOption(`select[data-var-mode="${sizeColl}"]`, mode.id);
+        await page.waitForTimeout(200);
+        for (const state of BUTTON_STATES) {
+            await page.locator('#inspector-tab-behavior').click();
+            for (const [name, value] of Object.entries(state.props)) if (name !== 'iconPlacement') await setProp(page, name, value);
+            await page.locator('[data-bp-prop="iconPlacement"]').first().selectOption(state.props.iconPlacement).catch(() => {});
+            const canvas = await canvasTree(page, id);
+            const play = await playTree(page, id, `export-button-${mode.name.toLowerCase()}-${state.name}`);
+            const shown = Object.fromEntries(canvas.filter(n => n.shown).map(n => [n.name, n]));
+            const label = `button ${mode.name} ${state.name}`;
+            const props = {
+                ...resolveProps(template, { ...data.instanceProps, ...state.props }),
+                variant: data.instanceModes[data.binding.variables.variant], color: data.instanceModes[data.binding.variables.color], size: mode.id,
+            };
+            const got = await renderButtonExport(page, props);
+            const playBox = name => (shown[name] && play.boxes[shown[name].id]) ? { x: play.boxes[shown[name].id].dx, y: play.boxes[shown[name].id].dy, w: play.boxes[shown[name].id].w, h: play.boxes[shown[name].id].h } : null;
+            const pairs = { spinner: playBox('spinner'), label: playBox('label'), iconStart: playBox('iconStart'), iconEnd: playBox('iconEnd') };
+            const deltas = {};
+            for (const key of ['spinner', 'label', 'iconStart', 'iconEnd']) {
+                const exp = got[key], pl = pairs[key];
+                if (!pl && !exp) continue;
+                if (!pl || !exp) { deltas[key] = null; failures.push(`${label}: ${key} is ${exp ? 'only in the export' : 'only in Play'}`); continue; }
+                deltas[key] = Math.max(...['x', 'y', 'w', 'h'].map(k => Math.abs(exp[k] - pl[k])));
+                if (deltas[key] > TOLERANCE_PX) failures.push(`${label}: the exported ${key} is ${deltas[key].toFixed(2)} px from Play's`);
+            }
+            const rootDelta = Math.max(Math.abs(got.root.w - play.rootWidth), Math.abs(got.root.h - play.rootHeight));
+            if (rootDelta > TOLERANCE_PX) failures.push(`${label}: the exported root is ${rootDelta.toFixed(2)} px from Play's`);
+            rows.push({ label, exported: got, play: { root: { w: play.rootWidth, h: play.rootHeight }, ...pairs }, deltas, rootDelta });
+        }
+    }
+    const report = JSON.parse(readFileSync(resolve(ARTIFACTS, 'export-parity.json'), 'utf8'));
+    report.buttonRows = rows;
+    writeFileSync(resolve(ARTIFACTS, 'export-parity.json'), JSON.stringify(report, null, 2));
+    assert.deepEqual(errors, [], 'console errors while rendering the export');
+    assert.deepEqual(failures, [], 'the exported Button and Play differ');
 });
