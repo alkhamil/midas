@@ -16,7 +16,7 @@ test('a click selects an instance root, and a click inside it selects the same r
     const { page } = await openImportedFile(browser, TESTING);
     assert.deepEqual(await selectByClick(page, 'i-value'), ['i-value'], 'the instance root is selected');
     // A click inside an instance selects the instance as a whole; the inner layers are reached by double-click or the layers panel.
-    assert.deepEqual(await selectByClick(page, 'i-value-value'), ['i-value'], 'a click on an inner layer selects its instance root');
+    assert.deepEqual(await selectByClick(page, 'i-value-label'), ['i-value'], 'a click on an inner layer selects its instance root');
 });
 
 test('the Behavior panel opens for an instance root selected by a click', async t => {

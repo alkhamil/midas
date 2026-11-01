@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, iconDefsOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -9224,6 +9224,8 @@ function fixableAutoFix(master) {
     const binding = master?.behavior;
     if (!master?.component || !binding || !('templateId' in binding) || lazyPages.size) return null;
     const findings = diagnoseDocument(doc.data).filter(f => f.nodeId === master.id || !f.nodeId);
+    // A layer the template requires and the master lacks is added by the generator (Auto Fix runs it first).
+    if (findings.some(f => f.code === 'part-missing' && f.nodeId === master.id)) return { fixable: true, count: findings.filter(f => f.code === 'part-missing' && f.nodeId === master.id).length };
     if (!findings.some(f => ['variable-missing', 'variable-missing-in-mode', 'dimension-unbound', 'collection-missing', 'lineheight-ratio', 'mode-mismatch', 'outline-not-transparent'].includes(f.code))) return null;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
     const plan = planAutoFix({ template, binding, variables: varStore(), layers: masterLayersOf(master, id => doc.children(id)) });
@@ -9236,6 +9238,13 @@ async function autoFixMaster(master) {
     const binding = master?.behavior;
     if (!master?.component || !binding || !('templateId' in binding)) return;
     const template = BEHAVIOR_TEMPLATES.get(binding.templateId);
+    const missing = diagnoseDocument(doc.data).filter(f => f.code === 'part-missing' && f.nodeId === master.id);
+    if (missing.length) {
+        // The generator adds the layers the template requires; nothing the user has is removed, and a second run adds nothing.
+        transaction('Auto Fix: missing layers', () => applyTemplateNodes(master, template));
+        toast(`Auto Fix: added ${missing.map(f => f.layer).join(', ')} to ${template.name}.`);
+        return;
+    }
     const plan = planAutoFix({ template, binding, variables: varStore(), layers: masterLayersOf(master, id => doc.children(id)) });
     if (!plan.fixable) { toast('Nothing to fix.'); return; }
     const ok = await confirmDialog({ title: `Auto Fix ${master.name}?`, message: `Create ${plan.summary.variables} variables in collections [${[...new Set(plan.summary.collections)].join(', ')}], bind ${plan.summary.boundProperties} properties${plan.summary.rebound ? `, rebind ${plan.summary.rebound} line heights to px tokens` : ''}.`, confirmLabel: 'Auto Fix' });
@@ -9404,13 +9413,13 @@ function placeIconInSlot(slot, componentId) {
 }
 /**
  * A managed slot holds the icon its instance chose: the icon's nested instance, in a row that fills the slot with no padding and no
- * fill of its own. Without an icon it is the placeholder square.
+ * fill of its own. Without an icon it keeps its box and draws nothing (the export draws the same).
  */
 function setSlotIcon(slot, componentId) {
     doc.remove(doc.children(slot.id).map(c => c.id));
     const shown = !!componentId && placeIconInSlot(slot, componentId);
     if (shown) Object.assign(slot, { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true });
-    else Object.assign(slot, { layout: 'none', fills: paintOf('#8c8297'), clip: false });
+    else Object.assign(slot, { layout: 'none', fills: [], clip: false });
     doc.touch(slot);
 }
 /** The variable a name names in the collection an instance's master binds to a dimension of the template (Variant or Size). */
@@ -9631,9 +9640,31 @@ function bindCollectionTo(master, prop, collectionId) {
     commitPlan('Bind collection', master, plan);
 }
 /** An instance's prop changes. Returns false (and says why) when the value is refused. */
+/**
+ * The first icon of the document's icon library: a component named Icon/<name> (the library's own naming). The default an icon slot takes
+ * when it is switched on with no icon chosen. Null when the document has none.
+ */
+function defaultIconId() {
+    for (const page of doc.data.pages) {
+        const icon = page.nodes.find(n => n.component && !n.parentId && /^Icon\//.test(n.name));
+        if (icon) return icon.id;
+    }
+    return null;
+}
 function setInstanceValueTo(inst, prop, value) {
     let next;
-    try { next = setInstanceValue(inst, componentById(inst.sourceId), prop, value); }
+    try {
+        next = setInstanceValue(inst, componentById(inst.sourceId), prop, value);
+        // An icon slot switched on with no icon chosen takes the library's default icon, in the component's own prop.
+        const binding = componentById(inst.sourceId)?.behavior;
+        const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+        if (template && value === true) {
+            for (const def of iconDefsOf(template).filter(d => d.show === prop && d.component)) {
+                const icon = defaultIconId();
+                if (icon && !next.props?.[def.component]) next = { ...next, props: { ...next.props, [def.component]: icon } };
+            }
+        }
+    }
     catch (err) { toast(err.message); return false; }
     let reason = null;
     transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncInstance(inst); });
