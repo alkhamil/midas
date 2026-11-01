@@ -17,6 +17,7 @@ import { generateComponent } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
+import { canvasPartsOf } from '../behavior-engine/display.js';
 import { borderStyleOf } from '../behavior-engine/variant-style.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, strokeStrategyOf, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
@@ -61,6 +62,17 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
  * @returns {Element | null}
  * @param {boolean} [icon] true inside a managed icon slot: bound vector paint resolves through the slot colour
  */
+/** The instance's copy of a canvas part (a layer marked `behavior.part`), or undefined. */
+function partLayerOf(n, id, scope) {
+    return scope.childrenOf(n.id).find(c => c.behavior?.part === id);
+}
+
+/** The element a canvas part draws, from its node: none when the part is hidden or the instance has no copy of it. */
+function partElement(n, id, scope) {
+    const layer = partLayerOf(n, id, scope);
+    return layer ? renderNode(layer, n, scope, false) : null;
+}
+
 function renderNode(n, parent, scope, icon = false) {
     if (n.visible === false) return null;
     const template = templateOf(n, scope);
@@ -243,14 +255,33 @@ function renderTemplate(n, template, parent, scope) {
             // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
             const style = labelLayoutOf(labelEntry?.node, labelEntry?.parent ?? n);
             if (isControl) {
-                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? '') };
-                if (control.placeholder && String(props[control.placeholder] ?? '') !== '') inputAttrs.placeholder = String(props[control.placeholder]);
+                // The input is a transparent text layer over the label node: the placeholder shown is the placeholder part's node text.
+                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': labelEntry?.node?.id };
+                const placeholder = partLayerOf(n, 'placeholder', scope);
+                const showsPlaceholder = !!placeholder && placeholder.visible !== false && String(placeholder.text ?? '') !== '';
+                if (showsPlaceholder) inputAttrs.placeholder = String(placeholder.text);
+                // The input is the box of the text layer it covers, the placeholder while it shows, so its size is the canvas's, not the browser's.
+                const covered = showsPlaceholder && inputAttrs.value === '' ? placeholder : labelEntry?.node;
+                if (covered && covered.layoutSizingH !== 'fill') style.width = `${covered.w}px`;
+                if (covered && covered.layoutSizingV !== 'fill') style.height = `${covered.h}px`;
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
                 if (control.maxlength && String(props[control.maxlength] ?? '') !== '') inputAttrs.maxLength = String(props[control.maxlength]);
                 if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
                 children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
+                for (const id of ['clear', 'count']) {
+                    const el = partElement(n, id, scope);
+                    if (el) children.push(el);
+                }
             }
-            else if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+            else {
+                // The frame parts (the Button's spinner) sit before the text, as the master draws them.
+                for (const part of canvasPartsOf(template)) {
+                    if (part.kind !== 'frame') continue;
+                    const el = partElement(n, part.id, scope);
+                    if (el) children.push(el);
+                }
+                if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+            }
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.
@@ -268,11 +299,6 @@ function renderTemplate(n, template, parent, scope) {
     }
     // The stroke is the node's own. A uniform inside stroke draws on the host box (one drawer with the canvas and the codegen stylesheet); any other stroke draws as an overlay, and the host border is reset so only the overlay shows.
     // A CSS outline is not used for it: it would override the keyboard-focus ring. The shape comes from the master, as on the canvas.
-    if (control && props[control.clear] === true && String(props[control.value] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-clear` }, style: {}, text: '×', children: [] });
-    if (control && props[control.count] === true) {
-        const countMax = control.maxlength ? String(props[control.maxlength] ?? '') : '';
-        children.push({ tag: 'span', attrs: { class: `${template.id}-count` }, style: {}, text: `${String(props[control.value] ?? '').length}${countMax !== '' ? ` / ${countMax}` : ''}`, children: [] });
-    }
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;

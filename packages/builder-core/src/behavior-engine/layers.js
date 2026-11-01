@@ -1,6 +1,6 @@
 // Master layers (pure): the layers of a component that the behavior engine maps to its display keys. `root` is the master itself,
-// `label` the first text layer inside it, depth first in visual order (see layoutOrder: a flipped auto layout frame reads its
-// children back to front). Icon slots have no master layer. Diagnostics and the studio share this rule.
+// `label` the first text layer inside it that is not a canvas part, depth first in visual order (see layoutOrder: a flipped auto
+// layout frame reads its children back to front). Icon slots and canvas parts are not the label. Diagnostics and the studio share this rule.
 import { layoutOrder } from '../geometry/autolayout.js';
 
 /**
@@ -14,7 +14,11 @@ import { layoutOrder } from '../geometry/autolayout.js';
 export function labelEntryOf(id, childrenOf, parent = null) {
     const kids = parent && parent.id === id ? layoutOrder(parent, childrenOf(id)) : childrenOf(id);
     for (const c of kids) {
-        if (c.type === 'text') return { node: c, parent };
+        // A canvas part is a text layer too (placeholder, count, clear), but the label is the value layer only.
+        if (c.type === 'text') {
+            if (!c.behavior?.part) return { node: c, parent };
+            continue;
+        }
         const found = labelEntryOf(c.id, childrenOf, c);
         if (found) return found;
     }

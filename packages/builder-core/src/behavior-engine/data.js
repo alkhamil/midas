@@ -41,8 +41,9 @@ function problemOf(node) {
     if (!isPlainObject(b)) return 'behavior must be an object';
     if (b.version !== BEHAVIOR_DATA_VERSION) return `behavior version ${b.version} is not version ${BEHAVIOR_DATA_VERSION}`;
     const managed = 'slot' in b;
+    const part = 'part' in b;
     const master = 'templateId' in b;
-    const want = managed ? ['slot'] : master ? ['templateId', 'variables'] : ['props'];
+    const want = managed ? ['slot'] : part ? ['part'] : master ? ['templateId', 'variables'] : ['props'];
     const extra = Object.keys(b).filter(k => k !== 'version' && !want.includes(k));
     if (extra.length) return `unknown field ${extra.join(', ')}`;
     const missing = want.filter(k => !(k in b));
@@ -50,6 +51,10 @@ function problemOf(node) {
     if (managed) {
         if (node.isInstance) return 'a managed layer cannot be an instance';
         return typeof b.slot === 'string' && b.slot !== '' ? null : 'slot must name a managed slot';
+    }
+    if (part) {
+        if (node.isInstance) return 'a canvas part cannot be an instance';
+        return typeof b.part === 'string' && b.part !== '' ? null : 'part must name a canvas part';
     }
     if (master) {
         if (node.isInstance) return 'binding data on an instance (instances hold props only)';

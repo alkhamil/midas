@@ -28,22 +28,59 @@ export const NODE_PROPERTIES = {
 };
 
 /**
- * The node fields a literal prop can write, per node kind: the prop type it takes.
- * Frames take none: node sizing is the node's own, never written by a template prop.
+ * The node fields a literal prop or a part can write, per node kind: the value type it takes. `visible` is written by a part's
+ * `shownWhen`; node sizing is never written by a template.
  * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
  */
 export const NODE_FIELDS = {
-    frame: {},
-    text: { text: { kind: 'string' } },
+    frame: { visible: { kind: 'boolean' } },
+    text: { text: { kind: 'string' }, visible: { kind: 'boolean' } },
 };
 
-/** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's kind. */
+/** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
 export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';
     const slot = Array.isArray(template.anatomy) ? template.anatomy.find(s => s.id === key) : undefined;
-    if (!slot) return null;
-    return slot.kind === 'icon' ? 'icon' : 'text';
+    const part = Array.isArray(template.parts) ? template.parts.find(p => p.id === key) : undefined;
+    const kind = slot ?? part;
+    if (!kind) return null;
+    return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : 'text';
 };
+
+/** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */
+export const counterLabel = (value, max) => `${String(value ?? '').length}${max !== undefined && String(max) !== '' ? ` / ${max}` : ''}`;
+
+/** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), or `{ all: [...] }`. */
+function conditionHolds(cond, props) {
+    if (cond.all) return cond.all.every(c => conditionHolds(c, props));
+    const raw = props[cond.prop];
+    if ('is' in cond) return raw === cond.is;
+    return (String(raw ?? '') === '') === cond.empty;
+}
+
+/**
+ * The parts the canvas draws, as nodes in the master and in each instance: `{ id, kind, shownWhen, text, canvas, reason }`. A part
+ * with `canvas: false` is play-only and has no node; `reason` says why.
+ * @param {any} template
+ */
+export const canvasPartsOf = template => (template.parts ?? []).filter(p => p.canvas !== false);
+
+/**
+ * What the parts write to their nodes, for the resolved literal props: `visible` from `shownWhen`, and the counter text. A glyph or
+ * a fixed text is written when the master is built, so it writes nothing here.
+ * @param {any} template
+ * @param {Record<string, unknown>} props
+ * @returns {{ key: string, field: string, value: unknown }[]}
+ */
+export function partWrites(template, props) {
+    /** @type {{ key: string, field: string, value: unknown }[]} */
+    const out = [];
+    for (const part of canvasPartsOf(template)) {
+        out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) });
+        if (part.text?.counter) out.push({ key: part.id, field: 'text', value: counterLabel(props[part.text.counter.value], props[part.text.counter.max]) });
+    }
+    return out;
+}
 
 /**
  * Problems in a template's display mapping, as messages. Every key must be `root` or an anatomy slot, every property must be one its

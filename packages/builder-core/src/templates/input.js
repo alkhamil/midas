@@ -34,7 +34,7 @@ export const INPUT = {
         size: { source: 'variable', collection: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'] },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
         value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
-        placeholder: { source: 'literal', type: 'string', default: '' },
+        placeholder: { source: 'literal', type: 'string', default: '', node: { key: 'placeholder', field: 'text' } },
         maxLength: { source: 'literal', type: 'string', default: '' },
         allowClear: { source: 'literal', type: 'boolean', default: false },
         showCount: { source: 'literal', type: 'boolean', default: false },
@@ -95,12 +95,29 @@ export const INPUT = {
     },
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },
-    // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
+    // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
+    // The text part `count` shows the value's length (see counterLabel); `clear` is a glyph. Play renders each part from its node.
+    parts: [
+        { id: 'placeholder', kind: 'text', shownWhen: { prop: 'value', empty: true } },
+        { id: 'clear', kind: 'text', shownWhen: { all: [{ prop: 'allowClear', is: true }, { prop: 'value', empty: false }] }, text: '×' },
+        { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } } },
+    ],
+    // What Play draws without a node, and why. The static end state of each is on the canvas through the props above.
+    playOnly: [
+        { id: 'hover', reason: 'pointer state; the canvas shows the rest state and the Preview panel shows hover' },
+        { id: 'focus-halo', reason: 'focus ring follows keyboard focus; the canvas shows the rest state' },
+        { id: 'caret', reason: 'the text caret exists only in the live input' },
+        { id: 'typing', reason: 'typing changes the value live; the canvas shows the Value prop' },
+    ],
+    // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight', placeholder: 'placeholder' },
         addonBefore: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         addonAfter: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
+        placeholder: { fill: 'placeholder', fontSize: 'fontSize', lineHeight: 'lineHeight' },
+        clear: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
+        count: { fill: 'placeholder', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         prefix: { size: 'iconSize' },
         suffix: { size: 'iconSize' },
     },

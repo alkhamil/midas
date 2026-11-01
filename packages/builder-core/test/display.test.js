@@ -9,7 +9,7 @@ const withDisplay = display => ({ ...BUTTON, display });
 test('the Button schema is valid and maps every node it projects', () => {
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
     assert.ok(TEMPLATES.has('button'));
-    assert.deepEqual(Object.keys(BUTTON.display).sort(), ['iconEnd', 'iconStart', 'label', 'root']);
+    assert.deepEqual(Object.keys(BUTTON.display).sort(), ['iconEnd', 'iconStart', 'label', 'root', 'spinner']);
 });
 
 test('a schema with no display mapping is refused', () => {

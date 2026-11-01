@@ -153,7 +153,6 @@ export function diagnoseDocument(doc) {
             out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
         }
         const props = resolveProps(template, inst.behavior.props);
-        if (props.loading === true) out.push({ severity: 'info', code: 'loading-not-drawn', node: inst.name, nodeId: inst.id, message: `${inst.name}: loading is stored and generated, but has no visual yet.` });
         const { warnings } = planStateBindings({ template, binding, props, layers: instanceLayers(inst, master, childrenOf), variables });
         for (const w of warnings) {
             out.push({ severity: 'warning', code: 'rebound-by-hand', node: inst.name, nodeId: inst.id, layer: w.key, prop: w.prop, state: w.state, message: `${inst.name}: ${w.key} ${w.prop} was set by hand, so state "${w.state}" does not change it.` });

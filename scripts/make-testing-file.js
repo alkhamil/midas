@@ -6,6 +6,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BEHAVIOR_DATA_VERSION } from '../packages/builder-core/src/behavior-engine/data.js';
 import { iconSlotBindings, iconSlotTargets } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
+import { canvasPartsOf, literalFields, partWrites } from '../packages/builder-core/src/behavior-engine/display.js';
+import { resolveProps } from '../packages/builder-core/src/behavior-engine/instance-props.js';
 import { BUTTON } from '../packages/builder-core/src/templates/button.js';
 import { INPUT } from '../packages/builder-core/src/templates/input.js';
 import { assertBehaviorData } from '../packages/builder-core/src/behavior-engine/document-check.js';
@@ -56,7 +58,7 @@ function master() {
         id: 'btn-label', name: 'Label', parentId: 'btn', text: 'Button', w: 80, h: 24, autoW: true,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: bindings.label,
     });
-    return [root, label];
+    return [root, ...buttonParts(), label];
 }
 
 /** An icon component in the file, for the Button icon slots. */
@@ -93,7 +95,33 @@ function iconInstance(slotId, componentId, components, disabled, template, fg, f
 
 const MODES = (variant, color, size) => ({ [ids.variant]: variant, [ids.color]: color, [ids.size]: size });
 
-/** A Button instance with its label and managed icon slots (start, end, or both). */
+/**
+ * An instance's copies of the master's canvas parts (the master children marked `behavior.part`). Each copy takes its visibility and
+ * its text from the template's writes for the instance's props, so the canvas shows what the props say.
+ */
+function partCopies(id, template, props, masterParts) {
+    const resolved = resolveProps(template, props);
+    const writes = [...literalFields(template, resolved), ...partWrites(template, resolved)];
+    const write = (part, field, fallback) => writes.find(w => w.key === part && w.field === field)?.value ?? fallback;
+    return masterParts.map(m => {
+        const part = m.behavior.part;
+        return {
+            ...m, id: `${id}-${part}`, parentId: id, sourceId: m.id, component: false, isInstance: false, overrides: {}, version: 0,
+            visible: write(part, 'visible', true),
+            ...('text' in m ? { text: write(part, 'text', m.text) } : {}),
+        };
+    });
+}
+
+/** The Button's canvas parts as master nodes: the loading spinner, a ring in the foreground colour. */
+function buttonParts() {
+    return [node('frame', {
+        id: 'btn-spinner', name: 'Spinner', parentId: 'btn', w: 14, h: 14, fills: [], stroke: '#20202a', strokeWidth: 2, strokeAlign: 'inside', radius: 8,
+        layoutSizingH: 'fixed', layoutSizingV: 'fixed', vars: { stroke: 'v-fg' }, behavior: { version: BEHAVIOR_DATA_VERSION, part: 'spinner' },
+    })];
+}
+
+/** A Button instance with its label, its canvas parts and managed icon slots (start, end, or both). */
 function instance(id, name, x, y, props, varModes, components) {
     const root = node('frame', {
         id, name, x, y, w: 136, h: 48, isInstance: true, sourceId: 'btn', layout: 'horizontal', gap: 6, padding: 12, strokeWidth: 1, strokeAlign: 'inside',
@@ -104,8 +132,9 @@ function instance(id, name, x, y, props, varModes, components) {
         id: `${id}-label`, name: 'Label', parentId: id, text: props.label, w: 80, h: 24, autoW: true,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14, vars: bindings.label, sourceId: 'btn-label',
     });
+    const [spinner] = partCopies(id, BUTTON, props, buttonParts());
     const placement = props.hasIcon ? props.iconPlacement : null;
-    if (!placement) return [root, label];
+    if (!placement) return [root, spinner, label];
     const picks = placement === 'both'
         ? [['iconStart', props.icon, 'start'], ['iconEnd', props.iconEnd, 'end']]
         : placement === 'start'
@@ -125,7 +154,7 @@ function instance(id, name, x, y, props, varModes, components) {
         if (nested) copies.push(...nested.nodes);
     }
     const at = side => slots.find(l => l.id === `${id}-icon-${side}`);
-    return [root, at('start'), label, at('end')].filter(Boolean).concat(copies);
+    return [root, at('start'), spinner, label, at('end')].filter(Boolean).concat(copies);
 }
 
 const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
@@ -149,7 +178,23 @@ function inputMaster() {
         id: 'inp-value', name: 'Value', parentId: 'inp', text: 'Search', w: 120, h: 24, autoW: true,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#18181b'), fontSize: 14, vars: ibindings.label,
     });
-    return [root, value];
+    const parts = Object.fromEntries(inputParts().map(p => [p.behavior.part, p]));
+    return [root, parts.placeholder, value, parts.clear, parts.count];
+}
+
+/** The Input's canvas parts as master nodes: the placeholder, the clear glyph and the count (see INPUT.parts). */
+function inputParts() {
+    const text = (part, name, vars, fill) => node('text', {
+        id: `inp-${part}`, name, parentId: 'inp', text: name, w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug',
+        fills: solid(fill), fontSize: 14, vars, behavior: { version: BEHAVIOR_DATA_VERSION, part },
+    });
+    const placeholderVars = { 'fills.0': 'in-v-placeholder', fontSize: 'in-s-fontSize', lineHeight: 'in-s-lineHeight' };
+    const fgVars = { 'fills.0': 'in-v-fg', fontSize: 'in-s-fontSize', lineHeight: 'in-s-lineHeight' };
+    return [
+        text('placeholder', 'Placeholder', placeholderVars, '#8c8297'),
+        text('clear', '×', fgVars, '#20202a'),
+        text('count', 'Count', placeholderVars, '#8c8297'),
+    ];
 }
 
 /** An Input instance with its value text and managed prefix/suffix slots. */
@@ -163,8 +208,9 @@ function inputInstance(id, name, x, y, props, varModes, components) {
         id: `${id}-value`, name: 'Value', parentId: id, text: props.value ?? '', w: 120, h: 24, autoW: true,
         layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#18181b'), fontSize: 14, vars: ibindings.label, sourceId: 'inp-value',
     });
+    const parts = Object.fromEntries(partCopies(id, INPUT, props, inputParts()).map(p => [p.behavior.part, p]));
     const placement = props.hasIcon ? props.iconPlacement : null;
-    if (!placement) return [root, value];
+    if (!placement) return [root, parts.placeholder, value, parts.clear, parts.count];
     const picks = placement === 'both'
         ? [['prefix', props.prefixIcon, 'start'], ['suffix', props.suffixIcon, 'end']]
         : placement === 'start'
@@ -184,7 +230,7 @@ function inputInstance(id, name, x, y, props, varModes, components) {
         if (nested) copies.push(...nested.nodes);
     }
     const at = side => slots.find(l => l.id === `${id}-icon-${side}`);
-    return [root, at('start'), value, at('end')].filter(Boolean).concat(copies);
+    return [root, at('start'), parts.placeholder, value, parts.clear, parts.count, at('end')].filter(Boolean).concat(copies);
 }
 
 /** The testing document: Components page (master + icons), Testing page (instances). */
@@ -200,6 +246,7 @@ export function buildTestingFile() {
         ...instance('t-disabled', 'Simpan', 280, 40, { hasIcon: false, label: 'Simpan', disabled: true }, MODES('solid', 'primary', 'sm'), icons),
         ...instance('t-filled', 'Detail', 280, 120, { hasIcon: false, label: 'Detail' }, MODES('filled', 'primary', 'sm'), icons),
         ...instance('t-text', 'Hapus', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
+        ...instance('t-loading', 'Simpan', 280, 280, { hasIcon: false, label: 'Simpan', loading: true }, MODES('solid', 'primary', 'sm'), icons),
         ...inputInstance('i-outlined', 'Search', 520, 40, { value: 'Hello', placeholder: 'Search' }, IMODES('outlined', 'default', 'middle'), icons),
         ...inputInstance('i-error', 'Error', 520, 120, { hasIcon: true, iconPlacement: 'start', prefixIcon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'middle'), icons),
         ...inputInstance('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: '20' }, IMODES('filled', 'default', 'middle'), icons),
@@ -214,11 +261,14 @@ export function buildTestingFile() {
         ...inputInstance('i-state-disabled', 'Off', 760, 360, { value: 'Disabled text', placeholder: 'Disabled', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
         ...inputInstance('i-state-error', 'Oops', 760, 440, { value: '', placeholder: 'Something wrong' }, IMODES('outlined', 'error', 'middle'), icons),
     ];
+    // One white frame holds the test instances: Play starts from a top-level frame, and the frame is the page the instances sit on.
+    const playFrame = node('frame', { id: 't-frame', name: 'Testing', x: 0, y: 0, w: 1000, h: 560, fills: solid('#ffffff'), clip: true });
+    const framed = testing.map(n => (n.parentId === null ? { ...n, parentId: playFrame.id } : n));
     return {
         format: 'midas', version: 1, name: 'Testing', pageId: 'page-testing',
         pages: [
             { id: 'page-components', name: 'Components', nodes: components },
-            { id: 'page-testing', name: 'Testing', nodes: testing },
+            { id: 'page-testing', name: 'Testing', nodes: [playFrame, ...framed] },
         ],
         tokens: { colors: [], typography: [] }, assets: {},
         variables: { collections: [...model.collections, ...imodel.collections], items: [...model.items, ...imodel.items] },

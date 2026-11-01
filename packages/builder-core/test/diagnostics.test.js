@@ -146,9 +146,8 @@ test('a master whose stroke has no paint is unbound, so one bind adds and binds 
     }]);
 });
 
-test('loading is an info note: stored and generated, not drawn', () => {
-    const found = diagnoseDocument(doc({ props: { loading: true } }));
-    assert.deepEqual(found, [{ severity: 'info', code: 'loading-not-drawn', node: 'Button', nodeId: 'i1', message: 'Button: loading is stored and generated, but has no visual yet.' }]);
+test('loading draws its spinner part, so it has no diagnostic', () => {
+    assert.deepEqual(diagnoseDocument(doc({ props: { loading: true } })), []);
 });
 
 test('the same document gives the same diagnostics, in the same order', () => {

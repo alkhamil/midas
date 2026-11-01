@@ -102,14 +102,18 @@ test('Play draws a span root with the input, and a bound inside stroke emits no 
     assert.match(styles, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
 });
 
-test('Play disables the input, shows the clear icon only with a value, and counts characters', () => {
+test('Play draws the clear and count parts from their nodes, and only the ones whose node is visible', () => {
     const doc = nodes => ({ pages: [{ id: 'p', name: 'Screens', nodes }], variables });
-    const cleared = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true })]), 'i1').root;
-    assert.ok(cleared.children.some(c => c.attrs.class === 'input-clear'));
-    const empty = toDomTree(doc([master(), instance({}, { value: '', allowClear: true })]), 'i1').root;
-    assert.ok(!empty.children.some(c => c.attrs.class === 'input-clear'));
-    const counted = toDomTree(doc([master(), instance({}, { value: 'hi', showCount: true, maxLength: '20' })]), 'i1').root;
-    assert.equal(counted.children.find(c => c.attrs.class === 'input-count').text, '2 / 20');
+    // The instance's copies of the clear and count parts, as the engine writes them from the props (see partWrites).
+    const part = (name, visible, text) => ({
+        id: `i1-${name}`, name, type: 'text', parentId: 'i1', x: 0, y: 0, w: 20, h: 20, text, visible, fills: solid('#8c8297'), fontSize: 14,
+        vars: labelVars, sourceId: `m-${name}`, behavior: { version: 2, part: name },
+    });
+    const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: '20' }), part('clear', true, '×'), part('count', true, '2 / 20')]), 'i1').root;
+    assert.ok(shown.children.some(c => c.nodeId === 'i1-clear' && c.text === '×'));
+    assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
+    const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), part('clear', false, '×'), part('count', false, '0')]), 'i1').root;
+    assert.ok(!hidden.children.some(c => c.nodeId === 'i1-clear' || c.nodeId === 'i1-count'));
     const off = toDomTree(doc([master(), instance({}, { disabled: true })]), 'i1').root;
     assert.equal(off.children.find(c => c.tag === 'input').attrs.disabled, true);
 });

@@ -7,8 +7,8 @@ const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid',
 
 const button = TEMPLATES.get('button');
 
-test('the owned vars of Button are the fill of the root and the label (the persistent disabled colour)', () => {
-    assert.deepEqual(ownedVarKeys(button), ['fills.0']);
+test('the owned vars of Button are the fill of the root and the label, and the stroke of the spinner', () => {
+    assert.deepEqual(ownedVarKeys(button), ['fills.0', 'stroke']);
 });
 
 test('withoutOwnedVars drops only the owned keys', () => {

@@ -92,6 +92,18 @@ export const BUTTON = {
         'color-solid-text': 'solid-text',
         'color-outline': { default: 'outline', primary: 'outline', danger: 'danger-outline' },
     },
+    // The parts the canvas draws: the spinner is a ring node before the label, shown while `loading` is set.
+    parts: [
+        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true } },
+    ],
+    // What Play draws without a node, and why. The static end state of each is on the canvas through the props and states above.
+    playOnly: [
+        { id: 'spin', reason: 'the spinner rotates in Play; a full ring looks the same at every angle, so the static ring is the canvas end state' },
+        { id: 'hover', reason: 'pointer state; the canvas shows the rest state and the Preview panel shows hover' },
+        { id: 'active', reason: 'pointer press; the canvas shows the rest state and the Preview panel shows active' },
+        { id: 'focus-ring', reason: 'keyboard focus ring follows focus; the canvas shows the rest state' },
+        { id: 'wave', reason: 'click wave is an animation on click; the canvas has no click' },
+    ],
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {
         disabled: { prop: 'disabled', tokens: { bg: 'bg-disabled', fg: 'fg-disabled' } },
@@ -113,6 +125,7 @@ export const BUTTON = {
         label: { fill: 'fg', fontSize: 'fontSize', lineHeight: 'lineHeight' },
         iconStart: { size: 'iconSize' },
         iconEnd: { size: 'iconSize' },
+        spinner: { stroke: 'fg' },
     },
     events: [
         { name: 'onClick', exposeAsTrigger: true },

@@ -72,7 +72,8 @@ test('Play draws a control slot as an input holding the value, while the canvas 
         const { root } = toDomTree(doc([m, labelLayer('m', { layoutSizingH: 'fill' }), labelLayer('i', { layoutSizingH: 'fill' }), inst]), 'i');
         const input = root.children.find(c => c.attrs?.class === 'input-label');
         assert.equal(input.tag, 'input');
-        assert.deepEqual([input.attrs.value, input.attrs.placeholder], ['Ada', 'Type a name']);
+        assert.equal(input.attrs.value, 'Ada');
+        assert.equal(input.attrs['data-node-id'], 'i-label');
         const canvas = toDomTree(doc([m, labelLayer('m')]), 'm');
         assert.equal(canvas.root.children[0].tag, 'span');
     } finally {

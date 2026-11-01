@@ -61,6 +61,36 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "btn",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "btn-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          }
+        },
+        {
           "name": "Label",
           "parentId": "btn",
           "x": 0,
@@ -158,6 +188,56 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "inp",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Placeholder",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inp-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          }
+        },
+        {
           "name": "Value",
           "parentId": "inp",
           "x": 0,
@@ -201,6 +281,106 @@
             "fills.0": "in-v-fg",
             "fontSize": "in-s-fontSize",
             "lineHeight": "in-s-lineHeight"
+          }
+        },
+        {
+          "name": "×",
+          "parentId": "inp",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inp-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          }
+        },
+        {
+          "name": "Count",
+          "parentId": "inp",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Count",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "inp-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
           }
         },
         {
@@ -329,8 +509,35 @@
       "name": "Testing",
       "nodes": [
         {
-          "name": "Simpan",
+          "name": "Testing",
           "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 1000,
+          "h": 560,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-frame"
+        },
+        {
+          "name": "Simpan",
+          "parentId": "t-frame",
           "x": 40,
           "y": 40,
           "w": 136,
@@ -385,6 +592,40 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "t-solid",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-solid-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Label",
           "parentId": "t-solid",
           "x": 0,
@@ -433,7 +674,7 @@
         },
         {
           "name": "Batal",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 40,
           "y": 120,
           "w": 136,
@@ -488,6 +729,40 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "t-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-outlined-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Label",
           "parentId": "t-outlined",
           "x": 0,
@@ -536,7 +811,7 @@
         },
         {
           "name": "Hapus",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 40,
           "y": 200,
           "w": 136,
@@ -626,6 +901,40 @@
             "version": 2,
             "slot": "iconStart"
           }
+        },
+        {
+          "name": "Spinner",
+          "parentId": "t-dashed-icon",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-dashed-icon-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Label",
@@ -753,7 +1062,7 @@
         },
         {
           "name": "Lanjut",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 40,
           "y": 280,
           "w": 136,
@@ -808,6 +1117,40 @@
             "gap": "s-gap",
             "minW": "s-height"
           }
+        },
+        {
+          "name": "Spinner",
+          "parentId": "t-end-icon",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-end-icon-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Label",
@@ -959,7 +1302,7 @@
         },
         {
           "name": "Simpan",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 40,
           "y": 360,
           "w": 136,
@@ -1050,6 +1393,40 @@
             "version": 2,
             "slot": "iconStart"
           }
+        },
+        {
+          "name": "Spinner",
+          "parentId": "t-both",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-both-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Label",
@@ -1278,7 +1655,7 @@
         },
         {
           "name": "Simpan",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 280,
           "y": 40,
           "w": 136,
@@ -1334,6 +1711,40 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "t-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-disabled-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Label",
           "parentId": "t-disabled",
           "x": 0,
@@ -1382,7 +1793,7 @@
         },
         {
           "name": "Detail",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 280,
           "y": 120,
           "w": 136,
@@ -1437,6 +1848,40 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "t-filled",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-filled-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Label",
           "parentId": "t-filled",
           "x": 0,
@@ -1485,7 +1930,7 @@
         },
         {
           "name": "Hapus",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 280,
           "y": 200,
           "w": 136,
@@ -1540,6 +1985,40 @@
           }
         },
         {
+          "name": "Spinner",
+          "parentId": "t-text",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-text-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Label",
           "parentId": "t-text",
           "x": 0,
@@ -1587,8 +2066,146 @@
           "sourceId": "btn-label"
         },
         {
+          "name": "Simpan",
+          "parentId": "t-frame",
+          "x": 280,
+          "y": 280,
+          "w": 136,
+          "h": 48,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#4338ca",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 1,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-loading",
+          "isInstance": true,
+          "sourceId": "btn",
+          "layout": "horizontal",
+          "gap": 6,
+          "padding": 12,
+          "strokeAlign": "inside",
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "props": {
+              "hasIcon": false,
+              "label": "Simpan",
+              "loading": true
+            }
+          },
+          "varModes": {
+            "c-variant": "solid",
+            "c-color": "primary",
+            "c-size": "sm"
+          },
+          "vars": {
+            "fills.0": "v-bg",
+            "stroke": "v-border",
+            "radius": "s-radius",
+            "padH": "s-paddingX",
+            "padV": "s-paddingY",
+            "gap": "s-gap",
+            "minW": "s-height"
+          }
+        },
+        {
+          "name": "Spinner",
+          "parentId": "t-loading",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14,
+          "rotation": 0,
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "radius": 8,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "type": "frame",
+          "id": "t-loading-spinner",
+          "strokeAlign": "inside",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
+          "vars": {
+            "stroke": "v-fg"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "spinner"
+          },
+          "sourceId": "btn-spinner",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Label",
+          "parentId": "t-loading",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#ffffff",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Simpan",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "t-loading-label",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "v-fg",
+            "fontSize": "s-fontSize",
+            "lineHeight": "s-lineHeight"
+          },
+          "sourceId": "btn-label"
+        },
+        {
           "name": "Search",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 520,
           "y": 40,
           "w": 200,
@@ -1642,6 +2259,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Search",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-outlined-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-outlined",
           "x": 0,
@@ -1689,8 +2360,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-outlined-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-outlined",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "5",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-outlined-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Error",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 520,
           "y": 120,
           "w": 200,
@@ -1782,6 +2561,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Search",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-error-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-error",
           "x": 0,
@@ -1827,6 +2660,114 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "×",
+          "parentId": "i-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-error-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "0",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-error-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Icon/check",
@@ -1907,7 +2848,7 @@
         },
         {
           "name": "Tags",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 520,
           "y": 200,
           "w": 200,
@@ -1963,6 +2904,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-filled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-filled-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-filled",
           "x": 0,
@@ -2010,8 +3005,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-filled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-filled-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-filled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "2 / 20",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-filled-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "No edit",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 520,
           "y": 280,
           "w": 200,
@@ -2065,6 +3168,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-disabled-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-disabled",
           "x": 0,
@@ -2112,8 +3269,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-disabled-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "7",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-disabled-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Site",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 520,
           "y": 360,
           "w": 200,
@@ -2168,6 +3433,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-addon",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-addon-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-addon",
           "x": 0,
@@ -2215,8 +3534,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-addon",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-addon-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-addon",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "5",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-addon-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Large",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 40,
           "w": 200,
@@ -2307,6 +3734,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-size-lg",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "large size",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-lg-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-size-lg",
           "x": 0,
@@ -2352,6 +3833,114 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "×",
+          "parentId": "i-size-lg",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-lg-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-size-lg",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "0",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-lg-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Icon/check",
@@ -2432,7 +4021,7 @@
         },
         {
           "name": "Default",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 120,
           "w": 200,
@@ -2523,6 +4112,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-size-md",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "default size",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-md-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-size-md",
           "x": 0,
@@ -2568,6 +4211,114 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "×",
+          "parentId": "i-size-md",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-md-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-size-md",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "0",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-md-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Icon/check",
@@ -2648,7 +4399,7 @@
         },
         {
           "name": "Small",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 200,
           "w": 200,
@@ -2739,6 +4490,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-size-sm",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "small size",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-sm-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-size-sm",
           "x": 0,
@@ -2784,6 +4589,114 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "×",
+          "parentId": "i-size-sm",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-sm-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-size-sm",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "0",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-size-sm-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "name": "Icon/check",
@@ -2864,7 +4777,7 @@
         },
         {
           "name": "Username",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 280,
           "w": 200,
@@ -2918,6 +4831,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-value",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Username",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-value-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-value",
           "x": 0,
@@ -2965,8 +4932,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-value",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-value-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-value",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "9",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-value-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Off",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 360,
           "w": 200,
@@ -3021,6 +5096,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-state-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Disabled",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-disabled-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-state-disabled",
           "x": 0,
@@ -3068,8 +5197,116 @@
           "sourceId": "inp-value"
         },
         {
+          "name": "×",
+          "parentId": "i-state-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-disabled-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-state-disabled",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "13",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-disabled-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Oops",
-          "parentId": null,
+          "parentId": "t-frame",
           "x": 760,
           "y": 440,
           "w": 200,
@@ -3123,6 +5360,60 @@
           }
         },
         {
+          "name": "Placeholder",
+          "parentId": "i-state-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "Something wrong",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-error-placeholder",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "placeholder"
+          },
+          "sourceId": "inp-placeholder",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Value",
           "parentId": "i-state-error",
           "x": 0,
@@ -3168,6 +5459,114 @@
             "lineHeight": "in-s-lineHeight"
           },
           "sourceId": "inp-value"
+        },
+        {
+          "name": "×",
+          "parentId": "i-state-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "×",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-error-clear",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-fg",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "clear"
+          },
+          "sourceId": "inp-clear",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "name": "Count",
+          "parentId": "i-state-error",
+          "x": 0,
+          "y": 0,
+          "w": 80,
+          "h": 24,
+          "rotation": 0,
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#8c8297",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "text": "0",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.35,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "type": "text",
+          "id": "i-state-error-count",
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "vars": {
+            "fills.0": "in-v-placeholder",
+            "fontSize": "in-s-fontSize",
+            "lineHeight": "in-s-lineHeight"
+          },
+          "behavior": {
+            "version": 2,
+            "part": "count"
+          },
+          "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         }
       ]
     }
