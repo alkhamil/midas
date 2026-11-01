@@ -7103,6 +7103,16 @@ function paintStroke(ctx, n, path) {
                 ctx.lineWidth = w;
                 ctx.stroke(path);
             }
+            else if (align === 'inside' && rl && strokeDashArray(n).length === 0) {
+                // An inside stroke of a box is the band between its outline and the outline inset by its width, with the corner radius less
+                // the width: how a CSS border draws it, so the corners and the edges match Play's.
+                const inner = new Path2D();
+                inner.roundRect(w, w, Math.max(0, n.w - w * 2), Math.max(0, n.h - w * 2), cornerRadii(n).map(v => Math.max(0, v - w)));
+                const band = new Path2D();
+                band.addPath(path);
+                band.addPath(inner);
+                ctx.fill(band, 'evenodd');
+            }
             else {
                 if (align === 'outside')
                     outsideClip();
