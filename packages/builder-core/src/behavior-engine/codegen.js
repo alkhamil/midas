@@ -127,8 +127,10 @@ function displayRules(template, master, childrenOf) {
         if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
-        // `control` reads this path.
+        // `control` reads this path. Its width is its text's, as the canvas's hugging layer is: the value, or the placeholder while
+        // the value is empty (field-sizing), not the browser's default width for an input.
         if (controlOf(template)?.slot === key) decls.push(
+            '  field-sizing: content;\n',
             '  background: transparent;\n',
             '  border: none;\n',
             '  outline: none;\n',
