@@ -113,7 +113,10 @@ test('Play draws the clear and count parts from their nodes, and only the ones w
     assert.ok(shown.children.some(c => c.nodeId === 'i1-clear' && c.text === '×'));
     assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
     const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), part('clear', false, '×'), part('count', false, '0')]), 'i1').root;
-    assert.ok(!hidden.children.some(c => c.nodeId === 'i1-clear' || c.nodeId === 'i1-count'));
+    // The clear is kept while allowClear is on, hidden while the value is empty (Play shows it as the value is typed); the count is absent.
+    const kept = hidden.children.find(c => c.nodeId === 'i1-clear');
+    assert.ok(kept && kept.attrs.hidden === true, 'the clear is kept and hidden with an empty value');
+    assert.ok(!hidden.children.some(c => c.nodeId === 'i1-count'), 'the count is absent when its node is hidden');
     const off = toDomTree(doc([master(), instance({}, { disabled: true })]), 'i1').root;
     assert.equal(off.children.find(c => c.tag === 'input').attrs.disabled, true);
 });

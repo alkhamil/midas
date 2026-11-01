@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave } from '@midas/builder-core';
 
 const PREFS_KEY = 'midas.play';
 const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
@@ -247,6 +247,24 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         });
     }
 
+    /** The value's own parts follow the value as it is typed: the counter shows its length, the clear shows while the value is not empty. */
+    function syncValueParts(input) {
+        const root = input.parentElement;
+        const counter = root.querySelector(':scope > [data-role="count"]');
+        if (counter) counter.textContent = counterLabel(input.value, input.maxLength > 0 ? input.maxLength : undefined);
+        const clear = root.querySelector(':scope > [data-role="clear"]');
+        if (clear) clear.hidden = input.value === '';
+    }
+
+    /** A click on the clear empties the value, as typing does; the value's parts follow it. */
+    function clearValue(clear) {
+        const input = clear.parentElement.querySelector(':scope > input[data-role="value"]');
+        if (!input) return;
+        input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+    }
+
     /** Previous and next, and the counter, follow the frame on screen. */
     function updateControls() {
         const step = stepFrame(pageFrames, frameId, 'next');
@@ -470,6 +488,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         finishPress();
         const waveHost = e.target.closest?.('.play-stage [data-wave]');
         if (waveHost && !waveHost.hasAttribute('data-blocked')) showWave(waveHost);
+        const clear = e.target.closest?.('[data-role="clear"]');
+        if (clear) return clearValue(clear);
         const step = e.target.closest('[data-step]');
         if (step && !step.disabled) {
             const { target } = stepFrame(pageFrames, frameId, step.dataset.step);
@@ -486,6 +506,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         }
         if (e.target.closest('[aria-label="Close (Esc)"]')) return close();
         if (e.target.closest('.play-menu')) return onMenuClick(e);
+    });
+    overlay.addEventListener('input', e => {
+        if (e.target.matches('input[data-role="value"]')) syncValueParts(e.target);
     });
     overlay.addEventListener('change', e => {
         if (e.target.matches('[data-background]')) {

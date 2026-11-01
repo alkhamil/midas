@@ -9518,7 +9518,8 @@ function ownedFieldsOf(n, getNode, components, labels) {
         const inst = getNode(n.parentId);
         const template = inst?.isInstance ? ownedTemplateOf(inst, getNode, components, labels) : null;
         const part = template && canvasPartsOf(template).find(p => p.id === partId);
-        return part ? ['visible', ...(part.text?.counter ? ['text'] : [])] : [];
+        // A part's literal props write its own fields (a placeholder's text), and its visibility and counter follow the props.
+        return part ? ['visible', ...(part.text?.counter ? ['text'] : []), ...literalFieldNames(template).filter(f => f.key === partId).map(f => f.field)] : [];
     }
     const template = ownedTemplateOf(n, getNode, components, labels);
     const role = n.isInstance ? 'root' : 'label';

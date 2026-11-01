@@ -17,7 +17,7 @@ import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
-import { canvasPartsOf } from '../behavior-engine/display.js';
+import { canvasPartsOf, counterLabel } from '../behavior-engine/display.js';
 import { borderStyleOf } from '../behavior-engine/variant-style.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
@@ -263,19 +263,26 @@ function renderTemplate(n, template, parent, scope) {
                 // The input is the one box of the value or the placeholder that shows: while the value is empty and the placeholder shows, the
                 // input is the placeholder's box (its node id is the placeholder's), otherwise the value layer's. Its size is the canvas's.
                 const covered = showsPlaceholder && String(props[control.value] ?? '') === '' ? placeholder : labelEntry?.node;
-                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': covered?.id };
+                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': covered?.id, 'data-role': 'value' };
                 if (showsPlaceholder && String(placeholder.text ?? '') !== '') inputAttrs.placeholder = String(placeholder.text);
                 Object.assign(style, labelLayoutOf(covered, covered === placeholder ? n : labelEntry?.parent ?? n));
-                if (covered && covered.layoutSizingH !== 'fill') style.width = `${covered.w}px`;
+                // A hugging width is the text's (field-sizing), so it follows the value as it is typed; a fixed one is the layer's.
+                if (covered && covered.layoutSizingH === 'fixed') style.width = `${covered.w}px`;
                 if (covered && covered.layoutSizingV !== 'fill') style.height = `${covered.h}px`;
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
                 if (control.maxlength && String(props[control.maxlength] ?? '') !== '') inputAttrs.maxLength = String(props[control.maxlength]);
                 if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
                 children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
-                for (const id of ['clear', 'count']) {
-                    const el = partElement(n, id, scope);
-                    if (el) children.push(el);
+                // The clear and the counter are drawn from their nodes. While allowClear is on the clear is kept though the canvas hides it
+                // with an empty value: Play shows it as the value is typed, and hides it again when the value is emptied (the value's parts follow
+                // it in Play; the canvas stays as it is).
+                const clearLayer = partLayerOf(n, 'clear', scope);
+                if (clearLayer && props[control.clear] === true) {
+                    const el = renderNode({ ...clearLayer, visible: true }, n, scope, false);
+                    if (el) children.push({ ...el, attrs: { ...el.attrs, 'data-role': 'clear', hidden: String(props[control.value] ?? '') === '' } });
                 }
+                const counter = partElement(n, 'count', scope);
+                if (counter) children.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
             }
             else {
                 // The frame parts (the Button's spinner) sit before the text, as the master draws them.
@@ -317,7 +324,8 @@ function renderTemplate(n, template, parent, scope) {
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
-    const style = { display: 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0), template.rootAlign) };
+    // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
+    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0), template.rootAlign) };
     // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, { borderWidth: '0px' });
@@ -399,7 +407,9 @@ function placement(n, parent, responsive) {
     /** @type {Record<string, string>} */
     const style = {};
     if (!parent) {
-        Object.assign(style, responsive ? { width: '100%', height: '100%' } : { width: `${n.w}px`, height: `${n.h}px` });
+        // A top-level layer is its frame's size, unless it hugs its content (a component instance): then its content gives the size, as it does on the canvas.
+        if (responsive) Object.assign(style, { width: '100%', height: '100%' });
+        else Object.assign(style, n.layoutSizingH === 'hug' ? {} : { width: `${n.w}px` }, n.layoutSizingV === 'hug' ? {} : { height: `${n.h}px` });
     }
     else if (isAutoLayout(parent) && n.layoutPositioning !== 'absolute') {
         Object.assign(style, flowSizing(n, parent));
