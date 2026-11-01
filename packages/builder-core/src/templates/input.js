@@ -1,3 +1,5 @@
+import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
+
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
 /** @type {TemplateSchema} */
@@ -6,20 +8,17 @@ export const INPUT = {
     name: 'Input',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
-    // The affixes: an icon (managed slot) and a text, on each side of the value. `hasPrefix` shows the prefix icon and the text
-    // (the text only while it is not empty); `hasSuffix` the same on the other side.
+    // The icons are Button's (icon-slots.js). The text affixes: `hasPrefix` shows the prefix text on the start side, `hasSuffix` the suffix
+    // text on the end side, each only while its text is not empty.
     anatomy: [
-        { id: 'prefix', kind: 'icon', optional: true, managed: true },
+        ICON_START,
         { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasPrefix', is: true }, { prop: 'prefixText', empty: false }] } },
         { id: 'label', kind: 'control', typography: 'value' },
         { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasSuffix', is: true }, { prop: 'suffixText', empty: false }] } },
-        { id: 'suffix', kind: 'icon', optional: true, managed: true },
+        ICON_END,
     ],
-    // The managed icon slots: `show` turns one on, `component` is the icon it holds.
-    icons: [
-        { show: 'hasPrefix', slot: 'prefix', component: 'prefixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
-        { show: 'hasSuffix', slot: 'suffix', component: 'suffixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
-    ],
+    // The managed icon slots (see icon-slots.js).
+    icons: ICON_DEFS,
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `clear` is
     // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
@@ -40,13 +39,12 @@ export const INPUT = {
         maxLength: { source: 'literal', type: 'string', default: '' },
         allowClear: { source: 'literal', type: 'boolean', default: false },
         showCount: { source: 'literal', type: 'boolean', default: false },
+        ...ICON_PROPS,
         hasPrefix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
         hasSuffix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
-        // The text and the icon of each affix are remembered while its switch is off (`remembered`), so switching it back on restores them.
+        // The text of each affix is remembered while its switch is off (`remembered`), so switching it back on restores it.
         prefixText: { source: 'literal', type: 'string', default: '', node: { key: 'prefixText', field: 'text' }, visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
         suffixText: { source: 'literal', type: 'string', default: '', node: { key: 'suffixText', field: 'text' }, visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
-        prefixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
-        suffixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
@@ -125,8 +123,7 @@ export const INPUT = {
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
         clear: { fill: 'fg', typography: 'clearTypography' },
         count: { fill: 'placeholder', typography: 'countTypography' },
-        prefix: { size: 'iconSize' },
-        suffix: { size: 'iconSize' },
+        ...ICON_DISPLAY,
     },
     events: [
         { name: 'onFocus', exposeAsTrigger: false },

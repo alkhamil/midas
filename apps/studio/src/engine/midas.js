@@ -9531,18 +9531,24 @@ function ownedFieldsOf(n, getNode, components, labels) {
         return part ? ['visible', ...(part.text?.counter ? ['text'] : []), ...literalFieldNames(template).filter(f => f.key === partId).map(f => f.field)] : [];
     }
     const template = ownedTemplateOf(n, getNode, components, labels);
-    const role = n.isInstance ? 'root' : 'label';
     if (!template) return [];
-    // The value layer's visibility follows the value (partWrites), so the master's copy never overwrites it.
+    // The key the template writes the layer under: root, the label (the control), or a text slot by its id.
+    const key = n.isInstance ? 'root' : getNode(n.sourceId)?.name;
+    // The value layer's visibility follows the value (partWrites), so the master's copy never overwrites it; a text slot with a
+    // shownWhen follows its condition.
     const shownByValue = !n.isInstance && template.control?.hideWhenEmpty ? ['visible'] : [];
-    return [...literalFieldNames(template).filter(f => f.key === role).map(f => f.field), ...shownByValue];
+    const shownByCondition = !n.isInstance && template.anatomy.some(s => s.id === key && s.shownWhen) ? ['visible'] : [];
+    return [...literalFieldNames(template).filter(f => f.key === key).map(f => f.field), ...shownByValue, ...shownByCondition];
 }
 /** The template of the bound instance a node belongs to (the instance root, or its label layer); null otherwise. */
 function ownedTemplateOf(n, getNode, components, labels) {
     const inst = n.isInstance ? n : getNode(n.parentId);
-    if (!inst?.isInstance || (!n.isInstance && labels.get(inst.sourceId) !== n.sourceId)) return null;
+    if (!inst?.isInstance) return null;
     const binding = components.get(inst.sourceId)?.behavior;
-    return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template || n.isInstance || labels.get(inst.sourceId) === n.sourceId) return template;
+    // A text slot other than the label (an affix text) is owned by the template too: its text and visibility come from the props.
+    return template.anatomy.some(s => s.kind === 'text' && s.id === getNode(n.sourceId)?.name) ? template : null;
 }
 /** The label layer of every component (labelLayerOf: its first text layer, depth first), from one scan of the document. */
 function labelIdsOfComponents() {
@@ -9588,12 +9594,20 @@ function partLayersOf(inst, master) {
     }
     return out;
 }
+/** The instance's copy of each text slot of the master (an affix text, by slot id; the label is written through its own key). */
+function textSlotLayersOf(inst, master, template) {
+    const out = {};
+    for (const m of doc.children(master.id)) {
+        if (template.anatomy.some(s => s.kind === 'text' && s.id === m.name)) out[m.name] = doc.children(inst.id).find(c => c.sourceId === m.id);
+    }
+    return out;
+}
 function applyLiteralFields(inst) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return;
     const { label } = instanceLabelOf(inst, master);
-    const target = { root: inst, label, ...partLayersOf(inst, master) };
+    const target = { root: inst, label, ...partLayersOf(inst, master), ...textSlotLayersOf(inst, master, template) };
     const props = resolveProps(template, inst.behavior?.props ?? {});
     for (const { key, field, value } of [...literalFields(template, props), ...partWrites(template, props)]) {
         const n = target[key];

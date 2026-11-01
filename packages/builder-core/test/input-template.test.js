@@ -128,7 +128,7 @@ test('binding covers collections, stroke and state modes; the border follows the
     assert.deepEqual(problems, []);
     assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'v-border'));
     const at = (preview, combo = { size: 'middle', variant: 'outlined', status: 'default' }) =>
-        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasPrefix: false, hasSuffix: false, prefixIcon: null, suffixIcon: null, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
+        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
     assert.equal(at('default')['--input-border'], '#d9d9d9');
     assert.equal(at('default', { size: 'middle', variant: 'outlined', status: 'error' })['--input-border'], '#ff4d4f');
     assert.equal(at('hover')['--input-border'], '#4096ff');

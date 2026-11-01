@@ -293,7 +293,13 @@ function renderTemplate(n, template, parent, scope) {
                     if (part.spin) el.style.animation = SPIN_ANIMATION;
                     children.push(el);
                 }
-                if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+                if (slot.optional) {
+                    // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
+                    const layer = scope.childrenOf(n.id).find(c => c.name === slot.id && c.type === 'text');
+                    const el = layer && layer.visible !== false ? renderNode(layer, n, scope, false) : null;
+                    if (el) children.push(el);
+                }
+                else children.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
         else if (slot.managed) {

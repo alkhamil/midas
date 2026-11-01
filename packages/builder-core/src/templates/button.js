@@ -1,3 +1,5 @@
+import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
+
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
 /** @type {TemplateSchema} */
@@ -7,16 +9,12 @@ export const BUTTON = {
     // The element the component is written as. `disabledState` is the persistent state that disables it; `blockClickProps` stop onClick.
     element: { tag: 'button', attrs: { type: 'button' }, disabledState: 'disabled', blockClickProps: ['disabled', 'loading'] },
     anatomy: [
-        { id: 'iconStart', kind: 'icon', optional: true, managed: true },
+        ICON_START,
         { id: 'label', kind: 'text', typography: 'label' },
-        { id: 'iconEnd', kind: 'icon', optional: true, managed: true },
+        ICON_END,
     ],
-    // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. `tokens` names the
-    // tokens that colour and size the icon.
-    icons: [
-        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
-        { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
-    ],
+    // The managed icon slots (see icon-slots.js).
+    icons: ICON_DEFS,
     // The focus outline: its width and offset are static; outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
     outline: { width: 2, offset: 1 },
     interaction: { focus: 'outline', wave: true },
@@ -26,10 +24,7 @@ export const BUTTON = {
         size: { source: 'variable', collection: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'] },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
-        hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
-        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] }, visibleIf: { prop: 'hasIcon', is: true } },
-        icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true }, remembered: true },
-        iconEnd: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true }, remembered: true },
+        ...ICON_PROPS,
         loading: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
@@ -124,8 +119,7 @@ export const BUTTON = {
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'labelTypography' },
-        iconStart: { size: 'iconSize' },
-        iconEnd: { size: 'iconSize' },
+        ...ICON_DISPLAY,
         spinner: { stroke: 'fg' },
     },
     events: [

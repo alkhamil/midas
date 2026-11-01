@@ -146,7 +146,7 @@ test('interaction is schema data: bad values and a mismatched focus pairing are 
 
 test('the input halo uses the default, error and warning colours', () => {
     const imodel = inputModel({});
-    const halo = status => previewOf(INPUT, imodel.binding, { variant: 'outlined', status, size: 'middle' }, { collections: imodel.collections, items: imodel.items }, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', prefixIcon: null, suffixIcon: null, addonBefore: '', addonAfter: '', disabled: false, readOnly: false }, 'focus-visible').vars['--input-outline-color'];
+    const halo = status => previewOf(INPUT, imodel.binding, { variant: 'outlined', status, size: 'middle' }, { collections: imodel.collections, items: imodel.items }, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, 'focus-visible').vars['--input-outline-color'];
     assert.equal(halo('default'), '#4096ff33');
     assert.equal(halo('error'), '#ff4d4f33');
     assert.equal(halo('warning'), '#faad1433');

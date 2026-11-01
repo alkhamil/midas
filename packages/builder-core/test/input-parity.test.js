@@ -98,7 +98,7 @@ test('status switches the wrapper colours and focus keeps the status colour', ()
     const css = cssOf();
     const errorBase = /\.input\[data-variant="outlined"\]\[data-status="error"\]\[data-size="middle"\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
     assert.ok(errorBase.includes('--input-border: #ff4d4f'), 'error border on the wrapper');
-    const vars = (preview, combo) => previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', prefixIcon: null, suffixIcon: null, addonBefore: '', addonAfter: '', disabled: false, readOnly: false }, preview).vars;
+    const vars = (preview, combo) => previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
     const combo = { size: 'middle', variant: 'outlined', status: 'error' };
     assert.equal(vars('focus', combo)['--input-border'], '#ff4d4f', 'focus keeps the error border');
     assert.equal(vars('focus-visible', combo)['--input-outline-color'], '#ff4d4f33', 'the ring keeps the error colour');

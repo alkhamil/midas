@@ -201,6 +201,55 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "inp-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "inp",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
           "id": "inp-label",
           "name": "label",
           "type": "text",
@@ -379,6 +428,55 @@
           "vars": {
             "fills.0": "in-v-placeholder",
             "typography": "in-s-countTypography"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "inp-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "inp",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
           }
         },
         {
@@ -2363,6 +2461,59 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-outlined-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-outlined",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -2564,6 +2715,59 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-outlined-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-outlined",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 520,
@@ -2599,8 +2803,9 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasPrefix": true,
-              "prefixIcon": "icon-check",
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "icon": "icon-check",
               "value": "",
               "placeholder": "Search"
             }
@@ -2635,8 +2840,8 @@
           "locked": false,
           "clip": true,
           "version": 0,
-          "id": "i-error-prefix",
-          "name": "prefix",
+          "id": "i-error-iconStart",
+          "name": "iconStart",
           "type": "frame",
           "parentId": "i-error",
           "isInstance": false,
@@ -2650,7 +2855,7 @@
           "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
-            "slot": "prefix"
+            "slot": "iconStart"
           },
           "padding": 0,
           "gap": 0,
@@ -2662,6 +2867,59 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-error-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-error",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -2872,10 +3130,63 @@
           "overrides": {}
         },
         {
-          "id": "i-error-prefix-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-error-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-error",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "id": "i-error-iconStart-ic-icon-check",
           "name": "Icon/check",
           "type": "frame",
-          "parentId": "i-error-prefix",
+          "parentId": "i-error-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -2901,10 +3212,10 @@
           "overrides": {}
         },
         {
-          "id": "i-error-prefix-ic-icon-check-path",
+          "id": "i-error-iconStart-ic-icon-check-path",
           "name": "check",
           "type": "path",
-          "parentId": "i-error-prefix-ic-icon-check",
+          "parentId": "i-error-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -3010,6 +3321,59 @@
             "c-input-status": "default",
             "c-input-size": "middle"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-filled-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-filled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -3220,6 +3584,59 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-filled-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-filled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 520,
@@ -3276,6 +3693,59 @@
             "c-input-status": "default",
             "c-input-size": "middle"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-disabled-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-disabled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -3486,6 +3956,59 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-disabled-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-disabled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 520,
@@ -3523,10 +4046,8 @@
             "props": {
               "value": "midas",
               "hasPrefix": true,
-              "prefixIcon": "icon-check",
               "prefixText": "https://",
               "hasSuffix": true,
-              "suffixIcon": "icon-arrow",
               "suffixText": ".com"
             }
           },
@@ -3558,35 +4079,48 @@
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": true,
+          "clip": false,
           "version": 0,
-          "id": "i-addon-prefix",
-          "name": "prefix",
-          "type": "frame",
+          "id": "i-addon-prefixText",
+          "name": "prefixText",
+          "type": "text",
           "parentId": "i-addon",
-          "isInstance": false,
-          "component": false,
-          "overrides": {},
-          "w": 16,
-          "h": 16,
-          "layout": "horizontal",
-          "fills": [],
+          "text": "https://",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
           "behavior": {
             "version": 2,
-            "slot": "prefix"
+            "text": "prefixText"
           },
-          "padding": 0,
-          "gap": 0,
-          "padT": 0,
-          "padR": 0,
-          "padB": 0,
-          "padL": 0,
           "vars": {
-            "w": "in-s-iconSize",
-            "h": "in-s-iconSize"
-          }
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -3806,184 +4340,48 @@
           "opacity": 1,
           "visible": true,
           "locked": false,
-          "clip": true,
+          "clip": false,
           "version": 0,
-          "id": "i-addon-suffix",
-          "name": "suffix",
-          "type": "frame",
+          "id": "i-addon-suffixText",
+          "name": "suffixText",
+          "type": "text",
           "parentId": "i-addon",
-          "isInstance": false,
-          "component": false,
-          "overrides": {},
-          "w": 16,
-          "h": 16,
-          "layout": "horizontal",
-          "fills": [],
+          "text": ".com",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
           "layoutSizingH": "hug",
           "layoutSizingV": "hug",
-          "behavior": {
-            "version": 2,
-            "slot": "suffix"
-          },
-          "padding": 0,
-          "gap": 0,
-          "padT": 0,
-          "padR": 0,
-          "padB": 0,
-          "padL": 0,
-          "vars": {
-            "w": "in-s-iconSize",
-            "h": "in-s-iconSize"
-          }
-        },
-        {
-          "id": "i-addon-prefix-ic-icon-check",
-          "name": "Icon/check",
-          "type": "frame",
-          "parentId": "i-addon-prefix",
-          "x": 0,
-          "y": 0,
-          "w": 24,
-          "h": 24,
-          "component": false,
-          "layout": "horizontal",
-          "gap": 0,
-          "padding": 0,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill",
-          "fills": [],
-          "clip": false,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "rotation": 0,
-          "version": 0,
-          "isInstance": true,
-          "sourceId": "icon-check",
-          "overrides": {}
-        },
-        {
-          "id": "i-addon-prefix-ic-icon-check-path",
-          "name": "check",
-          "type": "path",
-          "parentId": "i-addon-prefix-ic-icon-check",
-          "x": 0,
-          "y": 0,
-          "w": 24,
-          "h": 24,
-          "pathW": 24,
-          "pathH": 24,
-          "closed": true,
-          "points": [
-            {
-              "x": 4,
-              "y": 4
-            },
-            {
-              "x": 20,
-              "y": 12
-            },
-            {
-              "x": 4,
-              "y": 20
-            }
-          ],
           "fills": [
             {
               "type": "solid",
-              "color": "#20202a",
+              "color": "#18181b",
               "opacity": 1,
               "visible": true
             }
           ],
-          "stroke": "#20202a",
-          "strokeWidth": 0,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "radius": 0,
-          "version": 0,
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
-          "sourceId": "icon-check-path",
-          "overrides": {},
-          "vars": {
-            "fills.0": "in-v-fg"
-          }
-        },
-        {
-          "id": "i-addon-suffix-ic-icon-arrow",
-          "name": "Icon/arrow",
-          "type": "frame",
-          "parentId": "i-addon-suffix",
-          "x": 0,
-          "y": 0,
-          "w": 24,
-          "h": 24,
-          "component": false,
-          "layout": "horizontal",
-          "gap": 0,
-          "padding": 0,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "fill",
-          "fills": [],
-          "clip": false,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "rotation": 0,
-          "version": 0,
-          "isInstance": true,
-          "sourceId": "icon-arrow",
           "overrides": {}
-        },
-        {
-          "id": "i-addon-suffix-ic-icon-arrow-path",
-          "name": "arrow",
-          "type": "path",
-          "parentId": "i-addon-suffix-ic-icon-arrow",
-          "x": 0,
-          "y": 0,
-          "w": 24,
-          "h": 24,
-          "pathW": 24,
-          "pathH": 24,
-          "closed": false,
-          "points": [
-            {
-              "x": 4,
-              "y": 12
-            },
-            {
-              "x": 20,
-              "y": 12
-            }
-          ],
-          "fills": [],
-          "stroke": "#20202a",
-          "strokeWidth": 2,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "radius": 0,
-          "version": 0,
-          "component": false,
-          "isInstance": false,
-          "sourceId": "icon-arrow-path",
-          "overrides": {},
-          "vars": {
-            "stroke": "in-v-fg"
-          }
         },
         {
           "name": "Input",
@@ -4021,8 +4419,9 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasPrefix": true,
-              "prefixIcon": "icon-check",
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "icon": "icon-check",
               "placeholder": "large size"
             }
           },
@@ -4056,8 +4455,8 @@
           "locked": false,
           "clip": true,
           "version": 0,
-          "id": "i-size-lg-prefix",
-          "name": "prefix",
+          "id": "i-size-lg-iconStart",
+          "name": "iconStart",
           "type": "frame",
           "parentId": "i-size-lg",
           "isInstance": false,
@@ -4071,7 +4470,7 @@
           "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
-            "slot": "prefix"
+            "slot": "iconStart"
           },
           "padding": 0,
           "gap": 0,
@@ -4083,6 +4482,59 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-lg-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-size-lg",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -4293,10 +4745,63 @@
           "overrides": {}
         },
         {
-          "id": "i-size-lg-prefix-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-lg-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-size-lg",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "id": "i-size-lg-iconStart-ic-icon-check",
           "name": "Icon/check",
           "type": "frame",
-          "parentId": "i-size-lg-prefix",
+          "parentId": "i-size-lg-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -4322,10 +4827,10 @@
           "overrides": {}
         },
         {
-          "id": "i-size-lg-prefix-ic-icon-check-path",
+          "id": "i-size-lg-iconStart-ic-icon-check-path",
           "name": "check",
           "type": "path",
-          "parentId": "i-size-lg-prefix-ic-icon-check",
+          "parentId": "i-size-lg-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -4408,8 +4913,9 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasPrefix": true,
-              "prefixIcon": "icon-check",
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "icon": "icon-check",
               "placeholder": "default size"
             }
           },
@@ -4443,8 +4949,8 @@
           "locked": false,
           "clip": true,
           "version": 0,
-          "id": "i-size-md-prefix",
-          "name": "prefix",
+          "id": "i-size-md-iconStart",
+          "name": "iconStart",
           "type": "frame",
           "parentId": "i-size-md",
           "isInstance": false,
@@ -4458,7 +4964,7 @@
           "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
-            "slot": "prefix"
+            "slot": "iconStart"
           },
           "padding": 0,
           "gap": 0,
@@ -4470,6 +4976,59 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-md-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-size-md",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -4680,10 +5239,63 @@
           "overrides": {}
         },
         {
-          "id": "i-size-md-prefix-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-md-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-size-md",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "id": "i-size-md-iconStart-ic-icon-check",
           "name": "Icon/check",
           "type": "frame",
-          "parentId": "i-size-md-prefix",
+          "parentId": "i-size-md-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -4709,10 +5321,10 @@
           "overrides": {}
         },
         {
-          "id": "i-size-md-prefix-ic-icon-check-path",
+          "id": "i-size-md-iconStart-ic-icon-check-path",
           "name": "check",
           "type": "path",
-          "parentId": "i-size-md-prefix-ic-icon-check",
+          "parentId": "i-size-md-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -4795,8 +5407,9 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasPrefix": true,
-              "prefixIcon": "icon-check",
+              "hasIcon": true,
+              "iconPlacement": "start",
+              "icon": "icon-check",
               "placeholder": "small size"
             }
           },
@@ -4830,8 +5443,8 @@
           "locked": false,
           "clip": true,
           "version": 0,
-          "id": "i-size-sm-prefix",
-          "name": "prefix",
+          "id": "i-size-sm-iconStart",
+          "name": "iconStart",
           "type": "frame",
           "parentId": "i-size-sm",
           "isInstance": false,
@@ -4845,7 +5458,7 @@
           "layoutSizingV": "hug",
           "behavior": {
             "version": 2,
-            "slot": "prefix"
+            "slot": "iconStart"
           },
           "padding": 0,
           "gap": 0,
@@ -4857,6 +5470,59 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-sm-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-size-sm",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -5067,10 +5733,63 @@
           "overrides": {}
         },
         {
-          "id": "i-size-sm-prefix-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-size-sm-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-size-sm",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "id": "i-size-sm-iconStart-ic-icon-check",
           "name": "Icon/check",
           "type": "frame",
-          "parentId": "i-size-sm-prefix",
+          "parentId": "i-size-sm-iconStart",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -5096,10 +5815,10 @@
           "overrides": {}
         },
         {
-          "id": "i-size-sm-prefix-ic-icon-check-path",
+          "id": "i-size-sm-iconStart-ic-icon-check-path",
           "name": "check",
           "type": "path",
-          "parentId": "i-size-sm-prefix-ic-icon-check",
+          "parentId": "i-size-sm-iconStart-ic-icon-check",
           "x": 0,
           "y": 0,
           "w": 24,
@@ -5203,6 +5922,59 @@
             "c-input-status": "default",
             "c-input-size": "middle"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-value-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-value",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -5413,6 +6185,59 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-value-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-value",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 760,
@@ -5470,6 +6295,59 @@
             "c-input-status": "default",
             "c-input-size": "middle"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-state-disabled-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-state-disabled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -5680,6 +6558,59 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-state-disabled-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-state-disabled",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 760,
@@ -5736,6 +6667,59 @@
             "c-input-status": "error",
             "c-input-size": "middle"
           }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-state-error-prefixText",
+          "name": "prefixText",
+          "type": "text",
+          "parentId": "i-state-error",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "prefixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-prefixText",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
         },
         {
           "x": 0,
@@ -5941,6 +6925,59 @@
             "typography": "in-s-countTypography"
           },
           "sourceId": "inp-count",
+          "component": false,
+          "isInstance": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": false,
+          "locked": false,
+          "clip": false,
+          "version": 0,
+          "id": "i-state-error-suffixText",
+          "name": "suffixText",
+          "type": "text",
+          "parentId": "i-state-error",
+          "text": "",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "text": "suffixText"
+          },
+          "vars": {
+            "fills.0": "in-v-fg",
+            "typography": "in-s-addonTypography"
+          },
+          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}

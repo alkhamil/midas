@@ -37,15 +37,18 @@ export function layerSpecsOf(template) {
     const partSpec = part => ({ key: part.id, role: 'part', type: part.arc ? 'ellipse' : part.kind === 'text' ? 'text' : 'frame', part, behavior: { part: part.id } });
     const framed = canvasPartsOf(template).filter(part => part.kind !== 'text').map(partSpec);
     const texted = canvasPartsOf(template).filter(part => part.kind === 'text').map(partSpec);
-    let placed = false;
+    // The text parts follow the control (its value, placeholder, clear and count sit together), so the text after it (an affix) comes after them.
+    let placed = false, textedPlaced = false;
     for (const slot of template.anatomy) {
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed icon slot is a layer of the instance only, shown while its props say so (instanceOf); a master holds none.
         if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: true });
-        else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional });
+        // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
+        else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
+        if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
     }
     if (!placed) specs.push(...framed);
-    specs.push(...texted);
+    if (!textedPlaced) specs.push(...texted);
     return specs;
 }
 
@@ -104,14 +107,15 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
     const layer = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {
-        const hit = matchOf(spec, children, claimed);
+        const hit = spec.optional && spec.role === 'text' ? children.find(c => !claimed.has(c.id) && c.behavior?.text === spec.key) : matchOf(spec, children, claimed);
         if (hit) {
             claimed.add(hit.id);
             matched.push({ key: spec.key, nodeId: hit.id });
             layer.set(spec.key, hit);
             continue;
         }
-        if (spec.optional) continue;
+        // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
+        if (spec.role === 'slot') continue;
         const node = nodeOf(spec, template, binding, idOf, frame.id);
         created.push(node);
         claimed.add(node.id);
