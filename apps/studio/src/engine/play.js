@@ -240,8 +240,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         const placed = viewportLayout({ viewport: { width: vw, height: vh }, frame: box, mode: prefs.mode });
         sizer.style.width = `${Math.max(vw, placed.width)}px`;
         sizer.style.height = `${Math.max(vh, placed.height)}px`;
+        // Whole pixels: a frame centred on a half pixel is drawn with its borders on the half, the canvas draws them on the pixel grid.
         Object.assign(stage.style, {
-            left: `${placed.offsetX}px`, top: `${placed.offsetY}px`, width: `${box.width}px`, height: `${box.height}px`,
+            left: `${Math.round(placed.offsetX)}px`, top: `${Math.round(placed.offsetY)}px`, width: `${box.width}px`, height: `${box.height}px`,
             transformOrigin: '0 0', transform: placed.scale === 1 ? '' : `scale(${placed.scale})`,
         });
     }
