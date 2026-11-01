@@ -29,14 +29,19 @@ const LAYER = { rotation: 0, stroke: '#000000', strokeWidth: 0, radius: 0, opaci
 export function layerSpecsOf(template) {
     const specs = [{ key: 'root', role: 'root', type: 'frame' }];
     const control = controlOf(template);
+    // Frame parts (the spinner) sit before the text layers, as the renderer draws them: the first text layer comes after them.
+    const partSpec = part => ({ key: part.id, role: 'part', type: part.arc ? 'ellipse' : part.kind === 'text' ? 'text' : 'frame', part, behavior: { part: part.id } });
+    const framed = canvasPartsOf(template).filter(part => part.kind !== 'text').map(partSpec);
+    const texted = canvasPartsOf(template).filter(part => part.kind === 'text').map(partSpec);
+    let placed = false;
     for (const slot of template.anatomy) {
+        if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed icon slot is a layer of the instance only, shown while its props say so (instanceOf); a master holds none.
         if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: true });
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional });
     }
-    for (const part of canvasPartsOf(template)) {
-        specs.push({ key: part.id, role: 'part', type: part.arc ? 'ellipse' : part.kind === 'text' ? 'text' : 'frame', part, behavior: { part: part.id } });
-    }
+    if (!placed) specs.push(...framed);
+    specs.push(...texted);
     return specs;
 }
 
@@ -90,6 +95,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     const claimed = new Set();
     const specs = layerSpecsOf(template);
     frame.component = true;
+    // A master lays its parts out as an auto layout frame, the way the canvas lays out a component; a frame that is already auto layout keeps its own.
+    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug', layoutSizingV: 'hug' });
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
     const layer = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {

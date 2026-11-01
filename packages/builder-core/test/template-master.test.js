@@ -11,7 +11,7 @@ const counter = () => { let n = 0; return key => `${key}-${++n}`; };
 const variablesOf = model => ({ collections: model.collections, items: model.items });
 
 test('Button is built from its label, icon slots and spinner; Input from its value, addons, icons and parts', () => {
-    assert.deepEqual(layerSpecsOf(TEMPLATES.get('button')).map(s => s.key), ['root', 'iconStart', 'label', 'iconEnd', 'spinner']);
+    assert.deepEqual(layerSpecsOf(TEMPLATES.get('button')).map(s => s.key), ['root', 'iconStart', 'spinner', 'label', 'iconEnd']);
     assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'addonBefore', 'prefix', 'label', 'suffix', 'addonAfter', 'placeholder', 'clear', 'count']);
 });
 
@@ -19,7 +19,7 @@ test('applying a Button template to a frame creates its label and spinner, binds
     const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };
     const out = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [], binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });
-    assert.deepEqual(out.created.map(n => n.name), ['label', 'spinner']);
+    assert.deepEqual(out.created.map(n => n.name), ['spinner', 'label']);
     assert.equal(out.created.find(n => n.name === 'spinner').type, 'ellipse');
     assert.deepEqual(out.problems, []);
     assert.equal(frame.behavior.templateId, 'button');
