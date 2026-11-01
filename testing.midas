@@ -2599,8 +2599,7 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasIcon": true,
-              "iconPlacement": "start",
+              "hasPrefix": true,
               "prefixIcon": "icon-check",
               "value": "",
               "placeholder": "Search"
@@ -3523,8 +3522,12 @@
             "version": 2,
             "props": {
               "value": "midas",
-              "addonBefore": "https://",
-              "addonAfter": ".com"
+              "hasPrefix": true,
+              "prefixIcon": "icon-check",
+              "prefixText": "https://",
+              "hasSuffix": true,
+              "suffixIcon": "icon-arrow",
+              "suffixText": ".com"
             }
           },
           "vars": {
@@ -3543,6 +3546,46 @@
             "c-input-variant": "borderless",
             "c-input-status": "default",
             "c-input-size": "small"
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "id": "i-addon-prefix",
+          "name": "prefix",
+          "type": "frame",
+          "parentId": "i-addon",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
+          "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "prefix"
+          },
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
           }
         },
         {
@@ -3754,6 +3797,195 @@
           "overrides": {}
         },
         {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": true,
+          "version": 0,
+          "id": "i-addon-suffix",
+          "name": "suffix",
+          "type": "frame",
+          "parentId": "i-addon",
+          "isInstance": false,
+          "component": false,
+          "overrides": {},
+          "w": 16,
+          "h": 16,
+          "layout": "horizontal",
+          "fills": [],
+          "layoutSizingH": "hug",
+          "layoutSizingV": "hug",
+          "behavior": {
+            "version": 2,
+            "slot": "suffix"
+          },
+          "padding": 0,
+          "gap": 0,
+          "padT": 0,
+          "padR": 0,
+          "padB": 0,
+          "padL": 0,
+          "vars": {
+            "w": "in-s-iconSize",
+            "h": "in-s-iconSize"
+          }
+        },
+        {
+          "id": "i-addon-prefix-ic-icon-check",
+          "name": "Icon/check",
+          "type": "frame",
+          "parentId": "i-addon-prefix",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
+          "fills": [],
+          "clip": false,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "rotation": 0,
+          "version": 0,
+          "isInstance": true,
+          "sourceId": "icon-check",
+          "overrides": {}
+        },
+        {
+          "id": "i-addon-prefix-ic-icon-check-path",
+          "name": "check",
+          "type": "path",
+          "parentId": "i-addon-prefix-ic-icon-check",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "pathW": 24,
+          "pathH": 24,
+          "closed": true,
+          "points": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 20,
+              "y": 12
+            },
+            {
+              "x": 4,
+              "y": 20
+            }
+          ],
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#20202a",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "stroke": "#20202a",
+          "strokeWidth": 0,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-check-path",
+          "overrides": {},
+          "vars": {
+            "fills.0": "in-v-fg"
+          }
+        },
+        {
+          "id": "i-addon-suffix-ic-icon-arrow",
+          "name": "Icon/arrow",
+          "type": "frame",
+          "parentId": "i-addon-suffix",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "component": false,
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "fill",
+          "fills": [],
+          "clip": false,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "rotation": 0,
+          "version": 0,
+          "isInstance": true,
+          "sourceId": "icon-arrow",
+          "overrides": {}
+        },
+        {
+          "id": "i-addon-suffix-ic-icon-arrow-path",
+          "name": "arrow",
+          "type": "path",
+          "parentId": "i-addon-suffix-ic-icon-arrow",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 24,
+          "pathW": 24,
+          "pathH": 24,
+          "closed": false,
+          "points": [
+            {
+              "x": 4,
+              "y": 12
+            },
+            {
+              "x": 20,
+              "y": 12
+            }
+          ],
+          "fills": [],
+          "stroke": "#20202a",
+          "strokeWidth": 2,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "radius": 0,
+          "version": 0,
+          "component": false,
+          "isInstance": false,
+          "sourceId": "icon-arrow-path",
+          "overrides": {},
+          "vars": {
+            "stroke": "in-v-fg"
+          }
+        },
+        {
           "name": "Input",
           "parentId": "t-frame",
           "x": 760,
@@ -3789,8 +4021,7 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasIcon": true,
-              "iconPlacement": "start",
+              "hasPrefix": true,
               "prefixIcon": "icon-check",
               "placeholder": "large size"
             }
@@ -4177,8 +4408,7 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasIcon": true,
-              "iconPlacement": "start",
+              "hasPrefix": true,
               "prefixIcon": "icon-check",
               "placeholder": "default size"
             }
@@ -4565,8 +4795,7 @@
           "behavior": {
             "version": 2,
             "props": {
-              "hasIcon": true,
-              "iconPlacement": "start",
+              "hasPrefix": true,
               "prefixIcon": "icon-check",
               "placeholder": "small size"
             }

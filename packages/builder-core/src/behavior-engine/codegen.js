@@ -60,7 +60,7 @@ function componentSource(template, name, problems) {
             const label = control && control.slot === slot.id
                 ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
-            children.push(slot.optional ? `{${slot.id} && ${label}}` : label);
+            children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
         }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
@@ -115,6 +115,18 @@ function componentSource(template, name, problems) {
  * @returns {string[]}
  */
 const cssDecls = style => Object.entries(style).map(([prop, value]) => '  ' + prop.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ': ' + value + ';\n');
+
+/**
+ * A `shownWhen` condition as a JSX expression over the component's props, the same test conditionHolds makes on the canvas.
+ * @param {any} cond
+ * @returns {string}
+ */
+function shownJsx(cond) {
+    if (cond.all) return cond.all.map(c => `(${shownJsx(c)})`).join(' && ');
+    if ('is' in cond) return `${cond.prop} === ${JSON.stringify(cond.is)}`;
+    const text = `String(${cond.prop} ?? "")`;
+    return cond.empty ? `${text} === ""` : `${text} !== ""`;
+}
 
 /**
  * One rule per node the display mapping styles from a token: each mapped property is written to its CSS property, reading the

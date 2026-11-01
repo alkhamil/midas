@@ -5,17 +5,35 @@ import { setInstanceValue } from '../src/behavior-engine/panel.js';
 import { planInstanceAnatomy } from '../src/behavior-engine/anatomy.js';
 import { iconSlotBindings } from '../src/behavior-engine/icon-slot.js';
 
-// The icon memory rules, for every template with managed icon slots (Button and Input prove the engine is generic:
-// the slot names and component props differ, the behavior does not).
+// The icon memory rules. Button moves its icon between a start and an end slot by its placement; Input has two switches, each with its
+// own icon and text, that never move: each one is remembered while its switch is off.
 const CASES = [
     { tid: 'button', start: 'iconStart', end: 'iconEnd', first: 'icon', second: 'iconEnd' },
-    { tid: 'input', start: 'prefix', end: 'suffix', first: 'prefixIcon', second: 'suffixIcon' },
 ];
 const master = tid => ({ id: 'm', name: 'Master', type: 'frame', isInstance: false, behavior: { version: 2, templateId: tid, variables: {} } });
 const inst = (props = {}) => ({ id: 'i1', name: 'Instance', type: 'frame', isInstance: true, sourceId: 'm', behavior: { version: 2, props } });
 const tree = [{ id: 't', type: 'text' }];
 const synced = (tid, props, children = []) => planInstanceAnatomy({ binding: master(tid).behavior, masterRoot: { isAutoLayout: true }, masterTree: tree, stored: props, children });
 const names = { colour: 'fg', disabledColour: 'fg-disabled', size: 'icon-size' };
+
+test('[input] each switch keeps its icon and text while off, and restores them when it is turned on again', () => {
+    const on = inst({ hasPrefix: true, prefixIcon: 'check', prefixText: 'Rp' });
+    const off = setInstanceValue(on, master('input'), 'hasPrefix', false);
+    assert.equal(off.props.prefixIcon, 'check');
+    assert.equal(off.props.prefixText, 'Rp');
+    assert.deepEqual(synced('input', off.props, [{ id: 's', slot: 'prefix', component: 'check' }]).ops, [{ op: 'remove', id: 's' }]);
+    const back = setInstanceValue({ ...inst(), behavior: off }, master('input'), 'hasPrefix', true);
+    assert.deepEqual(synced('input', back.props, []).ops, [{ op: 'insert', slot: 'prefix', index: 0, component: 'check' }]);
+    assert.equal(back.props.prefixText, 'Rp');
+});
+
+test('[input] the suffix switch does not touch the prefix', () => {
+    const both = inst({ hasPrefix: true, prefixIcon: 'check', hasSuffix: true, suffixIcon: 'arrow' });
+    const suffixOff = setInstanceValue(both, master('input'), 'hasSuffix', false);
+    assert.equal(suffixOff.props.hasPrefix, true);
+    assert.equal(suffixOff.props.prefixIcon, 'check');
+    assert.equal(suffixOff.props.suffixIcon, 'arrow');
+});
 
 test('turning hasIcon off keeps the chosen icon in the file; turning it on restores and rebinds it', () => {
     const off = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'start', icon: 'check' }), master('button'), 'hasIcon', false);

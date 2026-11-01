@@ -6,18 +6,19 @@ export const INPUT = {
     name: 'Input',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
+    // The affixes: an icon (managed slot) and a text, on each side of the value. `hasPrefix` shows the prefix icon and the text
+    // (the text only while it is not empty); `hasSuffix` the same on the other side.
     anatomy: [
-        { id: 'addonBefore', kind: 'text', optional: true, typography: 'addon' },
         { id: 'prefix', kind: 'icon', optional: true, managed: true },
+        { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasPrefix', is: true }, { prop: 'prefixText', empty: false }] } },
         { id: 'label', kind: 'control', typography: 'value' },
+        { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasSuffix', is: true }, { prop: 'suffixText', empty: false }] } },
         { id: 'suffix', kind: 'icon', optional: true, managed: true },
-        { id: 'addonAfter', kind: 'text', optional: true, typography: 'addon' },
     ],
-    // The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. The
-    // placement rules are the Button's: start shows the prefix icon, end the suffix icon, both shows both at once.
+    // The managed icon slots: `show` turns one on, `component` is the icon it holds.
     icons: [
-        { show: 'hasIcon', placement: 'iconPlacement', slot: 'prefix', component: 'prefixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
-        { show: 'hasIcon', placement: 'iconPlacement', slot: 'suffix', component: 'suffixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+        { show: 'hasPrefix', slot: 'prefix', component: 'prefixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
+        { show: 'hasSuffix', slot: 'suffix', component: 'suffixIcon', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } },
     ],
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `clear` is
     // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`). `hideWhenEmpty`: the
@@ -39,12 +40,13 @@ export const INPUT = {
         maxLength: { source: 'literal', type: 'string', default: '' },
         allowClear: { source: 'literal', type: 'boolean', default: false },
         showCount: { source: 'literal', type: 'boolean', default: false },
-        hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
-        iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end', 'both'], default: 'start', slots: { start: 'prefix', end: 'suffix', both: ['prefix', 'suffix'] }, visibleIf: { prop: 'hasIcon', is: true } },
-        prefixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
-        suffixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true } },
-        addonBefore: { source: 'literal', type: 'string', default: '' },
-        addonAfter: { source: 'literal', type: 'string', default: '' },
+        hasPrefix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
+        hasSuffix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
+        // The text and the icon of each affix are remembered while its switch is off (`remembered`), so switching it back on restores them.
+        prefixText: { source: 'literal', type: 'string', default: '', node: { key: 'prefixText', field: 'text' }, visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
+        suffixText: { source: 'literal', type: 'string', default: '', node: { key: 'suffixText', field: 'text' }, visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
+        prefixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
+        suffixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
@@ -118,8 +120,8 @@ export const INPUT = {
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
-        addonBefore: { fill: 'fg', typography: 'addonTypography' },
-        addonAfter: { fill: 'fg', typography: 'addonTypography' },
+        prefixText: { fill: 'fg', typography: 'addonTypography' },
+        suffixText: { fill: 'fg', typography: 'addonTypography' },
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
         clear: { fill: 'fg', typography: 'clearTypography' },
         count: { fill: 'placeholder', typography: 'countTypography' },

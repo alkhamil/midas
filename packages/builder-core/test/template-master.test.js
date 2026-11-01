@@ -10,9 +10,9 @@ import { inputModel } from '../../../scripts/input-model.mjs';
 const counter = () => { let n = 0; return key => `${key}-${++n}`; };
 const variablesOf = model => ({ collections: model.collections, items: model.items });
 
-test('Button is built from its label, icon slots and spinner; Input from its value, addons, icons and parts', () => {
+test('Button is built from its label, icon slots and spinner; Input from its affixes, value, icons and parts', () => {
     assert.deepEqual(layerSpecsOf(TEMPLATES.get('button')).map(s => s.key), ['root', 'iconStart', 'spinner', 'label', 'iconEnd']);
-    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'addonBefore', 'prefix', 'label', 'suffix', 'addonAfter', 'placeholder', 'clear', 'count']);
+    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'prefix', 'prefixText', 'label', 'suffixText', 'suffix', 'placeholder', 'clear', 'count']);
 });
 
 test('applying a Button template to a frame creates its label and spinner, binds them, and reports no problem', () => {

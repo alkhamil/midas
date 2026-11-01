@@ -70,8 +70,8 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
     assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{placeholder\} readOnly=\{readOnly\} maxLength=\{maxLength\} disabled=\{disabled\} \/>/);
-    assert.match(jsx, /\{addonBefore && <span className="input-addonBefore">\{addonBefore\}<\/span>\}/);
-    assert.match(jsx, /\{addonAfter && <span className="input-addonAfter">\{addonAfter\}<\/span>\}/);
+    assert.ok(jsx.includes('{((hasPrefix === true) && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch and a non-empty text');
+    assert.ok(jsx.includes('{((hasSuffix === true) && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">×<\/span>\}/);
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
@@ -128,7 +128,7 @@ test('binding covers collections, stroke and state modes; the border follows the
     assert.deepEqual(problems, []);
     assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'v-border'));
     const at = (preview, combo = { size: 'middle', variant: 'outlined', status: 'default' }) =>
-        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', prefixIcon: null, suffixIcon: null, addonBefore: '', addonAfter: '', disabled: false, readOnly: false }, preview).vars;
+        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasPrefix: false, hasSuffix: false, prefixIcon: null, suffixIcon: null, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
     assert.equal(at('default')['--input-border'], '#d9d9d9');
     assert.equal(at('default', { size: 'middle', variant: 'outlined', status: 'error' })['--input-border'], '#ff4d4f');
     assert.equal(at('hover')['--input-border'], '#4096ff');
