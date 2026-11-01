@@ -33,6 +33,8 @@ npm run dev:server                   # API di http://127.0.0.1:4000
 npm run dev:studio                   # Studio di http://127.0.0.1:5173 (proxy /api → :4000)
 ```
 
+Setelah `git pull` yang membawa migrasi baru, jalankan lagi `npm run db:migrate`. Server menolak mulai jika database tertinggal migrasi dan menyebut namanya; tanpa itu, `GET /api/libraries` gagal dengan 500.
+
 Buka Studio dan login dengan administrator dari seeder (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, default lokal `admin@midas.local` / `admin12345`). Tidak ada pendaftaran: akun lain dibuat administrator di **Home → Users**.
 
 ## MCP (asisten AI membaca desain)
