@@ -14,7 +14,7 @@
           "x": 40,
           "y": 40,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -40,7 +40,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "templateId": "button",
@@ -538,7 +538,7 @@
           "x": 40,
           "y": 40,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -565,7 +565,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -676,7 +676,7 @@
           "x": 40,
           "y": 120,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -703,7 +703,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -814,7 +814,7 @@
           "x": 40,
           "y": 200,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -841,7 +841,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -1066,7 +1066,7 @@
           "x": 40,
           "y": 280,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -1093,7 +1093,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -1307,7 +1307,7 @@
           "x": 40,
           "y": 360,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -1334,7 +1334,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -1661,7 +1661,7 @@
           "x": 280,
           "y": 40,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -1688,7 +1688,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -1800,7 +1800,7 @@
           "x": 280,
           "y": 120,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -1827,7 +1827,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -1938,7 +1938,7 @@
           "x": 280,
           "y": 200,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -1965,7 +1965,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {
@@ -2076,7 +2076,7 @@
           "x": 280,
           "y": 280,
           "w": 136,
-          "h": 48,
+          "h": 32,
           "rotation": 0,
           "fills": [
             {
@@ -2103,7 +2103,7 @@
           "padding": 12,
           "strokeAlign": "inside",
           "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "props": {

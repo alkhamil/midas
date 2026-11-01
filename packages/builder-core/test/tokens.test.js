@@ -26,7 +26,7 @@ const withItem = (name, change) => baseItems().map(i => (i.name === name ? { ...
 
 test('size, variant and colour tokens resolve to CSS custom properties, with the stored form of each value', () => {
     const { vars, unresolved } = resolveTokens(button, binding(), modes(), variables());
-    assert.equal(vars['--button-label-typography-font-family'], 'Inter');
+    assert.equal(vars['--button-label-typography-font-family'], 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif');
     assert.equal(vars['--button-label-typography-font-size'], '12px');
     assert.equal(vars['--button-label-typography-font-weight'], '400');
     assert.equal(vars['--button-label-typography-line-height'], '16px');

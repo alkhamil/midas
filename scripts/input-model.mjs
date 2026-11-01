@@ -43,7 +43,7 @@ const DEFAULT_SIZE_VALUES = {
     gap: { large: 8, middle: 8, small: 6 }, radius: { large: 8, middle: 6, small: 4 }, iconSize: { large: 16, middle: 14, small: 12 },
 };
 /** The Size modes of the Input's typography tokens (value, addon, placeholder, clear, count), as the Semantic text style each takes. */
-const INPUT_TYPOGRAPHY_STYLE = { large: 'textLg', middle: 'textBase', small: 'textSm' };
+const INPUT_TYPOGRAPHY_STYLE = { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl', large: 'textLg', middle: 'textBase', small: 'textSm' };
 const INPUT_TYPOGRAPHY = ['valueTypography', 'addonTypography', 'placeholderTypography', 'clearTypography', 'countTypography'];
 const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
 

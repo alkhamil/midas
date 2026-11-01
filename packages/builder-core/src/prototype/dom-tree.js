@@ -282,7 +282,7 @@ function renderTemplate(n, template, parent, scope) {
                     if (part.spin) el.style.animation = SPIN_ANIMATION;
                     children.push(el);
                 }
-                if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+                if (!slot.optional || String(props[slot.id] ?? '') !== '') children.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
         else if (slot.managed) {

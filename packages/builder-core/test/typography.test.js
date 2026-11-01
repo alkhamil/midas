@@ -95,6 +95,6 @@ test('a weight name the CSS does not know is a problem', () => {
 
 test('the CSS of a style is px for lengths and the family as written', () => {
     assert.deepEqual(typographyCss({ fontFamily: 'Inter', fontSize: 14, fontWeight: 'Regular', lineHeight: 22, letterSpacing: 0 }), {
-        'font-family': 'Inter', 'font-size': '14px', 'font-weight': '400', 'line-height': '22px', 'letter-spacing': '0px',
+        'font-family': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif', 'font-size': '14px', 'font-weight': '400', 'line-height': '22px', 'letter-spacing': '0px',
     });
 });

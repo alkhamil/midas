@@ -1,7 +1,7 @@
 // Browser harness for the studio: starts the dev servers when they are down, signs in as the local seed admin, imports a .midas
 // file and reads the canvas. Screenshots go to .artifacts/ at the repo root. Used by the *.browser.test.mjs files.
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -57,7 +57,10 @@ export async function openImportedFile(browser, filePath) {
     await page.locator('#home-import').waitFor({ state: 'attached' });
     errors.length = 0;
     await page.locator('#home-import').setInputFiles(filePath);
-    await page.waitForFunction(() => window.midas?.ready && window.midas.doc.children(null).length > 0);
+    // The file's own first top-level frame of its active page: a document already open would otherwise satisfy the wait.
+    const data = JSON.parse(readFileSync(filePath, 'utf8'));
+    const probeId = data.pages.find(p => p.id === data.pageId).nodes.find(n => n.parentId == null).id;
+    await page.waitForFunction(id => window.midas?.ready && !!window.midas.doc.get(id), probeId);
     await page.waitForTimeout(400);
     return { page, errors };
 }

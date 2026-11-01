@@ -9,6 +9,15 @@ export const TYPOGRAPHY_MEMBERS = { fontFamily: 'string', fontSize: 'number', fo
 /** The CSS number of each weight name. A name not here is refused: the CSS has no number for it. */
 export const WEIGHT_NUMBER = { Thin: 100, ExtraLight: 200, Light: 300, Regular: 400, Medium: 500, SemiBold: 600, Bold: 700, ExtraBold: 800, Black: 900 };
 
+/** The CSS family list of Inter, the studio's default face; other families are quoted with a generic fallback. */
+export const INTER_FONT_STACK = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+
+/**
+ * The CSS font-family list of a family name, the same list the canvas measures with.
+ * @param {string} family
+ */
+export const fontFamilyCss = family => (family === 'Inter' ? INTER_FONT_STACK : `"${String(family).replace(/["\\]/g, '')}", sans-serif`);
+
 /** A px line height is at least this; below it the value is a ratio (1.5, say) and is refused. */
 const RATIO_CEILING = 4;
 
@@ -60,7 +69,7 @@ export function typographyOf(variables, item, modeOf, depth = 0) {
  */
 export function typographyCss(style) {
     return {
-        'font-family': String(style.fontFamily),
+        'font-family': fontFamilyCss(style.fontFamily),
         'font-size': `${style.fontSize}px`,
         'font-weight': String(WEIGHT_NUMBER[style.fontWeight]),
         'line-height': `${style.lineHeight}px`,
