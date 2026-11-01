@@ -60,7 +60,10 @@ export async function openImportedFile(browser, filePath) {
     // The file's own first top-level frame of its active page: a document already open would otherwise satisfy the wait.
     const data = JSON.parse(readFileSync(filePath, 'utf8'));
     const probeId = data.pages.find(p => p.id === data.pageId).nodes.find(n => n.parentId == null).id;
-    await page.waitForFunction(id => window.midas?.ready && !!window.midas.doc.get(id), probeId);
+    // The import replaces the document asynchronously: wait until it has landed (the busy overlay is gone and the file's name is open),
+    // so a click or a selection made next is not wiped by the load.
+    await page.waitForFunction(([id, name]) => window.midas?.ready && !!window.midas.doc.get(id) && window.midas.doc.data.name === name && !document.getElementById('busy-overlay'), [probeId, data.name]);
+    await page.waitForTimeout(300);
     await page.waitForTimeout(400);
     return { page, errors };
 }
@@ -128,4 +131,17 @@ export async function shotNode(page, id, name, pad = 16) {
     const file = resolve(ARTIFACTS, `${name}.png`);
     await page.screenshot({ path: file, clip });
     return { file, rect: r };
+}
+
+/**
+ * Selects a node the way a user does: the pointer moves over the layer, then presses. Returns the selection afterwards. The
+ * pointer hovers first so the canvas has the pointer position before the press (a press with no hover is lost).
+ */
+export async function selectByClick(page, id) {
+    const r = await screenRect(page, id);
+    await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
+    await page.waitForTimeout(100);
+    await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2);
+    await page.waitForTimeout(150);
+    return page.evaluate(() => [...window.midas.state.selection]);
 }
