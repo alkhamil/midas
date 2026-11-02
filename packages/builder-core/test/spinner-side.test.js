@@ -22,3 +22,13 @@ test('the generated Button draws the spinner before the label on the start side 
     assert.ok(startSpinner > -1 && startSpinner < label, 'the start-side spinner comes before the label');
     assert.ok(endSpinner > label, 'the end-side spinner comes after the label');
 });
+
+test('the exported spinner is sized by the icon size token and draws its stroke in the foreground colour', () => {
+    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
+    const master = { id: 'm', name: 'Button', type: 'frame', component: true, parentId: null, behavior: model.binding, vars: {}, fills: [] };
+    const jsx = generateComponent(TEMPLATES.get('button'), model.binding, { collections: model.collections, items: model.items }, 'Button', master, () => []).files['Button.jsx'];
+    const spinner = jsx.slice(jsx.indexOf('<svg className="button-spinner"'), jsx.indexOf('</svg>', jsx.indexOf('<svg className="button-spinner"')));
+    assert.ok(spinner.includes('style={{ width: "var(--button-icon-size)", height: "var(--button-icon-size)" }}'), 'the box is the icon size token');
+    assert.ok(!/width=\{14\}/.test(spinner), 'no fixed 14px box');
+    assert.ok(spinner.includes('stroke="currentColor"'), 'the stroke takes the element colour, which is the foreground token');
+});

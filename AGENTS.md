@@ -57,7 +57,7 @@
 
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
 - The roadmap names `strokeStrategyOf`/`rootLayoutOf`/`labelLayoutOf` and a `both` placement: none exist in code; if wanted, they are new features, not fixes.
-- Wave colour is the variant's strong colour (solid bg, outlined/dashed border, filled and text fg); the spinner is antd's quarter arc (LoadingOutlined geometry, 1px, sweep 25%), and a part with `spin` turns in Play only (the codegen export draws no parts yet).
+- Wave colour is the variant's strong colour (solid bg, outlined/dashed border, filled and text fg); the spinner is antd's quarter arc (LoadingOutlined geometry, 1px, sweep 25%), and a part with `spin` turns in Play only (the codegen export draws the arc at rest, sized by its display `size` token).
 - Export corners: the export keeps the fill on the root with a `::before` stroke overlay, so a consumer `background` override on `.X` still applies; Play puts the fill in the overlay (80942bd). Measured on dark and image backgrounds: no visible ring, one 0.51px speck at Button Large. Revisit only if a visible ring is reported on a published component. Phase 3: exported components must accept `className`, `style`, `ref` and rest props before a library is published.
 - Outline/ring/wave: `outline-color` is always 0% at rest (alias to Semantic `outlineTransparent`, itself a 0% Primitive derive); `outline-color-active` is the interaction colour. Ring (`:focus-visible`) and wave (click, `data-wave-on`) are DOM-only behaviors configured by schema `interaction`; never drawn on canvas, no panel controls.
 

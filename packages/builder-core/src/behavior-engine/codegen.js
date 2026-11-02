@@ -46,7 +46,10 @@ function componentSource(template, name, problems) {
         const { size, start, sweep, width } = part.arc;
         const node = { type: 'ellipse', w: size - width, h: size - width, arcStart: start, arcSweep: sweep, arcRatio: part.arc.ratio };
         const d = svgPathD(pathCommands(node), value => +value.toFixed(3));
-        return `{${part.shownWhen.prop} === true${extra ? ` && ${extra}` : ''} && (<svg className="${template.id}-${part.id}" width={${size}} height={${size}} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} /></svg>)}`;
+        // The box is the part's icon size token (its display mapping), so the arc follows the Size; the stroke keeps its own width.
+        const sizeToken = template.display?.[part.id]?.size;
+        const box = sizeToken ? `style={{ width: "var(${cssVarOf(template.id, sizeToken)})", height: "var(${cssVarOf(template.id, sizeToken)})" }}` : `width={${size}} height={${size}}`;
+        return `{${part.shownWhen.prop} === true${extra ? ` && ${extra}` : ''} && (<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke" /></svg>)}`;
     };
     const framed = canvasPartsOf(template).filter(part => part.kind === 'frame' && part.arc);
     const ctl = controlOf(template);
