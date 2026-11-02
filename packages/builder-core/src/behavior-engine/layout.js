@@ -19,7 +19,9 @@ export function flowSizing(n, parent) {
     /** @type {Record<string, string>} */
     const style = {};
     if (mainAxis.sizing === 'fill') {
-        style.flex = '1 1 0';
+        // In a parent that hugs its content a filling child keeps its own width and grows only into what is left (as the canvas does);
+        // in a fixed parent it takes the row from zero.
+        style.flex = (vertical ? parent.layoutSizingV : parent.layoutSizingH) === 'hug' ? '1 1 auto' : '1 1 0';
         style[mainAxis.min] = '0px';
     }
     else {

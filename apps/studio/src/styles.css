@@ -3712,4 +3712,5 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .play-check { width: 14px; flex: none }
 .play-shortcut { margin-left: auto; font-size: 12px; opacity: 0.6 }
 .play-frame [aria-disabled="true"] { cursor: not-allowed }
+.play-frame [hidden] { display: none !important }
 .hotspots-on .play-hotspot, .hotspots-held .play-hotspot { outline: 2px dashed #5b8def; outline-offset: 2px }

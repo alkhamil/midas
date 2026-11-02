@@ -75,7 +75,7 @@ async function offPixels(browser, file, box, radius, stroke) {
     return out;
 }
 
-for (const [templateId, sizeName] of [['button', 'Small'], ['button', 'Large'], ['input', 'Middle']]) {
+for (const [templateId, sizeName] of [['button', 'sm'], ['button', 'lg'], ['input', 'md']]) {
     test(`Play on the dark background: the outside of a ${templateId} ${sizeName} corner is the background`, async t => {
         const stop = await ensureDevServers();
         t.after(stop);

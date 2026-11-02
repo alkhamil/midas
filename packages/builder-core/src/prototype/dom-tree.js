@@ -268,6 +268,7 @@ function renderTemplate(n, template, parent, scope) {
                 Object.assign(style, labelLayoutOf(covered, covered === placeholder ? n : labelEntry?.parent ?? n));
                 // A hugging width is the text's (field-sizing), so it follows the value as it is typed; a fixed one is the layer's.
                 if (covered && covered.layoutSizingH === 'fixed') style.width = `${covered.w}px`;
+                style.fieldSizing = 'content';
                 if (covered && covered.layoutSizingV !== 'fill') style.height = `${covered.h}px`;
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
