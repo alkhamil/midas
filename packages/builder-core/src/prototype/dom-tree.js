@@ -280,7 +280,7 @@ function renderTemplate(n, template, parent, scope) {
                 const clearLayer = partLayerOf(n, 'clear', scope);
                 if (clearLayer && props[control.clear] === true) {
                     const el = renderNode({ ...clearLayer, visible: true }, n, scope, false);
-                    if (el) children.push({ ...el, attrs: { ...el.attrs, 'data-role': 'clear', hidden: String(props[control.value] ?? '') === '' } });
+                    if (el) children.push({ ...el, attrs: { ...el.attrs, 'data-role': 'clear', hidden: String(props[control.value] ?? '') === '' }, style: { ...el.style, cursor: 'pointer' } });
                 }
                 const counter = partElement(n, 'count', scope);
                 if (counter) children.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });

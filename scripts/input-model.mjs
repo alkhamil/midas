@@ -40,7 +40,7 @@ const VARIANT_VALUES = { outlined: OUTLINED, filled: FILLED, borderless: BORDERL
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
     height: { xs: 16, sm: 24, md: 32, lg: 40, xl: 48 },
-    paddingX: { xs: 4, sm: 8, md: 12, lg: 16, xl: 16 }, paddingY: { xs: 2, sm: 4, md: 6, lg: 8, xl: 8 },
+    paddingX: { xs: 4, sm: 8, md: 12, lg: 16, xl: 16 }, paddingY: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 },
     gap: { xs: 4, sm: 6, md: 8, lg: 8, xl: 8 }, radius: { xs: 2, sm: 4, md: 6, lg: 8, xl: 8 }, iconSize: { xs: 10, sm: 12, md: 14, lg: 16, xl: 20 },
 };
 /** The Size modes of the Input's typography tokens (value, addon, placeholder, clear, count), as the Semantic text style each takes. */

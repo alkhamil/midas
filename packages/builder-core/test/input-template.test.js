@@ -114,6 +114,7 @@ test('Play draws the clear and count parts from their nodes, and only the ones w
     const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: 20 }), part('clear', true, '×'), part('count', true, '2 / 20')]), 'i1').root;
     assert.ok(shown.children.some(c => c.nodeId === 'i1-clear' && c.text === '×'));
     assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
+    assert.equal(shown.children.find(c => c.nodeId === 'i1-clear').style.cursor, 'pointer', 'the clear icon has the hand cursor, as a button does');
     const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), part('clear', false, '×'), part('count', false, '0')]), 'i1').root;
     // The clear is kept while allowClear is on, hidden while the value is empty (Play shows it as the value is typed); the count is absent.
     const kept = hidden.children.find(c => c.nodeId === 'i1-clear');

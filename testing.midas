@@ -7642,7 +7642,7 @@
       },
       {
         "id": "p-n6",
-        "name": "number/literal-17",
+        "name": "number/literal-16",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -7651,7 +7651,7 @@
       },
       {
         "id": "sem-n6",
-        "name": "number/literal-17",
+        "name": "number/literal-16",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -9171,7 +9171,7 @@
       },
       {
         "id": "p-n2",
-        "name": "number/literal-16",
+        "name": "number/literal-17",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -9180,7 +9180,7 @@
       },
       {
         "id": "sem-n2",
-        "name": "number/literal-16",
+        "name": "number/literal-17",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -9390,10 +9390,10 @@
         "collectionId": "c-input-size",
         "values": {
           "xs": {
-            "alias": "sem-n2"
+            "alias": "sem-n4"
           },
           "sm": {
-            "alias": "sem-n4"
+            "alias": "sem-n6"
           },
           "md": {
             "alias": "sem-n6"

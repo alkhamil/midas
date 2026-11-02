@@ -74,7 +74,7 @@ export const INPUT = {
         clearTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         countTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'input-padding-x-md', lg: 'input-padding-x-lg', xl: 'input-padding-x-xl', default: 'input-padding-x-md' },
-        paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'input-padding-y-md', lg: 'input-padding-y-lg', xl: 'input-padding-y-xl', default: 'input-padding-y-md' },
+        paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
         gap: 'gap-xxs',
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
