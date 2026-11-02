@@ -8,11 +8,6 @@ const button = TEMPLATES.get('button');
 const model = buttonModel({
     colors: ['primary', 'danger'],
     variantModes: ['solid', 'outlined'],
-    sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
-    sizeValues: {
-        paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
-        gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
-    },
 });
 const baseItems = () => model.items;
 const variables = (items = baseItems(), extraModes = []) => ({
@@ -31,7 +26,7 @@ test('size, variant and colour tokens resolve to CSS custom properties, with the
     assert.equal(vars['--button-label-typography-font-weight'], '400');
     assert.equal(vars['--button-label-typography-line-height'], '16px');
     assert.equal(vars['--button-label-typography-letter-spacing'], '0px');
-    assert.equal(vars['--button-padding-x'], '12px');
+    assert.equal(vars['--button-padding-x'], '7px');
     assert.equal(vars['--button-bg'], '#4338ca');
     assert.equal(vars['--button-fg'], '#ffffff');
     assert.equal(vars['--button-border'], '#00000000');

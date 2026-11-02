@@ -16,7 +16,7 @@ test('Button is built from its label, icon slots and spinner; Input from its aff
 });
 
 test('applying a Button template to a frame creates its label and spinner, binds them, and reports no problem', () => {
-    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };
     const out = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [], binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });
     assert.deepEqual(out.created.map(n => n.name), ['spinner', 'label']);
@@ -27,7 +27,7 @@ test('applying a Button template to a frame creates its label and spinner, binds
 });
 
 test('applying the same template again creates nothing (idempotent)', () => {
-    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };
     const binding = { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } };
     const first = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [], binding, variables: variablesOf(model), idOf: counter() });
@@ -37,7 +37,7 @@ test('applying the same template again creates nothing (idempotent)', () => {
 });
 
 test('a frame with a user text layer keeps it: the label is matched, not duplicated', () => {
-    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };
     const user = { id: 'u1', name: 'Caption', type: 'text', parentId: 'f1', text: 'Save' };
     const out = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [user], binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });

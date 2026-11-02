@@ -12,7 +12,7 @@ import { inputModel } from '../../../scripts/input-model.mjs';
 
 const button = TEMPLATES.get('button');
 const input = TEMPLATES.get('input');
-const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
 const vars = { collections: model.collections, items: model.items };
 const master = { id: 'm', name: 'Button', type: 'frame', layout: 'horizontal', behavior: model.binding, vars: {} };
 const out = generateComponent(button, model.binding, vars, 'Button', master, () => []);

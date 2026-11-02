@@ -32,7 +32,7 @@ function node(type, props) {
     };
 }
 
-const model = buttonModel({ sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] });
+const model = buttonModel();
 const ids = model.ids;
 const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
 const variables = { collections: [...model.collections, ...imodel.collections], items: [...model.items, ...imodel.items] };
@@ -88,18 +88,18 @@ export function buildTestingFile() {
         ...button('t-filled', 'Detail', 280, 120, { hasIcon: false, label: 'Detail' }, MODES('filled', 'primary', 'sm'), icons),
         ...button('t-text', 'Hapus', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
         ...button('t-loading', 'Simpan', 280, 280, { hasIcon: false, label: 'Simpan', loading: true }, MODES('solid', 'primary', 'sm'), icons),
-        ...input('i-outlined', 'Search', 520, 40, { value: 'Hello', placeholder: 'Search' }, IMODES('outlined', 'default', 'middle'), icons),
-        ...input('i-error', 'Error', 520, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'middle'), icons),
-        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: 20 }, IMODES('filled', 'default', 'middle'), icons),
-        ...input('i-disabled', 'No edit', 520, 280, { value: 'No edit', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
-        ...input('i-addon', 'Site', 520, 360, { value: 'midas', hasPrefix: true, prefixText: 'https://', hasSuffix: true, suffixText: '.com' }, IMODES('borderless', 'default', 'small'), icons),
+        ...input('i-outlined', 'Search', 520, 40, { value: 'Hello', placeholder: 'Search' }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-error', 'Error', 520, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'md'), icons),
+        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: 20 }, IMODES('filled', 'default', 'md'), icons),
+        ...input('i-disabled', 'No edit', 520, 280, { value: 'No edit', disabled: true }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-addon', 'Site', 520, 360, { value: 'midas', hasPrefix: true, prefixText: 'https://', hasSuffix: true, suffixText: '.com' }, IMODES('borderless', 'default', 'sm'), icons),
         // Parity set mirroring the antd size demo: three prefix-icon inputs (large, default, small), one with a value, one disabled, one error.
-        ...input('i-size-lg', 'Large', 760, 40, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'large size' }, IMODES('outlined', 'default', 'large'), icons),
-        ...input('i-size-md', 'Default', 760, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'default size' }, IMODES('outlined', 'default', 'middle'), icons),
-        ...input('i-size-sm', 'Small', 760, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'small size' }, IMODES('outlined', 'default', 'small'), icons),
-        ...input('i-value', 'Username', 760, 280, { value: 'Kopi Kita', placeholder: 'Username' }, IMODES('outlined', 'default', 'middle'), icons),
-        ...input('i-state-disabled', 'Off', 760, 360, { value: 'Disabled text', placeholder: 'Disabled', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
-        ...input('i-state-error', 'Oops', 760, 440, { value: '', placeholder: 'Something wrong' }, IMODES('outlined', 'error', 'middle'), icons),
+        ...input('i-size-lg', 'Large', 760, 40, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'large size' }, IMODES('outlined', 'default', 'lg'), icons),
+        ...input('i-size-md', 'Default', 760, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'default size' }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-size-sm', 'Small', 760, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'small size' }, IMODES('outlined', 'default', 'sm'), icons),
+        ...input('i-value', 'Username', 760, 280, { value: 'Kopi Kita', placeholder: 'Username' }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-state-disabled', 'Off', 760, 360, { value: 'Disabled text', placeholder: 'Disabled', disabled: true }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-state-error', 'Oops', 760, 440, { value: '', placeholder: 'Something wrong' }, IMODES('outlined', 'error', 'md'), icons),
     ];
     // One white frame holds the test instances: Play starts from a top-level frame, and the frame is the page the instances sit on.
     const playFrame = node('frame', { id: 't-frame', name: 'Testing', x: 0, y: 0, w: 1000, h: 560, fills: solid('#ffffff'), clip: true });

@@ -9,7 +9,7 @@ import { planAnatomy } from '../src/behavior-engine/anatomy.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
 const template = TEMPLATES.get('button');
-const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
 const variables = { collections: model.collections, items: model.items };
 const binding = { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } };
 

@@ -37,7 +37,7 @@ function valueText(over = {}) {
     };
 }
 
-const MODES = { 'c-variant': 'outlined', 'c-status': 'default', 'c-size': 'middle' };
+const MODES = { 'c-variant': 'outlined', 'c-status': 'default', 'c-size': 'md' };
 
 function instance(over = {}, props = {}, varModes = MODES) {
     return {
@@ -129,10 +129,10 @@ test('binding covers collections, stroke and state modes; the border follows the
     const { ops, problems } = planBindTokens({ template: INPUT, binding: model.binding, layers: [{ key: 'root', node: bare }, { key: 'label', node: bareText }], variables });
     assert.deepEqual(problems, []);
     assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'v-border'));
-    const at = (preview, combo = { size: 'middle', variant: 'outlined', status: 'default' }) =>
+    const at = (preview, combo = { size: 'md', variant: 'outlined', status: 'default' }) =>
         previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: null, minLength: null, allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
     assert.equal(at('default')['--input-border'], '#d9d9d9');
-    assert.equal(at('default', { size: 'middle', variant: 'outlined', status: 'error' })['--input-border'], '#ff4d4f');
+    assert.equal(at('default', { size: 'md', variant: 'outlined', status: 'error' })['--input-border'], '#ff4d4f');
     assert.equal(at('hover')['--input-border'], '#4096ff');
     assert.equal(at('focus')['--input-border'], '#4096ff');
     assert.equal(at('focus-visible')['--input-outline-color'], '#4096ff33');

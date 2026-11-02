@@ -19513,9 +19513,12 @@ function createTemplateComponent(templateId) {
         const subtree = doc.descendants(master.id);
         // The instance shows each collection its master binds, at the first mode: the Appearance modes the Design panel lists.
         const varModes = {};
-        for (const cid of Object.values(master.behavior.variables))
-            if (varColl(cid)?.modes[0])
-                varModes[cid] = varColl(cid).modes[0].id;
+        for (const [prop, cid] of Object.entries(master.behavior.variables)) {
+            const modes = varColl(cid)?.modes ?? [];
+            const wanted = BEHAVIOR_TEMPLATES.get(master.behavior.templateId)?.props[prop]?.defaultMode;
+            const mode = modes.find(mo => mo.id === wanted || mo.name === wanted) ?? modes[0];
+            if (mode) varModes[cid] = mode.id;
+        }
         const copies = instanceOf(template, master, subtree, {}, { id: () => uid(), varModes });
         copies[0].x = master.x + master.w + 48;
         copies[0].y = master.y;

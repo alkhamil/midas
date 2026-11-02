@@ -1,3 +1,4 @@
+import { SIZE_MODES } from '../packages/builder-core/src/templates/size-modes.js';
 // The Button variable model shared by the fixtures and the tests. Three component collections, the same as the Ant Design library,
 // Color (default | primary | danger) holds the accent tokens of each colour, Variant (outlined | dashed | solid | filled | text | link)
 // aliases into Color for the colours that depend on the colour, Size holds the metrics. Every literal sits in a Primitive and is
@@ -7,7 +8,7 @@ import { literalBank, textStyleBank } from './literal-bank.mjs';
 
 export const BUTTON_VARIANTS = ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'];
 export const BUTTON_COLORS = ['default', 'primary', 'danger'];
-export const BUTTON_SIZES = [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }];
+export const BUTTON_SIZES = SIZE_MODES.map(id => ({ id, name: id }));
 
 /** Hex values per colour: the accent, its tint, its solid fill, and the text on solid. */
 const PALETTE = {
@@ -60,9 +61,9 @@ const LINK = { ...TEXT };
 const VARIANT_VALUES = { outlined: OUTLINED, dashed: OUTLINED, solid: SOLID, filled: FILLED, text: TEXT, link: LINK };
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
-    height: { sm: 32, lg: 40 },
-    paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
-    gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
+    height: { xs: 16, sm: 24, md: 32, lg: 40, xl: 48 },
+    paddingX: { xs: 7, sm: 7, md: 15, lg: 15, xl: 15 }, paddingY: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 },
+    gap: { xs: 4, sm: 6, md: 8, lg: 8, xl: 8 }, radius: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 }, iconSize: { xs: 12, sm: 14, md: 14, lg: 16, xl: 20 },
 };
 /** The Size modes each typography token takes, as the Semantic text style it aliases (the Button's text roles). */
 const BUTTON_TYPOGRAPHY = { labelTypography: { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl' } };

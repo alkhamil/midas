@@ -88,7 +88,7 @@ test('passes phase-1 during lazy open and phase-2 once all pages arrive (in page
     assert.doesNotThrow(() => assertBehaviorData(reorderedLazy));
 });
 
-test('Button master is bound with Variant (Primary, Secondary, Danger) and Size (Small, Medium, Large) and has no diagnostics errors', () => {
+test('Button master is bound with Variant (Primary, Secondary, Danger) and Size (xs, sm, md, lg, xl) and has no diagnostics errors', () => {
     const doc = loadSample();
     const collections = doc.variables.collections;
     const variantColl = collections.find(c => c.name === 'Button Variant');
@@ -100,7 +100,7 @@ test('Button master is bound with Variant (Primary, Secondary, Danger) and Size 
     assert.deepEqual(variantColl.modes.map(m => m.name), ['Solid', 'Outlined']);
     assert.deepEqual(colorColl.modes.map(m => m.name), ['Primary', 'Danger']);
     assert.ok(sizeColl, 'Size collection exists');
-    assert.deepEqual(sizeColl.modes.map(m => m.name), ['Small', 'Medium', 'Large']);
+    assert.deepEqual(sizeColl.modes.map(m => m.name), ['xs', 'sm', 'md', 'lg', 'xl']);
     assert.ok(stylingColl, 'Colors/Typography variable collection exists');
 
     const componentsPage = doc.pages.find(p => p.name === 'Components');

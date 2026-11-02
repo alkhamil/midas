@@ -69,7 +69,7 @@ test('no state selector targets the inner input: exactly one element carries a b
 
 test('hover and focus styles are emitted on the wrapper, never on the input', () => {
     const css = cssOf();
-    const combo = '.input[data-variant="outlined"][data-status="default"][data-size="middle"]';
+    const combo = '.input[data-variant="outlined"][data-status="default"][data-size="md"]';
     assert.ok(css.includes(`${combo}:hover:not(:has(:disabled))`), 'hover on the wrapper, guarded');
     assert.ok(css.includes(`${combo}:has(:focus-visible):not(:has(:disabled))`), 'focus-visible reaches the wrapper');
     assert.ok(css.includes(`${combo}:focus-within:not(:has(:disabled))`), 'focus-within fallback on the wrapper');
@@ -79,7 +79,7 @@ test('hover and focus styles are emitted on the wrapper, never on the input', ()
 
 test('the disabled wrapper reflects the inner input state, with no ring', () => {
     const css = cssOf();
-    const combo = '.input[data-variant="outlined"][data-status="default"][data-size="middle"]';
+    const combo = '.input[data-variant="outlined"][data-status="default"][data-size="md"]';
     assert.ok(css.includes(`${combo}:has(:disabled)`), 'disabled shows on the wrapper');
     assert.ok(!new RegExp(combo.replace(/[[\]]/g, '\\$&') + ':disabled[^:]').test(css), 'no dead disabled rule on the wrapper');
 });
@@ -87,7 +87,7 @@ test('the disabled wrapper reflects the inner input state, with no ring', () => 
 test('wrapper height and font metrics differ per Size mode', () => {
     const css = cssOf();
     const varsOf = size => Object.fromEntries([...css.matchAll(new RegExp(`\\.input\\[data-variant="outlined"\\]\\[data-status="default"\\]\\[data-size="${size}"\\] \\{([^}]*)\\}`, 'g'))].flatMap(m => [...m[1].matchAll(/--input-([a-z-]+): ([^;]+);/g)].map(x => [x[1], x[2]])));
-    const large = varsOf('large'), middle = varsOf('middle'), small = varsOf('small');
+    const large = varsOf('lg'), middle = varsOf('md'), small = varsOf('sm');
     assert.ok(large.height && middle.height && small.height, 'height is set per size');
     assert.ok(new Set([large.height, middle.height, small.height]).size === 3, 'heights differ');
     assert.ok(new Set([large['value-typography-font-size'], middle['value-typography-font-size'], small['value-typography-font-size']]).size >= 2, 'font sizes differ');
@@ -96,10 +96,10 @@ test('wrapper height and font metrics differ per Size mode', () => {
 
 test('status switches the wrapper colours and focus keeps the status colour', () => {
     const css = cssOf();
-    const errorBase = /\.input\[data-variant="outlined"\]\[data-status="error"\]\[data-size="middle"\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    const errorBase = /\.input\[data-variant="outlined"\]\[data-status="error"\]\[data-size="md"\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
     assert.ok(errorBase.includes('--input-border: #ff4d4f'), 'error border on the wrapper');
     const vars = (preview, combo) => previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
-    const combo = { size: 'middle', variant: 'outlined', status: 'error' };
+    const combo = { size: 'md', variant: 'outlined', status: 'error' };
     assert.equal(vars('focus', combo)['--input-border'], '#ff4d4f', 'focus keeps the error border');
     assert.equal(vars('focus-visible', combo)['--input-outline-color'], '#ff4d4f33', 'the ring keeps the error colour');
 });
@@ -110,7 +110,7 @@ test('the prefix icon and the text share the wrapper vertical center line', () =
     assert.ok(/\.input \{[^}]*align-items: center/.test(files['Input.css']), 'codegen centers the wrapper children');
     const inst = {
         id: 'i1', name: 'Search', type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 40, isInstance: true, sourceId: 'm',
-        behavior: { version: 2, props: {} }, varModes: { 'c-variant': 'outlined', 'c-status': 'default', 'c-size': 'middle' },
+        behavior: { version: 2, props: {} }, varModes: { 'c-variant': 'outlined', 'c-status': 'default', 'c-size': 'md' },
         fills: solid('#ffffff'), radius: 6, stroke: '#000000', strokeWidth: 1, strokeAlign: 'inside', vars: rootVars,
     };
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [centered, valueText(), inst] }], variables }, 'i1');

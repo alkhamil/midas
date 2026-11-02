@@ -99,6 +99,11 @@ export function diagnoseDocument(doc) {
                     message: `${m.name}: collection "${collection.name}" bound for "${dim}" has modes (${(collection.modes ?? []).map(m => m.name).join(', ')}), not the schema modes (${schemaModes.join(', ')}). Auto Fix binds "${dim}" to "${fallbackCollection(template, def)}" instead.` });
                 continue;
             }
+            // A standard prop (the Size scale) on the template's own collection: a schema mode it lacks, missing or renamed, is reported; Auto Fix adds it.
+            const have = (collection.modes ?? []).map(mode => String(mode.name).toLowerCase());
+            const missing = schemaModes.filter(mode => !have.includes(String(mode).toLowerCase()));
+            if (def.standard === true && missing.length) out.push({ severity: 'error', code: 'mode-missing', node: m.name, nodeId: m.id, dimension: dim, collection: collection.name, modes: missing,
+                message: `${m.name}: collection "${collection.name}" has no mode ${missing.join(', ')}. Auto Fix adds ${missing.length === 1 ? 'it' : 'them'} with the Semantic values.` });
             for (const [group, names] of Object.entries(template.tokens)) {
                 if (dimensionOfGroup(group, template.props) !== dim) continue;
                 for (const token of names) {

@@ -25,6 +25,10 @@ export interface VariableProp {
     collection: string;
     /** The modes Auto Fix creates when the collection is missing (by mode id). Existing collections only gain the modes they lack. */
     modes?: string[];
+    /** A standard scale (the Size modes): diagnostics report a mode that is missing or renamed in the template's collection. */
+    standard?: boolean;
+    /** The mode a new instance takes until its own mode is picked; one of the modes. */
+    defaultMode?: string;
     /** How the root is drawn in one mode, by mode id: its border style. Modes without a rule are solid. */
     styles?: Record<string, { borderStyle: 'solid' | 'dashed' | 'dotted' }>;
     visibleIf?: VisibleIf;

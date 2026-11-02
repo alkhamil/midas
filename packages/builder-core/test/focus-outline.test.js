@@ -15,7 +15,7 @@ import { INPUT } from '../src/templates/input.js';
 import { inputModel } from '../../../scripts/input-model.mjs';
 
 const button = TEMPLATES.get('button');
-const model = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid'] });
 const css = generateComponent(button, model.binding, { collections: model.collections, items: model.items }, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.css'];
 
 test('the root draws the outline at its static width and offset, in the outline-color variable', () => {
@@ -104,7 +104,7 @@ test('the ring animates; reduced motion removes transitions and the wave', () =>
 });
 
 test('a missing outline-color-active is an error; an opaque outline-color warns and Auto Fix repairs it', () => {
-    const bare = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const bare = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const docOf = store => ({ variables: store, pages: [{ name: 'p', nodes: [{ id: 'm', name: 'B', type: 'frame', component: true, behavior: bare.binding }] }] });
     const missing = diagnoseDocument(docOf({ collections: bare.collections, items: bare.items.filter(i => i.name !== 'outline-color-active') }));
     assert.ok(missing.some(f => f.code === 'variable-missing' && f.variable === 'outline-color-active'), 'missing active is an error');
@@ -146,7 +146,7 @@ test('interaction is schema data: bad values and a mismatched focus pairing are 
 
 test('the input halo uses the default, error and warning colours', () => {
     const imodel = inputModel({});
-    const halo = status => previewOf(INPUT, imodel.binding, { variant: 'outlined', status, size: 'middle' }, { collections: imodel.collections, items: imodel.items }, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, 'focus-visible').vars['--input-outline-color'];
+    const halo = status => previewOf(INPUT, imodel.binding, { variant: 'outlined', status, size: 'md' }, { collections: imodel.collections, items: imodel.items }, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, 'focus-visible').vars['--input-outline-color'];
     assert.equal(halo('default'), '#4096ff33');
     assert.equal(halo('error'), '#ff4d4f33');
     assert.equal(halo('warning'), '#faad1433');

@@ -9,8 +9,6 @@ const button = TEMPLATES.get('button');
 const model = buttonModel({
     colors: ['primary', 'danger'],
     variantModes: ['solid', 'outlined'],
-    sizeModes: [{ id: 'sm', name: 'Small' }],
-    sizeValues: { fontSize: { sm: 14 }, lineHeight: { sm: 20 }, paddingX: { sm: 12 }, paddingY: { sm: 6 }, gap: { sm: 6 }, radius: { sm: 6 }, iconSize: { sm: 14 } },
 });
 /** The model's items, without the ones named in `drop`. */
 const items = (drop = []) => model.items.filter(item => !drop.includes(item.name));

@@ -4,7 +4,7 @@ import { toDomTree } from '../src/prototype/dom-tree.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
 const solid = [{ type: 'solid', color: '#4338ca', opacity: 1, visible: true }];
-const model = buttonModel({ colors: ['primary'], variantModes: ['outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary'], variantModes: ['outlined'] });
 const variables = () => ({ collections: model.collections, items: model.items });
 
 /** A Button master and one instance with the given stroke, drawn in Play. */
@@ -80,7 +80,7 @@ test('a bound uniform inside stroke draws its overlay with the host colour and s
 });
 
 test('a dashed variant has no host border width; the class rule carries border-style: dashed and the overlay inherits it', () => {
-    const dashed = buttonModel({ colors: ['primary'], variantModes: ['dashed'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const dashed = buttonModel({ colors: ['primary'], variantModes: ['dashed'] });
     const master = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid, radius: 8, x: 0, y: 0, w: 120, h: 40, behavior: { version: 2, templateId: 'button', variables: dashed.binding.variables } };
     const instance = { id: 'i1', name: 'Add', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { label: 'Add' } }, varModes: { 'c-variant': 'dashed', 'c-color': 'primary', 'c-size': 'sm' }, fills: solid, vars: { stroke: 'v-border' }, stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' };
     const { root, styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables: { collections: dashed.collections, items: dashed.items } }, 'i1');

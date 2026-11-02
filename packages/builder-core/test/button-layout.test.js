@@ -10,7 +10,6 @@ const button = TEMPLATES.get('button');
 const model = buttonModel({
     colors: ['primary'],
     variantModes: ['solid'],
-    sizeModes: [{ id: 'sm', name: 'Small' }],
 });
 const variables = { collections: model.collections, items: model.items };
 const bindingVars = model.binding.variables;

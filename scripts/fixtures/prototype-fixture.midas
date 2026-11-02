@@ -3124,12 +3124,24 @@
         "name": "Button Size",
         "modes": [
           {
+            "id": "xs",
+            "name": "xs"
+          },
+          {
             "id": "sm",
-            "name": "Small"
+            "name": "sm"
+          },
+          {
+            "id": "md",
+            "name": "md"
           },
           {
             "id": "lg",
-            "name": "Large"
+            "name": "lg"
+          },
+          {
+            "id": "xl",
+            "name": "xl"
           }
         ]
       },
@@ -3640,6 +3652,46 @@
         }
       },
       {
+        "id": "p-n16",
+        "name": "n16",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 16
+        }
+      },
+      {
+        "id": "sem-n16",
+        "name": "fx-n16",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n16"
+          }
+        }
+      },
+      {
+        "id": "p-n24",
+        "name": "n24",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 24
+        }
+      },
+      {
+        "id": "sem-n24",
+        "name": "fx-n24",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n24"
+          }
+        }
+      },
+      {
         "id": "p-n32",
         "name": "n32",
         "type": "number",
@@ -3680,42 +3732,82 @@
         }
       },
       {
-        "id": "p-n12",
-        "name": "n12",
+        "id": "p-n48",
+        "name": "n48",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
-          "base": 12
+          "base": 48
         }
       },
       {
-        "id": "sem-n12",
-        "name": "fx-n12",
+        "id": "sem-n48",
+        "name": "fx-n48",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
           "base": {
-            "alias": "p-n12"
+            "alias": "p-n48"
           }
         }
       },
       {
-        "id": "p-n16",
-        "name": "n16",
+        "id": "p-n7",
+        "name": "n7",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
-          "base": 16
+          "base": 7
         }
       },
       {
-        "id": "sem-n16",
-        "name": "fx-n16",
+        "id": "sem-n7",
+        "name": "fx-n7",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
           "base": {
-            "alias": "p-n16"
+            "alias": "p-n7"
+          }
+        }
+      },
+      {
+        "id": "p-n15",
+        "name": "n15",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 15
+        }
+      },
+      {
+        "id": "sem-n15",
+        "name": "fx-n15",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n15"
+          }
+        }
+      },
+      {
+        "id": "p-n4",
+        "name": "n4",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 4
+        }
+      },
+      {
+        "id": "sem-n4",
+        "name": "fx-n4",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n4"
           }
         }
       },
@@ -3760,6 +3852,26 @@
         }
       },
       {
+        "id": "p-n12",
+        "name": "n12",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 12
+        }
+      },
+      {
+        "id": "sem-n12",
+        "name": "fx-n12",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n12"
+          }
+        }
+      },
+      {
         "id": "p-n14",
         "name": "n14",
         "type": "number",
@@ -3776,6 +3888,26 @@
         "values": {
           "base": {
             "alias": "p-n14"
+          }
+        }
+      },
+      {
+        "id": "p-n20",
+        "name": "n20",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 20
+        }
+      },
+      {
+        "id": "sem-n20",
+        "name": "fx-n20",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n20"
           }
         }
       },
@@ -4538,11 +4670,20 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n16"
+          },
           "sm": {
+            "alias": "sem-n24"
+          },
+          "md": {
             "alias": "sem-n32"
           },
           "lg": {
             "alias": "sem-n40"
+          },
+          "xl": {
+            "alias": "sem-n48"
           }
         }
       },
@@ -4552,11 +4693,20 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n7"
+          },
           "sm": {
-            "alias": "sem-n12"
+            "alias": "sem-n7"
+          },
+          "md": {
+            "alias": "sem-n15"
           },
           "lg": {
-            "alias": "sem-n16"
+            "alias": "sem-n15"
+          },
+          "xl": {
+            "alias": "sem-n15"
           }
         }
       },
@@ -4566,10 +4716,19 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n4"
+          },
           "sm": {
             "alias": "sem-n6"
           },
+          "md": {
+            "alias": "sem-n6"
+          },
           "lg": {
+            "alias": "sem-n8"
+          },
+          "xl": {
             "alias": "sem-n8"
           }
         }
@@ -4580,10 +4739,19 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n4"
+          },
           "sm": {
             "alias": "sem-n6"
           },
+          "md": {
+            "alias": "sem-n8"
+          },
           "lg": {
+            "alias": "sem-n8"
+          },
+          "xl": {
             "alias": "sem-n8"
           }
         }
@@ -4594,10 +4762,19 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n4"
+          },
           "sm": {
             "alias": "sem-n6"
           },
+          "md": {
+            "alias": "sem-n6"
+          },
           "lg": {
+            "alias": "sem-n8"
+          },
+          "xl": {
             "alias": "sem-n8"
           }
         }
@@ -4608,11 +4785,20 @@
         "type": "number",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "sem-n12"
+          },
           "sm": {
+            "alias": "sem-n14"
+          },
+          "md": {
             "alias": "sem-n14"
           },
           "lg": {
             "alias": "sem-n16"
+          },
+          "xl": {
+            "alias": "sem-n20"
           }
         }
       },
@@ -4622,11 +4808,20 @@
         "type": "typography",
         "collectionId": "c-size",
         "values": {
+          "xs": {
+            "alias": "ts-textXs"
+          },
           "sm": {
             "alias": "ts-textSm"
           },
+          "md": {
+            "alias": "ts-textBase"
+          },
           "lg": {
             "alias": "ts-textLg"
+          },
+          "xl": {
+            "alias": "ts-textXl"
           }
         }
       },

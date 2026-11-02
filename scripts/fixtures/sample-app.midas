@@ -13918,16 +13918,24 @@
         "name": "Button Size",
         "modes": [
           {
+            "id": "mode-xs",
+            "name": "xs"
+          },
+          {
             "id": "mode-sm",
-            "name": "Small"
+            "name": "sm"
           },
           {
             "id": "mode-md",
-            "name": "Medium"
+            "name": "md"
           },
           {
             "id": "mode-lg",
-            "name": "Large"
+            "name": "lg"
+          },
+          {
+            "id": "mode-xl",
+            "name": "xl"
           }
         ]
       },
@@ -14282,6 +14290,26 @@
         }
       },
       {
+        "id": "p-n24",
+        "name": "n24",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 24
+        }
+      },
+      {
+        "id": "sem-n24",
+        "name": "fx-n24",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n24"
+          }
+        }
+      },
+      {
         "id": "p-n30",
         "name": "n30",
         "type": "number",
@@ -14338,6 +14366,46 @@
         "values": {
           "base": {
             "alias": "p-n48"
+          }
+        }
+      },
+      {
+        "id": "p-n56",
+        "name": "n56",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 56
+        }
+      },
+      {
+        "id": "sem-n56",
+        "name": "fx-n56",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n56"
+          }
+        }
+      },
+      {
+        "id": "p-n8",
+        "name": "n8",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 8
+        }
+      },
+      {
+        "id": "sem-n8",
+        "name": "fx-n8",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n8"
           }
         }
       },
@@ -14402,6 +14470,26 @@
         }
       },
       {
+        "id": "p-n4",
+        "name": "n4",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 4
+        }
+      },
+      {
+        "id": "sem-n4",
+        "name": "fx-n4",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n4"
+          }
+        }
+      },
+      {
         "id": "p-n6",
         "name": "n6",
         "type": "number",
@@ -14458,26 +14546,6 @@
         "values": {
           "base": {
             "alias": "p-n14"
-          }
-        }
-      },
-      {
-        "id": "p-n8",
-        "name": "n8",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 8
-        }
-      },
-      {
-        "id": "sem-n8",
-        "name": "fx-n8",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n8"
           }
         }
       },
@@ -15243,6 +15311,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n24"
+          },
           "mode-sm": {
             "alias": "sem-n30"
           },
@@ -15251,6 +15322,9 @@
           },
           "mode-lg": {
             "alias": "sem-n48"
+          },
+          "mode-xl": {
+            "alias": "sem-n56"
           }
         }
       },
@@ -15260,6 +15334,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n8"
+          },
           "mode-sm": {
             "alias": "sem-n12"
           },
@@ -15268,6 +15345,9 @@
           },
           "mode-lg": {
             "alias": "sem-n20"
+          },
+          "mode-xl": {
+            "alias": "sem-n24"
           }
         }
       },
@@ -15277,6 +15357,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n4"
+          },
           "mode-sm": {
             "alias": "sem-n6"
           },
@@ -15285,6 +15368,9 @@
           },
           "mode-lg": {
             "alias": "sem-n14"
+          },
+          "mode-xl": {
+            "alias": "sem-n16"
           }
         }
       },
@@ -15294,6 +15380,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n4"
+          },
           "mode-sm": {
             "alias": "sem-n6"
           },
@@ -15302,6 +15391,9 @@
           },
           "mode-lg": {
             "alias": "sem-n10"
+          },
+          "mode-xl": {
+            "alias": "sem-n12"
           }
         }
       },
@@ -15311,6 +15403,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n4"
+          },
           "mode-sm": {
             "alias": "sem-n6"
           },
@@ -15319,6 +15414,9 @@
           },
           "mode-lg": {
             "alias": "sem-n10"
+          },
+          "mode-xl": {
+            "alias": "sem-n12"
           }
         }
       },
@@ -15328,6 +15426,9 @@
         "type": "number",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "sem-n12"
+          },
           "mode-sm": {
             "alias": "sem-n14"
           },
@@ -15336,6 +15437,9 @@
           },
           "mode-lg": {
             "alias": "sem-n18"
+          },
+          "mode-xl": {
+            "alias": "sem-n20"
           }
         }
       },
@@ -15345,6 +15449,9 @@
         "type": "typography",
         "collectionId": "col-size",
         "values": {
+          "mode-xs": {
+            "alias": "ts-textXs"
+          },
           "mode-sm": {
             "alias": "ts-textSm"
           },
@@ -15353,6 +15460,9 @@
           },
           "mode-lg": {
             "alias": "ts-textLg"
+          },
+          "mode-xl": {
+            "alias": "ts-textXl"
           }
         }
       },

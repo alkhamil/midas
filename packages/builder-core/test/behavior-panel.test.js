@@ -7,7 +7,7 @@ import { buttonModel } from '../../../scripts/button-model.mjs';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 
 const button = TEMPLATES.get('button');
-const variant = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections.find(c => c.name === 'Button Variant');
+const variant = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'] }).collections.find(c => c.name === 'Button Variant');
 const size = { id: 'c-size', name: 'Button Size', modes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }] };
 const theme = { id: 'c-theme', name: 'Theme', modes: [{ id: 'light', name: 'Light' }] };
 

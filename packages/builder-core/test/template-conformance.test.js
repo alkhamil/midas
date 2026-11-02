@@ -13,7 +13,7 @@ import { inputModel } from '../../../scripts/input-model.mjs';
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
     button: () => {
-        const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+        const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
     },
     input: () => {

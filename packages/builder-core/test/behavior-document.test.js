@@ -4,7 +4,7 @@ import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 import { BehaviorDataError, detachBehavior } from '../src/behavior-engine/data.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
-const collections = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'], sizeModes: [{ id: 'sm', name: 'Small' }] }).collections;
+const collections = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid', 'outlined'] }).collections;
 const master = { id: 'btn', name: 'Button', type: 'frame', isInstance: false, behavior: { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: null } } };
 const instance = (props, varModes) => ({ id: 'i1', name: 'Save button', type: 'frame', isInstance: true, sourceId: 'btn', behavior: { version: 2, props }, varModes });
 const docWith = (...nodes) => ({ variables: { collections }, pages: [{ id: 'p1', nodes }] });

@@ -1,4 +1,5 @@
 import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
+import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
@@ -32,7 +33,7 @@ export const INPUT = {
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },
         status: { source: 'variable', collection: 'Status', modes: ['default', 'error', 'warning'] },
-        size: { source: 'variable', collection: 'Size', modes: ['xs', 'sm', 'md', 'lg', 'xl'] },
+        size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
         value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '', node: { key: 'placeholder', field: 'text' } },

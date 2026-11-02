@@ -6,11 +6,6 @@ import { buttonModel } from '../../../scripts/button-model.mjs';
 const model = buttonModel({
     colors: ['primary', 'danger'],
     variantModes: ['solid', 'outlined'],
-    sizeModes: [{ id: 'sm', name: 'Small' }, { id: 'lg', name: 'Large' }],
-    sizeValues: {
-        paddingX: { sm: 12, lg: 16 }, paddingY: { sm: 6, lg: 8 },
-        gap: { sm: 6, lg: 8 }, radius: { sm: 6, lg: 8 }, iconSize: { sm: 14, lg: 16 },
-    },
 });
 const { collections } = model;
 const sizeColl = collections.find(c => c.name === 'Button Size');
@@ -96,11 +91,11 @@ test('an instance with a token it cannot resolve is an error, with the reason', 
 });
 
 test('an instance resolves its modes from its own Appearance modes, not from props', () => {
-    const items = sizeItems().map(i => (i.name === 'labelTypography' ? { ...i, values: { sm: i.values.sm } } : i));
+    const items = sizeItems().map(i => (i.name === 'labelTypography' ? { ...i, values: Object.fromEntries(Object.entries(i.values).filter(([mode]) => mode !== 'lg')) } : i));
     const d = doc({ variables: { items: [...model.items.filter(i => !sizeItems().includes(i)), ...items] }, instance: { varModes: { [sizeColl.id]: 'lg' } } });
     const found = diagnoseDocument(d);
     assert.deepEqual(found.map(f => f.code), ['variable-missing-in-mode'], 'the missing Large value is reported once, on the master');
-    assert.equal(found[0].mode, 'Large');
+    assert.equal(found[0].mode, 'lg');
 });
 
 test('an unbound dimension is reported once, on the master, naming the collection', () => {

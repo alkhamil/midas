@@ -1,3 +1,4 @@
+import { SIZE_MODES } from '../packages/builder-core/src/templates/size-modes.js';
 // The Input variable model shared by the fixtures and the tests. Three collections: Variant (outlined | filled | borderless)
 // drives the box, Status (default | error | warning) drives the border and focus colours through aliases, Size
 // (large | middle | small) holds the metrics. Every literal sits in a Primitive and is reached through a Semantic alias (see
@@ -6,7 +7,7 @@ import { literalBank, textStyleBank } from './literal-bank.mjs';
 
 export const INPUT_VARIANTS = ['outlined', 'filled', 'borderless'];
 export const INPUT_STATUSES = ['default', 'error', 'warning'];
-export const INPUT_SIZES = [{ id: 'large', name: 'Large' }, { id: 'middle', name: 'Middle' }, { id: 'small', name: 'Small' }];
+export const INPUT_SIZES = SIZE_MODES.map(id => ({ id, name: id }));
 
 /** Status tokens: the border and focus colours of each status. */
 const STATUS_VALUES = {
@@ -38,12 +39,12 @@ const BORDERLESS = {
 const VARIANT_VALUES = { outlined: OUTLINED, filled: FILLED, borderless: BORDERLESS };
 const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
-    height: { large: 40, middle: 32, small: 24 },
-    paddingX: { large: 16, middle: 12, small: 8 }, paddingY: { large: 8, middle: 6, small: 4 },
-    gap: { large: 8, middle: 8, small: 6 }, radius: { large: 8, middle: 6, small: 4 }, iconSize: { large: 16, middle: 14, small: 12 },
+    height: { xs: 16, sm: 24, md: 32, lg: 40, xl: 48 },
+    paddingX: { xs: 4, sm: 8, md: 12, lg: 16, xl: 16 }, paddingY: { xs: 2, sm: 4, md: 6, lg: 8, xl: 8 },
+    gap: { xs: 4, sm: 6, md: 8, lg: 8, xl: 8 }, radius: { xs: 2, sm: 4, md: 6, lg: 8, xl: 8 }, iconSize: { xs: 10, sm: 12, md: 14, lg: 16, xl: 20 },
 };
 /** The Size modes of the Input's typography tokens (value, addon, placeholder, clear, count), as the Semantic text style each takes. */
-const INPUT_TYPOGRAPHY_STYLE = { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl', large: 'textLg', middle: 'textBase', small: 'textSm' };
+const INPUT_TYPOGRAPHY_STYLE = { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl' };
 const INPUT_TYPOGRAPHY = ['valueTypography', 'addonTypography', 'placeholderTypography', 'clearTypography', 'countTypography'];
 const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
 

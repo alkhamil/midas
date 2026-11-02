@@ -65,7 +65,7 @@ test('Auto Fix on every registered template creates typography variables aliasin
 test('a master text with no typography binding is a warning that names the text part and its role', async () => {
     const { buttonModel } = await import('../../../scripts/button-model.mjs');
     const { diagnoseDocument } = await import('../src/behavior-engine/diagnostics.js');
-    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+    const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const size = model.collections.find(c => c.name === 'Button Size');
     const doc = { variables: { collections: model.collections, items: model.items }, pages: [{ nodes: [
         { id: 'm1', name: 'Button', type: 'frame', behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: size.id } }, vars: { 'fills.0': 'v-bg' } },

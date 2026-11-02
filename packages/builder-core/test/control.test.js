@@ -6,7 +6,7 @@ import { TEMPLATES, BEHAVIOR_DATA_VERSION } from '../src/index.js';
 import { BUTTON } from '../src/templates/button.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
-const model = buttonModel({ colors: ['primary'], variantModes: ['solid'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
 const variables = { collections: model.collections, items: model.items };
 // A control template: the label slot is an input holding the value prop, with the placeholder prop beside it.
 const controlled = () => {

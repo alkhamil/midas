@@ -8,7 +8,7 @@ import { BUTTON } from '../src/templates/button.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
 const button = TEMPLATES.get('button');
-const model = buttonModel({ colors: ['primary'], variantModes: ['solid', 'dashed'], sizeModes: [{ id: 'sm', name: 'Small' }] });
+const model = buttonModel({ colors: ['primary'], variantModes: ['solid', 'dashed'] });
 const variables = { collections: model.collections, items: model.items };
 
 test('a dashed Variant has the dashed border style; the other Variant modes are solid', () => {

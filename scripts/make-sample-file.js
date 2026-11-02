@@ -2,6 +2,7 @@
 // for general manual testing and phase-1 / phase-2 / diagnostics verification.
 //
 //   node scripts/make-sample-file.js [output.midas]
+import { SIZE_MODES } from '../packages/builder-core/src/templates/size-modes.js';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -188,9 +189,11 @@ export const MODES = {
         danger: 'mode-danger',
     },
     size: {
+        xs: 'mode-xs',
         sm: 'mode-sm',
         md: 'mode-md',
         lg: 'mode-lg',
+        xl: 'mode-xl',
     },
     theme: {
         light: 'mode-kopi-light',
@@ -211,10 +214,12 @@ const BRAND_PALETTE = {
 };
 
 function buildVariables() {
-    const sMode = (sm, md, lg) => ({
+    const sMode = (xs, sm, md, lg, xl) => ({
+        [MODES.size.xs]: xs,
         [MODES.size.sm]: sm,
         [MODES.size.md]: md,
         [MODES.size.lg]: lg,
+        [MODES.size.xl]: xl,
     });
     const tMode = val => ({ [MODES.theme.light]: val });
     const button = buttonModel({
@@ -222,12 +227,12 @@ function buildVariables() {
         variantModes: ['solid', 'outlined'],
         colors: ['primary', 'danger'],
         palette: BRAND_PALETTE,
-        sizeModes: [{ id: MODES.size.sm, name: 'Small' }, { id: MODES.size.md, name: 'Medium' }, { id: MODES.size.lg, name: 'Large' }],
+        sizeModes: SIZE_MODES.map(id => ({ id: MODES.size[id], name: id })),
         // The Size modes take the Semantic text styles (textSm, textBase, textLg), not literal font sizes.
-        typography: { labelTypography: { [MODES.size.sm]: 'textSm', [MODES.size.md]: 'textBase', [MODES.size.lg]: 'textLg' } },
+        typography: { labelTypography: { [MODES.size.xs]: 'textXs', [MODES.size.sm]: 'textSm', [MODES.size.md]: 'textBase', [MODES.size.lg]: 'textLg', [MODES.size.xl]: 'textXl' } },
         sizeValues: {
-            height: sMode(30, 40, 48), paddingX: sMode(12, 16, 20),
-            paddingY: sMode(6, 10, 14), gap: sMode(6, 8, 10), radius: sMode(6, 8, 10), iconSize: sMode(14, 16, 18),
+            height: sMode(24, 30, 40, 48, 56), paddingX: sMode(8, 12, 16, 20, 24),
+            paddingY: sMode(4, 6, 10, 14, 16), gap: sMode(4, 6, 8, 10, 12), radius: sMode(4, 6, 8, 10, 12), iconSize: sMode(12, 14, 16, 18, 20),
         },
     });
     const collections = [
