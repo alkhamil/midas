@@ -115,7 +115,8 @@ export function managedBehavior(slot) {
  * @returns {string[]}
  */
 export function replacedSlotsOf(template, values) {
-    return (template.parts ?? []).filter(part => part.replaces && conditionHolds(part.shownWhen, values)).map(part => part.replaces);
+    return (template.parts ?? []).filter(part => (part.replaces || part.side) && conditionHolds(part.shownWhen, values))
+        .flatMap(part => (part.side ? slotsOfValue(template, part.side, values[part.side] ?? template.props[part.side].default) : [part.replaces]));
 }
 
 export function planAnatomy(template, values, children, flip = false) {

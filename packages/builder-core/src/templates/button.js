@@ -90,7 +90,7 @@ export const BUTTON = {
     // The parts the canvas draws: the spinner is an arc node before the label, shown while `loading` is set.
     parts: [
         // While loading, the spinner takes the start icon's place: the start icon is not drawn (see replacedSlotsOf).
-        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true, replaces: 'iconStart', arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1 } },
+        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true, side: 'iconPlacement', arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1 } },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props and states above.
     playOnly: [

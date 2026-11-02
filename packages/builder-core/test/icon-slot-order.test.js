@@ -36,8 +36,8 @@ test('while loading, the spinner takes the start icon place: the start slot is n
     assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'start', loading: true }), ['spinner', 'label']);
 });
 
-test('while loading with an end icon, the spinner precedes the label and the end icon stays after it', () => {
-    assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'end', loading: true }), ['spinner', 'label', 'iconEnd']);
+test('while loading with an end icon, the spinner takes the end icon place: it follows the label, and the end icon is not drawn', () => {
+    assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'end', loading: true }), ['label', 'spinner']);
 });
 
 test('the creation order is the order the anatomy plan gives when the icon is switched on later', () => {

@@ -172,6 +172,14 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         if (text && 'text' in next) next.text = text.value;
         out.push(next);
     }
+    // A part on a side sits before the label on the start side and after it on the end side (the spinner, by iconPlacement).
+    for (const part of canvasPartsOf(template).filter(p => p.side)) {
+        const copy = out.find(c => c.behavior?.part === part.id);
+        const label = out.find(c => c !== copy && c.type === 'text' && !c.behavior?.part && !c.behavior?.slot);
+        if (!copy || !label) continue;
+        out.splice(out.indexOf(copy), 1);
+        out.splice(out.indexOf(label) + (resolved[part.side] === 'end' ? 1 : 0), 0, copy);
+    }
     // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
     const stubs = [];
     for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {

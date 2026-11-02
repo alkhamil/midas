@@ -42,11 +42,11 @@ function componentSource(template, name, problems) {
     const children = [];
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
-    const framePartJsx = part => {
+    const framePartJsx = (part, extra = '') => {
         const { size, start, sweep, width } = part.arc;
         const node = { type: 'ellipse', w: size - width, h: size - width, arcStart: start, arcSweep: sweep, arcRatio: part.arc.ratio };
         const d = svgPathD(pathCommands(node), value => +value.toFixed(3));
-        return `{${part.shownWhen.prop} === true && (<svg className="${template.id}-${part.id}" width={${size}} height={${size}} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} /></svg>)}`;
+        return `{${part.shownWhen.prop} === true${extra ? ` && ${extra}` : ''} && (<svg className="${template.id}-${part.id}" width={${size}} height={${size}} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} /></svg>)}`;
     };
     const framed = canvasPartsOf(template).filter(part => part.kind === 'frame' && part.arc);
     const ctl = controlOf(template);
@@ -56,9 +56,11 @@ function componentSource(template, name, problems) {
         ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' != null ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
     ];
     let framePlaced = false;
+    let sidedAfterPlaced = false;
+    const sidedAfter = framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     for (const slot of template.anatomy) {
         if (slot.kind === 'text' || slot.kind === 'control') {
-            if (!framePlaced) { children.push(...framed.map(framePartJsx)); framePlaced = true; }
+            if (!framePlaced) { children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)), ...framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
@@ -67,6 +69,7 @@ function componentSource(template, name, problems) {
                 ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
+            if (!sidedAfterPlaced) { children.push(...sidedAfter); sidedAfterPlaced = true; }
             if (isControl) children.push(...controlPartsJsx());
         }
         else if (slot.managed) {
@@ -76,13 +79,16 @@ function componentSource(template, name, problems) {
                 const tests = placementsOfDef(template, def, slot.id).map(value => `${def.placement} === "${value}"`);
                 const cond = tests.length === 1 ? tests[0] : tests.length ? `(${tests.join(' || ')})` : null;
                 // A slot a canvas part replaces (the start icon while the spinner shows) is not drawn while that part shows.
-                const replacedBy = canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`);
+                const replacedBy = [
+                    ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
+                    ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
+                ];
                 children.push(`{${[def.show, ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
-    if (!framePlaced) children.push(...framed.map(framePartJsx));
+    if (!framePlaced) children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)));
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
     const dims = variableProps(template).map(([prop]) => prop);
