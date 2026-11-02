@@ -9711,7 +9711,7 @@ function onBehaviorChange(e) {
             if (!setBehaviorMode(n, t.dataset.bpProp, t.value || null)) renderInspector();
         }
         else if (kind === 'value') {
-            const value = t.dataset.bpType === 'boolean' ? t.checked : t.value;
+            const value = t.dataset.bpType === 'boolean' ? t.checked : t.dataset.bpType === 'number' ? (t.value.trim() === '' ? null : Number(t.value)) : t.value;
             // Disabled on: a hover, active or focus preview is cleared, so it cannot stack on the disabled look.
             if (t.dataset.bpProp === 'disabled' && value === true) behaviorPreview = 'default';
             if (!setInstanceValueTo(n, t.dataset.bpProp, value)) renderInspector();

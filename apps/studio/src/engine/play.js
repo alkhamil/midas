@@ -251,7 +251,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     function syncValueParts(input) {
         const root = input.parentElement;
         const counter = root.querySelector(':scope > [data-role="count"]');
-        if (counter) counter.textContent = counterLabel(input.value, input.maxLength > 0 ? input.maxLength : undefined);
+        if (counter) counter.textContent = counterLabel(input.value, input.maxLength >= 0 ? input.maxLength : undefined);
         const clear = root.querySelector(':scope > [data-role="clear"]');
         if (clear) clear.hidden = input.value === '';
     }

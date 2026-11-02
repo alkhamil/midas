@@ -270,7 +270,8 @@ function renderTemplate(n, template, parent, scope) {
                 if (covered && covered.layoutSizingH === 'fixed') style.width = `${covered.w}px`;
                 if (covered && covered.layoutSizingV !== 'fill') style.height = `${covered.h}px`;
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
-                if (control.maxlength && String(props[control.maxlength] ?? '') !== '') inputAttrs.maxLength = String(props[control.maxlength]);
+                if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
+                if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
                 children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
                 // The clear and the counter are drawn from their nodes. While allowClear is on the clear is kept though the canvas hides it

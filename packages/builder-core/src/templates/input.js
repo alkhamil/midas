@@ -22,7 +22,7 @@ export const INPUT = {
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `clear` is
     // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
-    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', clear: 'allowClear', count: 'showCount', hideWhenEmpty: true },
+    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', clear: 'allowClear', count: 'showCount', hideWhenEmpty: true },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
@@ -36,7 +36,9 @@ export const INPUT = {
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
         value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '', node: { key: 'placeholder', field: 'text' } },
-        maxLength: { source: 'literal', type: 'string', default: '' },
+        // The limits are whole numbers, and null for no limit. minLength is never above maxLength (see instance-props.js).
+        maxLength: { source: 'literal', type: 'number', default: null },
+        minLength: { source: 'literal', type: 'number', default: null, atMost: 'maxLength' },
         allowClear: { source: 'literal', type: 'boolean', default: false },
         showCount: { source: 'literal', type: 'boolean', default: false },
         ...ICON_PROPS,
@@ -113,6 +115,7 @@ export const INPUT = {
         { id: 'focus-halo', reason: 'focus ring follows keyboard focus; the canvas shows the rest state' },
         { id: 'caret', reason: 'the text caret exists only in the live input' },
         { id: 'typing', reason: 'typing changes the value live; the canvas shows the Value prop' },
+        { id: 'validation', reason: 'validation has no static visual; error state comes with FormItem rules' },
     ],
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {

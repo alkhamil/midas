@@ -90,7 +90,7 @@ export function buildTestingFile() {
         ...button('t-loading', 'Simpan', 280, 280, { hasIcon: false, label: 'Simpan', loading: true }, MODES('solid', 'primary', 'sm'), icons),
         ...input('i-outlined', 'Search', 520, 40, { value: 'Hello', placeholder: 'Search' }, IMODES('outlined', 'default', 'middle'), icons),
         ...input('i-error', 'Error', 520, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'middle'), icons),
-        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: '20' }, IMODES('filled', 'default', 'middle'), icons),
+        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: 20 }, IMODES('filled', 'default', 'middle'), icons),
         ...input('i-disabled', 'No edit', 520, 280, { value: 'No edit', disabled: true }, IMODES('outlined', 'default', 'middle'), icons),
         ...input('i-addon', 'Site', 520, 360, { value: 'midas', hasPrefix: true, prefixText: 'https://', hasSuffix: true, suffixText: '.com' }, IMODES('borderless', 'default', 'small'), icons),
         // Parity set mirroring the antd size demo: three prefix-icon inputs (large, default, small), one with a value, one disabled, one error.

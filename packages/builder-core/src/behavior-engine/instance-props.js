@@ -63,6 +63,7 @@ export function valueProblem(def, value) {
     if (def.type === 'boolean' && typeof value !== 'boolean') return 'expects a boolean';
     if (def.type === 'string' && typeof value !== 'string') return 'expects text';
     if (def.type === 'enum' && !def.options.includes(/** @type {string} */ (value))) return `expects one of ${def.options.join(', ')}`;
+    if (def.type === 'number' && value !== null && !(Number.isInteger(value) && value >= 0)) return 'expects a whole number, 0 or more, or nothing';
     if (def.type === 'iconComponent' && value !== null && typeof value !== 'string') return 'expects an icon id or null';
     return null;
 }
@@ -88,6 +89,12 @@ export function setInstanceProp(template, stored, name, value) {
         const problem = valueProblem(def, value);
         if (problem) throw new Error(`Prop "${name}" on ${template.id}: ${problem}`);
         next[name] = value;
+        // A prop that names an `atMost` bound (minLength, at most maxLength) is refused when the pair is out of order.
+        const values = resolveProps(template, next);
+        for (const [low, lowDef] of Object.entries(template.props)) {
+            if (lowDef.atMost === undefined || values[low] == null || values[lowDef.atMost] == null) continue;
+            if (values[low] > values[lowDef.atMost]) throw new Error(`Prop "${low}" on ${template.id} is more than "${lowDef.atMost}"`);
+        }
     }
     return pruneHidden(template, next);
 }

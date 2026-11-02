@@ -43,6 +43,7 @@ export interface ControlDef {
     placeholder?: string;
     readonly?: string;
     maxlength?: string;
+    minlength?: string;
     clear?: string;
     count?: string;
 }
@@ -54,6 +55,7 @@ export interface RequiresCols { requires?: string[] }
 export type LiteralProp =
     | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'number'; default: number | null; atMost?: string; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf } & RequiresCols);
 

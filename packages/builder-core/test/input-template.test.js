@@ -7,6 +7,8 @@ import { previewOf } from '../src/behavior-engine/preview.js';
 import { planBindTokens } from '../src/behavior-engine/bind-tokens.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { INPUT } from '../src/templates/input.js';
+import { setInstanceProp } from '../src/behavior-engine/instance-props.js';
+import { counterLabel } from '../src/behavior-engine/display.js';
 import { inputModel } from '../../../scripts/input-model.mjs';
 
 test('the Input schema is valid and registered', () => {
@@ -55,13 +57,13 @@ test('control extras must name props of the right type', () => {
     assert.match(validateTemplateSchema(badReadonly).join('\n'), /control readonly "value" is not a boolean prop/);
     const badMaxlength = structuredClone(INPUT);
     badMaxlength.control.maxlength = 'disabled';
-    assert.match(validateTemplateSchema(badMaxlength).join('\n'), /control maxlength "disabled" is not a string prop/);
+    assert.match(validateTemplateSchema(badMaxlength).join('\n'), /control maxlength "disabled" is not a number prop/);
     const badClear = structuredClone(INPUT);
     badClear.control.clear = 'value';
     assert.match(validateTemplateSchema(badClear).join('\n'), /control clear "value" is not a boolean prop/);
 });
 
-test('codegen writes a span root with data modes, an input with its props, and addon spans', () => {
+test('codegen writes a span root with data modes, an input with its props, and affix spans', () => {
     const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
     const jsx = files['Input.jsx'];
     assert.match(jsx, /<span/);
@@ -69,11 +71,11 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-variant=\{variant\}/);
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
-    assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{placeholder\} readOnly=\{readOnly\} maxLength=\{maxLength\} disabled=\{disabled\} \/>/);
+    assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{placeholder\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled\} \/>/);
     assert.ok(jsx.includes('{((hasPrefix === true) && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch and a non-empty text');
     assert.ok(jsx.includes('{((hasSuffix === true) && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">×<\/span>\}/);
-    assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
+    assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
 test('codegen writes the border from the variable, the placeholder rule, and status selectors guarded on the wrapper', () => {
@@ -109,7 +111,7 @@ test('Play draws the clear and count parts from their nodes, and only the ones w
         id: `i1-${name}`, name, type: 'text', parentId: 'i1', x: 0, y: 0, w: 20, h: 20, text, visible, fills: solid('#8c8297'), fontSize: 14,
         vars: labelVars, sourceId: `m-${name}`, behavior: { version: 2, part: name },
     });
-    const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: '20' }), part('clear', true, '×'), part('count', true, '2 / 20')]), 'i1').root;
+    const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: 20 }), part('clear', true, '×'), part('count', true, '2 / 20')]), 'i1').root;
     assert.ok(shown.children.some(c => c.nodeId === 'i1-clear' && c.text === '×'));
     assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
     const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), part('clear', false, '×'), part('count', false, '0')]), 'i1').root;
@@ -128,11 +130,44 @@ test('binding covers collections, stroke and state modes; the border follows the
     assert.deepEqual(problems, []);
     assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'v-border'));
     const at = (preview, combo = { size: 'middle', variant: 'outlined', status: 'default' }) =>
-        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: '', allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
+        previewOf(INPUT, model.binding, combo, variables, { value: '', placeholder: '', maxLength: null, minLength: null, allowClear: false, showCount: false, hasIcon: false, iconPlacement: 'start', icon: null, iconEnd: null, hasPrefix: false, hasSuffix: false, prefixText: '', suffixText: '', disabled: false, readOnly: false }, preview).vars;
     assert.equal(at('default')['--input-border'], '#d9d9d9');
     assert.equal(at('default', { size: 'middle', variant: 'outlined', status: 'error' })['--input-border'], '#ff4d4f');
     assert.equal(at('hover')['--input-border'], '#4096ff');
     assert.equal(at('focus')['--input-border'], '#4096ff');
     assert.equal(at('focus-visible')['--input-outline-color'], '#4096ff33');
     assert.equal(at('default')['--input-bg'], '#ffffff');
+});
+
+test('a limit is a whole number, 0 or more, or nothing; minLength is never above maxLength', () => {
+    assert.equal(setInstanceProp(INPUT, {}, 'maxLength', 5).maxLength, 5);
+    assert.equal(setInstanceProp(INPUT, { maxLength: 5 }, 'maxLength', null).maxLength, null);
+    assert.throws(() => setInstanceProp(INPUT, {}, 'maxLength', '5'), /Prop "maxLength" on input: expects a whole number/);
+    assert.throws(() => setInstanceProp(INPUT, {}, 'maxLength', -1), /expects a whole number/);
+    assert.throws(() => setInstanceProp(INPUT, {}, 'minLength', 1.5), /expects a whole number/);
+    assert.deepEqual(setInstanceProp(INPUT, { maxLength: 5 }, 'minLength', 3), { maxLength: 5, minLength: 3 });
+    assert.throws(() => setInstanceProp(INPUT, { maxLength: 5 }, 'minLength', 6), /Prop "minLength" on input is more than "maxLength"/);
+    assert.throws(() => setInstanceProp(INPUT, { minLength: 3 }, 'maxLength', 2), /Prop "minLength" on input is more than "maxLength"/);
+});
+
+test('schema: a number prop has a whole-number default or null, and atMost names a number prop', () => {
+    const badDefault = structuredClone(INPUT);
+    badDefault.props.maxLength.default = '';
+    assert.match(validateTemplateSchema(badDefault).join('\n'), /prop "maxLength" is a number but its default is not a whole number, 0 or more, or null/);
+    const badBound = structuredClone(INPUT);
+    badBound.props.minLength.atMost = 'value';
+    assert.match(validateTemplateSchema(badBound).join('\n'), /prop "minLength" atMost must name a number prop/);
+});
+
+test('Play carries the limits as native attributes; the counter reads n / max only when there is a maximum', () => {
+    const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master(), instance({}, { maxLength: 5, minLength: 3 })] }], variables }, 'i1');
+    const input = root.children.find(c => c.tag === 'input');
+    assert.equal(input.attrs.maxLength, '5');
+    assert.equal(input.attrs.minLength, '3');
+    const open = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master(), instance()] }], variables }, 'i1').root.children.find(c => c.tag === 'input');
+    assert.equal(open.attrs.maxLength, undefined);
+    assert.equal(open.attrs.minLength, undefined);
+    assert.equal(counterLabel('abc', null), '3');
+    assert.equal(counterLabel('abc', 5), '3 / 5');
+    assert.equal(counterLabel('abc', 0), '3 / 0');
 });

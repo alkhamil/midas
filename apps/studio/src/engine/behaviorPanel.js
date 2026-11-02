@@ -164,6 +164,8 @@ function literalRow(r, esc) {
         return row(label, `<select data-bp="value" data-bp-kind="literal" data-bp-type="enum" data-bp-prop="${name}" aria-label="${name}"${r.disabled ? ' disabled' : ''}>
                 ${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
             </select>`, esc, r.prop) + hint;
+    if (r.type === 'number')
+        return row(label, `<input class="cmp-input" type="number" min="0" step="1" data-bp="value" data-bp-kind="literal" data-bp-type="number" data-bp-prop="${name}" value="${r.value ?? ''}" aria-label="${name}"${r.disabled ? ' disabled' : ''}>`, esc, r.prop) + hint;
     if (r.type === 'string')
         return row(label, `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${name}" value="${esc(r.value)}"${r.disabled ? ' disabled' : ''}>`, esc, r.prop) + hint;
     return '';

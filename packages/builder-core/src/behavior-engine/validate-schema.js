@@ -1,6 +1,6 @@
 import { COLOUR_TOKENS, NODE_FIELDS, displayProblems, targetKindOf } from './display.js';
 
-const LITERAL_TYPES = ['boolean', 'string', 'enum', 'iconComponent'];
+const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
 
 /** @param {unknown} v */
 export const isPlainObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -30,6 +30,8 @@ function propProblems(name, def, props) {
         }
         if (def.type === 'boolean' && typeof def.default !== 'boolean') out.push(`prop "${name}" is boolean but its default is not`);
         if (def.type === 'string' && typeof def.default !== 'string') out.push(`prop "${name}" is string but its default is not`);
+        if (def.type === 'number' && !(def.default === null || (Number.isInteger(def.default) && def.default >= 0))) out.push(`prop "${name}" is a number but its default is not a whole number, 0 or more, or null`);
+        if (def.atMost !== undefined && (def.type !== 'number' || props[def.atMost]?.type !== 'number')) out.push(`prop "${name}" atMost must name a number prop`);
     } else {
         out.push(`prop "${name}" has unknown source "${def.source}"`);
     }
@@ -315,7 +317,7 @@ function controlProblems(schema) {
         const placeholder = props[control.placeholder];
         if (!placeholder || placeholder.source !== 'literal' || placeholder.type !== 'string') out.push(`control placeholder "${control.placeholder}" is not a string prop`);
     }
-    for (const [field, kind] of [['maxlength', 'string'], ['readonly', 'boolean'], ['clear', 'boolean'], ['count', 'boolean']]) {
+    for (const [field, kind] of [['maxlength', 'number'], ['minlength', 'number'], ['readonly', 'boolean'], ['clear', 'boolean'], ['count', 'boolean']]) {
         if (control[field] === undefined) continue;
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);

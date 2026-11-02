@@ -48,7 +48,7 @@ export const targetKindOf = (template, key) => {
 };
 
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */
-export const counterLabel = (value, max) => `${String(value ?? '').length}${max !== undefined && String(max) !== '' ? ` / ${max}` : ''}`;
+export const counterLabel = (value, max) => `${String(value ?? '').length}${max != null ? ` / ${max}` : ''}`;
 
 /** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), or `{ all: [...] }`. */
 export function conditionHolds(cond, props) {

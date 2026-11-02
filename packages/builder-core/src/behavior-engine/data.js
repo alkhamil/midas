@@ -29,7 +29,7 @@ export function behaviorError(node, problem, page) {
 }
 
 /** @param {unknown} v */
-const isValue = v => v === null || typeof v === 'string' || typeof v === 'boolean';
+const isValue = v => v === null || typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v));
 
 /**
  * The first problem with a node's behavior data, or null when it is valid. Master = binding, instance = props.
@@ -76,7 +76,7 @@ function problemOf(node) {
     }
     if (!node.isInstance) return 'instance props on a node that is not an instance';
     if (!isPlainObject(b.props)) return 'props must be an object';
-    for (const [prop, v] of Object.entries(b.props)) if (!isValue(v)) return `prop "${prop}" holds a value that is not text, boolean or null`;
+    for (const [prop, v] of Object.entries(b.props)) if (!isValue(v)) return `prop "${prop}" holds a value that is not text, a number, boolean or null`;
     return null;
 }
 

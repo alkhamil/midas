@@ -53,7 +53,7 @@ function componentSource(template, name, problems) {
     // The clear and the counter follow the input, as the canvas and Play order them: a text affix after the input comes after them.
     const controlPartsJsx = () => [
         ...(ctl?.clear ? ['{' + ctl.clear + ' && ' + ctl.value + " !== '' && <span className=\"" + template.id + '-clear">×</span>}'] : []),
-        ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
+        ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' != null ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
     ];
     let framePlaced = false;
     for (const slot of template.anatomy) {
@@ -64,7 +64,7 @@ function componentSource(template, name, problems) {
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (isControl) children.push(...controlPartsJsx());
