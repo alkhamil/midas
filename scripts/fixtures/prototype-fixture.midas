@@ -223,8 +223,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconStart"
@@ -726,8 +726,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconEnd"
@@ -1191,8 +1191,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconEnd"

@@ -970,8 +970,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconStart"
@@ -1326,8 +1326,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconEnd"
@@ -1584,8 +1584,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "iconEnd"
@@ -2659,8 +2659,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "prefixIcon"
@@ -3309,8 +3309,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "clear"
@@ -4183,8 +4183,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "prefixIcon"
@@ -4624,8 +4624,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "prefixIcon"
@@ -5065,8 +5065,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "prefixIcon"
@@ -6355,8 +6355,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "clear"
@@ -6448,8 +6448,8 @@
           "h": 16,
           "layout": "horizontal",
           "fills": [],
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
+          "layoutSizingH": "fixed",
+          "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
             "slot": "suffixIcon"
@@ -7103,7 +7103,7 @@
     "items": [
       {
         "id": "p-h18181b",
-        "name": "color/literal-23",
+        "name": "color/literal-24",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7112,7 +7112,7 @@
       },
       {
         "id": "sem-h18181b",
-        "name": "color/literal-23",
+        "name": "color/literal-24",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -7463,7 +7463,7 @@
       },
       {
         "id": "p-hffffff",
-        "name": "color/literal-21",
+        "name": "color/literal-22",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7472,7 +7472,7 @@
       },
       {
         "id": "sem-hffffff",
-        "name": "color/literal-21",
+        "name": "color/literal-22",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -7823,7 +7823,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-26",
+        "name": "color/literal-28",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7832,7 +7832,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-26",
+        "name": "color/literal-28",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9271,8 +9271,28 @@
         }
       },
       {
+        "id": "p-n18",
+        "name": "number/literal-21",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 18
+        }
+      },
+      {
+        "id": "sem-n18",
+        "name": "number/literal-21",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n18"
+          }
+        }
+      },
+      {
         "id": "p-hf5f5f5",
-        "name": "color/literal-22",
+        "name": "color/literal-23",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9281,7 +9301,7 @@
       },
       {
         "id": "sem-hf5f5f5",
-        "name": "color/literal-22",
+        "name": "color/literal-23",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9292,7 +9312,7 @@
       },
       {
         "id": "p-hbfbfbf",
-        "name": "color/literal-24",
+        "name": "color/literal-25",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9301,7 +9321,7 @@
       },
       {
         "id": "sem-hbfbfbf",
-        "name": "color/literal-24",
+        "name": "color/literal-25",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9311,8 +9331,28 @@
         }
       },
       {
+        "id": "p-h595959",
+        "name": "color/literal-26",
+        "type": "color",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": "#595959"
+        }
+      },
+      {
+        "id": "sem-h595959",
+        "name": "color/literal-26",
+        "type": "color",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-h595959"
+          }
+        }
+      },
+      {
         "id": "p-heeeeee",
-        "name": "color/literal-25",
+        "name": "color/literal-27",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9321,7 +9361,7 @@
       },
       {
         "id": "sem-heeeeee",
-        "name": "color/literal-25",
+        "name": "color/literal-27",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9537,6 +9577,29 @@
         }
       },
       {
+        "id": "in-s-clearIconSize",
+        "name": "clearIconSize",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n8"
+          },
+          "sm": {
+            "alias": "sem-n10"
+          },
+          "md": {
+            "alias": "sem-n12"
+          },
+          "lg": {
+            "alias": "sem-n14"
+          },
+          "xl": {
+            "alias": "sem-n18"
+          }
+        }
+      },
+      {
         "id": "in-s-valueTypography",
         "name": "valueTypography",
         "type": "typography",
@@ -9716,6 +9779,23 @@
           },
           "borderless": {
             "alias": "sem-hbfbfbf"
+          }
+        }
+      },
+      {
+        "id": "in-v-clear-hover",
+        "name": "clear-hover",
+        "type": "color",
+        "collectionId": "c-input-variant",
+        "values": {
+          "outlined": {
+            "alias": "sem-h595959"
+          },
+          "filled": {
+            "alias": "sem-h595959"
+          },
+          "borderless": {
+            "alias": "sem-h595959"
           }
         }
       },

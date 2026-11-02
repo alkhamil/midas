@@ -3822,7 +3822,7 @@
    },
    {
     "id": "p-ha1a1aa",
-    "name": "color/literal-28",
+    "name": "color/literal-29",
     "type": "color",
     "collectionId": "c-primitives",
     "values": {
@@ -3831,7 +3831,7 @@
    },
    {
     "id": "sem-ha1a1aa",
-    "name": "color/literal-28",
+    "name": "color/literal-29",
     "type": "color",
     "collectionId": "c-semantic",
     "values": {
@@ -5270,8 +5270,28 @@
     }
    },
    {
-    "id": "p-heeeeee",
+    "id": "p-h595959",
     "name": "color/literal-27",
+    "type": "color",
+    "collectionId": "c-primitives",
+    "values": {
+     "base": "#595959"
+    }
+   },
+   {
+    "id": "sem-h595959",
+    "name": "color/literal-27",
+    "type": "color",
+    "collectionId": "c-semantic",
+    "values": {
+     "base": {
+      "alias": "p-h595959"
+     }
+    }
+   },
+   {
+    "id": "p-heeeeee",
+    "name": "color/literal-28",
     "type": "color",
     "collectionId": "c-primitives",
     "values": {
@@ -5280,7 +5300,7 @@
    },
    {
     "id": "sem-heeeeee",
-    "name": "color/literal-27",
+    "name": "color/literal-28",
     "type": "color",
     "collectionId": "c-semantic",
     "values": {
@@ -5496,6 +5516,29 @@
     }
    },
    {
+    "id": "in-s-clearIconSize",
+    "name": "clearIconSize",
+    "type": "number",
+    "collectionId": "c-input-size",
+    "values": {
+     "xs": {
+      "alias": "sem-n10"
+     },
+     "sm": {
+      "alias": "sem-n12"
+     },
+     "md": {
+      "alias": "sem-n12"
+     },
+     "lg": {
+      "alias": "sem-n14"
+     },
+     "xl": {
+      "alias": "sem-n16"
+     }
+    }
+   },
+   {
     "id": "in-s-valueTypography",
     "name": "valueTypography",
     "type": "typography",
@@ -5675,6 +5718,23 @@
      },
      "borderless": {
       "alias": "sem-hbfbfbf"
+     }
+    }
+   },
+   {
+    "id": "in-v-clear-hover",
+    "name": "clear-hover",
+    "type": "color",
+    "collectionId": "c-input-variant",
+    "values": {
+     "outlined": {
+      "alias": "sem-h595959"
+     },
+     "filled": {
+      "alias": "sem-h595959"
+     },
+     "borderless": {
+      "alias": "sem-h595959"
      }
     }
    },
