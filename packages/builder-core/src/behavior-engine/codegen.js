@@ -44,7 +44,7 @@ function componentSource(template, name, problems) {
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
     const framePartJsx = part => {
         const { size, start, sweep, width } = part.arc;
-        const node = { type: 'ellipse', w: size - width, h: size - width, arcStart: start, arcSweep: sweep, arcRatio: 0 };
+        const node = { type: 'ellipse', w: size - width, h: size - width, arcStart: start, arcSweep: sweep, arcRatio: part.arc.ratio };
         const d = svgPathD(pathCommands(node), value => +value.toFixed(3));
         return `{${part.shownWhen.prop} === true && (<svg className="${template.id}-${part.id}" width={${size}} height={${size}} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} /></svg>)}`;
     };

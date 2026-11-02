@@ -71,7 +71,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
     }
     if (spec.type === 'ellipse') {
         const arc = spec.part.arc;
-        return { ...LAYER, id, name: spec.key, type: 'ellipse', parentId, w: arc.size, h: arc.size, arcStart: arc.start, arcSweep: arc.sweep, fills: [],
+        return { ...LAYER, id, name: spec.key, type: 'ellipse', parentId, w: arc.size, h: arc.size, arcStart: arc.start, arcSweep: arc.sweep, arcRatio: arc.ratio, fills: [],
             stroke: '#18181b', strokeWidth: arc.width, strokeAlign: 'inside', layoutSizingH: 'fixed', layoutSizingV: 'fixed',
             behavior: { version: BEHAVIOR_DATA_VERSION, part: spec.key } };
     }
@@ -185,4 +185,35 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const before = stubs.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
     const after = stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
     return [root, ...before, ...out.slice(1), ...after];
+}
+
+/**
+ * The children of a frame in the order the template puts them after a bind: each created layer goes before the layer the anatomy
+ * puts next after it (the label, for the spinner), and every other layer keeps its place. Returns the child ids in that order.
+ * @param {any} template
+ * @param {any[]} children the frame's children now, in order
+ * @param {any[]} created the layers the bind made
+ * @returns {string[]}
+ */
+export function childOrderAfterBind(template, children, created) {
+    const specs = layerSpecsOf(template).filter(spec => spec.role !== 'root');
+    const claimed = new Set();
+    const idOfSpec = new Map();
+    for (const spec of specs) {
+        const hit = matchOf(spec, children, claimed);
+        if (hit) {
+            claimed.add(hit.id);
+            idOfSpec.set(spec.key, hit.id);
+        }
+    }
+    for (const node of created) idOfSpec.set(node.name, node.id);
+    let order = children.map(child => child.id);
+    for (const node of created) {
+        const at = specs.findIndex(spec => spec.key === node.name);
+        const next = specs.slice(at + 1).map(spec => idOfSpec.get(spec.key)).find(id => id !== undefined && order.includes(id));
+        order = order.filter(id => id !== node.id);
+        if (next !== undefined) order.splice(order.indexOf(next), 0, node.id);
+        else order.push(node.id);
+    }
+    return order;
 }
