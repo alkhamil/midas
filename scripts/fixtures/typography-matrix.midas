@@ -270,7 +270,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -315,7 +315,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -1390,7 +1390,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -1439,7 +1439,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -1762,7 +1762,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -1811,7 +1811,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2134,7 +2134,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2183,7 +2183,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2506,7 +2506,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2555,7 +2555,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2878,7 +2878,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {
@@ -2927,7 +2927,7 @@
      "w": 0,
      "h": 0,
      "autoW": true,
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fill",
      "layoutSizingV": "hug",
      "fills": [
       {

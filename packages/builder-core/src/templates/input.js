@@ -14,7 +14,7 @@ export const INPUT = {
     anatomy: [
         ICON_START,
         { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasPrefix', is: true }, { prop: 'prefixText', empty: false }] } },
-        { id: 'label', kind: 'control', typography: 'value' },
+        { id: 'label', kind: 'control', typography: 'value', fill: true },
         { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasSuffix', is: true }, { prop: 'suffixText', empty: false }] } },
         ICON_END,
     ],
@@ -106,7 +106,7 @@ export const INPUT = {
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
     // The text part `count` shows the value's length (see counterLabel); `clear` is a glyph. Play renders each part from its node.
     parts: [
-        { id: 'placeholder', kind: 'text', shownWhen: { prop: 'value', empty: true }, typography: 'placeholder' },
+        { id: 'placeholder', kind: 'text', fill: true, shownWhen: { prop: 'value', empty: true }, typography: 'placeholder' },
         { id: 'clear', kind: 'text', shownWhen: { all: [{ prop: 'allowClear', is: true }, { prop: 'value', empty: false }] }, text: '×', typography: 'clear' },
         { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } }, typography: 'count' },
     ],
