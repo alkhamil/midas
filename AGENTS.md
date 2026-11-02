@@ -4,7 +4,7 @@
 
 - Canvas is the source of truth; Play derives from the node tree; antd is a structure reference only (variants, props, states, sizes, slots, token names); never replicate antd pixel/DOM.
 - Values come from variables (Primitives → Semantic), never copied from elsewhere.
-- Hug/fill/fixed sizing is owned by the node; the engine never writes it.
+- Hug/fill/fixed sizing is owned by the node; the engine writes it only to fix an axis bound to a variable (`fixBoundAxes`, read through `sizingOf`/`ownSizingOf`: a bound width or height is fixed in every mode, never hug or fill).
 - The engine is generic and schema-driven; no per-component code in the engine.
 - Strict: no legacy, no migration shims; old files are regenerated.
 - Source of truth for decisions is `docs/behavior-spec.md`; it wins over the roadmap.
@@ -39,6 +39,8 @@
 - Variant border style (`styles`, e.g. dashed) is applied on a Variant mode change and on instantiate, never on sync, so a Stroke Dash/Dots set by hand stays. A user stroke style (Solid, Dash, Dots) is the node's own: Play and the export draw it, and the Variant only sets the default on those two events.
 - Auto layout alignment has nine positions and the node owns them: Play and the export read the master's `primaryAlign`/`counterAlign` (an instance's own fields win in Play) through `layout.js`; a template's `rootAlign` only seeds a new master.
 - Managed slot order: a slot after the label goes before the first layer the anatomy ranks later (the Input's clear before its suffix), else last; one helper, `indexAmongLaterSlots`, serves the editor's plan and the generator. Play and the export follow the schema order, so the canvas must too.
+- Icon-like parts share one definition (`ICON_TOKENS` in icon-slots.js): the Button's start and end icons and its spinner follow `iconSize` and `fg` (`fg-disabled` while disabled) and are bound by one function (`iconSlotBindings`, layers listed by `iconBoundKeysOf`); an arc part's stroke is the CSS `color`. Prefix and suffix icons follow the same tokens. A managed icon slot is drawn with its colour from its class (export and Play, never inline, so a hover rule can win).
+- Input clear icon: `clearIconSize` = icon size minus 2 per Size mode, derived in the base data (antd-sizes.json `from`/`offset`, validated by the importer, never a number in the template); colour is the `placeholder` token, hover is `clear-hover` (Semantic colorTextSecondary; play-only "hover has no static canvas visual"), cursor pointer. Value wins over the placeholder: the control's `hidePlaceholderWhenFilled` hides the placeholder part while the value is not empty (canvas partWrites, Play, export); `hideWhenEmpty` hides the value layer while it is empty.
 - Variables window: a file starts with no collection. Create variable makes "Collection 1" + "Mode 1" in the same transaction; nothing else auto-creates one. No Enum variable type.
 - Play starts at the top-level frame that holds the selection (a child starts its frame), overriding the flow start marker; with nothing selected, the flow start, then the first frame.
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".
