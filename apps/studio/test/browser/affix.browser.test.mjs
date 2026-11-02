@@ -37,10 +37,12 @@ test('Has Prefix and Has Suffix in the Behavior panel show their texts on the ca
     const id = await createFromPanel(page, 'input');
     await setProp(page, 'placeholder', 'Search');
 
-    // The icon switches sit in the panel beside the affix switches, as on Button.
+    // The Input has a prefix and a suffix, each with its switch, and no icon switch; a side's kind and content show only while it is on.
     await page.locator('#inspector-tab-behavior').click();
-    assert.equal(await page.locator('[data-bp-prop="hasIcon"]').count(), 1, 'the Has Icon row is in the panel');
-    assert.equal(await page.locator('[data-bp-prop="iconPlacement"]').count(), 0, 'the placement row is hidden while Has Icon is off');
+    assert.equal(await page.locator('[data-bp-prop="hasPrefix"]').count(), 1, 'the Has Prefix row is in the panel');
+    assert.equal(await page.locator('[data-bp-prop="hasSuffix"]').count(), 1, 'the Has Suffix row is in the panel');
+    assert.equal(await page.locator('[data-bp-prop="hasIcon"]').count(), 0, 'the Input has no Has Icon row');
+    assert.equal(await page.locator('[data-bp-prop="prefixKind"]').count(), 0, 'the prefix kind is hidden while the prefix is off');
 
     // Both switches on, with their texts: the prefix text sits before the value, the suffix text after it.
     await setProp(page, 'hasPrefix', true);
