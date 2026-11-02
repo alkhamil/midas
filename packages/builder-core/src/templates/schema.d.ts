@@ -12,11 +12,14 @@ export interface AnatomySlot {
     managed?: boolean;
 }
 
-/** Condition on another prop: the prop is shown only while `prop` resolves to `is`. */
-export interface VisibleIf {
-    prop: string;
-    is: boolean | string;
-}
+/** A test on the resolved props: `prop` resolves to `is`, a string `prop` is or is not empty, or every test of `all` holds. */
+export type Condition =
+    | { prop: string; is: boolean | string }
+    | { prop: string; empty: boolean }
+    | { all: Condition[] };
+
+/** The condition under which a prop is shown. */
+export type VisibleIf = Condition;
 
 /** A prop whose value is a mode of a variable collection (a dimension, locked by the schema). */
 export interface VariableProp {
@@ -59,7 +62,7 @@ export type LiteralProp =
     | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'number'; default: number | null; atMost?: string; visibleIf?: VisibleIf } & RequiresCols)
-    | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; control?: 'segmented'; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf } & RequiresCols);
 
 export type PropDef = VariableProp | LiteralProp;

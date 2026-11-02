@@ -43,11 +43,11 @@ function propProblems(name, def, props) {
             if (!target || target.source !== 'variable') out.push(`prop "${name}" requires "${dim}", which is not a variable prop`);
         }
     }
-    if (def.visibleIf !== undefined) {
-        const cond = def.visibleIf;
-        const target = isPlainObject(cond) && props[cond.prop];
-        if (!target) out.push(`prop "${name}" visibleIf refers to unknown prop "${isPlainObject(cond) ? cond.prop : cond}"`);
-        else if (target.source !== 'literal' || !['boolean', 'enum'].includes(target.type)) out.push(`prop "${name}" visibleIf must test a boolean or enum prop, not "${cond.prop}"`);
+    if (def.visibleIf !== undefined) out.push(...conditionProblems(def.visibleIf, props, `prop "${name}" visibleIf`));
+    if (def.control !== undefined) {
+        if (def.control !== 'segmented') out.push(`prop "${name}" control "${def.control}" is not segmented`);
+        else if (def.type !== 'enum') out.push(`prop "${name}" control "segmented" needs an enum prop`);
+        else if (!Array.isArray(def.options) || def.options.length < 2 || def.options.length > 3) out.push(`prop "${name}" control "segmented" takes 2 to 3 options`);
     }
     // A remembered prop keeps its value while a switch hides it, so it only means something on a prop that a visibleIf hides.
     if (def.remembered !== undefined) {

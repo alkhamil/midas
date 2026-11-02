@@ -6,6 +6,7 @@ import { iconNeedsOf } from './icon-slot.js';
 import { carryPlacementIcons, iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
+import { conditionProps } from './display.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
 
@@ -32,7 +33,7 @@ function isIconRelated(template, name) {
     const def = template.props[name];
     if (def.source !== 'literal') return false;
     if (def.type === 'iconComponent' || def.visibleIf) return true;
-    return Object.values(template.props).some(p => p.visibleIf?.prop === name);
+    return Object.values(template.props).some(p => p.visibleIf && conditionProps(p.visibleIf).includes(name));
 }
 
 /**
@@ -161,6 +162,7 @@ export function instancePanel(instance, master, collections, modes) {
             type: def.type,
             value: values[name],
             options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],
+            ...(def.type === 'enum' && def.control ? { control: def.control } : {}),
             disabled: hint !== '',
             hint,
         });

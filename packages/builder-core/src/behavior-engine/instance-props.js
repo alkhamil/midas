@@ -3,18 +3,20 @@
 // Unset props fall back to the schema default. A prop hidden by visibleIf keeps no stored value, except a `remembered` prop: its
 // value (an icon, a text) survives while its switch is off, so it is there again when the switch is turned back on.
 import { BEHAVIOR_DATA_VERSION } from './data.js';
+import { conditionHolds } from './display.js';
 /** @typedef {import('../templates/schema.js').PropDef} PropDef */
 /** @typedef {Record<string, string | boolean | null>} StoredProps */
 
 /**
- * Whether `name` is shown, given the values of the props it depends on. A prop with no visibleIf is always shown.
+ * Whether `name` is shown, given the values of the props it depends on: its `visibleIf` is one test (`{ prop, is }`) or every test of
+ * an `{ all: [...] }`. A prop with no visibleIf is always shown.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {string} name
  * @param {Record<string, unknown>} values
  */
 export function isPropVisible(template, name, values) {
     const cond = template.props[name].visibleIf;
-    return !cond || values[cond.prop] === cond.is;
+    return !cond || conditionHolds(cond, values);
 }
 
 /**

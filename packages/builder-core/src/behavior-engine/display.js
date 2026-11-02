@@ -59,6 +59,11 @@ export function conditionHolds(cond, props) {
     return (String(raw ?? '') === '') === cond.empty;
 }
 
+/** The names of the props a condition reads, in order. */
+export function conditionProps(cond) {
+    return cond.all ? cond.all.flatMap(conditionProps) : [cond.prop];
+}
+
 /**
  * The parts the canvas draws, as nodes in the master and in each instance: `{ id, kind, shownWhen, text, canvas, reason }`. A part
  * with `canvas: false` is play-only and has no node; `reason` says why.
