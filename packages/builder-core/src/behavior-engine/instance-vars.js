@@ -1,6 +1,7 @@
 // Instance vars (pure). An instance's `vars` mix two kinds of binding: the ones it copies from its master (Bind tokens reaches them),
 // and the owned ones the behavior engine derives per instance from its persistent states (see ownedVarKeys). The copy and the
 // override check work on the first kind only; the derivation keeps the second.
+import { sizingOf } from '../geometry/autolayout.js';
 
 /**
  * The vars without the owned keys. Undefined vars give an empty object.
@@ -74,7 +75,7 @@ export function isLayoutOwnedField(node, parent, field) {
     if (field === 'x' || field === 'y') return autoParent;
     if (field !== 'w' && field !== 'h') return false;
     const explicit = field === 'w' ? node.layoutSizingH : node.layoutSizingV;
-    const sizing = explicit ?? (node.type === 'text' ? (field === 'h' || node.autoW ? 'hug' : 'fixed') : 'fixed');
+    const sizing = sizingOf(node, field === 'w' ? 'h' : 'v');
     if (sizing === 'hug') return node.type === 'frame' || (node.type === 'text' && flow && (autoParent || !!explicit));
     if (sizing === 'fill') return flow;
     return false;

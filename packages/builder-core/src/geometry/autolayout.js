@@ -62,3 +62,45 @@ export function strokeOutside(child, parent) {
     if (!parent?.strokesIncluded || !strokeIsOn(child) || child.strokeAlign === 'inside') return 0;
     return child.strokeAlign === 'outside' ? (child.strokeWidth || 0) : (child.strokeWidth || 0) / 2;
 }
+
+/**
+ * The sizing a node states on one axis, or undefined when it states none: `fixed` for a bound axis, else its own `layoutSizingH` or
+ * `layoutSizingV`. Play and the export read this one (a layer that states nothing is sized by its kind there).
+ * @param {any} n
+ * @param {'h' | 'v'} axis
+ * @returns {'hug' | 'fill' | 'fixed' | undefined}
+ */
+export function ownSizingOf(n, axis) {
+    if (n.vars?.[axis === 'h' ? 'w' : 'h'] !== undefined) return 'fixed';
+    return axis === 'h' ? n.layoutSizingH : n.layoutSizingV;
+}
+
+/**
+ * How a node sizes itself on one axis (`h` horizontal, `v` vertical): `hug`, `fill` or `fixed`. An axis bound to a variable (`vars.w`,
+ * `vars.h`) is always `fixed`, whatever the node's own sizing says: it takes the variable's value in every mode. Otherwise the node's own
+ * sizing, and without one a text layer hugs (its width only while it auto-sizes) and any other layer is fixed. The canvas layout pass,
+ * Play and the export all read sizing here.
+ * @param {any} n
+ * @param {'h' | 'v'} axis
+ * @returns {'hug' | 'fill' | 'fixed'}
+ */
+export function sizingOf(n, axis) {
+    const own = ownSizingOf(n, axis);
+    if (own) return own;
+    if (n.type === 'text') return axis === 'h' ? (n.autoW ? 'hug' : 'fixed') : 'hug';
+    return 'fixed';
+}
+
+/**
+ * Writes `fixed` as the sizing of each axis the node binds to a variable, so the data says what sizingOf answers. Called by every writer
+ * of a width or height binding. Returns whether the node changed.
+ * @param {any} n
+ * @returns {boolean}
+ */
+export function fixBoundAxes(n) {
+    let changed = false;
+    for (const [key, field] of [['w', 'layoutSizingH'], ['h', 'layoutSizingV']]) {
+        if (n.vars?.[key] !== undefined && n[field] !== 'fixed') { n[field] = 'fixed'; changed = true; }
+    }
+    return changed;
+}

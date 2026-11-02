@@ -3,6 +3,7 @@
 // with the icons the props place in its managed slots.
 import { applyTemplateToFrame, instanceOf } from '../packages/builder-core/src/behavior-engine/template-master.js';
 import { iconSlotBindings, iconSlotTargets } from '../packages/builder-core/src/behavior-engine/icon-slot.js';
+import { fixBoundAxes } from '../packages/builder-core/src/geometry/autolayout.js';
 
 /**
  * A master: `frame` becomes the component, and the generator gives it the layers its template needs (each bound to its variables).
@@ -80,6 +81,7 @@ export function withIcons(copies, picks, id, components, template, disabled, fg,
         if (!layer || !component) continue;
         const content = iconInstance(layer.id, component, components, disabled, template, fg, fgDisabled, size);
         Object.assign(layer, { layout: 'horizontal', padding: 0, gap: 0, padT: 0, padR: 0, padB: 0, padL: 0, fills: [], clip: true, vars: content.slotVars });
+        fixBoundAxes(layer);
         nested.push(...content.nodes);
     }
     return [...copies, ...nested];

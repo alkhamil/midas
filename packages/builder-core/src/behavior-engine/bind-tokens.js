@@ -7,6 +7,7 @@ import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
 import { varsWithBinding } from './edits.js';
 import { setStrokeWeight, strokePaintMissing } from '../geometry/shapes.js';
+import { fixBoundAxes } from '../geometry/autolayout.js';
 
 /** @param {string} name */
 
@@ -71,7 +72,11 @@ export function applyBindTokens(layers, ops) {
             if (!(n.strokeWidth > 0)) setStrokeWeight(n, 1);
             if (n.strokeAlign === undefined) n.strokeAlign = 'inside';
         }
+        // A bound width or height is the variable's value in every mode: that axis is fixed, never hug or fill.
+        fixBoundAxes(n);
         touched.push(n);
     }
+    // A layer whose size was bound before but still hugs (a file from before this rule) is fixed by the next bind too.
+    for (const { node } of layers) fixBoundAxes(node);
     return touched;
 }

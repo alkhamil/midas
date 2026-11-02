@@ -199,7 +199,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
-        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
+        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
     // the first layer the anatomy puts later (the clear icon before the suffix text), else last. Slots are placed in anatomy order.
@@ -241,4 +241,9 @@ export function childOrderAfterBind(template, children, created) {
         else order.push(node.id);
     }
     return order;
+}
+
+/** The sizing of a managed slot layer: fixed when a size token drives it (the slot is the variable's width and height), else it hugs its content. */
+function sizedSlot(template, slotId) {
+    return template.display?.[slotId]?.size !== undefined ? 'fixed' : 'hug';
 }

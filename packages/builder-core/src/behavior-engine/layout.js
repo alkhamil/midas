@@ -1,7 +1,7 @@
 // Shared flex layout: the canvas rules for auto layout, used by Play and the code generator alike so a component draws
 // exactly as its master does. Gap and padding are token-driven (the codegen writes them from variables); display is set
 // by the surface (flex in Play and on canvas, inline-flex in generated code so a hug-sized component still hugs).
-import { layoutPads, layoutGap, layoutGapCross, strokeOutside } from '../geometry/autolayout.js';
+import { layoutPads, layoutGap, layoutGapCross, ownSizingOf, strokeOutside } from '../geometry/autolayout.js';
 /**
  * How a child of an auto layout frame sizes itself on the parent's main axis (the flow direction) and on its cross axis.
  * - main fill: takes the free space (flex 1, may shrink to zero). Main fixed or hug: keeps its size and does not shrink, so a child
@@ -14,14 +14,14 @@ import { layoutPads, layoutGap, layoutGapCross, strokeOutside } from '../geometr
  */
 export function flowSizing(n, parent) {
     const vertical = parent.layout === 'vertical';
-    const mainAxis = vertical ? { sizing: n.layoutSizingV, size: 'height', length: n.h, min: 'minHeight' } : { sizing: n.layoutSizingH, size: 'width', length: n.w, min: 'minWidth' };
-    const crossAxis = vertical ? { sizing: n.layoutSizingH, size: 'width', length: n.w } : { sizing: n.layoutSizingV, size: 'height', length: n.h };
+    const mainAxis = vertical ? { sizing: ownSizingOf(n, 'v'), size: 'height', length: n.h, min: 'minHeight' } : { sizing: ownSizingOf(n, 'h'), size: 'width', length: n.w, min: 'minWidth' };
+    const crossAxis = vertical ? { sizing: ownSizingOf(n, 'h'), size: 'width', length: n.w } : { sizing: ownSizingOf(n, 'v'), size: 'height', length: n.h };
     /** @type {Record<string, string>} */
     const style = {};
     if (mainAxis.sizing === 'fill') {
         // In a parent that hugs its content a filling child keeps its own width and grows only into what is left (as the canvas does);
         // in a fixed parent it takes the row from zero.
-        style.flex = (vertical ? parent.layoutSizingV : parent.layoutSizingH) === 'hug' ? '1 1 auto' : '1 1 0';
+        style.flex = ownSizingOf(parent, vertical ? 'v' : 'h') === 'hug' ? '1 1 auto' : '1 1 0';
         style[mainAxis.min] = '0px';
     }
     else {

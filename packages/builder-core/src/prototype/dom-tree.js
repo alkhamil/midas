@@ -21,7 +21,7 @@ import { canvasPartsOf, counterLabel } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
-import { layoutOrder } from '../geometry/autolayout.js';
+import { layoutOrder, ownSizingOf } from '../geometry/autolayout.js';
 
 /**
  * @typedef {{ tag: string, nodeId?: string, attrs: Record<string, string | boolean>, style: Record<string, string>, text?: string, html?: string, children: Element[] }} Element
@@ -338,7 +338,7 @@ function renderTemplate(n, template, parent, scope) {
     // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
-    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
+    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, { borderWidth: '0px' });
@@ -445,15 +445,15 @@ function placement(n, parent, responsive) {
     if (!parent) {
         // A top-level layer is its frame's size, unless it hugs its content (a component instance): then its content gives the size, as it does on the canvas.
         if (responsive) Object.assign(style, { width: '100%', height: '100%' });
-        else Object.assign(style, n.layoutSizingH === 'hug' ? {} : { width: `${n.w}px` }, n.layoutSizingV === 'hug' ? {} : { height: `${n.h}px` });
+        else Object.assign(style, ownSizingOf(n, 'h') === 'hug' ? {} : { width: `${n.w}px` }, ownSizingOf(n, 'v') === 'hug' ? {} : { height: `${n.h}px` });
     }
     else if (isAutoLayout(parent) && n.layoutPositioning !== 'absolute') {
         Object.assign(style, flowSizing(n, parent));
     }
     else {
         Object.assign(style, { position: 'absolute', left: `${n.x}px`, top: `${n.y}px` });
-        if (n.layoutSizingH !== 'hug') style.width = `${n.w}px`;
-        if (n.layoutSizingV !== 'hug') style.height = `${n.h}px`;
+        if (ownSizingOf(n, 'h') !== 'hug') style.width = `${n.w}px`;
+        if (ownSizingOf(n, 'v') !== 'hug') style.height = `${n.h}px`;
     }
     const transform = transformOf(n);
     if (transform) style.transform = transform;
