@@ -147,7 +147,11 @@ export function masterLayersByKey(template, frame, nodes) {
     const children = nodes.filter(n => n.parentId === frame.id);
     const out = [{ key: 'root', node: frame }];
     for (const spec of layerSpecsOf(template).slice(1)) {
-        const hit = spec.role === 'part' ? children.find(c => c.behavior?.part === spec.key) : spec.role === 'slot' ? children.find(c => c.behavior?.slot === spec.key) : children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot);
+        // An affix text is found by its marker; the label and the control are the text layers that carry none (see labelEntryOf).
+        const hit = spec.role === 'part' ? children.find(c => c.behavior?.part === spec.key)
+            : spec.role === 'slot' ? children.find(c => c.behavior?.slot === spec.key)
+            : spec.optional ? children.find(c => c.behavior?.text === spec.key)
+            : children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
         if (hit) out.push({ key: spec.key, node: hit });
     }
     return out;

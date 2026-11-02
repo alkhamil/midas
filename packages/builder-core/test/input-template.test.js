@@ -69,8 +69,8 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
     assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{placeholder\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled\} \/>/);
-    assert.ok(jsx.includes('{((hasPrefix === true) && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch and a non-empty text');
-    assert.ok(jsx.includes('{((hasSuffix === true) && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch and a non-empty text');
+    assert.ok(jsx.includes('{((hasPrefix === true) && (prefixKind === "text") && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch, the Text kind and a non-empty text');
+    assert.ok(jsx.includes('{((hasSuffix === true) && (suffixKind === "text") && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch, the Text kind and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">\{clearIcon\}<\/span>\}/);
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });

@@ -1,8 +1,15 @@
-import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
+import { ICON_TOKENS } from './icon-slots.js';
 import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 
 // The clear icon: a managed slot shown while Allow Clear is on. It is drawn but hidden while the value is empty, so Play can show it as the value is typed.
-const CLEAR_ICON = { show: 'allowClear', slot: 'clear', component: 'clearIcon', label: 'Clear icon', hideWhenEmpty: 'value', cursor: 'pointer', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } };
+const CLEAR_ICON = { show: 'allowClear', slot: 'clear', component: 'clearIcon', label: 'Clear icon', hideWhenEmpty: 'value', cursor: 'pointer', tokens: ICON_TOKENS };
+
+// The prefix and the suffix are the Input's only side slots, as in antd. Each is on with its own switch and holds Text or an Icon: the
+// kind enum maps `icon` to the managed icon slot (and `text` to none), so the text layer shows for Text and the icon slot for Icon.
+const PREFIX_ICON = { show: 'hasPrefix', placement: 'prefixKind', slot: 'prefixIcon', component: 'prefixIcon', label: 'Prefix icon', tokens: ICON_TOKENS };
+const SUFFIX_ICON = { show: 'hasSuffix', placement: 'suffixKind', slot: 'suffixIcon', component: 'suffixIcon', label: 'Suffix icon', tokens: ICON_TOKENS };
+/** The condition a side's content shows under: its switch is on and its kind is `kind`. */
+const sideShown = (side, kind) => ({ all: [{ prop: `has${side}`, is: true }, { prop: `${side.toLowerCase()}Kind`, is: kind }] });
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
@@ -12,18 +19,18 @@ export const INPUT = {
     name: 'Input',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
-    // The icons are Button's (icon-slots.js). The text affixes: `hasPrefix` shows the prefix text on the start side, `hasSuffix` the suffix
-    // text on the end side, each only while its text is not empty.
+    // The prefix (start side) and the suffix (end side): each holds Text (the text layer, shown while its text is not empty) or an Icon
+    // (a managed icon slot, swappable like Button's). Only one of the two shows for a side; the clear icon sits before the suffix.
     anatomy: [
-        ICON_START,
-        { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasPrefix', is: true }, { prop: 'prefixText', empty: false }] } },
+        { id: 'prefixIcon', kind: 'icon', optional: true, managed: true },
+        { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Prefix', 'text').all, { prop: 'prefixText', empty: false }] } },
         { id: 'label', kind: 'control', typography: 'value', fill: true },
         { id: 'clear', kind: 'icon', optional: true, managed: true },
-        { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasSuffix', is: true }, { prop: 'suffixText', empty: false }] } },
-        ICON_END,
+        { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Suffix', 'text').all, { prop: 'suffixText', empty: false }] } },
+        { id: 'suffixIcon', kind: 'icon', optional: true, managed: true },
     ],
-    // The managed icon slots (see icon-slots.js).
-    icons: [...ICON_DEFS, CLEAR_ICON],
+    // The managed icon slots: the prefix icon, the suffix icon and the clear icon.
+    icons: [PREFIX_ICON, SUFFIX_ICON, CLEAR_ICON],
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `count` is the prop that
     // shows the character counter (with `maxlength`). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
@@ -47,12 +54,16 @@ export const INPUT = {
         allowClear: { source: 'literal', type: 'boolean', default: false },
         clearIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'allowClear', is: true }, remembered: true },
         showCount: { source: 'literal', type: 'boolean', default: false },
-        ...ICON_PROPS,
+        // Each side: a switch, the kind of content it holds, and that content. The text and the icon of a side are remembered while the
+        // switch is off or the other kind is chosen (`remembered`), so switching back restores them.
         hasPrefix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
+        prefixKind: { source: 'literal', type: 'enum', options: ['text', 'icon'], default: 'text', slots: { icon: 'prefixIcon' }, control: 'segmented', visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
+        prefixText: { source: 'literal', type: 'string', default: '', node: { key: 'prefixText', field: 'text' }, visibleIf: sideShown('Prefix', 'text'), remembered: true },
+        prefixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: sideShown('Prefix', 'icon'), remembered: true },
         hasSuffix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
-        // The text of each affix is remembered while its switch is off (`remembered`), so switching it back on restores it.
-        prefixText: { source: 'literal', type: 'string', default: '', node: { key: 'prefixText', field: 'text' }, visibleIf: { prop: 'hasPrefix', is: true }, remembered: true },
-        suffixText: { source: 'literal', type: 'string', default: '', node: { key: 'suffixText', field: 'text' }, visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
+        suffixKind: { source: 'literal', type: 'enum', options: ['text', 'icon'], default: 'text', slots: { icon: 'suffixIcon' }, control: 'segmented', visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
+        suffixText: { source: 'literal', type: 'string', default: '', node: { key: 'suffixText', field: 'text' }, visibleIf: sideShown('Suffix', 'text'), remembered: true },
+        suffixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: sideShown('Suffix', 'icon'), remembered: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
@@ -130,7 +141,8 @@ export const INPUT = {
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
         clear: { size: 'iconSize' },
         count: { fill: 'placeholder', typography: 'countTypography' },
-        ...ICON_DISPLAY,
+        prefixIcon: { size: 'iconSize' },
+        suffixIcon: { size: 'iconSize' },
     },
     events: [
         { name: 'onFocus', exposeAsTrigger: false },

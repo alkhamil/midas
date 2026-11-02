@@ -25,9 +25,9 @@ const MODELS = {
 let seq = 0;
 const idOf = key => `c-${key}-${++seq}`;
 
-/** The layers a master must have: every anatomy slot that is not optional, and every canvas part. Managed icon slots are instance layers. */
+/** The layers a master must have: every anatomy slot that is not a managed icon slot (an affix text included), and every canvas part. Managed icon slots are instance layers. */
 const requiredKeys = template => [
-    ...template.anatomy.filter(slot => !slot.optional).map(slot => slot.id),
+    ...template.anatomy.filter(slot => !slot.managed && slot.kind !== 'icon').map(slot => slot.id),
     ...canvasPartsOf(template).map(part => part.id),
 ];
 
@@ -46,9 +46,12 @@ for (const template of TEMPLATES.values()) {
         const { variables, binding } = MODELS[template.id]();
         const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };
         const out = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
-        // Every managed slot shown: each icon def's switch on, once with each placement, so a start and an end slot are both drawn.
-        const shownAt = placement => Object.fromEntries(template.icons.flatMap(def => (def.placement ? [[def.show, true], [def.placement, placement]] : [[def.show, true]])));
-        const copies = ['start', 'end'].flatMap(placement => instanceOf(template, frame, out.created, { ...shownAt(placement), ...(template.control ? { [template.control.value]: 'x' } : {}) }, { id: idOf }));
+        // Every managed slot shown: each icon def's switch on, once with each option of each placement prop (a start and an end slot; a
+        // Text and an Icon side), so every slot a placement can pick is drawn in one of the instances.
+        const switches = Object.fromEntries(template.icons.map(def => [def.show, true]));
+        const placements = [...new Set(template.icons.filter(def => def.placement).map(def => def.placement))];
+        const cases = placements.length ? placements.flatMap(prop => template.props[prop].options.map(option => ({ [prop]: option }))) : [{}];
+        const copies = cases.flatMap(chosen => instanceOf(template, frame, out.created, { ...switches, ...chosen, ...(template.control ? { [template.control.value]: 'x' } : {}) }, { id: idOf }));
         for (const slot of template.anatomy.filter(s => s.managed || s.kind === 'icon')) assert.ok(copies.some(n => n.behavior?.slot === slot.id), `${template.id} instance has ${slot.id}`);
     });
 

@@ -176,7 +176,8 @@ export function diagnoseDocument(doc) {
         // A layer the template requires (a non-optional anatomy slot, or a canvas part) that the master lacks: Auto Fix has the generator add it.
         const present = new Set(masterLayersByKey(template, m, nodes).map(l => l.key));
         for (const spec of layerSpecsOf(template).slice(1)) {
-            if (spec.role === 'slot' || spec.optional || present.has(spec.key)) continue;
+            // A managed icon slot is a layer of an instance only; every other layer of the template (an affix text included) is the master's.
+            if (spec.role === 'slot' || present.has(spec.key)) continue;
             out.push({ severity: 'warning', code: 'part-missing', node: m.name, nodeId: m.id, layer: spec.key, message: `${m.name}: the ${spec.key} layer is missing: ${template.name} needs it. Auto Fix adds it.` });
         }
         const known = new Set(items.map(i => i.id));

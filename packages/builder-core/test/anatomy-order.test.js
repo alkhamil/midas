@@ -24,12 +24,18 @@ function shown(props) {
     return instanceOf(input, frame, made.created, props, { id: idOf }).slice(1).filter(n => n.visible !== false).map(n => n.behavior?.slot ?? n.behavior?.part ?? n.name);
 }
 
-test('the generator puts the clear icon before the suffix text, and the end icon after both', () => {
-    const order = shown({ ...BOTH, hasIcon: true, iconPlacement: 'end' });
+test('the generator puts the clear icon before the suffix text', () => {
+    const order = shown(BOTH);
     assert.ok(order.indexOf('clear') > -1 && order.indexOf('suffixText') > -1, order.join());
     assert.ok(order.indexOf('clear') < order.indexOf('suffixText'), `clear before the suffix: ${order.join()}`);
-    assert.equal(order.at(-1), 'iconEnd', 'the end icon is last');
-    assert.equal(shown({ ...BOTH, hasIcon: true, iconPlacement: 'start' })[0], 'iconStart', 'the start icon is first');
+});
+
+test('the generator puts a suffix icon after the clear icon, and a prefix icon first', () => {
+    const order = shown({ ...BOTH, prefixKind: 'icon', suffixKind: 'icon' });
+    assert.equal(order.at(-1), 'suffixIcon', order.join());
+    assert.ok(order.indexOf('clear') < order.indexOf('suffixIcon'), `clear before the suffix icon: ${order.join()}`);
+    assert.equal(order[0], 'prefixIcon', order.join());
+    assert.ok(!order.includes('prefixText') && !order.includes('suffixText'), 'the Text layers do not show for the Icon kind');
 });
 
 test('the generator keeps a shown clear last when there is no suffix text', () => {

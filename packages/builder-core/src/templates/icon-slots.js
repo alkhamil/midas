@@ -1,7 +1,8 @@
-// The managed icon slots a template shares: a start and an end icon, placed by `hasIcon` and `iconPlacement`, each holding an icon prop
-// (its icon is remembered while `hasIcon` is off). Button and Input take them the same way, so their definitions live here once.
+// The managed icon slots Button has: a start and an end icon, placed by `hasIcon` and `iconPlacement` (start or end, never both), each
+// holding an icon prop (its icon is remembered while `hasIcon` is off). Input does not use them: its sides are prefix and suffix.
 
-const TOKENS = { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' };
+/** The tokens an icon slot follows: its colour (and the disabled one) and its size. */
+export const ICON_TOKENS = { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' };
 
 /** The start and end icon slots, as anatomy entries. */
 export const ICON_START = { id: 'iconStart', kind: 'icon', optional: true, managed: true };
@@ -9,8 +10,8 @@ export const ICON_END = { id: 'iconEnd', kind: 'icon', optional: true, managed: 
 
 /** The managed icon slots: `show` turns one on, `placement` picks its slot, `component` is the icon it holds. */
 export const ICON_DEFS = [
-    { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: TOKENS },
-    { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: TOKENS },
+    { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconStart', component: 'icon', tokens: ICON_TOKENS },
+    { show: 'hasIcon', placement: 'iconPlacement', slot: 'iconEnd', component: 'iconEnd', tokens: ICON_TOKENS },
 ];
 
 /** The props that place and choose the icons. `requires` is the variable dimensions the switch needs bound. */

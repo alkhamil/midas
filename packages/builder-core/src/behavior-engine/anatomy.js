@@ -56,7 +56,7 @@ export function placementsOfDef(template, def, slot) {
     return Object.entries(template.props[def.placement]?.slots ?? {}).filter(([, s]) => [s].flat().includes(slot)).map(([value]) => value);
 }
 
-/** The placement values that show a managed slot: `iconStart` is shown for `start` and `both` (see the template's `slots`). */
+/** The placement values that show a managed slot: Button's `iconStart` is shown for `start`, Input's `prefixIcon` for `icon` (see the prop's `slots`). */
 export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
 }
