@@ -52,22 +52,26 @@ const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
  * The Input collections and variables. Item ids: `{prefix}st-<token>` (Status), `{prefix}v-<token>` (Variant),
  * `{prefix}s-<token>` (Size). Literal Primitives and Semantic items are created once per fixture.
  */
-export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANTS, statusModes = INPUT_STATUSES, sizeModes = INPUT_SIZES, sizeValues = {} } = {}) {
+export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANTS, statusModes = INPUT_STATUSES, sizeModes = INPUT_SIZES, sizeValues = {}, shared = null } = {}) {
     const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
     const variant = ids.variant ?? 'c-variant';
     const status = ids.status ?? 'c-status';
     const size = ids.size ?? 'c-size';
-    const semantic = ids.semantic ?? 'c-semantic';
-    const primitives = ids.primitives ?? 'c-primitives';
-    const semItem = `${prefix}sem-outlineTransparent`;
+    // `shared` reuses the Semantic and Primitives collections of another call (its ids): the literal and typography items then share ids with it.
+    const semantic = shared?.semantic ?? ids.semantic ?? 'c-semantic';
+    const primitives = shared?.primitives ?? ids.primitives ?? 'c-primitives';
+    const common = shared ? '' : prefix;
+    const semItem = `${common}sem-outlineTransparent`;
     const bank = literalBank(primitives, semantic);
-    const text = textStyleBank(primitives, semantic, prefix);
+    const text = textStyleBank(primitives, semantic, common);
     const collections = [
         { id: variant, name: 'Input Variant', modes: variantModes.map(titled) },
         { id: status, name: 'Input Status', modes: statusModes.map(titled) },
         { id: size, name: 'Input Size', modes: sizeModes },
-        { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] },
-        { id: primitives, name: 'Primitives', modes: [{ id: 'base', name: 'Base' }] },
+        ...(shared ? [] : [
+            { id: semantic, name: 'Semantic', modes: [{ id: 'base', name: 'Base' }] },
+            { id: primitives, name: 'Primitives', modes: [{ id: 'base', name: 'Base' }] },
+        ]),
     ];
     const items = [{ id: semItem, name: 'outlineTransparent', type: 'color', collectionId: semantic, values: { base: { alias: bank.primitiveOf('#00000000') } } }];
     for (const [token, values] of Object.entries(STATUS_VALUES)) {

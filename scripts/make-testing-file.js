@@ -34,8 +34,11 @@ function node(type, props) {
 
 const model = buttonModel();
 const ids = model.ids;
-const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
-const variables = { collections: [...model.collections, ...imodel.collections], items: [...model.items, ...imodel.items] };
+// The Input shares the Button's Semantic and Primitives: one of each in the file.
+const imodel = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size' }, prefix: 'in-', shared: { semantic: model.ids.semantic, primitives: model.ids.primitives } });
+// Items and collections are merged by id: the shared literal and typography items are the same objects in both models.
+const byId = list => [...new Map(list.map(x => [x.id, x])).values()];
+const variables = { collections: byId([...model.collections, ...imodel.collections]), items: byId([...model.items, ...imodel.items]) };
 
 /** The Button master: a bound auto layout frame with its label, its spinner and its slots. */
 const BUTTON_MASTER = generatedMaster({

@@ -13991,7 +13991,7 @@
     "items": [
       {
         "id": "p-h6F4E37",
-        "name": "h6F4E37",
+        "name": "color/literal-0",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14000,7 +14000,7 @@
       },
       {
         "id": "sem-h6F4E37",
-        "name": "fx-h6F4E37",
+        "name": "color/literal-0",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14011,7 +14011,7 @@
       },
       {
         "id": "p-hDC2626",
-        "name": "hDC2626",
+        "name": "color/literal-1",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14020,7 +14020,7 @@
       },
       {
         "id": "sem-hDC2626",
-        "name": "fx-hDC2626",
+        "name": "color/literal-1",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14031,7 +14031,7 @@
       },
       {
         "id": "p-h5C3E2A",
-        "name": "h5C3E2A",
+        "name": "color/literal-2",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14040,7 +14040,7 @@
       },
       {
         "id": "sem-h5C3E2A",
-        "name": "fx-h5C3E2A",
+        "name": "color/literal-2",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14051,7 +14051,7 @@
       },
       {
         "id": "p-hB91C1C",
-        "name": "hB91C1C",
+        "name": "color/literal-3",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14060,7 +14060,7 @@
       },
       {
         "id": "sem-hB91C1C",
-        "name": "fx-hB91C1C",
+        "name": "color/literal-3",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14071,7 +14071,7 @@
       },
       {
         "id": "p-h4A3121",
-        "name": "h4A3121",
+        "name": "color/literal-4",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14080,7 +14080,7 @@
       },
       {
         "id": "sem-h4A3121",
-        "name": "fx-h4A3121",
+        "name": "color/literal-4",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14091,7 +14091,7 @@
       },
       {
         "id": "p-h991B1B",
-        "name": "h991B1B",
+        "name": "color/literal-5",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14100,7 +14100,7 @@
       },
       {
         "id": "sem-h991B1B",
-        "name": "fx-h991B1B",
+        "name": "color/literal-5",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14111,7 +14111,7 @@
       },
       {
         "id": "p-hF5EBE1",
-        "name": "hF5EBE1",
+        "name": "color/literal-6",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14120,7 +14120,7 @@
       },
       {
         "id": "sem-hF5EBE1",
-        "name": "fx-hF5EBE1",
+        "name": "color/literal-6",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14131,7 +14131,7 @@
       },
       {
         "id": "p-hFEE2E2",
-        "name": "hFEE2E2",
+        "name": "color/literal-7",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14140,7 +14140,7 @@
       },
       {
         "id": "sem-hFEE2E2",
-        "name": "fx-hFEE2E2",
+        "name": "color/literal-7",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14151,7 +14151,7 @@
       },
       {
         "id": "p-hEADACA",
-        "name": "hEADACA",
+        "name": "color/literal-8",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14160,7 +14160,7 @@
       },
       {
         "id": "sem-hEADACA",
-        "name": "fx-hEADACA",
+        "name": "color/literal-8",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14171,7 +14171,7 @@
       },
       {
         "id": "p-hFECACA",
-        "name": "hFECACA",
+        "name": "color/literal-9",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14180,7 +14180,7 @@
       },
       {
         "id": "sem-hFECACA",
-        "name": "fx-hFECACA",
+        "name": "color/literal-9",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14191,7 +14191,7 @@
       },
       {
         "id": "p-hDEC8B4",
-        "name": "hDEC8B4",
+        "name": "color/literal-10",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14200,7 +14200,7 @@
       },
       {
         "id": "sem-hDEC8B4",
-        "name": "fx-hDEC8B4",
+        "name": "color/literal-10",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14211,7 +14211,7 @@
       },
       {
         "id": "p-hFCA5A5",
-        "name": "hFCA5A5",
+        "name": "color/literal-11",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14220,7 +14220,7 @@
       },
       {
         "id": "sem-hFCA5A5",
-        "name": "fx-hFCA5A5",
+        "name": "color/literal-11",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14231,7 +14231,7 @@
       },
       {
         "id": "p-hFFFFFF",
-        "name": "hFFFFFF",
+        "name": "color/literal-12",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14240,7 +14240,7 @@
       },
       {
         "id": "sem-hFFFFFF",
-        "name": "fx-hFFFFFF",
+        "name": "color/literal-12",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14251,7 +14251,7 @@
       },
       {
         "id": "p-h6F4E3733",
-        "name": "h6F4E3733",
+        "name": "color/literal-13",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14260,7 +14260,7 @@
       },
       {
         "id": "sem-h6F4E3733",
-        "name": "fx-h6F4E3733",
+        "name": "color/literal-13",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14271,7 +14271,7 @@
       },
       {
         "id": "p-hDC262633",
-        "name": "hDC262633",
+        "name": "color/literal-14",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14280,7 +14280,7 @@
       },
       {
         "id": "sem-hDC262633",
-        "name": "fx-hDC262633",
+        "name": "color/literal-14",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14291,7 +14291,7 @@
       },
       {
         "id": "p-n24",
-        "name": "n24",
+        "name": "number/literal-15",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14300,7 +14300,7 @@
       },
       {
         "id": "sem-n24",
-        "name": "fx-n24",
+        "name": "number/literal-15",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14311,7 +14311,7 @@
       },
       {
         "id": "p-n30",
-        "name": "n30",
+        "name": "number/literal-16",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14320,7 +14320,7 @@
       },
       {
         "id": "sem-n30",
-        "name": "fx-n30",
+        "name": "number/literal-16",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14331,7 +14331,7 @@
       },
       {
         "id": "p-n40",
-        "name": "n40",
+        "name": "number/literal-17",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14340,7 +14340,7 @@
       },
       {
         "id": "sem-n40",
-        "name": "fx-n40",
+        "name": "number/literal-17",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14351,7 +14351,7 @@
       },
       {
         "id": "p-n48",
-        "name": "n48",
+        "name": "number/literal-18",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14360,7 +14360,7 @@
       },
       {
         "id": "sem-n48",
-        "name": "fx-n48",
+        "name": "number/literal-18",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14371,7 +14371,7 @@
       },
       {
         "id": "p-n56",
-        "name": "n56",
+        "name": "number/literal-19",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14380,7 +14380,7 @@
       },
       {
         "id": "sem-n56",
-        "name": "fx-n56",
+        "name": "number/literal-19",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14391,7 +14391,7 @@
       },
       {
         "id": "p-n8",
-        "name": "n8",
+        "name": "number/literal-20",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14400,7 +14400,7 @@
       },
       {
         "id": "sem-n8",
-        "name": "fx-n8",
+        "name": "number/literal-20",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14411,7 +14411,7 @@
       },
       {
         "id": "p-n12",
-        "name": "n12",
+        "name": "number/literal-21",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14420,7 +14420,7 @@
       },
       {
         "id": "sem-n12",
-        "name": "fx-n12",
+        "name": "number/literal-21",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14431,7 +14431,7 @@
       },
       {
         "id": "p-n16",
-        "name": "n16",
+        "name": "number/literal-22",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14440,7 +14440,7 @@
       },
       {
         "id": "sem-n16",
-        "name": "fx-n16",
+        "name": "number/literal-22",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14451,7 +14451,7 @@
       },
       {
         "id": "p-n20",
-        "name": "n20",
+        "name": "number/literal-23",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14460,7 +14460,7 @@
       },
       {
         "id": "sem-n20",
-        "name": "fx-n20",
+        "name": "number/literal-23",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14471,7 +14471,7 @@
       },
       {
         "id": "p-n4",
-        "name": "n4",
+        "name": "number/literal-24",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14480,7 +14480,7 @@
       },
       {
         "id": "sem-n4",
-        "name": "fx-n4",
+        "name": "number/literal-24",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14491,7 +14491,7 @@
       },
       {
         "id": "p-n6",
-        "name": "n6",
+        "name": "number/literal-25",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14500,7 +14500,7 @@
       },
       {
         "id": "sem-n6",
-        "name": "fx-n6",
+        "name": "number/literal-25",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14511,7 +14511,7 @@
       },
       {
         "id": "p-n10",
-        "name": "n10",
+        "name": "number/literal-26",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14520,7 +14520,7 @@
       },
       {
         "id": "sem-n10",
-        "name": "fx-n10",
+        "name": "number/literal-26",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14531,7 +14531,7 @@
       },
       {
         "id": "p-n14",
-        "name": "n14",
+        "name": "number/literal-27",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14540,7 +14540,7 @@
       },
       {
         "id": "sem-n14",
-        "name": "fx-n14",
+        "name": "number/literal-27",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14551,7 +14551,7 @@
       },
       {
         "id": "p-n18",
-        "name": "n18",
+        "name": "number/literal-28",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -14560,7 +14560,7 @@
       },
       {
         "id": "sem-n18",
-        "name": "fx-n18",
+        "name": "number/literal-28",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -14571,7 +14571,7 @@
       },
       {
         "id": "p-h00000000",
-        "name": "h00000000",
+        "name": "color/literal-29",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14580,7 +14580,7 @@
       },
       {
         "id": "sem-h00000000",
-        "name": "fx-h00000000",
+        "name": "color/literal-29",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14591,7 +14591,7 @@
       },
       {
         "id": "p-hffffff",
-        "name": "hffffff",
+        "name": "color/literal-30",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14600,7 +14600,7 @@
       },
       {
         "id": "sem-hffffff",
-        "name": "fx-hffffff",
+        "name": "color/literal-30",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14611,7 +14611,7 @@
       },
       {
         "id": "p-hf4f4f5",
-        "name": "hf4f4f5",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14620,7 +14620,7 @@
       },
       {
         "id": "sem-hf4f4f5",
-        "name": "fx-hf4f4f5",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14631,7 +14631,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "ha1a1aa",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14640,7 +14640,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "fx-ha1a1aa",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {

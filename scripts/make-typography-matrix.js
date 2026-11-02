@@ -33,8 +33,9 @@ const bySize = values => Object.fromEntries(SIZES.map((s, i) => [s.id, values[i]
 const SIZE_VALUES = Object.fromEntries(Object.entries(SIZING).map(([token, values]) => [token, bySize(values)]));
 
 const button = buttonModel({ sizeModes: SIZES, sizeValues: SIZE_VALUES });
-const input = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-', sizeModes: SIZES, sizeValues: SIZE_VALUES });
-const variables = { collections: [...button.collections, ...input.collections], items: [...button.items, ...input.items] };
+const input = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size' }, prefix: 'in-', sizeModes: SIZES, sizeValues: SIZE_VALUES, shared: { semantic: button.ids.semantic, primitives: button.ids.primitives } });
+const byId = list => [...new Map(list.map(x => [x.id, x])).values()];
+const variables = { collections: byId([...button.collections, ...input.collections]), items: byId([...button.items, ...input.items]) };
 
 const BUTTON_MASTER = generatedMaster({
     template: BUTTON,
