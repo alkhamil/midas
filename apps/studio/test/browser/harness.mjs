@@ -38,7 +38,18 @@ export async function ensureDevServers() {
         started.push(spawn('npm', ['run', 'dev', '--workspace', '@midas/studio', '--', '--port', '5174', '--strictPort'], { cwd: ROOT, shell: true, stdio: 'ignore' }));
         await waitUp(STUDIO_URL);
     }
-    return () => started.forEach(p => spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }));
+    // The stop waits until each process has exited and its port is closed: the next test checks the ports at once, and a server
+    // still listening then would be taken for a live one and left to die under the test.
+    return async () => {
+        for (const p of started) {
+            await new Promise(done => spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }).on('exit', done));
+        }
+        for (const url of [API_URL + '/api/auth/me', STUDIO_URL]) {
+            if (!started.length) break;
+            const end = Date.now() + 15_000;
+            while (Date.now() < end && (await isUp(url))) await new Promise(r => setTimeout(r, 300));
+        }
+    };
 }
 
 /**
