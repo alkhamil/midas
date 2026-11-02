@@ -98,7 +98,7 @@ function instanceHtml(panel, esc, findings, preview, expanded = false) {
     const variable = panel.rows.filter(r => r.kind === 'variable').map(r => {
         const name = esc(r.prop);
         const control = `<select data-bp="value" data-bp-kind="variable" data-bp-prop="${name}" aria-label="${name}" ${r.disabled ? 'disabled' : ''}>
-                <option value="">None</option>${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
+                ${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
             </select>`;
         return row(r.label, control, esc, r.prop) + (r.hint ? note(r.hint, esc) : '');
     }).join('');
