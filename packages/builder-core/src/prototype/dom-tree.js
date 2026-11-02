@@ -322,22 +322,53 @@ function renderTemplate(n, template, parent, scope) {
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
-    // A bound inside stroke takes the fill with it: the fill is clipped inside the stroke, so its anti-aliased edge sits under the stroke
-    // and not outside it (a fill on the host would show a light ring just outside the stroke's corners).
-    const fill = bound && !customDash && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside' ? `var(${cssVarOf(template.id, 'bg')})` : null;
-    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound, fill)) : null;
+    // A bound uniform solid inside stroke takes the fill into a layer of its own, clipped inside the stroke, so the fill's anti-aliased
+    // edge sits under the stroke and not outside it (a fill on the host shows a light ring just outside the stroke's corners). Any
+    // other stroke leaves the host its own fill: a dash shows the fill through its gaps, as the canvas does.
+    const fillEl = bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
+        ? fillLayerEl(shape, `var(${cssVarOf(template.id, 'bg')})`)
+        : null;
+    // The fill layer is the first child and the content paints above it: each laid-out child is lifted to z 0, in tree order after
+    // the fill. Nothing goes below the host, so the fill never falls behind the parent's own background.
+    if (fillEl) {
+        for (const child of children) child.style = { ...child.style, zIndex: '0' };
+        children.unshift(fillEl);
+    }
+    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound)) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
-    // The stroke overlay is absolutely positioned, so it is not one of the laid-out children.
+    // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
-    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, children.length - (strokeEl ? 1 : 0), template.rootAlign) };
+    const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
+    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, flowCount, template.rootAlign) };
     // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, { borderWidth: '0px' });
         if (!style.position) style.position = 'relative';
     }
-    if (fill) style.background = 'transparent';
+    if (fillEl) style.background = 'transparent';
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
+}
+
+/**
+ * The fill of a box with a uniform inside stroke, as a layer of its own: the box's corners, with a transparent border the stroke's
+ * width so the fill is clipped to the stroke's inner edge.
+ * @param {any} n
+ * @param {string} background
+ * @returns {Element}
+ */
+function fillLayerEl(n, background) {
+    const { t } = strokeSideWidths(n);
+    const radii = cornerRadii(n);
+    const borderRadius = (n.radius || hasRadii(n))
+        ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
+        : 'inherit';
+    return {
+        tag: 'div',
+        attrs: {},
+        style: { position: 'absolute', inset: '0px', boxSizing: 'border-box', borderWidth: `${svgNumber(t)}px`, borderStyle: 'solid', borderColor: 'transparent', borderRadius, background, backgroundClip: 'padding-box', pointerEvents: 'none' },
+        children: [],
+    };
 }
 
 /**
@@ -346,7 +377,7 @@ function renderTemplate(n, template, parent, scope) {
  * @param {any} n
  * @returns {Element}
  */
-function borderOverlayEl(n, borderStyle = null, bound = false, fill = null) {
+function borderOverlayEl(n, borderStyle = null, bound = false) {
     const { t, r, b, l } = strokeSideWidths(n);
     const align = n.strokeAlign ?? 'center';
     const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
@@ -371,8 +402,6 @@ function borderOverlayEl(n, borderStyle = null, bound = false, fill = null) {
         pointerEvents: 'none',
         borderRadius,
     };
-    // The fill sits behind the children, inside the stroke: the stroke's own edge is the only edge at the box.
-    if (fill) Object.assign(style, { background: fill, backgroundClip: 'padding-box', zIndex: '-1' });
     if (uniform && bound) {
         Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: 'inherit', borderColor: 'inherit' });
     }

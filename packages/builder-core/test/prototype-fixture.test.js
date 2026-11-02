@@ -64,6 +64,9 @@ test('the disabled Button draws disabled, and its layers are disabled targets fo
     assert.equal(isDisabledTarget(root.children[0], [root]), false);
 });
 
+/** The label element of a drawn Button. */
+const labelOf = button => button.children.find(c => c.attrs?.class === 'button-label');
+
 test('the Home frame draws as a flex column with three Button elements: primary, danger and disabled', () => {
     const before = JSON.stringify(doc);
     const { root, styles, problems } = toDomTree(doc, 'frame-home');
@@ -77,7 +80,7 @@ test('the Home frame draws as a flex column with three Button elements: primary,
         ['button', 'button', 'solid', 'danger', false],
         ['button', 'button', 'solid', 'primary', true],
     ]);
-    assert.deepEqual(buttons.map(b => b.children[0].text), ['Next', 'Delete', 'Unavailable']);
+    assert.deepEqual(buttons.map(b => labelOf(b).text), ['Next', 'Delete', 'Unavailable']);
     assert.match(styles, /\.button\[data-variant="solid"\]\[data-color="danger"\]\[data-size="lg"\]/);
     assert.equal(JSON.stringify(doc), before, 'building the DOM does not change the document');
 });
@@ -85,7 +88,7 @@ test('the Home frame draws as a flex column with three Button elements: primary,
 test('the Done frame draws its one Button under the after-delay interaction, with no interaction data in the DOM', () => {
     const { root } = toDomTree(doc, 'frame-done');
     assert.equal(root.children.length, 1);
-    assert.equal(root.children[0].children[0].text, 'Back home');
+    assert.equal(labelOf(root.children[0]).text, 'Back home');
     assert.equal(JSON.stringify(root).includes('after-delay'), false);
 });
 

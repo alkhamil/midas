@@ -95,7 +95,8 @@ for (const [templateId, sizeName] of [['button', 'sm'], ['button', 'lg'], ['inpu
         const r = await page.evaluate(id => {
             const el = document.querySelector(`.play-overlay [data-node-id="${id}"]`);
             const b = el.getBoundingClientRect();
-            const overlay = [...el.children].find(c => getComputedStyle(c).position === "absolute");
+            // The stroke is the last absolute layer: a fill layer, when there is one, comes first.
+            const overlay = [...el.children].filter(c => getComputedStyle(c).position === "absolute").at(-1);
             const rgb = getComputedStyle(overlay).borderTopColor.match(/\d+/g).slice(0, 3).map(Number);
             return { x: b.x, y: b.y, w: b.width, h: b.height, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius), stroke: rgb };
         }, id);
