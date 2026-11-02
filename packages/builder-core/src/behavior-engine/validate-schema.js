@@ -276,6 +276,7 @@ function iconProblems(schema, allTokens) {
         const show = props[icon.show], component = props[icon.component];
         if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
+        if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
         if (icon.placement !== undefined) {
             const placement = props[icon.placement];
             if (!placement || placement.source !== 'literal' || placement.type !== 'enum') out.push(`${tag} placement "${icon.placement}" is not an enum prop`);
@@ -318,7 +319,7 @@ function controlProblems(schema) {
         const placeholder = props[control.placeholder];
         if (!placeholder || placeholder.source !== 'literal' || placeholder.type !== 'string') out.push(`control placeholder "${control.placeholder}" is not a string prop`);
     }
-    for (const [field, kind] of [['maxlength', 'number'], ['minlength', 'number'], ['readonly', 'boolean'], ['clear', 'boolean'], ['count', 'boolean']]) {
+    for (const [field, kind] of [['maxlength', 'number'], ['minlength', 'number'], ['readonly', 'boolean'], ['count', 'boolean']]) {
         if (control[field] === undefined) continue;
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);

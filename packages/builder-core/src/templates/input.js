@@ -1,6 +1,9 @@
 import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
 import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 
+// The clear icon: a managed slot shown while Allow Clear is on. It is drawn but hidden while the value is empty, so Play can show it as the value is typed.
+const CLEAR_ICON = { show: 'allowClear', slot: 'clear', component: 'clearIcon', label: 'Clear icon', hideWhenEmpty: 'value', cursor: 'pointer', tokens: { colour: 'fg', disabledColour: 'fg-disabled', size: 'iconSize' } };
+
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
 /** @type {TemplateSchema} */
@@ -15,15 +18,16 @@ export const INPUT = {
         ICON_START,
         { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasPrefix', is: true }, { prop: 'prefixText', empty: false }] } },
         { id: 'label', kind: 'control', typography: 'value', fill: true },
+        { id: 'clear', kind: 'icon', optional: true, managed: true },
         { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [{ prop: 'hasSuffix', is: true }, { prop: 'suffixText', empty: false }] } },
         ICON_END,
     ],
     // The managed icon slots (see icon-slots.js).
-    icons: ICON_DEFS,
-    // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `clear` is
-    // the prop that shows the clear icon, `count` the one that shows the character counter (with `maxlength`). `hideWhenEmpty`: the
+    icons: [...ICON_DEFS, CLEAR_ICON],
+    // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `count` is the prop that
+    // shows the character counter (with `maxlength`). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
-    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', clear: 'allowClear', count: 'showCount', hideWhenEmpty: true },
+    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
@@ -41,6 +45,7 @@ export const INPUT = {
         maxLength: { source: 'literal', type: 'number', default: null },
         minLength: { source: 'literal', type: 'number', default: null, atMost: 'maxLength' },
         allowClear: { source: 'literal', type: 'boolean', default: false },
+        clearIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'allowClear', is: true }, remembered: true },
         showCount: { source: 'literal', type: 'boolean', default: false },
         ...ICON_PROPS,
         hasPrefix: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
@@ -52,14 +57,14 @@ export const INPUT = {
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'clearTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
+        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
         fromVariant: ['bg', 'fg', 'border', 'placeholder', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
         height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
-        valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', clearTypography: 'typography', countTypography: 'typography',
+        valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', countTypography: 'typography',
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
         'status-border': 'color', 'status-border-hover': 'color', 'status-border-focus': 'color', 'status-outline': 'color',
@@ -71,7 +76,6 @@ export const INPUT = {
         valueTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         addonTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         placeholderTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
-        clearTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         countTypography: {         xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'input-padding-x-md', lg: 'input-padding-x-lg', xl: 'input-padding-x-xl', default: 'input-padding-x-md' },
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
@@ -104,10 +108,9 @@ export const INPUT = {
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
-    // The text part `count` shows the value's length (see counterLabel); `clear` is a glyph. Play renders each part from its node.
+    // The text part `count` shows the value's length (see counterLabel). Play renders each part from its node.
     parts: [
         { id: 'placeholder', kind: 'text', fill: true, shownWhen: { prop: 'value', empty: true }, typography: 'placeholder' },
-        { id: 'clear', kind: 'text', shownWhen: { all: [{ prop: 'allowClear', is: true }, { prop: 'value', empty: false }] }, text: '×', typography: 'clear' },
         { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } }, typography: 'count' },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props above.
@@ -125,7 +128,7 @@ export const INPUT = {
         prefixText: { fill: 'fg', typography: 'addonTypography' },
         suffixText: { fill: 'fg', typography: 'addonTypography' },
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
-        clear: { fill: 'fg', typography: 'clearTypography' },
+        clear: { size: 'iconSize' },
         count: { fill: 'placeholder', typography: 'countTypography' },
         ...ICON_DISPLAY,
     },

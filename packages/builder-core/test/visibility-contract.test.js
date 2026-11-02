@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { canvasPartsOf, partWrites } from '../src/behavior-engine/display.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
+import { slotShown } from '../src/behavior-engine/template-master.js';
 import { INPUT } from '../src/templates/input.js';
 import { BUTTON } from '../src/templates/button.js';
 
@@ -20,7 +21,7 @@ test('every registered template declares its parts and its play-only behaviours,
 });
 
 test('a part is on the canvas unless its contract says otherwise', () => {
-    assert.deepEqual(canvasPartsOf(INPUT).map(p => p.id), ['placeholder', 'clear', 'count']);
+    assert.deepEqual(canvasPartsOf(INPUT).map(p => p.id), ['placeholder', 'count']);
     assert.deepEqual(canvasPartsOf(BUTTON).map(p => p.id), ['spinner']);
 });
 
@@ -34,7 +35,7 @@ test('Input visibility matrix: placeholder while the value is empty, clear with 
         [{ value: '', allowClear: true, showCount: true }, { placeholder: true, clear: false, count: true }],
     ];
     for (const [props, expected] of cases) {
-        const got = visibleOf(INPUT, props);
+        const got = { ...visibleOf(INPUT, props), clear: slotShown(INPUT, 'clear', resolveProps(INPUT, props)) };
         assert.deepEqual({ placeholder: got.placeholder, clear: got.clear, count: got.count }, expected, JSON.stringify(props));
         // The value layer shows only while the value is not empty, so the placeholder takes its place and no more.
         assert.equal(got.label, !!props.value, `label while the value is ${props.value ? 'set' : 'empty'}`);

@@ -58,9 +58,6 @@ test('control extras must name props of the right type', () => {
     const badMaxlength = structuredClone(INPUT);
     badMaxlength.control.maxlength = 'disabled';
     assert.match(validateTemplateSchema(badMaxlength).join('\n'), /control maxlength "disabled" is not a number prop/);
-    const badClear = structuredClone(INPUT);
-    badClear.control.clear = 'value';
-    assert.match(validateTemplateSchema(badClear).join('\n'), /control clear "value" is not a boolean prop/);
 });
 
 test('codegen writes a span root with data modes, an input with its props, and affix spans', () => {
@@ -74,7 +71,7 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{placeholder\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled\} \/>/);
     assert.ok(jsx.includes('{((hasPrefix === true) && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch and a non-empty text');
     assert.ok(jsx.includes('{((hasSuffix === true) && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch and a non-empty text');
-    assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">×<\/span>\}/);
+    assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">\{clearIcon\}<\/span>\}/);
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
@@ -104,24 +101,27 @@ test('Play draws a span root with the input, and a bound inside stroke emits no 
     assert.match(styles, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
 });
 
-test('Play draws the clear and count parts from their nodes, and only the ones whose node is visible', () => {
+test('Play draws the clear icon from its managed slot, kept and hidden while the value is empty, and the count from its node', () => {
     const doc = nodes => ({ pages: [{ id: 'p', name: 'Screens', nodes }], variables });
-    // The instance's copies of the clear and count parts, as the engine writes them from the props (see partWrites).
-    const part = (name, visible, text) => ({
-        id: `i1-${name}`, name, type: 'text', parentId: 'i1', x: 0, y: 0, w: 20, h: 20, text, visible, fills: solid('#8c8297'), fontSize: 14,
-        vars: labelVars, sourceId: `m-${name}`, behavior: { version: 2, part: name },
+    // The instance's copies, as the engine writes them: the clear icon's slot layer (shown while its value is set) and the count part.
+    const clearSlot = visible => ({ id: 'i1-clear', name: 'clear', type: 'frame', parentId: 'i1', x: 0, y: 0, w: 14, h: 14, visible, layout: 'none', fills: [], behavior: { version: 2, slot: 'clear' } });
+    const count = visible => ({
+        id: 'i1-count', name: 'count', type: 'text', parentId: 'i1', x: 0, y: 0, w: 20, h: 20, text: '2 / 20', visible, fills: solid('#8c8297'), fontSize: 14,
+        vars: labelVars, sourceId: 'm-count', behavior: { version: 2, part: 'count' },
     });
-    const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: 20 }), part('clear', true, '×'), part('count', true, '2 / 20')]), 'i1').root;
-    assert.ok(shown.children.some(c => c.nodeId === 'i1-clear' && c.text === '×'));
+    const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: 20 }), clearSlot(true), count(true)]), 'i1').root;
+    const icon = shown.children.find(c => c.nodeId === 'i1-clear');
+    assert.ok(icon && icon.attrs['data-role'] === 'clear' && icon.attrs.hidden === false, 'the clear icon is drawn with a value');
+    assert.equal(icon.style.cursor, 'pointer', 'the clear icon has the hand cursor, as a button does');
     assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
-    assert.equal(shown.children.find(c => c.nodeId === 'i1-clear').style.cursor, 'pointer', 'the clear icon has the hand cursor, as a button does');
-    const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), part('clear', false, '×'), part('count', false, '0')]), 'i1').root;
-    // The clear is kept while allowClear is on, hidden while the value is empty (Play shows it as the value is typed); the count is absent.
+    // With an empty value the clear layer is hidden on the canvas; Play keeps it, hidden, so typing shows it.
+    const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), clearSlot(false), count(false)]), 'i1').root;
     const kept = hidden.children.find(c => c.nodeId === 'i1-clear');
-    assert.ok(kept && kept.attrs.hidden === true, 'the clear is kept and hidden with an empty value');
+    assert.ok(kept && kept.attrs.hidden === true, 'the clear icon is kept and hidden with an empty value');
     assert.ok(!hidden.children.some(c => c.nodeId === 'i1-count'), 'the count is absent when its node is hidden');
     const off = toDomTree(doc([master(), instance({}, { disabled: true })]), 'i1').root;
     assert.equal(off.children.find(c => c.tag === 'input').attrs.disabled, true);
+    assert.equal(off.children.some(c => c.attrs?.['data-role'] === 'clear'), false, 'no clear icon without Allow Clear');
 });
 
 test('binding covers collections, stroke and state modes; the border follows the Status mode through the Variant alias', () => {

@@ -119,7 +119,7 @@ function iconRowsOf(template, values, name) {
             continue;
         }
         if (def.placement !== undefined && !slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot)) continue;
-        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon ' + def.slot.replace(/^icon/i, '').toLowerCase() });
+        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: def.label ?? 'Icon ' + def.slot.replace(/^icon/i, '').toLowerCase() });
     }
     return rows;
 }

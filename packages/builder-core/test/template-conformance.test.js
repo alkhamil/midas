@@ -48,7 +48,7 @@ for (const template of TEMPLATES.values()) {
         const out = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
         // Every managed slot shown: each icon def's switch on, once with each placement, so a start and an end slot are both drawn.
         const shownAt = placement => Object.fromEntries(template.icons.flatMap(def => (def.placement ? [[def.show, true], [def.placement, placement]] : [[def.show, true]])));
-        const copies = ['start', 'end'].flatMap(placement => instanceOf(template, frame, out.created, shownAt(placement), { id: idOf }));
+        const copies = ['start', 'end'].flatMap(placement => instanceOf(template, frame, out.created, { ...shownAt(placement), ...(template.control ? { [template.control.value]: 'x' } : {}) }, { id: idOf }));
         for (const slot of template.anatomy.filter(s => s.managed || s.kind === 'icon')) assert.ok(copies.some(n => n.behavior?.slot === slot.id), `${template.id} instance has ${slot.id}`);
     });
 

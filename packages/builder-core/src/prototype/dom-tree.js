@@ -274,14 +274,6 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
                 children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
-                // The clear and the counter are drawn from their nodes. While allowClear is on the clear is kept though the canvas hides it
-                // with an empty value: Play shows it as the value is typed, and hides it again when the value is emptied (the value's parts follow
-                // it in Play; the canvas stays as it is).
-                const clearLayer = partLayerOf(n, 'clear', scope);
-                if (clearLayer && props[control.clear] === true) {
-                    const el = renderNode({ ...clearLayer, visible: true }, n, scope, false);
-                    if (el) children.push({ ...el, attrs: { ...el.attrs, 'data-role': 'clear', hidden: String(props[control.value] ?? '') === '' }, style: { ...el.style, cursor: 'pointer' } });
-                }
                 const counter = partElement(n, 'count', scope);
                 if (counter) children.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
             }
@@ -309,10 +301,12 @@ function renderTemplate(n, template, parent, scope) {
             for (const def of slotDefsOf(template, slot.id)) {
                 if (props[def.show] !== true) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
-                const el = layer && renderNode(layer, n, scope, true);
+                // A slot that hides while its value is empty (the clear icon) is kept and hidden, so Play shows it as the value is typed.
+                const hidden = def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '';
+                const el = layer && renderNode(hidden ? { ...layer, visible: true } : layer, n, scope, true);
                 if (!el) continue;
                 const { position, left, top, width, height, ...style } = el.style;
-                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}` }, style: { ...style, ...(def.tokens?.colour ? { color: `var(${cssVarOf(template.id, def.tokens.colour)})` } : null) } });
+                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style: { ...style, ...(def.tokens?.colour ? { color: `var(${cssVarOf(template.id, def.tokens.colour)})` } : null), ...(def.cursor ? { cursor: def.cursor } : null) } });
                 break;
             }
         }

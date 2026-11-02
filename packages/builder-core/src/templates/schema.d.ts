@@ -48,7 +48,6 @@ export interface ControlDef {
     readonly?: string;
     maxlength?: string;
     minlength?: string;
-    clear?: string;
     count?: string;
 }
 

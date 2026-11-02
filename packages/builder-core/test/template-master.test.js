@@ -12,7 +12,7 @@ const variablesOf = model => ({ collections: model.collections, items: model.ite
 
 test('Button is built from its label, icon slots and spinner; Input from its affixes, value, icons and parts', () => {
     assert.deepEqual(layerSpecsOf(TEMPLATES.get('button')).map(s => s.key), ['root', 'iconStart', 'spinner', 'label', 'iconEnd']);
-    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'iconStart', 'prefixText', 'label', 'placeholder', 'clear', 'count', 'suffixText', 'iconEnd']);
+    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'iconStart', 'prefixText', 'label', 'placeholder', 'count', 'clear', 'suffixText', 'iconEnd']);
 });
 
 test('applying a Button template to a frame creates its label and spinner, binds them, and reports no problem', () => {
@@ -51,11 +51,14 @@ test('an Input master holds every part as a layer, and an instance shows the par
     const frame = { id: 'inp', name: 'Input', type: 'frame', parentId: null, fills: [] };
     const out = applyTemplateToFrame(TEMPLATES.get('input'), { frame, children: [], binding: { variables: { variant: model.ids.variant, status: model.ids.status, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });
     const names = out.created.map(n => n.name);
-    for (const part of ['label', 'placeholder', 'clear', 'count']) assert.ok(names.includes(part), `${part} is a layer`);
+    for (const part of ['label', 'placeholder', 'count']) assert.ok(names.includes(part), `${part} is a layer`);
+    assert.ok(!names.includes('clear'), 'the clear icon is a managed slot: the instance holds its layer');
     const template = TEMPLATES.get('input');
     const instance = instanceOf(template, frame, out.created, { value: '', allowClear: false, showCount: false }, { id: counter() });
-    assert.equal(instance.find(n => n.name === 'clear').visible, false, 'clear is hidden with allowClear off');
+    assert.equal(instance.find(n => n.name === 'clear'), undefined, 'no clear layer with allowClear off');
     const shown = instanceOf(template, frame, out.created, { value: 'Kopi Kita', allowClear: true, showCount: true, maxLength: '10' }, { id: counter() });
     assert.equal(shown.find(n => n.name === 'clear').visible, true, 'clear is shown with a value and allowClear on');
+    const empty = instanceOf(template, frame, out.created, { value: '', allowClear: true, showCount: false }, { id: counter() });
+    assert.equal(empty.find(n => n.name === 'clear').visible, false, 'clear is kept and hidden with an empty value');
     assert.equal(shown.find(n => n.name === 'count').text, '9 / 10', 'count shows the length of the value');
 });

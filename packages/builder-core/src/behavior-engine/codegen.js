@@ -52,7 +52,6 @@ function componentSource(template, name, problems) {
     const ctl = controlOf(template);
     // The clear and the counter follow the input, as the canvas and Play order them: a text affix after the input comes after them.
     const controlPartsJsx = () => [
-        ...(ctl?.clear ? ['{' + ctl.clear + ' && ' + ctl.value + " !== '' && <span className=\"" + template.id + '-clear">×</span>}'] : []),
         ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' != null ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
     ];
     let framePlaced = false;
@@ -83,7 +82,7 @@ function componentSource(template, name, problems) {
                     ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
                     ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
                 ];
-                children.push(`{${[def.show, ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+                children.push(`{${[def.show, ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
