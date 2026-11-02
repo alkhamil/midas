@@ -7,7 +7,7 @@
 import { canvasPartsOf, literalFields, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
+import { controlOf, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
 /** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
@@ -197,11 +197,15 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const stub = { id: `slot-${slot.id}`, name: slot.id };
         stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
     }
-    // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label, after it otherwise.
+    // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
+    // the first layer the anatomy puts later (the clear icon before the suffix text), else last. Slots are placed in anatomy order.
     const labelIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
     const before = stubs.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
-    const after = stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
-    return [root, ...before, ...out.slice(1), ...after];
+    const layers = [...before, ...out.slice(1)];
+    for (const stub of stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy)) {
+        layers.splice(indexAmongLaterSlots(template, stub.node.behavior.slot, layers), 0, stub.node);
+    }
+    return [root, ...layers];
 }
 
 /**

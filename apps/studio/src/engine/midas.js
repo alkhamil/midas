@@ -9356,7 +9356,7 @@ function anatomyPlanOf(inst) {
             masterTree,
             flip: !!inst.layoutFlip,
             stored: inst.behavior?.props,
-            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, component: iconOfSlot(c) })),
+            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c) })),
         });
     });
 }

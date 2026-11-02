@@ -7,13 +7,29 @@ import { resolveProps } from './instance-props.js';
 import { conditionHolds } from './display.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
-/** @typedef {{ id: string, slot: string | null, component?: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker; component is the icon component the slot shows (null for the placeholder) */
+/** @typedef {{ id: string, slot: string | null, name?: string, component?: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker; name is its layer name (an anatomy slot's id for the layers the anatomy names); component is the icon component the slot shows (null for the placeholder) */
 /**
  * @typedef {{ op: 'remove', id: string }
  *   | { op: 'move', id: string, index: number }
  *   | { op: 'insert', slot: string, index: number, component?: string }
  *   | { op: 'swap', id: string, component: string | null }} AnatomyOp
  */
+
+/**
+ * Where a managed slot that follows the label goes among the layers: just before the first layer the anatomy puts after it (the Input's
+ * clear icon before its suffix text), or last when there is none. A layer the anatomy does not name (a part, the label's own layer) does
+ * not move the slot. Used by the editor's plan and by the generator, so both draw one order.
+ * @param {TemplateSchema} template
+ * @param {string} slot the managed slot's id
+ * @param {{ slot?: string | null, name?: string }[]} layers the layers the slot goes among, in order, without the slot itself
+ * @returns {number}
+ */
+export function indexAmongLaterSlots(template, slot, layers) {
+    const rank = (/** @type {string | null | undefined} */ id) => id === undefined || id === null ? -1 : template.anatomy.findIndex(s => s.id === id);
+    const own = rank(slot);
+    const at = layers.findIndex(layer => rank(layer.slot ?? layer.name) > own);
+    return at === -1 ? layers.length : at;
+}
 
 /** The managed slot defs of a template, in order. */
 export function iconDefsOf(template) {
@@ -149,15 +165,15 @@ export function planAnatomy(template, values, children, flip = false) {
     const textIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
     const slotIndex = slot => template.anatomy.findIndex(s => s.id === slot);
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
-    // A slot anatomically before the label goes first; one after it goes last. Slots are placed in anatomy order.
-    const afters = queue.filter(w => slotIndex(w.slot) > textIndex);
+    // A slot anatomically before the label goes first; one after it goes before the first layer the anatomy puts after it, else last.
+    // Slots are placed in anatomy order.
     const working = flip ? [...kept].reverse() : [...kept];
     let missing = queue.filter(w => !working.some(c => c.slot === w.slot)).length;
-    let front = 0, placedAfter = 0;
+    let front = 0;
     for (const w of queue) {
         const at = working.findIndex(c => c.slot === w.slot);
         const finalLength = working.length + missing;
-        const index = slotIndex(w.slot) < textIndex ? front++ : finalLength - afters.length + placedAfter++;
+        const index = slotIndex(w.slot) < textIndex ? front++ : indexAmongLaterSlots(template, w.slot, working.filter((c, i) => i !== at));
         const atStored = storedIndexOf(index, finalLength);
         if (at === -1) {
             ops.push(w.component ? { op: 'insert', slot: w.slot, index: atStored, component: w.component } : { op: 'insert', slot: w.slot, index: atStored });
