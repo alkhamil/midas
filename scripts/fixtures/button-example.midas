@@ -90,7 +90,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           }
         },
         {
@@ -228,7 +230,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "button-spinner",
           "component": false,

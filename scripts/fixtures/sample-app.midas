@@ -1170,7 +1170,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -1420,7 +1422,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -2984,7 +2988,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -3246,7 +3252,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -3445,7 +3453,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -4989,7 +4999,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -5473,7 +5485,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -5928,7 +5942,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -6434,7 +6450,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -6918,7 +6936,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -7322,7 +7342,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -8904,7 +8926,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -9112,7 +9136,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -9302,7 +9328,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -10797,7 +10825,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -11076,7 +11106,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -11624,7 +11656,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           }
         },
         {
@@ -12528,7 +12562,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -12718,7 +12754,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -12997,7 +13035,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -13239,7 +13279,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,
@@ -13387,7 +13429,9 @@
             "part": "spinner"
           },
           "vars": {
-            "stroke": "v-fg"
+            "stroke": "v-fg",
+            "w": "s-iconSize",
+            "h": "s-iconSize"
           },
           "sourceId": "comp-button-spinner",
           "component": false,

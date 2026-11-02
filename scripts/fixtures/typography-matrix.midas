@@ -91,7 +91,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      }
     },
     {
@@ -171,7 +173,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "templateId": "input",
@@ -556,7 +558,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      },
      "sourceId": "btn-spinner",
      "component": false,
@@ -703,7 +707,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      },
      "sourceId": "btn-spinner",
      "component": false,
@@ -850,7 +856,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      },
      "sourceId": "btn-spinner",
      "component": false,
@@ -997,7 +1005,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      },
      "sourceId": "btn-spinner",
      "component": false,
@@ -1144,7 +1154,9 @@
       "part": "spinner"
      },
      "vars": {
-      "stroke": "v-fg"
+      "stroke": "v-fg",
+      "w": "s-iconSize",
+      "h": "s-iconSize"
      },
      "sourceId": "btn-spinner",
      "component": false,
@@ -1232,7 +1244,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "props": {
@@ -1551,7 +1563,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "props": {
@@ -1870,7 +1882,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "props": {
@@ -2189,7 +2201,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "props": {
@@ -2508,7 +2520,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "hug",
-     "layoutSizingV": "hug",
+     "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
       "props": {

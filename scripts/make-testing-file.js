@@ -67,10 +67,14 @@ function button(id, name, x, y, props, varModes, components) {
     return withIcons(copies, picks, id, components, BUTTON, props.disabled === true, 'v-fg', 'v-fg-disabled', 's-iconSize');
 }
 
-/** An Input instance: its props, its modes, and its start or end icons (as the props place them). */
+/** An Input instance: its props, its modes, and the icons of its prefix, suffix and clear slots (as the props show them). */
 function input(id, name, x, y, props, varModes, components) {
     const copies = generatedInstance({ template: INPUT, master: INPUT_MASTER, props, id, varModes, x, y });
-    const picks = [{ slot: 'iconStart', component: props.hasIcon && props.iconPlacement !== 'end' ? props.icon : null }, { slot: 'iconEnd', component: props.hasIcon && props.iconPlacement !== 'start' ? props.iconEnd : null }];
+    const picks = [
+        { slot: 'prefixIcon', component: props.hasPrefix && props.prefixKind === 'icon' ? props.prefixIcon : null },
+        { slot: 'suffixIcon', component: props.hasSuffix && props.suffixKind === 'icon' ? props.suffixIcon : null },
+        { slot: 'clear', component: props.allowClear ? props.clearIcon ?? null : null },
+    ];
     return withIcons(copies, picks, id, components, INPUT, props.disabled === true, 'in-v-fg', 'in-v-fg-disabled', 'in-s-iconSize');
 }
 
@@ -92,16 +96,17 @@ export function buildTestingFile() {
         ...button('t-text', 'Hapus', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
         ...button('t-loading', 'Simpan', 280, 280, { hasIcon: false, label: 'Simpan', loading: true }, MODES('solid', 'primary', 'sm'), icons),
         ...input('i-outlined', 'Search', 520, 40, { value: 'Hello', placeholder: 'Search' }, IMODES('outlined', 'default', 'md'), icons),
-        ...input('i-error', 'Error', 520, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'md'), icons),
-        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, showCount: true, maxLength: 20 }, IMODES('filled', 'default', 'md'), icons),
+        ...input('i-error', 'Error', 520, 120, { hasPrefix: true, prefixKind: 'icon', prefixIcon: 'icon-check', value: '', placeholder: 'Search' }, IMODES('outlined', 'error', 'md'), icons),
+        ...input('i-filled', 'Tags', 520, 200, { value: 'Hi', allowClear: true, clearIcon: 'icon-check', showCount: true, maxLength: 20 }, IMODES('filled', 'default', 'md'), icons),
         ...input('i-disabled', 'No edit', 520, 280, { value: 'No edit', disabled: true }, IMODES('outlined', 'default', 'md'), icons),
         ...input('i-addon', 'Site', 520, 360, { value: 'midas', hasPrefix: true, prefixText: 'https://', hasSuffix: true, suffixText: '.com' }, IMODES('borderless', 'default', 'sm'), icons),
         // Parity set mirroring the antd size demo: three prefix-icon inputs (large, default, small), one with a value, one disabled, one error.
-        ...input('i-size-lg', 'Large', 760, 40, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'large size' }, IMODES('outlined', 'default', 'lg'), icons),
-        ...input('i-size-md', 'Default', 760, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'default size' }, IMODES('outlined', 'default', 'md'), icons),
-        ...input('i-size-sm', 'Small', 760, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', placeholder: 'small size' }, IMODES('outlined', 'default', 'sm'), icons),
+        ...input('i-size-lg', 'Large', 760, 40, { hasPrefix: true, prefixKind: 'icon', prefixIcon: 'icon-check', placeholder: 'large size' }, IMODES('outlined', 'default', 'lg'), icons),
+        ...input('i-size-md', 'Default', 760, 120, { hasPrefix: true, prefixKind: 'icon', prefixIcon: 'icon-check', placeholder: 'default size' }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-size-sm', 'Small', 760, 200, { hasPrefix: true, prefixKind: 'icon', prefixIcon: 'icon-check', placeholder: 'small size' }, IMODES('outlined', 'default', 'sm'), icons),
         ...input('i-value', 'Username', 760, 280, { value: 'Kopi Kita', placeholder: 'Username' }, IMODES('outlined', 'default', 'md'), icons),
         ...input('i-state-disabled', 'Off', 760, 360, { value: 'Disabled text', placeholder: 'Disabled', disabled: true }, IMODES('outlined', 'default', 'md'), icons),
+        ...input('i-suffix-icon', 'Suffix', 520, 440, { value: 'midas', hasSuffix: true, suffixKind: 'icon', suffixIcon: 'icon-arrow', allowClear: true, clearIcon: 'icon-check' }, IMODES('outlined', 'default', 'md'), icons),
         ...input('i-state-error', 'Oops', 760, 440, { value: '', placeholder: 'Something wrong' }, IMODES('outlined', 'error', 'md'), icons),
     ];
     // One white frame holds the test instances: Play starts from a top-level frame, and the frame is the page the instances sit on.
