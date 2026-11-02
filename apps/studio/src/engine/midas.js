@@ -19360,22 +19360,36 @@ function teAliasMember(member, on, anchor) {
     } });
 }
 const teFmt = v => (typeof v === 'number' ? fmt(v) : String(v ?? ''));
-function teMemberRow(c, member, label, type) {
+/** The Design panel's icon for each typography field (the size "Ag", the line height, the letter spacing). */
+const TE_FIELD_ICON = { fontSize: 'Ag', lineHeight: '↕', letterSpacing: '↔' };
+/** The alias button of a field: the Variables control the Design panel's fields carry, here it aliases the member to a variable. */
+const teAliasButton = (member, alias) => `<button class="var-btn ${alias ? 'on' : ''}" data-te-alias="${member}" title="${alias ? 'Detach alias' : 'Alias to a variable'}" aria-label="${alias ? 'Detach alias' : 'Alias to a variable'}">${VAR_ICON}</button>`;
+/**
+ * One typography field, drawn with the Design panel's own markup (the font field, the select, the number field with its icon and unit).
+ * An aliased field shows the variable it aliases, with its resolved value.
+ */
+function teFieldHtml(c, member, label, type) {
     const raw = c.raw[member], st = c.res.style ?? {}, alias = isAliasMember(raw);
     const target = alias ? varItem(raw.alias) : null;
-    let control;
+    const button = teAliasButton(member, alias);
     if (alias)
-        control = `<span class="te-target" title="${esc(target?.name ?? 'missing')}">${esc(target?.name ?? 'missing')}</span><span class="te-res">= ${esc(teFmt(st[member]))}</span>`;
-    else if (member === 'fontFamily')
-        control = `<input class="te-input" type="text" list="te-fonts" value="${esc(raw)}" data-te-member="fontFamily" aria-label="Font family">`;
-    else if (member === 'fontWeight') {
+        return `<div class="field var-bound" title="${esc(label)}"><span>${esc(TE_FIELD_ICON[member] ?? label)}</span><span class="te-target" title="${esc(target?.name ?? 'missing')}">${esc(target?.name ?? 'missing')}</span><span class="te-res">= ${esc(teFmt(st[member]))}</span>${button}</div>`;
+    if (member === 'fontFamily')
+        return `<div class="field-label"><span>${esc(label)}</span></div><div class="font-field-row"><input class="font-field" type="text" list="te-fonts" value="${esc(raw)}" data-te-member="fontFamily" aria-label="Font family">${button}</div>`;
+    if (member === 'fontWeight') {
         const names = teWeightNames(st.fontFamily ?? raw) ?? Object.keys(WEIGHT_NUMBER);
         const value = typeof raw === 'string' ? raw : '';
-        control = `<select class="te-input" data-te-member="fontWeight" aria-label="Weight">${names.map(n => `<option value="${esc(n)}" ${n === value ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+        return `<div class="font-field-row"><select class="full-width" data-te-member="fontWeight" aria-label="Weight">${names.map(n => `<option value="${esc(n)}" ${n === value ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>${button}</div>`;
     }
-    else
-        control = `<input class="te-input" type="number" step="any" value="${esc(teFmt(raw))}" data-te-member="${member}" data-te-type="${type}" aria-label="${esc(label)}">`;
-    return `<div class="te-row"><span class="te-l">${esc(label)}</span><div class="te-c">${control}<button class="te-alias ${alias ? 'on' : ''}" data-te-alias="${member}" title="${alias ? 'Detach alias' : 'Alias to a variable'}" aria-label="${alias ? 'Detach alias' : 'Alias to a variable'}">${VAR_ICON}</button></div></div>`;
+    const unit = member === 'fontSize' ? {} : { unit: 'px' };
+    return fieldBase(TE_FIELD_ICON[member] ?? label, member, raw, { title: label, ...unit })
+        .replace(`data-prop="${member}"`, `data-te-member="${member}" data-te-type="${type}"`)
+        .replace(/<\/label>$/, `${button}</label>`);
+}
+/** The typography fields, in the Design panel's order: the family; the weight and the size; the line height and the letter spacing. */
+function teBodyHtml(c) {
+    const f = (member, label, type) => teFieldHtml(c, member, label, type);
+    return `${f('fontFamily', 'Font family', 'string')}<div class="property-grid">${f('fontWeight', 'Weight', 'string')}${f('fontSize', 'Size', 'number')}</div><div class="property-grid">${f('lineHeight', 'Line height', 'number')}${f('letterSpacing', 'Letter spacing', 'number')}</div>`;
 }
 function teHtml() {
     const c = teCtx();
@@ -19387,7 +19401,7 @@ function teHtml() {
     const styleRow = c.whole
         ? `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><span class="te-target">${esc(varItem(c.raw.alias)?.name ?? 'missing')}</span><button class="cmp-btn" data-te-unwhole>Use literal values</button></div></div>`
         : `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><button class="cmp-btn" data-te-whole-pick>Alias a style</button></div></div>`;
-    const members = c.whole ? '' : TE_MEMBERS.map(([m, label, type]) => teMemberRow(c, m, label, type)).join('');
+    const members = c.whole ? '' : teBodyHtml(c);
     const preview = st
         ? `<div class="te-preview" style="font-family:${esc(fontFamilyCss(st.fontFamily))};font-size:${st.fontSize}px;font-weight:${WEIGHT_NUMBER[st.fontWeight]};line-height:${st.lineHeight}px">Simpan Kopi Kita</div><div class="te-summary">${esc(summaryOf(st))}</div>`
         : `<div class="te-err">${esc(c.res.problems.join('; '))}</div>`;
