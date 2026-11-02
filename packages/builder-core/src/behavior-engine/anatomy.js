@@ -61,6 +61,35 @@ export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
 }
 
+/** Whether the managed slot of an icon def is shown for these resolved values: its switch is on and its placement (if any) picks the slot. */
+function iconDefShown(template, def, values) {
+    if (values[def.show] !== true) return false;
+    return def.placement === undefined || slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot);
+}
+
+/**
+ * The icon each slot takes when it starts to show with no icon chosen: the document's default icon, in the prop that holds the slot's icon.
+ * A slot starts to show when its switch is turned on, or when its placement or kind comes to pick it (Input's Text to Icon). A slot that was
+ * already shown, or already holds an icon (a remembered one included), is left as it is, so an icon cleared on purpose stays cleared.
+ * Pure: the caller stores the returned writes.
+ * @param {TemplateSchema} template
+ * @param {Record<string, unknown>} prev the instance's stored props before the edit
+ * @param {Record<string, unknown>} next the stored props after it
+ * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
+ * @returns {Record<string, string>} prop name to icon id
+ */
+export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
+    if (!defaultIcon) return {};
+    const before = resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
+    /** @type {Record<string, string>} */
+    const writes = {};
+    for (const def of iconDefsOf(template)) {
+        if (!def.component || iconDefShown(template, def, before) || !iconDefShown(template, def, after)) continue;
+        if (after[def.component] == null) writes[def.component] = defaultIcon;
+    }
+    return writes;
+}
+
 /**
  * The prop writes that carry icons across a placement change, by prop name. The live icon moves to the newly shown
  * slot; showing both keeps each side, duplicating the shown icon only where the other side has none. Sides the

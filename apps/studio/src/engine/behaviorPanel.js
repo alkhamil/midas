@@ -160,6 +160,9 @@ function literalRow(r, esc) {
         return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-prop="${name}" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
     if (r.type === 'boolean')
         return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}${r.disabled ? ' disabled' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop) + hint;
+    // An enum that asks for a segmented control (the Input's Text|Icon): the Design panel's own segmented primitive, one button per option.
+    if (r.type === 'enum' && r.control === 'segmented')
+        return row(label, `<div class="ly-seg${r.options.length === 3 ? ' n3' : ''}" role="group" aria-label="${name}">${r.options.map(o => `<button type="button" class="${o.id === r.value ? 'on' : ''}" data-bp-action="segment" data-bp-prop="${name}" data-bp-value="${esc(o.id)}" aria-pressed="${o.id === r.value}"${r.disabled ? ' disabled' : ''}>${esc(labelOf(o.name))}</button>`).join('')}</div>`, esc, r.prop) + hint;
     if (r.type === 'enum')
         return row(label, `<select data-bp="value" data-bp-kind="literal" data-bp-type="enum" data-bp-prop="${name}" aria-label="${name}"${r.disabled ? ' disabled' : ''}>
                 ${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}

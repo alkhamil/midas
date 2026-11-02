@@ -2683,6 +2683,7 @@ select.vw-text { cursor: pointer }
 .ly-pop .pp-row.off label { opacity: .45 }
 .ly-pop .pp-row select:disabled { opacity: .45 }
 .ly-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; border-radius: 7px; background: var(--field) }
+.ly-seg.n3 { grid-template-columns: repeat(3, 1fr) }
 .ly-seg button { height: 26px; border-radius: 5px; color: var(--muted); display: grid; place-items: center }
 .ly-seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px #0003 }
 .ly-seg button:disabled { opacity: .45; cursor: default }

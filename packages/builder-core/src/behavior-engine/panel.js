@@ -130,8 +130,12 @@ export function instancePanel(instance, master, collections, modes) {
     if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
-    // The props that drive the managed icon slots: they are listed under Slots.
-    const slotProps = template.icons.flatMap(def => [def.show, def.placement, def.component].filter(Boolean));
+    // The props that drive the managed icon slots and the affix text slots (a text layer shown by its own condition): they are listed under Slots.
+    const affixes = new Set(template.anatomy.filter(s => s.kind === 'text' && s.optional).map(s => s.id));
+    const slotProps = [
+        ...template.icons.flatMap(def => [def.show, def.placement, def.component].filter(Boolean)),
+        ...Object.entries(template.props).filter(([, def]) => def.source === 'literal' && def.node && affixes.has(def.node.key)).map(([name]) => name),
+    ];
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         if (def.source === 'variable') {
