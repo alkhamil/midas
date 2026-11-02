@@ -95,7 +95,7 @@ export function buildBehaviorFixture({ legacy = true } = {}) {
         ...MAIN,
         ...instanceOfMain('inst-start', 200, 120, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Save' }, MODES('solid', 'primary', 'sm')),
         ...instanceOfMain('inst-plain', 400, 120, { hasIcon: false, label: 'Cancel' }, MODES('solid', 'danger', 'lg')),
-        ...instanceOfMain('inst-both', 400, 120, { hasIcon: true, iconPlacement: 'both', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'Both' }, MODES('solid', 'primary', 'sm')),
+        ...instanceOfMain('inst-end', 400, 120, { hasIcon: true, iconPlacement: 'end', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'End' }, MODES('solid', 'primary', 'sm')),
         // Not bound and not a template: a plain frame with its own label, for the Behavior tab's bind action.
         node('frame', { id: 'unbound', name: 'Unbound', x: 600, y: 0, w: 136, h: 48, layout: 'horizontal', gap: 6, padding: 12, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#0058CA'), radius: 8 }),
         node('text', { id: 'unbound-label', name: 'Label', parentId: 'unbound', text: 'Button', w: 80, h: 24, autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug', fills: solid('#ffffff'), fontSize: 14 }),

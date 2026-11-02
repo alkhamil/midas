@@ -222,19 +222,6 @@ test('after a library update removes a collection, the bindings to it are cleare
     assert.equal(onPageTwo.behavior.props.label, 'Save');
 });
 
-test('placement both shows an Icon start and an Icon end row, each storing its own icon', () => {
-    const master = boundMaster([variant, size]);
-    const modes = { variant: 'solid', size: 'sm' };
-    const on = instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true));
-    const placed = instanceOf(setInstanceValue(on, master, 'iconPlacement', 'both'));
-    const both = instanceOf(setInstanceValue(placed, master, 'icon', 'ic-a'));
-    const panel = instancePanel(both, master, [variant, size], modes);
-    assert.deepEqual(rowOf(panel, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: 'ic-a', label: 'Icon start' });
-    assert.deepEqual(rowOf(panel, 'iconEnd'), { prop: 'iconEnd', kind: 'icon', slot: true, value: null, label: 'Icon end' });
-    const end = instancePanel(instanceOf(setInstanceValue(both, master, 'iconEnd', 'ic-b')), master, [variant, size], modes);
-    assert.equal(rowOf(end, 'icon').value, 'ic-a');
-    assert.equal(rowOf(end, 'iconEnd').value, 'ic-b');
-});
 
 test('placement end shows only the Icon end row, start shows only Icon start', () => {
     const master = boundMaster([variant, size]);

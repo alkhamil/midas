@@ -99,13 +99,10 @@ test('every state has a pseudo-class', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /state "hover" has no pseudo-class/);
 });
 
-test('a placement value can map to several managed slots', () => {
-    const both = clone(BUTTON);
-    both.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'iconEnd'] };
-    assert.deepEqual(validateTemplateSchema(both), []);
+test('a placement value must name slots that are managed anatomy', () => {
     const bad = clone(BUTTON);
-    bad.props.iconPlacement.slots = { start: 'iconStart', end: 'iconEnd', both: ['iconStart', 'label'] };
-    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 0 placement "both" maps to "label", which is not a managed anatomy slot/);
+    bad.props.iconPlacement.slots = { start: 'iconStart', end: 'label' };
+    assert.match(validateTemplateSchema(bad).join('\n'), /icon def 1 placement "end" maps to "label", which is not a managed anatomy slot/);
 });
 
 test('a placement icon def may pin one slot; an unknown slot is refused', () => {

@@ -32,10 +32,6 @@ test('an icon at the end is created after the label', () => {
     assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'end', loading: false }), ['label', 'iconEnd']);
 });
 
-test('both icons are created in anatomy order around the label', () => {
-    assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'both', loading: false }), ['iconStart', 'label', 'iconEnd']);
-});
-
 test('while loading, the spinner takes the start icon place: the start slot is not created, the spinner precedes the label', () => {
     assert.deepEqual(instance({ hasIcon: true, iconPlacement: 'start', loading: true }), ['spinner', 'label']);
 });
@@ -45,7 +41,7 @@ test('while loading with an end icon, the spinner precedes the label and the end
 });
 
 test('the creation order is the order the anatomy plan gives when the icon is switched on later', () => {
-    for (const placement of ['start', 'end', 'both']) {
+    for (const placement of ['start', 'end']) {
         const values = { hasIcon: true, iconPlacement: placement, loading: false, label: 'Button', disabled: false, size: 'sm', variant: 'solid', color: 'primary' };
         const ops = planAnatomy(template, values, [], false).filter(op => op.op === 'insert');
         const planned = [...ops].sort((a, b) => a.index - b.index).map(op => op.slot);

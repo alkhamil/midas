@@ -107,8 +107,8 @@ test('the codegen renders the icon slots inside the root: start before the label
     assert.ok(at('className="button-iconStart"') > -1 && at('className="button-iconEnd"') > -1, 'both slots are written');
     assert.ok(at('button-iconStart') < at('button-label'), 'the start icon comes before the label');
     assert.ok(at('button-label') < at('button-iconEnd'), 'the end icon comes after the label');
-    assert.match(source, /iconPlacement === "start" \|\| iconPlacement === "both"/);
-    assert.match(source, /iconPlacement === "end" \|\| iconPlacement === "both"/);
+    assert.match(source, /iconPlacement === "start"/);
+    assert.match(source, /iconPlacement === "end"/);
 });
 
 test('the padding token is the content inset: the 1px stroke is not added to the padding (antd lineWidth is subtracted in the token)', () => {

@@ -176,37 +176,9 @@ test('two fixed slots: a chosen icon swaps in place with its component', () => {
     assert.deepEqual(ops, [{ op: 'move', id: 'pPre', index: 0 }, { op: 'swap', id: 'pPre', component: 'comp1' }]);
 });
 
-test('both inserts a start and an end icon around the label', () => {
-    const { ops } = plan(on('both'), [child('label')]);
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 0 }, { op: 'insert', slot: 'iconEnd', index: 2 }]);
-});
-
-test('start to both keeps the start icon and appends the end icon', () => {
-    const { ops } = plan(on('both'), [child('iStart', 'iconStart'), child('label')]);
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconEnd', index: 2 }]);
-});
-
-test('both to start removes only the end icon', () => {
+test('two icons on start: the end icon is removed', () => {
     const { ops } = plan(on('start'), [child('iStart', 'iconStart'), child('label'), child('iEnd', 'iconEnd')]);
     assert.deepEqual(ops, [{ op: 'remove', id: 'iEnd' }]);
-});
-
-test('both stores each slot icon independently: swapping one leaves the other', () => {
-    const values = { hasIcon: true, iconPlacement: 'both', icon: 'ic-a', iconEnd: 'ic-b' };
-    const children = [inSlot('iStart', 'iconStart', 'ic-a'), child('label'), inSlot('iEnd', 'iconEnd', 'ic-a')];
-    assert.deepEqual(plan(values, children).ops, [{ op: 'swap', id: 'iEnd', component: 'ic-b' }]);
-    const steady = [inSlot('iStart', 'iconStart', 'ic-a'), child('label'), inSlot('iEnd', 'iconEnd', 'ic-b')];
-    assert.deepEqual(plan(values, steady).ops, []);
-});
-
-test('end to both keeps the end icon and appends a start placeholder', () => {
-    const values = { hasIcon: true, iconPlacement: 'both', icon: null, iconEnd: 'ic-b' };
-    const { ops } = plan(values, [child('label'), inSlot('iEnd', 'iconEnd', 'ic-b')]);
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 0 }]);
-});
-test('both is steady: two icons around the label plan nothing', () => {
-    const { ops } = plan(on('both'), [child('iStart', 'iconStart'), child('label'), child('iEnd', 'iconEnd')]);
-    assert.deepEqual(ops, []);
 });
 
 test('a flipped root inserts the start icon last in stored order (first visually)', () => {
@@ -217,16 +189,6 @@ test('a flipped root inserts the start icon last in stored order (first visually
 test('a flipped root inserts the end icon first in stored order (last visually)', () => {
     const { ops } = plan(on('end'), [child('label')], { flip: true });
     assert.deepEqual(ops, [{ op: 'insert', slot: 'iconEnd', index: 0 }]);
-});
-
-test('both on a flipped root inserts at both stored ends', () => {
-    const { ops } = plan(on('both'), [child('label')], { flip: true });
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'iconStart', index: 2 }, { op: 'insert', slot: 'iconEnd', index: 0 }]);
-});
-
-test('both on a flipped root is steady: stored ends hold the icons', () => {
-    const { ops } = plan(on('both'), [child('iEnd', 'iconEnd'), child('label'), child('iStart', 'iconStart')], { flip: true });
-    assert.deepEqual(ops, []);
 });
 
 test('an icon stored first on a flipped root moves to the stored end for start', () => {

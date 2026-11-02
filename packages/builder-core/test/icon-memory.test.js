@@ -54,22 +54,6 @@ for (const { tid, start, end, first, second } of CASES) {
         assert.ok(plan.ops.some(o => o.op === 'insert' && o.slot === end && o.component === 'check'));
     });
 
-    test(`[${tid}] start to both duplicates the shown icon only where the other side has none`, () => {
-        const dup = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'start', [first]: 'check' }), master(tid), 'iconPlacement', 'both');
-        assert.equal(dup.props[second], 'check');
-        const kept = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'start', [first]: 'check', [second]: 'other' }), master(tid), 'iconPlacement', 'both');
-        assert.equal(kept.props[second], 'other');
-    });
-
-    test(`[${tid}] both to start keeps the start icon and remembers the end icon for the way back`, () => {
-        const toStart = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'both', [first]: 'check', [second]: 'other' }), master(tid), 'iconPlacement', 'start');
-        assert.equal(toStart.props[first], 'check');
-        assert.equal(toStart.props[second], 'other');
-        const back = setInstanceValue({ ...inst(), behavior: toStart }, master(tid), 'iconPlacement', 'both');
-        const plan = synced(tid, back.props, [{ id: 's', slot: start, component: 'check' }]);
-        assert.ok(plan.ops.some(o => o.op === 'insert' && o.slot === end && o.component === 'other'));
-    });
-
     test(`[${tid}] moving to an empty slot needs no picker: it shows the placeholder`, () => {
         const next = setInstanceValue(inst({ hasIcon: true, iconPlacement: 'start' }), master(tid), 'iconPlacement', 'end');
         assert.equal(next.props[second], null);

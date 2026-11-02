@@ -83,7 +83,7 @@ export function buildTestingFile() {
         ...button('t-outlined', 'Batal', 40, 120, { hasIcon: false, label: 'Batal' }, MODES('outlined', 'primary', 'sm'), icons),
         ...button('t-dashed-icon', 'Hapus', 40, 200, { hasIcon: true, iconPlacement: 'start', icon: 'icon-check', label: 'Hapus' }, MODES('dashed', 'danger', 'lg'), icons),
         ...button('t-end-icon', 'Lanjut', 40, 280, { hasIcon: true, iconPlacement: 'end', iconEnd: 'icon-arrow', label: 'Lanjut' }, MODES('solid', 'primary', 'lg'), icons),
-        ...button('t-both', 'Simpan', 40, 360, { hasIcon: true, iconPlacement: 'both', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'Simpan' }, MODES('solid', 'primary', 'sm'), icons),
+        ...button('t-end', 'Simpan', 40, 360, { hasIcon: true, iconPlacement: 'end', icon: 'icon-check', iconEnd: 'icon-arrow', label: 'Simpan' }, MODES('solid', 'primary', 'sm'), icons),
         ...button('t-disabled', 'Simpan', 280, 40, { hasIcon: false, label: 'Simpan', disabled: true }, MODES('solid', 'primary', 'sm'), icons),
         ...button('t-filled', 'Detail', 280, 120, { hasIcon: false, label: 'Detail' }, MODES('filled', 'primary', 'sm'), icons),
         ...button('t-text', 'Hapus', 280, 200, { hasIcon: false, label: 'Hapus' }, MODES('text', 'danger', 'sm'), icons),
