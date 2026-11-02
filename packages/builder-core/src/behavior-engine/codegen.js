@@ -178,6 +178,10 @@ function displayRules(template, master, childrenOf) {
             '  appearance: none;\n',
             '  font: inherit;\n',
         );
+        // A managed icon slot is drawn in its colour token: the icon swapped into it draws with currentColor (the Play DOM sets the same colour
+        // on the slot), so the colour is the slot's CSS colour, and the disabled state changes the token it reads.
+        const iconColour = kind === 'icon' ? slotDefsOf(template, key)[0]?.tokens?.colour : undefined;
+        if (iconColour !== undefined && tokens.includes(iconColour)) decls.push(`  color: var(${cssVarOf(template.id, iconColour)});\n`);
         for (const [prop, source] of Object.entries(props)) {
             const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
