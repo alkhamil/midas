@@ -92,7 +92,9 @@ import { iconDefsOf, slotDefsOf } from './anatomy.js';
  * @returns {Record<'colour' | 'disabledColour' | 'size', { name: string, dimension: string | null }>}
  */
 export function iconSlotTargets(template, slot) {
-    const def = slotDefsOf(template, slot)[0] ?? iconDefsOf(template)[0];
+    // A part that holds icon tokens (the spinner) follows the same tokens as the slots, from the same definition.
+    const part = (template.parts ?? []).find(p => p.id === slot && p.tokens !== undefined);
+    const def = part ?? slotDefsOf(template, slot)[0] ?? iconDefsOf(template)[0];
     const dimensionOf = token => {
         const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
         return group ? dimensionOfGroup(group, template.props) : null;

@@ -153,6 +153,7 @@ export function validateTemplateSchema(schema) {
     out.push(...elementProblems(schema));
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
+    out.push(...partTokenProblems(schema, allTokens));
     out.push(...controlProblems(schema));
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
@@ -297,6 +298,25 @@ function iconProblems(schema, allTokens) {
             if (!allTokens.includes(icon.tokens?.[role])) out.push(`${tag} ${role} token "${icon.tokens?.[role]}" is not a token`);
         }
     });
+    return out;
+}
+
+/**
+ * Problems in the icon tokens of a part: a part that holds `tokens` (the colour, the disabled colour and the size of an icon-like part, the
+ * spinner) is a frame part and names tokens of the template, as an icon def does.
+ * @param {any} schema
+ * @param {string[]} allTokens
+ * @returns {string[]}
+ */
+function partTokenProblems(schema, allTokens) {
+    const out = [];
+    for (const part of Array.isArray(schema.parts) ? schema.parts : []) {
+        if (!isPlainObject(part) || part.tokens === undefined) continue;
+        if (part.kind !== 'frame') { out.push(`part "${part.id}" has icon tokens but is not a frame part`); continue; }
+        for (const role of ['colour', 'disabledColour', 'size']) {
+            if (!allTokens.includes(part.tokens?.[role])) out.push(`part "${part.id}" ${role} token "${part.tokens?.[role]}" is not a token`);
+        }
+    }
     return out;
 }
 

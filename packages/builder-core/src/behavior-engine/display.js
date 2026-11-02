@@ -26,6 +26,11 @@ export const NODE_PROPERTIES = {
     icon: {
         size: { kind: 'length', css: ['width', 'height'] },
     },
+    // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
+    arc: {
+        stroke: { kind: 'color', css: 'color' },
+        size: { kind: 'length', css: ['width', 'height'] },
+    },
 };
 
 /**
@@ -36,6 +41,7 @@ export const NODE_PROPERTIES = {
 export const NODE_FIELDS = {
     frame: { visible: { kind: 'boolean' } },
     text: { text: { kind: 'string' }, visible: { kind: 'boolean' } },
+    arc: { visible: { kind: 'boolean' } },
 };
 
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
@@ -45,6 +51,7 @@ export const targetKindOf = (template, key) => {
     const part = Array.isArray(template.parts) ? template.parts.find(p => p.id === key) : undefined;
     const kind = slot ?? part;
     if (!kind) return null;
+    if (part?.arc) return 'arc';
     return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : 'text';
 };
 

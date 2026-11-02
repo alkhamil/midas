@@ -23,4 +23,11 @@ export const ICON_PROPS = {
 };
 
 /** The display mapping of the icon slots: each icon is sized by the icon size token. */
-export const ICON_DISPLAY = { iconStart: { size: 'iconSize' }, iconEnd: { size: 'iconSize' } };
+export const ICON_DISPLAY = { iconStart: { size: ICON_TOKENS.size }, iconEnd: { size: ICON_TOKENS.size } };
+
+/**
+ * The display mapping of an icon-like part (the Button's spinner), from the same definition as the slots: the arc is drawn in the icon's
+ * colour and at the icon's size. The part also holds ICON_TOKENS (`tokens`), so the editor binds it through the function that binds
+ * the icon slots, with the disabled colour.
+ */
+export const ICON_PART_DISPLAY = { stroke: ICON_TOKENS.colour, size: ICON_TOKENS.size };

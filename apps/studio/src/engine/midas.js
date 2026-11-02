@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -9440,15 +9440,23 @@ function applyIconSlotBindings(inst) {
     };
     const disabled = inst.behavior?.props?.disabled === true;
     const missing = new Set();
-    for (const slot of doc.children(inst.id).filter(c => isManagedLayer(c))) {
-        const targets = iconSlotTargets(template, slot.behavior.slot);
+    // Every layer that follows the icon tokens, through one function: a managed slot (its size, and the colour of each layer of the icon it
+    // holds) and a part that holds the tokens itself (the spinner: its size and its own stroke colour).
+    for (const { key, kind } of iconBoundKeysOf(template)) {
+        const holder = doc.children(inst.id).find(c => (kind === 'slot' ? c.behavior?.slot : c.behavior?.part) === key);
+        if (!holder) continue;
+        const targets = iconSlotTargets(template, key);
         const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
         const described = { colour: where(targets.colour), disabledColour: where(targets.disabledColour), size: where(targets.size) };
-        const icon = doc.children(slot.id).find(c => c.isInstance && c.sourceId);
-    if (icon && (icon.layoutSizingH !== 'fill' || icon.layoutSizingV !== 'fill')) {
-        icon.layoutSizingH = 'fill'; icon.layoutSizingV = 'fill'; doc.touch(icon);
-    }
-        const layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
+        let layers;
+        if (kind === 'slot') {
+            const icon = doc.children(holder.id).find(c => c.isInstance && c.sourceId);
+            if (icon && (icon.layoutSizingH !== 'fill' || icon.layoutSizingV !== 'fill')) {
+                icon.layoutSizingH = 'fill'; icon.layoutSizingV = 'fill'; doc.touch(icon);
+            }
+            layers = icon ? [icon, ...doc.descendants(icon.id)].map(n => ({ id: n.id, fillIndexes: (n.fills || []).flatMap((f, i) => (f.visible !== false ? [i] : [])), stroke: !!n.stroke && n.strokeWidth > 0 })) : [];
+        }
+        else layers = [{ id: holder.id, fillIndexes: [], stroke: true }];
         const plan = iconSlotBindings({
             fg: iconVariableId(binding, targets.colour.dimension, names.colour),
             fgDisabled: iconVariableId(binding, targets.disabledColour.dimension, names.disabledColour),
@@ -9458,8 +9466,11 @@ function applyIconSlotBindings(inst) {
             layers,
         });
         plan.missing.forEach(m => missing.add(m));
-        setIconVars(slot, plan.slot);
-        for (const layer of plan.layers) setIconVars(doc.get(layer.id), layer.vars);
+        if (kind === 'slot') {
+            setIconVars(holder, plan.slot);
+            for (const layer of plan.layers) setIconVars(doc.get(layer.id), layer.vars);
+        }
+        else setIconVars(holder, { ...plan.slot, ...plan.layers[0].vars });
     }
     return [...missing];
 }

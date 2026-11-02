@@ -1,4 +1,4 @@
-import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PROPS, ICON_START } from './icon-slots.js';
+import { ICON_DEFS, ICON_DISPLAY, ICON_END, ICON_PART_DISPLAY, ICON_PROPS, ICON_START, ICON_TOKENS } from './icon-slots.js';
 import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
@@ -90,7 +90,7 @@ export const BUTTON = {
     // The parts the canvas draws: the spinner is an arc node before the label, shown while `loading` is set.
     parts: [
         // While loading, the spinner takes the start icon's place: the start icon is not drawn (see replacedSlotsOf).
-        { id: 'spinner', kind: 'frame', shownWhen: { prop: 'loading', is: true }, spin: true, side: 'iconPlacement', arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1 } },
+        { id: 'spinner', kind: 'frame', tokens: ICON_TOKENS, shownWhen: { prop: 'loading', is: true }, spin: true, side: 'iconPlacement', arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1 } },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props and states above.
     playOnly: [
@@ -121,7 +121,7 @@ export const BUTTON = {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'labelTypography' },
         ...ICON_DISPLAY,
-        spinner: { stroke: 'fg', size: 'iconSize' },
+        spinner: ICON_PART_DISPLAY,
     },
     events: [
         { name: 'onClick', exposeAsTrigger: true },
