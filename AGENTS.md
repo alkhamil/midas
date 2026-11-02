@@ -59,6 +59,9 @@
 
 ## Known issues
 
+- Strict parity (browser) fails 3 of ~100 Input xs pairs, on HEAD and since: `xs allowClear` and `xs showCount` "outline not found on both shots" and `xs suffix` outline 0.70px. The part boxes match within 0.01px, so it is the outline edge check on a 16px control, not layout. Open.
+- The browser harness reuses any server already listening on 4000/5174, so a stale `test:browser` run (or its servers) shares the database with the next run and makes it flaky (timeouts, a "changed somewhere else" dialog). Stop stale runs before a baseline.
+
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
 - The roadmap names `strokeStrategyOf`/`rootLayoutOf`/`labelLayoutOf` and a `both` placement: none exist in code; if wanted, they are new features, not fixes.
 - Wave colour is the variant's strong colour (solid bg, outlined/dashed border, filled and text fg); the spinner is antd's quarter arc (LoadingOutlined geometry, 1px, sweep 25%), and a part with `spin` turns in Play only (the codegen export draws the arc at rest, sized by its display `size` token).
