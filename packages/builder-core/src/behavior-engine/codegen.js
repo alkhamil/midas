@@ -154,7 +154,7 @@ function displayRules(template, master, childrenOf) {
         // with display:flex (a real element in its parent's layout); the export is inline-flex so a hug Button keeps its
         // natural width. The label keeps its own width and alignment from its layer.
         const decls = key === 'root'
-            ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0, template.rootAlign))]
+            ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0))]
             : kind === 'text' ? cssDecls(labelLayoutOf(entry?.node, entry?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`, `  transition: ${FOCUS_TRANSITION};\n`);

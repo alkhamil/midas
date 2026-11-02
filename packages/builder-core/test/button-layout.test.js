@@ -51,11 +51,11 @@ test('Play draws a left-aligned Button with the label at the row start', () => {
     assert.equal(labelOf(root).style.textAlign, 'left');
 });
 
-test('Play justifies the root from the master, including end and column; the Button cross axis is always its centre line', () => {
+test('Play aligns the root from the master on both axes, including end and column', () => {
     const end = toDomTree(doc([master({ primaryAlign: 'end', counterAlign: 'start' }), labelLayer('m', { layoutSizingH: 'hug' }), labelLayer('i', { layoutSizingH: 'hug' }), instance()]), 'i').root;
-    assert.deepEqual([end.style.justifyContent, end.style.alignItems], ['flex-end', 'center']);
+    assert.deepEqual([end.style.justifyContent, end.style.alignItems], ['flex-end', 'flex-start']);
     const column = toDomTree(doc([master({ layout: 'vertical', primaryAlign: 'center', counterAlign: 'end' }), labelLayer('m', { layoutSizingH: 'hug' }), instance()]), 'i').root;
-    assert.deepEqual([column.style.flexDirection, column.style.justifyContent, column.style.alignItems], ['column', 'center', 'center']);
+    assert.deepEqual([column.style.flexDirection, column.style.justifyContent, column.style.alignItems], ['column', 'center', 'flex-end']);
 });
 
 test('a hug or fixed label keeps its size and never squeezes, in Play', () => {
@@ -143,10 +143,10 @@ test('the export lays the root out like the canvas frame, as inline-flex', () =>
     assert.match(css, /\.button-label \{\n(?:.*\n)*?\s*flex: 1 1 0;\n(?:.*\n)*?\s*text-align: center;\n/);
 });
 
-test('absent master justification exports as the start; the Button cross axis is centred, and a hug label keeps its size', () => {
+test('absent master alignment exports as the start on both axes, and a hug label keeps its size', () => {
     const nodes = [master({}), labelLayer('m', { layoutSizingH: 'hug', w: 60, textAlign: 'left' })];
     const css = generateComponent(button, model.binding, variables, 'Button', nodes[0], kids(nodes)).files['Button.css'];
-    assert.match(css, /\.button \{\n(?:.*\n)*?\s*justify-content: flex-start;\n(?:.*\n)*?\s*align-items: center;\n/);
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*justify-content: flex-start;\n(?:.*\n)*?\s*align-items: flex-start;\n/);
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*gap: var\(--button-gap\);\n/);
     assert.doesNotMatch(css, /^ {2}gap: \d+px;/m);
     assert.doesNotMatch(css, /^ {2}padding: \d+px/m);

@@ -70,17 +70,29 @@ export function flexOf(n, flowCount) {
 
 /**
  * The flex layout of a template root from its master node: direction, justification and cross alignment, as the canvas
- * lays them out. Gap, padding and display are owned elsewhere (tokens and the surface); absent alignments are the start.
- * @param {any} master an auto layout frame
+ * lays them out, at any of the nine positions. Gap, padding and display are owned elsewhere (tokens and the surface); absent alignments
+ * are the start. The template's `rootAlign` is only the cross alignment a new master is created with (see template-master.js); the
+ * node's own alignment decides, as on the canvas.
+ * @param {any} master an auto layout frame (a master, or an instance with its own layout fields)
  * @param {number} flowCount the children in the flow
- * @param {string | null} [rootAlign] the template's cross alignment (`start`, `center`, `end`); it overrides the master's, so a
- *   template whose content centres on the cross axis centres it whatever the master says
  * @returns {Record<string, string>} { flexDirection, flexWrap, justifyContent, alignItems, alignContent }
  */
-export function rootLayoutOf(master, flowCount, rootAlign = null) {
+export function rootLayoutOf(master, flowCount) {
     const { display, columnGap, rowGap, padding, boxSizing, ...layout } = flexOf(master, flowCount);
-    if (rootAlign) layout.alignItems = { start: 'flex-start', center: 'center', end: 'flex-end' }[rootAlign];
     return layout;
+}
+
+/** The fields of an auto layout frame that place its children: an instance's own value wins, as it does on the canvas. */
+const LAYOUT_FIELDS = ['layout', 'layoutWrap', 'primaryAlign', 'counterAlign', 'layoutAlign', 'alignBaseline', 'gapAuto', 'gapMode'];
+
+/**
+ * The auto layout of a template instance: its master's, with each field the instance sets itself.
+ * @param {any} master
+ * @param {any} instance
+ */
+export function instanceLayoutOf(master, instance) {
+    const own = Object.fromEntries(LAYOUT_FIELDS.filter(key => instance[key] !== undefined).map(key => [key, instance[key]]));
+    return { ...master, ...own };
 }
 
 /**

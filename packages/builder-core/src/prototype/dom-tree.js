@@ -15,7 +15,7 @@ import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
-import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
+import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { canvasPartsOf, counterLabel } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
@@ -338,7 +338,7 @@ function renderTemplate(n, template, parent, scope) {
     // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
-    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(master, flowCount, template.rootAlign) };
+    const style = { display: n.layoutSizingH === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, { borderWidth: '0px' });

@@ -17,13 +17,13 @@ const SIZES = ['xs', 'sm', 'md', 'lg', 'xl'];
 const HEIGHT = { xs: 16, sm: 24, md: 32, lg: 40, xl: 48 };
 const PADDING_X = { xs: 7, sm: 7, md: 15, lg: 15, xl: 15 };
 
-/** The Button after one Auto Fix click on an empty file with the base generated. */
+/** The Button after one Auto Fix click on an empty file with the base generated. The master is what the generator makes: its content centred on the cross axis (the template's rootAlign). */
 function autoFixedButton() {
     const store = { collections: [], items: [] };
     applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), uid);
     const nodes = [];
     const root = {
-        id: 'btn', name: 'Button', type: 'frame', component: true, layout: 'horizontal', x: 0, y: 0, w: 200, h: 40,
+        id: 'btn', name: 'Button', type: 'frame', component: true, layout: 'horizontal', counterAlign: 'center', x: 0, y: 0, w: 200, h: 40,
         stroke: '#000000', strokeWidth: 1, strokeAlign: 'inside', behavior: null, vars: {},
     };
     nodes.push(root, { id: 'btn-label', name: 'Label', type: 'text', parentId: 'btn', text: 'Button', vars: {} });
