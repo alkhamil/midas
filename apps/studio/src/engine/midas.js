@@ -18806,11 +18806,15 @@ function fontWeightFieldHtml(n) {
         return `<div class="font-field-row bound"><button class="font-field" data-var-bind="fontWeight" title="${esc(v.name)}" aria-label="Font weight bound to ${esc(v.name)}"><span class="ff-name">${esc(GF_WEIGHT_NAMES[n.fontWeight] || n.fontWeight)}</span></button>${varBindButton('fontWeight')}</div>`;
     return `<div class="font-field-row">${selectField('fontWeight', n.fontWeight, fontWeightOptions(n))}${varBindButton('fontWeight')}</div>`;
 }
+/** The font family button of the Design panel and of the typography editor: its name in its own face, and the chevron. */
+function fontFamilyButtonHtml(fam, attr) {
+    return `<button class="font-field" ${attr} title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>`;
+}
 function fontFieldHtml(n) {
     const fam = n.fontFamily || 'Inter', v = boundVar('fontFamily'), label = '<div class="field-label"><span>Font family</span></div>';
     if (v)
         return `${label}<div class="font-field-row bound"><button class="font-field" data-var-bind="fontFamily" title="${esc(v.name)}" aria-label="Font family bound to ${esc(v.name)}"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span></button>${varBindButton('fontFamily')}</div>`;
-    return `${label}<div class="font-field-row"><button class="font-field" data-font-picker title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>${varBindButton('fontFamily')}</div>`;
+    return `${label}<div class="font-field-row">${fontFamilyButtonHtml(fam, 'data-font-picker')}${varBindButton('fontFamily')}</div>`;
 }
 // ===== typography on text nodes: the Design panel row (attach, detach; the fields are read-only while a style is attached) =====
 const typoIdsOf = ns => [...new Set(ns.map(n => n.vars?.typography ?? null))];
@@ -18948,9 +18952,9 @@ function closeFontPicker() {
     GF.pop?.el.remove();
     GF.pop = null;
 }
-function openFontPicker(anchor) {
+function openFontPicker(anchor, { current = null, onPick = null } = {}) {
     const n = activeNode();
-    if (!n || n.type !== 'text')
+    if (!onPick && (!n || n.type !== 'text'))
         return;
     const same = !!GF.pop;
     closeFontPicker();
@@ -18967,7 +18971,7 @@ function openFontPicker(anchor) {
     const insp = $('#inspector').getBoundingClientRect(), a = anchor.getBoundingClientRect();
     el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
     el.style.top = Math.max(8, Math.min(a.top - 30, innerHeight - el.offsetHeight - 8)) + 'px';
-    const pop = GF.pop = { el, q: '', cat: 'all', rows: [], shown: 0, active: -1, current: n.fontFamily };
+    const pop = GF.pop = { el, q: '', cat: 'all', rows: [], shown: 0, active: -1, current: current ?? n?.fontFamily, onPick: onPick ?? pickFont };
     const list = el.querySelector('.fp-list'), search = el.querySelector('.fp-search');
     const itemHtml = r => r.header ? `<div class="fp-sec">${esc(r.header)}</div>` : `<button class="fp-item ${r.name === pop.current ? 'cur' : ''}" role="option" data-font="${esc(r.name)}"><span class="fp-name" style="font-family:${fontCssFamily(r.name)}">${esc(r.name)}</span><span class="fp-cat">${esc(r.hint || '')}</span>${r.name === pop.current ? '<span class="fp-check">✓</span>' : ''}</button>`;
     const renderMore = () => {
@@ -19028,7 +19032,7 @@ function openFontPicker(anchor) {
     el.addEventListener('click', e => {
         const item = e.target.closest('[data-font]'), chip = e.target.closest('[data-fp-cat]');
         if (item)
-            pickFont(item.dataset.font);
+            pop.onPick(item.dataset.font);
         else if (chip) {
             pop.cat = chip.dataset.fpCat;
             el.querySelectorAll('[data-fp-cat]').forEach(b => b.classList.toggle('on', b === chip));
@@ -19046,7 +19050,7 @@ function openFontPicker(anchor) {
             document.removeEventListener('pointerdown', away, true);
             return;
         }
-        if (!GF.pop.el.contains(ev.target) && !ev.target.closest('[data-font-picker]')) {
+        if (!GF.pop.el.contains(ev.target) && !ev.target.closest('[data-font-picker], [data-te-font-picker]')) {
             closeFontPicker();
             document.removeEventListener('pointerdown', away, true);
         }
@@ -19388,7 +19392,7 @@ function teFieldHtml(c, member, label, type) {
     if (alias)
         return `<div class="field var-bound" title="${esc(label)}"><span>${esc(TE_FIELD_ICON[member] ?? label)}</span><span class="te-target" title="${esc(target?.name ?? 'missing')}">${esc(target?.name ?? 'missing')}</span><span class="te-res">= ${esc(teFmt(st[member]))}</span>${button}</div>`;
     if (member === 'fontFamily')
-        return `<div class="field-label"><span>${esc(label)}</span></div><div class="font-field-row"><input class="font-field" type="text" list="te-fonts" value="${esc(raw)}" data-te-member="fontFamily" aria-label="Font family">${button}</div>`;
+        return `<div class="field-label"><span>${esc(label)}</span></div><div class="font-field-row">${fontFamilyButtonHtml(raw, 'data-te-font-picker')}${button}</div>`;
     if (member === 'fontWeight') {
         const names = teWeightNames(st.fontFamily ?? raw) ?? Object.keys(WEIGHT_NUMBER);
         const value = typeof raw === 'string' ? raw : '';
@@ -19415,11 +19419,7 @@ function teHtml() {
         ? `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><span class="te-target">${esc(varItem(c.raw.alias)?.name ?? 'missing')}</span><button class="cmp-btn" data-te-unwhole>Use literal values</button></div></div>`
         : `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><button class="cmp-btn" data-te-whole-pick>Alias a style</button></div></div>`;
     const members = c.whole ? '' : teBodyHtml(c);
-    const preview = st
-        ? `<div class="te-preview" style="font-family:${esc(fontFamilyCss(st.fontFamily))};font-size:${st.fontSize}px;font-weight:${WEIGHT_NUMBER[st.fontWeight]};line-height:${st.lineHeight}px">Simpan Kopi Kita</div><div class="te-summary">${esc(summaryOf(st))}</div>`
-        : `<div class="te-err">${esc(c.res.problems.join('; '))}</div>`;
-    const families = `<datalist id="te-fonts">${gfList().map(f => `<option value="${esc(f.name)}"></option>`).join('')}</datalist>`;
-    return `<div class="ve-title"><b>${esc(c.item.name)}</b>${modeSel}<button class="icon-button small" data-te-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${styleRow}${members}${TE.error ? `<div class="te-err">${esc(TE.error)}</div>` : ''}${TE.note ? `<div class="te-note">${esc(TE.note)}</div>` : ''}${preview}${families}</div>`;
+    return `<div class="ve-title"><b>${esc(c.item.name)}</b>${modeSel}<button class="icon-button small" data-te-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${styleRow}${members}${TE.error ? `<div class="te-err">${esc(TE.error)}</div>` : ''}${TE.note ? `<div class="te-note">${esc(TE.note)}</div>` : ''}</div>`;
 }
 function teRender() {
     if (!TE.el)
@@ -19462,6 +19462,8 @@ function openTypographyEditor(key, anchor) {
             return;
         if (b.matches('[data-te-close]'))
             closeTypographyEditor();
+        else if (b.matches('[data-te-font-picker]'))
+            openFontPicker(b, { current: teCtx()?.raw ?? null, onPick: name => teMember('fontFamily', { literal: name }) });
         else if (b.dataset.teAlias)
             teAliasMember(b.dataset.teAlias, !isAliasMember(teCtx()?.raw[b.dataset.teAlias]), b);
         else if (b.matches('[data-te-whole-pick]'))
@@ -19487,7 +19489,7 @@ function openTypographyEditor(key, anchor) {
             document.removeEventListener('pointerdown', away, true);
             return;
         }
-        if (!TE.el.contains(ev.target) && !ev.target.closest('[data-vw-typo], .var-picker')) {
+        if (!TE.el.contains(ev.target) && !ev.target.closest('[data-vw-typo], .var-picker, .font-pop')) {
             closeTypographyEditor();
             document.removeEventListener('pointerdown', away, true);
         }
