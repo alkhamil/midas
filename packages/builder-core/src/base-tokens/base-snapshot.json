@@ -367,7 +367,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(16, 24, 40, 0.1)"
+          "literal": "#1018281a"
         }
       }
     },
@@ -377,7 +377,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(16, 24, 40, 0.2)"
+          "literal": "#10182833"
         }
       }
     },
@@ -387,7 +387,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(16, 24, 40, 0.05)"
+          "literal": "#1018280d"
         }
       }
     },
@@ -707,7 +707,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(18, 84, 130, 0.1)"
+          "literal": "#1254821a"
         }
       }
     },
@@ -717,7 +717,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(18, 84, 130, 0.2)"
+          "literal": "#12548233"
         }
       }
     },
@@ -727,7 +727,7 @@
       "type": "color",
       "values": {
         "Base": {
-          "literal": "rgba(18, 84, 130, 0.05)"
+          "literal": "#1254820d"
         }
       }
     },

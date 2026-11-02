@@ -24,6 +24,22 @@ export function sanitizeTokenName(path) {
 }
 
 /**
+ * A colour literal as the studio reads it: lower-case hex, with the alpha in the hex (#rrggbbaa) when it is below 1. The token JSON
+ * may write a colour as rgb() or rgba(); the studio reads neither.
+ * @param {unknown} value
+ * @returns {unknown} the hex text, or the value itself when it is not a colour text
+ */
+export function colorLiteral(value) {
+    if (typeof value !== 'string') return value;
+    const text = value.trim();
+    const fn = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(text);
+    if (!fn) return text.startsWith('#') ? text.toLowerCase() : value;
+    const byte = (/** @type {string | number} */ v) => Math.min(255, Math.max(0, Math.round(Number(v)))).toString(16).padStart(2, '0');
+    const alpha = fn[4] === undefined ? 1 : Number(fn[4]);
+    return '#' + byte(fn[1]) + byte(fn[2]) + byte(fn[3]) + (alpha < 1 ? byte(alpha * 255) : '');
+}
+
+/**
  * Parses the token JSON into sources. Entries with the same collection name merge into one collection with one entry
  * per mode; groups flatten to slash paths; names are sanitized (the reverse map is kept for the report).
  * @param {unknown} data the parsed token JSON (a list of single-collection items)
@@ -55,8 +71,9 @@ export function parseTokenJson(data) {
                         if (renamed) renames.push([`${collection}/${rawPath}`, `${collection}/${name}`]);
                         const type = VARIABLE_TYPE[/** @type {string} */ (node.$type)] ?? null;
                         if (!type) { unknownTypes.push({ collection, mode, path: name, type: node.$type }); return; }
-                        const token = { path: name, type, raw: node.$value };
-                        if (seen.has(name)) seen.get(name).raw = node.$value;
+                        const raw = type === 'color' ? colorLiteral(node.$value) : node.$value;
+                        const token = { path: name, type, raw };
+                        if (seen.has(name)) seen.get(name).raw = raw;
                         else { seen.set(name, token); tokens.push(token); }
                         return;
                     }

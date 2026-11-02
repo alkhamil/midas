@@ -2,7 +2,7 @@
 // the real token JSON on disk; behavior against the real file is covered by the generator smoke run in the report.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTokenJson, resolveTokenRefs, buildBasePlan, applyBasePlan, sanitizeTokenName, SOURCE_ORDER, ANT_MAP } from '../src/base-tokens/importer.js';
+import { parseTokenJson, resolveTokenRefs, buildBasePlan, applyBasePlan, sanitizeTokenName, colorLiteral, SOURCE_ORDER, ANT_MAP } from '../src/base-tokens/importer.js';
 import { variableValue } from '../src/behavior-engine/variable-value.js';
 
 const color = value => ({ $type: 'color', $value: value });
@@ -55,6 +55,18 @@ test('sanitizeTokenName applies one deterministic rule', () => {
     assert.equal(sanitizeTokenName('neutral/disabled-5%').name, 'neutral/disabled-5pct');
     assert.equal(sanitizeTokenName('font/line height/12').name, 'font/line-height/12');
     assert.equal(sanitizeTokenName('font/size/14').renamed, false);
+});
+
+test('a colour literal is hex with its alpha in the hex: the studio reads no rgb or rgba text', () => {
+    assert.equal(colorLiteral('rgba(16, 24, 40, 0.1)'), '#1018281a');
+    assert.equal(colorLiteral('rgba(16,24,40,.05)'), '#1018280d');
+    assert.equal(colorLiteral('rgba(18, 84, 130, 0.2)'), '#12548233');
+    assert.equal(colorLiteral('rgb(18, 84, 130)'), '#125482');
+    assert.equal(colorLiteral('rgba(18, 84, 130, 1)'), '#125482');
+    assert.equal(colorLiteral('#4338CA'), '#4338ca');
+    assert.equal(colorLiteral('#4338ca33'), '#4338ca33');
+    const parsed = parseTokenJson([{ Primitives: { modes: { Base: { shade: { 10: color('rgba(16, 24, 40, 0.1)') } } } } }]);
+    assert.equal(parsed.sources[0].modes.Base[0].raw, '#1018281a');
 });
 
 test('parseTokenJson merges same-named collections into modes and records renames', () => {

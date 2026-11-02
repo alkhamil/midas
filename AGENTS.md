@@ -34,6 +34,7 @@
 - Provenance: a component cell aliases Semantic (directly or through its own template's cells). Fixtures build every literal as a Primitive plus a Semantic alias (`scripts/literal-bank.mjs`).
 - Gap ladder (`gapXXS`…`gapXL`) replaces margin. Button `gap` aliases `gapXS` (antd `iconGap` = `marginXS`); Input prefix gap is `gapXXS` (antd `inputAffixPadding` = `paddingXXS`).
 - Input has no wave in antd (`components/input` imports none); Input uses the focus halo only.
+- Colour literals are hex with alpha (`#rrggbbaa`); the studio reads no `rgba(...)` text. The token importer normalises them (`colorLiteral`), so a rebuilt snapshot stays hex.
 - Variables window: a file starts with no collection. Create variable makes "Collection 1" + "Mode 1" in the same transaction; nothing else auto-creates one. No Enum variable type.
 - Play starts at the top-level frame that holds the selection (a child starts its frame), overriding the flow start marker; with nothing selected, the flow start, then the first frame.
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".

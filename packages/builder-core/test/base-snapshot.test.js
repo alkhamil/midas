@@ -141,3 +141,12 @@ test('Semantic names are unique case-insensitively', () => {
     assert.equal(names.length, new Set(names).size, 'no two Semantic names differ by case only');
     assert.equal(names.filter(n => n === 'paddingxxs').length, 1, 'only paddingXxs remains: generic paddingXXS is dropped as a case-only collision');
 });
+
+test('every colour literal is hex, with its opacity in the hex (#rrggbbaa): the studio reads no rgba text', () => {
+    const colours = BASE_SNAPSHOT.items.filter(i => i.type === 'color');
+    const literals = colours.flatMap(i => Object.values(i.values).map(v => v.literal)).filter(l => l !== undefined);
+    assert.ok(literals.length > 0);
+    for (const l of literals) assert.match(l, /^#[\da-f]{6}([\da-f]{2})?$/i, `${l} is not a hex colour`);
+    const disabled = colours.find(i => i.name === 'primary/disabled-10pct');
+    assert.equal(disabled.values.Base.literal, '#1254821a');
+});
