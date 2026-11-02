@@ -9533,7 +9533,8 @@ function ownedFieldsOf(n, getNode, components, labels) {
     const template = ownedTemplateOf(n, getNode, components, labels);
     if (!template) return [];
     // The key the template writes the layer under: root, the label (the control), or a text slot by its id.
-    const key = n.isInstance ? 'root' : getNode(n.sourceId)?.name;
+    // The label is keyed by its role, whatever its name: a bound frame's own text layer is the label too.
+    const key = n.isInstance ? 'root' : labels && [...labels.values()].includes(n.sourceId) ? 'label' : getNode(n.sourceId)?.name;
     // The value layer's visibility follows the value (partWrites), so the master's copy never overwrites it; a text slot with a
     // shownWhen follows its condition.
     const shownByValue = !n.isInstance && template.control?.hideWhenEmpty ? ['visible'] : [];
@@ -9614,6 +9615,9 @@ function applyLiteralFields(inst) {
         if (n && n[field] !== value) {
             n[field] = value;
             doc.touch(n);
+            // The text of a text layer changes its size: measure it again, as a text edit does.
+            if (field === "text" && n.type === "text")
+                remeasureText(n);
         }
     }
     // A managed slot that shows while its value is set (the clear icon) is shown or hidden as the value changes.
@@ -10591,6 +10595,15 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         const vset = parentSetOf(source);
         if (vset)
             root.name = vset.name;
+        // A new instance takes the template's default mode (md for Size) for each collection the master holds no mode for.
+        const tpl = source.behavior && 'templateId' in source.behavior ? BEHAVIOR_TEMPLATES.get(source.behavior.templateId) : null;
+        if (tpl) {
+            for (const [prop, cid] of Object.entries(source.behavior.variables)) {
+                const wanted = tpl.props[prop]?.defaultMode;
+                const mode = (varColl(cid)?.modes ?? []).find(m => m.id === wanted || m.name === wanted);
+                if (mode && root.varModes?.[cid] === undefined) root.varModes = { ...(root.varModes ?? {}), [cid]: mode.id };
+            }
+        }
         const c = at || screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
         if (parent) {
             // Into a frame / slot: its auto layout places it; a plain frame puts it where it was dropped (or centred).

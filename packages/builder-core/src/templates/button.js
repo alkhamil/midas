@@ -121,7 +121,7 @@ export const BUTTON = {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'labelTypography' },
         ...ICON_DISPLAY,
-        spinner: { stroke: 'fg' },
+        spinner: { stroke: 'fg', size: 'iconSize' },
     },
     events: [
         { name: 'onClick', exposeAsTrigger: true },

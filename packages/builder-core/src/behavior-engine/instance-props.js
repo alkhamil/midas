@@ -107,6 +107,11 @@ export function setInstanceProp(template, stored, name, value) {
  * @returns {{ isInstance?: boolean, behavior?: any }}
  */
 export function withInstanceBehavior(copy, src) {
+    // A template layer's marker (its part, slot or text) goes with its copy: Play and the canvas find the layer by it.
+    if (src.behavior && ('part' in src.behavior || 'slot' in src.behavior || 'text' in src.behavior)) {
+        copy.behavior = structuredClone(src.behavior);
+        return copy;
+    }
     if (!copy.isInstance || src.behavior === undefined) delete copy.behavior;
     else copy.behavior = 'templateId' in src.behavior ? { version: BEHAVIOR_DATA_VERSION, props: {} } : structuredClone(src.behavior);
     return copy;
