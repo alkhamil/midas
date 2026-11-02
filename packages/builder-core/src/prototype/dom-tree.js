@@ -18,7 +18,6 @@ import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anato
 import { flexOf, flowSizing, rootLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { canvasPartsOf, counterLabel } from '../behavior-engine/display.js';
-import { borderStyleOf } from '../behavior-engine/variant-style.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -238,11 +237,9 @@ function renderTemplate(n, template, parent, scope) {
     const control = controlOf(template);
     const attrs = { ...template.element.attrs, class: template.id };
     if (template.interaction?.wave) attrs['data-wave'] = '';
-    /** @type {Record<string, string>} */
-    const modes = {};
     for (const [dim] of variableProps(template)) {
         const collection = (scope.variables.collections || []).find(c => c.id === binding.variables[dim]);
-        modes[dim] = attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
+        attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     if (!control && props[template.element.disabledState] === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
@@ -334,7 +331,8 @@ function renderTemplate(n, template, parent, scope) {
         for (const child of children) child.style = { ...child.style, zIndex: '0' };
         children.unshift(fillEl);
     }
-    const strokeEl = hasStroke ? (customDash ? strokeOverlayEl(shape) : borderOverlayEl(shape, borderStyleOf(template, modes), bound)) : null;
+    // A bound stroke is always a CSS border (its colour follows the host's states); an unbound one with its own dash lengths is SVG.
+    const strokeEl = hasStroke ? (customDash && !bound ? strokeOverlayEl(shape) : borderOverlayEl(shape, bound)) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
@@ -377,7 +375,7 @@ function fillLayerEl(n, background) {
  * @param {any} n
  * @returns {Element}
  */
-function borderOverlayEl(n, borderStyle = null, bound = false) {
+function borderOverlayEl(n, bound = false) {
     const { t, r, b, l } = strokeSideWidths(n);
     const align = n.strokeAlign ?? 'center';
     const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
@@ -390,9 +388,10 @@ function borderOverlayEl(n, borderStyle = null, bound = false) {
     const borderRadius = (n.radius || hasRadii(n))
         ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
         : 'inherit';
-    // A bound stroke inherits its colour and style from the host, which the class rules set per mode and state.
+    // A bound stroke inherits its colour from the host, which the class rules set per mode and state. The line style is the node's own
+    // (Solid, Dash, Dots): the Variant only sets it when the Variant changes, so a style set by hand is what Play draws.
     const color = bound ? 'inherit' : colorWithAlpha(n.stroke, n.strokeOpacity);
-    const lineStyle = bound ? 'inherit' : borderStyle ?? (n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid');
+    const lineStyle = n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid';
     /** @type {Record<string, string>} */
     const style = {
         position: 'absolute',
@@ -403,7 +402,7 @@ function borderOverlayEl(n, borderStyle = null, bound = false) {
         borderRadius,
     };
     if (uniform && bound) {
-        Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: 'inherit', borderColor: 'inherit' });
+        Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: lineStyle, borderColor: 'inherit' });
     }
     else if (uniform) {
         style.border = `${svgNumber(t)}px ${lineStyle} ${color}`;

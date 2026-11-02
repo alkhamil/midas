@@ -160,7 +160,7 @@ function displayRules(template, master, childrenOf) {
             decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`, `  transition: ${FOCUS_TRANSITION};\n`);
         }
         // The root draws no border: its stroke is the ::before overlay (see strokeRules), so the children sit inside the padding.
-        if (key === 'root') decls.push('  border-width: 0;\n', '  border-style: solid;\n');
+        if (key === 'root') decls.push('  border-width: 0;\n', `  border-style: ${lineStyleOf(master)};\n`);
         if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
@@ -201,13 +201,28 @@ function displayRules(template, master, childrenOf) {
  * @param {any[]} problems
  */
 /**
- * The root stroke rule: the ::before overlay takes the host's colour, style and radius, and is inside the box (no layout).
- * @param {import('../templates/schema.js').TemplateSchema} template
+ * The CSS line style of a master's stroke: its own Solid, Dash or Dots. A Variant that sets a style (dashed) overrides it by its
+ * attribute rule, so the master's style is the default of every Variant that sets none.
+ * @param {any} master
+ * @returns {'solid' | 'dashed' | 'dotted'}
  */
-function strokeRules(template) {
+function lineStyleOf(master) {
+    return master.strokeStyle === 'dash' ? 'dashed' : master.strokeStyle === 'dot' ? 'dotted' : 'solid';
+}
+
+/**
+ * The root stroke rule: the ::before overlay takes the host's colour and style, and sits where the master's stroke does: inside the
+ * box (no layout), or grown outward by half its width (centred) or all of it (outside), with the corners grown the same.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {any} master
+ */
+function strokeRules(template, master) {
     if (!('stroke' in (template.display.root ?? {}))) return '';
-    // The stroke is inside the box and takes no space: an absolutely positioned overlay with the host's colour, style and radius.
-    return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: 0;\n  box-sizing: border-box;\n  border: 1px solid;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: inherit;\n  pointer-events: none;\n}\n`;
+    const width = master.strokeWidth ?? 1;
+    const grow = master.strokeAlign === 'outside' ? width : master.strokeAlign === 'center' ? width / 2 : 0;
+    const inset = grow ? `-${grow}px` : '0';
+    const radius = grow ? `calc(var(${cssVarOf(template.id, 'radius')}) + ${grow}px)` : 'inherit';
+    return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: ${inset};\n  box-sizing: border-box;\n  border-width: ${width}px;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: ${radius};\n  pointer-events: none;\n}\n`;
 }
 
 /**
@@ -290,7 +305,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     }
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    const stroke = strokeRules(template);
+    const stroke = strokeRules(template, master);
     if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');

@@ -35,6 +35,7 @@
 - Gap ladder (`gapXXS`…`gapXL`) replaces margin. Button `gap` aliases `gapXS` (antd `iconGap` = `marginXS`); Input prefix gap is `gapXXS` (antd `inputAffixPadding` = `paddingXXS`).
 - Input has no wave in antd (`components/input` imports none); Input uses the focus halo only.
 - Colour literals are hex with alpha (`#rrggbbaa`); the studio reads no `rgba(...)` text. The token importer normalises them (`colorLiteral`), so a rebuilt snapshot stays hex.
+- Variant border style (`styles`, e.g. dashed) is applied on a Variant mode change and on instantiate, never on sync, so a Stroke Dash/Dots set by hand stays. A user stroke style (Solid, Dash, Dots) is the node's own: Play and the export draw it, and the Variant only sets the default on those two events.
 - Variables window: a file starts with no collection. Create variable makes "Collection 1" + "Mode 1" in the same transaction; nothing else auto-creates one. No Enum variable type.
 - Play starts at the top-level frame that holds the selection (a child starts its frame), overriding the flow start marker; with nothing selected, the flow start, then the first frame.
 - Size numbers (except line height) follow antd-ref, aliased through Semantic to Primitives steps; colors and the rest come from the token JSON. Intentional exception to "values come from variables".

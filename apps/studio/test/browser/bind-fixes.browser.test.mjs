@@ -141,3 +141,51 @@ test('a bound Input shows its value on the canvas and in Play, and its placehold
     await closePlay(page);
     assert.deepEqual(errors, [], 'console errors');
 });
+
+test('a bound solid Button fills its box in Play, and a Dash stroke set on it stays set', async t => {
+    const stop = await ensureDevServers();
+    t.after(stop);
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const { page, errors } = await openImportedFile(browser, bindStage('bind-button-solid.midas'));
+    const id = await bindAndInstance(page, 'button');
+    await page.locator('[data-bp-prop="variant"]').first().selectOption({ value: 'solid' });
+    await page.locator('[data-bp-prop="color"]').first().selectOption({ value: 'primary' });
+    await page.locator('[data-bp-prop="size"]').first().selectOption({ value: 'md' });
+    await page.evaluate(i => window.midas.select([i]), id);
+    await page.locator('#play').click();
+    await page.waitForSelector('.play-overlay');
+    await page.locator('.play-overlay [aria-label="View options"]').click();
+    await page.locator('.play-overlay [data-mode="actual-size"]').click();
+    await page.waitForTimeout(400);
+    const root = page.locator(`.play-overlay [data-node-id="${id}"]`);
+    const expected = await root.evaluate(el => getComputedStyle(el).getPropertyValue('--button-bg').trim());
+    const png = (await root.screenshot()).toString('base64');
+    const pixel = await page.evaluate(async ({ png, expected }) => {
+        const img = new Image();
+        img.src = 'data:image/png;base64,' + png;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const [r, g, b] = ctx.getImageData(3, Math.floor(img.height / 2), 1, 1).data;
+        const hex = expected.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})/i);
+        const want = hex ? [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)] : null;
+        return { got: [r, g, b], want };
+    }, { png, expected });
+    assert.ok(pixel.want, `the solid fill has a colour (${expected})`);
+    const off = Math.hypot(...pixel.got.map((v, i) => v - pixel.want[i]));
+    assert.ok(off < 12, `the left edge of the box is the solid fill in Play: ${pixel.got} vs ${pixel.want}`);
+    await closePlay(page);
+
+    await page.evaluate(i => window.midas.select([i]), id);
+    await page.locator('[data-inspector-tab="design"]').click();
+    await page.locator('[data-st-settings]').first().click();
+    await page.locator('[data-stp="strokeStyle"]').selectOption('dash');
+    await page.waitForTimeout(200);
+    const style = await page.evaluate(i => window.midas.doc.get(i).strokeStyle, id);
+    assert.equal(style, 'dash', 'a Dash stroke is kept, not reset to the variant');
+    await page.keyboard.press('Escape');
+    assert.deepEqual(errors, [], 'console errors');
+});

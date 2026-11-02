@@ -69,14 +69,14 @@ test('a Button with no stroke draws no overlay', () => {
     assert.equal(root.children.some(c => c.style?.border || c.style?.pointerEvents === 'none'), false);
 });
 
-test('a bound uniform inside stroke draws its overlay with the host colour and style; the host has no border width', () => {
+test('a bound uniform inside stroke draws its overlay with the host colour and the node\'s own line style; the host has no border width', () => {
     const master = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid, radius: 8, x: 0, y: 0, w: 120, h: 40, behavior: { version: 2, templateId: 'button', variables: model.binding.variables } };
     const instance = { id: 'i1', name: 'Add', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { label: 'Add' } }, varModes: { 'c-variant': 'outlined', 'c-color': 'primary', 'c-size': 'sm' }, fills: solid, vars: { stroke: 'v-border' }, stroke: '#18181b', strokeWidth: 2, strokeAlign: 'inside' };
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables: variables() }, 'i1');
     assert.equal(root.style.borderWidth, '0px');
     assert.equal(root.style.borderStyle, undefined);
     assert.equal(root.style.borderColor, undefined);
-    assert.deepEqual([overlayOf(root).style.borderWidth, overlayOf(root).style.borderColor, overlayOf(root).style.borderStyle], ['2px', 'inherit', 'inherit']);
+    assert.deepEqual([overlayOf(root).style.borderWidth, overlayOf(root).style.borderColor, overlayOf(root).style.borderStyle], ['2px', 'inherit', 'solid']);
 });
 
 test('a dashed variant has no host border width; the class rule carries border-style: dashed and the overlay inherits it', () => {

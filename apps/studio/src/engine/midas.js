@@ -9501,7 +9501,6 @@ function syncInstance(inst) {
         }
         applyStateBindings(inst, stateBindingsOf(inst));
         applyLiteralFields(inst);
-        applyVariantStroke(inst);
         const missingIconVars = applyIconSlotBindings(inst);
         if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
     });
@@ -10626,6 +10625,7 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
         syncInstance(root);
+        applyVariantStroke(root);
         opts.onCreated?.(root);
         if (!opts.keepSelection)
             select([root.id]);
