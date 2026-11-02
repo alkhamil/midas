@@ -17,7 +17,7 @@ import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
-import { canvasPartsOf, counterLabel } from '../behavior-engine/display.js';
+import { canvasPartsOf, counterLabel, placeholderPartOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -256,7 +256,9 @@ function renderTemplate(n, template, parent, scope) {
             if (isControl) {
                 // The input is a transparent text layer over the label node: the placeholder shown is the placeholder part's node text.
                 const placeholder = partLayerOf(n, 'placeholder', scope);
-                const showsPlaceholder = !!placeholder && placeholder.visible !== false;
+                // The value wins: with a value the placeholder is not shown, whatever its layer says (control.hidePlaceholderWhenFilled).
+                const outranked = placeholderPartOf(template) !== undefined && String(props[control.value] ?? '') !== '';
+                const showsPlaceholder = !!placeholder && placeholder.visible !== false && !outranked;
                 // The input is the one box of the value or the placeholder that shows: while the value is empty and the placeholder shows, the
                 // input is the placeholder's box (its node id is the placeholder's), otherwise the value layer's. Its size is the canvas's.
                 const covered = showsPlaceholder && String(props[control.value] ?? '') === '' ? placeholder : labelEntry?.node;

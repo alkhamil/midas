@@ -66,6 +66,18 @@ export function conditionHolds(cond, props) {
     return (String(raw ?? '') === '') === cond.empty;
 }
 
+/**
+ * The id of the placeholder part the value outranks, or undefined: the part the control's placeholder prop writes, when the control declares
+ * `hidePlaceholderWhenFilled`. Canvas, Play and the export all read this one rule.
+ * @param {any} template
+ * @returns {string | undefined}
+ */
+export function placeholderPartOf(template) {
+    const control = template.control;
+    if (!control?.hidePlaceholderWhenFilled || !control.placeholder) return undefined;
+    return template.props[control.placeholder]?.node?.key;
+}
+
 /** The names of the props a condition reads, in order. */
 export function conditionProps(cond) {
     return cond.all ? cond.all.flatMap(conditionProps) : [cond.prop];
@@ -89,8 +101,12 @@ export function partWrites(template, props) {
     /** @type {{ key: string, field: string, value: unknown }[]} */
     const out = [];
     if (template.control?.hideWhenEmpty) out.push({ key: template.control.slot, field: 'visible', value: String(props[template.control.value] ?? '') !== '' });
+    const placeholderPart = placeholderPartOf(template);
+    const valueFilled = template.control ? String(props[template.control.value] ?? '') !== '' : false;
     for (const part of canvasPartsOf(template)) {
-        out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) });
+        // The value wins: a placeholder part is hidden while the value is not empty (control.hidePlaceholderWhenFilled).
+        const outranked = part.id === placeholderPart && valueFilled;
+        out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) && !outranked });
         if (part.text?.counter) out.push({ key: part.id, field: 'text', value: counterLabel(props[part.text.counter.value], props[part.text.counter.max]) });
     }
     // A text slot with a condition is a layer shown while it holds (an affix text, shown with its switch and a non-empty text).

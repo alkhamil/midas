@@ -52,6 +52,10 @@ export interface ControlDef {
     maxlength?: string;
     minlength?: string;
     count?: string;
+    /** The value layer is hidden while the value is empty (the placeholder that shows in its place takes its space and no more). */
+    hideWhenEmpty?: boolean;
+    /** The reverse: the placeholder layer is hidden while the value is not empty, so the value wins over the placeholder. */
+    hidePlaceholderWhenFilled?: boolean;
 }
 
 /** Dimensions a literal prop needs: the variable props whose collections must be bound on the master (data only). */

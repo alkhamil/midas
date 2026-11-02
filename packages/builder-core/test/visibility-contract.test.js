@@ -25,7 +25,7 @@ test('a part is on the canvas unless its contract says otherwise', () => {
     assert.deepEqual(canvasPartsOf(BUTTON).map(p => p.id), ['spinner']);
 });
 
-test('Input visibility matrix: placeholder while the value is empty, clear with a value and allowClear, count with showCount', () => {
+test('Input visibility matrix: placeholder while the value is empty and it has text, clear with a value and allowClear, count with showCount', () => {
     const cases = [
         [{}, { placeholder: true, clear: false, count: false }],
         [{ value: 'a' }, { placeholder: false, clear: false, count: false }],
@@ -34,12 +34,15 @@ test('Input visibility matrix: placeholder while the value is empty, clear with 
         [{ value: 'a', showCount: true, maxLength: '20' }, { placeholder: false, clear: false, count: true }],
         [{ value: '', allowClear: true, showCount: true }, { placeholder: true, clear: false, count: true }],
     ];
-    for (const [props, expected] of cases) {
+    // The placeholder has its own text, so the value alone decides whether it shows (the value wins).
+    for (const [bare, expected] of cases) {
+        const props = { placeholder: 'Search', ...bare };
         const got = { ...visibleOf(INPUT, props), clear: slotShown(INPUT, 'clear', resolveProps(INPUT, props)) };
         assert.deepEqual({ placeholder: got.placeholder, clear: got.clear, count: got.count }, expected, JSON.stringify(props));
         // The value layer shows only while the value is not empty, so the placeholder takes its place and no more.
         assert.equal(got.label, !!props.value, `label while the value is ${props.value ? 'set' : 'empty'}`);
     }
+    assert.equal(visibleOf(INPUT, { value: '', placeholder: '' }).placeholder, false, 'a placeholder with no text has nothing to show');
 });
 
 test('Input count text is the value length, with the maximum when there is one', () => {

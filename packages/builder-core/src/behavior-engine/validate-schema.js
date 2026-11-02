@@ -349,6 +349,18 @@ function controlProblems(schema) {
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
+    for (const flag of ['hideWhenEmpty', 'hidePlaceholderWhenFilled']) {
+        if (control[flag] !== undefined && typeof control[flag] !== 'boolean') out.push(`control ${flag} must be a boolean`);
+    }
+    // The value wins over the placeholder: the placeholder prop writes a part of the template, which the value then hides.
+    if (control.hidePlaceholderWhenFilled === true) {
+        if (control.placeholder === undefined) out.push('control hidePlaceholderWhenFilled needs a placeholder prop');
+        else {
+            const key = props[control.placeholder]?.node?.key;
+            const parts = (Array.isArray(schema.parts) ? schema.parts : []).filter(p => isPlainObject(p) && p.canvas !== false).map(p => p.id);
+            if (!parts.includes(key)) out.push(`control hidePlaceholderWhenFilled names the placeholder layer "${key}", which is not a part of the template`);
+        }
+    }
     return out;
 }
 

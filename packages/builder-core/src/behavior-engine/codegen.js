@@ -4,7 +4,7 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, canvasPartsOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, canvasPartsOf, placeholderPartOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
@@ -68,7 +68,7 @@ function componentSource(template, name, problems) {
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === "" ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced) { children.push(...sidedAfter); sidedAfterPlaced = true; }

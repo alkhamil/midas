@@ -32,9 +32,10 @@ export const INPUT = {
     // The managed icon slots: the prefix icon, the suffix icon and the clear icon.
     icons: [PREFIX_ICON, SUFFIX_ICON, CLEAR_ICON],
     // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `count` is the prop that
-    // shows the character counter (with `maxlength`). `hideWhenEmpty`: the
+    // shows the character counter (with `maxlength`). `hidePlaceholderWhenFilled`: the value wins, so the placeholder layer is hidden while
+    // the value is not empty (it also needs its own text to show: see its part). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
-    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true },
+    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true, hidePlaceholderWhenFilled: true },
     // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
@@ -125,7 +126,7 @@ export const INPUT = {
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
     // The text part `count` shows the value's length (see counterLabel). Play renders each part from its node.
     parts: [
-        { id: 'placeholder', kind: 'text', fill: true, shownWhen: { prop: 'value', empty: true }, typography: 'placeholder' },
+        { id: 'placeholder', kind: 'text', fill: true, shownWhen: { prop: 'placeholder', empty: false }, typography: 'placeholder' },
         { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } }, typography: 'count' },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props above.
