@@ -20394,6 +20394,11 @@ window.addEventListener('change', e => {
     const el = e.target;
     if (!el.dataset?.expr)
         return;
+    // An empty Behavior number field is no value (no limit), not a broken expression: it reaches the panel's own change, which stores null.
+    if (el.dataset.bpType === 'number' && el.value.trim() === '') {
+        exprRestore(el);
+        return;
+    }
     let v = evalMathExpr(el.value);
     if (!Number.isFinite(v)) {
         exprRestore(el);

@@ -26,6 +26,7 @@ const STATES = [
     { name: 'prefix', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
     { name: 'suffix', props: { hasPrefix: false, hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: false, showCount: false } },
     { name: 'both', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: true, showCount: true } },
+    { name: 'limits', props: { minLength: 3, maxLength: 5, hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
 ];
 
 /** The document's master of the instance, its descendants and the variables, as plain data the generator reads. */
@@ -96,7 +97,8 @@ test('the exported Input renders its input, clear and counter where Play draws t
         await page.selectOption(`select[data-var-mode="${sizeColl}"]`, mode.id);
         await page.waitForTimeout(200);
         for (const state of STATES) {
-            for (const [name, value] of Object.entries(state.props)) await setProp(page, name, value);
+            // Each state sets both limits (null when it has none), so one state's limits do not stay for the next.
+            for (const [name, value] of Object.entries({ minLength: null, maxLength: null, ...state.props })) await setProp(page, name, value);
             const canvas = await canvasTree(page, id);
             const play = await playTree(page, id, `export-${mode.name.toLowerCase()}-${state.name}`);
             const ids = Object.fromEntries(canvas.map(n => [n.name, n]));

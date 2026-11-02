@@ -20,13 +20,15 @@ const STATES = {
     ],
     // The affix switches come before their texts: a text row is shown only while its switch is on.
     input: [
-        { name: 'placeholder', props: { hasPrefix: false, hasSuffix: false, value: '', allowClear: false, showCount: false } },
+        { name: 'placeholder', props: { minLength: null, maxLength: null, hasPrefix: false, hasSuffix: false, value: '', allowClear: false, showCount: false } },
         { name: 'value', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
         { name: 'allowClear', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: true, showCount: false } },
         { name: 'showCount', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
         { name: 'prefix', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
         { name: 'suffix', props: { hasPrefix: false, hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: false, showCount: false } },
         { name: 'both', props: { hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com', value: 'Hello', allowClear: true, showCount: true } },
+        // The limits come last: the rest state resets them for the next Size. Min 3 and Max 5 with five characters: "5 / 5".
+        { name: 'limits', props: { minLength: 3, maxLength: 5, hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
     ],
 };
 

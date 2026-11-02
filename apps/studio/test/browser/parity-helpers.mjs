@@ -53,8 +53,15 @@ export async function setProp(page, name, value) {
         if (value) await field.check({ force: true });
         else await field.uncheck({ force: true });
     }
+    else if (value === null) {
+        // A user clears a number field by selecting its text and pressing Delete, then Enter.
+        await field.focus();
+        await field.evaluate(el => el.select());
+        await page.keyboard.press('Delete');
+        await page.keyboard.press('Enter');
+    }
     else {
-        await field.fill(value);
+        await field.fill(String(value));
         await field.press('Enter');
     }
     await page.waitForTimeout(200);
