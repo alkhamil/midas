@@ -73,3 +73,25 @@ test('the plan leaves a clear icon that is already before the suffix text where 
     const stored = [...layers.slice(0, at), { id: 'clear-1', slot: 'clear', name: 'clear', component: null }, ...layers.slice(at)];
     assert.deepEqual(planAnatomy(input, values, stored).filter(op => op.op === 'move' || op.op === 'insert'), []);
 });
+
+// The load check plans with the same rule: the order the editor writes must be one the file opens with, and the old order must not.
+import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
+
+const inputMaster = { id: 'in', name: 'Input', type: 'frame', isInstance: false, layout: 'horizontal', behavior: { version: 2, templateId: 'input', variables: { variant: 'c-variant', status: null, size: null } } };
+const inputDoc = layers => ({
+    variables: { collections: variables.collections },
+    pages: [{ id: 'p1', nodes: [
+        inputMaster,
+        { id: 'mLabel', name: 'label', type: 'text', parentId: 'in' },
+        { id: 'i1', name: 'Amount', type: 'frame', isInstance: true, sourceId: 'in', behavior: { version: 2, props: { hasSuffix: true, suffixText: '.com', allowClear: true, value: 'Hello' } } },
+        ...layers.map(([name, slot]) => ({ id: `l-${name}`, name, type: slot ? 'frame' : 'text', parentId: 'i1', ...(slot ? { behavior: { version: 2, slot } } : {}) })),
+    ] }],
+});
+
+test('a file opens when its Input holds the clear icon before the suffix text', () => {
+    assert.doesNotThrow(() => assertBehaviorData(inputDoc([['label'], ['clear', 'clear'], ['suffixText']])));
+});
+
+test('a file does not open when its Input holds the clear icon after the suffix text', () => {
+    assert.throws(() => assertBehaviorData(inputDoc([['label'], ['suffixText'], ['clear', 'clear']])), /clear/);
+});

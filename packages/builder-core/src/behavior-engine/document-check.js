@@ -117,7 +117,7 @@ function checkAnatomy(n, nodes, children, page) {
         flip: !!n.layoutFlip,
         stored: n.behavior?.props,
         children: (children.get(n.id) || []).map(c => ({
-            id: c.id, slot: c.behavior?.slot ?? null,
+            id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
             // A slot shows the icon its nested instance is an instance of (null for the placeholder).
             component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,
         })),
