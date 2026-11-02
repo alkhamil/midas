@@ -304,7 +304,7 @@ function renderTemplate(n, template, parent, scope) {
                 const el = layer && renderNode(hidden ? { ...layer, visible: true } : layer, n, scope, true);
                 if (!el) continue;
                 const { position, left, top, width, height, ...style } = el.style;
-                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style: { ...style, ...(def.tokens?.colour ? { color: `var(${cssVarOf(template.id, def.tokens.colour)})` } : null), ...(def.cursor ? { cursor: def.cursor } : null) } });
+                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style });
                 break;
             }
         }

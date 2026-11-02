@@ -297,6 +297,11 @@ function iconProblems(schema, allTokens) {
         for (const role of ['colour', 'disabledColour', 'size']) {
             if (!allTokens.includes(icon.tokens?.[role])) out.push(`${tag} ${role} token "${icon.tokens?.[role]}" is not a token`);
         }
+        // The hover colour is optional; a slot that has one is a fixed slot that carries the hover rule.
+        if (icon.tokens?.hoverColour !== undefined) {
+            if (!allTokens.includes(icon.tokens.hoverColour)) out.push(`${tag} hoverColour token "${icon.tokens.hoverColour}" is not a token`);
+            if (!isName(icon.slot)) out.push(`${tag} has a hover colour but names no slot`);
+        }
     });
     return out;
 }

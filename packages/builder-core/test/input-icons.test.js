@@ -63,10 +63,11 @@ test('Play draws the icon slot in the foreground colour, and the vector paths of
     const solid = [{ type: 'solid', color: '#111111', opacity: 1, visible: true }];
     const glyph = { id: 'g1', name: 'glyph', type: 'path', parentId: slot.id, x: 0, y: 0, w: 10, h: 10, fills: solid, vars: { 'fills.0': 'v-fg' }, stroke: '#222222', strokeWidth: 0, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], closed: true };
     const stroke = { id: 'g2', name: 'stroke', type: 'path', parentId: slot.id, x: 0, y: 0, w: 10, h: 10, fills: [], vars: { stroke: 'v-fg' }, stroke: '#222222', strokeWidth: 1, points: [{ x: 0, y: 0 }, { x: 10, y: 10 }], closed: false };
-    const { root, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, ...made.created, ...copies, glyph, stroke] }], variables }, copies[0].id);
+    const { root, styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, ...made.created, ...copies, glyph, stroke] }], variables }, copies[0].id);
     assert.deepEqual(problems, []);
     const el = root.children.find(c => c.attrs?.class === 'input-prefixIcon');
-    assert.equal(el.style.color, 'var(--input-fg)');
+    assert.equal(el.style.color, undefined, 'the colour comes from the class, so a hover rule can win');
+    assert.match(styles, /\.input-prefixIcon \{[^}]*color: var\(--input-fg\);/);
     const [filled, stroked] = el.children.map(c => c.html);
     assert.match(filled, /fill="currentColor"/, 'a bound fill follows the slot colour');
     assert.match(stroked, /stroke="currentColor"/, 'a bound stroke follows it too');

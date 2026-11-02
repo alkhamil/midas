@@ -66,5 +66,11 @@
   "icon-sm": { "base": "Semantic/fontSizeSM" },
   "icon-md": { "base": "Semantic/fontSize" },
   "icon-lg": { "base": "Semantic/fontSizeLG" },
-  "icon-xl": { "base": "Semantic/fontSizeXL" }
+  "icon-xl": { "base": "Semantic/fontSizeXL" },
+  "clear-icon-xs": { "base": "Semantic/clearIconSizeXS" },
+  "clear-icon-sm": { "base": "Semantic/clearIconSizeSM" },
+  "clear-icon-md": { "base": "Semantic/clearIconSize" },
+  "clear-icon-lg": { "base": "Semantic/clearIconSizeLG" },
+  "clear-icon-xl": { "base": "Semantic/clearIconSizeXL" },
+  "clear-hover": { "base": "Semantic/colorTextSecondary" }
 }

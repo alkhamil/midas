@@ -96,13 +96,14 @@ test('Play draws the icon at the token size and in the fg token colour, for star
     const startSlot = start.children.find(c => c.attrs?.class === 'button-iconStart');
     assert.equal(startSlot.style.width, undefined);
     assert.equal(startSlot.style.height, undefined);
-    assert.equal(startSlot.style.color, 'var(--button-fg)');
+    assert.equal(startSlot.style.color, undefined, 'the colour comes from the class (.button-iconStart), so a hover rule can win');
+    assert.match(toDomTree(fixture, 'inst-start', {}).styles, /\.button-iconStart \{[^}]*color: var\(--button-fg\);/);
     assert.match(startSlot.children[0].children[0].html, /fill="currentColor"/);
     const end = toDomTree(fixture, 'inst-cross', {}).root;
     const endSlot = end.children.find(c => c.attrs?.class === 'button-iconEnd');
     assert.equal(endSlot.style.width, undefined);
     assert.equal(endSlot.style.height, undefined);
-    assert.equal(endSlot.style.color, 'var(--button-fg)');
+    assert.equal(endSlot.style.color, undefined);
     assert.match(endSlot.children[0].children[0].html, /stroke="currentColor"/);
 });
 

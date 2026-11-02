@@ -112,7 +112,8 @@ test('Play draws the clear icon from its managed slot, kept and hidden while the
     const shown = toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true, showCount: true, maxLength: 20 }), clearSlot(true), count(true)]), 'i1').root;
     const icon = shown.children.find(c => c.nodeId === 'i1-clear');
     assert.ok(icon && icon.attrs['data-role'] === 'clear' && icon.attrs.hidden === false, 'the clear icon is drawn with a value');
-    assert.equal(icon.style.cursor, 'pointer', 'the clear icon has the hand cursor, as a button does');
+    assert.equal(icon.style.cursor, undefined, 'the cursor comes from the class');
+    assert.match(toDomTree(doc([master(), instance({}, { value: 'hi', allowClear: true }), clearSlot(true)]), 'i1').styles, /\.input-clear \{[^}]*cursor: pointer;/, 'the clear icon has the hand cursor, as a button does');
     assert.ok(shown.children.some(c => c.nodeId === 'i1-count' && c.text === '2 / 20'));
     // With an empty value the clear layer is hidden on the canvas; Play keeps it, hidden, so typing shows it.
     const hidden = toDomTree(doc([master(), instance({}, { value: '', allowClear: true }), clearSlot(false), count(false)]), 'i1').root;

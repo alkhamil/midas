@@ -2,7 +2,7 @@ import { ICON_TOKENS } from './icon-slots.js';
 import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 
 // The clear icon: a managed slot shown while Allow Clear is on. It is drawn but hidden while the value is empty, so Play can show it as the value is typed.
-const CLEAR_ICON = { show: 'allowClear', slot: 'clear', component: 'clearIcon', label: 'Clear icon', hideWhenEmpty: 'value', cursor: 'pointer', tokens: ICON_TOKENS };
+const CLEAR_ICON = { show: 'allowClear', slot: 'clear', component: 'clearIcon', label: 'Clear icon', hideWhenEmpty: 'value', cursor: 'pointer', tokens: { ...ICON_TOKENS, colour: 'placeholder', size: 'clearIconSize', hoverColour: 'clear-hover' } };
 
 // The prefix and the suffix are the Input's only side slots, as in antd. Each is on with its own switch and holds Text or an Icon: the
 // kind enum maps `icon` to the managed icon slot (and `text` to none), so the text layer shows for Text and the icon slot for Icon.
@@ -68,15 +68,15 @@ export const INPUT = {
         readOnly: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
-        fromVariant: ['bg', 'fg', 'border', 'placeholder', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
+        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize'],
+        fromVariant: ['bg', 'fg', 'border', 'placeholder', 'clear-hover', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', clearIconSize: 'length',
         valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', countTypography: 'typography',
-        bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
+        bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'clear-hover': 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
         'status-border': 'color', 'status-border-hover': 'color', 'status-border-focus': 'color', 'status-outline': 'color',
     },
@@ -93,10 +93,14 @@ export const INPUT = {
         gap: 'gap-xxs',
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
+        // The clear icon is the icon size minus 2 (derived in the base data, antd-sizes.json: clearIconSize*).
+        clearIconSize: { xs: 'clear-icon-xs', sm: 'clear-icon-sm', md: 'clear-icon-md', lg: 'clear-icon-lg', xl: 'clear-icon-xl', default: 'clear-icon-md' },
         bg: { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
         fg: 'fg',
         border: { outlined: './status-border', filled: 'transparent', borderless: 'transparent', default: './status-border' },
         placeholder: 'placeholder',
+        // The clear icon's hover colour: placeholder to secondary text, as antd.
+        'clear-hover': 'clear-hover',
         'bg-hover': { outlined: 'bg', filled: 'bg-subtle', borderless: 'transparent', default: 'bg' },
         'border-hover': { outlined: './status-border-hover', filled: 'transparent', borderless: 'transparent', default: './status-border-hover' },
         'border-focus': { outlined: './status-border-focus', filled: 'transparent', borderless: 'transparent', default: './status-border-focus' },
@@ -130,6 +134,7 @@ export const INPUT = {
         { id: 'focus-halo', reason: 'focus ring follows keyboard focus; the canvas shows the rest state' },
         { id: 'caret', reason: 'the text caret exists only in the live input' },
         { id: 'typing', reason: 'typing changes the value live; the canvas shows the Value prop' },
+        { id: 'clear-hover', reason: 'hover has no static canvas visual' },
         { id: 'validation', reason: 'validation has no static visual; error state comes with FormItem rules' },
     ],
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
@@ -139,7 +144,7 @@ export const INPUT = {
         prefixText: { fill: 'fg', typography: 'addonTypography' },
         suffixText: { fill: 'fg', typography: 'addonTypography' },
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },
-        clear: { size: 'iconSize' },
+        clear: { size: 'clearIconSize' },
         count: { fill: 'placeholder', typography: 'countTypography' },
         prefixIcon: { size: 'iconSize' },
         suffixIcon: { size: 'iconSize' },

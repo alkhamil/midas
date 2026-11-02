@@ -260,6 +260,14 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
             continue;
         }
         if (spec.collection !== 'Semantic' || typeof spec.value !== 'number' || typeof spec.primitive !== 'string') fail(`Sizes/${antName} must name a Semantic number and its primitive step`);
+        // A size derived from another (the clear icon is the icon size minus 2) names its source and its offset, and the value must be exactly that.
+        if (spec.from !== undefined) {
+            const base = sizes[spec.from];
+            if (typeof base?.value !== 'number') fail(`Sizes/${antName} derives from "${spec.from}", which is not a size`);
+            if (typeof spec.offset !== 'number') fail(`Sizes/${antName} derives from "${spec.from}" and needs an offset`);
+            if (spec.value !== base.value + spec.offset) fail(`Sizes/${antName} says ${spec.value} but ${spec.from} ${base.value} ${spec.offset < 0 ? '-' : '+'} ${Math.abs(spec.offset)} is ${base.value + spec.offset}`);
+            if (spec.derived !== true) fail(`Sizes/${antName} is derived from "${spec.from}", so it must be flagged derived`);
+        }
         const have = primBase.find(t => t.path === spec.primitive);
         if (have && have.raw !== spec.value) fail(`Sizes/${antName} wants ${spec.value} but Primitives/${spec.primitive} is ${have.raw}`);
         if (!have && !items.some(i => i.collection === 'Primitives' && i.name === spec.primitive)) {

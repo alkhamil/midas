@@ -11,7 +11,7 @@ test('the bundled snapshot generates the base collections', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const stats = applyBasePlan(store, plan, () => `id${++n}`);
     assert.equal(stats.collections, 3);
-    assert.equal(stats.items, 334);
+    assert.equal(stats.items, 339);
     assert.deepEqual(store.collections.map(c => c.name), ['Primitives', 'Semantic', 'Typography']);
     const sem = store.collections.find(c => c.name === 'Semantic');
     assert.deepEqual(sem.modes.map(m => m.name), ['Light', 'Dark']);

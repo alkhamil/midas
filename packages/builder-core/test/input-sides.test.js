@@ -95,11 +95,11 @@ test('the export draws each side under its switch and its kind, in the anatomy o
     assert.deepEqual([...order].sort((a, b) => a - b), order, 'in the anatomy order');
 });
 
-test('the export sizes the side icons by the icon size token', () => {
+test('the export sizes the side icons by the icon size token, and the clear icon by its own smaller token', () => {
     const css = filesOf()['Input.css'];
-    for (const slot of ['prefixIcon', 'suffixIcon', 'clear']) {
+    for (const [slot, token] of [['prefixIcon', 'icon-size'], ['suffixIcon', 'icon-size'], ['clear', 'clear-icon-size']]) {
         const block = new RegExp(`\\.input-${slot} \\{([^}]*)\\}`).exec(css)?.[1] ?? '';
-        assert.match(block, /width: var\(--input-icon-size\);/, `${slot} width`);
-        assert.match(block, /height: var\(--input-icon-size\);/, `${slot} height`);
+        assert.match(block, new RegExp(`width: var\\(--input-${token}\\);`), `${slot} width`);
+        assert.match(block, new RegExp(`height: var\\(--input-${token}\\);`), `${slot} height`);
     }
 });

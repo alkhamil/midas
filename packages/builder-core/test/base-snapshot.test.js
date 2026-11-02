@@ -17,12 +17,12 @@ test('the snapshot holds three collections with their modes', () => {
     ]);
 });
 
-test('the snapshot plus the text styles: 334 variables with the known report', () => {
+test('the snapshot plus the text styles: 339 variables with the known report', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 100 });
-    assert.equal(plan.items.length, 334);
+    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 105 });
+    assert.equal(plan.items.length, 339);
     assert.deepEqual(plan.report.derived.map(d => d.name), [
         'Primitives/transparent',
         'Semantic/controlHeightXL',
@@ -39,6 +39,11 @@ test('the snapshot plus the text styles: 334 variables with the known report', (
         'Semantic/buttonPaddingYxl',
         'Primitives/size/9',
         'Semantic/inputPaddingYxl',
+        'Semantic/clearIconSizeXS',
+        'Semantic/clearIconSizeSM',
+        'Semantic/clearIconSize',
+        'Semantic/clearIconSizeLG',
+        'Semantic/clearIconSizeXL',
         'Primitives/heading/1',
         'Primitives/heading/2',
     ]);
@@ -49,7 +54,7 @@ test('the snapshot plus the text styles: 334 variables with the known report', (
 
 test('Semantic holds the antd size scale as aliases, no literals', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
-    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 55, 'the size scale is present');
+    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 60, 'the size scale is present');
     for (const item of plan.items.filter(i => i.collection === 'Semantic')) {
         for (const value of Object.values(item.values)) {
             assert.ok(value.alias && !value.needsValue, `${item.name} aliases a base step`);
@@ -102,7 +107,7 @@ test('the snapshot plan applies and a second run is a no-op', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const first = applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
-    assert.deepEqual(first, { collections: 3, items: 334, modes: 4, aliases: 200 });
+    assert.deepEqual(first, { collections: 3, items: 339, modes: 4, aliases: 210 });
     assert.deepEqual(applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`), { collections: 0, items: 0, modes: 0, aliases: 0 });
 });
 

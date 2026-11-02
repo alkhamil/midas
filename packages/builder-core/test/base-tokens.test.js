@@ -204,6 +204,21 @@ test('static sizes reject a non-Semantic entry and a mismatched primitive value'
     assert.throws(() => buildBasePlan(parsed, map, { bad: { collection: 'Semantic', value: 24, primitive: 'size/24', source: 'test' } }), /wants 24 but Primitives\/size\/24 is 99/);
 });
 
+test('a size derived from another names its source and its offset, and its value must be exactly that', () => {
+    const parsed = parseTokenJson([{ Primitives: { modes: { Base: { size: { 10: num(10), 8: num(8) } } } } }]);
+    const map = { Primitives: { source: 'Primitives', modes: ['Base'], naming: 'raw' }, Semantic: { source: 'Semantic', modes: ['Light', 'Dark'], items: {} }, Typography: { source: 'Typography', modes: [], naming: 'raw' } };
+    const base = { collection: 'Semantic', value: 10, primitive: 'size/10', source: 'test' };
+    const derived = { collection: 'Semantic', from: 'icon', offset: -2, value: 8, primitive: 'size/8', derived: true, source: 'test' };
+    const plan = buildBasePlan(parsed, map, { icon: base, clear: derived });
+    const clear = plan.items.find(i => i.collection === 'Semantic' && i.name === 'clear');
+    assert.deepEqual(clear.values.Light, { alias: { collection: 'Primitives', name: 'size/8' } });
+    assert.ok(plan.report.derived.some(d => d.name === 'Semantic/clear'), 'flagged derived');
+    assert.throws(() => buildBasePlan(parsed, map, { icon: base, clear: { ...derived, value: 9, primitive: 'size/9' } }), /Sizes\/clear says 9 but icon 10 - 2 is 8/);
+    assert.throws(() => buildBasePlan(parsed, map, { icon: base, clear: { ...derived, from: 'ghost' } }), /derives from "ghost", which is not a size/);
+    assert.throws(() => buildBasePlan(parsed, map, { icon: base, clear: { ...derived, offset: undefined } }), /needs an offset/);
+    assert.throws(() => buildBasePlan(parsed, map, { icon: base, clear: { ...derived, derived: false } }), /must be flagged derived/);
+});
+
 test('static line heights pair fontSize to JSON Typography steps, nearest lower when exact is missing', () => {
     const parsed = parseTokenJson([
         { Typography: { modes: { 'Mode 1': { font: { 'line height': { 10: num(12), 14: num(20) } } } } } },

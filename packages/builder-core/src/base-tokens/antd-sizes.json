@@ -53,5 +53,10 @@
   "inputPaddingYmd": { "collection": "Semantic", "value": 4, "primitive": "size/4", "derived": false, "source": "components/input/style/token.ts: paddingBlock = max(round(((32 - 14lh)/2)) - 1, 0) = 4" },
   "inputPaddingYlg": { "collection": "Semantic", "value": 7, "primitive": "size/7", "derived": false, "source": "components/input/style/token.ts: paddingBlockLG = max(ceil(((40 - 16lhLG)/2)) - 1, 0) = 7" },
   "inputPaddingYxl": { "collection": "Semantic", "value": 9, "primitive": "size/9", "derived": true, "source": "LG formula on XL metrics (controlHeightXL 48, fontSizeXL 20): ceil(((48 - 28)/2)) - 1 = 9" },
+  "clearIconSizeXS": { "collection": "Semantic", "from": "fontSizeXS", "offset": -2, "value": 8, "primitive": "size/8", "derived": true, "source": "the clear icon is the icon size (fontSizeXS 10) minus 2" },
+  "clearIconSizeSM": { "collection": "Semantic", "from": "fontSizeSM", "offset": -2, "value": 10, "primitive": "size/10", "derived": true, "source": "the clear icon is the icon size (fontSizeSM 12) minus 2" },
+  "clearIconSize": { "collection": "Semantic", "from": "fontSize", "offset": -2, "value": 12, "primitive": "size/12", "derived": true, "source": "the clear icon is the icon size (fontSize 14) minus 2" },
+  "clearIconSizeLG": { "collection": "Semantic", "from": "fontSizeLG", "offset": -2, "value": 14, "primitive": "size/14", "derived": true, "source": "the clear icon is the icon size (fontSizeLG 16) minus 2" },
+  "clearIconSizeXL": { "collection": "Semantic", "from": "fontSizeXL", "offset": -2, "value": 18, "primitive": "size/18", "derived": true, "source": "the clear icon is the icon size (fontSizeXL 20) minus 2" },
   "lineWidth": { "collection": "Semantic", "value": 1, "primitive": "stroke/1", "derived": false, "source": "components/theme/themes/seed.ts: lineWidth" }
 }

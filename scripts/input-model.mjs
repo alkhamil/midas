@@ -19,19 +19,19 @@ const STATUS_VALUES = {
 
 /** Variant values per mode: `st:` a Status token, a hex literal, or `transparent`. */
 const OUTLINED = {
-    bg: '#ffffff', fg: '#18181b', border: 'st:status-border', placeholder: '#bfbfbf',
+    bg: '#ffffff', fg: '#18181b', border: 'st:status-border', placeholder: '#bfbfbf', 'clear-hover': '#595959',
     'bg-hover': '#ffffff', 'border-hover': 'st:status-border-hover', 'border-focus': 'st:status-border-focus',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',
 };
 const FILLED = {
-    bg: '#f5f5f5', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf',
+    bg: '#f5f5f5', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959',
     'bg-hover': '#eeeeee', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',
 };
 const BORDERLESS = {
-    bg: 'transparent', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf',
+    bg: 'transparent', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959',
     'bg-hover': 'transparent', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': 'transparent', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',
@@ -54,6 +54,8 @@ const titled = id => ({ id, name: id[0].toUpperCase() + id.slice(1) });
  */
 export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANTS, statusModes = INPUT_STATUSES, sizeModes = INPUT_SIZES, sizeValues = {}, shared = null } = {}) {
     const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
+    // The clear icon is the icon size minus 2 in every Size mode, derived here as the base data derives it (antd-sizes.json clearIconSize*).
+    sizes.clearIconSize = Object.fromEntries(Object.entries(sizes.iconSize).map(([mode, value]) => [mode, value - 2]));
     const variant = ids.variant ?? 'c-variant';
     const status = ids.status ?? 'c-status';
     const size = ids.size ?? 'c-size';

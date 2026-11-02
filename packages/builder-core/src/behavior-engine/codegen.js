@@ -6,7 +6,7 @@ import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, canvasPartsOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
-import { controlOf, placementsOfDef, slotDefsOf } from './anatomy.js';
+import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf } from './layout.js';
 import { labelEntryOf } from './layers.js';
@@ -180,8 +180,9 @@ function displayRules(template, master, childrenOf) {
         );
         // A managed icon slot is drawn in its colour token: the icon swapped into it draws with currentColor (the Play DOM sets the same colour
         // on the slot), so the colour is the slot's CSS colour, and the disabled state changes the token it reads.
-        const iconColour = kind === 'icon' ? slotDefsOf(template, key)[0]?.tokens?.colour : undefined;
-        if (iconColour !== undefined && tokens.includes(iconColour)) decls.push(`  color: var(${cssVarOf(template.id, iconColour)});\n`);
+        const iconDef = kind === 'icon' ? slotDefsOf(template, key)[0] : undefined;
+        if (iconDef?.tokens?.colour !== undefined && tokens.includes(iconDef.tokens.colour)) decls.push(`  color: var(${cssVarOf(template.id, iconDef.tokens.colour)});\n`);
+        if (iconDef?.cursor !== undefined) decls.push(`  cursor: ${iconDef.cursor};\n`);
         for (const [prop, source] of Object.entries(props)) {
             const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
@@ -227,6 +228,18 @@ function strokeRules(template, master) {
     const inset = grow ? `-${grow}px` : '0';
     const radius = grow ? `calc(var(${cssVarOf(template.id, 'radius')}) + ${grow}px)` : 'inherit';
     return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: ${inset};\n  box-sizing: border-box;\n  border-width: ${width}px;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: ${radius};\n  pointer-events: none;\n}\n`;
+}
+
+/**
+ * The hover rule of each icon slot that declares a hover colour token (the Input's clear icon): the slot takes that colour while the pointer
+ * is over it and the component is not disabled. Hover has no static canvas visual, so the canvas keeps the rest colour.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {string[]}
+ */
+function iconHoverRules(template) {
+    const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${template.statePseudo[template.element.disabledState]})`;
+    return iconDefsOf(template).filter(def => def.tokens?.hoverColour !== undefined && def.slot !== undefined)
+        .map(def => `.${template.id}${guard} .${template.id}-${def.slot}:hover {\n  color: var(${cssVarOf(template.id, def.tokens.hoverColour)});\n}\n`);
 }
 
 /**
@@ -307,6 +320,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
+    blocks.push(...iconHoverRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     const stroke = strokeRules(template, master);
