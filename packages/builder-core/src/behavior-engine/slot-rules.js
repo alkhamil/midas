@@ -47,23 +47,41 @@ export function slotCountLabel(count) {
 }
 
 /**
- * Whether a slot takes only some components: it only allows its preferred instances, and it has some. Every other slot takes anything.
- * @param {{ onlyPreferred?: boolean, preferred?: string[] } | null | undefined} prop
+ * Whether a slot takes only some components: it only allows its preferred instances (`onlyPreferred`, with some preferred), or only the templates it
+ * accepts (`onlyAccepts`, with some listed). A list the slot does not enforce, or an empty one, restricts nothing.
+ * @param {{ onlyPreferred?: boolean, preferred?: string[], onlyAccepts?: boolean, accepts?: string[] } | null | undefined} prop
  * @returns {boolean}
  */
 export function slotRestricts(prop) {
-    return !!(prop?.onlyPreferred && prop.preferred?.length);
+    return restrictsByPreferred(prop) || restrictsByTemplate(prop);
+}
+
+const restrictsByPreferred = (/** @type {any} */ prop) => !!(prop?.onlyPreferred && prop.preferred?.length);
+const restrictsByTemplate = (/** @type {any} */ prop) => !!(prop?.onlyAccepts && prop.accepts?.length);
+
+/**
+ * Whether a slot takes a component. A slot that restricts takes what one of its enforced allow lists admits: a candidate whose id (or its set's or
+ * sibling variants') is preferred, or that is bound to an accepted template. The lists do not conflict: each one that restricts admits on its own,
+ * so a slot with both takes the union, and a list that does not restrict admits nothing by itself. Any other slot takes anything, as does a layer
+ * with no slot property.
+ * @param {{ onlyPreferred?: boolean, preferred?: string[], onlyAccepts?: boolean, accepts?: string[] } | null | undefined} prop
+ * @param {{ ids: string[], templates: string[] }} candidate the component's ids (itself, its set, its variants) and the templates its master is bound to
+ * @returns {boolean}
+ */
+export function slotAccepts(prop, candidate) {
+    if (!slotRestricts(prop)) return true;
+    return (restrictsByPreferred(prop) && candidate.ids.some(id => prop?.preferred?.includes(id)))
+        || (restrictsByTemplate(prop) && candidate.templates.some(t => prop?.accepts?.includes(t)));
 }
 
 /**
- * Whether a slot takes a component: a slot that restricts takes exactly its preferred instances, every other slot takes anything. A layer
- * with no slot property takes anything.
- * @param {{ onlyPreferred?: boolean, preferred?: string[] } | null | undefined} prop
- * @param {string} candidateId the component's id
- * @returns {boolean}
+ * What the Diagnostics say a refused layer is not, by the lists the slot enforces.
+ * @param {{ name: string, onlyPreferred?: boolean, preferred?: string[], onlyAccepts?: boolean, accepts?: string[] }} prop
+ * @returns {string}
  */
-export function slotAccepts(prop, candidateId) {
-    return !slotRestricts(prop) || !!prop?.preferred?.includes(candidateId);
+export function slotRefusal(prop) {
+    const preferred = `the preferred instances of slot "${prop.name}"`, templates = `the templates ${restrictsByPreferred(prop) ? 'it' : `slot "${prop.name}"`} accepts (${(prop.accepts ?? []).join(', ')})`;
+    return restrictsByPreferred(prop) && restrictsByTemplate(prop) ? `one of ${preferred} or of ${templates}` : restrictsByTemplate(prop) ? `one of ${templates}` : `one of ${preferred}`;
 }
 
 /**

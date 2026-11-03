@@ -38,12 +38,12 @@ test('the words the studio says about a slot', () => {
 });
 
 test('a slot that only allows preferred instances accepts exactly those; with none preferred, or the option off, it accepts anything', () => {
-    assert.equal(slotAccepts({ onlyPreferred: true, preferred: ['a', 'b'] }, 'a'), true);
-    assert.equal(slotAccepts({ onlyPreferred: true, preferred: ['a', 'b'] }, 'c'), false);
-    assert.equal(slotAccepts({ onlyPreferred: true, preferred: [] }, 'c'), true, 'nothing preferred, nothing to restrict to');
-    assert.equal(slotAccepts({ onlyPreferred: true }, 'c'), true);
-    assert.equal(slotAccepts({ onlyPreferred: false, preferred: ['a'] }, 'c'), true);
-    assert.equal(slotAccepts(undefined, 'c'), true, 'a layer with no slot property accepts anything');
+    assert.equal(slotAccepts({ onlyPreferred: true, preferred: ['a', 'b'] }, { ids: ['a'], templates: [] }), true);
+    assert.equal(slotAccepts({ onlyPreferred: true, preferred: ['a', 'b'] }, { ids: ['c'], templates: [] }), false);
+    assert.equal(slotAccepts({ onlyPreferred: true, preferred: [] }, { ids: ['c'], templates: [] }), true, 'nothing preferred, nothing to restrict to');
+    assert.equal(slotAccepts({ onlyPreferred: true }, { ids: ['c'], templates: [] }), true);
+    assert.equal(slotAccepts({ onlyPreferred: false, preferred: ['a'] }, { ids: ['c'], templates: [] }), true);
+    assert.equal(slotAccepts(undefined, { ids: ['c'], templates: [] }), true, 'a layer with no slot property accepts anything');
 });
 
 test('preferred instances are added once and removed by id, without changing the property', () => {

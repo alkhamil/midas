@@ -3,14 +3,15 @@
 // picker, a paste, a drag, a duplicate, an import, a delete) ends in the same report. Content slots only: the icon slots of a template have
 // their own checks (document-check.js).
 import { isContentSlot } from './content-slots.js';
-import { slotAccepts, slotCounts, slotRestricts } from './slot-rules.js';
+import { slotAccepts, slotCounts, slotRefusal, slotRestricts } from './slot-rules.js';
+import { templateIdsOf } from './component-templates.js';
 
 /** @param {number} n */
 const layers = n => `${n} layer${n === 1 ? '' : 's'}`;
 
 /**
  * The slot findings of a document: for each content slot of an instance, below minimum, above maximum, and each layer that is not one of the
- * preferred instances of a slot that only allows those. A finding names the instance that owns the slot (the nearest instance above the slot
+ * preferred instances or accepted templates of a slot that only allows those. A finding names the instance that owns the slot (the nearest instance above the slot
  * layer), the slot layer, and for a layer that is not taken, that layer. Same shape as the other findings (see diagnostics.js).
  * @param {any[]} nodes every node of the document, in document order
  * @returns {{ severity: 'warning', code: string, node: string, nodeId: string, slot: string, layer?: string, message: string }[]}
@@ -47,8 +48,8 @@ export function diagnoseSlots(nodes) {
         if (aboveMax) out.push({ severity: 'warning', code: 'slot-above-max', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at most ${prop.max} allowed.` });
         if (!slotRestricts(prop)) continue;
         for (const layer of held) {
-            const taken = layer.isInstance && layer.sourceId && family(layer.sourceId).some(id => slotAccepts(prop, id));
-            if (!taken) out.push({ severity: 'warning', code: 'slot-not-accepted', ...where, layer: layer.id, message: `${owner.name}: "${layer.name}" is not one of the preferred instances of slot "${prop.name}".` });
+            const taken = layer.isInstance && layer.sourceId && slotAccepts(prop, { ids: family(layer.sourceId), templates: templateIdsOf(nodes, layer.sourceId) });
+            if (!taken) out.push({ severity: 'warning', code: 'slot-not-accepted', ...where, layer: layer.id, message: `${owner.name}: "${layer.name}" is not ${slotRefusal(prop)}.` });
         }
     }
     return out;
