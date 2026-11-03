@@ -94,7 +94,11 @@ function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false
 }
 
 function instanceHtml(panel, esc, findings, preview, expanded = false) {
-    if (!panel.templateId) return empty('This component has no template. Bind the main component first.');
+    if (!panel.templateId) {
+        // A component with no template has no props to set, but its content slots can still break their own rules: those findings show.
+        const notice = empty('This component has no template. Bind the main component first.');
+        return findings?.length ? notice + diagnosticsSection(findings, [], esc, null, null, expanded) : notice;
+    }
     const variable = panel.rows.filter(r => r.kind === 'variable').map(r => {
         const name = esc(r.prop);
         const control = `<select data-bp="value" data-bp-kind="variable" data-bp-prop="${name}" aria-label="${name}" ${r.disabled ? 'disabled' : ''}>

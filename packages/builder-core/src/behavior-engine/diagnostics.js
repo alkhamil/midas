@@ -14,6 +14,7 @@ import { strokePaintMissing } from '../geometry/shapes.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
 import { layerSpecsOf, masterLayersByKey } from './template-master.js';
+import { diagnoseSlots } from './slot-diagnostics.js';
 
 /**
  * Follows a stored mode value through aliases (by item id) to its literal, or undefined when it never lands on one.
@@ -187,6 +188,8 @@ export function diagnoseDocument(doc) {
             out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message });
         }
     }
+    // The content slots of every page: a slot below its minimum, above its maximum, or holding a layer it does not take (see slot-diagnostics.js).
+    out.push(...diagnoseSlots(nodes));
     return out;
 }
 

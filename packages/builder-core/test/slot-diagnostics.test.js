@@ -117,3 +117,20 @@ test('slotRestricts says whether a slot takes only some components', () => {
     assert.equal(slotRestricts({ onlyPreferred: false, preferred: ['a'] }), false);
     assert.equal(slotRestricts(undefined), false);
 });
+
+import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
+
+test('the document diagnostics include the slot findings, beside the template findings', () => {
+    const nodes = documentWith({ min: 1 }, []);
+    const findings = diagnoseDocument({ pages: [{ id: 'p', name: 'Page', nodes }] });
+    assert.deepEqual(findings.filter(f => String(f.code).startsWith('slot-')).map(f => [f.code, f.nodeId]), [['slot-below-min', 'inst']]);
+    assert.deepEqual(diagnoseDocument({ pages: [{ id: 'p', name: 'Page', nodes: documentWith({ min: 1 }, [{ of: 'inputMain' }]) }] }), []);
+});
+
+test('the slots of every page are scanned: an instance and its main component may be on different pages', () => {
+    const nodes = documentWith({ max: 1 }, [{ of: 'inputMain' }, { of: 'inputMain' }]);
+    const main = nodes.filter(n => ['card', 'frame', 'inputMain'].includes(n.id));
+    const rest = nodes.filter(n => !main.includes(n));
+    const findings = diagnoseDocument({ pages: [{ id: 'a', name: 'Components', nodes: main }, { id: 'b', name: 'Screens', nodes: rest }] });
+    assert.deepEqual(findings.map(f => f.code), ['slot-above-max']);
+});
