@@ -95,3 +95,17 @@ export function slotPreferredWithout(prop, id) {
 export function slotOptionPatch(key, checked) {
     return SLOT_OPTIONS.includes(key) ? { [key]: checked } : {};
 }
+
+/**
+ * Whether a content slot of an instance is shown: the slot layer is visible in the main component, and it either holds a layer or the slot asks
+ * to be displayed empty (`showEmpty`). An empty slot that does not ask takes no space: the layer is hidden, so the canvas layout, Play and the
+ * export all skip it, as they skip any hidden layer. A layer with no slot property is left as its own visibility says.
+ * @param {{ showEmpty?: boolean } | null | undefined} prop the slot property
+ * @param {boolean} ownVisible whether the slot layer itself is visible in the main component
+ * @param {number} count the layers in the slot
+ * @returns {boolean}
+ */
+export function slotVisible(prop, ownVisible, count) {
+    if (!prop) return ownVisible;
+    return ownVisible && (count > 0 || prop.showEmpty === true);
+}

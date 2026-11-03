@@ -64,3 +64,21 @@ test('a checkbox of the slot editor writes one of the three options, and nothing
     assert.deepEqual(slotOptionPatch('desc', true), {}, 'an unknown key writes nothing');
 });
 
+
+import { slotVisible } from '../src/behavior-engine/slot-rules.js';
+
+test('an empty slot shows only when the slot asks to display it empty; with content it always shows', () => {
+    assert.equal(slotVisible({ showEmpty: true }, true, 0), true, 'asked to display empty');
+    assert.equal(slotVisible({ showEmpty: false }, true, 0), false, 'empty and not asked: it takes no space');
+    assert.equal(slotVisible({}, true, 0), false, 'the option is off by default');
+    assert.equal(slotVisible({ showEmpty: false }, true, 1), true, 'content shows the slot');
+    assert.equal(slotVisible({}, true, 3), true);
+    assert.equal(slotVisible({ showEmpty: true }, true, 2), true);
+});
+
+test('a slot the designer hid stays hidden, whatever it holds, and a slot with no property is left as it is', () => {
+    assert.equal(slotVisible({ showEmpty: true }, false, 0), false);
+    assert.equal(slotVisible({ showEmpty: true }, false, 4), false);
+    assert.equal(slotVisible(undefined, true, 0), true, 'no property, no rule');
+    assert.equal(slotVisible(undefined, false, 2), false);
+});
