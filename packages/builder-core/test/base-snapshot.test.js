@@ -41,7 +41,7 @@ test('the snapshot plus the text styles: 339 variables with the known report', (
         'Semantic/inputPaddingYxl',
         'Semantic/clearIconSizeXS',
         'Semantic/clearIconSizeSM',
-        'Semantic/clearIconSize',
+        'Semantic/clearIconSizeMD',
         'Semantic/clearIconSizeLG',
         'Semantic/clearIconSizeXL',
         'Primitives/heading/1',
@@ -50,6 +50,21 @@ test('the snapshot plus the text styles: 339 variables with the known report', (
     assert.deepEqual(plan.report.needsValue, []);
     assert.deepEqual(plan.report.unresolved, []);
     assert.deepEqual(plan.report.renamed, []);
+});
+
+test('single-step size tokens carry the MD suffix, with no unsuffixed leftover', () => {
+    const plan = planFromSnapshot(BASE_SNAPSHOT);
+    const names = new Set(plan.items.filter(i => i.collection === 'Semantic').map(i => i.name));
+    for (const name of ['controlHeightMD', 'fontSizeMD', 'lineHeightMD', 'borderRadiusMD', 'clearIconSizeMD']) {
+        assert.ok(names.has(name), `Semantic/${name} exists`);
+    }
+    for (const name of ['controlHeight', 'fontSize', 'lineHeight', 'borderRadius', 'clearIconSize']) {
+        assert.ok(!names.has(name), `Semantic/${name} is gone`);
+    }
+    const byName = Object.fromEntries(plan.items.filter(i => i.collection === 'Semantic').map(i => [i.name, i]));
+    assert.equal(byName.controlHeightMD.values.Light.alias.name, 'size/32');
+    assert.equal(byName.fontSizeMD.values.Light.alias.name, 'size/14');
+    assert.equal(byName.borderRadiusMD.values.Light.alias.name, 'radius/6');
 });
 
 test('Semantic holds the antd size scale as aliases, no literals', () => {
@@ -61,9 +76,9 @@ test('Semantic holds the antd size scale as aliases, no literals', () => {
         }
     }
     const byName = Object.fromEntries(plan.items.filter(i => i.collection === 'Semantic').map(i => [i.name, i]));
-    assert.equal(byName.controlHeight.values.Light.alias.name, 'size/32');
-    assert.equal(byName.fontSize.values.Light.alias.name, 'size/14');
-    assert.equal(byName.borderRadius.values.Light.alias.name, 'radius/6');
+    assert.equal(byName.controlHeightMD.values.Light.alias.name, 'size/32');
+    assert.equal(byName.fontSizeMD.values.Light.alias.name, 'size/14');
+    assert.equal(byName.borderRadiusMD.values.Light.alias.name, 'radius/6');
     assert.equal(byName.padding.values.Light.alias.name, 'size/16');
     const prim32 = plan.items.find(i => i.collection === 'Primitives' && i.name === 'size/32');
     assert.equal(prim32.values.Base.literal, 32);
@@ -75,7 +90,7 @@ test('Semantic line heights alias the paired JSON Typography step in px', () => 
     const pairs = {
         lineHeightXS: ['font/line-height/10', 12],
         lineHeightSM: ['font/line-height/12', 16],
-        lineHeight: ['font/line-height/14', 20],
+        lineHeightMD: ['font/line-height/14', 20],
         lineHeightLG: ['font/line-height/16', 24],
         lineHeightXL: ['font/line-height/20', 28],
         lineHeightHeading1: ['font/line-height/32', 40],

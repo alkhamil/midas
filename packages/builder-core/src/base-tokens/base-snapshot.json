@@ -2807,7 +2807,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "controlHeight",
+      "name": "controlHeightMD",
       "type": "number",
       "values": {
         "Light": {
@@ -2902,7 +2902,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "fontSize",
+      "name": "fontSizeMD",
       "type": "number",
       "values": {
         "Light": {
@@ -2997,7 +2997,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "lineHeight",
+      "name": "lineHeightMD",
       "type": "number",
       "values": {
         "Light": {
@@ -3187,7 +3187,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "borderRadius",
+      "name": "borderRadiusMD",
       "type": "number",
       "values": {
         "Light": {
@@ -3853,7 +3853,7 @@
     },
     {
       "collection": "Semantic",
-      "name": "clearIconSize",
+      "name": "clearIconSizeMD",
       "type": "number",
       "values": {
         "Light": {
@@ -4179,17 +4179,17 @@
       "Semantic/colorTextLightSolid",
       "Semantic/controlHeightXS",
       "Semantic/controlHeightSM",
-      "Semantic/controlHeight",
+      "Semantic/controlHeightMD",
       "Semantic/controlHeightLG",
       "Semantic/controlHeightXL",
       "Semantic/fontSizeXS",
       "Semantic/fontSizeSM",
-      "Semantic/fontSize",
+      "Semantic/fontSizeMD",
       "Semantic/fontSizeLG",
       "Semantic/fontSizeXL",
       "Semantic/lineHeightXS",
       "Semantic/lineHeightSM",
-      "Semantic/lineHeight",
+      "Semantic/lineHeightMD",
       "Semantic/lineHeightLG",
       "Semantic/lineHeightXL",
       "Semantic/lineHeightHeading1",
@@ -4199,7 +4199,7 @@
       "Semantic/lineHeightHeading5",
       "Semantic/borderRadiusXS",
       "Semantic/borderRadiusSM",
-      "Semantic/borderRadius",
+      "Semantic/borderRadiusMD",
       "Semantic/borderRadiusLG",
       "Semantic/borderRadiusXL",
       "Semantic/paddingXS",
@@ -4235,7 +4235,7 @@
       "Semantic/inputPaddingYxl",
       "Semantic/clearIconSizeXS",
       "Semantic/clearIconSizeSM",
-      "Semantic/clearIconSize",
+      "Semantic/clearIconSizeMD",
       "Semantic/clearIconSizeLG",
       "Semantic/clearIconSizeXL",
       "Semantic/lineWidth"
@@ -4310,8 +4310,8 @@
         "reason": "extrapolated antd size (the clear icon is the icon size (fontSizeSM 12) minus 2)"
       },
       {
-        "name": "Semantic/clearIconSize",
-        "reason": "extrapolated antd size (the clear icon is the icon size (fontSize 14) minus 2)"
+        "name": "Semantic/clearIconSizeMD",
+        "reason": "extrapolated antd size (the clear icon is the icon size (fontSizeMD 14) minus 2)"
       },
       {
         "name": "Semantic/clearIconSizeLG",

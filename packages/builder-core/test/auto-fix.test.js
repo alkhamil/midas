@@ -108,7 +108,7 @@ test('planning is pure; applying twice is a no-op', () => {
     assert.equal(second.fixable, false);
 });
 
-const SNAPSHOT_DERIVED = ["Primitives/transparent","Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL","Semantic/paddingXxs","Primitives/size/15","Semantic/buttonPaddingXxl","Semantic/inputPaddingXxl","Semantic/paddingYxs","Semantic/buttonPaddingYxl","Primitives/size/9","Semantic/inputPaddingYxl","Semantic/clearIconSizeXS","Semantic/clearIconSizeSM","Semantic/clearIconSize","Semantic/clearIconSizeLG","Semantic/clearIconSizeXL"];
+const SNAPSHOT_DERIVED = ["Primitives/transparent","Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL","Semantic/paddingXxs","Primitives/size/15","Semantic/buttonPaddingXxl","Semantic/inputPaddingXxl","Semantic/paddingYxs","Semantic/buttonPaddingYxl","Primitives/size/9","Semantic/inputPaddingYxl","Semantic/clearIconSizeXS","Semantic/clearIconSizeSM","Semantic/clearIconSizeMD","Semantic/clearIconSizeLG","Semantic/clearIconSizeXL"];
 // The snapshot derived names, then the two heading line heights the text styles derive (see text-styles.json).
 const TEXT_DERIVED = ['Primitives/heading/1', 'Primitives/heading/2'];
 const EXPECTED_DERIVED = {
@@ -167,7 +167,7 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
     const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
     const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
     const height = plan.plan.items.find(i => i.name === 'height');
-    for (const [mode, semName, primName, primValue] of [['md', 'controlHeight', 'size/32', 32], ['sm', 'controlHeightSM', 'size/24', 24], ['lg', 'controlHeightLG', 'size/40', 40]]) {
+    for (const [mode, semName, primName, primValue] of [['md', 'controlHeightMD', 'size/32', 32], ['sm', 'controlHeightSM', 'size/24', 24], ['lg', 'controlHeightLG', 'size/40', 40]]) {
         assert.equal(atName(height.values[mode].alias), 'Semantic/' + semName, mode);
         const sem = findItem('Semantic', semName);
         assert.equal(atName(sem.values.Light.alias), 'Primitives/' + primName, mode);
@@ -176,7 +176,7 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
     const inputHeight = planAutoFix({ template: TEMPLATES.get('input'), binding: emptyBinding(TEMPLATES.get('input')), variables: { collections: [], items: [] }, layers: [] });
     const ih = inputHeight.plan.items.find(i => i.name === 'height');
     const iname = a => inputHeight.plan.collections[a.collectionIndex].name + '/' + a.name;
-    assert.equal(iname(ih.values.md.alias), 'Semantic/controlHeight');
+    assert.equal(iname(ih.values.md.alias), 'Semantic/controlHeightMD');
 });
 
 test('extrapolated antd sizes are flagged derived and still resolve', () => {
