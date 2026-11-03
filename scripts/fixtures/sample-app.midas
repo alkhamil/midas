@@ -11634,7 +11634,7 @@
           "strokeWidth": 1,
           "radius": 0,
           "opacity": 1,
-          "visible": true,
+          "visible": false,
           "locked": false,
           "clip": false,
           "version": 0,
