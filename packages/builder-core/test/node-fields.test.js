@@ -26,10 +26,11 @@ const T = (() => {
     t.props.layout = { source: 'literal', type: 'enum', options: ['vertical', 'horizontal'], default: 'vertical', node: { key: 'root', field: 'layout' } };
     t.props.labelGap = { source: 'literal', type: 'number', default: 8, node: { key: 'root', field: 'gap' } };
     t.props.labelWidth = { source: 'literal', type: 'number', default: null, node: { key: 'label', field: 'width' }, visibleIf: { prop: 'layout', is: 'horizontal' } };
-    delete t.tokens.fromSize;
+    delete t.props.required;
+    delete t.props.requiredMark;
     t.tokens = { fromSize: ['labelTypography', 'fg', 'fg-disabled'] };
     t.tokenKinds = { labelTypography: 'typography', fg: 'color', 'fg-disabled': 'color' };
-    delete t.tokenRoles.gap;
+    delete t.tokenRoles.mark;
     t.display = { root: {}, label: { fill: 'fg', typography: 'labelTypography' } };
     return t;
 })();
@@ -99,7 +100,7 @@ test('the export carries them: typed props, a data attribute for the layout, cus
     assert.match(tsx, /layout = "vertical"/);
     assert.match(tsx, /labelGap = 8/);
     assert.match(tsx, /data-layout=\{layout\}/);
-    assert.match(tsx, /style=\{\{ \.\.\.\{ '--fieldy-labelGap': `\$\{labelGap\}px`, '--fieldy-labelWidth': labelWidth == null \? undefined : `\$\{labelWidth\}px` \}, \.\.\.style \} as CSSProperties\}/);
+    assert.match(tsx, /style=\{\{ \.\.\.\{ '--fieldy-labelWidth': labelWidth == null \? undefined : `\$\{labelWidth\}px`, '--fieldy-labelGap': `\$\{labelGap\}px` \}, \.\.\.style \} as CSSProperties\}/);
     const css = files['Fieldy.css'];
     assert.match(css, /\.fieldy\[data-layout="horizontal"\] \{\n  flex-direction: row;\n\}/);
     assert.match(css, /\.fieldy\[data-layout="vertical"\] \{\n  flex-direction: column;\n\}/);

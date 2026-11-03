@@ -381,10 +381,13 @@ function reducedMotion(template) {
 function fieldRules(template) {
     return fieldWritersOf(template).flatMap(({ prop, key, field }) => {
         const target = key === 'root' ? '' : ` .${template.id}-${key}`;
-        if (field === 'layout') return template.props[prop].options.map(option => `.${template.id}[data-${prop}="${option}"]${target} {
-  flex-direction: ${option === 'horizontal' ? 'row' : 'column'};
-}
-`);
+        if (field === 'layout') {
+            // A slot that fills the width it is given takes the cross axis of a vertical root and what is left of the row in a horizontal one (flowSizing, per option).
+            const fills = key === 'root' ? (template.slots ?? []).filter(slot => slot.fill).map(slot => slot.id) : [];
+            const direction = option => `.${template.id}[data-${prop}="${option}"]${target} {\n  flex-direction: ${option === 'horizontal' ? 'row' : 'column'};\n}\n`;
+            const fill = (option, id) => `.${template.id}[data-${prop}="${option}"] .${template.id}-${id} {\n${option === 'horizontal' ? '  flex: 1 1 0;\n  min-width: 0px;\n  align-self: auto;' : '  flex: none;\n  align-self: stretch;'}\n}\n`;
+            return template.props[prop].options.flatMap(option => [direction(option), ...fills.map(id => fill(option, id))]);
+        }
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
   ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};

@@ -340,7 +340,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat', 'fill'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -390,7 +390,7 @@ function slotProblems(schema, templateIds) {
         }
         if (slot.onlyAccepts !== undefined && typeof slot.onlyAccepts !== 'boolean') out.push(`${tag} onlyAccepts must be a boolean`);
         else if (slot.onlyAccepts === true && !(acceptsOk && slot.accepts?.length)) out.push(`${tag} onlyAccepts needs accepts: it restricts to the templates accepts names`);
-        for (const flag of ['showEmpty', 'fillCounter']) {
+        for (const flag of ['showEmpty', 'fillCounter', 'fill']) {
             if (slot[flag] !== undefined && typeof slot[flag] !== 'boolean') out.push(`${tag} ${flag} must be a boolean`);
         }
         if (slot.repeat !== undefined) {

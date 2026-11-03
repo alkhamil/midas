@@ -63,6 +63,8 @@ export interface SlotDef {
     fillCounter?: boolean;
     /** The auto layout of the slot frame. */
     layout: 'horizontal' | 'vertical';
+    /** The slot frame fills the width it is given: the cross axis of a vertical parent, what is left of the row in a horizontal one. */
+    fill?: boolean;
     /** The name of a number prop: Play and the export draw that many copies of the slot's content (the canvas draws it once). */
     repeat?: string;
 }

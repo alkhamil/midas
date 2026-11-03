@@ -1,12 +1,9 @@
 import { SIZE_MODES } from '../packages/builder-core/src/templates/size-modes.js';
 // The FormItem variable model shared by the fixtures and the tests: one collection, FormItem Size, holding the gap between the label and the control, the
-// label's typography and its two colours. Every literal sits in a Primitive and is reached through a Semantic alias (see literal-bank.mjs).
+// label's typography and its two colours, and the required mark's colour (the gap between the label and the control is the labelGap prop, not a variable). Every literal sits in a Primitive and is reached through a Semantic alias (see literal-bank.mjs).
 import { literalBank, textStyleBank } from './literal-bank.mjs';
 
 export const FORM_ITEM_SIZES = SIZE_MODES.map(id => ({ id, name: id }));
-const SIZE_VALUES = {
-    gap: { xs: 4, sm: 4, md: 8, lg: 8, xl: 8 },
-};
 const LABEL_STYLE = { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl' };
 
 /**
@@ -28,10 +25,10 @@ export function formItemModel({ ids = {}, prefix = '', sizeModes = FORM_ITEM_SIZ
     ];
     const items = [];
     const each = (token, type, valueOf) => items.push({ id: `${prefix}s-${token}`, name: token, type, collectionId: size, values: Object.fromEntries(sizeModes.map(m => [m.id, { alias: valueOf(m.id) }])) });
-    for (const [token, values] of Object.entries(SIZE_VALUES)) each(token, 'number', mode => bank.ref(values[mode]));
     each('labelTypography', 'typography', mode => text.ref(LABEL_STYLE[mode]));
     each('fg', 'color', () => bank.ref('#18181b'));
     each('fg-disabled', 'color', () => bank.ref('#a1a1aa'));
+    each('mark', 'color', () => bank.ref('#ff4d4f'));
     items.unshift(...bank.items(), ...text.items);
     return { collections, items, ids: { size, semantic, primitives }, binding: { version: 2, templateId: 'formitem', variables: { size } } };
 }
