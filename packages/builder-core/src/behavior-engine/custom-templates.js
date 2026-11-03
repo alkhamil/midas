@@ -102,3 +102,22 @@ export function applyCustomSchema(text, behavior, instances) {
     if (problems.length) return { problems };
     return { behavior: { version: BEHAVIOR_DATA_VERSION, templates: { ...templates, [schema.id]: schema } }, id: schema.id };
 }
+
+/**
+ * Runs a check of some document's data (its nodes against its templates) with that document's templates as the registry, then puts the registry back as it
+ * was, whatever happened. Only adopting a document (`activateDocumentTemplates`) changes what the registry holds, so reading a file that then fails to open,
+ * a paste, an import or a page that arrives never changes the templates of the document that is open. A malformed Behavior key throws before the check.
+ * @template T
+ * @param {unknown} behavior the data's `behavior`, or undefined
+ * @param {() => T} check
+ * @returns {T}
+ */
+export function withDocumentTemplates(behavior, check) {
+    const before = [...TEMPLATES];
+    activateDocumentTemplates(behavior);
+    try { return check(); }
+    finally {
+        TEMPLATES.clear();
+        for (const [id, schema] of before) TEMPLATES.set(id, schema);
+    }
+}
