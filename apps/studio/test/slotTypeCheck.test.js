@@ -99,3 +99,14 @@ test('a consumer\'s use of List type-checks: itemCount as a number, children, cl
     assert.ok(typeErrors(use(`<List itemCount={null} />`)).length > 0, 'the default is 3, so null is not a count');
     assert.ok(typeErrors(use(`<List items={3} />`)).length > 0);
 });
+
+test('a consumer\'s use of FormItem type-checks: required, layout, labelWidth, labelGap; a wrong layout, a string width or an unknown prop does not', () => {
+    const files = tsxOf(TEMPLATES.get('formitem'), formItem, 'FormItem');
+    const use = jsx => ({ ...files, 'use.tsx': `import { FormItem } from './FormItem';\nexport const x = ${jsx};\n` });
+    assert.deepEqual(typeErrors(use(`<FormItem label="Email" required layout="horizontal" labelWidth={96} labelGap={12}><input /></FormItem>`)), []);
+    assert.deepEqual(typeErrors(use(`<FormItem labelWidth={null} />`)), [], 'none is hug');
+    assert.ok(typeErrors(use(`<FormItem layout="diagonal" />`)).length > 0);
+    assert.ok(typeErrors(use(`<FormItem labelWidth="wide" />`)).length > 0);
+    assert.ok(typeErrors(use(`<FormItem labelGap={null} />`)).length > 0, 'the gap has a default, so none is not a gap');
+    assert.ok(typeErrors(use(`<FormItem gap={4} />`)).length > 0, 'there is no gap token or prop but labelGap');
+});
