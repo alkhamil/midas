@@ -74,3 +74,31 @@ export function activateDocumentTemplates(behavior) {
     TEMPLATES.clear();
     for (const [id, schema] of next) TEMPLATES.set(id, schema);
 }
+
+/**
+ * Applying pasted text to a document: the problems (nothing else), or the document's next Behavior key with this schema in it (a schema with an id the
+ * document already has replaces it, an edit). An edit is refused while it would remove a prop that instances of the template hold a value for, so no value
+ * is lost silently. The document's own Behavior key is not changed.
+ * @param {string} text the pasted JSON
+ * @param {unknown} behavior the document's `behavior`, or undefined
+ * @param {{ templateId: string, props: Record<string, unknown> }[]} instances the instances in the document, with the props each one stores
+ * @returns {{ problems: string[], behavior?: undefined, id?: undefined } | { behavior: { version: number, templates: Record<string, any> }, id: string, problems?: undefined }}
+ */
+export function applyCustomSchema(text, behavior, instances) {
+    const parsed = parseCustomSchema(text);
+    if ('problems' in parsed) return { problems: parsed.problems };
+    const { schema } = parsed;
+    const templates = /** @type {Record<string, any>} */ (isPlainObject(behavior) && isPlainObject(behavior.templates) ? behavior.templates : {});
+    const others = new Set(Object.keys(templates).filter(id => id !== schema.id));
+    const problems = customSchemaProblems(schema, { builtIns: new Set(BUILT_IN_TEMPLATES.keys()), others });
+    const previous = templates[schema.id];
+    if (previous && isPlainObject(schema.props)) {
+        for (const prop of Object.keys(previous.props ?? {})) {
+            if (prop in schema.props) continue;
+            const holding = instances.filter(i => i.templateId === schema.id && i.props[prop] !== undefined).length;
+            if (holding) problems.push(`prop "${prop}" is removed, and ${holding} ${holding === 1 ? 'instance holds' : 'instances hold'} a value for it`);
+        }
+    }
+    if (problems.length) return { problems };
+    return { behavior: { version: BEHAVIOR_DATA_VERSION, templates: { ...templates, [schema.id]: schema } }, id: schema.id };
+}
