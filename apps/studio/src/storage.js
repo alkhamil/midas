@@ -8,7 +8,7 @@
 // → ConflictError (409).
 
 import { boot } from './boot.js';
-import { assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
+import { activateDocumentTemplates, assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -158,6 +158,8 @@ function metaFor(fileId, docData) {
         pageMeta: pages.map(p => ({ id: p.id, name: p.name, parentId: p.parentId || null })),
         tokens: docData.tokens,
         variables: docData.variables,
+        // The document's Custom templates; absent while it has none.
+        ...(docData.behavior !== undefined ? { behavior: docData.behavior } : {}),
         // The server keeps unknown meta fields as they are.
         thumbnailId: docData.thumbnailId ?? null,
         guideStyles: docData.guideStyles ?? [],
@@ -384,11 +386,14 @@ export const projectStorage = {
             pages,
             tokens: meta.tokens,
             variables: meta.variables,
+            ...(meta.behavior !== undefined ? { behavior: meta.behavior } : {}),
             thumbnailId: meta.thumbnailId,
             guideStyles: meta.guideStyles ?? [],
             created: meta.created ?? file.created,
             assets
         };
+        // The document's Custom templates are the registry before any node is checked against it.
+        activateDocumentTemplates(doc.behavior);
         // A lazy open holds only the first page; the masters of its instances may be on the pages still queued.
         if (lazyQueues.get(fileId)?.length) assertBehaviorShape(doc);
         else assertBehaviorData(doc);

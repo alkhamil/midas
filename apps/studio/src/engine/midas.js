@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { remapCprops, templateIdsOf, layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { activateDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -6479,7 +6479,7 @@ function xyForTopLeft(n, tl) {
 const lazyPages = new Set();
 class DocumentModel {
     // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
-    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); activateDocumentTemplates(this.data.behavior); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6671,7 +6671,9 @@ class DocumentModel {
             tokens: this.data.tokens,
             variables: this.data.variables,
             thumbnailId: this.data.thumbnailId ?? null,
-            guideStyles: this.data.guideStyles ?? []
+            guideStyles: this.data.guideStyles ?? [],
+            // Undo carries the Custom templates with the pages; absent while the document has none.
+            ...(this.data.behavior !== undefined ? { behavior: this.data.behavior } : {})
         };
         // Kept as separate chunks: an undo entry shares the strings of every page that did not change, instead of
         // holding a full copy of the document (that copy x 40 entries ran big files out of memory).
@@ -6682,7 +6684,9 @@ class DocumentModel {
     }
     restore(s) {
         this._pageSnapshots.clear();
+        delete this.data.behavior;
         Object.assign(this.data, { ...JSON.parse(s.meta), pages: s.pages.map(p => JSON.parse(p)) });
+        activateDocumentTemplates(this.data.behavior);
         this.refresh();
     }
     serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }); }
@@ -6709,6 +6713,8 @@ class DocumentModel {
         const d = typeof text === 'string' ? JSON.parse(text) : text;
         if (!['midas', 'vellum'].includes(d.format) || d.version !== 1 || !Array.isArray(d.pages) || !d.pages.length)
             throw new Error('This is not a supported Midas document.');
+        // The document's Custom templates are the registry before any node is checked against it.
+        activateDocumentTemplates(d.behavior);
         if (partial) assertPagesBehavior(d, d.pages.map(p => p.id));
         else assertBehaviorData(d);
         assertPrototypeData(d, { complete: !partial });
@@ -8075,7 +8081,7 @@ function fillPage(fileId, id) {
         const stub = doc.data.pages.find(p => p.id === id);
         if (stub && data) {
             const parentId = data.parentId || null; // parse() below sees this page alone and would clear its parent (a page inside a folder; the folder is another page of the file)
-            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: doc.data.variables, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
+            const parsed = DocumentModel.parse({ format: 'midas', version: 1, pages: [data], pageId: data.id, variables: doc.data.variables, behavior: doc.data.behavior, tokens: { colors: [], typography: [] }, assets: {} }, { partial: true }).pages[0];
             parsed.parentId = parentId;
             // The page is checked against the document as it would be with it, before it becomes editable. A failure throws and the page stays a stub.
             const withPage = { ...doc.data, pages: doc.data.pages.map(p => (p.id === id ? { ...p, ...parsed } : p)) };
@@ -9007,13 +9013,13 @@ function canvasPreviewOf() {
 }
 function behaviorTabHtml(n) {
     const collections = varStore().collections || [];
-    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: n?.type === 'frame' ? 'frame' : 'none', esc, templates: templateChoices() });
+    if (!n?.component && !n?.isInstance) return behaviorPanelHtml({ kind: n?.type === 'frame' ? 'frame' : 'none', esc, templates: templateChoices(), custom: n?.type === 'frame' ? customBoxOf(n) : undefined });
     // Diagnostics need every page; while pages are still loading they are not shown (null).
     const findings = lazyPages.size ? null : diagnoseDocument(doc.data);
     if (n.component) {
         const panel = masterPanel(n, collections), binding = n.behavior;
         const code = binding && 'templateId' in binding ? generateComponent(BEHAVIOR_TEMPLATES.get(binding.templateId), binding, varStore(), BEHAVIOR_TEMPLATES.get(binding.templateId).name, n, id => doc.children(id)) : null;
-        return behaviorPanelHtml({ kind: 'master', panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems }, autoFix: fixableAutoFix(n), expanded: diagnosticsExpanded.has(n.id) });
+        return behaviorPanelHtml({ kind: 'master', custom: customBoxOf(n), panel, esc, findings: findings && findings.filter(f => f.nodeId === n.id || !f.nodeId), code: code && { problems: code.problems }, autoFix: fixableAutoFix(n), expanded: diagnosticsExpanded.has(n.id) });
     }
     const master = componentById(n.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
@@ -9315,6 +9321,7 @@ function onBehaviorClick(e) {
         const owner = activeNode();
         return whenAllPagesLoaded(() => { if (!setInstanceValueTo(owner, segment.dataset.bpProp, segment.dataset.bpValue)) renderInspector(); });
     }
+    if (e.target.closest?.('[data-bp-action="custom-apply"]')) return whenAllPagesLoaded(() => applyCustomTemplate(activeNode(), document.querySelector('[data-bp="custom-schema"]')?.value ?? ''));
     if (!e.target.closest?.('[data-bp-action="generate"]')) return;
     const n = activeNode(), binding = n?.behavior;
     if (!n?.component || !binding || !('templateId' in binding)) return;
@@ -19593,6 +19600,33 @@ function applyTemplateNodes(frame, template) {
         doc.touch(n);
     bindMasterTokens(frame);
     return out;
+}
+/** The Custom box's last attempt on a layer: the text pasted and the problems found. The box shows it until another layer is selected. */
+let customAttempt = { nodeId: null, text: '', problems: [] };
+/** What the Custom box shows for a layer: its last attempt, else the schema of the Custom template it is bound to, else nothing. */
+function customBoxOf(n) {
+    if (customAttempt.nodeId === n.id) return customAttempt;
+    const schema = doc.data.behavior?.templates?.[n.behavior?.templateId];
+    return { text: schema ? JSON.stringify(schema, null, 2) : '', problems: [] };
+}
+/**
+ * Apply in the Custom box: the pasted schema is parsed and checked (problems stay under the box and nothing is stored), else it becomes the document's
+ * template and the layer is built from it by the generator (which adds what is missing and removes nothing). One transaction, so one undo step.
+ */
+function applyCustomTemplate(n, text) {
+    if (!n || n.type !== 'frame') return;
+    const instances = allNodes().filter(x => x.isInstance && x.behavior?.props).map(x => ({ templateId: componentById(x.sourceId)?.behavior?.templateId, props: x.behavior.props }));
+    const out = applyCustomSchema(text, doc.data.behavior, instances);
+    customAttempt = { nodeId: n.id, text, problems: out.problems ?? [] };
+    if (out.problems) { renderInspector(); return; }
+    transaction('Apply custom template', () => {
+        doc.data.behavior = out.behavior;
+        activateDocumentTemplates(out.behavior);
+        applyTemplateNodes(n, BEHAVIOR_TEMPLATES.get(out.id));
+        doc.touch(n);
+    });
+    customAttempt = { nodeId: n.id, text: JSON.stringify(out.behavior.templates[out.id], null, 2), problems: [] };
+    renderInspector();
 }
 /** The Template dropdown on a plain frame: one transaction, so one undo step. */
 function frameApplyTemplate(frame, templateId) {
