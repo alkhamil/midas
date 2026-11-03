@@ -141,7 +141,7 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     // The slot property of each content slot is written once, as Convert to slot writes it; one a designer has is left as it is.
     for (const slot of template.slots ?? []) {
         if (frame.cprops?.some(p => p.id === slot.id)) continue;
-        const { id, name, layout, accepts, onlyAccepts, ...options } = slot;
+        const { id, name, layout, ...options } = slot;
         frame.cprops = [...(frame.cprops ?? []), { ...newSlotProp(id, name), ...(options.description === undefined ? {} : { desc: options.description }), ...Object.fromEntries(Object.entries(options).filter(([k]) => k !== 'description')) }];
     }
     const layers = [...layer].map(([key, node]) => ({ key, node }));

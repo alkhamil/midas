@@ -11,7 +11,7 @@ import { hasSlotProperty } from '../src/behavior-engine/content-slots.js';
 import { newSlotProp } from '../src/behavior-engine/slot-property.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 
-const HEADER = { id: 'header', name: 'Header', description: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true, layout: 'horizontal' };
+const HEADER = { id: 'header', name: 'Header', description: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true, accepts: ['button', 'input'], onlyAccepts: true, layout: 'horizontal' };
 const BODY = { id: 'body', name: 'Body', layout: 'vertical' };
 const card = { ...structuredClone(BUTTON), id: 'cardtest', name: 'CardTest', slots: [HEADER, BODY] };
 TEMPLATES.set(card.id, card);
@@ -49,11 +49,11 @@ test('the generator makes each slot a frame with the schema layout, marked as th
     assert.deepEqual(out.problems, []);
 });
 
-test('the slot property is the one Convert to slot writes, with the schema name, description, limits and options', () => {
+test('the slot property is the one Convert to slot writes, with the schema name, description, limits, options and accepted templates', () => {
     const f = frame();
     build(f);
     assert.deepEqual(f.cprops.map(p => p.id), ['header', 'body']);
-    assert.deepEqual(f.cprops[0], { ...newSlotProp('header', 'Header'), desc: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true });
+    assert.deepEqual(f.cprops[0], { ...newSlotProp('header', 'Header'), desc: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true, accepts: ['button', 'input'], onlyAccepts: true });
     assert.deepEqual(f.cprops[1], newSlotProp('body', 'Body'), 'a slot that declares only its layout has the bare property');
 });
 
