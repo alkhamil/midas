@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -9588,13 +9588,15 @@ function ownedFieldsOf(n, getNode, components, labels) {
 }
 /** The template of the bound instance a node belongs to (the instance root, or its label layer); null otherwise. */
 function ownedTemplateOf(n, getNode, components, labels) {
-    const inst = n.isInstance ? n : getNode(n.parentId);
+    let inst = n.isInstance ? n : getNode(n.parentId);
+    // A layer inside a container of the anatomy (the label box) belongs to the instance the container hangs under.
+    if (inst && !inst.isInstance && getNode(inst.sourceId)?.behavior?.group !== undefined) inst = getNode(inst.parentId);
     if (!inst?.isInstance) return null;
     const binding = components.get(inst.sourceId)?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template || n.isInstance || labels.get(inst.sourceId) === n.sourceId) return template;
-    // A text slot other than the label (an affix text) is owned by the template too: its text and visibility come from the props.
-    return template.anatomy.some(s => s.kind === 'text' && s.id === getNode(n.sourceId)?.name) ? template : null;
+    // A text slot other than the label (an affix text) or a container is owned by the template too: its text, visibility and fields come from the props.
+    return template.anatomy.some(s => (s.kind === 'text' || s.kind === 'frame') && s.id === getNode(n.sourceId)?.name) ? template : null;
 }
 /** The label layer of every component (labelLayerOf: its first text layer, depth first), from one scan of the document. */
 function labelIdsOfComponents() {
@@ -9613,7 +9615,7 @@ function labelIdsOfComponents() {
 /** The master's label layer (its first text layer, depth first) and the instance's layer that copies it. */
 function instanceLabelOf(inst, master) {
     const masterLabel = onPage(pageOfNode(master.id)?.id, () => labelLayerOf(master.id, id => doc.children(id), master));
-    return { masterLabel, label: masterLabel && doc.children(inst.id).find(c => c.sourceId === masterLabel.id) };
+    return { masterLabel, label: masterLabel && doc.descendants(inst.id).find(c => c.sourceId === masterLabel.id) };
 }
 /** Literal props write their node fields: the label prop the label layer's text (see literalFields). */
 /**
@@ -9636,16 +9638,27 @@ function applyVariantStroke(inst) {
 /** The instance's copy of each part of the master (a master child marked `behavior.part`), by part id. */
 function partLayersOf(inst, master) {
     const out = {};
-    for (const m of doc.children(master.id)) {
-        if (m.behavior?.part) out[m.behavior.part] = doc.children(inst.id).find(c => c.sourceId === m.id);
+    const copies = doc.descendants(inst.id);
+    for (const m of doc.descendants(master.id)) {
+        if (m.behavior?.part) out[m.behavior.part] = copies.find(c => c.sourceId === m.id);
+    }
+    return out;
+}
+/** The instance's copy of each container of the master (a master layer marked `behavior.group`), by the container's id. */
+function groupLayersOf(inst, master) {
+    const out = {};
+    const copies = doc.descendants(inst.id);
+    for (const m of doc.descendants(master.id)) {
+        if (m.behavior?.group) out[m.behavior.group] = copies.find(c => c.sourceId === m.id);
     }
     return out;
 }
 /** The instance's copy of each text slot of the master (an affix text, by slot id; the label is written through its own key). */
 function textSlotLayersOf(inst, master, template) {
     const out = {};
-    for (const m of doc.children(master.id)) {
-        if (template.anatomy.some(s => s.kind === 'text' && s.id === m.name)) out[m.name] = doc.children(inst.id).find(c => c.sourceId === m.id);
+    const copies = doc.descendants(inst.id);
+    for (const m of doc.descendants(master.id)) {
+        if (template.anatomy.some(s => s.kind === 'text' && s.id === m.name)) out[m.name] = copies.find(c => c.sourceId === m.id);
     }
     return out;
 }
@@ -9654,17 +9667,23 @@ function applyLiteralFields(inst) {
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return;
     const { label } = instanceLabelOf(inst, master);
-    const target = { root: inst, label, ...partLayersOf(inst, master), ...textSlotLayersOf(inst, master, template) };
+    const target = { root: inst, label, ...partLayersOf(inst, master), ...groupLayersOf(inst, master), ...textSlotLayersOf(inst, master, template) };
     const props = resolveProps(template, inst.behavior?.props ?? {});
     for (const { key, field, value } of [...literalFields(template, props), ...partWrites(template, props)]) {
         const n = target[key];
-        if (n && n[field] !== value) {
-            n[field] = value;
-            doc.touch(n);
-            // The text of a text layer changes its size: measure it again, as a text edit does.
-            if (field === "text" && n.type === "text")
-                remeasureText(n);
+        if (!n) continue;
+        // A field a prop writes is a node field or several (a width is a width and its sizing): each is written when it differs.
+        let changed = false;
+        for (const [name, v] of Object.entries(nodeFieldPatch(field, value, n.type))) {
+            if (n[name] === v) continue;
+            n[name] = v;
+            changed = true;
         }
+        if (!changed) continue;
+        doc.touch(n);
+        // The text of a text layer, or a text that measures itself again, changes its size: measure it again, as a text edit does.
+        if ((field === 'text' || field === 'width') && n.type === 'text')
+            remeasureText(n);
     }
     // A managed slot that shows while its value is set (the clear icon) is shown or hidden as the value changes.
     for (const layer of doc.children(inst.id)) {
@@ -19597,7 +19616,7 @@ function templateChoices() {
  */
 function applyTemplateNodes(frame, template) {
     const binding = setMasterTemplate(template.id, varStore().collections || []);
-    const out = applyTemplateToFrame(template, { frame, children: doc.children(frame.id), binding, variables: varStore(), idOf: () => uid() });
+    const out = applyTemplateToFrame(template, { frame, children: doc.descendants(frame.id), binding, variables: varStore(), idOf: () => uid() });
     for (const n of out.created)
         doc.add(n);
     // The layers the bind made go where the anatomy puts them: before the layer that follows them; unrelated layers keep their places.

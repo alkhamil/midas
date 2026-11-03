@@ -4,6 +4,7 @@
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
 import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave } from '@midas/builder-core';
+import { applyStyle } from './styleApply.js';
 
 const PREFS_KEY = 'midas.play';
 const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
@@ -154,7 +155,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
             if (value === true) el.setAttribute(key, '');
             else if (value !== false && value !== undefined) el.setAttribute(key, String(value));
         }
-        Object.assign(el.style, desc.style ?? {});
+        applyStyle(el, desc.style);
         if (desc.text !== undefined) el.textContent = desc.text;
         if (desc.html !== undefined) el.innerHTML = desc.html;
         if (desc.nodeId) {
