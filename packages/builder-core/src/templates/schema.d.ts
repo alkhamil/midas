@@ -63,6 +63,8 @@ export interface SlotDef {
     fillCounter?: boolean;
     /** The auto layout of the slot frame. */
     layout: 'horizontal' | 'vertical';
+    /** The name of a number prop: Play and the export draw that many copies of the slot's content (the canvas draws it once). */
+    repeat?: string;
 }
 
 /** A text or control slot drawn as an input: the schema names the slot and the props that fill it. Data only: the engine renders it, the canvas keeps the text layer. */

@@ -128,3 +128,17 @@ test('a registry holds a schema only if the templates its slots accept are in th
     const self = { ...card, slots: [{ ...SLOT, accepts: ['card'] }] };
     assert.deepEqual([...createTemplateRegistry([self]).keys()], ['card'], 'a template accepting itself');
 });
+
+test('a slot may repeat: `repeat` names a number prop of the template, which says how many copies of the slot\'s content Play and the export draw', () => {
+    const withRepeat = repeat => ({ ...structuredClone(INPUT), slots: [{ ...SLOT, repeat }] });
+    const check = repeat => validateTemplateSchema(withRepeat(repeat)).join('\n');
+    assert.deepEqual(validateTemplateSchema(withRepeat('maxLength')), [], 'a number prop');
+    assert.deepEqual(validateTemplateSchema(withRepeat('minLength')), []);
+    assert.deepEqual(validateTemplateSchema(withSlots({ ...SLOT, repeat: undefined })), [], 'absent is no repeat');
+    assert.match(check('nope'), /slot "content" repeat names "nope", which is not a prop of the template/);
+    assert.match(check('allowClear'), /slot "content" repeat names "allowClear", which is not a number prop/);
+    assert.match(check('value'), /slot "content" repeat names "value", which is not a number prop/);
+    assert.match(check('size'), /slot "content" repeat names "size", which is not a number prop/);
+    assert.match(check(3), /slot "content" repeat must be the name of a number prop/);
+    assert.match(check(''), /slot "content" repeat must be the name of a number prop/);
+});
