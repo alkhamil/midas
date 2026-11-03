@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotCountLabel, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -15273,8 +15273,8 @@ function renderAddInstances() {
         return;
     const q = w.q.trim().toLowerCase(), sources = [['file', 'Created in this file'], ...(LIBS.use || []).filter(u => LIBS.snaps.get(u.id)).map(u => [u.id, LIBS.snaps.get(u.id).name])];
     let entries = addInstEntries(w.src);
-    if (w.restrict)
-        entries = entries.filter(e => w.restrict.has(e.id));
+    if (w.accepts)
+        entries = entries.filter(e => w.accepts(e.id));
     if (w.kind === 'component')
         entries = entries.filter(e => !e.variants);
     else if (w.kind === 'set')
@@ -15309,7 +15309,7 @@ function openAddInstances(slotId, opts = {}) {
     const el = document.createElement('div');
     el.className = 'prop-pop add-inst';
     document.body.appendChild(el);
-    addInst = { el, slotId, q: '', src: 'file', folder: null, kind: '', pick: opts.pick || null, restrict: !opts.pick && p?.onlyPreferred && p.preferred?.length ? new Set(p.preferred) : null };
+    addInst = { el, slotId, q: '', src: 'file', folder: null, kind: '', pick: opts.pick || null, accepts: !opts.pick && p ? id => slotAccepts(p, id) : null };
     addInst.away = ev => { if (!el.contains(ev.target) && !ev.target.closest('.stp-menu, [data-cmp="edit-cprop"]'))
         closeAddInstances(); };
     setTimeout(() => addInst && document.addEventListener('pointerdown', addInst.away, true), 0);
@@ -15384,8 +15384,8 @@ async function addInstanceToSlot(slotId, compId, libId = null) {
         return;
     if (claimSlot(slot))
         doc.touch(slot);
-    if (prop?.max && doc.children(slot.id).length >= prop.max)
-        return toast(`This slot holds at most ${prop.max} layer${prop.max === 1 ? '' : 's'}.`);
+    if (slotCounts(prop, doc.children(slot.id).length).full)
+        return toast(slotFullMessage(prop.max));
     if (libId)
         await libInstantiate(libId, compId, null, slot);
     else {
@@ -16467,12 +16467,12 @@ function openFloatingPop(anchor, state) {
         else if (ev.target.closest('[data-cp-pref-add]')) {
             const { holderId, pid } = cpropPop, holder = allNodes().find(n => n.id === holderId), p = holder && findCprop(holder, pid);
             if (p)
-                openAddInstances(null, { anchor: ev.target.closest('[data-cp-pref-add]'), pick: id => { transaction('Add preferred instance', () => { p.preferred = [...new Set([...(p.preferred || []), id])]; doc.touch(holder); }); renderCpropPop(); } });
+                openAddInstances(null, { anchor: ev.target.closest('[data-cp-pref-add]'), pick: id => { transaction('Add preferred instance', () => { p.preferred = slotPreferredWith(p, id); doc.touch(holder); }); renderCpropPop(); } });
         }
         else if (ev.target.closest('[data-cp-pref-del]')) {
             const { holderId, pid } = cpropPop, holder = allNodes().find(n => n.id === holderId), p = holder && findCprop(holder, pid), id = ev.target.closest('[data-cp-pref-del]').dataset.cpPrefDel;
             if (p) {
-                transaction('Remove preferred instance', () => { p.preferred = (p.preferred || []).filter(x => x !== id); doc.touch(holder); });
+                transaction('Remove preferred instance', () => { p.preferred = slotPreferredWithout(p, id); doc.touch(holder); });
                 renderCpropPop();
             }
         }
@@ -16509,11 +16509,11 @@ function openFloatingPop(anchor, state) {
             else if (t.matches('[data-cp-desc]'))
                 transaction('Slot description', () => { p.desc = t.value; doc.touch(holder); });
             else if (t.matches('[data-cp-min], [data-cp-max]')) {
-                const v = t.value.trim() === '' ? null : Math.max(t.matches('[data-cp-max]') ? 1 : 0, Math.floor(+t.value) || 0);
-                transaction('Slot limits', () => { p[t.matches('[data-cp-max]') ? 'max' : 'min'] = v; doc.touch(holder); });
+                const kind = t.matches('[data-cp-max]') ? 'max' : 'min', v = slotLimitFrom(t.value, kind);
+                transaction('Slot limits', () => { p[kind] = v; doc.touch(holder); });
             }
             else if (t.matches('[data-cp-opt]'))
-                transaction('Slot settings', () => { p[t.dataset.cpOpt] = t.checked; doc.touch(holder); });
+                transaction('Slot settings', () => { Object.assign(p, slotOptionPatch(t.dataset.cpOpt, t.checked)); doc.touch(holder); });
             else if (t.matches('[data-cp-def]'))
                 setPropDefault(holder, p.id, p.type === 'boolean' ? (t.type === 'checkbox' ? t.checked : t.value === 'true') : t.value);
         }
@@ -16584,7 +16584,7 @@ function instancePropsHtml(owner, holder) {
         if (p.type === 'instance')
             return swapButtonHtml(`data-swap-iprop="${p.id}" ${attrs}`, v);
         const page = pageOfNode(owner.id), slot = page && pageTree(page, owner.id).find(y => y.propBind?.slot === p.id);
-        return slot ? `<button class="cmp-slot add" data-slot-add="${slot.id}" title="Add instances to this slot">${CPROP_ICON.slot}<span>${doc.children(slot.id).length ? `${doc.children(slot.id).length} layer${doc.children(slot.id).length === 1 ? '' : 's'}` : 'Empty'}</span><i>${icon('plus', 12)}</i></button>` : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
+        return slot ? `<button class="cmp-slot add" data-slot-add="${slot.id}" title="Add instances to this slot">${CPROP_ICON.slot}<span>${slotCountLabel(doc.children(slot.id).length)}</span><i>${icon('plus', 12)}</i></button>` : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
     };
     const row = (o, p, attrs) => `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.type]} ${esc(p.name)}</span><div class="cmp-ctl">${ctl(o, p, attrs)}</div></div>`;
     const page = pageOfNode(owner.id), tree = page ? instanceTree(page, owner.id) : [];
