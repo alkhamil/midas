@@ -1,6 +1,6 @@
-# Slots (audit and design, not implemented)
+# Slots (built; the deferred items and the known gaps are at the end)
 
-Status: audit and proposal for review. No product code changed. `docs/behavior-spec.md` stays the source of truth; accepted decisions move there.
+Status: steps 1 to 8 are done (commits `697291a` to `aaaa8f2`, section 4); what was deferred and what is known to be missing are in section 5, and the manual browser checklist, which nothing automated covers, is in section 6. The audit in sections 0 to 2 is kept as written: where the later sections or the Status paragraphs say otherwise, they win. `docs/behavior-spec.md` stays the source of truth; accepted decisions move there.
 
 Goal: a component whose content is other components (Custom, FormItem, Form, Card, Modal, List) declares **content slots** in its template schema. On the canvas a slot is Figma's slot; in Play and the export it is React children.
 
@@ -131,15 +131,67 @@ Step 3 is done: `showEmpty` is effective (an empty slot that does not ask is hid
 
 ## 4. Steps (small, each keeps the suites green)
 
-| Step | Change | Size |
-|---|---|---|
-| 1 | Pure `slotAccepts`, `slotCounts`, `iconSlot` vs `contentSlot` naming; unit tests; the studio calls them in `addInstanceToSlot` and the picker | S (1 d) |
-| 2 | Enforce at every entry (paste, drag, duplicate, import); Diagnostics for min, max, not accepted | M (2 d) |
-| 3 | `showEmpty`, `fillCounter`, reset slot | S (1 d) |
-| 4 | Schema `slots` and its validator, negative tests | S (1 d) |
-| 5 | Generator: content role, the property, Auto Fix and `part-missing` | M (2 d) |
-| 6 | Export: `children` and named props, typed | M (2 d) |
-| 7 | FormItem and Custom use it (`play-from-tsx.md` step 8 for Custom) | M (2–3 d) |
-| 8 | List repetition (after decision 4) | M (2 d) |
+Every step was done tests first, in small commits, unit tests only (builder-core and studio). Button and Input output is byte-identical to before the slot work. Commit ranges are in order; a follow-up the user asked for is listed with the step it followed.
+
+| Step | Change | Status | Commits |
+|---|---|---|---|
+| 1 | Pure `slotAccepts`, `slotCounts`, content vs icon slot naming; unit tests; the studio calls them | Done | `697291a`, `f88545f`, `951d383`, `cf226b5` (docs) |
+| 2 | Enforce at every entry (paste, drag, duplicate, import); Diagnostics for min, max, not accepted | Done | `a83d6f0`, `c8d45c0`, `e263b69`, `a09fbd6` (docs) |
+| 3 | `showEmpty`, `fillCounter`, Clear and Reset | Done | `b2c7b7e` (follow-up: no minimum notice for a fresh instance), `da35901`, `53788c3`, `423654e`, `2c101cf`, `71698b0` (docs) |
+| 4 | Schema `slots` and its validator, negative tests | Done | `446832a`, `d6748d0`, `717ee49` (docs) |
+| 5 | Generator: content role, the property, Auto Fix and `part-missing`; `accepts` resolved by template id | Done | `04729de`, `5216d22` (docs), `2fbdd21`, `ff0a084`, `9d9a111`; follow-ups: `30ec8dc` (the template contract binds over `preferred`), `b9bd5c1` (library import remaps a slot's `preferred`) |
+| 6 | Export: `children` and named props, typed | Done, for templates with `slots` only (typed `.tsx`); the rest of the step's text moved to section 5 | `17fa263` (docs), `caa7f28`, `9720326` (docs) |
+| 7 | FormItem and Custom use it | Done: FormItem (schema only), Custom (pure core, panel box, save, open, undo) | `103c2c2`, `ed7da5d`, `5ea51fe`, `3078aa5`, `2d228e8`, `a372bee`, `7c38cac`, `7013949` (docs); follow-ups: `611fc16` (@types/react), `36d6890` and `13e968d` (real type check, two emitter fixes), `601a23a` and `f68a274` (the registry changes only where a document is adopted) |
+| 8 | List repetition | Done | `d6879b4`, `4254679`, `e02e659`, `e38a98e`, `eec3002`, `d2e6019`, `aaaa8f2` (docs) |
+
+Whole range: `697291a` to `aaaa8f2`. Final counts at the end of step 8: builder-core 1216 tests, studio 88 tests, 0 failing. No fixture changed, so none was regenerated.
 
 Risks: the slot code lives in the 22k-line `midas.js`, so step 1 touches a lot of editor paths; `showEmpty`, `fillCounter` and `min` are already in saved files, so turning them on changes how existing files behave (files are regenerated, no shim); and `accepts` needs the template of a candidate's master, which a published library instance must resolve from the library snapshot.
+
+## 5. Deferred and known gaps
+
+### Deferred to the screen emitter
+
+Both belong to `play-from-tsx.md` (the screen emitter, step 5 there); they are not lost and not partly built:
+
+- **Default content as fallback**: a slot with content in the design emits that content as the default when its prop is not passed.
+- **Duplicated content emits repeated children in order**: the children of an instance's slot, in canvas order, are the children of the component usage.
+
+### Known gaps
+
+- **Slot content has no display mapping or token binding.** A slot frame's gap, padding and alignment are the master node's own values, not tokens. This is why the List item gap is node-owned (decision 7): the spacing between copies is the item frame's auto layout gap. Binding it to a variable needs a display mapping for content slots (an engine change, not List code).
+- **FormItem is schema only.** It has no validation, rules, status (`validateStatus`), help text or required mark; those are the validation work in `play-from-tsx.md` section 6. Its `disabled` only changes the label colour.
+- **There is no Select template.** The registry refuses an `accepts` id it does not hold, so FormItem's control slot accepts `['input']` only; `select` joins it when the template exists.
+- **List `disabled` is aria-only.** The element needs a disabled state, so the root says `aria-disabled`; nothing about the List looks different.
+- **Typed output exists only for templates with `slots`.** Button and Input keep their untyped `.jsx` until Phase 3 (`play-from-tsx.md` step 2); variable props are typed `string` until mode names replace ids in the selectors (its step 3).
+- **`@types/react` and `@types/react-dom` are 19.3.0 while react is 19.3.1**: the newest the types packages have for 19.3.x.
+- **`typescript` and `esbuild` are resolved by hoisting**, not declared in the studio: the type-check and render tests import them from the root `node_modules` (`typescript` is a devDependency of the server, `esbuild` comes with the server and vite). A clean install that stops hoisting them would break those two test files; declaring them is a `package.json` decision not yet taken.
+- **The studio code in `midas.js` and `storage.js` has no unit test** (`midas.js` cannot be imported outside a browser). Every checklist item below marked **[no unit test]** rests on code that only a browser run exercises.
+- **Play and the export have not been looked at in a browser**, and the browser suite has not been run since the four Input fixes and the slot work (its stale tests and its known failures are in AGENTS.md).
+
+## 6. Manual browser checklist
+
+Run `infra:up` (Docker Desktop on), then `dev:server` and `dev:studio` separately. Ordered by risk: the first items rest on code with no unit test. **[no unit test]** marks an item that touches `midas.js` or `storage.js` paths no automated test covers.
+
+| # | Click | You should see |
+|---|---|---|
+| 1 | **[no unit test]** In a file, select a plain frame, Behavior tab, Custom template box: paste a FormItem-like schema with id `custom-card`, Apply. Save, close the file, open it again. | A master built from the schema; after reopening, the Template dropdown still lists Card and the master is still bound to it. |
+| 2 | **[no unit test]** After 1, Ctrl+Z, then Ctrl+Shift+Z. | Undo: the Card template and its master changes are gone from the dropdown; redo brings them back. |
+| 3 | **[no unit test]** Open file A (it has Custom templates), then file B (none). Then open A again. | B's Template dropdown lists only Button, Input, FormItem and List; A's lists Card again. Switching never carries a template across. |
+| 4 | **[no unit test]** In A, try to open a file that is broken (a hand-edited file with a bad `behavior` key). | An explicit error toast, no partial load; A stays open with its own Custom templates in the dropdown. |
+| 5 | **[no unit test]** In A (with Card), copy plain layers and paste them; then copy a Card instance and paste it; then paste a Card instance copied from a file with a different Custom template. | Plain layers paste; the Card instance pastes (its template belongs to A); the foreign one is refused with an explicit message, and Card is still in the dropdown afterwards. |
+| 6 | **[no unit test]** Custom box: Apply an invalid schema (bad JSON; an id without `custom-`; `accepts` naming `select`). Then edit an applied schema so it drops a prop some instance has a value for. | The problems as rows under the box and nothing stored; for the edit, "prop … is removed, and N instances hold a value for it" and nothing changed. |
+| 7 | **[no unit test]** Assets panel: Create FormItem, Create List. | Each makes a master and one instance; the instance's Behavior tab lists Size, Label, Disabled (FormItem) and Item count, Disabled (List); the slot shows its box and "+". |
+| 8 | **[no unit test]** FormItem instance: click "+" in the Control slot; try the file and a library as sources; with an Input in the file and a Button. Then paste or drag a Button into the slot. | The picker lists only components whose master is an Input (also from a library); a second layer is blocked in the picker (max 1); the pasted Button is allowed, with a toast, and the Diagnostics show `slot-not-accepted`. |
+| 9 | **[no unit test]** Duplicate the Input component, and rename it; use each in the slot again. | Both still qualify (the template is the master's binding, not the id or the name). |
+| 10 | **[no unit test]** Publish a library that has a component with a slot whose preferred components are set; add that library to another file and open the slot's editor there. | The preferred components are listed by name (their ids were remapped on import), not as unknown ids. |
+| 11 | Clear the slot of a FormItem instance; then Reset it; repeat with a slot that has `showEmpty` off. | Clear: the slot shows its empty box (showEmpty on) or takes no room (off) and the layout closes the gap; the Diagnostics show `slot-below-min`; Reset gives back the master's content. |
+| 12 | Put a component in a vertical and in a horizontal slot (`fillCounter`). | It fills the slot's counter axis once (a horizontal slot always does); resizing it afterwards is not undone. |
+| 13 | Delete the slot frame in the FormItem master; open Diagnostics; Auto Fix. | `part-missing` for the control layer; Auto Fix restores the frame and its property, leaves other slot content alone, in one undo step. |
+| 14 | Play a frame that holds a FormItem with an Input in its slot. | The label above the Input, the Input drawn (this was missing before step 8); an empty slot with `showEmpty` off takes no room. |
+| 15 | List instance with a component in `item`: set Item count to 3, 5, 0, 2.9, -1. Play it. Set the gap of the Item frame on the master to 12. | The canvas shows the item once at every count; Play shows 3, 5, 0, 2, 0 copies; with 0 the item area is empty; the copies are 12 apart. |
+| 16 | Put two components in the List's `item` slot. | A warning (max 1); the Diagnostics show `slot-above-max`. |
+| 17 | Generate code on the FormItem master, the List master and a Custom master. | `FormItem.tsx` + `.css`, `List.tsx` + `.css`, `Card.tsx` + `.css`. Dropped into a React 19 project with a TypeScript build, they compile and render as the unit tests say (children, named slots, `itemCount` clamped). |
+| 18 | Create Button and Create Input; look at them on the canvas and in Play; change variant, size, state. | Nothing changed since before the slot work (the unit suites say the output is byte-identical; the browser suite has not run). |
+
+After the checklist, the next piece of verification is the browser suite itself (`npm run test:browser --workspace @midas/studio`, ports 4000 and 5174 free first): its stale tests and its known failures are in AGENTS.md.
