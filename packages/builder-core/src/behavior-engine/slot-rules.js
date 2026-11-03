@@ -47,14 +47,23 @@ export function slotCountLabel(count) {
 }
 
 /**
- * Whether a slot takes a component: a slot that only allows its preferred instances takes exactly those (when it has any preferred), every
- * other slot takes anything. A layer with no slot property takes anything.
+ * Whether a slot takes only some components: it only allows its preferred instances, and it has some. Every other slot takes anything.
+ * @param {{ onlyPreferred?: boolean, preferred?: string[] } | null | undefined} prop
+ * @returns {boolean}
+ */
+export function slotRestricts(prop) {
+    return !!(prop?.onlyPreferred && prop.preferred?.length);
+}
+
+/**
+ * Whether a slot takes a component: a slot that restricts takes exactly its preferred instances, every other slot takes anything. A layer
+ * with no slot property takes anything.
  * @param {{ onlyPreferred?: boolean, preferred?: string[] } | null | undefined} prop
  * @param {string} candidateId the component's id
  * @returns {boolean}
  */
 export function slotAccepts(prop, candidateId) {
-    return !(prop?.onlyPreferred && prop.preferred?.length) || prop.preferred.includes(candidateId);
+    return !slotRestricts(prop) || !!prop?.preferred?.includes(candidateId);
 }
 
 /**

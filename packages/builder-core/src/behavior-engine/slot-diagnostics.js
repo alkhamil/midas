@@ -1,0 +1,55 @@
+// Diagnostics of content slots (pure): a slot that holds fewer layers than its minimum, more than its maximum, or a layer it does not take.
+// Warnings, not errors: the designer can still do it, and the file says so. One scan of the document, so every way content enters a slot (the
+// picker, a paste, a drag, a duplicate, an import, a delete) ends in the same report. Content slots only: the icon slots of a template have
+// their own checks (document-check.js).
+import { isContentSlot } from './content-slots.js';
+import { slotAccepts, slotCounts, slotRestricts } from './slot-rules.js';
+
+/** @param {number} n */
+const layers = n => `${n} layer${n === 1 ? '' : 's'}`;
+
+/**
+ * The slot findings of a document: for each content slot of an instance, below minimum, above maximum, and each layer that is not one of the
+ * preferred instances of a slot that only allows those. A finding names the instance that owns the slot (the nearest instance above the slot
+ * layer), the slot layer, and for a layer that is not taken, that layer. Same shape as the other findings (see diagnostics.js).
+ * @param {any[]} nodes every node of the document, in document order
+ * @returns {{ severity: 'warning', code: string, node: string, nodeId: string, slot: string, layer?: string, message: string }[]}
+ */
+export function diagnoseSlots(nodes) {
+    /** @type {Map<string, any>} */
+    const byId = new Map(nodes.map(n => [n.id, n]));
+    /** @type {Map<string, any>} */
+    const props = new Map();
+    /** @type {Map<string, any[]>} */
+    const children = new Map();
+    for (const n of nodes) {
+        for (const p of n.cprops ?? []) if (p.type === 'slot') props.set(p.id, p);
+        if (n.parentId) (children.get(n.parentId) ?? children.set(n.parentId, []).get(n.parentId)).push(n);
+    }
+    // A component, its set and its sibling variants are one preferred instance: the picker stores a set's default variant.
+    const family = (/** @type {string} */ id) => {
+        const set = byId.get(byId.get(id)?.parentId);
+        return set?.componentSet ? [id, set.id, ...(children.get(set.id) ?? []).map(v => v.id)] : [id];
+    };
+    /** @type {any[]} */
+    const out = [];
+    for (const slot of nodes) {
+        if (!isContentSlot(slot)) continue;
+        const prop = props.get(slot.propBind.slot);
+        if (!prop) continue;
+        let owner = byId.get(slot.parentId);
+        while (owner && !owner.isInstance) owner = byId.get(owner.parentId);
+        if (!owner) continue;
+        const held = children.get(slot.id) ?? [];
+        const where = { node: owner.name, nodeId: owner.id, slot: slot.id };
+        const { belowMin, aboveMax } = slotCounts(prop, held.length);
+        if (belowMin) out.push({ severity: 'warning', code: 'slot-below-min', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at least ${prop.min} needed.` });
+        if (aboveMax) out.push({ severity: 'warning', code: 'slot-above-max', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at most ${prop.max} allowed.` });
+        if (!slotRestricts(prop)) continue;
+        for (const layer of held) {
+            const taken = layer.isInstance && layer.sourceId && family(layer.sourceId).some(id => slotAccepts(prop, id));
+            if (!taken) out.push({ severity: 'warning', code: 'slot-not-accepted', ...where, layer: layer.id, message: `${owner.name}: "${layer.name}" is not one of the preferred instances of slot "${prop.name}".` });
+        }
+    }
+    return out;
+}
