@@ -52,6 +52,56 @@ test('a part with icon tokens must name tokens of the template, and only a frame
     assert.match(validateTemplateSchema(text).join('\n'), /part "count" has icon tokens but is not a frame part/);
 });
 
+/** A fresh Button master and its spinner part layer. */
+function madeButton() {
+    const frame = { id: 'master', name: 'Button', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 32, fills: [], component: true, layout: 'horizontal', gap: 6, padding: 12 };
+    let n = 0;
+    const made = applyTemplateToFrame(BUTTON, { frame, children: [], binding: model.binding, variables, idOf: k => `${k}-${++n}` });
+    return { frame, made, arc: made.created.find(c => c.behavior?.part === 'spinner') };
+}
+
+test('the spinner draws a 1.5px arc by default: the template, a fresh master and the export', () => {
+    assert.equal(BUTTON.parts.find(p => p.id === 'spinner').arc.width, 1.5);
+    const { frame, made, arc } = madeButton();
+    assert.equal(arc.strokeWidth, 1.5, 'a fresh master takes the default');
+    const jsx = generateComponent(BUTTON, model.binding, variables, 'Button', frame, id => made.created.filter(c => c.parentId === id)).files['Button.jsx'];
+    assert.match(jsx, /strokeWidth=\{1\.5\}/);
+});
+
+test('a spinner width set by hand survives regenerate and the export', () => {
+    const { frame, made, arc } = madeButton();
+    arc.strokeWidth = 2;
+    let n = 100;
+    const again = applyTemplateToFrame(BUTTON, { frame, children: made.created, binding: model.binding, variables, idOf: k => `${k}-${++n}` });
+    assert.equal(again.created.filter(c => c.behavior?.part === 'spinner').length, 0, 'the spinner is matched, not recreated');
+    assert.equal(arc.strokeWidth, 2, 'regenerate keeps the hand-set width');
+    const jsx = generateComponent(BUTTON, model.binding, variables, 'Button', frame, id => made.created.filter(c => c.parentId === id)).files['Button.jsx'];
+    assert.match(jsx, /strokeWidth=\{2\}/, 'the export draws the hand-set width, not the default');
+});
+
+test('Play draws the spinner at the node width: a hand-set width survives the clipped overlay doubled', () => {
+    const { frame, made, arc } = madeButton();
+    arc.strokeWidth = 2;
+    let n = 100;
+    const copies = instanceOf(BUTTON, frame, made.created, { loading: true, label: 'Save' }, { id: k => `i-${k}-${++n}`, varModes: { [model.ids.size]: 'md', [model.ids.variant]: 'solid', [model.ids.color]: 'primary' } });
+    const copy = copies.find(c => c.behavior?.part === 'spinner');
+    assert.equal(copy.strokeWidth, 2, 'the copy carries the hand-set width');
+    const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [frame, ...made.created, ...copies] }], variables }, copies[0].id);
+    const el = root.children.find(c => c.nodeId === copy.id);
+    assert.ok(el, 'the spinner is drawn');
+    assert.match(el.html, /stroke-width="4"/, 'the inside-aligned overlay doubles the node width, so 1.5 stays visible');
+});
+
+test('a missing spinner is recreated at the default width', () => {
+    const { frame, made } = madeButton();
+    const kept = made.created.filter(c => c.behavior?.part !== 'spinner');
+    let n = 100;
+    const again = applyTemplateToFrame(BUTTON, { frame, children: kept, binding: model.binding, variables, idOf: k => `${k}-${++n}` });
+    const arc = again.created.find(c => c.behavior?.part === 'spinner');
+    assert.ok(arc, 'Auto Fix recreates the missing part through the same generator');
+    assert.equal(arc.strokeWidth, 1.5);
+});
+
 test('Bind tokens binds the spinner\'s size and colour to the variables the icon slots use, in every Size mode', () => {
     const spinnerNode = { type: 'frame', layoutSizingH: 'hug', layoutSizingV: 'hug' };
     const { ops } = planBindTokens({ template: BUTTON, binding: model.binding, layers: [{ key: 'spinner', node: spinnerNode }], variables });

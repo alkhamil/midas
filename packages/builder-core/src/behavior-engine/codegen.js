@@ -83,7 +83,20 @@ function propsTypeOf(template, name, elementType, attrType) {
  * @param {string} name
  * @param {any[]} problems
  */
-function componentSource(template, name, problems) {
+/**
+ * The width an arc part exports at: the master's part layer when it names one, else the template default.
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ * @returns {(part: any) => number}
+ */
+function partWidthOf(master, childrenOf) {
+    return part => {
+        const nodeWidth = childrenOf(master.id).find(c => c.behavior?.part === part.id)?.strokeWidth;
+        return typeof nodeWidth === 'number' ? nodeWidth : part.arc.width;
+    };
+}
+
+function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
     const params = Object.entries(template.props).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
     for (const event of template.events) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
@@ -102,7 +115,9 @@ function componentSource(template, name, problems) {
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
     const framePartJsx = (part, extra = '') => {
-        const { size, start, sweep, width } = part.arc;
+        const { size, start, sweep } = part.arc;
+    // A user stroke width is the node's own: Play and the export draw it, so a width set by hand on the part layer wins over the template default.
+    const width = partWidthOf(part);
         const node = { type: 'ellipse', w: size - width, h: size - width, arcStart: start, arcSweep: sweep, arcRatio: part.arc.ratio };
         const d = svgPathD(pathCommands(node), value => +value.toFixed(3));
         // The box is the part's icon size token (its display mapping), so the arc follows the Size; the stroke keeps its own width.
@@ -538,7 +553,7 @@ export function generateComponent(template, binding, variables, name, master, ch
     if (typeof childrenOf !== 'function') throw new Error('generateComponent needs a childrenOf lookup');
     /** @type {any[]} */
     const problems = [];
-    const jsx = componentSource(template, name, problems);
+    const jsx = componentSource(template, name, problems, partWidthOf(master, childrenOf));
     const css = stylesheet(template, binding, variables, problems, master, childrenOf);
     if (problems.length) return { files: null, problems };
     return { files: { [`${name}.${template.slots?.length ? 'tsx' : 'jsx'}`]: jsx, [`${name}.css`]: css }, problems: [] };
