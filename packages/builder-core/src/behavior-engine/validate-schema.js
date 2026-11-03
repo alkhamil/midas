@@ -154,6 +154,7 @@ export function validateTemplateSchema(schema) {
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
+    out.push(...slotProblems(schema));
     out.push(...controlProblems(schema));
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
@@ -302,6 +303,65 @@ function iconProblems(schema, allTokens) {
             if (!allTokens.includes(icon.tokens.hoverColour)) out.push(`${tag} hoverColour token "${icon.tokens.hoverColour}" is not a token`);
             if (!isName(icon.slot)) out.push(`${tag} has a hover colour but names no slot`);
         }
+    });
+    return out;
+}
+
+/** Words a prop name cannot be: the generated component destructures its props, so a slot id is a JavaScript identifier. */
+const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally', 'for', 'function', 'if', 'implements', 'import', 'in', 'instanceof', 'interface', 'let', 'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'static', 'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield']);
+/** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
+const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
+/** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout'];
+
+/**
+ * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
+ * is its prop name in the generated code, so it is a lower camel case identifier that no prop, anatomy slot or part of the template already
+ * uses (an icon slot is a different thing and keeps its own id space). Not the icon slots (`icons`).
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function slotProblems(schema) {
+    if (schema.slots === undefined) return [];
+    if (!Array.isArray(schema.slots)) return ['slots must be a list'];
+    const out = [];
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const anatomy = new Set((Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(isPlainObject).map(s => s.id));
+    const parts = new Set((Array.isArray(schema.parts) ? schema.parts : []).filter(isPlainObject).map(p => p.id));
+    const ids = new Set(), names = new Map();
+    schema.slots.forEach((slot, i) => {
+        if (!isPlainObject(slot)) { out.push(`slot ${i} must be an object`); return; }
+        const has = isName(slot.id);
+        const tag = has ? `slot "${slot.id}"` : `slot ${i}`;
+        if (!has) out.push(`${tag} has no id`);
+        else {
+            if (!/^[a-z][A-Za-z0-9]*$/.test(slot.id) || RESERVED_WORDS.has(slot.id)) out.push(`slot id "${slot.id}" must be a lower camel case identifier`);
+            if (ids.has(slot.id)) out.push(`duplicate slot "${slot.id}"`);
+            ids.add(slot.id);
+            if (GENERATED_PROPS.includes(slot.id)) out.push(`${tag} is named like a prop of the generated component`);
+            else if (Object.hasOwn(props, slot.id)) out.push(`${tag} is named like a prop of the template`);
+            else if (anatomy.has(slot.id)) out.push(`${tag} is named like an anatomy slot: an icon slot is not a content slot`);
+            else if (parts.has(slot.id)) out.push(`${tag} is named like a part of the template`);
+        }
+        if (!isName(slot.name)) out.push(`${tag} has no name`);
+        else if (names.has(slot.name)) out.push(`${tag} has the name "${slot.name}", which slot "${names.get(slot.name)}" already has`);
+        else names.set(slot.name, has ? slot.id : `${i}`);
+        if (slot.description !== undefined && typeof slot.description !== 'string') out.push(`${tag} description must be text`);
+        const minOk = slot.min === undefined || (Number.isInteger(slot.min) && slot.min >= 0);
+        const maxOk = slot.max === undefined || (Number.isInteger(slot.max) && slot.max >= 1);
+        if (!minOk) out.push(`${tag} min must be a whole number, 0 or more`);
+        if (!maxOk) out.push(`${tag} max must be a whole number, 1 or more`);
+        if (minOk && maxOk && slot.min !== undefined && slot.max !== undefined && slot.min > slot.max) out.push(`${tag} min ${slot.min} is above its max ${slot.max}`);
+        if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`${tag} layout must be horizontal or vertical`);
+        const acceptsOk = slot.accepts === undefined || (Array.isArray(slot.accepts) && slot.accepts.every(isName));
+        if (!acceptsOk) out.push(`${tag} accepts must be a list of template ids`);
+        else for (const id of new Set((slot.accepts ?? []).filter((/** @type {string} */ a, /** @type {number} */ k, /** @type {string[]} */ all) => all.indexOf(a) !== k))) out.push(`${tag} accepts names "${id}" twice`);
+        if (slot.onlyAccepts !== undefined && typeof slot.onlyAccepts !== 'boolean') out.push(`${tag} onlyAccepts must be a boolean`);
+        else if (slot.onlyAccepts === true && !(acceptsOk && slot.accepts?.length)) out.push(`${tag} onlyAccepts needs accepts: it restricts to the templates accepts names`);
+        for (const flag of ['showEmpty', 'fillCounter']) {
+            if (slot[flag] !== undefined && typeof slot[flag] !== 'boolean') out.push(`${tag} ${flag} must be a boolean`);
+        }
+        for (const field of Object.keys(slot)) if (!SLOT_FIELDS.includes(field)) out.push(`${tag} has no field "${field}"`);
     });
     return out;
 }

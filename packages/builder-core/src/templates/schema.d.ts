@@ -43,6 +43,28 @@ export interface NodeField {
     field: string;
 }
 
+/**
+ * A content slot a template declares: a frame of the component that instances fill with their own layers (Figma's slot property: the names and
+ * settings are the same, so the generator writes them into it). The id is the slot's prop name in the generated code.
+ */
+export interface SlotDef {
+    id: string;
+    name: string;
+    description?: string;
+    /** The fewest layers the slot should hold (0 or more) and the most it may (1 or more); a warning when broken. */
+    min?: number;
+    max?: number;
+    /** Template ids the slot takes: an instance of a master bound to one of them. With `onlyAccepts` it takes only those. */
+    accepts?: string[];
+    onlyAccepts?: boolean;
+    /** Display the slot while it is empty; off, an empty slot takes no space. */
+    showEmpty?: boolean;
+    /** Layers put into the slot fill its counter axis. */
+    fillCounter?: boolean;
+    /** The auto layout of the slot frame. */
+    layout: 'horizontal' | 'vertical';
+}
+
 /** A text or control slot drawn as an input: the schema names the slot and the props that fill it. Data only: the engine renders it, the canvas keeps the text layer. */
 export interface ControlDef {
     slot: string;
@@ -146,6 +168,8 @@ export interface TemplateSchema {
     previewStates: Record<string, Record<string, string>>;
     /** The cross-axis alignment a new master is created with (start, center or end). The node's own alignment decides after that. */
     rootAlign?: 'start' | 'center' | 'end';
+    /** The content slots: frames of the component that instances fill with their own layers. Not the icon slots (`icons`). */
+    slots?: SlotDef[];
     /** The CSS pseudo-class each state is written as. */
     statePseudo: Record<string, string>;
     /** Which token drives which property of which node (root, or an anatomy slot). */
