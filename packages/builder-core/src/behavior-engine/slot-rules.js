@@ -141,3 +141,16 @@ export function slotFillPatch(prop, layout) {
     if (layout === 'vertical' && prop.fillCounter === true) return { layoutSizingH: 'fill' };
     return {};
 }
+
+/**
+ * How many copies of a repeating slot's content Play and the export draw: the repeat prop as a whole number of 0 or more. A value that is not finite (not
+ * set, null, NaN, Infinity) is the schema's default for the prop, which the caller passes (0 when the prop has none). The generated component's `copies`
+ * function writes the same rule.
+ * @param {unknown} value the prop's value
+ * @param {number} fallback the prop's default in the schema, or 0
+ * @returns {number}
+ */
+export function repeatCount(value, fallback) {
+    const n = value ?? fallback;
+    return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+}

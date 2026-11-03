@@ -17,6 +17,7 @@ import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js
 import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
+import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { canvasPartsOf, counterLabel, placeholderPartOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
@@ -310,6 +311,19 @@ function renderTemplate(n, template, parent, scope) {
                 break;
             }
         }
+    }
+    // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,
+    // `repeat` copies of them for a repeating slot (the canvas keeps them once). With no copies the element is there, empty, only for a slot with showEmpty.
+    for (const slot of template.slots ?? []) {
+        const layer = scope.childrenOf(n.id).find(c => c.propBind?.slot === slot.id);
+        if (!layer || layer.visible === false) continue;
+        const held = scope.childrenOf(layer.id).some(c => c.visible !== false);
+        const fallback = slot.repeat && typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
+        const copies = !held ? 0 : slot.repeat ? repeatCount(props[slot.repeat], fallback) : 1;
+        if (copies === 0 && slot.showEmpty !== true) continue;
+        const kids = [];
+        for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
+        children.push({ tag: 'div', nodeId: layer.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: kids });
     }
     // The stroke is the node's own, drawn as an overlay over the box. An overlay is not laid out, so the children sit where the padding
     // puts them, as on the canvas (the stroke is inside the box). A CSS outline is not used for it: it would override the focus ring.
