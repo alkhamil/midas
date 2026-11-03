@@ -9,6 +9,7 @@ import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
 import { controlOf, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
+import { newSlotProp } from './slot-property.js';
 
 /** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
 export function slotWanted(template, slotId, resolved) {
@@ -31,7 +32,7 @@ const solid = color => [{ type: 'solid', color, opacity: 1, visible: true }];
 const LAYER = { x: 0, y: 0, rotation: 0, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, clip: false, version: 0 };
 
 /**
- * The layers a template is made of, in schema order: the root, then each anatomy slot, then each canvas part. Each spec says what the
+ * The layers a template is made of, in schema order: the root, then each anatomy slot, each canvas part, then each content slot (`slots`). Each spec says what the
  * layer is (`role`), its node type, and the marker it carries (`behavior`). The display key names what the token mapping calls it.
  * @param {any} template
  */
@@ -54,12 +55,17 @@ export function layerSpecsOf(template) {
     }
     if (!placed) specs.push(...framed);
     if (!textedPlaced) specs.push(...texted);
+    // A content slot is a frame of the master that instances fill; it is the slot property's layer (propBind.slot), not a managed icon slot.
+    for (const slot of template.slots ?? []) specs.push({ key: slot.id, role: 'content', type: 'frame', content: slot });
     return specs;
 }
 
 /** The node a spec makes, with its default sizing: text and frames hug, the arc of a frame part is fixed at its size. */
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
+    if (spec.role === 'content') {
+        return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
+    }
     if (spec.role === 'root') {
         return { ...LAYER, id, name: template.name, type: 'frame', parentId: null, component: true, x: 0, y: 0, w: 0, h: 0, layout: 'horizontal', gap: 0, padding: 0,
             layoutSizingH: 'hug', layoutSizingV: rootSizingV(template), counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: false,
@@ -91,6 +97,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
  * control slot. A managed icon slot matches only by its marker. Returns undefined when nothing matches.
  */
 function matchOf(spec, children, claimed) {
+    if (spec.role === 'content') return children.find(c => !claimed.has(c.id) && c.propBind?.slot === spec.key);
     const marked = children.find(c => !claimed.has(c.id) && (spec.behavior?.slot !== undefined ? c.behavior?.slot === spec.behavior.slot : c.behavior?.part !== undefined ? c.behavior.part === spec.key : false));
     if (marked) return marked;
     if (spec.role === 'text' || spec.role === 'control') return children.find(c => !claimed.has(c.id) && c.type === 'text' && !c.behavior?.part && !c.behavior?.slot);
@@ -120,15 +127,22 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         if (hit) {
             claimed.add(hit.id);
             matched.push({ key: spec.key, nodeId: hit.id });
-            layer.set(spec.key, hit);
+            if (spec.role !== 'content') layer.set(spec.key, hit);
             continue;
         }
         // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
         if (spec.role === 'slot') continue;
         const node = nodeOf(spec, template, binding, idOf, frame.id);
+        if (spec.role === 'content') { created.push(node); claimed.add(node.id); continue; }
         created.push(node);
         claimed.add(node.id);
         layer.set(spec.key, node);
+    }
+    // The slot property of each content slot is written once, as Convert to slot writes it; one a designer has is left as it is.
+    for (const slot of template.slots ?? []) {
+        if (frame.cprops?.some(p => p.id === slot.id)) continue;
+        const { id, name, layout, accepts, onlyAccepts, ...options } = slot;
+        frame.cprops = [...(frame.cprops ?? []), { ...newSlotProp(id, name), ...(options.description === undefined ? {} : { desc: options.description }), ...Object.fromEntries(Object.entries(options).filter(([k]) => k !== 'description')) }];
     }
     const layers = [...layer].map(([key, node]) => ({ key, node }));
     const { ops, problems } = planBindTokens({ template, binding: { variables: binding.variables }, layers, variables });
@@ -150,6 +164,7 @@ export function masterLayersByKey(template, frame, nodes) {
         // An affix text is found by its marker; the label and the control are the text layers that carry none (see labelEntryOf).
         const hit = spec.role === 'part' ? children.find(c => c.behavior?.part === spec.key)
             : spec.role === 'slot' ? children.find(c => c.behavior?.slot === spec.key)
+            : spec.role === 'content' ? children.find(c => c.propBind?.slot === spec.key)
             : spec.optional ? children.find(c => c.behavior?.text === spec.key)
             : children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
         if (hit) out.push({ key: spec.key, node: hit });
@@ -231,10 +246,10 @@ export function childOrderAfterBind(template, children, created) {
             idOfSpec.set(spec.key, hit.id);
         }
     }
-    for (const node of created) idOfSpec.set(node.name, node.id);
+    for (const node of created) idOfSpec.set(node.propBind?.slot ?? node.name, node.id);
     let order = children.map(child => child.id);
     for (const node of created) {
-        const at = specs.findIndex(spec => spec.key === node.name);
+        const at = specs.findIndex(spec => spec.key === (node.propBind?.slot ?? node.name));
         const next = specs.slice(at + 1).map(spec => idOfSpec.get(spec.key)).find(id => id !== undefined && order.includes(id));
         order = order.filter(id => id !== node.id);
         if (next !== undefined) order.splice(order.indexOf(next), 0, node.id);
