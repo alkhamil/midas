@@ -63,7 +63,7 @@ const VARIANT_TOKENS = Object.keys(OUTLINED);
 const DEFAULT_SIZE_VALUES = {
     height: { xs: 16, sm: 24, md: 32, lg: 40, xl: 48 },
     paddingX: { xs: 7, sm: 7, md: 15, lg: 15, xl: 15 }, paddingY: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 },
-    gap: { xs: 4, sm: 6, md: 8, lg: 8, xl: 8 }, radius: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 }, iconSize: { xs: 12, sm: 14, md: 14, lg: 16, xl: 20 },
+    gap: { xs: 4, sm: 6, md: 8, lg: 8, xl: 10 }, radius: { xs: 4, sm: 6, md: 6, lg: 8, xl: 8 }, iconSize: { xs: 12, sm: 14, md: 14, lg: 16, xl: 20 },
 };
 /** The Size modes each typography token takes, as the Semantic text style it aliases (the Button's text roles). */
 const BUTTON_TYPOGRAPHY = { labelTypography: { xs: 'textXs', sm: 'textSm', md: 'textBase', lg: 'textLg', xl: 'textXl' } };

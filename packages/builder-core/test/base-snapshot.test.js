@@ -17,12 +17,12 @@ test('the snapshot holds three collections with their modes', () => {
     ]);
 });
 
-test('the snapshot plus the text styles: 339 variables with the known report', () => {
+test('the snapshot plus the text styles: 336 variables with the known report', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 105 });
-    assert.equal(plan.items.length, 339);
+    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 102 });
+    assert.equal(plan.items.length, 336);
     assert.deepEqual(plan.report.derived.map(d => d.name), [
         'Primitives/transparent',
         'Semantic/controlHeightXL',
@@ -67,9 +67,27 @@ test('single-step size tokens carry the MD suffix, with no unsuffixed leftover',
     assert.equal(byName.borderRadiusMD.values.Light.alias.name, 'radius/6');
 });
 
+test('the gap and padding scales have five suffixed steps each', () => {
+    const plan = planFromSnapshot(BASE_SNAPSHOT);
+    const names = new Set(plan.items.filter(i => i.collection === 'Semantic').map(i => i.name));
+    const byName = Object.fromEntries(plan.items.filter(i => i.collection === 'Semantic').map(i => [i.name, i]));
+    for (const name of ['gapXS', 'gapSM', 'gapMD', 'gapLG', 'gapXL', 'paddingXS', 'paddingSM', 'paddingMD', 'paddingLG', 'paddingXL']) {
+        assert.ok(names.has(name), `Semantic/${name} exists`);
+    }
+    for (const name of ['gap', 'padding', 'gapXXS']) {
+        assert.ok(!names.has(name), `Semantic/${name} is gone`);
+    }
+    assert.deepEqual([byName.gapXS, byName.gapSM, byName.gapMD, byName.gapLG, byName.gapXL].map(i => i.values.Light.alias.name),
+        ['size/4', 'size/6', 'size/8', 'size/8', 'size/10']);
+    assert.deepEqual([byName.paddingXS, byName.paddingSM, byName.paddingMD, byName.paddingLG, byName.paddingXL].map(i => i.values.Light.alias.name),
+        ['size/8', 'size/12', 'size/16', 'size/20', 'size/24']);
+    const prim6 = plan.items.find(i => i.collection === 'Primitives' && i.name === 'size/6');
+    assert.equal(prim6.values.Base.literal, 6);
+});
+
 test('Semantic holds the antd size scale as aliases, no literals', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
-    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 60, 'the size scale is present');
+    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 57, 'the size scale is present');
     for (const item of plan.items.filter(i => i.collection === 'Semantic')) {
         for (const value of Object.values(item.values)) {
             assert.ok(value.alias && !value.needsValue, `${item.name} aliases a base step`);
@@ -79,7 +97,7 @@ test('Semantic holds the antd size scale as aliases, no literals', () => {
     assert.equal(byName.controlHeightMD.values.Light.alias.name, 'size/32');
     assert.equal(byName.fontSizeMD.values.Light.alias.name, 'size/14');
     assert.equal(byName.borderRadiusMD.values.Light.alias.name, 'radius/6');
-    assert.equal(byName.padding.values.Light.alias.name, 'size/16');
+    assert.equal(byName.paddingMD.values.Light.alias.name, 'size/16');
     const prim32 = plan.items.find(i => i.collection === 'Primitives' && i.name === 'size/32');
     assert.equal(prim32.values.Base.literal, 32);
 });
@@ -122,7 +140,7 @@ test('the snapshot plan applies and a second run is a no-op', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const first = applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
-    assert.deepEqual(first, { collections: 3, items: 339, modes: 4, aliases: 210 });
+    assert.deepEqual(first, { collections: 3, items: 336, modes: 4, aliases: 204 });
     assert.deepEqual(applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`), { collections: 0, items: 0, modes: 0, aliases: 0 });
 });
 
@@ -144,7 +162,8 @@ test('Generate base on an empty file yields the new tokens', () => {
     for (const name of ['paddingXxs', 'paddingXsm', 'buttonPaddingXmd', 'buttonPaddingXlg', 'buttonPaddingXxl',
         'inputPaddingXmd', 'inputPaddingXlg', 'inputPaddingXxl', 'paddingYxs', 'paddingYsm',
         'buttonPaddingYmd', 'buttonPaddingYlg', 'buttonPaddingYxl', 'inputPaddingYmd', 'inputPaddingYlg', 'inputPaddingYxl',
-        'gapXXS', 'gapXS', 'gapSM', 'gap', 'gapMD', 'gapLG', 'gapXL',
+        'gapXS', 'gapSM', 'gapMD', 'gapLG', 'gapXL',
+        'paddingXS', 'paddingSM', 'paddingMD', 'paddingLG', 'paddingXL',
         'colorTransparent', 'colorTextLightSolid', 'colorPrimaryHover', 'colorPrimaryActive',
         'colorErrorHover', 'colorErrorActive', 'colorWarningHover',
         'colorPrimaryOutline', 'colorErrorOutline', 'colorWarningOutline',

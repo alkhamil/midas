@@ -179,6 +179,26 @@ test('button Size md/sm/lg height resolves to antd controlHeight through Semanti
     assert.equal(iname(ih.values.md.alias), 'Semantic/controlHeightMD');
 });
 
+test('button Size gap follows the per-size ladder 4/6/8/8/10, input gap stays 4', () => {
+    const want = {
+        button: { xs: ['gapXS', 4], sm: ['gapSM', 6], md: ['gapMD', 8], lg: ['gapLG', 8], xl: ['gapXL', 10] },
+        input: { xs: ['gapXS', 4], sm: ['gapXS', 4], md: ['gapXS', 4], lg: ['gapXS', 4], xl: ['gapXS', 4] },
+    };
+    for (const [tid, modes] of Object.entries(want)) {
+        const template = TEMPLATES.get(tid);
+        const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });
+        const atName = a => plan.plan.collections[a.collectionIndex].name + '/' + a.name;
+        const findItem = (coll, name) => plan.plan.items.find(i => i.name === name && plan.plan.collections[i.collectionIndex].name === coll);
+        const gap = findItem(`${template.name} Size`, 'gap');
+        assert.ok(gap, `${tid} Size gap exists`);
+        for (const [mode, [semName, value]] of Object.entries(modes)) {
+            assert.equal(atName(gap.values[mode].alias), `Semantic/${semName}`, `${tid} ${mode} aliases ${semName}`);
+            const sem = findItem('Semantic', semName);
+            assert.equal(findItem('Primitives', sem.values.Light.alias.name).values.Base.literal, value, `${tid} ${mode} is ${value}px`);
+        }
+    }
+});
+
 test('extrapolated antd sizes are flagged derived and still resolve', () => {
     const template = TEMPLATES.get('button');
     const plan = planAutoFix({ template, binding: emptyBinding(template), variables: { collections: [], items: [] }, layers: [] });

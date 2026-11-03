@@ -54,7 +54,7 @@ export const BUTTON = {
         labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'button-padding-x-md', lg: 'button-padding-x-lg', xl: 'button-padding-x-xl', default: 'button-padding-x-md' },
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
-        gap: 'gap',
+        gap: { xs: 'gap-xs', sm: 'gap-sm', md: 'gap', lg: 'gap-lg', xl: 'gap-xl', default: 'gap' },
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         bg: { outlined: 'bg', dashed: 'bg', solid: './color-solid', filled: './color-bg', text: 'transparent', link: 'transparent', default: 'bg' },

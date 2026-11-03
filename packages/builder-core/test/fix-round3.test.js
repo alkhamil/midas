@@ -89,7 +89,8 @@ test('Generate base: Semantic names are unique case-insensitively, have no margi
     const folded = names.map(x => x.toLowerCase());
     assert.equal(new Set(folded).size, folded.length, 'Semantic names are unique case-insensitively');
     assert.ok(!names.some(x => /^margin/i.test(x)), 'no margin token');
-    for (const gap of ['gapXXS', 'gapXS', 'gapSM', 'gap', 'gapMD', 'gapLG', 'gapXL']) assert.ok(names.includes(gap), `${gap} exists`);
+    for (const gap of ['gapXS', 'gapSM', 'gapMD', 'gapLG', 'gapXL']) assert.ok(names.includes(gap), `${gap} exists`);
+    for (const gone of ['gapXXS', 'gap']) assert.ok(!names.includes(gone), `${gone} is gone`);
     const transparent = store.items.find(i => i.collectionId === semantic.id && i.name === 'colorTransparent');
     assert.ok(transparent, 'colorTransparent exists');
     const primitive = store.items.find(i => i.id === transparent.values[semantic.modes[0].id].alias);

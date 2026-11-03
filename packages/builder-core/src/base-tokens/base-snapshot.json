@@ -3282,38 +3282,19 @@
     },
     {
       "collection": "Semantic",
-      "name": "padding",
-      "type": "number",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/16"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/16"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
       "name": "paddingMD",
       "type": "number",
       "values": {
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/20"
+            "name": "size/16"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/20"
+            "name": "size/16"
           }
         }
       }
@@ -3326,13 +3307,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/24"
+            "name": "size/20"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/24"
+            "name": "size/20"
           }
         }
       }
@@ -3345,32 +3326,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/32"
+            "name": "size/24"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/32"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
-      "name": "gapXXS",
-      "type": "number",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/4"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/4"
+            "name": "size/24"
           }
         }
       }
@@ -3383,13 +3345,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/8"
+            "name": "size/4"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/8"
+            "name": "size/4"
           }
         }
       }
@@ -3402,32 +3364,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/12"
+            "name": "size/6"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/12"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
-      "name": "gap",
-      "type": "number",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/16"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "size/16"
+            "name": "size/6"
           }
         }
       }
@@ -3440,13 +3383,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/20"
+            "name": "size/8"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/20"
+            "name": "size/8"
           }
         }
       }
@@ -3459,13 +3402,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/24"
+            "name": "size/8"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/24"
+            "name": "size/8"
           }
         }
       }
@@ -3478,13 +3421,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/32"
+            "name": "size/10"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "size/32"
+            "name": "size/10"
           }
         }
       }
@@ -4204,14 +4147,11 @@
       "Semantic/borderRadiusXL",
       "Semantic/paddingXS",
       "Semantic/paddingSM",
-      "Semantic/padding",
       "Semantic/paddingMD",
       "Semantic/paddingLG",
       "Semantic/paddingXL",
-      "Semantic/gapXXS",
       "Semantic/gapXS",
       "Semantic/gapSM",
-      "Semantic/gap",
       "Semantic/gapMD",
       "Semantic/gapLG",
       "Semantic/gapXL",
