@@ -116,7 +116,7 @@ Move into `packages/builder-core` as pure functions with tests, then call them f
 
 Naming: "icon slot" and "content slot" in code and docs; they are never merged.
 
-Status: step 1 is done (the pure decisions are in `content-slots.js`, `slot-rules.js` and `slot-property.js`, with unit tests, and the studio calls them; behaviour unchanged). The rest waits for confirmation.
+Status: step 1 is done (the pure decisions are in `content-slots.js`, `slot-rules.js` and `slot-property.js`, with unit tests, and the studio calls them; behaviour unchanged). Step 2 is done: `diagnoseSlots` (slot-diagnostics.js) reports `slot-below-min`, `slot-above-max` and `slot-not-accepted` as warnings in `diagnoseDocument`; an instance with no template shows them in its Behavior tab; and `transaction()` shows a notice for what an edit newly broke (paste, drag, duplicate, import, delete). The picker still blocks `max` and `onlyPreferred`; every other path warns. `showEmpty`, `fillCounter` and reset are still stored-only (step 3). The rest waits for confirmation.
 
 ## 4. Steps (small, each keeps the suites green)
 
