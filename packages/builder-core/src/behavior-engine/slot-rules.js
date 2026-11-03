@@ -60,18 +60,16 @@ const restrictsByPreferred = (/** @type {any} */ prop) => !!(prop?.onlyPreferred
 const restrictsByTemplate = (/** @type {any} */ prop) => !!(prop?.onlyAccepts && prop.accepts?.length);
 
 /**
- * Whether a slot takes a component. A slot that restricts takes what one of its enforced allow lists admits: a candidate whose id (or its set's or
- * sibling variants') is preferred, or that is bound to an accepted template. The lists do not conflict: each one that restricts admits on its own,
- * so a slot with both takes the union, and a list that does not restrict admits nothing by itself. Any other slot takes anything, as does a layer
- * with no slot property.
+ * Whether a slot takes a component. With `onlyAccepts` on (and templates listed) the template contract binds: only a candidate bound to an accepted
+ * template is taken, and `preferred` does not widen it. Otherwise a slot that only allows its preferred instances takes a candidate whose id (or its
+ * set's or sibling variants') is preferred. Any other slot takes anything, as does a layer with no slot property.
  * @param {{ onlyPreferred?: boolean, preferred?: string[], onlyAccepts?: boolean, accepts?: string[] } | null | undefined} prop
  * @param {{ ids: string[], templates: string[] }} candidate the component's ids (itself, its set, its variants) and the templates its master is bound to
  * @returns {boolean}
  */
 export function slotAccepts(prop, candidate) {
-    if (!slotRestricts(prop)) return true;
-    return (restrictsByPreferred(prop) && candidate.ids.some(id => prop?.preferred?.includes(id)))
-        || (restrictsByTemplate(prop) && candidate.templates.some(t => prop?.accepts?.includes(t)));
+    if (restrictsByTemplate(prop)) return candidate.templates.some(t => prop?.accepts?.includes(t));
+    return !restrictsByPreferred(prop) || candidate.ids.some(id => prop?.preferred?.includes(id));
 }
 
 /**
@@ -80,8 +78,8 @@ export function slotAccepts(prop, candidate) {
  * @returns {string}
  */
 export function slotRefusal(prop) {
-    const preferred = `the preferred instances of slot "${prop.name}"`, templates = `the templates ${restrictsByPreferred(prop) ? 'it' : `slot "${prop.name}"`} accepts (${(prop.accepts ?? []).join(', ')})`;
-    return restrictsByPreferred(prop) && restrictsByTemplate(prop) ? `one of ${preferred} or of ${templates}` : restrictsByTemplate(prop) ? `one of ${templates}` : `one of ${preferred}`;
+    if (restrictsByTemplate(prop)) return `one of the templates slot "${prop.name}" accepts (${prop.accepts.join(', ')})`;
+    return `one of the preferred instances of slot "${prop.name}"`;
 }
 
 /**

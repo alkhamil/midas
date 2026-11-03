@@ -1,6 +1,6 @@
 // A slot's `accepts` names template ids: a candidate qualifies when it is an instance of a master bound to one of them. The template is read from the
 // master (`behavior.templateId`), never from the component's id or name, so a copy, a rename and a library component (a snapshot, and the copy a file
-// imports from it) all resolve the same. The slot's `preferred` set (component ids) stays as it is; when a slot restricts by both, either list admits.
+// imports from it) all resolve the same. The slot's `preferred` set (component ids) stays as it is while onlyAccepts is off; when onlyAccepts is on, the template contract binds and preferred does not widen it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { templateIdsOf } from '../src/behavior-engine/component-templates.js';
@@ -50,11 +50,13 @@ test('accepts restricts only with onlyAccepts and a non-empty list, as preferred
     assert.equal(slotAccepts({ onlyAccepts: false, accepts: ['input'] }, candidate(['x'], ['button'])), true, 'a list the slot does not enforce admits everything');
 });
 
-test('precedence: each list that restricts is an allow list and either admits; a list that does not restrict does not count', () => {
+test('precedence: with onlyAccepts on the template contract binds and preferred does not widen it; with it off, preferred works as before', () => {
     const both = { onlyAccepts: true, accepts: ['input'], onlyPreferred: true, preferred: ['mine'] };
     assert.equal(slotAccepts(both, candidate(['x'], ['input'])), true, 'by template');
-    assert.equal(slotAccepts(both, candidate(['mine'], ['button'])), true, 'by preferred id, whatever its template');
-    assert.equal(slotAccepts(both, candidate(['x'], ['button'])), false, 'neither');
+    assert.equal(slotAccepts(both, candidate(['mine'], ['button'])), false, 'a preferred id does not admit what the templates refuse');
+    assert.equal(slotAccepts(both, candidate(['x'], ['button'])), false);
+    const preferredWithoutEnforcing = { onlyAccepts: true, accepts: ['input'], preferred: ['mine'] };
+    assert.equal(slotAccepts(preferredWithoutEnforcing, candidate(['mine'], ['button'])), false, 'onlyPreferred off or on, the contract binds');
     const templateOnly = { onlyAccepts: true, accepts: ['input'], onlyPreferred: false, preferred: ['mine'] };
     assert.equal(slotAccepts(templateOnly, candidate(['mine'], ['button'])), false, 'preferred is not enforced, so it does not admit');
     const preferredOnly = { onlyAccepts: false, accepts: ['input'], onlyPreferred: true, preferred: ['mine'] };
@@ -97,9 +99,11 @@ test('Diagnostics: an instance of a component imported from a library is taken; 
     assert.deepEqual(notAccepted(documentWith({ onlyAccepts: true, accepts: ['select'] }, imported, [{ of: 'file-c1', name: 'From library' }])), ['c0']);
 });
 
-test('Diagnostics: an instance of a variant of a set is taken when the set holds an accepted template; and either list admits', () => {
+test('Diagnostics: an instance of a variant of a set is taken when the set holds an accepted template; preferred does not widen the contract', () => {
     const set = [master('set', null, { component: false, componentSet: true }), master('v1', 'input', { parentId: 'set' })];
     assert.deepEqual(notAccepted(documentWith(FIELDS, set, [{ of: 'v1', name: 'A' }])), []);
     const both = { ...FIELDS, onlyPreferred: true, preferred: ['btnMain'] };
-    assert.deepEqual(notAccepted(documentWith(both, [master('btnMain', 'button'), master('inputMain', 'input'), master('other', 'icon')], [{ of: 'btnMain', name: 'A' }, { of: 'inputMain', name: 'B' }, { of: 'other', name: 'C' }])), ['c2']);
+    assert.deepEqual(notAccepted(documentWith(both, [master('btnMain', 'button'), master('inputMain', 'input'), master('other', 'icon')], [{ of: 'btnMain', name: 'A' }, { of: 'inputMain', name: 'B' }, { of: 'other', name: 'C' }])), ['c0', 'c2']);
+    assert.match(diagnoseSlots(documentWith(both, [master('btnMain', 'button')], [{ of: 'btnMain', name: 'A' }]))[0].message, /^Login card: "A" is not one of the templates slot "Content" accepts \(input, select\)\.$/, 'the message names only the contract');
+    assert.deepEqual(notAccepted(documentWith({ onlyPreferred: true, preferred: ['btnMain'] }, [master('btnMain', 'button'), master('other', 'icon')], [{ of: 'btnMain', name: 'A' }, { of: 'other', name: 'B' }])), ['c1'], 'onlyAccepts off: preferred as today');
 });
