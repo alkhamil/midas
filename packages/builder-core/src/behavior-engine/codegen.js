@@ -8,7 +8,7 @@ import { NODE_PROPERTIES, canvasPartsOf, placeholderPartOf, targetKindOf } from 
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
-import { rootLayoutOf, labelLayoutOf } from './layout.js';
+import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 
 // Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
@@ -27,6 +27,45 @@ export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
 
+/** The DOM handler type each schema event is typed with in a .tsx (the element type fills the generic). */
+const EVENT_TYPE = { onClick: 'MouseEventHandler', onHover: 'MouseEventHandler', onFocus: 'FocusEventHandler', onBlur: 'FocusEventHandler' };
+
+/** The React attribute type and the element type of a template's root tag; any other tag is an HTMLElement. */
+const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], input: ['InputHTMLAttributes', 'HTMLInputElement'] };
+
+/**
+ * The content slots of a template as the props they become in the generated component: one slot is `children`, several keep their schema id.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {{ prop: string, slot: any }[]}
+ */
+const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: template.slots.length === 1 ? 'children' : slot.id, slot }));
+
+/** The TypeScript type of a schema prop: a variable prop is the mode id string, a literal its type, an enum its union, an icon a ReactNode. */
+const typeOfProp = def => def.source === 'variable' ? 'string' : def.type === 'enum' ? def.options.map(o => JSON.stringify(o).replace(/"/g, "'")).join(' | ')
+    : def.type === 'number' ? 'number | null' : def.type === 'iconComponent' ? 'ReactNode' : def.type;
+
+/** The props type and the imports of a slotted component (the conventions of play-from-tsx.md 2.1). */
+function propsTypeOf(template, name, elementType, attrType) {
+    const lines = [];
+    for (const [prop, def] of Object.entries(template.props)) lines.push(`  ${prop}?: ${typeOfProp(def)};`);
+    for (const event of template.events) lines.push(`  ${event.name}?: ${EVENT_TYPE[event.name]}<${elementType}>;`);
+    for (const { prop } of slotPropsOf(template)) lines.push(`  ${prop}?: ReactNode;`);
+    lines.push('  className?: string;', '  style?: CSSProperties;');
+    const own = [...Object.keys(template.props), ...template.events.map(e => e.name), ...slotPropsOf(template).map(s => s.prop), 'children', 'className', 'style'];
+    const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
+    const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
+    return [
+        "import { forwardRef } from 'react';",
+        `import type { ${[...new Set(used)].sort().join(', ')} } from 'react';`,
+        `import './${name}.css';`,
+        '',
+        `export type ${name}Props = Omit<${attrType}<${elementType}>, ${omitted}> & {`,
+        ...lines,
+        '};',
+        '',
+    ];
+}
+
 /**
  * The component source for a template. Problems found on the way are pushed onto `problems`.
  * @param {import('../templates/schema.js').TemplateSchema} template
@@ -39,6 +78,7 @@ function componentSource(template, name, problems) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
+    const slotted = (template.slots ?? []).length > 0;
     const children = [];
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
@@ -91,20 +131,48 @@ function componentSource(template, name, problems) {
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     }
     if (!framePlaced) children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)));
+    // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
+    for (const { prop, slot } of slotPropsOf(template)) {
+        const element = `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
+        children.push(slot.showEmpty === true ? element : `{filled(${prop}) && ${element}}`);
+    }
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
-        `className="${template.id}"`,
+        slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
+        ...(slotted ? ['ref={ref}', 'style={style}'] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
         ...dims.map(dim => `data-${dim}={${dim}}`),
         ...(ctl ? [] : [`disabled={${disabledProp}}`]),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
+        ...(slotted ? ['{...rest}'] : []),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
+    if (slotted) {
+        const [attrType, elementType] = ELEMENT_TYPES[tag] ?? ['HTMLAttributes', 'HTMLElement'];
+        const slotParams = [...params, ...slotPropsOf(template).map(s => s.prop), 'className', 'style', '...rest'];
+        const needsFilled = template.slots.some(slot => slot.showEmpty !== true);
+        return [
+            ...propsTypeOf(template, name, elementType, attrType),
+            `export const ${name} = forwardRef<${elementType}, ${name}Props>(function ${name}({ ${slotParams.join(', ')} }, ref) {`,
+            `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+            '  return (',
+            `    <${tag}`,
+            ...attrs.map(attr => `      ${attr}`),
+            '    >',
+            ...children.map(child => indent(child, 6)),
+            `    </${tag}>`,
+            '  );',
+            '});',
+            ...(template.interaction?.wave ? ['', 'function waveDown(el: (HTMLElement & { disabled?: boolean }) | null) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
+            ...(needsFilled ? ['', 'function filled(node: ReactNode): boolean {', `  return Array.isArray(node) ? node.some(filled) : node !== undefined && node !== null && typeof node !== 'boolean' && node !== '';`, '}'] : []),
+            '',
+        ].join('\n');
+    }
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
@@ -267,6 +335,23 @@ function reducedMotion(template) {
     return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}\n}\n`;
 }
 
+/**
+ * The rule of each content slot's element: the slot frame's own auto layout and flow sizing, the canvas rules (a missing frame is laid out as its schema
+ * says, so the export still draws; Diagnostics report the missing frame). Nothing of the icon rules (size, colour) applies to slot content.
+ * @param {any} template
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ * @returns {string[]}
+ */
+function slotRules(template, master, childrenOf) {
+    return (template.slots ?? []).map(slot => {
+        const node = childrenOf(master.id).find(c => c.propBind?.slot === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' };
+        return `.${template.id}-${slot.id} {
+${cssDecls({ ...flexOf(node, 0), ...flowSizing(node, master) }).join('')}}
+`;
+    });
+}
+
 function stylesheet(template, binding, variables, problems, master, childrenOf) {
     const dims = variableProps(template).map(([prop]) => prop);
     /** @type {Record<string, string[]>} */
@@ -323,6 +408,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
+    blocks.push(...slotRules(template, master, childrenOf));
     const stroke = strokeRules(template, master);
     if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));
@@ -355,5 +441,5 @@ export function generateComponent(template, binding, variables, name, master, ch
     const jsx = componentSource(template, name, problems);
     const css = stylesheet(template, binding, variables, problems, master, childrenOf);
     if (problems.length) return { files: null, problems };
-    return { files: { [`${name}.jsx`]: jsx, [`${name}.css`]: css }, problems: [] };
+    return { files: { [`${name}.${template.slots?.length ? 'tsx' : 'jsx'}`]: jsx, [`${name}.css`]: css }, problems: [] };
 }
