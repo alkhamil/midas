@@ -53,6 +53,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -185,6 +186,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -638,6 +640,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -784,6 +787,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -932,6 +936,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1200,6 +1205,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1458,6 +1464,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1714,6 +1721,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1860,6 +1868,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2006,6 +2015,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2153,6 +2163,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2299,6 +2310,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -2621,6 +2633,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -3063,6 +3076,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -3502,6 +3516,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -3824,6 +3839,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -4145,6 +4161,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -4586,6 +4603,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -5027,6 +5045,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -5466,6 +5485,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -5786,6 +5806,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -6109,6 +6130,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -6657,6 +6679,7 @@
           "vars": {
             "fills.0": "in-v-bg",
             "stroke": "in-v-border",
+            "strokeWidth": "in-s-borderWidth",
             "radius": "in-s-radius",
             "h": "in-s-height",
             "padH": "in-s-paddingX",
@@ -7103,7 +7126,7 @@
     "items": [
       {
         "id": "p-h18181b",
-        "name": "color/literal-24",
+        "name": "color/literal-25",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7112,7 +7135,7 @@
       },
       {
         "id": "sem-h18181b",
-        "name": "color/literal-24",
+        "name": "color/literal-25",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -7463,7 +7486,7 @@
       },
       {
         "id": "p-hffffff",
-        "name": "color/literal-22",
+        "name": "color/literal-23",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7472,7 +7495,7 @@
       },
       {
         "id": "sem-hffffff",
-        "name": "color/literal-22",
+        "name": "color/literal-23",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -7822,6 +7845,26 @@
         }
       },
       {
+        "id": "p-n1",
+        "name": "number/literal-21",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 1
+        }
+      },
+      {
+        "id": "sem-n1",
+        "name": "number/literal-21",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n1"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
         "name": "color/literal-0",
         "type": "color",
@@ -7843,7 +7886,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-28",
+        "name": "color/literal-29",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -7852,7 +7895,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-28",
+        "name": "color/literal-29",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -8713,6 +8756,29 @@
         }
       },
       {
+        "id": "s-borderWidth",
+        "name": "borderWidth",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n1"
+          },
+          "sm": {
+            "alias": "sem-n1"
+          },
+          "md": {
+            "alias": "sem-n1"
+          },
+          "lg": {
+            "alias": "sem-n1"
+          },
+          "xl": {
+            "alias": "sem-n1"
+          }
+        }
+      },
+      {
         "id": "s-labelTypography",
         "name": "labelTypography",
         "type": "typography",
@@ -9272,7 +9338,7 @@
       },
       {
         "id": "p-n18",
-        "name": "number/literal-21",
+        "name": "number/literal-22",
         "type": "number",
         "collectionId": "c-primitives",
         "values": {
@@ -9281,7 +9347,7 @@
       },
       {
         "id": "sem-n18",
-        "name": "number/literal-21",
+        "name": "number/literal-22",
         "type": "number",
         "collectionId": "c-semantic",
         "values": {
@@ -9292,7 +9358,7 @@
       },
       {
         "id": "p-hf5f5f5",
-        "name": "color/literal-23",
+        "name": "color/literal-24",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9301,7 +9367,7 @@
       },
       {
         "id": "sem-hf5f5f5",
-        "name": "color/literal-23",
+        "name": "color/literal-24",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9312,7 +9378,7 @@
       },
       {
         "id": "p-hbfbfbf",
-        "name": "color/literal-25",
+        "name": "color/literal-26",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9321,7 +9387,7 @@
       },
       {
         "id": "sem-hbfbfbf",
-        "name": "color/literal-25",
+        "name": "color/literal-26",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9332,7 +9398,7 @@
       },
       {
         "id": "p-h595959",
-        "name": "color/literal-26",
+        "name": "color/literal-27",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9341,7 +9407,7 @@
       },
       {
         "id": "sem-h595959",
-        "name": "color/literal-26",
+        "name": "color/literal-27",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9352,7 +9418,7 @@
       },
       {
         "id": "p-heeeeee",
-        "name": "color/literal-27",
+        "name": "color/literal-28",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -9361,7 +9427,7 @@
       },
       {
         "id": "sem-heeeeee",
-        "name": "color/literal-27",
+        "name": "color/literal-28",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -9573,6 +9639,29 @@
           },
           "xl": {
             "alias": "sem-n20"
+          }
+        }
+      },
+      {
+        "id": "in-s-borderWidth",
+        "name": "borderWidth",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n1"
+          },
+          "sm": {
+            "alias": "sem-n1"
+          },
+          "md": {
+            "alias": "sem-n1"
+          },
+          "lg": {
+            "alias": "sem-n1"
+          },
+          "xl": {
+            "alias": "sem-n1"
           }
         }
       },

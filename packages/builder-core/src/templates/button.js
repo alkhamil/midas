@@ -31,7 +31,7 @@ export const BUTTON = {
         disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'loading', clearsPreview: true },
     },
     tokens: {
-        fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],
+        fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'borderWidth'],
         fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
         fromColor: [
             'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
@@ -41,7 +41,7 @@ export const BUTTON = {
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', labelTypography: 'typography', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length',
+        height: 'length', labelTypography: 'typography', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', borderWidth: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
@@ -58,6 +58,7 @@ export const BUTTON = {
         gap: { xs: 'gap-xs', sm: 'gap-sm', md: 'gap', lg: 'gap-lg', xl: 'gap-xl', default: 'gap' },
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
+        borderWidth: 'border-width',
         bg: { outlined: 'bg', dashed: 'bg', solid: './color-solid', filled: './color-bg', text: 'transparent', link: 'transparent', default: 'bg' },
         fg: { outlined: './color-text', dashed: './color-text', solid: './color-solid-text', filled: './color', text: './color-text', link: './color-text', default: './color-text' },
         border: { outlined: './color-border', dashed: './color-border', solid: 'transparent', filled: 'transparent', text: 'transparent', link: 'transparent', default: './color-border' },
@@ -120,7 +121,7 @@ export const BUTTON = {
     rootPrimaryAlign: 'center',
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
+        root: { fill: 'bg', stroke: 'border', strokeWidth: 'borderWidth', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'labelTypography' },
         ...ICON_DISPLAY,
         spinner: ICON_PART_DISPLAY,

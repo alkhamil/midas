@@ -19,6 +19,7 @@ const items = [
     item('i-radius', 'radius', 'c-size'), item('i-px', 'paddingX', 'c-size'), item('i-py', 'paddingY', 'c-size'),
     item('i-gap', 'gap', 'c-size'), { id: 'i-labelTypography', name: 'labelTypography', type: 'typography', collectionId: 'c-size', values: {} },
     item('i-icon', 'iconSize', 'c-size'), item('i-height', 'height', 'c-size'), item('i-card', 'card/bg', 'c-variant'),
+    item('i-border-width', 'border-width', 'c-size'),
 ];
 const binding = { version: 2, templateId: 'button', variables: { variant: 'c-variant', size: 'c-size' } };
 const variables = (over = items) => ({ collections: [variant, size], items: over });
@@ -32,9 +33,15 @@ test('an unbound master binds every mapped property to its group variable', () =
     const { ops, problems } = planBindTokens({ template: button, binding, layers: layers(), variables: variables() });
     assert.deepEqual(problems, []);
     assert.deepEqual(ops.filter(o => o.key === 'root').map(o => [o.varKey, o.itemId]), [
-        ['fills.0', 'i-bg'], ['stroke', 'i-border'], ['radius', 'i-radius'], ['h', 'i-height'], ['padH', 'i-px'], ['padV', 'i-py'], ['gap', 'i-gap'],
+        ['fills.0', 'i-bg'], ['stroke', 'i-border'], ['strokeWidth', 'i-border-width'], ['radius', 'i-radius'], ['h', 'i-height'], ['padH', 'i-px'], ['padV', 'i-py'], ['gap', 'i-gap'],
     ]);
     assert.deepEqual(ops.filter(o => o.key === 'label').map(o => [o.varKey, o.itemId]), [['fills.0', 'i-fg'], ['typography', 'i-labelTypography']]);
+});
+
+test('the root stroke width binds to the border-width variable of its group', () => {
+    const { ops, problems } = planBindTokens({ template: button, binding, layers: layers(), variables: variables() });
+    assert.deepEqual(problems, []);
+    assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'strokeWidth' && o.itemId === 'i-border-width'), 'strokeWidth binds like any other mapped property');
 });
 
 test('a binding that already exists is never overwritten', () => {
@@ -44,7 +51,7 @@ test('a binding that already exists is never overwritten', () => {
 });
 
 test('a fully bound master gives no operations (idempotent)', () => {
-    const root = { 'fills.0': 'i-bg', stroke: 'i-border', radius: 'i-radius', h: 'i-height', padH: 'i-px', padV: 'i-py', gap: 'i-gap' };
+    const root = { 'fills.0': 'i-bg', stroke: 'i-border', strokeWidth: 'i-border-width', radius: 'i-radius', h: 'i-height', padH: 'i-px', padV: 'i-py', gap: 'i-gap' };
     const label = { 'fills.0': 'i-fg', typography: 'i-labelTypography' };
     assert.deepEqual(planBindTokens({ template: button, binding, layers: layers(root, label), variables: variables() }).ops, []);
 });

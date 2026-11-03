@@ -26,6 +26,17 @@ test('code problems become error findings that name the token and the modes', ()
     assert.deepEqual(found, [{ severity: 'error', message: 'Code: bg-hover in variant primary, size sm (no-variable).' }]);
 });
 
+test('an unbound border or outline width tells the designer to run Generate base, then Auto Fix', () => {
+    const found = codeFindings([
+        { token: 'border-width', dimension: 'size', reason: 'no-variable', size: 'md' },
+        { token: 'outline-width', dimension: 'size', reason: 'dimension-unbound' },
+    ]);
+    assert.deepEqual(found, [
+        { severity: 'error', message: 'Code: border-width not bound: run Generate base, then Auto Fix.' },
+        { severity: 'error', message: 'Code: outline-width not bound: run Generate base, then Auto Fix.' },
+    ]);
+});
+
 test('a missing state token of the previewed state is an error finding, and other tokens are left out', () => {
     const unresolved = [
         { token: 'bg-hover', dimension: 'variant', reason: 'no-variable' },

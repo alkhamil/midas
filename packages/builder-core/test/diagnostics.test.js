@@ -28,7 +28,7 @@ const doc = (over = {}) => ({
             {
                 id: 'm1', name: 'Button', type: 'frame', stroke: '#000000', strokeWidth: 1, strokeAlign: 'inside',
                 behavior: { version: 2, templateId: 'button', variables: { variant: model.ids.variant, color: model.ids.color, size: sizeColl.id }, ...over.binding },
-                vars: { 'fills.0': 'v-bg', stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' },
+                vars: { 'fills.0': 'v-bg', stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' },
             },
             { id: 'mt', name: 'Label', type: 'text', parentId: 'm1', vars: { 'fills.0': 'v-fg', typography: 's-labelTypography' } },
             // The spinner is the Button's canvas part: the generator gives every master one (a template's required layers are not optional).
@@ -125,7 +125,7 @@ test('a layer bound to the disabled variable while disabled is not reported', ()
 
 test('a master token that is not bound is a warning, naming the layer, the property and the token', () => {
     const d = doc();
-    d.pages[0].nodes[0].vars = { stroke: 'v-border', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' };
+    d.pages[0].nodes[0].vars = { stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' };
     const found = diagnoseDocument(d);
     assert.deepEqual(found.filter(f => f.code === 'unbound-token'), [{
         severity: 'warning', code: 'unbound-token', node: 'Button', nodeId: 'm1', layer: 'root', prop: 'fill', token: 'bg',

@@ -53,6 +53,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -185,6 +186,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -451,6 +453,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -600,6 +603,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1065,6 +1069,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1365,6 +1370,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1533,6 +1539,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1700,6 +1707,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1913,6 +1921,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2074,6 +2083,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2242,6 +2252,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2452,6 +2463,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2618,6 +2630,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2808,6 +2821,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -3014,6 +3028,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -3977,8 +3992,28 @@
         }
       },
       {
+        "id": "p-n1",
+        "name": "number/literal-36",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 1
+        }
+      },
+      {
+        "id": "sem-n1",
+        "name": "number/literal-36",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n1"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
-        "name": "color/literal-36",
+        "name": "color/literal-37",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -3987,7 +4022,7 @@
       },
       {
         "id": "sem-h00000000",
-        "name": "color/literal-36",
+        "name": "color/literal-37",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -3998,7 +4033,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-37",
+        "name": "color/literal-38",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -4007,7 +4042,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-37",
+        "name": "color/literal-38",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -4864,6 +4899,29 @@
           },
           "xl": {
             "alias": "sem-n20"
+          }
+        }
+      },
+      {
+        "id": "s-borderWidth",
+        "name": "borderWidth",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n1"
+          },
+          "sm": {
+            "alias": "sem-n1"
+          },
+          "md": {
+            "alias": "sem-n1"
+          },
+          "lg": {
+            "alias": "sem-n1"
+          },
+          "xl": {
+            "alias": "sem-n1"
           }
         }
       },

@@ -85,11 +85,11 @@ test('the same inputs give the same output, in token order: size, then variant, 
     const second = resolveTokens(button, binding(), modes(), variables());
     assert.deepEqual(second, first);
     const keys = Object.keys(first.vars);
-    assert.equal(keys.length, 44);
+    assert.equal(keys.length, 45);
     assert.equal(keys[0], '--button-height');
-    assert.equal(keys[11], '--button-bg');
-    assert.equal(keys[23], '--button-outline-color-active');
-    assert.equal(keys[25], '--button-color');
+    assert.equal(keys[12], '--button-bg');
+    assert.equal(keys[24], '--button-outline-color-active');
+    assert.equal(keys[26], '--button-color');
 });
 
 test('a colour alias with its own opacity fades the aliased colour, the way the editor draws it', () => {

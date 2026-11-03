@@ -74,13 +74,13 @@ export const INPUT = {
         readOnly: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', fillEmpty: { prop: 'value', text: 'Text input' } },
     },
     tokens: {
-        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize'],
+        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize', 'borderWidth'],
         fromVariant: ['bg', 'fg', 'border', 'placeholder', 'clear-hover', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', clearIconSize: 'length',
+        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', clearIconSize: 'length', borderWidth: 'length',
         valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', countTypography: 'typography',
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'clear-hover': 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
@@ -97,6 +97,7 @@ export const INPUT = {
         paddingX: { xs: 'padding-x-xs', sm: 'padding-x-sm', md: 'input-padding-x-md', lg: 'input-padding-x-lg', xl: 'input-padding-x-xl', default: 'input-padding-x-md' },
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
         gap: 'gap-xs',
+        borderWidth: 'border-width',
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         // The clear icon is the icon size minus 2 (derived in the base data, antd-sizes.json: clearIconSize*).
@@ -147,7 +148,7 @@ export const INPUT = {
     ],
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {
-        root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
+        root: { fill: 'bg', stroke: 'border', strokeWidth: 'borderWidth', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
         label: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
         prefixText: { fill: 'fg', typography: 'addonTypography' },
         suffixText: { fill: 'fg', typography: 'addonTypography' },

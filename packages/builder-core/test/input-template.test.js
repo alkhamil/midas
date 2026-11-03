@@ -76,6 +76,17 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
+test('the border follows its variable in every combo, and no other state touches the border width', () => {
+    const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
+    assert.match(files['Input.css'], /--input-border-width: 1px;/);
+    for (const m of files['Input.css'].matchAll(/^([^{]+)\{([^}]*)\}/gm)) {
+        const [sel, body] = [m[1], m[2]];
+        if ((/:(hover|active)|:disabled|\[data-blocked\]/.test(sel)) && !/:focus/.test(sel)) {
+            assert.doesNotMatch(body, /border-width|--input-border-width/, `a non-focus state must not touch the border width: ${sel.trim()}`);
+        }
+    }
+});
+
 test('codegen writes the border from the variable, the placeholder rule, and status selectors guarded on the wrapper', () => {
     const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
     const css = files['Input.css'];

@@ -10,6 +10,8 @@ export const NODE_PROPERTIES = {
     frame: {
         fill: { kind: 'color', css: 'background-color' },
         stroke: { kind: 'color', css: 'border-color' },
+        // No css: the root draws no border itself (its stroke is the ::before overlay, read from the node).
+        strokeWidth: { kind: 'length' },
         radius: { kind: 'length', css: 'border-radius' },
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
@@ -170,6 +172,10 @@ export const COLOUR_TOKENS = ['bg', 'fg', 'border', 'outline-color'];
 export const VARIABLE_KEYS = {
     fill: ['fills.0'],
     stroke: ['stroke'],
+    // A length with no CSS mapping on purpose: the border width binds like any mapped property (so bind, Auto Fix
+    // and the variables window pick it up), but the export draws it on the ::before overlay from the node, not as
+    // a root declaration.
+    strokeWidth: ['strokeWidth'],
     radius: ['radius'],
     paddingX: ['padH'],
     paddingY: ['padV'],

@@ -196,8 +196,10 @@ export function findingRows(findings, esc) {
 }
 
 /** The generator's reasons as error findings, one per refused token, naming the modes it was refused in. */
+const WIDTH_TOKENS = new Set(['border-width', 'outline-width']);
 export function codeFindings(problems) {
     return problems.map(p => {
+        if (WIDTH_TOKENS.has(p.token) && (p.reason === 'no-variable' || p.reason === 'dimension-unbound')) return { severity: 'error', message: `Code: ${p.token} not bound: run Generate base, then Auto Fix.` };
         const label = p.token ?? p.slot ?? p.event ?? p.dimension ?? 'component';
         const at = [p.variant && `variant ${p.variant}`, p.size && `size ${p.size}`].filter(Boolean).join(', ');
         return { severity: 'error', message: `Code: ${label}${at ? ` in ${at}` : ''} (${p.reason}).` };

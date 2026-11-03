@@ -52,6 +52,17 @@ test('a state block holds only the tokens that state changes', () => {
     assert.doesNotMatch(hover[1], /--button-fg/);
 });
 
+test('the border follows its variable in every combo, and no other state touches the border width', () => {
+    const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
+    assert.match(css, /--button-border-width: 1px;/);
+    for (const m of css.matchAll(/^([^{]+)\{([^}]*)\}/gm)) {
+        const [sel, body] = [m[1], m[2]];
+        if ((/:(hover|active)|:disabled|\[data-blocked\]/.test(sel)) && !/:focus/.test(sel)) {
+            assert.doesNotMatch(body, /border-width|--button-border-width/, `a non-focus state must not touch the border width: ${sel.trim()}`);
+        }
+    }
+});
+
 test('a loading Button is faded and inert, and no interaction state applies while it loads', () => {
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
     assert.match(css, /\.button\[data-blocked\]:not\(:disabled\) \{\n  opacity: 0\.65;\n  pointer-events: none;\n\}/);

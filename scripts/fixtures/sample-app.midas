@@ -1077,6 +1077,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -1338,6 +1339,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -2904,6 +2906,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -3208,6 +3211,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -3360,6 +3364,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -4915,6 +4920,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -5441,6 +5447,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -5849,6 +5856,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -6366,6 +6374,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -6892,6 +6901,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -7298,6 +7308,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -8833,6 +8844,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -9092,6 +9104,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -9244,6 +9257,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -10741,6 +10755,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -11013,6 +11028,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -11619,6 +11635,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -12518,6 +12535,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -12670,6 +12688,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -12942,6 +12961,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -13235,6 +13255,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -13385,6 +13406,7 @@
           "vars": {
             "fills.0": "v-bg",
             "stroke": "v-border",
+            "strokeWidth": "s-borderWidth",
             "radius": "s-radius",
             "h": "s-height",
             "padH": "s-paddingX",
@@ -14636,8 +14658,28 @@
         }
       },
       {
+        "id": "p-n1",
+        "name": "number/literal-29",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 1
+        }
+      },
+      {
+        "id": "sem-n1",
+        "name": "number/literal-29",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n1"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
-        "name": "color/literal-29",
+        "name": "color/literal-30",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14646,7 +14688,7 @@
       },
       {
         "id": "sem-h00000000",
-        "name": "color/literal-29",
+        "name": "color/literal-30",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14657,7 +14699,7 @@
       },
       {
         "id": "p-hffffff",
-        "name": "color/literal-30",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14666,7 +14708,7 @@
       },
       {
         "id": "sem-hffffff",
-        "name": "color/literal-30",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14677,7 +14719,7 @@
       },
       {
         "id": "p-hf4f4f5",
-        "name": "color/literal-31",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14686,7 +14728,7 @@
       },
       {
         "id": "sem-hf4f4f5",
-        "name": "color/literal-31",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14697,7 +14739,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-32",
+        "name": "color/literal-33",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14706,7 +14748,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-32",
+        "name": "color/literal-33",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -15506,6 +15548,29 @@
           },
           "mode-xl": {
             "alias": "sem-n20"
+          }
+        }
+      },
+      {
+        "id": "s-borderWidth",
+        "name": "borderWidth",
+        "type": "number",
+        "collectionId": "col-size",
+        "values": {
+          "mode-xs": {
+            "alias": "sem-n1"
+          },
+          "mode-sm": {
+            "alias": "sem-n1"
+          },
+          "mode-md": {
+            "alias": "sem-n1"
+          },
+          "mode-lg": {
+            "alias": "sem-n1"
+          },
+          "mode-xl": {
+            "alias": "sem-n1"
           }
         }
       },
