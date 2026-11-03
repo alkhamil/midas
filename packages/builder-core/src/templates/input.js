@@ -42,6 +42,10 @@ export const INPUT = {
     focusTarget: 'wrapper',
     interaction: { focus: 'halo', wave: false },
     outline: { width: 2, offset: 1 },
+    // A new Input is left aligned and centred, and a fixed 343px wide; the node owns both after that.
+    rootAlign: 'center',
+    rootPrimaryAlign: 'start',
+    rootWidth: 343,
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'filled', 'borderless'] },
         status: { source: 'variable', collection: 'Status', modes: ['default', 'error', 'warning'] },

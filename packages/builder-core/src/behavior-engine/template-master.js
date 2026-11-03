@@ -117,7 +117,12 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     const specs = layerSpecsOf(template);
     frame.component = true;
     // A master lays its parts out as an auto layout frame, the way the canvas lays out a component; a frame that is already auto layout keeps its own.
-    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: template.rootLayout ?? 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug' });
+    // The alignment and the width are defaults, written once with the layout: after that the node owns them, so a second run, Auto Fix or a sync leaves them be.
+    if (!frame.layout || frame.layout === 'none') {
+        Object.assign(frame, { layout: template.rootLayout ?? 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug' });
+        if (template.rootPrimaryAlign !== undefined) frame.primaryAlign = template.rootPrimaryAlign;
+        if (template.rootWidth !== undefined) Object.assign(frame, { w: template.rootWidth, layoutSizingH: 'fixed' });
+    }
     // A template root that binds a height is fixed vertically, whatever the frame was (the Size height is its box).
     frame.layoutSizingV = rootSizingV(template);
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };

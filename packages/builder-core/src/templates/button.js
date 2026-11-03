@@ -116,6 +116,7 @@ export const BUTTON = {
     // The cross-axis alignment of the root: the label and the icon slots share one centre line, and the height is the Size token.
     // Padding excludes the 1px border (antd's lineWidth is subtracted in the token), and the root is border-box, so the box is exactly `height`.
     rootAlign: 'center',
+    rootPrimaryAlign: 'center',
     // Which token drives which property of which node (root, or an anatomy slot). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },

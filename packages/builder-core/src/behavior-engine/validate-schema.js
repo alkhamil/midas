@@ -158,6 +158,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...tokenRoleProblems(schema, allTokens));
     out.push(...elementProblems(schema));
     if (schema.rootLayout !== undefined && !['horizontal', 'vertical'].includes(schema.rootLayout)) out.push(`rootLayout "${schema.rootLayout}" must be horizontal or vertical`);
+    if (schema.rootPrimaryAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootPrimaryAlign)) out.push(`rootPrimaryAlign "${schema.rootPrimaryAlign}" must be start, center or end`);
+    if (schema.rootWidth !== undefined && !(typeof schema.rootWidth === 'number' && Number.isFinite(schema.rootWidth) && schema.rootWidth > 0)) out.push('rootWidth must be a positive number of px');
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));

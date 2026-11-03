@@ -173,6 +173,10 @@ export interface TemplateSchema {
     rootAlign?: 'start' | 'center' | 'end';
     /** The auto layout direction a new master is created with (horizontal when absent). Like `rootAlign` it only seeds a new master: the node's own layout decides after that. */
     rootLayout?: 'horizontal' | 'vertical';
+    /** The main-axis alignment a new master is created with (start when absent); a default the node owns, like `rootAlign`. */
+    rootPrimaryAlign?: 'start' | 'center' | 'end';
+    /** The fixed width in px a new master is created with (the Input's 343): a default the node owns, not a variable. Absent: the master hugs. */
+    rootWidth?: number;
     /** The content slots: frames of the component that instances fill with their own layers. Not the icon slots (`icons`). */
     slots?: SlotDef[];
     /** The CSS pseudo-class each state is written as. */
