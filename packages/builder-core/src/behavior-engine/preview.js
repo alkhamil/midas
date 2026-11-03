@@ -16,9 +16,11 @@ export function activeStateOf(template, props, preview) {
     const names = [];
     /** @type {Record<string, string>} */
     const overrides = {};
-    for (const [name, def] of Object.entries(template.persistentStates)) {
-        if (props[def.prop] !== true) continue;
-        names.push(name);
+    for (const [own, alias] of Object.entries(template.persistentStates)) {
+        if (props[alias.prop] !== true) continue;
+        // An alias is the state it names turned on by its own prop: it draws that state.
+        const name = alias.as ?? own, def = template.persistentStates[name];
+        if (!names.includes(name)) names.push(name);
         Object.assign(overrides, def.tokens);
     }
     if (names.length) return { state: names.join('+'), overrides };

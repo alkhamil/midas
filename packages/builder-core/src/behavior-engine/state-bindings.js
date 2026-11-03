@@ -8,7 +8,7 @@
 // - Running the plan again on its own result gives no operations.
 import { dimensionOfGroup } from './validate-schema.js';
 import { variableKey } from './tokens.js';
-import { VARIABLE_KEYS } from './display.js';
+import { VARIABLE_KEYS, stateOn } from './display.js';
 
 /** @typedef {{ key: string, instance: { id: string, vars?: Record<string, string> }, master: { vars?: Record<string, string> } | null }} LayerPair */
 /** @typedef {{ instanceId: string, prop: string, value: string | null }} BindingOp `prop` is the vars key the binding is written through */
@@ -35,7 +35,7 @@ export function planStateBindings({ template, binding, props, layers, variables 
     const problems = [];
     const items = variables.items || [];
     for (const { key, prop, base, state, stateToken } of derivedNodeProps(template)) {
-        const on = props[template.persistentStates[state].prop] === true;
+        const on = stateOn(template, state, props);
         const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(base));
         const dimension = group ? dimensionOfGroup(group, template.props) : null;
         const collectionId = dimension ? binding.variables[dimension] : null;

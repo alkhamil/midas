@@ -114,6 +114,8 @@ export const INPUT = {
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {
         disabled: { prop: 'disabled', tokens: { bg: 'bg-disabled', fg: 'fg-disabled' } },
+        // Read only is non-interactive too and draws the disabled look: it is the disabled state turned on by its own prop.
+        readOnly: { prop: 'readOnly', as: 'disabled', tokens: {} },
     },
     // Preview only: studio-side, colours only. Never written to the document.
     previewStates: {

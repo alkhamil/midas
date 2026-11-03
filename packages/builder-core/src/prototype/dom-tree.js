@@ -18,7 +18,7 @@ import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anato
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { canvasPartsOf, counterLabel, placeholderPartOf } from '../behavior-engine/display.js';
+import { canvasPartsOf, counterLabel, placeholderPartOf, stateOn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -243,7 +243,7 @@ function renderTemplate(n, template, parent, scope) {
         attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
-    if (!control && props[template.element.disabledState] === true) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
+    if (!control && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
     const children = [];
@@ -273,7 +273,7 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
-                if (props[template.element.disabledState] === true) inputAttrs.disabled = true;
+                if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
                 children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
                 const counter = partElement(n, 'count', scope);
                 if (counter) children.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });

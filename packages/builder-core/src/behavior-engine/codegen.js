@@ -90,6 +90,8 @@ function componentSource(template, name, problems) {
         params.push(event.name);
     }
     const slotted = (template.slots ?? []).length > 0;
+    // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
+    const disabledProp = Object.values(template.persistentStates).filter(def => def.prop === template.persistentStates[template.element.disabledState].prop || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
     const children = [];
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
@@ -119,7 +121,7 @@ function componentSource(template, name, problems) {
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === "" ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${template.persistentStates[template.element.disabledState].prop}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === "" ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced) { children.push(...sidedAfter); sidedAfterPlaced = true; }
@@ -150,7 +152,6 @@ function componentSource(template, name, problems) {
         children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
     }
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
-    const disabledProp = template.persistentStates[disabledState].prop;
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
@@ -402,7 +403,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         const base = previewOf(template, binding, combo, variables, defaults, 'default');
         for (const u of base.unresolved) problems.push({ ...u, ...combo });
         if (Object.keys(base.vars).length) blocks.push(`${selector} {\n${declarations(base.vars)}}\n`);
-        for (const state of [...Object.keys(template.persistentStates), ...Object.keys(template.previewStates)]) {
+        for (const state of [...Object.keys(template.persistentStates).filter(name => !template.persistentStates[name].as), ...Object.keys(template.previewStates)]) {
             const pseudo = pseudoOf(template, state);
             const persistent = template.persistentStates[state];
             const changed = persistent

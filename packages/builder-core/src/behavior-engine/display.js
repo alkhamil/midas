@@ -58,6 +58,17 @@ export const targetKindOf = (template, key) => {
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */
 export const counterLabel = (value, max) => `${String(value ?? '').length}${max != null ? ` / ${max}` : ''}`;
 
+/**
+ * Whether a persistent state is on: its own prop is set, or the prop of a state that is an alias of it (`as`: Read only is the disabled state turned on by
+ * its own prop). Every surface asks this one question.
+ * @param {any} template
+ * @param {string} state
+ * @param {Record<string, unknown>} props the resolved props
+ */
+export function stateOn(template, state, props) {
+    return Object.entries(template.persistentStates).some(([name, def]) => (name === state || /** @type {any} */ (def).as === state) && props[/** @type {any} */ (def).prop] === true);
+}
+
 /** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), `{ all: [...] }` (every one holds) or `{ any: [...] }` (one holds). */
 export function conditionHolds(cond, props) {
     if (cond.all) return cond.all.every(c => conditionHolds(c, props));

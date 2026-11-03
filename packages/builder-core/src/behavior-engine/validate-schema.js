@@ -218,6 +218,12 @@ function stateProblems(schema, allTokens, props) {
         const prop = props[def.prop];
         if (!prop || prop.source !== 'literal' || prop.type !== 'boolean') out.push(`persistent state "${state}" needs a boolean prop, not "${def.prop}"`);
         if (!isPlainObject(def.tokens)) { out.push(`persistent state "${state}" must name its tokens`); continue; }
+        if (def.as !== undefined) {
+            const target = isPlainObject(persistent) ? persistent[def.as] : undefined;
+            if (!isPlainObject(target)) out.push(`persistent state "${state}" is an alias of "${def.as}", which is not a persistent state`);
+            else if (target.as !== undefined) out.push(`persistent state "${state}" is an alias of "${def.as}", which is itself an alias`);
+            if (Object.keys(def.tokens).length) out.push(`persistent state "${state}" is an alias and takes no tokens of its own`);
+        }
         for (const [base, stateToken] of Object.entries(def.tokens)) {
             if (!allTokens.includes(base)) out.push(`persistent state "${state}" overrides "${base}", which is not a token`);
             if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`persistent state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
@@ -511,6 +517,7 @@ function nodeProblems(schema) {
     }
     const states = [...Object.keys(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}), ...Object.keys(isPlainObject(schema.previewStates) ? schema.previewStates : {})];
     const pseudo = isPlainObject(schema.statePseudo) ? schema.statePseudo : {};
-    for (const state of states) if (!String(pseudo[state] ?? '').startsWith(':')) out.push(`state "${state}" has no pseudo-class in statePseudo`);
+    const aliases = new Set(Object.entries(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}).filter(([, d]) => isPlainObject(d) && d.as !== undefined).map(([name]) => name));
+    for (const state of states) if (!aliases.has(state) && !String(pseudo[state] ?? '').startsWith(':')) out.push(`state "${state}" has no pseudo-class in statePseudo`);
     return out;
 }
