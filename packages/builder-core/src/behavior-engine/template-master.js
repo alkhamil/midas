@@ -121,6 +121,7 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     // A template root that binds a height is fixed vertically, whatever the frame was (the Size height is its box).
     frame.layoutSizingV = rootSizingV(template);
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
+    const defaults = resolveProps(template, {});
     const layer = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {
         const hit = spec.optional && spec.role === 'text' ? children.find(c => !claimed.has(c.id) && c.behavior?.text === spec.key) : matchOf(spec, children, claimed);
@@ -133,6 +134,11 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
         if (spec.role === 'slot') continue;
         const node = nodeOf(spec, template, binding, idOf, frame.id);
+        // A part or affix text a condition shows only for a prop that is off at its default starts hidden, as an instance of the master draws it (partWrites).
+        if (spec.role === 'part' || spec.role === 'text') {
+            const written = partWrites(template, defaults).find(w => w.key === spec.key && w.field === 'visible');
+            if (written) node.visible = written.value === true;
+        }
         if (spec.role === 'content') { created.push(node); claimed.add(node.id); continue; }
         created.push(node);
         claimed.add(node.id);
