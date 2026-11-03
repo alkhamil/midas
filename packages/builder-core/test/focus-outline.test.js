@@ -64,6 +64,9 @@ test('the outline is an offset in px; the width is the outline-width token. A te
     const bad = structuredClone(BUTTON);
     bad.outline = { offset: -1 };
     assert.match(validateTemplateSchema(bad).join('\n'), /outline offset must be a number of px, 0 or more/);
+    const legacy = structuredClone(BUTTON);
+    legacy.outline = { width: 2, offset: 0 };
+    assert.match(validateTemplateSchema(legacy).join('\n'), /outline\.width is no longer read: remove it and bind the outline-width token instead/);
     const missing = structuredClone(BUTTON);
     delete missing.outline;
     assert.deepEqual(validateTemplateSchema(missing), [], 'no outline is a template with no focus ring');

@@ -196,6 +196,7 @@ export function findingRows(findings, esc) {
 }
 
 /** The generator's reasons as error findings, one per refused token, naming the modes it was refused in. */
+/* Width tokens resolve through variables the designer owns: when one is unbound the fix is always Generate base, then Auto Fix, so the finding says so instead of the raw reason. */
 const WIDTH_TOKENS = new Set(['border-width', 'outline-width']);
 export function codeFindings(problems) {
     return problems.map(p => {

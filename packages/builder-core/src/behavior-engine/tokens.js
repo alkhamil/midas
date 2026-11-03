@@ -68,7 +68,7 @@ export function withOpacity(color, percent) {
  * @param {any[]} items
  * @returns {{ item: any, value: unknown, opacities: number[] } | { reason: string }}
  */
-function valueIn(item, modeOf, items) {
+export function valueIn(item, modeOf, items) {
     const seen = new Set();
     /** @type {number[]} */
     const opacities = [];

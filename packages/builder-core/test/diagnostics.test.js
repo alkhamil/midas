@@ -123,6 +123,16 @@ test('a layer bound to the disabled variable while disabled is not reported', ()
     assert.deepEqual(found, []);
 });
 
+test('a width token with different values per mode warns, naming the master, the token and the values', () => {
+    const sized = Object.fromEntries(sizeColl.modes.map(m => [m.id, m.id === sizeColl.modes[1].id ? 3 : 1]));
+    const varied = model.items.map(i => i.name === 'borderWidth' ? { ...i, values: sized } : i);
+    const found = diagnoseDocument(doc({ variables: { items: varied } })).filter(f => f.code === 'width-modes-differ');
+    assert.equal(found.length, 1);
+    assert.equal(found[0].node, 'Button');
+    assert.equal(found[0].token, 'borderWidth');
+    assert.match(found[0].message, /differs by mode/);
+});
+
 test('an outline no wider than the border warns, naming the master and both resolved widths', () => {
     const widened = name => model.items.map(i => i.name === name
         ? { ...i, values: Object.fromEntries(sizeColl.modes.map(m => [m.id, 2])) }

@@ -511,6 +511,8 @@ function outlineProblems(schema) {
     if (o === undefined) return [];
     if (!isPlainObject(o)) return ['outline must be an object (offset)'];
     // The width is the outline-width token now, not a static number; only the extra gap stays on the schema.
+    // A stale width is refused loudly, never silently ignored (old templates fail to open until it is removed).
+    if ('width' in o) return ['outline.width is no longer read: remove it and bind the outline-width token instead.'];
     return ['offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
 }
 

@@ -3,7 +3,7 @@
 // something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
-import { resolveTokens, tokenValueOf, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
+import { resolveTokens, tokenValueOf, valueIn, variableIdNamed, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
 import { roleOf } from './auto-fix.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
@@ -194,6 +194,23 @@ export function diagnoseDocument(doc) {
             const outlineWidth = tokenValueOf(template, m.behavior, variables, 'outlineWidth');
             if (borderWidth !== null && outlineWidth !== null && outlineWidth <= borderWidth) {
                 out.push({ severity: 'warning', code: 'outline-swallowed', node: m.name, nodeId: m.id, borderWidth, outlineWidth, message: `${m.name}: outline width ${outlineWidth}px is not wider than border width ${borderWidth}px, so no focus ring is visible.` });
+            }
+            // A width token is single-step: one value in every mode. Geometry reads the first mode, so differing
+            // per-mode values warn (missing or ambiguous values are reported as unbound-token instead and skip here).
+            const sizeId = m.behavior.variables?.size ?? null;
+            const sizeColl = sizeId ? collections.find(c => c.id === sizeId) : null;
+            for (const token of ['borderWidth', 'outlineWidth']) {
+                const item = sizeColl ? items.find(i => i.id === variableIdNamed(items, sizeColl.id, token)) : null;
+                if (!item) continue;
+                const seen = new Map();
+                for (const mode of sizeColl.modes || []) {
+                    const r = valueIn(item, () => mode.id, items);
+                    if (!('reason' in r) && typeof r.value === 'number' && Number.isFinite(r.value)) seen.set(mode.name ?? mode.id, r.value);
+                }
+                if (new Set(seen.values()).size > 1) {
+                    const each = [...seen].map(([name, value]) => `${name} ${value}px`).join(', ');
+                    out.push({ severity: 'warning', code: 'width-modes-differ', node: m.name, nodeId: m.id, token, message: `${m.name}: ${token} differs by mode (${each}), so geometry uses the first mode's value.` });
+                }
             }
         }
     }
