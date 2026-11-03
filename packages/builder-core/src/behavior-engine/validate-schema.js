@@ -132,7 +132,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
     const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && !s.optional);
-    if (text.length === 0) out.push('anatomy needs a required text or control slot');
+    if (text.length === 0 && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, or a content slot');
 
     const props = isPlainObject(schema.props) ? schema.props : null;
     if (!props) out.push('props must be an object');
