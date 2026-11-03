@@ -52,7 +52,7 @@ const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: temp
 
 /** The TypeScript type of a schema prop: a variable prop is the mode id string, a literal its type, an enum its union, an icon a ReactNode. */
 const typeOfProp = def => def.source === 'variable' ? 'string' : def.type === 'enum' ? def.options.map(o => JSON.stringify(o).replace(/"/g, "'")).join(' | ')
-    : def.type === 'number' ? 'number | null' : def.type === 'iconComponent' ? 'ReactNode' : def.type;
+    : def.type === 'number' ? (def.default === null ? 'number | null' : 'number') : def.type === 'iconComponent' ? 'ReactNode' : def.type;
 
 /** The props type and the imports of a slotted component (the conventions of play-from-tsx.md 2.1). */
 function propsTypeOf(template, name, elementType, attrType) {
@@ -65,7 +65,7 @@ function propsTypeOf(template, name, elementType, attrType) {
     const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
     const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
     return [
-        "import { forwardRef } from 'react';",
+        template.slots.some(slot => slot.repeat) ? "import { Fragment, forwardRef } from 'react';" : "import { forwardRef } from 'react';",
         `import type { ${[...new Set(used)].sort().join(', ')} } from 'react';`,
         `import './${name}.css';`,
         '',
@@ -143,8 +143,10 @@ function componentSource(template, name, problems) {
     if (!framePlaced) children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
     for (const { prop, slot } of slotPropsOf(template)) {
-        const element = `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
-        children.push(slot.showEmpty === true ? element : `{filled(${prop}) && ${element}}`);
+        // A repeating slot draws its children `<id>Copies` times (0 while they are empty), in one slot element; without copies it is empty like any other.
+        const element = slot.repeat ? `<div className="${template.id}-${slot.id}">{Array.from({ length: ${slot.id}Copies }, (_, i) => <Fragment key={i}>{${prop}}</Fragment>)}</div>` : `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
+        const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
+        children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
     }
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const disabledProp = template.persistentStates[disabledState].prop;
@@ -166,11 +168,16 @@ function componentSource(template, name, problems) {
     if (slotted) {
         const [attrType, elementType] = ELEMENT_TYPES[tag] ?? ['HTMLAttributes', `HTMLElementTagNameMap['${tag}']`];
         const slotParams = [...params, ...slotPropsOf(template).map(s => s.prop), 'className', 'style', '...rest'];
-        const needsFilled = template.slots.some(slot => slot.showEmpty !== true);
+        const needsFilled = template.slots.some(slot => slot.showEmpty !== true || slot.repeat);
+        const counts = slotPropsOf(template).filter(({ slot }) => slot.repeat).map(({ prop, slot }) => {
+            const fallback = typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
+            return `  const ${slot.id}Copies = filled(${prop}) ? copies(${slot.repeat}, ${fallback}) : 0;`;
+        });
         return [
             ...propsTypeOf(template, name, elementType, attrType),
             `export const ${name} = forwardRef<${elementType}, ${name}Props>(function ${name}({ ${slotParams.join(', ')} }, ref) {`,
             `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+            ...counts,
             '  return (',
             `    <${tag}`,
             ...attrs.map(attr => `      ${attr}`),
@@ -181,6 +188,7 @@ function componentSource(template, name, problems) {
             '});',
             ...(template.interaction?.wave ? ['', 'function waveDown(el: (HTMLElement & { disabled?: boolean }) | null) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
             ...(needsFilled ? ['', 'function filled(node: ReactNode): boolean {', `  return Array.isArray(node) ? node.some(filled) : node !== undefined && node !== null && typeof node !== 'boolean' && node !== '';`, '}'] : []),
+            ...(counts.length ? ['', 'function copies(count: number | null | undefined, fallback: number): number {', '  const n = count ?? fallback;', '  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;', '}'] : []),
             '',
         ].join('\n');
     }
