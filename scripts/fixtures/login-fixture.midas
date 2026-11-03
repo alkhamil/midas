@@ -4811,8 +4811,28 @@
         }
       },
       {
+        "id": "p-n2",
+        "name": "number/literal-37",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 2
+        }
+      },
+      {
+        "id": "sem-n2",
+        "name": "number/literal-37",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n2"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
-        "name": "color/literal-37",
+        "name": "color/literal-38",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -4821,7 +4841,7 @@
       },
       {
         "id": "sem-h00000000",
-        "name": "color/literal-37",
+        "name": "color/literal-38",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -4832,7 +4852,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-38",
+        "name": "color/literal-39",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -4841,7 +4861,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-38",
+        "name": "color/literal-39",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -5721,6 +5741,29 @@
           },
           "xl": {
             "alias": "sem-n1"
+          }
+        }
+      },
+      {
+        "id": "s-outlineWidth",
+        "name": "outlineWidth",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n2"
+          },
+          "sm": {
+            "alias": "sem-n2"
+          },
+          "md": {
+            "alias": "sem-n2"
+          },
+          "lg": {
+            "alias": "sem-n2"
+          },
+          "xl": {
+            "alias": "sem-n2"
           }
         }
       },

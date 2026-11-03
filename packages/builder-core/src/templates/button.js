@@ -16,9 +16,9 @@ export const BUTTON = {
     ],
     // The managed icon slots (see icon-slots.js).
     icons: ICON_DEFS,
-    // The focus outline: its width counts the border, and it is drawn with no gap from the border's inner edge (the engine
-    // offsets it back by the master's border width); outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
-    outline: { width: 2, offset: 0 },
+    // The focus outline: its width is the outline-width token (it counts the border) and it is drawn with no gap from
+    // the border's inner edge; outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
+    outline: { offset: 0 },
     interaction: { focus: 'outline', wave: true },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'], styles: { dashed: { borderStyle: 'dashed' } } },
@@ -31,7 +31,7 @@ export const BUTTON = {
         disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'loading', clearsPreview: true },
     },
     tokens: {
-        fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'borderWidth'],
+        fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'borderWidth', 'outlineWidth'],
         fromVariant: ['bg', 'fg', 'border', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
         fromColor: [
             'color', 'color-hover', 'color-active', 'color-border', 'color-border-hover', 'color-border-active',
@@ -41,7 +41,7 @@ export const BUTTON = {
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', labelTypography: 'typography', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', borderWidth: 'length',
+        height: 'length', labelTypography: 'typography', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', borderWidth: 'length', outlineWidth: 'length',
         bg: 'color', fg: 'color', border: 'color', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color', 'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
         color: 'color', 'color-hover': 'color', 'color-active': 'color', 'color-border': 'color', 'color-border-hover': 'color', 'color-border-active': 'color',
@@ -59,6 +59,7 @@ export const BUTTON = {
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         borderWidth: 'border-width',
+        outlineWidth: 'outline-width',
         bg: { outlined: 'bg', dashed: 'bg', solid: './color-solid', filled: './color-bg', text: 'transparent', link: 'transparent', default: 'bg' },
         fg: { outlined: './color-text', dashed: './color-text', solid: './color-solid-text', filled: './color', text: './color-text', link: './color-text', default: './color-text' },
         border: { outlined: './color-border', dashed: './color-border', solid: 'transparent', filled: 'transparent', text: 'transparent', link: 'transparent', default: './color-border' },

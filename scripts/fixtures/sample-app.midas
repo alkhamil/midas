@@ -14678,8 +14678,28 @@
         }
       },
       {
+        "id": "p-n2",
+        "name": "number/literal-30",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 2
+        }
+      },
+      {
+        "id": "sem-n2",
+        "name": "number/literal-30",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n2"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
-        "name": "color/literal-30",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14688,7 +14708,7 @@
       },
       {
         "id": "sem-h00000000",
-        "name": "color/literal-30",
+        "name": "color/literal-31",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14699,7 +14719,7 @@
       },
       {
         "id": "p-hffffff",
-        "name": "color/literal-31",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14708,7 +14728,7 @@
       },
       {
         "id": "sem-hffffff",
-        "name": "color/literal-31",
+        "name": "color/literal-32",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14719,7 +14739,7 @@
       },
       {
         "id": "p-hf4f4f5",
-        "name": "color/literal-32",
+        "name": "color/literal-33",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14728,7 +14748,7 @@
       },
       {
         "id": "sem-hf4f4f5",
-        "name": "color/literal-32",
+        "name": "color/literal-33",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -14739,7 +14759,7 @@
       },
       {
         "id": "p-ha1a1aa",
-        "name": "color/literal-33",
+        "name": "color/literal-34",
         "type": "color",
         "collectionId": "c-primitives",
         "values": {
@@ -14748,7 +14768,7 @@
       },
       {
         "id": "sem-ha1a1aa",
-        "name": "color/literal-33",
+        "name": "color/literal-34",
         "type": "color",
         "collectionId": "c-semantic",
         "values": {
@@ -15571,6 +15591,29 @@
           },
           "mode-xl": {
             "alias": "sem-n1"
+          }
+        }
+      },
+      {
+        "id": "s-outlineWidth",
+        "name": "outlineWidth",
+        "type": "number",
+        "collectionId": "col-size",
+        "values": {
+          "mode-xs": {
+            "alias": "sem-n2"
+          },
+          "mode-sm": {
+            "alias": "sem-n2"
+          },
+          "mode-md": {
+            "alias": "sem-n2"
+          },
+          "mode-lg": {
+            "alias": "sem-n2"
+          },
+          "mode-xl": {
+            "alias": "sem-n2"
           }
         }
       },

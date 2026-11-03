@@ -7865,6 +7865,26 @@
         }
       },
       {
+        "id": "p-n2",
+        "name": "number/literal-18",
+        "type": "number",
+        "collectionId": "c-primitives",
+        "values": {
+          "base": 2
+        }
+      },
+      {
+        "id": "sem-n2",
+        "name": "number/literal-18",
+        "type": "number",
+        "collectionId": "c-semantic",
+        "values": {
+          "base": {
+            "alias": "p-n2"
+          }
+        }
+      },
+      {
         "id": "p-h00000000",
         "name": "color/literal-0",
         "type": "color",
@@ -8779,6 +8799,29 @@
         }
       },
       {
+        "id": "s-outlineWidth",
+        "name": "outlineWidth",
+        "type": "number",
+        "collectionId": "c-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n2"
+          },
+          "sm": {
+            "alias": "sem-n2"
+          },
+          "md": {
+            "alias": "sem-n2"
+          },
+          "lg": {
+            "alias": "sem-n2"
+          },
+          "xl": {
+            "alias": "sem-n2"
+          }
+        }
+      },
+      {
         "id": "s-labelTypography",
         "name": "labelTypography",
         "type": "typography",
@@ -9317,26 +9360,6 @@
         }
       },
       {
-        "id": "p-n2",
-        "name": "number/literal-18",
-        "type": "number",
-        "collectionId": "c-primitives",
-        "values": {
-          "base": 2
-        }
-      },
-      {
-        "id": "sem-n2",
-        "name": "number/literal-18",
-        "type": "number",
-        "collectionId": "c-semantic",
-        "values": {
-          "base": {
-            "alias": "p-n2"
-          }
-        }
-      },
-      {
         "id": "p-n18",
         "name": "number/literal-22",
         "type": "number",
@@ -9662,6 +9685,29 @@
           },
           "xl": {
             "alias": "sem-n1"
+          }
+        }
+      },
+      {
+        "id": "in-s-outlineWidth",
+        "name": "outlineWidth",
+        "type": "number",
+        "collectionId": "c-input-size",
+        "values": {
+          "xs": {
+            "alias": "sem-n2"
+          },
+          "sm": {
+            "alias": "sem-n2"
+          },
+          "md": {
+            "alias": "sem-n2"
+          },
+          "lg": {
+            "alias": "sem-n2"
+          },
+          "xl": {
+            "alias": "sem-n2"
           }
         }
       },

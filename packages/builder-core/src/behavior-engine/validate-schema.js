@@ -509,8 +509,9 @@ function focusTargetProblems(schema) {
 function outlineProblems(schema) {
     const o = schema.outline;
     if (o === undefined) return [];
-    if (!isPlainObject(o)) return ['outline must be an object (width and offset)'];
-    return ['width', 'offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
+    if (!isPlainObject(o)) return ['outline must be an object (offset)'];
+    // The width is the outline-width token now, not a static number; only the extra gap stays on the schema.
+    return ['offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
 }
 
 /**

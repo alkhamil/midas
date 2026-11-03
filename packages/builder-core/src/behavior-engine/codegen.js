@@ -7,7 +7,7 @@ import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
-import { cssVarOf } from './tokens.js';
+import { cssVarOf, tokenValueOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { modeOfStyleKey } from './variant-style.js';
@@ -276,7 +276,7 @@ function shownJsx(cond) {
  * token's custom property. Literal sources (width, text) are not CSS and are written by the component.
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
-function displayRules(template, master, childrenOf) {
+function displayRules(template, master, childrenOf, geometry) {
     const tokens = Object.values(template.tokens).flat();
     const entry = labelEntryOf(master.id, childrenOf, master);
     return Object.entries(template.display).map(([key, props]) => {
@@ -290,9 +290,10 @@ function displayRules(template, master, childrenOf) {
         if (key === 'root' && template.outline) {
             // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
             // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
-            const border = master.strokeWidth ?? 1;
-            if (template.outline.width <= border) decls.push('  outline: none;\n');
-            else decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset - border}px;\n`);
+            // Both widths resolve from the binding (see tokenValueOf): a null geometry means the token pass already
+            // refused the export, and the CSS below is discarded with it.
+            if (geometry.outline === null || geometry.border === null || geometry.outline <= geometry.border) decls.push('  outline: none;\n');
+            else decls.push(`  outline: ${geometry.outline}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset - geometry.border}px;\n`);
             decls.push(`  transition: ${FOCUS_TRANSITION};\n`);
         }
         // The root draws no border: its stroke is the ::before overlay (see strokeRules), so the children sit inside the padding.
@@ -487,7 +488,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         modes[dim] = (collection.modes || []).map(/** @param {{ id: string }} m */ m => m.id);
     }
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
-    const blocks = displayRules(template, master, childrenOf);
+    const geometry = { border: tokenValueOf(template, binding, variables, 'borderWidth'), outline: tokenValueOf(template, binding, variables, 'outlineWidth') };
+    const blocks = displayRules(template, master, childrenOf, geometry);
     for (const [dim, def] of variableProps(template)) {
         // A style is keyed by the mode's name; the selector names the mode's id, as every other mode rule does.
         const collection = (variables.collections || []).find(c => c.id === binding.variables[dim]);

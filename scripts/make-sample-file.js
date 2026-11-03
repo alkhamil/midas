@@ -233,7 +233,7 @@ function buildVariables() {
         sizeValues: {
             height: sMode(24, 30, 40, 48, 56), paddingX: sMode(8, 12, 16, 20, 24),
             paddingY: sMode(4, 6, 10, 14, 16), gap: sMode(4, 6, 8, 10, 12), radius: sMode(4, 6, 8, 10, 12), iconSize: sMode(12, 14, 16, 18, 20),
-            borderWidth: sMode(1, 1, 1, 1, 1),
+            borderWidth: sMode(1, 1, 1, 1, 1), outlineWidth: sMode(2, 2, 2, 2, 2),
         },
     });
     const collections = [

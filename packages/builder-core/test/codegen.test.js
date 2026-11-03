@@ -52,6 +52,19 @@ test('a state block holds only the tokens that state changes', () => {
     assert.doesNotMatch(hover[1], /--button-fg/);
 });
 
+test('the outline follows the outline-width variable, and vanishes when it no longer exceeds the border', () => {
+    const sized = (token, value) => ({
+        collections: model.collections,
+        items: model.items.map(i => i.name === token
+            ? { ...i, values: Object.fromEntries(model.collections.find(c => c.name === 'Button Size').modes.map(m => [m.id, value])) }
+            : i),
+    });
+    const wide = generateComponent(button, binding(), sized('outlineWidth', 3), 'Button', master, noKids).files['Button.css'];
+    assert.match(wide, /\.button \{\n(?:.*\n)*?\s*outline: 3px solid var\(--button-outline-color\);\n\s*outline-offset: -1px;/);
+    const swallowed = generateComponent(button, binding(), sized('borderWidth', 2), 'Button', master, noKids).files['Button.css'];
+    assert.match(swallowed, /\.button \{\n(?:.*\n)*?\s*outline: none;/);
+});
+
 test('the border follows its variable in every combo, and no other state touches the border width', () => {
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
     assert.match(css, /--button-border-width: 1px;/);

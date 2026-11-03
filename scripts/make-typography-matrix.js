@@ -28,7 +28,7 @@ function node(type, props) {
 }
 
 /** Non-text sizing tokens for the five modes, in mode order (xs to xl). The text is the typography token, not these. */
-const SIZING = { height: [24, 32, 36, 40, 48], paddingX: [8, 12, 12, 16, 20], paddingY: [2, 6, 8, 8, 10], gap: [4, 6, 6, 8, 10], radius: [4, 6, 6, 8, 10], iconSize: [12, 14, 14, 16, 18], borderWidth: [1, 1, 1, 1, 1] };
+const SIZING = { height: [24, 32, 36, 40, 48], paddingX: [8, 12, 12, 16, 20], paddingY: [2, 6, 8, 8, 10], gap: [4, 6, 6, 8, 10], radius: [4, 6, 6, 8, 10], iconSize: [12, 14, 14, 16, 18], borderWidth: [1, 1, 1, 1, 1], outlineWidth: [2, 2, 2, 2, 2] };
 const bySize = values => Object.fromEntries(SIZES.map((s, i) => [s.id, values[i]]));
 const SIZE_VALUES = Object.fromEntries(Object.entries(SIZING).map(([token, values]) => [token, bySize(values)]));
 

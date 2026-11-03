@@ -36,13 +36,13 @@ export const INPUT = {
     // the value is not empty (it also needs its own text to show: see its part). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
     control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true, hidePlaceholderWhenFilled: true },
-    // The focus outline: its width counts the border, and it is drawn with no gap from the border's inner edge (the engine
-    // offsets it back by the master's border width); its colour is the outline-color token (transparent until focus).
+    // The focus outline: its width is the outline-width token (it counts the border) and it is drawn with no gap from
+    // the border's inner edge; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
     focusTarget: 'wrapper',
     interaction: { focus: 'halo', wave: false },
-    outline: { width: 2, offset: 0 },
+    outline: { offset: 0 },
     // A new Input is left aligned and centred, and a fixed 343px wide; the node owns both after that.
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
@@ -74,13 +74,13 @@ export const INPUT = {
         readOnly: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', fillEmpty: { prop: 'value', text: 'Text input' } },
     },
     tokens: {
-        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize', 'borderWidth'],
+        fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize', 'borderWidth', 'outlineWidth'],
         fromVariant: ['bg', 'fg', 'border', 'placeholder', 'clear-hover', 'bg-hover', 'border-hover', 'border-focus', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
         fromStatus: ['status-border', 'status-border-hover', 'status-border-focus', 'status-outline'],
     },
     // The kind of value each token holds: `length` is a number in px, `ratio` a unitless number, `color` a CSS colour string.
     tokenKinds: {
-        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', clearIconSize: 'length', borderWidth: 'length',
+        height: 'length', paddingX: 'length', paddingY: 'length', gap: 'length', radius: 'length', iconSize: 'length', clearIconSize: 'length', borderWidth: 'length', outlineWidth: 'length',
         valueTypography: 'typography', addonTypography: 'typography', placeholderTypography: 'typography', countTypography: 'typography',
         bg: 'color', fg: 'color', border: 'color', placeholder: 'color', 'clear-hover': 'color', 'bg-hover': 'color', 'border-hover': 'color', 'border-focus': 'color',
         'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
@@ -98,6 +98,7 @@ export const INPUT = {
         paddingY: { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'button-padding-y-md', lg: 'button-padding-y-lg', xl: 'button-padding-y-xl', default: 'button-padding-y-md' },
         gap: 'gap-xs',
         borderWidth: 'border-width',
+        outlineWidth: 'outline-width',
         radius: { xs: 'radius-xs', sm: 'radius-sm', md: 'radius', lg: 'radius-lg', xl: 'radius-xl', default: 'radius' },
         iconSize: { xs: 'icon-xs', sm: 'icon-sm', md: 'icon-md', lg: 'icon-lg', xl: 'icon-xl', default: 'icon-md' },
         // The clear icon is the icon size minus 2 (derived in the base data, antd-sizes.json: clearIconSize*).

@@ -38,7 +38,7 @@ test('a template with no managed icon slot needs no icons list and no outline', 
 test('a managed icon slot still needs its definition, and a malformed outline is still refused', () => {
     const managed = { ...SIMPLE, anatomy: [...SIMPLE.anatomy, { id: 'start', kind: 'icon', optional: true, managed: true }] };
     assert.match(validateTemplateSchema(managed).join('\n'), /managed anatomy slot "start" has no icon def/);
-    assert.match(validateTemplateSchema({ ...SIMPLE, outline: { width: -1, offset: 1 } }).join('\n'), /outline width must be a number of px, 0 or more/);
+    assert.match(validateTemplateSchema({ ...SIMPLE, outline: { offset: -1 } }).join('\n'), /outline offset must be a number of px, 0 or more/);
     assert.match(validateTemplateSchema({ ...SIMPLE, icons: 'x' }).join('\n'), /icons must be a list/);
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
 });

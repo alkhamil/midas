@@ -4747,6 +4747,29 @@
     }
    },
    {
+    "id": "s-outlineWidth",
+    "name": "outlineWidth",
+    "type": "number",
+    "collectionId": "c-size",
+    "values": {
+     "xs": {
+      "alias": "sem-n2"
+     },
+     "sm": {
+      "alias": "sem-n2"
+     },
+     "md": {
+      "alias": "sem-n2"
+     },
+     "lg": {
+      "alias": "sem-n2"
+     },
+     "xl": {
+      "alias": "sem-n2"
+     }
+    }
+   },
+   {
     "id": "s-labelTypography",
     "name": "labelTypography",
     "type": "typography",
@@ -5590,6 +5613,29 @@
      },
      "xl": {
       "alias": "sem-n1"
+     }
+    }
+   },
+   {
+    "id": "in-s-outlineWidth",
+    "name": "outlineWidth",
+    "type": "number",
+    "collectionId": "c-input-size",
+    "values": {
+     "xs": {
+      "alias": "sem-n2"
+     },
+     "sm": {
+      "alias": "sem-n2"
+     },
+     "md": {
+      "alias": "sem-n2"
+     },
+     "lg": {
+      "alias": "sem-n2"
+     },
+     "xl": {
+      "alias": "sem-n2"
      }
     }
    },

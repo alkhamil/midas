@@ -123,6 +123,19 @@ test('a layer bound to the disabled variable while disabled is not reported', ()
     assert.deepEqual(found, []);
 });
 
+test('an outline no wider than the border warns, naming the master and both resolved widths', () => {
+    const widened = name => model.items.map(i => i.name === name
+        ? { ...i, values: Object.fromEntries(sizeColl.modes.map(m => [m.id, 2])) }
+        : i);
+    const d = doc({ variables: { items: widened('borderWidth') } });
+    const found = diagnoseDocument(d).filter(f => f.code === 'outline-swallowed');
+    assert.deepEqual(found, [{
+        severity: 'warning', code: 'outline-swallowed', node: 'Button', nodeId: 'm1',
+        borderWidth: 2, outlineWidth: 2,
+        message: 'Button: outline width 2px is not wider than border width 2px, so no focus ring is visible.',
+    }]);
+});
+
 test('a master token that is not bound is a warning, naming the layer, the property and the token', () => {
     const d = doc();
     d.pages[0].nodes[0].vars = { stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' };

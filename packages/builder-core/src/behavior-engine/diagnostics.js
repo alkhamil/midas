@@ -3,7 +3,7 @@
 // something is left out or set by hand (a master token not bound, a layer rebound by hand). An
 // info note says something is stored but not drawn. Nothing is repaired; the editor shows the list.
 import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
-import { resolveTokens, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
+import { resolveTokens, tokenValueOf, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
 import { roleOf } from './auto-fix.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
@@ -186,6 +186,15 @@ export function diagnoseDocument(doc) {
             // A text part is bound to its typography role (the token minus its suffix), and Auto Fix binds it.
             const message = prop === 'typography' ? `${m.name}: text ${layer} is not bound to ${token.replace(/Typography$/, '')}.` : `${m.name}: ${layer} ${prop} is not bound to "${token}".`;
             out.push({ severity: 'warning', code: 'unbound-token', node: m.name, nodeId: m.id, layer, prop, token, message });
+        }
+        // A focus ring no wider than the border is invisible: warn with both resolved widths, naming the master.
+        // Missing bindings are reported as unbound-token instead, so this only fires when both widths resolve.
+        if (template.outline) {
+            const borderWidth = tokenValueOf(template, m.behavior, variables, 'borderWidth');
+            const outlineWidth = tokenValueOf(template, m.behavior, variables, 'outlineWidth');
+            if (borderWidth !== null && outlineWidth !== null && outlineWidth <= borderWidth) {
+                out.push({ severity: 'warning', code: 'outline-swallowed', node: m.name, nodeId: m.id, borderWidth, outlineWidth, message: `${m.name}: outline width ${outlineWidth}px is not wider than border width ${borderWidth}px, so no focus ring is visible.` });
+            }
         }
     }
     // The content slots of every page: a slot below its minimum, above its maximum, or holding a layer it does not take (see slot-diagnostics.js).

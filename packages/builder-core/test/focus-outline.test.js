@@ -23,15 +23,22 @@ test('the outline includes the border: no gap, so the ring starts back at the bo
     assert.match(css, /\.button \{\n(?:.*\n)*?\s*outline: 2px solid var\(--button-outline-color\);\n\s*outline-offset: -1px;/);
 });
 
-test('the offset follows the master border width; a border as wide as the outline shows no ring', () => {
+test('the offset follows the bound border width; a border as wide as the outline shows no ring', () => {
     const imodel = inputModel({});
-    const variables = { collections: imodel.collections, items: imodel.items };
-    const styled = master => generateComponent(INPUT, imodel.binding, variables, 'Input', master, () => []).files['Input.css'];
+    const sized = (token, value) => ({
+        collections: imodel.collections,
+        items: imodel.items.map(i => i.name === token
+            ? { ...i, values: Object.fromEntries(imodel.collections.find(c => c.name === 'Input Size').modes.map(m => [m.id, value])) }
+            : i),
+    });
+    const styled = (master, vars = { collections: imodel.collections, items: imodel.items }) =>
+        generateComponent(INPUT, imodel.binding, vars, 'Input', master, () => []).files['Input.css'];
     assert.match(styled({ id: 'm', type: 'frame', layout: 'horizontal' }), /\.input \{\n(?:.*\n)*?\s*outline: 2px solid var\(--input-outline-color\);\n\s*outline-offset: -1px;/);
-    assert.match(styled({ id: 'm', type: 'frame', layout: 'horizontal', strokeWidth: 1 }), /\s*outline-offset: -1px;/);
-    const thick = styled({ id: 'm', type: 'frame', layout: 'horizontal', strokeWidth: 2 });
+    const thick = styled({ id: 'm', type: 'frame', layout: 'horizontal' }, sized('borderWidth', 2));
     assert.match(thick, /\.input \{\n(?:.*\n)*?\s*outline: none;/);
     assert.doesNotMatch(thick, /outline: 2px/, 'no ring is drawn when the border already spans the outline width');
+    const stale = styled({ id: 'm', type: 'frame', layout: 'horizontal', strokeWidth: 2 });
+    assert.match(stale, /outline: 2px solid var\(--input-outline-color\)/, 'the ring follows the bound variable, not a stale literal');
 });
 
 test('the canvas draws no outline for focus: the border recolor only, never outline geometry', () => {
@@ -53,10 +60,10 @@ test('a disabled Button never shows the outline: its disabled block holds no out
     assert.doesNotMatch(disabled[1], /outline/);
 });
 
-test('the outline is a width and an offset, in px; a template may have none, and a malformed one is refused', () => {
+test('the outline is an offset in px; the width is the outline-width token. A template may have no outline, and a malformed one is refused', () => {
     const bad = structuredClone(BUTTON);
-    bad.outline = { width: '2', offset: 1 };
-    assert.match(validateTemplateSchema(bad).join('\n'), /outline width must be a number of px, 0 or more/);
+    bad.outline = { offset: -1 };
+    assert.match(validateTemplateSchema(bad).join('\n'), /outline offset must be a number of px, 0 or more/);
     const missing = structuredClone(BUTTON);
     delete missing.outline;
     assert.deepEqual(validateTemplateSchema(missing), [], 'no outline is a template with no focus ring');

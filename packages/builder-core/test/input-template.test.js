@@ -76,6 +76,18 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
+test('the outline follows the outline-width variable, and vanishes when it no longer exceeds the border', () => {
+    const sized = (token, value) => ({
+        collections: model.collections,
+        items: model.items.map(i => i.name === token
+            ? { ...i, values: Object.fromEntries(model.collections.find(c => c.name === 'Input Size').modes.map(m => [m.id, value])) }
+            : i),
+    });
+    const gen = vars => generateComponent(INPUT, model.binding, vars, 'Input', master(), childrenOf(master(), valueText())).files['Input.css'];
+    assert.match(gen(sized('outlineWidth', 3)), /\.input \{\n(?:.*\n)*?\s*outline: 3px solid var\(--input-outline-color\);\n\s*outline-offset: -1px;/);
+    assert.match(gen(sized('borderWidth', 2)), /\.input \{\n(?:.*\n)*?\s*outline: none;/);
+});
+
 test('the border follows its variable in every combo, and no other state touches the border width', () => {
     const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
     assert.match(files['Input.css'], /--input-border-width: 1px;/);

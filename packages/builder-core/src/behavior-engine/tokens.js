@@ -202,3 +202,28 @@ export function resolveTokens(template, binding, selectedModes, variables) {
     }
     return { vars, unresolved };
 }
+
+/**
+ * The resolved number of a single length token, read in each bound collection's first mode (the single-step
+ * contract: one value in every mode). Null when the token cannot be resolved (unbound dimension, missing collection
+ * or variable, a non-number at the end of the alias chain). The outline geometry reads the border and outline
+ * widths this way, so canvas, Play and export derive them from the same variables.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {{ variables: Record<string, string | null> }} binding the master's binding
+ * @param {{ collections?: any[], items?: any[] }} variables the document's variables
+ * @param {string} token
+ * @returns {number | null}
+ */
+export function tokenValueOf(template, binding, variables, token) {
+    const collections = variables?.collections || [];
+    const group = Object.keys(template.tokens || {}).find(g => (template.tokens[g] || []).includes(token));
+    const dimension = group ? dimensionOfGroup(group, template.props) : null;
+    const collectionId = dimension ? binding.variables?.[dimension] ?? null : null;
+    if (!collectionId || !collections.some(c => c.id === collectionId)) return null;
+    const named = (variables?.items || []).filter(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(token));
+    if (named.length !== 1 || named[0].type !== 'number') return null;
+    const modeOf = (/** @type {string} */ cid) => collections.find(c => c.id === cid)?.modes?.[0]?.id ?? null;
+    const found = valueIn(named[0], modeOf, variables?.items || []);
+    if ('reason' in found || typeof found.value !== 'number' || !Number.isFinite(found.value)) return null;
+    return found.value;
+}
