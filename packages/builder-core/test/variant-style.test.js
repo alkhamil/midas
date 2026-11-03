@@ -12,13 +12,13 @@ const model = buttonModel({ colors: ['primary'], variantModes: ['solid', 'dashed
 const variables = { collections: model.collections, items: model.items };
 
 test('a dashed Variant has the dashed border style; the other Variant modes are solid', () => {
-    assert.equal(borderStyleOf(button, { variant: 'dashed', color: 'primary', size: 'sm' }), 'dashed');
-    assert.equal(borderStyleOf(button, { variant: 'solid', color: 'primary', size: 'sm' }), 'solid');
+    assert.equal(borderStyleOf(button, { variant: { id: 'dashed', name: 'dashed' } }), 'dashed');
+    assert.equal(borderStyleOf(button, { variant: { id: 'solid', name: 'solid' } }), 'solid');
 });
 
 test('a template with no variant styles has no border style to set', () => {
     const plain = { ...button, props: { ...button.props, variant: { source: 'variable', collection: 'Variant' } } };
-    assert.equal(borderStyleOf(plain, { variant: 'dashed' }), null);
+    assert.equal(borderStyleOf(plain, { variant: { id: 'dashed', name: 'dashed' } }), null);
 });
 
 test('the stylesheet sets the dashed border style on the dashed Variant; the root has no border width and the overlay inherits the style', () => {

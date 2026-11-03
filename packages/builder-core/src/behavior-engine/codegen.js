@@ -10,6 +10,7 @@ import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js
 import { cssVarOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
+import { modeOfStyleKey } from './variant-style.js';
 
 // Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
 // easings have no variable type, so they live here, not in Semantic.
@@ -386,8 +387,11 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     const combos = dims.reduce((acc, dim) => acc.flatMap(combo => modes[dim].map(mode => ({ ...combo, [dim]: mode }))), [{}]);
     const blocks = displayRules(template, master, childrenOf);
     for (const [dim, def] of variableProps(template)) {
-        for (const [mode, rule] of Object.entries(def.styles ?? {})) {
-            if (modes[dim]?.includes(mode)) blocks.push(`.${template.id}[data-${dim}="${mode}"] {\n  border-style: ${rule.borderStyle};\n}\n`);
+        // A style is keyed by the mode's name; the selector names the mode's id, as every other mode rule does.
+        const collection = (variables.collections || []).find(c => c.id === binding.variables[dim]);
+        for (const [key, rule] of Object.entries(def.styles ?? {})) {
+            const mode = collection && modeOfStyleKey(collection.modes || [], key);
+            if (mode) blocks.push(`.${template.id}[data-${dim}="${mode.id}"] {\n  border-style: ${rule.borderStyle};\n}\n`);
         }
     }
     const { disabledState } = template.element;
