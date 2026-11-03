@@ -113,9 +113,9 @@ function componentSource(template, name, problems) {
     let framePlaced = false;
     let sidedAfterPlaced = false;
     const sidedAfter = framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
-    for (const slot of template.anatomy) {
+    const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
-            if (!framePlaced) { children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)), ...framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
+            if (!framePlaced && !slot.parent) { out.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)), ...framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
@@ -123,9 +123,9 @@ function componentSource(template, name, problems) {
             const label = control && control.slot === slot.id
                 ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === "" ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
-            children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
-            if (!sidedAfterPlaced) { children.push(...sidedAfter); sidedAfterPlaced = true; }
-            if (isControl) children.push(...controlPartsJsx());
+            out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
+            if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }
+            if (isControl) out.push(...controlPartsJsx());
         }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
@@ -138,10 +138,18 @@ function componentSource(template, name, problems) {
                     ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
                     ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
                 ];
-                children.push(`{${[def.show, ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+                out.push(`{${[def.show, ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
+    };
+    // A container is one element of the template's class around the slots that name it, in anatomy order; its layout is the box frame's own (see boxRules).
+    for (const slot of template.anatomy.filter(s => !s.parent)) {
+        if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
+        const inner = [];
+        for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
+        const indented = inner.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
+        children.push(`<div className="${template.id}-${slot.id}">\n${indented}\n</div>`);
     }
     if (!framePlaced) children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
@@ -358,6 +366,23 @@ function reducedMotion(template) {
 }
 
 /**
+ * The rule of each container of the anatomy: the box frame's own auto layout and flow sizing, as the canvas lays it out (a missing frame is laid out as its
+ * schema says). Its children are styled by their own rules.
+ * @param {any} template
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ * @returns {string[]}
+ */
+function groupRules(template, master, childrenOf) {
+    return template.anatomy.filter(slot => slot.kind === 'frame').map(slot => {
+        const node = childrenOf(master.id).find(c => c.behavior?.group === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' };
+        return `.${template.id}-${slot.id} {
+${cssDecls({ ...flexOf(node, 0), ...flowSizing(node, master) }).join('')}}
+`;
+    });
+}
+
+/**
  * The rule of each content slot's element: the slot frame's own auto layout and flow sizing, the canvas rules (a missing frame is laid out as its schema
  * says, so the export still draws; Diagnostics report the missing frame). Nothing of the icon rules (size, colour) applies to slot content.
  * @param {any} template
@@ -433,7 +458,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...slotRules(template, master, childrenOf));
+    blocks.push(...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));
     const stroke = strokeRules(template, master);
     if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));

@@ -46,11 +46,16 @@ export function layerSpecsOf(template) {
     // The text parts follow the control (its value, placeholder, clear and count sit together), so the text after it (an affix) comes after them.
     let placed = false, textedPlaced = false;
     for (const slot of template.anatomy) {
+        // A container is a frame of the master that holds the slots naming it as their parent; each of those carries its parent's key.
+        if (slot.kind === 'frame') {
+            specs.push({ key: slot.id, role: 'group', type: 'frame', behavior: { group: slot.id }, slot });
+            continue;
+        }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed icon slot is a layer of the instance only, shown while its props say so (instanceOf); a master holds none.
         if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: true });
         // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
-        else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
+        else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.parent ? { parentKey: slot.parent } : {}), ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
         if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
     }
     if (!placed) specs.push(...framed);
@@ -63,6 +68,9 @@ export function layerSpecsOf(template) {
 /** The node a spec makes, with its default sizing: text and frames hug, the arc of a frame part is fixed at its size. */
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
+    if (spec.role === 'group') {
+        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
+    }
     if (spec.role === 'content') {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
     }
@@ -98,6 +106,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
  */
 function matchOf(spec, children, claimed) {
     if (spec.role === 'content') return children.find(c => !claimed.has(c.id) && c.propBind?.slot === spec.key);
+    if (spec.role === 'group') return children.find(c => !claimed.has(c.id) && c.behavior?.group === spec.key);
     const marked = children.find(c => !claimed.has(c.id) && (spec.behavior?.slot !== undefined ? c.behavior?.slot === spec.behavior.slot : c.behavior?.part !== undefined ? c.behavior.part === spec.key : false));
     if (marked) return marked;
     if (spec.role === 'text' || spec.role === 'control') return children.find(c => !claimed.has(c.id) && c.type === 'text' && !c.behavior?.part && !c.behavior?.slot);
@@ -128,23 +137,30 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
     const defaults = resolveProps(template, {});
     const layer = new Map([['root', frame]]);
+    // The node each key stands for, the root and each container: the parent of the slots that name a container, and where to look for them.
+    const holders = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {
-        const hit = spec.optional && spec.role === 'text' ? children.find(c => !claimed.has(c.id) && c.behavior?.text === spec.key) : matchOf(spec, children, claimed);
+        const holder = holders.get(spec.parentKey ?? 'root');
+        // The layers to match are the holder's children (the frame's own, for a layer with no container).
+        const pool = children.filter(c => (c.parentId ?? frame.id) === holder.id);
+        const hit = spec.optional && spec.role === 'text' ? pool.find(c => !claimed.has(c.id) && c.behavior?.text === spec.key) : matchOf(spec, pool, claimed);
         if (hit) {
             claimed.add(hit.id);
             matched.push({ key: spec.key, nodeId: hit.id });
-            if (spec.role !== 'content') layer.set(spec.key, hit);
+            if (spec.role === 'group') holders.set(spec.key, hit);
+            else if (spec.role !== 'content') layer.set(spec.key, hit);
             continue;
         }
         // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
         if (spec.role === 'slot') continue;
-        const node = nodeOf(spec, template, binding, idOf, frame.id);
+        const node = nodeOf(spec, template, binding, idOf, holder.id);
         // A part or affix text a condition shows only for a prop that is off at its default starts hidden, as an instance of the master draws it (partWrites).
         if (spec.role === 'part' || spec.role === 'text') {
             const written = partWrites(template, defaults).find(w => w.key === spec.key && w.field === 'visible');
             if (written) node.visible = written.value === true;
         }
         if (spec.role === 'content') { created.push(node); claimed.add(node.id); continue; }
+        if (spec.role === 'group') { created.push(node); claimed.add(node.id); holders.set(spec.key, node); continue; }
         created.push(node);
         claimed.add(node.id);
         layer.set(spec.key, node);
@@ -169,16 +185,23 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
  * @param {any[]} nodes every node of the document
  */
 export function masterLayersByKey(template, frame, nodes) {
-    const children = nodes.filter(n => n.parentId === frame.id);
     const out = [{ key: 'root', node: frame }];
+    const holders = new Map([['root', frame]]);
     for (const spec of layerSpecsOf(template).slice(1)) {
+        const holder = holders.get(spec.parentKey ?? 'root');
+        if (!holder) continue;
+        const children = nodes.filter(n => n.parentId === holder.id);
         // An affix text is found by its marker; the label and the control are the text layers that carry none (see labelEntryOf).
-        const hit = spec.role === 'part' ? children.find(c => c.behavior?.part === spec.key)
+        const hit = spec.role === 'group' ? children.find(c => c.behavior?.group === spec.key)
+            : spec.role === 'part' ? children.find(c => c.behavior?.part === spec.key)
             : spec.role === 'slot' ? children.find(c => c.behavior?.slot === spec.key)
             : spec.role === 'content' ? children.find(c => c.propBind?.slot === spec.key)
             : spec.optional ? children.find(c => c.behavior?.text === spec.key)
             : children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
-        if (hit) out.push({ key: spec.key, node: hit });
+        if (hit) {
+            out.push({ key: spec.key, node: hit });
+            if (spec.role === 'group') holders.set(spec.key, hit);
+        }
     }
     return out;
 }
@@ -247,7 +270,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
  * @returns {string[]}
  */
 export function childOrderAfterBind(template, children, created) {
-    const specs = layerSpecsOf(template).filter(spec => spec.role !== 'root');
+    const specs = layerSpecsOf(template).filter(spec => spec.role !== 'root' && !spec.parentKey);
     const claimed = new Set();
     const idOfSpec = new Map();
     for (const spec of specs) {
@@ -261,6 +284,7 @@ export function childOrderAfterBind(template, children, created) {
     let order = children.map(child => child.id);
     for (const node of created) {
         const at = specs.findIndex(spec => spec.key === (node.propBind?.slot ?? node.name));
+        if (at < 0) continue;
         const next = specs.slice(at + 1).map(spec => idOfSpec.get(spec.key)).find(id => id !== undefined && order.includes(id));
         order = order.filter(id => id !== node.id);
         if (next !== undefined) order.splice(order.indexOf(next), 0, node.id);

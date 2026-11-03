@@ -249,7 +249,9 @@ function renderTemplate(n, template, parent, scope) {
     const children = [];
     // The label's layer and its parent, for the label's own width and alignment (see layout.js).
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
-    for (const slot of template.anatomy) {
+    // Every layer below the instance, for the slots a container holds (an affix text can sit inside one).
+    const below = id => scope.childrenOf(id).flatMap(c => [c, ...below(c.id)]);
+    const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
             const isControl = control && control.slot === slot.id;
             // A control slot is an input holding the value prop; the canvas keeps the text layer (see renderNode).
@@ -274,9 +276,9 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
-                children.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
+                out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
                 const counter = partElement(n, 'count', scope);
-                if (counter) children.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
+                if (counter) out.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
             }
             else {
                 // The frame parts (the Button's spinner) sit before the text, as the master draws them.
@@ -285,15 +287,15 @@ function renderTemplate(n, template, parent, scope) {
                     const el = partElement(n, part.id, scope);
                     if (!el) continue;
                     if (part.spin) el.style.animation = SPIN_ANIMATION;
-                    children.push(el);
+                    out.push(el);
                 }
                 if (slot.optional) {
                     // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
-                    const layer = scope.childrenOf(n.id).find(c => c.name === slot.id && c.type === 'text');
-                    const el = layer && layer.visible !== false ? renderNode(layer, n, scope, false) : null;
-                    if (el) children.push(el);
+                    const layer = below(n.id).find(c => c.name === slot.id && c.type === 'text');
+                    const el = layer && layer.visible !== false ? renderNode(layer, scope.byId.get(layer.parentId) ?? n, scope, false) : null;
+                    if (el) out.push(el);
                 }
-                else children.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+                else out.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
         else if (slot.managed) {
@@ -307,10 +309,18 @@ function renderTemplate(n, template, parent, scope) {
                 const el = layer && renderNode(hidden ? { ...layer, visible: true } : layer, n, scope, true);
                 if (!el) continue;
                 const { position, left, top, width, height, ...style } = el.style;
-                children.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style });
+                out.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style });
                 break;
             }
         }
+    };
+    // A container is one element of the template's class around the slots that name it, in anatomy order (the codegen writes the same).
+    for (const slot of template.anatomy.filter(s => !s.parent)) {
+        if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
+        const group = below(n.id).find(c => c.behavior?.group === slot.id);
+        const inner = [];
+        for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
+        children.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: inner });
     }
     // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,
     // `repeat` copies of them for a repeating slot (the canvas keeps them once). With no copies the element is there, empty, only for a slot with showEmpty.

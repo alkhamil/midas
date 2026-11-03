@@ -42,10 +42,11 @@ function problemOf(node) {
     if (b.version !== BEHAVIOR_DATA_VERSION) return `behavior version ${b.version} is not version ${BEHAVIOR_DATA_VERSION}`;
     const managed = 'slot' in b;
     const part = 'part' in b;
+    const group = 'group' in b;
     // An affix text layer carries its slot's id as `text`: a text the template shows, not the label.
     const affix = 'text' in b;
     const master = 'templateId' in b;
-    const want = managed ? ['slot'] : part ? ['part'] : affix ? ['text'] : master ? ['templateId', 'variables'] : ['props'];
+    const want = managed ? ['slot'] : part ? ['part'] : group ? ['group'] : affix ? ['text'] : master ? ['templateId', 'variables'] : ['props'];
     const extra = Object.keys(b).filter(k => k !== 'version' && !want.includes(k));
     if (extra.length) return `unknown field ${extra.join(', ')}`;
     const missing = want.filter(k => !(k in b));
@@ -57,6 +58,10 @@ function problemOf(node) {
     if (part) {
         if (node.isInstance) return 'a canvas part cannot be an instance';
         return typeof b.part === 'string' && b.part !== '' ? null : 'part must name a canvas part';
+    }
+    if (group) {
+        if (node.isInstance) return 'a group cannot be an instance';
+        return typeof b.group === 'string' && b.group !== '' ? null : 'group must name a group';
     }
     if (affix) {
         if (node.isInstance) return 'an affix text cannot be an instance';

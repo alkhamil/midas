@@ -131,7 +131,17 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (!isPlainObject(slot) || !isName(slot.id)) { out.push('anatomy slot has no id'); continue; }
         if (seen.has(slot.id)) out.push(`duplicate anatomy slot "${slot.id}"`);
         seen.add(slot.id);
-        if (!['text', 'control', 'icon'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
+        if (!['text', 'control', 'icon', 'frame'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
+        if (slot.kind === 'frame') {
+            if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
+            if (slot.optional || slot.managed) out.push(`frame slot "${slot.id}" cannot be optional or managed`);
+            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
+        }
+        if (slot.parent !== undefined) {
+            const holder = anatomy.find(c => isPlainObject(c) && c.id === slot.parent);
+            if (!holder || holder.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has the parent "${slot.parent}", which is not a frame slot`);
+            else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
+        }
         if (slot.managed && slot.kind !== 'icon') out.push(`anatomy slot "${slot.id}" is managed but not an icon`);
         if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
