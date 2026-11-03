@@ -150,7 +150,8 @@ export interface TemplateSchema {
     name: string;
     element: ElementDef;
     anatomy: AnatomySlot[];
-    icons: IconSlotDef[];
+    /** The managed icon slots; absent or empty for a template with none. */
+    icons?: IconSlotDef[];
     control?: ControlDef;
     /** The box that owns interaction visuals when the element itself cannot take them: `wrapper` reflects the
      * inner control focus and disabled state onto the root (only with a `control`). */
@@ -168,6 +169,8 @@ export interface TemplateSchema {
     previewStates: Record<string, Record<string, string>>;
     /** The cross-axis alignment a new master is created with (start, center or end). The node's own alignment decides after that. */
     rootAlign?: 'start' | 'center' | 'end';
+    /** The auto layout direction a new master is created with (horizontal when absent). Like `rootAlign` it only seeds a new master: the node's own layout decides after that. */
+    rootLayout?: 'horizontal' | 'vertical';
     /** The content slots: frames of the component that instances fill with their own layers. Not the icon slots (`icons`). */
     slots?: SlotDef[];
     /** The CSS pseudo-class each state is written as. */

@@ -67,7 +67,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
     }
     if (spec.role === 'root') {
-        return { ...LAYER, id, name: template.name, type: 'frame', parentId: null, component: true, x: 0, y: 0, w: 0, h: 0, layout: 'horizontal', gap: 0, padding: 0,
+        return { ...LAYER, id, name: template.name, type: 'frame', parentId: null, component: true, x: 0, y: 0, w: 0, h: 0, layout: template.rootLayout ?? 'horizontal', gap: 0, padding: 0,
             layoutSizingH: 'hug', layoutSizingV: rootSizingV(template), counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: false,
             behavior: { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } } };
     }
@@ -117,7 +117,7 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     const specs = layerSpecsOf(template);
     frame.component = true;
     // A master lays its parts out as an auto layout frame, the way the canvas lays out a component; a frame that is already auto layout keeps its own.
-    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug' });
+    if (!frame.layout || frame.layout === 'none') Object.assign(frame, { layout: template.rootLayout ?? 'horizontal', gap: 0, padding: 0, counterAlign: template.rootAlign ?? 'start', layoutSizingH: 'hug' });
     // A template root that binds a height is fixed vertically, whatever the frame was (the Size height is its box).
     frame.layoutSizingV = rootSizingV(template);
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };

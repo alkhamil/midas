@@ -153,6 +153,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...tokenKindProblems(schema, allTokens));
     out.push(...tokenRoleProblems(schema, allTokens));
     out.push(...elementProblems(schema));
+    if (schema.rootLayout !== undefined && !['horizontal', 'vertical'].includes(schema.rootLayout)) out.push(`rootLayout "${schema.rootLayout}" must be horizontal or vertical`);
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
@@ -269,11 +270,14 @@ function elementProblems(schema) {
  * @returns {string[]}
  */
 function iconProblems(schema, allTokens) {
-    const icons = schema.icons;
-    if (!Array.isArray(icons) || icons.length === 0) return ['schema has no icons list (managed icon slot defs)'];
+    const icons = schema.icons ?? [];
+    if (!Array.isArray(icons)) return ['icons must be a list'];
     const props = isPlainObject(schema.props) ? schema.props : {};
     const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed).map(s => s.id);
     const out = [];
+    // A managed slot is drawn from its definition: one that no definition names would never show.
+    const named = new Set(icons.flatMap(icon => isPlainObject(icon) ? [icon.slot, ...(isPlainObject(props[icon.placement]?.slots) ? Object.values(props[icon.placement].slots).flat() : [])] : []));
+    for (const id of managed) if (!named.has(id)) out.push(`managed anatomy slot "${id}" has no icon def`);
     icons.forEach((icon, i) => {
         const tag = `icon def ${i}`;
         if (!isPlainObject(icon)) { out.push(`${tag} must be an object`); return; }
@@ -474,7 +478,8 @@ function focusTargetProblems(schema) {
  */
 function outlineProblems(schema) {
     const o = schema.outline;
-    if (!isPlainObject(o)) return ['schema has no outline (width and offset)'];
+    if (o === undefined) return [];
+    if (!isPlainObject(o)) return ['outline must be an object (width and offset)'];
     return ['width', 'offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
 }
 

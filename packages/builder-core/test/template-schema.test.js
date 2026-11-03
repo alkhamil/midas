@@ -116,18 +116,18 @@ test('managed icon slots come as a list of defs', () => {
     assert.deepEqual(validateTemplateSchema(BUTTON), []);
 });
 
-test('a schema without an icons list is rejected', () => {
+test('an icons list that is not a list, or is missing while the anatomy has managed slots, is rejected', () => {
     const single = clone(BUTTON);
     single.icons = { show: 'hasIcon', placement: 'iconPlacement', component: 'icon', tokens: BUTTON.icons[0].tokens };
-    assert.match(validateTemplateSchema(single).join('\n'), /schema has no icons list/);
+    assert.match(validateTemplateSchema(single).join('\n'), /icons must be a list/);
     const gone = clone(BUTTON);
     delete gone.icons;
-    assert.match(validateTemplateSchema(gone).join('\n'), /schema has no icons list/);
+    assert.match(validateTemplateSchema(gone).join('\n'), /managed anatomy slot "iconStart" has no icon def/);
 });
 
 test('a fixed icon def names its managed slot directly, with no placement', () => {
     const fixed = clone(BUTTON);
-    fixed.icons = [{ show: 'hasIcon', slot: 'iconStart', component: 'icon', tokens: BUTTON.icons[0].tokens }];
+    fixed.icons = [{ show: 'hasIcon', slot: 'iconStart', component: 'icon', tokens: BUTTON.icons[0].tokens }, { show: 'hasIcon', slot: 'iconEnd', component: 'iconEnd', tokens: BUTTON.icons[0].tokens }];
     assert.deepEqual(validateTemplateSchema(fixed), []);
 });
 

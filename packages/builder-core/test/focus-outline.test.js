@@ -34,13 +34,15 @@ test('a disabled Button never shows the outline: its disabled block holds no out
     assert.doesNotMatch(disabled[1], /outline/);
 });
 
-test('the outline is a width and an offset, in px: a schema without them is refused', () => {
+test('the outline is a width and an offset, in px; a template may have none, and a malformed one is refused', () => {
     const bad = structuredClone(BUTTON);
     bad.outline = { width: '2', offset: 1 };
     assert.match(validateTemplateSchema(bad).join('\n'), /outline width must be a number of px, 0 or more/);
     const missing = structuredClone(BUTTON);
     delete missing.outline;
-    assert.match(validateTemplateSchema(missing).join('\n'), /schema has no outline/);
+    assert.deepEqual(validateTemplateSchema(missing), [], 'no outline is a template with no focus ring');
+    missing.outline = 'thick';
+    assert.match(validateTemplateSchema(missing).join('\n'), /outline must be an object/);
 });
 // Outline and ring like antd (H): the rest colour is always transparent; the interaction colour is a variable.
 let hid = 0;
