@@ -4,7 +4,7 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
@@ -178,6 +178,8 @@ function componentSource(template, name, problems) {
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
+        // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
+        ...(blockClickProps.length ? ['data-blocked={blocked || undefined}'] : []),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
         ...(slotted ? ['{...rest}'] : []),
     ];
@@ -348,6 +350,19 @@ function iconHoverRules(template) {
 }
 
 /**
+ * The blocked rule of a template whose click a prop blocks (see element.blockClickProps): while blocked for a reason
+ * other than its disabled state, the root draws at the loading opacity and takes no pointer, so hover, pressed and
+ * focus cannot land on it either. Play and the export share it.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {string[]}
+ */
+function blockedRules(template) {
+    if (!(template.element.blockClickProps?.length ?? 0)) return [];
+    const enabled = DISABLEABLE.has(template.element.tag) ? ':not(:disabled)' : ':not([aria-disabled="true"])';
+    return [`.${template.id}[data-blocked]${enabled} {\n  opacity: ${LOADING_OPACITY};\n  pointer-events: none;\n}\n`];
+}
+
+/**
  * The click-wave rules for a wave template: the ::after ring inherits the host radius, starts at zero spread and is
  * transparent, and expands to the antd spread while fading when data-wave-on is set. The host colour comes from the
  * wave-color token, so it follows the button colour per mode.
@@ -472,12 +487,16 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const activeTokens = [...(template.tokens.fromVariant ?? []), ...(template.tokens.fromColor ?? []), ...(template.tokens.fromStatus ?? []), ...(template.tokens.fromSize ?? [])];
             if (delta[restVar] !== undefined && activeTokens.includes('outline-color-active')) delta[restVar] = `var(${cssVarOf(template.id, 'outline-color-active')})`;
             // A disabled element shows only its disabled style: the other states never apply to it.
+            // Nor do they apply while a click-blocking prop holds (a loading Button): those guards also exclude [data-blocked].
             // A wrapper focus target reflects the inner control state: the disabled rule matches
             // `:has(:disabled)`, focus matches `:has(:focus-visible)` with a `:focus-within` fallback, and the
             // other states are guarded by `:not(:has(:disabled))`. Plain `:focus`, `:focus-visible` and
             // `:disabled` never match the wrapper, so no dead rule is emitted for them.
             const wrapperTarget = template.focusTarget === 'wrapper';
-            const guard = state === disabledState ? '' : wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
+            // A click-blocking prop held hides every other state, like disabled does.
+            const blockedGuard = (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
+            const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
+            const guard = state === disabledState ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;
             const sels = !wrapperTarget ? [`${selector}${pseudo}${guard}`]
                 : state === disabledState ? [`${selector}:has(:disabled)`]
@@ -486,7 +505,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
-    blocks.push(...iconHoverRules(template));
+    blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));

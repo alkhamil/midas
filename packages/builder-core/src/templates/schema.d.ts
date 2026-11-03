@@ -89,7 +89,7 @@ export interface RequiresCols { requires?: string[] }
 
 /** A prop whose value is a literal stored on the instance. */
 export type LiteralProp =
-    | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf; exclusiveWith?: string; clearsPreview?: boolean } & RequiresCols)
     | ({ source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'number'; default: number | null; atMost?: string; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; control?: 'segmented'; visibleIf?: VisibleIf } & RequiresCols)

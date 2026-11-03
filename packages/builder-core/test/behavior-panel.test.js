@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData } from '../src/behavior-engine/panel.js';
+import { masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData } from '../src/behavior-engine/panel.js';
 import { createBinding } from '../src/behavior-engine/binding.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
@@ -125,6 +125,28 @@ test('the icon is a swap row, shown while hasIcon is on, with the id of the icon
     assert.deepEqual(rowOf(on, 'icon'), { prop: 'icon', kind: 'icon', slot: true, value: null, label: 'Icon start' });
     const chosen = instancePanel(instanceOf(setInstanceValue(instanceOf(setInstanceValue(instanceOf(), master, 'hasIcon', true)), master, 'icon', 'ic-check')), master, [variant], { variant: 'solid', size: null });
     assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
+});
+
+test('turning on a clearsPreview prop clears the panel preview; other props do not', () => {
+    const button = TEMPLATES.get('button');
+    assert.equal(clearsPreview(button, 'loading'), true);
+    assert.equal(clearsPreview(button, 'disabled'), true);
+    assert.equal(clearsPreview(button, 'label'), false);
+    assert.equal(clearsPreview(button, 'hasIcon'), false);
+    assert.equal(clearsPreview(button, 'no-such-prop'), false);
+});
+
+test('loading and disabled are mutually exclusive: turning one on turns the other off', () => {
+    const master = boundMaster([variant]);
+    const loading = setInstanceValue(instanceOf(), master, 'loading', true);
+    assert.equal(loading.props.loading, true);
+    assert.equal(loading.props.disabled, false);
+    const disabled = setInstanceValue(instanceOf(loading), master, 'disabled', true);
+    assert.equal(disabled.props.disabled, true);
+    assert.equal(disabled.props.loading, false);
+    const off = setInstanceValue(instanceOf(disabled), master, 'loading', false);
+    assert.equal(off.props.loading, false);
+    assert.equal(off.props.disabled, true, 'turning one off leaves the other alone');
 });
 
 test('writing a literal value on an instance goes to the instance store only', () => {

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { TEMPLATES, BEHAVIOR_DATA_VERSION } from '../src/index.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
+import { literalFields } from '../src/behavior-engine/display.js';
+import { resolveProps } from '../src/behavior-engine/instance-props.js';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const button = TEMPLATES.get('button');
@@ -133,6 +135,16 @@ test('a disabled Button in Play is not focusable and carries no state class: its
     assert.equal(root.attrs.disabled, true);
     assert.equal(root.attrs.tabindex, '-1');
     assert.equal(root.attrs.class, 'button');
+    assert.doesNotMatch(JSON.stringify(root), /hover|active|focus/);
+});
+
+test('a loading Button in Play is blocked and faded, with no state class', () => {
+    const instance = { id: 'i6', name: 'Wait', type: 'frame', parentId: null, x: 0, y: 0, w: 120, h: 40, opacity: 1, isInstance: true, sourceId: 'btn', behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Wait', loading: true, hasIcon: false } }, varModes: { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'md' } };
+    for (const { field, value } of literalFields(button, resolveProps(button, instance.behavior.props))) instance[field] = value;
+    const { root, styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster, instance] }], variables }, 'i6');
+    assert.equal(root.attrs['data-blocked'], true);
+    assert.equal(instance.opacity, 0.65, 'the sync writes the loading opacity onto the node, which the canvas draws');
+    assert.match(styles, /\.button\[data-blocked\]:not\(:disabled\) \{\n  opacity: 0\.65;\n  pointer-events: none;\n\}/);
     assert.doesNotMatch(JSON.stringify(root), /hover|active|focus/);
 });
 

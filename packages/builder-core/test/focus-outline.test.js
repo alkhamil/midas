@@ -24,7 +24,7 @@ test('the root draws the outline at its static width and offset, in the outline-
 
 test('focus sets the outline colour for keyboard focus only, and only while the Button is not disabled', () => {
     assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\] \{\n(?:.*\n)*?\s*--button-outline-color: #00000000;/);
-    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:focus-visible:not\(:disabled\) \{\n\s*--button-outline-color: var\(--button-outline-color-active\);\n\}/);
+    assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:focus-visible:not\(:disabled\):not\(\[data-blocked\]\) \{\n\s*--button-outline-color: var\(--button-outline-color-active\);\n\}/);
     assert.doesNotMatch(css, /:focus(?!-visible)/);
 });
 
@@ -94,7 +94,7 @@ test('the rest ring is transparent; focus-visible switches to the active colour 
     const nodes = [{ id: 'm', name: 'B', type: 'frame', component: true, layout: 'horizontal', behavior: binding, vars: {} }];
     const css = generateComponent(TEMPLATES.get('button'), binding, store, 'Button', nodes[0], () => []).files['Button.css'];
     assert.match(css, /--button-outline-color: #[0-9a-f]{6}00;/);
-    assert.match(css, /:focus-visible:not\(:disabled\) \{\n\s*--button-outline-color: var\(--button-outline-color-active\);\n\}/);
+    assert.match(css, /:focus-visible:not\(:disabled\):not\(\[data-blocked\]\) \{\n\s*--button-outline-color: var\(--button-outline-color-active\);\n\}/);
 });
 
 test('the ring animates; reduced motion removes transitions and the wave', () => {

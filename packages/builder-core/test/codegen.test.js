@@ -46,17 +46,30 @@ test('each variant, colour and size mode gets its base tokens on its own selecto
 
 test('a state block holds only the tokens that state changes', () => {
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
-    const hover = /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:hover:not\(:disabled\) \{\n([^}]*)\}/.exec(css);
+    const hover = /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:hover:not\(:disabled\):not\(\[data-blocked\]\) \{\n([^}]*)\}/.exec(css);
     assert.ok(hover, 'expected a hover block');
     assert.match(hover[1], /--button-bg: #3730a3;/);
     assert.doesNotMatch(hover[1], /--button-fg/);
 });
 
+test('a loading Button is faded and inert, and no interaction state applies while it loads', () => {
+    const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
+    assert.match(css, /\.button\[data-blocked\]:not\(:disabled\) \{\n  opacity: 0\.65;\n  pointer-events: none;\n\}/);
+    assert.match(css, /:hover:not\(:disabled\):not\(\[data-blocked\]\) \{/);
+    assert.match(css, /:active:not\(:disabled\):not\(\[data-blocked\]\) \{/);
+    assert.match(css, /:focus-visible:not\(:disabled\):not\(\[data-blocked\]\) \{/);
+});
+
+test('the export marks a blockable root with data-blocked, so the loading rule matches', () => {
+    const jsx = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.jsx'];
+    assert.match(jsx, /data-blocked=\{blocked \|\| undefined\}/);
+});
+
 test('no interaction state applies to a disabled Button: hover, active and focus are guarded, and the disabled block is not', () => {
     const css = generateComponent(button, binding(), variables(), 'Button', master, noKids).files['Button.css'];
-    assert.match(css, /:hover:not\(:disabled\) \{/);
-    assert.match(css, /:active:not\(:disabled\) \{/);
-    assert.match(css, /:focus-visible:not\(:disabled\) \{/);
+    assert.match(css, /:hover:not\(:disabled\):not\(\[data-blocked\]\) \{/);
+    assert.match(css, /:active:not\(:disabled\):not\(\[data-blocked\]\) \{/);
+    assert.match(css, /:focus-visible:not\(:disabled\):not\(\[data-blocked\]\) \{/);
     assert.doesNotMatch(css, /:(hover|active|focus) \{/);
     assert.match(css, /\.button\[data-variant="solid"\]\[data-color="primary"\]\[data-size="sm"\]:disabled \{/);
 });

@@ -60,6 +60,8 @@ test('a width is a fixed width on the node, or hug; a gap is the node\'s gap; a 
     assert.deepEqual(nodeFieldPatch('width', null, 'frame'), { layoutSizingH: 'hug' });
     assert.deepEqual(nodeFieldPatch('gap', 12, 'frame'), { gap: 12 });
     assert.deepEqual(nodeFieldPatch('gap', null, 'frame'), { gap: 0 });
+    assert.deepEqual(nodeFieldPatch('opacity', 0.65, 'frame'), { opacity: 0.65 });
+    assert.deepEqual(nodeFieldPatch('opacity', undefined, 'frame'), { opacity: 1 });
     assert.deepEqual(nodeFieldPatch('layout', 'horizontal', 'frame'), { layout: 'horizontal' });
     assert.deepEqual(nodeFieldPatch('text', 'Hi', 'text'), { text: 'Hi' });
 });

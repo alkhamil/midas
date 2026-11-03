@@ -35,11 +35,19 @@ export const NODE_PROPERTIES = {
 
 /**
  * The node fields a literal prop or a part can write, per node kind: the value type it takes. `visible` is written by a part's
- * `shownWhen`; node sizing is never written by a template.
- * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
+ * `shownWhen`; node sizing is never written by a template. A boolean field with a `values` map writes the mapped value
+ * while the prop holds, and the field's default when it does not (opacity: 1), so a node never holds no opacity.
+ * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string' | 'number', values?: Record<string, string | number> }>>}
  */
+/**
+ * The root opacity a loading Button draws at on the canvas and in Play (the export carries the same number in its
+ * blocked rule, see codegen). No variable type holds an opacity, so like the wave and focus durations this constant
+ * lives with the engine; the loading behaviour mandates 0.65.
+ */
+export const LOADING_OPACITY = 0.65;
+
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' } },
+    frame: { visible: { kind: 'boolean' }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } } },
     text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' } },
     arc: { visible: { kind: 'boolean' } },
 };
@@ -172,8 +180,8 @@ export const VARIABLE_KEYS = {
 };
 
 /**
- * The literal props that write a node field, in prop order, as [prop, node, field]. A prop with no `node` writes nothing (loading,
- * hasIcon, disabled): loading is reported by the diagnostics, the others are handled by the anatomy and state sync.
+ * The literal props that write a node field, in prop order, as [prop, node, field]. A prop with no `node` writes nothing
+ * (hasIcon, disabled): hasIcon is handled by the anatomy and state sync. Loading writes the root opacity.
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 function nodeWritersOf(template) {
@@ -228,6 +236,7 @@ export function nodeFieldPatch(field, value, type) {
         return type === 'text' ? { w: value, layoutSizingH: 'fixed', autoW: false } : { w: value, layoutSizingH: 'fixed' };
     }
     if (field === 'gap') return { gap: value == null ? 0 : value };
+    if (field === 'opacity') return { opacity: value ?? 1 };
     return { [field]: value };
 }
 

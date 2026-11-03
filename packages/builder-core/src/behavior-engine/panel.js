@@ -216,11 +216,21 @@ export function setInstanceValue(instance, master, prop, value) {
     const prev = resolveProps(template, instance?.behavior?.props ?? {});
     let props = setInstanceProp(template, instance?.behavior?.props ?? {}, prop, value);
     const def = template.props[prop];
+    // Mutually exclusive booleans (a Button's loading and disabled): turning one on turns the other off in the same write, so one undo step covers it.
+    if (def.type === 'boolean' && value === true && typeof def.exclusiveWith === 'string' && def.exclusiveWith) props = setInstanceProp(template, props, def.exclusiveWith, false);
     if (def.type === 'enum' && def.slots) {
         // One placement change carries the live icon across slots in the same write, so one undo step covers it.
         for (const [name, carried] of Object.entries(carryPlacementIcons(template, prop, prev, value))) props = setInstanceProp(template, props, name, carried);
     }
     return { version: BEHAVIOR_DATA_VERSION, props };
+}
+
+/**
+ * Whether turning a literal boolean prop on clears the hover, active or focus panel preview: the look it draws
+ * replaces those states, so the preview cannot stack on it. Declared per prop (see clearsPreview), never by name.
+ */
+export function clearsPreview(template, prop) {
+    return template.props[prop]?.source === 'literal' && template.props[prop]?.type === 'boolean' && template.props[prop]?.clearsPreview === true;
 }
 
 /**

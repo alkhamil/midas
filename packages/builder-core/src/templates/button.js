@@ -26,8 +26,8 @@ export const BUTTON = {
         // `node` is the node field the prop writes (see display.js NODE_FIELDS).
         label: { source: 'literal', type: 'string', default: 'Button', node: { key: 'label', field: 'text' } },
         ...ICON_PROPS,
-        loading: { source: 'literal', type: 'boolean', default: false },
-        disabled: { source: 'literal', type: 'boolean', default: false },
+        loading: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', clearsPreview: true, node: { key: 'root', field: 'opacity' } },
+        disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'loading', clearsPreview: true },
     },
     tokens: {
         fromSize: ['height', 'labelTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize'],

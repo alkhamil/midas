@@ -28,6 +28,12 @@ test('visibleIf must name a boolean or enum prop that exists', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /visibleIf refers to unknown prop "missing"/);
 });
 
+test('exclusiveWith must name a boolean literal prop', () => {
+    const bad = clone(BUTTON);
+    bad.props.loading.exclusiveWith = 'label';
+    assert.match(validateTemplateSchema(bad).join('\n'), /prop "loading" exclusiveWith must name a boolean literal prop/);
+});
+
 test('a variable prop must name its collection', () => {
     const bad = clone(BUTTON);
     bad.props.variant.collection = '';
