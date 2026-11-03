@@ -96,6 +96,15 @@ function partWidthOf(master, childrenOf) {
     };
 }
 
+/**
+ * The placeholder a control input exports: the prop plainly when no placeholder part exists, else while the value is empty
+ * (and never while read-only: a read-only input shows its value, not the placeholder). Reads the control extras only.
+ */
+function placeholderCondition(template, control) {
+    if (placeholderPartOf(template) === undefined) return control.placeholder;
+    return `String(${control.value} ?? "") === ""${control.readonly ? ` && ${control.readonly} !== true` : ''} ? ${control.placeholder} : undefined`;
+}
+
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
     const params = Object.entries(template.props).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
     for (const event of template.events) {
@@ -142,7 +151,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === ""${control.readonly ? ` && ${control.readonly} !== true` : ''} ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }

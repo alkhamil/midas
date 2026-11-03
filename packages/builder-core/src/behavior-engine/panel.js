@@ -288,7 +288,7 @@ export function planCollectionChange(master, prop, collectionId, collections) {
  * Writes a plan onto the master and the instances it names. The only place a plan is written, so the editor and tests share it
  * (the bind-time size goes onto the master with the binding, in the same step).
  * @param {{ behavior?: any }} master
- * @param {{ changed: boolean, binding: any, updates: { node: any, behavior: any }[] }} plan
+ * @param {{ changed: boolean, binding: any, size: { w: number, layoutSizingH: string } | null, updates: { node: any, behavior: any }[] }} plan
  */
 export function applyPlan(master, plan) {
     if (!plan.changed) return;
