@@ -119,3 +119,21 @@ test('Button and Input files are what they were: the slot work leaves a template
         for (const text of Object.values(files)) assert.doesNotMatch(text, /cardtest|filled\(|forwardRef/);
     }
 });
+
+test('a root with no disabled attribute (a div) says disabled with aria-disabled, and the disabled state selects on it; a button keeps its attribute', () => {
+    const div = emit({ ...template(HEADER), element: { tag: 'div', attrs: {}, disabledState: 'disabled', blockClickProps: [] } });
+    assert.match(div.files['CardTest.tsx'], /aria-disabled=\{disabled \|\| undefined\}/);
+    assert.doesNotMatch(div.files['CardTest.tsx'], / disabled=\{disabled\}/);
+    assert.match(div.files['CardTest.css'], /\[aria-disabled="true"\]/);
+    assert.doesNotMatch(div.files['CardTest.css'], /:disabled/);
+    const button = emit(template(HEADER));
+    assert.match(button.files['CardTest.tsx'], / disabled=\{disabled\}/);
+    assert.match(button.files['CardTest.css'], /:disabled/);
+});
+
+test('the element type of the root is the DOM\'s for its tag: div and span by name, any other tag from HTMLElementTagNameMap', () => {
+    const typeOf = tag => emit({ ...template(HEADER), element: { tag, attrs: {}, disabledState: 'disabled', blockClickProps: [] } }).files['CardTest.tsx'].match(/forwardRef<([^,]+), CardTestProps>/)[1];
+    assert.equal(typeOf('div'), 'HTMLDivElement');
+    assert.equal(typeOf('span'), 'HTMLSpanElement');
+    assert.equal(typeOf('section'), "HTMLElementTagNameMap['section']");
+});

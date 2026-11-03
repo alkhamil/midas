@@ -27,11 +27,21 @@ export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
 
+/** The elements that have a `disabled` attribute. */
+const DISABLEABLE = new Set(['button', 'input', 'select', 'textarea', 'fieldset', 'optgroup', 'option']);
+
+/**
+ * The CSS pseudo-class a state is written as. A root with no `disabled` attribute says it disabled with aria-disabled, so its disabled state selects on that.
+ * @param {any} template
+ * @param {string} state
+ */
+const pseudoOf = (template, state) => (state === template.element.disabledState && !DISABLEABLE.has(template.element.tag) ? '[aria-disabled="true"]' : template.statePseudo[state]);
+
 /** The DOM handler type each schema event is typed with in a .tsx (the element type fills the generic). */
 const EVENT_TYPE = { onClick: 'MouseEventHandler', onHover: 'MouseEventHandler', onFocus: 'FocusEventHandler', onBlur: 'FocusEventHandler' };
 
-/** The React attribute type and the element type of a template's root tag; any other tag is an HTMLElement. */
-const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], input: ['InputHTMLAttributes', 'HTMLInputElement'] };
+/** The React attribute type and the element type of a template's root tag: a few tags by name, any other as the DOM's own element type for that tag. */
+const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], input: ['InputHTMLAttributes', 'HTMLInputElement'], div: ['HTMLAttributes', 'HTMLDivElement'], span: ['HTMLAttributes', 'HTMLSpanElement'] };
 
 /**
  * The content slots of a template as the props they become in the generated component: one slot is `children`, several keep their schema id.
@@ -147,13 +157,14 @@ function componentSource(template, name, problems) {
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
         ...dims.map(dim => `data-${dim}={${dim}}`),
-        ...(ctl ? [] : [`disabled={${disabledProp}}`]),
+        // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
+        ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
         ...(slotted ? ['{...rest}'] : []),
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
     if (slotted) {
-        const [attrType, elementType] = ELEMENT_TYPES[tag] ?? ['HTMLAttributes', 'HTMLElement'];
+        const [attrType, elementType] = ELEMENT_TYPES[tag] ?? ['HTMLAttributes', `HTMLElementTagNameMap['${tag}']`];
         const slotParams = [...params, ...slotPropsOf(template).map(s => s.prop), 'className', 'style', '...rest'];
         const needsFilled = template.slots.some(slot => slot.showEmpty !== true);
         return [
@@ -305,7 +316,7 @@ function strokeRules(template, master) {
  * @returns {string[]}
  */
 function iconHoverRules(template) {
-    const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${template.statePseudo[template.element.disabledState]})`;
+    const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, template.element.disabledState)})`;
     return iconDefsOf(template).filter(def => def.tokens?.hoverColour !== undefined && def.slot !== undefined)
         .map(def => `.${template.id}${guard} .${template.id}-${def.slot}:hover {\n  color: var(${cssVarOf(template.id, def.tokens.hoverColour)});\n}\n`);
 }
@@ -379,7 +390,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         for (const u of base.unresolved) problems.push({ ...u, ...combo });
         if (Object.keys(base.vars).length) blocks.push(`${selector} {\n${declarations(base.vars)}}\n`);
         for (const state of [...Object.keys(template.persistentStates), ...Object.keys(template.previewStates)]) {
-            const pseudo = template.statePseudo[state];
+            const pseudo = pseudoOf(template, state);
             const persistent = template.persistentStates[state];
             const changed = persistent
                 ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
@@ -396,7 +407,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             // other states are guarded by `:not(:has(:disabled))`. Plain `:focus`, `:focus-visible` and
             // `:disabled` never match the wrapper, so no dead rule is emitted for them.
             const wrapperTarget = template.focusTarget === 'wrapper';
-            const guard = state === disabledState ? '' : wrapperTarget ? ':not(:has(:disabled))' : `:not(${template.statePseudo[disabledState]})`;
+            const guard = state === disabledState ? '' : wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
             if (!Object.keys(delta).length) continue;
             const sels = !wrapperTarget ? [`${selector}${pseudo}${guard}`]
                 : state === disabledState ? [`${selector}:has(:disabled)`]
