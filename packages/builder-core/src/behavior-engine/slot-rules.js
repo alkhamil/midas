@@ -109,3 +109,19 @@ export function slotVisible(prop, ownVisible, count) {
     if (!prop) return ownVisible;
     return ownVisible && (count > 0 || prop.showEmpty === true);
 }
+
+/**
+ * What a layer put into a slot takes on the slot's counter axis, as the fields to write on it: `fill`, once, when it is put there (not a
+ * standing rule: the layer can be resized afterwards). A horizontal slot fills its counter axis, the height, on its own, as Figma does; a
+ * vertical slot fills its counter axis, the width, only when the slot asks (`fillCounter`). A slot that is not an auto layout, or a layer
+ * with no slot property, writes nothing.
+ * @param {{ fillCounter?: boolean } | null | undefined} prop the slot property
+ * @param {string | null | undefined} layout the slot's auto layout: `horizontal`, `vertical`, or none
+ * @returns {{ layoutSizingH?: 'fill', layoutSizingV?: 'fill' }}
+ */
+export function slotFillPatch(prop, layout) {
+    if (!prop) return {};
+    if (layout === 'horizontal') return { layoutSizingV: 'fill' };
+    if (layout === 'vertical' && prop.fillCounter === true) return { layoutSizingH: 'fill' };
+    return {};
+}

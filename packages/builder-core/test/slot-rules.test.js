@@ -82,3 +82,24 @@ test('a slot the designer hid stays hidden, whatever it holds, and a slot with n
     assert.equal(slotVisible(undefined, true, 0), true, 'no property, no rule');
     assert.equal(slotVisible(undefined, false, 2), false);
 });
+
+import { slotFillPatch } from '../src/behavior-engine/slot-rules.js';
+
+test('a layer put into a horizontal slot fills the slot\'s counter axis (its height) on its own, as in Figma, with the option on or off', () => {
+    assert.deepEqual(slotFillPatch({}, 'horizontal'), { layoutSizingV: 'fill' });
+    assert.deepEqual(slotFillPatch({ fillCounter: false }, 'horizontal'), { layoutSizingV: 'fill' });
+    assert.deepEqual(slotFillPatch({ fillCounter: true }, 'horizontal'), { layoutSizingV: 'fill' });
+});
+
+test('a layer put into a vertical slot fills the counter axis (its width) only when the slot asks', () => {
+    assert.deepEqual(slotFillPatch({ fillCounter: true }, 'vertical'), { layoutSizingH: 'fill' });
+    assert.deepEqual(slotFillPatch({ fillCounter: false }, 'vertical'), {});
+    assert.deepEqual(slotFillPatch({}, 'vertical'), {});
+});
+
+test('a slot that is not an auto layout, or a layer with no slot property, writes nothing', () => {
+    assert.deepEqual(slotFillPatch({ fillCounter: true }, null), {});
+    assert.deepEqual(slotFillPatch({ fillCounter: true }, 'none'), {});
+    assert.deepEqual(slotFillPatch(undefined, 'horizontal'), {});
+    assert.deepEqual(slotFillPatch(undefined, 'vertical'), {});
+});
