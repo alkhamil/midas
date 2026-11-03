@@ -58,9 +58,10 @@ export const targetKindOf = (template, key) => {
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */
 export const counterLabel = (value, max) => `${String(value ?? '').length}${max != null ? ` / ${max}` : ''}`;
 
-/** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), or `{ all: [...] }`. */
+/** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), `{ all: [...] }` (every one holds) or `{ any: [...] }` (one holds). */
 export function conditionHolds(cond, props) {
     if (cond.all) return cond.all.every(c => conditionHolds(c, props));
+    if (cond.any) return cond.any.some(c => conditionHolds(c, props));
     const raw = props[cond.prop];
     if ('is' in cond) return raw === cond.is;
     return (String(raw ?? '') === '') === cond.empty;
@@ -80,7 +81,7 @@ export function placeholderPartOf(template) {
 
 /** The names of the props a condition reads, in order. */
 export function conditionProps(cond) {
-    return cond.all ? cond.all.flatMap(conditionProps) : [cond.prop];
+    return cond.all || cond.any ? (cond.all || cond.any).flatMap(conditionProps) : [cond.prop];
 }
 
 /**

@@ -6,7 +6,6 @@ import { iconNeedsOf } from './icon-slot.js';
 import { carryPlacementIcons, iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
-import { conditionProps } from './display.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
 
@@ -33,7 +32,8 @@ function isIconRelated(template, name) {
     const def = template.props[name];
     if (def.source !== 'literal') return false;
     if (def.type === 'iconComponent' || def.visibleIf) return true;
-    return Object.values(template.props).some(p => p.visibleIf && conditionProps(p.visibleIf).includes(name));
+    // A prop that switches or places an icon slot: its show switch, its placement, its component.
+    return iconDefsOf(template).some(d => [d.show, d.placement, d.component].includes(name));
 }
 
 /**

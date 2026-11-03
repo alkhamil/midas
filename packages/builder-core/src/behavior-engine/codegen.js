@@ -223,6 +223,7 @@ const cssDecls = style => Object.entries(style).map(([prop, value]) => '  ' + pr
  */
 function shownJsx(cond) {
     if (cond.all) return cond.all.map(c => `(${shownJsx(c)})`).join(' && ');
+    if (cond.any) return cond.any.map(c => `(${shownJsx(c)})`).join(' || ');
     if ('is' in cond) return `${cond.prop} === ${JSON.stringify(cond.is)}`;
     const text = `String(${cond.prop} ?? "")`;
     return cond.empty ? `${text} === ""` : `${text} !== ""`;

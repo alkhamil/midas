@@ -17,7 +17,7 @@ export const ICON_DEFS = [
 /** The props that place and choose the icons. `requires` is the variable dimensions the switch needs bound. */
 export const ICON_PROPS = {
     hasIcon: { source: 'literal', type: 'boolean', default: false, requires: ['variant', 'size'] },
-    iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd' }, visibleIf: { prop: 'hasIcon', is: true } },
+    iconPlacement: { source: 'literal', type: 'enum', options: ['start', 'end'], default: 'start', slots: { start: 'iconStart', end: 'iconEnd' }, visibleIf: { any: [{ prop: 'hasIcon', is: true }, { prop: 'loading', is: true }] } },
     icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true }, remembered: true },
     iconEnd: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'hasIcon', is: true }, remembered: true },
 };

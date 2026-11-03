@@ -268,3 +268,25 @@ export function childOrderAfterBind(template, children, created) {
 function sizedSlot(template, slotId) {
     return template.display?.[slotId]?.size !== undefined ? 'fixed' : 'hug';
 }
+
+/**
+ * The order of an instance's layers once the parts that sit on a side are placed: such a part (the spinner, by iconPlacement) goes before the label for
+ * `start` and after it for `end`; every other layer keeps its place. An instance made from a master is ordered this way (instanceOf), and the canvas reorders
+ * an existing instance with it when its placement changes, so the three surfaces agree.
+ * @param {any} template
+ * @param {{ id: string, type?: string, behavior?: any }[]} children the instance's layers, in order
+ * @param {Record<string, unknown>} resolved the instance's resolved props
+ * @returns {string[]} the layer ids in the order they belong
+ */
+export function sidedPartOrder(template, children, resolved) {
+    const ids = children.map(c => c.id);
+    const label = children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
+    if (!label) return ids;
+    for (const part of canvasPartsOf(template).filter(p => p.side)) {
+        const copy = children.find(c => c.behavior?.part === part.id);
+        if (!copy) continue;
+        ids.splice(ids.indexOf(copy.id), 1);
+        ids.splice(ids.indexOf(label.id) + (resolved[part.side] === 'end' ? 1 : 0), 0, copy.id);
+    }
+    return ids;
+}

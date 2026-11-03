@@ -71,6 +71,10 @@ function conditionProblems(cond, props, where) {
         if (!Array.isArray(cond.all) || cond.all.length === 0) return [`${where} "all" must be a non-empty list of conditions`];
         return cond.all.flatMap(c => conditionProblems(c, props, where));
     }
+    if ('any' in cond) {
+        if (!Array.isArray(cond.any) || cond.any.length === 0) return [`${where} "any" must be a non-empty list of conditions`];
+        return cond.any.flatMap(c => conditionProblems(c, props, where));
+    }
     const target = isPlainObject(props[cond.prop]) ? props[cond.prop] : null;
     if (!target) return [`${where} refers to unknown prop "${cond.prop}"`];
     if (target.source !== 'literal') return [`${where} tests "${cond.prop}", which is not a literal prop`];
