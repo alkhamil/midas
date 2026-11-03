@@ -36,12 +36,13 @@ export const INPUT = {
     // the value is not empty (it also needs its own text to show: see its part). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
     control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true, hidePlaceholderWhenFilled: true },
-    // The focus outline: its width and offset are static; its colour is the outline-color token (transparent until focus).
+    // The focus outline: its width counts the border, and it is drawn with no gap from the border's inner edge (the engine
+    // offsets it back by the master's border width); its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
     // state (`:has()` selectors in the stylesheet). Only a template with a control sets one.
     focusTarget: 'wrapper',
     interaction: { focus: 'halo', wave: false },
-    outline: { width: 2, offset: 1 },
+    outline: { width: 2, offset: 0 },
     // A new Input is left aligned and centred, and a fixed 343px wide; the node owns both after that.
     rootAlign: 'center',
     rootPrimaryAlign: 'start',

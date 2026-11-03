@@ -16,8 +16,9 @@ export const BUTTON = {
     ],
     // The managed icon slots (see icon-slots.js).
     icons: ICON_DEFS,
-    // The focus outline: its width and offset are static; outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
-    outline: { width: 2, offset: 1 },
+    // The focus outline: its width counts the border, and it is drawn with no gap from the border's inner edge (the engine
+    // offsets it back by the master's border width); outline-color stays transparent at rest, outline-color-active shows it on interaction. The click wave is configured by interaction.
+    outline: { width: 2, offset: 0 },
     interaction: { focus: 'outline', wave: true },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['outlined', 'dashed', 'solid', 'filled', 'text', 'link'], styles: { dashed: { borderStyle: 'dashed' } } },

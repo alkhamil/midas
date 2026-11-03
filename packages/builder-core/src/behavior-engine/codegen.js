@@ -288,7 +288,12 @@ function displayRules(template, master, childrenOf) {
             ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
             : kind === 'text' ? cssDecls(labelLayoutOf(entry?.node, entry?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
-            decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset}px;\n`, `  transition: ${FOCUS_TRANSITION};\n`);
+            // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
+            // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
+            const border = master.strokeWidth ?? 1;
+            if (template.outline.width <= border) decls.push('  outline: none;\n');
+            else decls.push(`  outline: ${template.outline.width}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset - border}px;\n`);
+            decls.push(`  transition: ${FOCUS_TRANSITION};\n`);
         }
         // The root draws no border: its stroke is the ::before overlay (see strokeRules), so the children sit inside the padding.
         if (key === 'root') decls.push('  border-width: 0;\n', `  border-style: ${lineStyleOf(master)};\n`);

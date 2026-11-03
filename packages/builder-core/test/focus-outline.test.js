@@ -6,7 +6,8 @@ import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { BUTTON } from '../src/templates/button.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 import { planAutoFix, applyAutoFix } from '../src/behavior-engine/auto-fix.js';
-import { previewOf } from '../src/behavior-engine/preview.js';
+import { previewOf, canvasColorsOf } from '../src/behavior-engine/preview.js';
+import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { variableValue } from '../src/behavior-engine/variable-value.js';
 import { splitColor } from '../src/behavior-engine/tokens.js';
 import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
@@ -18,8 +19,26 @@ const button = TEMPLATES.get('button');
 const model = buttonModel({ colors: ['primary', 'danger'], variantModes: ['solid'] });
 const css = generateComponent(button, model.binding, { collections: model.collections, items: model.items }, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', primaryAxisAlign: 'center', counterAxisAlign: 'center' }, () => []).files['Button.css'];
 
-test('the root draws the outline at its static width and offset, in the outline-color variable', () => {
-    assert.match(css, /\.button \{\n(?:.*\n)*?\s*outline: 2px solid var\(--button-outline-color\);\n\s*outline-offset: 1px;/);
+test('the outline includes the border: no gap, so the ring starts back at the border inner edge', () => {
+    assert.match(css, /\.button \{\n(?:.*\n)*?\s*outline: 2px solid var\(--button-outline-color\);\n\s*outline-offset: -1px;/);
+});
+
+test('the offset follows the master border width; a border as wide as the outline shows no ring', () => {
+    const imodel = inputModel({});
+    const variables = { collections: imodel.collections, items: imodel.items };
+    const styled = master => generateComponent(INPUT, imodel.binding, variables, 'Input', master, () => []).files['Input.css'];
+    assert.match(styled({ id: 'm', type: 'frame', layout: 'horizontal' }), /\.input \{\n(?:.*\n)*?\s*outline: 2px solid var\(--input-outline-color\);\n\s*outline-offset: -1px;/);
+    assert.match(styled({ id: 'm', type: 'frame', layout: 'horizontal', strokeWidth: 1 }), /\s*outline-offset: -1px;/);
+    const thick = styled({ id: 'm', type: 'frame', layout: 'horizontal', strokeWidth: 2 });
+    assert.match(thick, /\.input \{\n(?:.*\n)*?\s*outline: none;/);
+    assert.doesNotMatch(thick, /outline: 2px/, 'no ring is drawn when the border already spans the outline width');
+});
+
+test('the canvas draws no outline for focus: the border recolor only, never outline geometry', () => {
+    assert.equal(canvasColorsOf(button, model.binding, { size: 'sm', variant: 'solid', color: 'primary' }, { collections: model.collections, items: model.items }, resolveProps(button, {}), 'focus'), null);
+    const imodel = inputModel({});
+    const drawn = canvasColorsOf(INPUT, imodel.binding, { variant: 'outlined', status: 'default', size: 'md' }, { collections: imodel.collections, items: imodel.items }, resolveProps(INPUT, {}), 'focus');
+    assert.deepEqual(Object.keys(drawn ?? {}), ['stroke']);
 });
 
 test('focus sets the outline colour for keyboard focus only, and only while the Button is not disabled', () => {
