@@ -21,8 +21,14 @@ export function createTemplateRegistry(schemas) {
     return byId;
 }
 
-/** Every template the engine ships. */
-export const TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM]);
+/** The templates the engine ships. */
+export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM]);
+
+/**
+ * The registry every engine call reads: the built-in templates and the Custom templates of the open document (see custom-templates.js, which fills it).
+ * One Map, so a call site never asks which of the two a template is.
+ */
+export const TEMPLATES = new Map(BUILT_IN_TEMPLATES);
 
 /**
  * Whether two mode lists name the same modes: same count, matched case-insensitively, in any order.

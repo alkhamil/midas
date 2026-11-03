@@ -54,3 +54,4 @@ export * from './geometry/autolayout.js';
 export * from './geometry/boolean.js';
 export * from './library/index.js';
 export * from './behavior-engine/remap-cprops.js';
+export * from './behavior-engine/custom-templates.js';
