@@ -71,3 +71,52 @@ test('the root takes className after the template class, style and rest props, a
     const single = componentOf(CONTENT);
     assert.equal((html(single, {}, 'once').match(/once/g) ?? []).length, 1);
 });
+
+/** The List template compiled from its own schema (no variables: it has none). */
+function listComponent(template = TEMPLATES.get('list')) {
+    const { files, problems } = generateComponent(template, { variables: {} }, { collections: [], items: [] }, 'List', master, () => []);
+    assert.deepEqual(problems, []);
+    const { code } = transformSync(files['List.tsx'].replace(/^import '\.\/List\.css';\n/m, ''), { loader: 'tsx', format: 'cjs', jsx: 'automatic', target: 'es2022' });
+    const module = { exports: {} };
+    new Function('require', 'module', 'exports', code)(require, module, module.exports);
+    return module.exports.List;
+}
+const itemMarkup = markup => markup.match(/<div class="list-item">(.*)<\/div><\/div>$/)?.[1] ?? null;
+
+test('List draws its item itemCount times in one item element: 3 by default, as many as asked, none for 0', () => {
+    const List = listComponent();
+    const row = createElement('b', null, 'row');
+    assert.equal(itemMarkup(html(List, {}, row)), '<b>row</b>'.repeat(3));
+    assert.equal(itemMarkup(html(List, { itemCount: 5 }, row)), '<b>row</b>'.repeat(5));
+    assert.equal(itemMarkup(html(List, { itemCount: 1 }, row)), '<b>row</b>');
+    assert.equal(itemMarkup(html(List, { itemCount: 0 }, row)), '', 'no copies: the item element is there (showEmpty) and empty');
+    assert.equal((html(List, { itemCount: 4 }, row).match(/<div class="list-item">/g) ?? []).length, 1, 'one item element, however many copies');
+});
+
+test('itemCount is clamped to a whole number of 0 or more; a value that is not a number falls back to the default of 3', () => {
+    const List = listComponent();
+    const row = createElement('i', null, 'x');
+    const count = itemCount => (itemMarkup(html(List, { itemCount }, row))?.match(/<i>/g) ?? []).length;
+    assert.equal(count(2.9), 2);
+    assert.equal(count(-3), 0);
+    for (const bad of [NaN, Infinity, -Infinity, null]) assert.equal(count(bad), 3, String(bad));
+});
+
+test('with no children there are no copies, whatever itemCount says; the item element still shows because the slot has showEmpty', () => {
+    const List = listComponent();
+    for (const empty of [undefined, null, false, '', []]) assert.equal(itemMarkup(html(List, { itemCount: 4, children: empty })), '', JSON.stringify(empty));
+});
+
+test('a repeating slot without showEmpty has no element when there are no copies', () => {
+    const template = structuredClone(TEMPLATES.get('list'));
+    template.slots[0].showEmpty = false;
+    const List = listComponent(template);
+    assert.doesNotMatch(html(List, { itemCount: 0 }, 'x'), /list-item/);
+    assert.match(html(List, { itemCount: 2 }, 'x'), /<div class="list-item">xx<\/div>/);
+});
+
+test('repeated copies share no id: the component gives none, and a consumer\'s own id is repeated as given, never rewritten', () => {
+    const List = listComponent();
+    assert.doesNotMatch(html(List, { itemCount: 4 }, createElement('b', null, 'row')), /\bid=|data-node-id/);
+    assert.equal((html(List, { itemCount: 2 }, createElement('b', { id: 'mine' }, 'row')).match(/id="mine"/g) ?? []).length, 2);
+});

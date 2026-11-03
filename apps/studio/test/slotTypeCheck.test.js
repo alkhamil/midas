@@ -71,3 +71,31 @@ test('a consumer\'s use of the component type-checks: slots as children or named
     assert.ok(typeErrors(use(single, `<CardTest nope="x" />`)).length > 0, 'an unknown prop is refused');
     assert.ok(typeErrors(use(multi, `<CardTest>child</CardTest>`)).length > 0, 'children is not a prop of a template with several slots');
 });
+
+/** The List's .tsx (it has no variables). */
+const listTsx = () => {
+    const { files, problems } = generateComponent(TEMPLATES.get('list'), { variables: {} }, { collections: [], items: [] }, 'List', master, () => []);
+    assert.deepEqual(problems, []);
+    return { 'List.tsx': files['List.tsx'] };
+};
+
+test('List compiles under strict, with itemCount typed number', () => {
+    const files = listTsx();
+    assert.deepEqual(typeErrors(files), []);
+    assert.match(files['List.tsx'], /itemCount\?: number;/);
+});
+
+test('the List check measures something: a wrong itemCount type inside the component is reported', () => {
+    const broken = { 'List.tsx': listTsx()['List.tsx'].replace('itemCount?: number;', 'itemCount?: string;') };
+    assert.ok(typeErrors(broken).some(e => /not assignable to parameter of type/.test(e) || /string/.test(e)), 'string cannot be the count');
+    assert.ok(typeErrors({ 'List.tsx': listTsx()['List.tsx'].replace('Math.max(0, Math.floor(n))', "Math.max(0, Math.floor('n'))") }).length > 0);
+});
+
+test('a consumer\'s use of List type-checks: itemCount as a number, children, className, ref; a string, null or an unknown prop does not', () => {
+    const use = jsx => ({ ...listTsx(), 'use.tsx': `import { createRef } from 'react';\nimport { List } from './List';\nconst ref = createRef<HTMLDivElement>();\nexport const x = ${jsx};\n` });
+    assert.deepEqual(typeErrors(use(`<List itemCount={5} className="a" ref={ref} style={{ gap: 4 }}><b>row</b></List>`)), []);
+    assert.deepEqual(typeErrors(use(`<List><b>row</b></List>`)), [], 'itemCount is optional: the schema default');
+    assert.ok(typeErrors(use(`<List itemCount="5" />`)).length > 0, 'a string is not a count');
+    assert.ok(typeErrors(use(`<List itemCount={null} />`)).length > 0, 'the default is 3, so null is not a count');
+    assert.ok(typeErrors(use(`<List items={3} />`)).length > 0);
+});
