@@ -53,3 +53,27 @@ export function diagnoseSlots(nodes) {
     }
     return out;
 }
+
+/**
+ * The slot findings an edit introduced: those after it that were not there before. A finding is the same one while its numbers change (the
+ * key is the kind, the instance, the slot and the layer, not the message), so an edit that improves a slot that was already over its maximum
+ * says nothing.
+ * @param {{ code: string, nodeId: string, slot: string, layer?: string }[]} before the findings before the edit
+ * @param {{ code: string, nodeId: string, slot: string, layer?: string }[]} after the findings after it
+ * @returns {any[]}
+ */
+export function introducedSlotProblems(before, after) {
+    const key = (/** @type {any} */ p) => [p.code, p.nodeId, p.slot, p.layer].join('\u0000');
+    const known = new Set(before.map(key));
+    return after.filter(p => !known.has(key(p)));
+}
+
+/**
+ * What the studio says about the findings an edit introduced: the first one, and how many more there are. Null when there are none.
+ * @param {{ message: string }[]} problems
+ * @returns {string | null}
+ */
+export function slotNotice(problems) {
+    if (!problems.length) return null;
+    return problems.length === 1 ? problems[0].message : `${problems[0].message} (${problems.length - 1} more)`;
+}
