@@ -55,5 +55,6 @@
   "clearIconSizeMD": { "collection": "Semantic", "from": "fontSizeMD", "offset": -2, "value": 12, "primitive": "size/12", "derived": true, "source": "the clear icon is the icon size (fontSizeMD 14) minus 2" },
   "clearIconSizeLG": { "collection": "Semantic", "from": "fontSizeLG", "offset": -2, "value": 14, "primitive": "size/14", "derived": true, "source": "the clear icon is the icon size (fontSizeLG 16) minus 2" },
   "clearIconSizeXL": { "collection": "Semantic", "from": "fontSizeXL", "offset": -2, "value": 18, "primitive": "size/18", "derived": true, "source": "the clear icon is the icon size (fontSizeXL 20) minus 2" },
-  "lineWidth": { "collection": "Semantic", "value": 1, "primitive": "stroke/1", "derived": false, "source": "components/theme/themes/seed.ts: lineWidth" }
+  "lineWidth": { "collection": "Semantic", "value": 1, "primitive": "stroke/1", "derived": false, "source": "components/theme/themes/seed.ts: lineWidth" },
+  "controlOutlineWidth": { "collection": "Semantic", "value": 2, "primitive": "stroke/2", "derived": false, "source": "components/theme/util/alias.ts: controlOutlineWidth (Midas keeps its own default of 2, independent of lineWidth)" }
 }

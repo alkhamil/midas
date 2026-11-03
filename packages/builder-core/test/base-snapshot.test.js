@@ -17,12 +17,12 @@ test('the snapshot holds three collections with their modes', () => {
     ]);
 });
 
-test('the snapshot plus the text styles: 336 variables with the known report', () => {
+test('the snapshot plus the text styles: 337 variables with the known report', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 102 });
-    assert.equal(plan.items.length, 336);
+    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 103 });
+    assert.equal(plan.items.length, 337);
     assert.deepEqual(plan.report.derived.map(d => d.name), [
         'Primitives/transparent',
         'Semantic/controlHeightXL',
@@ -87,7 +87,7 @@ test('the gap and padding scales have five suffixed steps each', () => {
 
 test('Semantic holds the antd size scale as aliases, no literals', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
-    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 57, 'the size scale is present');
+    assert.equal(plan.items.filter(i => i.collection === 'Semantic' && i.type === 'number').length, 58, 'the size scale is present');
     for (const item of plan.items.filter(i => i.collection === 'Semantic')) {
         for (const value of Object.values(item.values)) {
             assert.ok(value.alias && !value.needsValue, `${item.name} aliases a base step`);
@@ -140,7 +140,7 @@ test('the snapshot plan applies and a second run is a no-op', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const first = applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
-    assert.deepEqual(first, { collections: 3, items: 336, modes: 4, aliases: 204 });
+    assert.deepEqual(first, { collections: 3, items: 337, modes: 4, aliases: 206 });
     assert.deepEqual(applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`), { collections: 0, items: 0, modes: 0, aliases: 0 });
 });
 

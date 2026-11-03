@@ -60,6 +60,8 @@
   "gap": { "base": "Semantic/gapMD" },
   "gap-lg": { "base": "Semantic/gapLG" },
   "gap-xl": { "base": "Semantic/gapXL" },
+  "border-width": { "base": "Semantic/lineWidth" },
+  "outline-width": { "base": "Semantic/controlOutlineWidth" },
   "text-xs": { "base": "Semantic/textXs" },
   "text-sm": { "base": "Semantic/textSm" },
   "text-base": { "base": "Semantic/textBase" },

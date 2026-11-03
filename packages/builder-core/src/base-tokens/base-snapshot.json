@@ -3869,6 +3869,25 @@
           }
         }
       }
+    },
+    {
+      "collection": "Semantic",
+      "name": "controlOutlineWidth",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "stroke/2"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "stroke/2"
+          }
+        }
+      }
     }
   ],
   "report": {
