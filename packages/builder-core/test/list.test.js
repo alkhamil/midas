@@ -57,3 +57,14 @@ test('a List with one component in its item slot has nothing to report, with non
     assert.deepEqual(codes(docOf()), ['slot-below-min']);
     assert.deepEqual(codes(docOf('plain', 'plain')), ['slot-above-max']);
 });
+
+test('on the canvas the item is drawn once whatever itemCount says, 0 included: the item is authored there, and only Play and the export repeat it', () => {
+    const f = frame();
+    const created = build(f).created;
+    for (const itemCount of [0, 1, 3, 9]) {
+        const copies = instanceOf(list, f, created, { itemCount }, { id: src => `i${itemCount}-${src}` });
+        const slots = copies.filter(n => n.propBind?.slot === 'item');
+        assert.equal(slots.length, 1, `itemCount ${itemCount}`);
+        assert.notEqual(slots[0].visible, false, 'the slot layer is as the master has it');
+    }
+});
