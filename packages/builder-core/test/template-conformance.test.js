@@ -17,6 +17,7 @@ const MODELS = {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
     },
+    list: () => ({ variables: { collections: [], items: [] }, binding: { variables: {} } }),
     formitem: () => {
         const model = formItemModel({ ids: { size: 'c-formitem-size', semantic: 'c-formitem-semantic' }, prefix: 'fi-' });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { size: model.ids.size } } };
@@ -34,7 +35,10 @@ const idOf = key => `c-${key}-${++seq}`;
 const requiredKeys = template => [
     ...template.anatomy.filter(slot => !slot.managed && slot.kind !== 'icon').map(slot => slot.id),
     ...canvasPartsOf(template).map(part => part.id),
+    ...(template.slots ?? []).map(slot => slot.id),
 ];
+/** Whether a layer is the one a key stands for: by name, as a canvas part, or as the content slot the key names. */
+const isLayerOf = (n, key) => n.name === key || n.behavior?.part === key || n.propBind?.slot === key;
 
 for (const template of TEMPLATES.values()) {
     test(`${template.id}: the generator gives every contract part a layer`, () => {
@@ -42,7 +46,7 @@ for (const template of TEMPLATES.values()) {
         const { variables, binding } = MODELS[template.id]();
         const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };
         const out = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
-        const keys = new Set(out.created.map(n => n.name));
+        const keys = new Set(out.created.flatMap(n => [n.name, n.propBind?.slot]));
         for (const key of requiredKeys(template)) assert.ok(keys.has(key) || out.matched.some(m => m.key === key), `${template.id} has a layer for ${key}`);
         assert.deepEqual(out.problems, [], `${template.id} bindings resolve`);
     });
@@ -98,12 +102,12 @@ for (const template of TEMPLATES.values()) {
         assert.deepEqual(missing(first.created), [], 'a generated master is complete');
         const user = { id: 'user-layer', name: 'Note', type: 'frame', parentId: 'master', text: 'kept' };
         const required = requiredKeys(template)[requiredKeys(template).length - 1];
-        const without = first.created.filter(n => n.name !== required && n.behavior?.part !== required);
+        const without = first.created.filter(n => !isLayerOf(n, required));
         assert.ok(without.length < first.created.length, `${template.id} has a layer for ${required} to remove`);
         assert.ok(missing([...without, user]).some(f => f.layer === required), `${required} is reported missing`);
         const children = [...without, user];
         const second = applyTemplateToFrame(template, { frame, children, binding, variables, idOf });
-        assert.ok(second.created.some(n => n.name === required || n.behavior?.part === required), 'the generator adds the missing layer');
+        assert.ok(second.created.some(n => isLayerOf(n, required)), 'the generator adds the missing layer');
         const rest = [...children, ...second.created];
         assert.deepEqual(missing(rest), [], 'no missing-part warning after the generator ran');
         assert.ok(rest.includes(user) && user.text === 'kept', 'the user layer is kept');
