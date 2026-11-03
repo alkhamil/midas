@@ -35,3 +35,32 @@ test('the notice is the first new finding, and says how many more there are', ()
     assert.equal(slotNotice([problem('slot-below-min', { message: 'First.' }), problem('slot-above-max', { message: 'Second.' })]), 'First. (1 more)');
     assert.equal(slotNotice([1, 2, 3, 4].map(n => problem('slot-not-accepted', { layer: `c${n}`, message: `Layer ${n}.` }))), 'Layer 1. (3 more)');
 });
+
+import { withoutFreshMinimums } from '../src/behavior-engine/slot-diagnostics.js';
+
+test('a freshly created instance is always below its minimum: that finding is not news, any other is', () => {
+    const fresh = new Set(['new1', 'new1-inner']);
+    const below = id => problem('slot-below-min', { nodeId: id });
+    assert.deepEqual(withoutFreshMinimums([below('new1')], fresh), [], 'the instance just created');
+    assert.deepEqual(withoutFreshMinimums([below('new1-inner')], fresh), [], 'an instance inside it');
+    const other = below('old');
+    assert.deepEqual(withoutFreshMinimums([below('new1'), other], fresh), [other], 'another instance keeps its notice');
+    const above = problem('slot-above-max', { nodeId: 'new1' });
+    const notTaken = problem('slot-not-accepted', { nodeId: 'new1', layer: 'c1' });
+    assert.deepEqual(withoutFreshMinimums([above, notTaken], fresh), [above, notTaken], 'only the minimum is excused');
+    assert.deepEqual(withoutFreshMinimums([below('new1')], new Set()), [below('new1')], 'nothing was created');
+    assert.deepEqual(withoutFreshMinimums([], fresh), []);
+});
+
+test('the diagnostics still report the fresh instance below its minimum: only the notice is excused', async () => {
+    const { diagnoseSlots } = await import('../src/behavior-engine/slot-diagnostics.js');
+    const nodes = [
+        { id: 'card', name: 'Card', type: 'frame', component: true, parentId: null, cprops: [{ id: 'p1', name: 'Content', type: 'slot', min: 1 }] },
+        { id: 'frame', name: 'Content', type: 'frame', parentId: 'card', propBind: { slot: 'p1' } },
+        { id: 'new1', name: 'Card', type: 'frame', parentId: null, isInstance: true, sourceId: 'card' },
+        { id: 'slot', name: 'Content', type: 'frame', parentId: 'new1', sourceId: 'frame', propBind: { slot: 'p1' } },
+    ];
+    const findings = diagnoseSlots(nodes);
+    assert.deepEqual(findings.map(f => f.code), ['slot-below-min']);
+    assert.deepEqual(withoutFreshMinimums(findings, new Set(['new1'])), []);
+});

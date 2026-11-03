@@ -77,3 +77,14 @@ export function slotNotice(problems) {
     if (!problems.length) return null;
     return problems.length === 1 ? problems[0].message : `${problems[0].message} (${problems.length - 1} more)`;
 }
+
+/**
+ * The findings without the minimums of instances just created: a freshly created instance has not been filled yet, so it is always below its
+ * minimum and that is not news. Only the notice leaves it out; the Diagnostics still report it. Any other finding of a new instance stays.
+ * @param {{ code: string, nodeId: string }[]} problems
+ * @param {Set<string>} freshIds the ids of the instances (and the layers inside them) the edit created from a component
+ * @returns {any[]}
+ */
+export function withoutFreshMinimums(problems, freshIds) {
+    return problems.filter(p => !(p.code === 'slot-below-min' && freshIds.has(p.nodeId)));
+}
