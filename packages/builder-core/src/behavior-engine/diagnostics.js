@@ -213,6 +213,17 @@ export function diagnoseDocument(doc) {
                 }
             }
         }
+
+        // A bound stroke width whose master literal differs from the resolved token: hand-set values win on
+        // every surface (canvas, Play and the export all draw the literal), so this warns instead of fixing.
+        // A missing or dangling binding is reported as unbound-token instead and skips here.
+        if (template.display?.root && 'strokeWidth' in template.display.root && typeof m.strokeWidth === 'number' && m.strokeWidth > 0
+            && typeof m.vars?.strokeWidth === 'string' && known.has(m.vars.strokeWidth)) {
+            const tokenWidth = tokenValueOf(template, m.behavior, variables, 'borderWidth');
+            if (typeof tokenWidth === 'number' && Number.isFinite(tokenWidth) && tokenWidth !== m.strokeWidth) {
+                out.push({ severity: 'warning', code: 'stroke-literal-diverges', node: m.name, nodeId: m.id, literal: m.strokeWidth, token: 'borderWidth', value: tokenWidth, message: `${m.name}: stroke width ${m.strokeWidth}px on the master differs from the bound border-width token (${tokenWidth}px). Edit the variable or detach the strokeWidth binding; the hand-set literal is what canvas, Play and the export draw.` });
+            }
+        }
     }
     // The content slots of every page: a slot below its minimum, above its maximum, or holding a layer it does not take (see slot-diagnostics.js).
     out.push(...diagnoseSlots(nodes));

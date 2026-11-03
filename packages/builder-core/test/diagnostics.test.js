@@ -146,6 +146,26 @@ test('an outline no wider than the border warns, naming the master and both reso
     }]);
 });
 
+test('a bound stroke width whose master literal differs from the token warns, naming the master, both values and the fix', () => {
+    const d = doc();
+    d.pages[0].nodes.find(n => n.id === 'm1').strokeWidth = 2;
+    const found = diagnoseDocument(d).filter(f => f.code === 'stroke-literal-diverges');
+    assert.deepEqual(found, [{
+        severity: 'warning', code: 'stroke-literal-diverges', node: 'Button', nodeId: 'm1', literal: 2, token: 'borderWidth', value: 1,
+        message: 'Button: stroke width 2px on the master differs from the bound border-width token (1px). Edit the variable or detach the strokeWidth binding; the hand-set literal is what canvas, Play and the export draw.',
+    }]);
+});
+
+test('a bound stroke width matching the token has no literal warning', () => {
+    assert.deepEqual(diagnoseDocument(doc()).filter(f => f.code === 'stroke-literal-diverges'), []);
+});
+
+test('an unbound stroke width has no literal warning', () => {
+    const d = doc();
+    delete d.pages[0].nodes.find(n => n.id === 'm1').vars.strokeWidth;
+    assert.deepEqual(diagnoseDocument(d).filter(f => f.code === 'stroke-literal-diverges'), []);
+});
+
 test('a master token that is not bound is a warning, naming the layer, the property and the token', () => {
     const d = doc();
     d.pages[0].nodes[0].vars = { stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 's-radius', padH: 's-paddingX', padV: 's-paddingY', gap: 's-gap', h: 's-height' };
